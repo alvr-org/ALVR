@@ -167,14 +167,14 @@ impl<'a> Drop for XrPresentationGuard<'a> {
                     &xr::CompositionLayerProjection::new()
                         .space(reference_space)
                         .views(&create_layer_views(
-                            &mut self.acquired_scene_swapchains,
-                            &self.scene_view_configs,
+                            &mut self.acquired_stream_swapchains,
+                            &self.stream_view_configs,
                         )),
                     &xr::CompositionLayerProjection::new()
                         .space(reference_space)
                         .views(&create_layer_views(
-                            &mut self.acquired_stream_swapchains,
-                            &self.stream_view_configs,
+                            &mut self.acquired_scene_swapchains,
+                            &self.scene_view_configs,
                         )),
                 ],
             )

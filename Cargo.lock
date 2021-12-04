@@ -390,18 +390,18 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.11.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
 dependencies = [
  "winapi",
 ]
 
 [[package]]
 name = "anyhow"
-version = "1.0.48"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62e1f47f7dc0422027a4e370dd4548d4d66b26782e513e98dca1e689e058a80e"
+checksum = "8b26702f315f53b6071259e15dd9d64528213b44d61de1ec926eca7715d62203"
 
 [[package]]
 name = "approx"
@@ -818,9 +818,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.3"
+version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
 dependencies = [
  "ansi_term",
  "atty",
@@ -859,7 +859,7 @@ dependencies = [
  "parking_lot",
  "pollster",
  "rand",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "rend3",
  "rend3-routine",
  "serde_json",
@@ -1156,9 +1156,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.2.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3825b1e8580894917dc4468cb634a1b4e9745fddc854edad72d9c04644c0319f"
+checksum = "738c290dfaea84fc1ca15ad9c168d083b05a714e1efddd8edaab678dc28d2836"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1230,6 +1230,12 @@ dependencies = [
  "cfg-if 1.0.0",
  "lazy_static",
 ]
+
+[[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 
 [[package]]
 name = "d3d12"
@@ -2528,7 +2534,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2541,7 +2547,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "bitflags",
 ]
@@ -2549,7 +2555,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "futures",
  "log",
@@ -2559,21 +2565,21 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "bytemuck",
  "font-kit",
  "glam 0.10.2",
  "iced_native",
  "iced_style",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "thiserror",
 ]
 
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2586,7 +2592,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "iced_core",
 ]
@@ -2594,7 +2600,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "base64",
  "dodrio",
@@ -2611,7 +2617,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2623,7 +2629,7 @@ dependencies = [
  "image",
  "kamadak-exif",
  "log",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "wgpu",
  "wgpu_glyph",
 ]
@@ -2631,7 +2637,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#aeec0375f0897b2ef0897c4c54476b2d0db9311a"
+source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2763,9 +2769,9 @@ dependencies = [
 
 [[package]]
 name = "intmap"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e50930385956f6c4a0b99f3dd654adcc40788456c36e17c5b20e1d1ceb523ec6"
+checksum = "ae52f28f45ac2bc96edb7714de995cffc174a395fb0abf5bff453587c980d7b9"
 
 [[package]]
 name = "ipnet"
@@ -3148,9 +3154,9 @@ checksum = "16cf681a23b4d0a43fc35024c176437f9dcd818db34e0f42ab456a0ee5ad497b"
 
 [[package]]
 name = "naga"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eda66d09f712e1f0a6ab436137da4fac312f78301f6d4ac7cb8bfe96e988734f"
+checksum = "63765d243f5d32ece09b2ff95c1f50ec7353266024a2ce89619a09e1b6aa4cce"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -4132,11 +4138,21 @@ checksum = "63e935c45e09cc6dcf00d2f0b2d630a58f4095320223d47fc68918722f0538b6"
 
 [[package]]
 name = "raw-window-handle"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
+checksum = "e28f55143d0548dad60bb4fbdc835a3d7ac6acc3324506450c5fdd6e42903a76"
 dependencies = [
  "libc",
+ "raw-window-handle 0.4.2",
+]
+
+[[package]]
+name = "raw-window-handle"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fba75eee94a9d5273a68c9e1e105d9cffe1ef700532325788389e5a83e2522b7"
+dependencies = [
+ "cty",
 ]
 
 [[package]]
@@ -4233,7 +4249,6 @@ dependencies = [
 [[package]]
 name = "rend3"
 version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3#010dfb143c1bef4adfb50dea9c5247f178fd96bf"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4260,7 +4275,6 @@ dependencies = [
 [[package]]
 name = "rend3-routine"
 version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3#010dfb143c1bef4adfb50dea9c5247f178fd96bf"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4280,7 +4294,6 @@ dependencies = [
 [[package]]
 name = "rend3-types"
 version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3#010dfb143c1bef4adfb50dea9c5247f178fd96bf"
 dependencies = [
  "bitflags",
  "glam 0.20.1",
@@ -4317,9 +4330,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.6"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66d2927ca2f685faf0fc620ac4834690d29e7abb153add10f5812eef20b5e280"
+checksum = "07bea77bc708afa10e59905c3d4af7c8fd43c9214251673095ff8b14345fcbc5"
 dependencies = [
  "base64",
  "bytes",
@@ -4468,9 +4481,9 @@ dependencies = [
 
 [[package]]
 name = "ryu"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+checksum = "3c9613b5a66ab9ba26415184cfc41156594925a9cf3a2057e57f31ff145f6568"
 
 [[package]]
 name = "same-file"
@@ -4538,9 +4551,9 @@ dependencies = [
 
 [[package]]
 name = "self_cell"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ac753e6625df1711012c6469644ddd9b6338be1e4abf235c3a8817191411ae1"
+checksum = "1ef965a420fe14fdac7dd018862966a4c14094f900e1650bbc71ddd7d580c8af"
 
 [[package]]
 name = "semver"
@@ -5852,7 +5865,7 @@ dependencies = [
  "log",
  "naga",
  "parking_lot",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -5876,7 +5889,7 @@ dependencies = [
  "naga",
  "parking_lot",
  "profiling",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smallvec",
  "thiserror",
  "wgpu-hal",
@@ -5911,7 +5924,7 @@ dependencies = [
  "parking_lot",
  "profiling",
  "range-alloc",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "renderdoc-sys",
  "thiserror",
  "wasm-bindgen",
@@ -6033,7 +6046,7 @@ dependencies = [
  "clipboard_macos",
  "clipboard_wayland",
  "clipboard_x11",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
 ]
 
 [[package]]
@@ -6060,7 +6073,7 @@ dependencies = [
  "objc",
  "parking_lot",
  "percent-encoding",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "scopeguard",
  "smithay-client-toolkit 0.12.3",
  "wayland-client 0.28.6",
@@ -6091,7 +6104,7 @@ dependencies = [
  "objc",
  "parking_lot",
  "percent-encoding",
- "raw-window-handle",
+ "raw-window-handle 0.3.4",
  "smithay-client-toolkit 0.15.2",
  "wasm-bindgen",
  "wayland-client 0.29.1",

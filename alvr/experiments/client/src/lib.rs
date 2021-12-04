@@ -121,6 +121,7 @@ fn session_pipeline(
             scene_input.right_pose_input,
             scene_input.buttons,
             maybe_stream_view_configs.is_some(),
+            scene_input.is_focused,
         );
         presentation_guard.scene_view_configs = scene_input.view_configs;
 

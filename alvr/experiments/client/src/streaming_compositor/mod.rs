@@ -3,6 +3,7 @@ use alvr_graphics::{
     slicing::{AlignmentDirection, SlicingPass},
     GraphicsContext,
 };
+use alvr_session::FoveatedRenderingDesc;
 use std::sync::Arc;
 use wgpu::{
     Color, CommandEncoder, CommandEncoderDescriptor, RenderPassDescriptor, Texture, TextureView,
@@ -15,13 +16,17 @@ pub struct StreamingCompositor {
 }
 
 impl StreamingCompositor {
-    pub fn new(graphics_context: Arc<GraphicsContext>, target_view_size: UVec2) -> Self {
+    pub fn new(
+        graphics_context: Arc<GraphicsContext>,
+        target_view_size: UVec2,
+        slices_count: usize,
+    ) -> Self {
         let combined_size = UVec2::new(target_view_size.x * 2, target_view_size.y);
 
         let slicer = SlicingPass::new(
             &graphics_context.device,
             combined_size,
-            1,
+            2, //slices_count,
             2,
             AlignmentDirection::Input,
         );
@@ -42,7 +47,9 @@ impl StreamingCompositor {
             .device
             .create_command_encoder(&CommandEncoderDescriptor::default());
 
-        //todo
+        for (view_index, output) in target.iter().enumerate() {
+            self.slicer.draw(&mut encoder, view_index, output);
+        }
 
         self.graphics_context.queue.submit(Some(encoder.finish()));
     }

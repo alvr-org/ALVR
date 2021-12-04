@@ -1,4 +1,4 @@
-use alvr_common::{glam::UVec2, prelude::*};
+use alvr_common::{glam::UVec2, log, prelude::*};
 use alvr_graphics::GraphicsContext;
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
@@ -39,6 +39,8 @@ impl VideoDecoder {
         video_size: UVec2,
         extra_options: &[(String, MediacodecDataType)],
     ) -> StrResult<Self> {
+        log::error!("create video decoder");
+
         let swapchain = trace_err!(ImageReader::new_with_usage(
             video_size.x as _,
             video_size.y as _,
@@ -109,6 +111,8 @@ impl VideoDecoder {
             if res != 0 {
                 error!("Error deleting format ({})", res);
             }
+
+            log::error!("video decoder created");
 
             Ok(Self {
                 context,

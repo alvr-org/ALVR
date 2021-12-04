@@ -26,7 +26,7 @@ const NEAR_PLANE_M: f32 = 0.01;
 pub struct Scene {
     renderer: Arc<rend3::Renderer>,
     skybox_routine: SkyboxRoutine,
-    pbr_routine: PbrRenderRoutine,
+    // pbr_routine: PbrRenderRoutine,
     // graphics_context: Arc<GraphicsContext>,
 }
 
@@ -34,27 +34,27 @@ impl Scene {
     pub fn new(graphics_context: Arc<GraphicsContext>) -> StrResult<Self> {
         log::error!("create scene");
 
-        // let iad = InstanceAdapterDevice {
-        //     instance: Arc::clone(&graphics_context.instance),
-        //     adapter: Arc::clone(&graphics_context.adapter),
-        //     device: Arc::clone(&graphics_context.device),
-        //     queue: Arc::clone(&graphics_context.queue),
-        //     mode: RendererMode::CPUPowered,
-        //     info: ExtendedAdapterInfo {
-        //         name: "".into(),
-        //         vendor: Vendor::Unknown(0),
-        //         device: 0,
-        //         device_type: DeviceType::Other,
-        //         backend: Backend::Vulkan,
-        //     },
-        // };
+        let iad = InstanceAdapterDevice {
+            instance: Arc::clone(&graphics_context.instance),
+            adapter: Arc::clone(&graphics_context.adapter),
+            device: Arc::clone(&graphics_context.device),
+            queue: Arc::clone(&graphics_context.queue),
+            mode: RendererMode::CPUPowered,
+            info: ExtendedAdapterInfo {
+                name: "".into(),
+                vendor: Vendor::Unknown(0),
+                device: 0,
+                device_type: DeviceType::Other,
+                backend: Backend::Vulkan,
+            },
+        };
 
-        let iad = pollster::block_on(rend3::create_iad(
-            None,
-            None,
-            Some(RendererMode::GPUPowered),
-        ))
-        .unwrap();
+        // let iad = pollster::block_on(rend3::create_iad(
+        //     None,
+        //     None,
+        //     Some(RendererMode::CPUPowered),
+        // ))
+        // .unwrap();
 
         log::error!("create renderer");
 
@@ -62,13 +62,13 @@ impl Scene {
 
         log::error!("create pbr routine");
 
-        let pbr_routine = PbrRenderRoutine::new(
-            &renderer,
-            RenderTextureOptions {
-                resolution: UVec2::new(100, 100),
-                samples: SampleCount::One,
-            },
-        );
+        // let pbr_routine = PbrRenderRoutine::new(
+        //     &renderer,
+        //     RenderTextureOptions {
+        //         resolution: UVec2::new(100, 100),
+        //         samples: SampleCount::One,
+        //     },
+        // );
 
         log::error!("create skybox routine");
 
@@ -95,7 +95,7 @@ impl Scene {
         Ok(Self {
             renderer,
             skybox_routine,
-            pbr_routine,
+            // pbr_routine,
         })
 
         // Ok(Self { graphics_context })
@@ -133,28 +133,28 @@ impl Scene {
             Vec4::new((r + l) / (r - l), (t + b) / (t - b), -1_f32, -1_f32),
             Vec4::new(0_f32, 0_f32, -2_f32 * NEAR_PLANE_M, 0_f32),
         );
-        self.renderer.set_camera_data(Camera {
-            projection: CameraProjection::Raw(projection),
-            view: Mat4::from_rotation_translation(
-                camera_view_config.orientation,
-                camera_view_config.position,
-            ),
-        });
+        // self.renderer.set_camera_data(Camera {
+        //     projection: CameraProjection::Raw(projection),
+        //     view: Mat4::from_rotation_translation(
+        //         camera_view_config.orientation,
+        //         camera_view_config.position,
+        //     ),
+        // });
 
         let (command_buffers, ready_data) = self.renderer.ready();
         self.skybox_routine.ready(&self.renderer);
 
         let mut graph = RenderGraph::new();
 
-        self.pbr_routine.add_pre_cull_to_graph(&mut graph);
-        self.pbr_routine
-            .add_shadow_culling_to_graph(&mut graph, &ready_data);
-        self.pbr_routine.add_culling_to_graph(&mut graph);
-        self.pbr_routine
-            .add_shadow_rendering_to_graph(&mut graph, &ready_data);
-        self.pbr_routine.add_prepass_to_graph(&mut graph);
-        self.skybox_routine.add_to_graph(&mut graph);
-        self.pbr_routine.add_forward_to_graph(&mut graph);
+        // self.pbr_routine.add_pre_cull_to_graph(&mut graph);
+        // self.pbr_routine
+        //     .add_shadow_culling_to_graph(&mut graph, &ready_data);
+        // self.pbr_routine.add_culling_to_graph(&mut graph);
+        // self.pbr_routine
+        //     .add_shadow_rendering_to_graph(&mut graph, &ready_data);
+        // self.pbr_routine.add_prepass_to_graph(&mut graph);
+        // self.skybox_routine.add_to_graph(&mut graph);
+        // self.pbr_routine.add_forward_to_graph(&mut graph);
 
         // Note: consumes the graph, cannot keep between render() calls
         graph.execute(

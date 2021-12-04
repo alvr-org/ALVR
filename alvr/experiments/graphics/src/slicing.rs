@@ -1,9 +1,15 @@
-use crate::TARGET_FORMAT;
-use alvr_common::glam::UVec2;
+use std::mem;
+
+use crate::{BindingDesc, TARGET_FORMAT};
+use alvr_common::{glam::UVec2, log};
 use wgpu::{
-    BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, Texture, TextureDescriptor,
-    TextureDimension, TextureUsages, TextureView, TextureViewDescriptor,
+    BindGroup, BindingResource, BindingType, CommandEncoder, Device, Extent3d, RenderPipeline,
+    StorageTextureAccess, Texture, TextureDescriptor, TextureDimension, TextureFormat,
+    TextureUsages, TextureView, TextureViewDescriptor, TextureViewDimension,
 };
+
+const VARS_COUNT: usize = 9;
+const VARS_SIZE: usize = VARS_COUNT * mem::size_of::<i32>();
 
 pub struct SlicingLayout {
     slice_size: UVec2,
@@ -63,6 +69,8 @@ impl SlicingPass {
         output_slices_count: usize,
         alignment_direction: AlignmentDirection,
     ) -> Self {
+        log::error!("create slicing pass");
+
         let input_slicing_layout = get_slicing_layout(combined_size, input_slices_count);
         let mut input_size = input_slicing_layout.slice_size;
         if matches!(alignment_direction, AlignmentDirection::Input) {
@@ -70,12 +78,12 @@ impl SlicingPass {
         }
 
         let input_texture = device.create_texture(&TextureDescriptor {
-            label: None,
+            label: Some("slicing input"),
             size: Extent3d {
                 width: input_size.x,
                 height: input_size.y,
                 // make sure the texture is still an array, even if the second texture is unused
-                depth_or_array_layers: u32::max(input_slices_count as _, 2),
+                depth_or_array_layers: input_slices_count.max(2) as _,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -84,8 +92,6 @@ impl SlicingPass {
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING,
         });
 
-        let texture_view = input_texture.create_view(&Default::default());
-
         let input_views = (0..input_slices_count)
             .map(|idx| {
                 input_texture.create_view(&TextureViewDescriptor {
@@ -93,20 +99,34 @@ impl SlicingPass {
                     ..Default::default()
                 })
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let pipeline = super::create_default_render_pipeline(
+        let (pipeline, bind_group) = super::create_default_render_pipeline(
+            "slicing",
             device,
-            include_str!("../resources/slicing.wgsl"),
+            include_bytes!(concat!(env!("OUT_DIR"), "/slicing.spv")),
+            vec![BindingDesc {
+                index: 0,
+                binding_type: BindingType::StorageTexture {
+                    access: StorageTextureAccess::ReadOnly,
+                    format: TARGET_FORMAT,
+                    view_dimension: TextureViewDimension::D2Array,
+                },
+                array_size: Some(input_slices_count),
+                resource: BindingResource::TextureViewArray(
+                    &input_views.iter().collect::<Vec<_>>(), // &[T] -> &[&T]
+                ),
+            }],
+            VARS_SIZE,
         );
-
-        let bind_group = super::create_default_bind_group(device, &pipeline, &texture_view);
 
         let output_slicing_layout = get_slicing_layout(combined_size, output_slices_count);
         let mut target_size = output_slicing_layout.slice_size;
         if matches!(alignment_direction, AlignmentDirection::Output) {
             target_size = align_to_32(target_size);
         }
+
+        log::error!("slicing pass created");
 
         Self {
             input_texture,
@@ -135,7 +155,7 @@ impl SlicingPass {
     }
 
     pub fn draw(&self, encoder: &mut CommandEncoder, slice_index: usize, output: &TextureView) {
-        let data = [
+        let data: [i32; VARS_COUNT] = [
             self.input_slicing_layout.slice_size.x as i32,
             self.input_slicing_layout.slice_size.y as i32,
             self.input_slicing_layout.columns as i32,

@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use alvr_graphics::TARGET_FORMAT;
 use wgpu::{
-    BindGroup, BlendState, Color, ColorTargetState, ColorWrites, CommandEncoder, Device,
-    FragmentState, LoadOp, MultisampleState, Operations, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, Sampler,
-    ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureView,
-    TextureViewDescriptor, VertexState,
+    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, BlendState,
+    Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState,
+    LoadOp, MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderModuleDescriptor,
+    ShaderSource, ShaderStages, Texture, TextureView, TextureViewDescriptor, VertexState,
 };
 
 pub struct Layer<'a> {
@@ -16,13 +18,14 @@ pub struct Layer<'a> {
 // todo: the compositor should support reprojection, in case layers are submitted with different
 // poses
 pub struct CompositingPass {
+    device: Arc<Device>,
     inner: RenderPipeline,
     sampler: Sampler,
 }
 
 impl CompositingPass {
-    pub fn new(device: &Device) -> Self {
-        let quad_shader = alvr_graphics::quad_shader(device);
+    pub fn new(device: Arc<Device>) -> Self {
+        let quad_shader = alvr_graphics::quad_shader(&device); // quad shader should be replaced with rotating shader
 
         let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
             label: None,
@@ -51,9 +54,17 @@ impl CompositingPass {
             }),
         });
 
-        let sampler = alvr_graphics::create_default_sampler(device);
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Linear,
+            mipmap_filter: FilterMode::Linear,
+            ..Default::default()
+        });
 
         Self {
+            device,
             inner: pipeline,
             sampler,
         }
@@ -70,12 +81,20 @@ impl CompositingPass {
             ..Default::default()
         });
 
-        alvr_graphics::create_default_bind_group_with_sampler(
-            device,
-            &self.inner,
-            &view,
-            &self.sampler,
-        )
+        device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &self.inner.get_bind_group_layout(0),
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+            ],
+        })
     }
 
     pub fn draw<'a>(

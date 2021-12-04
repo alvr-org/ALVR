@@ -194,7 +194,9 @@ dependencies = [
  "alvr_session",
  "ash",
  "bytemuck",
+ "naga",
  "openxr-sys 0.9.0 (git+https://github.com/Ralith/openxrs)",
+ "shaderc",
  "wgpu",
  "wgpu-hal",
 ]
@@ -1683,6 +1685,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fixedbitset"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
+
+[[package]]
 name = "float-ord"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3166,6 +3174,7 @@ dependencies = [
  "indexmap",
  "log",
  "num-traits",
+ "petgraph",
  "spirv",
  "thiserror",
 ]
@@ -3857,6 +3866,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "petgraph"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a13a2fa9d0b63e5f22328828741e523766fff0ee9e779316902290dff3f824f"
+dependencies = [
+ "fixedbitset",
+ "indexmap",
+]
+
+[[package]]
 name = "pico-args"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4249,6 +4268,7 @@ dependencies = [
 [[package]]
 name = "rend3"
 version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2#e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4275,6 +4295,7 @@ dependencies = [
 [[package]]
 name = "rend3-routine"
 version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2#e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4294,6 +4315,7 @@ dependencies = [
 [[package]]
 name = "rend3-types"
 version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2#e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2"
 dependencies = [
  "bitflags",
  "glam 0.20.1",
@@ -4715,6 +4737,26 @@ name = "sha1"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
+
+[[package]]
+name = "shaderc"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58da8aaf4ad3508598cdf098567114c98d5f455de7d69b1213232ac557bc67ea"
+dependencies = [
+ "libc",
+ "shaderc-sys",
+]
+
+[[package]]
+name = "shaderc-sys"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bd76ec0bd25f2017a65250373485e43cdc81b5cb8fd83c6115375c8d018cdf9"
+dependencies = [
+ "cmake",
+ "libc",
+]
 
 [[package]]
 name = "shlex"

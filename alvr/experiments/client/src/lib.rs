@@ -6,12 +6,13 @@ mod xr;
 
 use crate::xr::{XrContext, XrEvent, XrPresentationGuard, XrSession};
 use alvr_common::{
-    glam::{Quat, Vec3},
+    glam::{Quat, UVec2, Vec3},
     log,
     prelude::*,
     Fov,
 };
 use alvr_graphics::GraphicsContext;
+use alvr_session::CodecType;
 use connection::VideoFrameMetadataPacket;
 use parking_lot::{Mutex, RwLock};
 use scene::Scene;
@@ -91,6 +92,18 @@ fn session_pipeline(
     log::error!("scene created");
 
     let streaming_components = Arc::new(Mutex::new(None::<VideoStreamingComponents>));
+
+    log::error!("create compositor");
+    let compositor =
+        StreamingCompositor::new(Arc::clone(&graphics_context), UVec2::new(100, 100), 1);
+    log::error!("compositor created");
+
+    let video_decoder = VideoDecoder::new(
+        Arc::clone(&graphics_context),
+        CodecType::H264,
+        UVec2::new(200, 100),
+        &[],
+    )?;
 
     // todo: init async runtime and sockets
 

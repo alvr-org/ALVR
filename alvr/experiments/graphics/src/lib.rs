@@ -3,16 +3,18 @@ pub mod foveated_rendering;
 pub mod slicing;
 
 use ash::vk;
-use std::sync::Arc;
+use std::{mem, num::NonZeroU32, ptr, sync::Arc};
 use wgpu::{
-    Adapter, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, Color,
+    Adapter, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Color,
     ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState, Instance,
-    LoadOp, MultisampleState, Operations, Queue, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderModule,
-    ShaderModuleDescriptor, ShaderSource, ShaderStages, TextureFormat, TextureView, VertexState,
+    LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PushConstantRange, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    Sampler, SamplerDescriptor, ShaderModule, ShaderModuleDescriptor, ShaderSource, ShaderStages,
+    TextureFormat, TextureView, VertexState,
 };
 
-pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
+pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
 
 pub struct GraphicsContext {
     pub instance: Arc<Instance>,
@@ -33,17 +35,78 @@ pub fn quad_shader(device: &Device) -> ShaderModule {
     })
 }
 
-pub fn create_default_render_pipeline(device: &Device, fragment_shader: &str) -> RenderPipeline {
+pub fn create_default_sampler(device: &Device) -> Sampler {
+    device.create_sampler(&SamplerDescriptor {
+        address_mode_u: AddressMode::ClampToEdge,
+        address_mode_v: AddressMode::ClampToEdge,
+        mag_filter: FilterMode::Linear,
+        min_filter: FilterMode::Linear,
+        mipmap_filter: FilterMode::Linear,
+        ..Default::default()
+    })
+}
+
+pub struct BindingDesc<'a> {
+    pub index: u32,
+    pub binding_type: BindingType,
+    pub array_size: Option<usize>,
+    pub resource: BindingResource<'a>,
+}
+
+// All bindings map to the bind group 0
+pub fn create_default_render_pipeline(
+    label: &str,
+    device: &Device,
+    spirv_fragment_shader: &[u8],
+    bindings: Vec<BindingDesc>,
+    push_constants_size: usize,
+) -> (RenderPipeline, BindGroup) {
     let quad_shader = quad_shader(device);
+
+    let len = spirv_fragment_shader.len() / mem::size_of::<u32>();
+    let mut buffer: Vec<u32> = vec![0; len];
+    unsafe {
+        ptr::copy_nonoverlapping(
+            spirv_fragment_shader.as_ptr() as _,
+            buffer.as_mut_ptr(),
+            len,
+        )
+    };
 
     let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
         label: None,
-        source: ShaderSource::Wgsl(fragment_shader.into()),
+        source: ShaderSource::SpirV(buffer.into()),
     });
 
-    device.create_render_pipeline(&RenderPipelineDescriptor {
-        label: None,
-        layout: None,
+    let layout_entries = bindings
+        .iter()
+        .map(|binding| BindGroupLayoutEntry {
+            binding: binding.index,
+            visibility: ShaderStages::FRAGMENT,
+            ty: binding.binding_type,
+            count: binding
+                .array_size
+                .map(|size| NonZeroU32::new(size as _).unwrap()),
+        })
+        .collect::<Vec<_>>();
+
+    let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some(label),
+        entries: &layout_entries,
+    });
+
+    let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        label: Some(label),
+        bind_group_layouts: &[&bind_group_layout],
+        push_constant_ranges: &[PushConstantRange {
+            stages: ShaderStages::FRAGMENT,
+            range: 0..push_constants_size as _,
+        }],
+    });
+
+    let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+        label: Some(label),
+        layout: Some(&pipeline_layout),
         vertex: VertexState {
             module: &quad_shader,
             entry_point: "main",
@@ -61,55 +124,23 @@ pub fn create_default_render_pipeline(device: &Device, fragment_shader: &str) ->
                 write_mask: ColorWrites::ALL,
             }],
         }),
-    })
-}
+    });
 
-pub fn create_default_sampler(device: &Device) -> Sampler {
-    device.create_sampler(&SamplerDescriptor {
-        address_mode_u: AddressMode::ClampToEdge,
-        address_mode_v: AddressMode::ClampToEdge,
-        mag_filter: FilterMode::Linear,
-        min_filter: FilterMode::Linear,
-        mipmap_filter: FilterMode::Linear,
-        ..Default::default()
-    })
-}
+    let bind_group_entries = bindings
+        .into_iter()
+        .map(|binding| BindGroupEntry {
+            binding: binding.index,
+            resource: binding.resource,
+        })
+        .collect::<Vec<_>>();
 
-pub fn create_default_bind_group_with_sampler(
-    device: &Device,
-    pipeline: &RenderPipeline,
-    texture_view: &TextureView,
-    sampler: &Sampler,
-) -> BindGroup {
-    device.create_bind_group(&BindGroupDescriptor {
-        label: None,
+    let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        label: Some(label),
         layout: &pipeline.get_bind_group_layout(0),
-        entries: &[
-            BindGroupEntry {
-                binding: 0,
-                resource: BindingResource::TextureView(texture_view),
-            },
-            BindGroupEntry {
-                binding: 1,
-                resource: BindingResource::Sampler(sampler),
-            },
-        ],
-    })
-}
+        entries: &bind_group_entries,
+    });
 
-pub fn create_default_bind_group(
-    device: &Device,
-    pipeline: &RenderPipeline,
-    texture_view: &TextureView,
-) -> BindGroup {
-    device.create_bind_group(&BindGroupDescriptor {
-        label: None,
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: BindingResource::TextureView(texture_view),
-        }],
-    })
+    (pipeline, bind_group)
 }
 
 pub fn execute_default_pass(

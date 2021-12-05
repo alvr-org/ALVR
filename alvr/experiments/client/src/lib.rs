@@ -16,8 +16,16 @@ use alvr_session::CodecType;
 use connection::VideoFrameMetadataPacket;
 use parking_lot::{Mutex, RwLock};
 use scene::Scene;
-use std::{sync::Arc, thread, time::Duration};
+use std::{
+    sync::{atomic::AtomicBool, Arc},
+    thread,
+    time::Duration,
+};
 use streaming_compositor::StreamingCompositor;
+use tokio::{
+    runtime::{self, Runtime},
+    sync::Notify,
+};
 use video_decoder::VideoDecoder;
 use wgpu::Texture;
 
@@ -103,7 +111,9 @@ fn session_pipeline(
     //     &[],
     // )?;
 
-    // todo: init async runtime and sockets
+    let pause_notifier = Notify::new();
+
+    let mut runtime = None;
 
     // this is used to keep the last stream frame in place when the stream is stuck
     let old_stream_view_configs = vec![];
@@ -111,9 +121,30 @@ fn session_pipeline(
     loop {
         let xr_session_rlock = xr_session.read();
         let mut presentation_guard = match xr_session_rlock.begin_frame()? {
-            XrEvent::ShouldRender(guard) => guard,
-            XrEvent::Idle => continue,
-            XrEvent::Shutdown => return Ok(()),
+            XrEvent::ShouldRender(guard) => {
+                if runtime.is_none() {
+                    runtime = Some(trace_err!(Runtime::new())?);
+
+                    // runtime.spawn()
+                }
+
+                guard
+            }
+            XrEvent::Idle => {
+                pause_notifier.notify_waiters();
+                runtime.take();
+
+                // Wait for sockets to shutdown
+                thread::sleep(Duration::from_millis(500));
+
+                continue;
+            }
+            XrEvent::Shutdown => {
+                pause_notifier.notify_waiters();
+                runtime.take();
+
+                return Ok(());
+            }
         };
 
         let maybe_stream_view_configs =

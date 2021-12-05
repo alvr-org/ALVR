@@ -3,7 +3,7 @@ pub mod foveated_rendering;
 pub mod slicing;
 
 use ash::vk;
-use std::{mem, num::NonZeroU32, ptr, sync::Arc};
+use std::{num::NonZeroU32, sync::Arc};
 use wgpu::{
     Adapter, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Color,
@@ -62,16 +62,6 @@ pub fn create_default_render_pipeline(
     push_constants_size: usize,
 ) -> (RenderPipeline, BindGroup) {
     let quad_shader = quad_shader(device);
-
-    // let len = spirv_fragment_shader.len() / mem::size_of::<u32>();
-    // let mut buffer: Vec<u32> = vec![0; len];
-    // unsafe {
-    //     ptr::copy_nonoverlapping(
-    //         spirv_fragment_shader.as_ptr() as _,
-    //         buffer.as_mut_ptr(),
-    //         len,
-    //     )
-    // };
 
     let fragment_shader = device.create_shader_module(&ShaderModuleDescriptor {
         label: Some(label),

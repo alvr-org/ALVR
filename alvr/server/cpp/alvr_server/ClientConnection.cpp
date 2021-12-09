@@ -93,7 +93,7 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 
 			header->packetCounter = videoPacketCounter;
 			videoPacketCounter++;
-			LegacySend((unsigned char *)packetBuffer, sizeof(VideoFrame) + copyLength);
+			VideoSend(*header, (unsigned char *)packetBuffer + sizeof(VideoFrame), copyLength);
 			m_Statistics->CountPacket(sizeof(VideoFrame) + copyLength);
 			header->fecIndex++;
 		}
@@ -107,7 +107,7 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 			header->packetCounter = videoPacketCounter;
 			videoPacketCounter++;
 			
-			LegacySend((unsigned char *)packetBuffer, sizeof(VideoFrame) + copyLength);
+			VideoSend(*header, (unsigned char *)packetBuffer + sizeof(VideoFrame), copyLength);
 			m_Statistics->CountPacket(sizeof(VideoFrame) + copyLength);
 			header->fecIndex++;
 		}

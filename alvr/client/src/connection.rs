@@ -1,17 +1,18 @@
 use crate::{
     connection_utils::{self, ConnectionError},
-    MAYBE_LEGACY_SENDER,
+    VideoFrame, MAYBE_LEGACY_SENDER,
 };
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     prelude::*,
-    ALVR_NAME, ALVR_VERSION,
+    ALVR_NAME, ALVR_VERSION, log,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
-    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, LEGACY,
+    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket,
+    LEGACY, VIDEO,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -21,7 +22,7 @@ use jni::{
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
-    future, slice,
+    future, mem, ptr, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
@@ -354,12 +355,64 @@ async fn connection_pipeline(
     };
 
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
+    let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
+
+    let video_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<VideoFrameHeaderPacket, VIDEO>()
+            .await?;
+        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
+        async move {
+            loop {
+                let mut packet = receiver.recv().await?;
+
+                log::error!("{}", mem::size_of::<VideoFrame>());
+
+                let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
+                let header = VideoFrame {
+                    type_: 9, // ALVR_PACKET_TYPE_VIDEO_FRAME
+                    packetCounter: packet.header.packet_counter,
+                    trackingFrameIndex: packet.header.tracking_frame_index,
+                    videoFrameIndex: packet.header.video_frame_index,
+                    sentTime: packet.header.sent_time,
+                    frameByteSize: packet.header.frame_byte_size,
+                    fecIndex: packet.header.fec_index,
+                    fecPercentage: packet.header.fec_percentage,
+                };
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        &header as *const _ as _,
+                        buffer.as_mut_ptr(),
+                        mem::size_of::<VideoFrame>(),
+                    );
+                    ptr::copy_nonoverlapping(
+                        packet.buffer.as_ptr() as _,
+                        buffer.as_mut_ptr().add(mem::size_of::<VideoFrame>()),
+                        packet.buffer.len(),
+                    );
+                }
+
+                // legacy_receive_data_sender.lock().await.send(buffer).ok();
+                legacy_receive_data_sender
+                    .lock()
+                    .await
+                    .send(packet.buffer.to_vec())
+                    .ok();
+            }
+        }
+    };
+
     let legacy_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
         async move {
             loop {
                 let packet = receiver.recv().await?;
-                legacy_receive_data_sender.send(packet.buffer).ok();
+
+                legacy_receive_data_sender
+                    .lock()
+                    .await
+                    .send(packet.buffer.to_vec())
+                    .ok();
             }
         }
     };
@@ -592,6 +645,7 @@ async fn connection_pipeline(
         res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,
+        res = spawn_cancelable(video_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,
 
         // keep these loops on the current task

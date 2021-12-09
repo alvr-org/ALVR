@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 use settings_schema::{EntryData, SettingsSchema};
@@ -35,4 +37,21 @@ pub struct MotionData {
     pub position: Vec3,
     pub linear_velocity: Option<Vec3>,
     pub angular_velocity: Option<Vec3>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum TrackedDeviceType {
+    Hmd,
+    LeftHand,
+    RightHand,
+    GenericTracker(usize),
+}
+
+// D: DeviceType for client interop, u64 for driver interop. Bindings are done in settings
+#[derive(Serialize, Deserialize)]
+pub struct Haptics<D> {
+    pub device: D,
+    pub duration: Duration,
+    pub frequency: f32,
+    pub amplitude: f32,
 }

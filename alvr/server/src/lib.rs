@@ -12,9 +12,10 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, prelude::*};
+use alvr_common::{lazy_static, log, prelude::*, Haptics, TrackedDeviceType};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
+use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -40,12 +41,20 @@ lazy_static! {
         afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap());
     static ref SESSION_MANAGER: Mutex<SessionManager> =
         Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
-    static ref MAYBE_RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
-    static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
+    static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
     static ref MAYBE_NEW_DASHBOARD: Mutex<Option<Arc<alvr_gui::Dashboard>>> = Mutex::new(None);
+
     static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
         Mutex::new(None);
+    static ref VIDEO_SENDER: Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>> =
+        Mutex::new(None);
+    static ref HAPTICS_SENDER: Mutex<Option<mpsc::UnboundedSender<Haptics<TrackedDeviceType>>>> =
+        Mutex::new(None);
+    static ref TIME_SYNC_SENDER: Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>> =
+        Mutex::new(None);
+
+    static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
     static ref RESTART_NOTIFIER: Notify = Notify::new();
     static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
 
@@ -70,7 +79,7 @@ pub fn shutdown_runtime() {
 
     SHUTDOWN_NOTIFIER.notify_waiters();
 
-    if let Some(runtime) = MAYBE_RUNTIME.lock().take() {
+    if let Some(runtime) = RUNTIME.lock().take() {
         runtime.shutdown_background();
         // shutdown_background() is non blocking and it does not guarantee that every internal
         // thread is terminated in a timely manner. Using shutdown_background() instead of just
@@ -166,7 +175,7 @@ fn init() {
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
-    if let Some(runtime) = MAYBE_RUNTIME.lock().as_mut() {
+    if let Some(runtime) = RUNTIME.lock().as_mut() {
         // Acquire and drop the session_manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
         SESSION_MANAGER.lock().get_mut();
@@ -264,12 +273,35 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
+    extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
+        if let Some(sender) = &*VIDEO_SENDER.lock() {
+            let header = VideoFrameHeaderPacket {
+                packet_counter: header.packetCounter,
+                tracking_frame_index: header.trackingFrameIndex,
+                video_frame_index: header.videoFrameIndex,
+                sent_time: header.sentTime,
+                frame_byte_size: header.frameByteSize,
+                fec_index: header.fecIndex,
+                fec_percentage: header.fecPercentage,
+            };
+
+            let mut vec_buffer = vec![0; len as _];
+
+            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+            }
+
+            sender.send((header, vec_buffer)).ok();
+        }
+    }
+
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
         alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
             FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
         ));
 
-        if let Some(runtime) = &mut *MAYBE_RUNTIME.lock() {
+        if let Some(runtime) = &mut *RUNTIME.lock() {
             runtime.spawn(async move {
                 if set_default_chap {
                     // call this when inside a new tokio thread. Calling this on the parent thread will
@@ -294,6 +326,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     DriverReadyIdle = Some(driver_ready_idle);
     LegacySend = Some(legacy_send);
+    VideoSend = Some(video_send);
     ShutdownRuntime = Some(_shutdown_runtime);
 
     // cast to usize to allow the variables to cross thread boundaries

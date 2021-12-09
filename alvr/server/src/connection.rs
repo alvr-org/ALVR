@@ -1,6 +1,6 @@
 use crate::{
     connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
-    RESTART_NOTIFIER, SESSION_MANAGER,
+    RESTART_NOTIFIER, SESSION_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::Mat4, prelude::*, semver::Version};
@@ -8,7 +8,7 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
-    ServerControlPacket, StreamSocketBuilder, LEGACY,
+    ServerControlPacket, StreamSocketBuilder, LEGACY, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -681,6 +681,22 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    let video_send_loop = {
+        let mut socket_sender = stream_socket.request_stream::<_, VIDEO>().await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *VIDEO_SENDER.lock() = Some(data_sender);
+
+            while let Some((header, data)) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&header, data.len())?;
+                buffer.get_mut().extend(data);
+                socket_sender.send_buffer(buffer).await.ok();
+            }
+
+            Ok(())
+        }
+    };
+
     let legacy_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
         async move {
@@ -787,7 +803,9 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(video_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,
+        
 
         // leave these loops on the current task
         res = keepalive_loop => res,

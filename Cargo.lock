@@ -1260,12 +1260,12 @@ dependencies = [
 
 [[package]]
 name = "darling"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "757c0ded2af11d8e739c4daea1ac623dd1624b06c844cf3f5a39f1bdbd99bb12"
+checksum = "d0d720b8683f8dd83c65155f0530560cba68cd2bf395f6513a483caee57ff7f4"
 dependencies = [
- "darling_core 0.13.0",
- "darling_macro 0.13.0",
+ "darling_core 0.13.1",
+ "darling_macro 0.13.1",
 ]
 
 [[package]]
@@ -1284,9 +1284,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c34d8efb62d0c2d7f60ece80f75e5c63c1588ba68032740494b0b9a996466e3"
+checksum = "7a340f241d2ceed1deb47ae36c4144b2707ec7dd0b649f894cb39bb595986324"
 dependencies = [
  "fnv",
  "ident_case",
@@ -1309,11 +1309,11 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ade7bff147130fe5e6d39f089c6bd49ec0250f35d70b2eebf72afdfc919f15cc"
+checksum = "72c41b3b7352feb3211a0d743dc5700a4e3b60f51bd2b368892d1e0f9a95f44b"
 dependencies = [
- "darling_core 0.13.0",
+ "darling_core 0.13.1",
  "quote",
  "syn",
 ]
@@ -1550,9 +1550,9 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "encoding_rs"
-version = "0.8.29"
+version = "0.8.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a74ea89a0a1b98f6332de42c95baff457ada66d1cb4030f9ff151b2041a1c746"
+checksum = "7896dc8abb250ffdda33912550faa54c88ec8b998dec0b2c55ab224921ce11df"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -2369,9 +2369,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fd819562fcebdac5afc5c113c3ec36f902840b70fd4fc458799c8ce4607ae55"
+checksum = "8d09bbc040ce3758a0d32a8a910562104a853aea429dbe1a998beb065c2eacb2"
 dependencies = [
  "bytes",
  "fnv",
@@ -2540,7 +2540,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2553,7 +2553,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "bitflags",
 ]
@@ -2561,7 +2561,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "futures",
  "log",
@@ -2571,7 +2571,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -2585,7 +2585,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2598,7 +2598,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "iced_core",
 ]
@@ -2606,7 +2606,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "base64",
  "dodrio",
@@ -2623,7 +2623,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2643,7 +2643,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#26d053ab3887b73f854a1174864d0fec221c5c9b"
+source = "git+https://github.com/iced-rs/iced#a98a8c1c518f95509ebb43dd4b7be71baeaae26f"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2691,18 +2691,18 @@ dependencies = [
 
 [[package]]
 name = "include_dir"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fe7734d776eb702d33f1b68730696db57c87facfd526d2044a308a0c8466318"
+checksum = "482a2e29200b7eed25d7fdbd14423326760b7f6658d21a4cf12d55a50713c69f"
 dependencies = [
  "include_dir_macros",
 ]
 
 [[package]]
 name = "include_dir_macros"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "253ba5156abc78673208f900dd686e1e000e6edc5633231d309acded2b66026d"
+checksum = "5e074c19deab2501407c91ba1860fa3d6820bfde307db6d8cb851b55a10be89b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2909,9 +2909,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.108"
+version = "0.2.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
+checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
 
 [[package]]
 name = "libloading"
@@ -3032,9 +3032,9 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
 ]
@@ -3118,15 +3118,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "mio-misc"
-version = "1.2.1"
+name = "mio"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ddf05411bb159cdb5801bb10002afb66cb4572be656044315e363460ce69dc2"
+checksum = "ba272f85fa0b41fc91872be579b3bbe0f56b792aa361a380eb669469f68dafb2"
+dependencies = [
+ "libc",
+ "log",
+ "miow",
+ "ntapi",
+ "winapi",
+]
+
+[[package]]
+name = "mio-misc"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cae6d1ec21390bd1827f3900758558c66c04e482edabb1671f22c4d92b523e0e"
 dependencies = [
  "crossbeam",
  "crossbeam-queue",
  "log",
- "mio",
+ "mio 0.8.0",
 ]
 
 [[package]]
@@ -3300,7 +3313,7 @@ name = "ndk-macro"
 version = "0.3.0"
 source = "git+https://github.com/rust-windowing/android-ndk-rs#240389f1e281f582b84a8049e2afaa8677d901c2"
 dependencies = [
- "darling 0.13.0",
+ "darling 0.13.1",
  "proc-macro-crate 1.1.0",
  "proc-macro2",
  "quote",
@@ -3996,9 +4009,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
+checksum = "d1a3ea4f0dd7f1f3e512cf97bf100819aa547f36a6eccac8dbaae839eb92363e"
 
 [[package]]
 name = "png"
@@ -4075,9 +4088,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
+checksum = "fb37d2df5df740e582f28f8560cf425f52bb267d872fe58358eadb554909f07a"
 dependencies = [
  "unicode-xid",
 ]
@@ -4619,18 +4632,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.130"
+version = "1.0.131"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f12d06de37cf59146fbdecab66aa99f9fe4f78722e3607577a5375d66bd0c913"
+checksum = "b4ad69dfbd3e45369132cc64e6748c2d65cdfb001a2b1c232d128b4ad60561c1"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.130"
+version = "1.0.131"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7bc1a1ab1961464eae040d96713baa5a724a8152c1222492465b54322ec508b"
+checksum = "b710a83c4e0dff6a3d511946b95274ad9ca9e5d3ae497b63fda866ac955358d2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5051,9 +5064,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb6c2c4a6ca462f07ca89841a2618dca6e405304d19ae238997e64915d89f513"
+checksum = "8f88d66f3341b688163d3585037954ff276cf24a234d015b30025318a3e3449a"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.3",
@@ -5232,7 +5245,7 @@ dependencies = [
  "bytes",
  "libc",
  "memchr",
- "mio",
+ "mio 0.7.14",
  "num_cpus",
  "once_cell",
  "pin-project-lite",
@@ -5264,9 +5277,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e057364a4dd37870b33bf8dc1885d29187d90770f488d599d3ee8d9e4916fbd3"
+checksum = "e80b39df6afcc12cdf752398ade96a6b9e99c903dfdc36e53ad10b9c366bca72"
 dependencies = [
  "futures-util",
  "log",
@@ -5878,7 +5891,7 @@ checksum = "d8b77fdfd5a253be4ab714e4ffa3c49caf146b4de743e97510c0656cf90f1e8e"
 [[package]]
 name = "wgpu"
 version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=d2d8affb79b21ce7c1ba101e24a4c311d399f0c4#d2d8affb79b21ce7c1ba101e24a4c311d399f0c4"
+source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
 dependencies = [
  "arrayvec 0.7.2",
  "js-sys",
@@ -5898,7 +5911,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=d2d8affb79b21ce7c1ba101e24a4c311d399f0c4#d2d8affb79b21ce7c1ba101e24a4c311d399f0c4"
+source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -5919,7 +5932,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.11.2"
-source = "git+https://github.com/gfx-rs/wgpu?rev=d2d8affb79b21ce7c1ba101e24a4c311d399f0c4#d2d8affb79b21ce7c1ba101e24a4c311d399f0c4"
+source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
 dependencies = [
  "arrayvec 0.7.2",
  "ash",
@@ -5966,16 +5979,16 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=d2d8affb79b21ce7c1ba101e24a4c311d399f0c4#d2d8affb79b21ce7c1ba101e24a4c311d399f0c4"
+source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
 dependencies = [
  "bitflags",
 ]
 
 [[package]]
 name = "wgpu_glyph"
-version = "0.15.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c78d49f4d168b245882ce000ee94fc67e744b33760c0119b0dbf8cb3caf20de5"
+checksum = "3f5774759a6288a2bf29dd56d04ef79e73c1bc2b1c289fdf25e502a2a7dc3eda"
 dependencies = [
  "bytemuck",
  "glyph_brush",
@@ -6085,7 +6098,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "mio",
+ "mio 0.7.14",
  "mio-misc",
  "ndk 0.3.0",
  "ndk-glue 0.3.0",
@@ -6117,7 +6130,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "mio",
+ "mio 0.7.14",
  "ndk 0.3.0",
  "ndk-glue 0.3.0",
  "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -38,8 +38,8 @@ rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e42c724d0a4ab6975f
 rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e42c724d0a4ab6975fe5b3865c7eca48bc2e6ff2" }
 # rend3 = { path = "../../../../../rend3/rend3" }
 # rend3-routine = { path = "../../../../../rend3/rend3-routine" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu-hal = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
 # Miscellaneous
 ash = "0.33"
 openxr = { git = "https://github.com/Ralith/openxrs" }

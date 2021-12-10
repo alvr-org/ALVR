@@ -36,10 +36,6 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation).
 
-## Usage
-
-Follow the guide [here](https://github.com/alvr-org/ALVR/wiki/Usage).
-
 ## Troubleshooting
 
 -   Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.  

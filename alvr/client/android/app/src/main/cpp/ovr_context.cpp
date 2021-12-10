@@ -599,15 +599,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
-    memcpy(&info.HeadPose_Pose_Position, &trackingRaw.HeadPose.Pose.Position,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_AngularVelocity, &trackingRaw.HeadPose.AngularVelocity,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_LinearVelocity, &trackingRaw.HeadPose.LinearVelocity,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_AngularAcceleration, &trackingRaw.HeadPose.AngularAcceleration,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_LinearAcceleration, &trackingRaw.HeadPose.LinearAcceleration,
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position,
            sizeof(ovrVector3f));
 
     setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);

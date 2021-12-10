@@ -45,8 +45,6 @@ lazy_static! {
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
     static ref MAYBE_NEW_DASHBOARD: Mutex<Option<Arc<alvr_gui::Dashboard>>> = Mutex::new(None);
 
-    static ref MAYBE_LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> =
-        Mutex::new(None);
     static ref VIDEO_SENDER: Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>> =
         Mutex::new(None);
     static ref HAPTICS_SENDER: Mutex<Option<mpsc::UnboundedSender<Haptics<TrackedDeviceType>>>> =
@@ -260,19 +258,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
-    extern "C" fn legacy_send(buffer_ptr: *mut u8, len: i32) {
-        if let Some(sender) = &*MAYBE_LEGACY_SENDER.lock() {
-            let mut vec_buffer = vec![0; len as _];
-
-            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
-            unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
-            }
-
-            sender.send(vec_buffer).ok();
-        }
-    }
-
     extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
             let header = VideoFrameHeaderPacket {
@@ -366,7 +351,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
     DriverReadyIdle = Some(driver_ready_idle);
-    LegacySend = Some(legacy_send);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);
     TimeSyncSend = Some(time_sync_send);

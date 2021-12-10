@@ -7,14 +7,14 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     log,
     prelude::*,
-    ALVR_NAME, ALVR_VERSION,
+    ALVR_NAME, ALVR_VERSION, TrackedDeviceType, Haptics,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
     ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket,
-    LEGACY, VIDEO,
+    HAPTICS, INPUT, LEGACY, VIDEO,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -390,18 +390,34 @@ async fn connection_pipeline(
         }
     };
 
-    let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
+    let haptics_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<Haptics<TrackedDeviceType>, HAPTICS>()
+            .await?;
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
                 let packet = receiver.recv().await?;
 
-                legacy_receive_data_sender
-                    .lock()
-                    .await
-                    .send(packet.buffer.to_vec())
-                    .ok();
+                let haptics = HapticsFeedback {
+                    type_: 13, // ALVR_PACKET_TYPE_HAPTICS
+                    startTime: 0,
+                    amplitude: packet.header.amplitude,
+                    duration: packet.header.duration.as_secs_f32(),
+                    frequency: packet.header.frequency,
+                    hand: if matches!(packet.header.device, TrackedDeviceType::LeftHand) {
+                        0
+                    } else {
+                        1
+                    },
+                };
+
+                let mut buffer = vec![0_u8; mem::size_of::<HapticsFeedback>()];
+                buffer.copy_from_slice(unsafe {
+                    &mem::transmute::<_, [u8; mem::size_of::<HapticsFeedback>()]>(haptics)
+                });
+
+                legacy_receive_data_sender.lock().await.send(buffer).ok();
             }
         }
     };
@@ -662,8 +678,8 @@ async fn connection_pipeline(
         res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
-        res = spawn_cancelable(legacy_receive_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
+        res = spawn_cancelable(haptics_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,
 
         // keep these loops on the current task

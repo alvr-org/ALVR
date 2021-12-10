@@ -142,7 +142,6 @@ void (*LogWarn)(const char *stringPtr);
 void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
-void (*LegacySend)(unsigned char *buf, int len);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(HapticsFeedback packet);
 void (*TimeSyncSend)(TimeSync packet);

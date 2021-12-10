@@ -1,6 +1,6 @@
 use crate::{
-    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
-    RESTART_NOTIFIER, SESSION_MANAGER, VIDEO_SENDER, TIME_SYNC_SENDER,
+    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER,
+    RESTART_NOTIFIER, SESSION_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER, HAPTICS_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::Mat4, prelude::*, semver::Version};
@@ -8,7 +8,7 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
-    ServerControlPacket, StreamSocketBuilder, LEGACY, VIDEO,
+    ServerControlPacket, StreamSocketBuilder, LEGACY, VIDEO, HAPTICS,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -665,22 +665,6 @@ async fn connection_pipeline() -> StrResult {
         Box::pin(future::pending())
     };
 
-    let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
-
-            while let Some(data) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
-                buffer.get_mut().extend(data);
-                socket_sender.send_buffer(buffer).await.ok();
-            }
-
-            Ok(())
-        }
-    };
-
     let video_send_loop = {
         let mut socket_sender = stream_socket.request_stream::<_, VIDEO>().await?;
         async move {
@@ -708,6 +692,23 @@ async fn connection_pipeline() -> StrResult {
                     .lock()
                     .await
                     .send(&ServerControlPacket::TimeSync(time_sync))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let haptics_send_loop = {
+        let mut socket_sender = stream_socket.request_stream::<_, HAPTICS>().await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *HAPTICS_SENDER.lock() = Some(data_sender);
+
+            while let Some(haptics) = data_receiver.recv().await {
+                socket_sender
+                    .send_buffer(socket_sender.new_buffer(&haptics, 0)?)
                     .await
                     .ok();
             }
@@ -821,9 +822,9 @@ async fn connection_pipeline() -> StrResult {
         },
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
-        res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(video_send_loop) => res,
         res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(haptics_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,
 
         // leave these loops on the current task

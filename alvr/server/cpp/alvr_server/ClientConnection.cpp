@@ -141,7 +141,7 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 	packetBuffer.duration = pow(m_hapticsMinDuration, 2) * 0.25 / duration + duration;
 	packetBuffer.frequency = frequency;
 	packetBuffer.hand = hand;
-	LegacySend((unsigned char *)&packetBuffer, sizeof(HapticsFeedback));
+	HapticsSend(packetBuffer);
 }
 
 void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {

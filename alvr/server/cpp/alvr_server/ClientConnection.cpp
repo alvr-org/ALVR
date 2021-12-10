@@ -144,40 +144,43 @@ void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, 
 	HapticsSend(packetBuffer);
 }
 
+void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
+	m_Statistics->CountPacket(sizeof(TrackingInfo));
+
+	uint64_t Current = GetTimestampUs();
+	TimeSync sendBuf = {};
+	sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
+	sendBuf.mode = 3;
+	sendBuf.serverTime = serverToClientTime(Current);
+	sendBuf.trackingRecvFrameIndex = m_TrackingInfo.FrameIndex;
+	TimeSyncSend(sendBuf);
+
+	{
+		std::unique_lock lock(m_CS);
+		m_TrackingInfo = data;
+	}
+
+	// if 3DOF, zero the positional data!
+	if (Settings::Instance().m_force3DOF) {
+		m_TrackingInfo.HeadPose_Pose_Position.x = 0;
+		m_TrackingInfo.HeadPose_Pose_Position.y = 0;
+		m_TrackingInfo.HeadPose_Pose_Position.z = 0;
+	}
+	Debug("got battery level: %d\n", (int)m_TrackingInfo.battery);
+	Debug("got tracking info %d %f %f %f %f\n", (int)m_TrackingInfo.FrameIndex,
+		m_TrackingInfo.HeadPose_Pose_Orientation.x,
+		m_TrackingInfo.HeadPose_Pose_Orientation.y,
+		m_TrackingInfo.HeadPose_Pose_Orientation.z,
+		m_TrackingInfo.HeadPose_Pose_Orientation.w);
+	m_PoseUpdatedCallback();
+}
+
 void ClientConnection::ProcessRecv(unsigned char *buf, size_t len) {
 	m_Statistics->CountPacket(len);
 
 	uint32_t type = *(uint32_t*)buf;
 
-	if (type == ALVR_PACKET_TYPE_TRACKING_INFO && len >= sizeof(TrackingInfo)) {
-		uint64_t Current = GetTimestampUs();
-		TimeSync sendBuf = {};
-		sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
-		sendBuf.mode = 3;
-		sendBuf.serverTime = serverToClientTime(Current);
-		sendBuf.trackingRecvFrameIndex = m_TrackingInfo.FrameIndex;
-		TimeSyncSend(sendBuf);
-
-		{
-			std::unique_lock lock(m_CS);
-			m_TrackingInfo = *(TrackingInfo *)buf;
-		}
-
-		// if 3DOF, zero the positional data!
-		if (Settings::Instance().m_force3DOF) {
-			m_TrackingInfo.HeadPose_Pose_Position.x = 0;
-			m_TrackingInfo.HeadPose_Pose_Position.y = 0;
-			m_TrackingInfo.HeadPose_Pose_Position.z = 0;
-		}
-		Debug("got battery level: %d\n", (int)m_TrackingInfo.battery);
-		Debug("got tracking info %d %f %f %f %f\n", (int)m_TrackingInfo.FrameIndex,
-			m_TrackingInfo.HeadPose_Pose_Orientation.x,
-			m_TrackingInfo.HeadPose_Pose_Orientation.y,
-			m_TrackingInfo.HeadPose_Pose_Orientation.z,
-			m_TrackingInfo.HeadPose_Pose_Orientation.w);
-		m_PoseUpdatedCallback();
-	}
-	else if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
+	if (type == ALVR_PACKET_TYPE_TIME_SYNC && len >= sizeof(TimeSync)) {
 		TimeSync *timeSync = (TimeSync*)buf;
 		uint64_t Current = GetTimestampUs();
 

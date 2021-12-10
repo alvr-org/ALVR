@@ -7,7 +7,7 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     log,
     prelude::*,
-    ALVR_NAME, ALVR_VERSION, TrackedDeviceType, Haptics,
+    Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
@@ -356,6 +356,22 @@ async fn connection_pipeline(
         }
     };
 
+    let input_send_loop = {
+        let mut socket_sender = stream_socket.request_stream::<_, INPUT>().await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *INPUT_SENDER.lock() = Some(data_sender);
+            while let Some(input) = data_receiver.recv().await {
+                socket_sender
+                    .send_buffer(socket_sender.new_buffer(&input, 0)?)
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
     let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
 
@@ -366,7 +382,7 @@ async fn connection_pipeline(
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
-                let mut packet = receiver.recv().await?;
+                let packet = receiver.recv().await?;
 
                 let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
                 let header = VideoFrame {
@@ -678,6 +694,7 @@ async fn connection_pipeline(
         res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
+        res = spawn_cancelable(input_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,

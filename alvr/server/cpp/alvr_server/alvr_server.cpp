@@ -195,7 +195,7 @@ void InputReceive(TrackingInfo data) {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
- 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTrackingInfo(data);
+ 		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTrackingInfo(data);
  	}
  }
  void TimeSyncReceive(TimeSync data) {

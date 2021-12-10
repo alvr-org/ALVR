@@ -13,10 +13,11 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     lazy_static,
     prelude::*,
-    MotionData, ALVR_VERSION, Fov,
+    Fov, MotionData, ALVR_VERSION,
 };
 use alvr_sockets::{
-    HeadsetInfoPacket, Input, LegacyInput, PrivateIdentity, TimeSyncPacket, ViewConfig, HandPoseInput,
+    HandPoseInput, HeadsetInfoPacket, Input, LegacyInput, PrivateIdentity, TimeSyncPacket,
+    ViewConfig,
 };
 use jni::{
     objects::{JClass, JObject, JString},
@@ -29,7 +30,8 @@ use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
-    }, time::Duration,
+    },
+    time::Duration,
 };
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
@@ -339,10 +341,16 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         }
     }
 
+    extern "C" fn video_error_report_send() {
+        if let Some(sender) = &*VIDEO_ERROR_REPORT_SENDER.lock() {
+            sender.send(()).ok();
+        }
+    }
+
     legacySend = Some(legacy_send);
-    // inputSend = Some(input_send);
-    // timeSyncSend = Some(time_sync_send);
-    // videoErrorReportSend = Some(video_error_report_send);
+    inputSend = Some(input_send);
+    timeSyncSend = Some(time_sync_send);
+    videoErrorReportSend = Some(video_error_report_send);
 
     alvr_common::show_err(|| -> StrResult {
         let result = onCreate(

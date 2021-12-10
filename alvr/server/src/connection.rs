@@ -805,7 +805,6 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(video_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,
-        
 
         // leave these loops on the current task
         res = keepalive_loop => res,

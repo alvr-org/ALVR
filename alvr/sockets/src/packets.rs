@@ -2,7 +2,8 @@ use std::{collections::HashMap, time::Duration};
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
-    semver::Version, MotionData, Fov,
+    semver::Version,
+    Fov, MotionData,
 };
 use serde::{Deserialize, Serialize};
 

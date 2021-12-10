@@ -4,8 +4,9 @@ use crate::{
 };
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
+    log,
     prelude::*,
-    ALVR_NAME, ALVR_VERSION, log,
+    ALVR_NAME, ALVR_VERSION,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
@@ -366,8 +367,6 @@ async fn connection_pipeline(
             loop {
                 let mut packet = receiver.recv().await?;
 
-                log::error!("{}", mem::size_of::<VideoFrame>());
-
                 let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
                 let header = VideoFrame {
                     type_: 9, // ALVR_PACKET_TYPE_VIDEO_FRAME
@@ -379,25 +378,13 @@ async fn connection_pipeline(
                     fecIndex: packet.header.fec_index,
                     fecPercentage: packet.header.fec_percentage,
                 };
-                unsafe {
-                    ptr::copy_nonoverlapping(
-                        &header as *const _ as _,
-                        buffer.as_mut_ptr(),
-                        mem::size_of::<VideoFrame>(),
-                    );
-                    ptr::copy_nonoverlapping(
-                        packet.buffer.as_ptr() as _,
-                        buffer.as_mut_ptr().add(mem::size_of::<VideoFrame>()),
-                        packet.buffer.len(),
-                    );
-                }
 
-                // legacy_receive_data_sender.lock().await.send(buffer).ok();
-                legacy_receive_data_sender
-                    .lock()
-                    .await
-                    .send(packet.buffer.to_vec())
-                    .ok();
+                buffer[..mem::size_of::<VideoFrame>()].copy_from_slice(unsafe {
+                    &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
+                });
+                buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
+
+                legacy_receive_data_sender.lock().await.send(buffer).ok();
             }
         }
     };

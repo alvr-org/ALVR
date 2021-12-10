@@ -144,8 +144,8 @@ void (*LogDebug)(const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*LegacySend)(unsigned char *buf, int len);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
- void (*HapticsSend)(HapticsFeedback packet);
- void (*TimeSyncSend)(TimeSync packet);
+void (*HapticsSend)(HapticsFeedback packet);
+void (*TimeSyncSend)(TimeSync packet);
 void (*ShutdownRuntime)();
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
@@ -192,6 +192,27 @@ void LegacyReceive(unsigned char *buf, int len) {
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessRecv(buf, len);
 	}
 }
+void InputReceive(TrackingInfo data) {
+ 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
+ 		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
+ 	{
+ 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTrackingInfo(data);
+ 	}
+ }
+ void TimeSyncReceive(TimeSync data) {
+ 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
+ 		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
+ 	{
+ 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTimeSync(data);
+ 	}
+ }
+ void VideoErrorReportReceive() {
+ 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
+ 		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
+ 	{
+ 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessVideoError();
+ 	}
+ }
 
 extern "C" void ShutdownSteamvr() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)

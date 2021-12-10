@@ -32,6 +32,10 @@
 using namespace std;
 using namespace gl_render_utils;
 
+void (*inputSend)(TrackingInfo data);
+void (*timeSyncSend)(TimeSync data);
+void (*videoErrorReportSend)();
+
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 360;

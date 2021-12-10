@@ -50,7 +50,8 @@ struct TrackingInfo {
     static const unsigned int MAX_CONTROLLERS = 2;
     struct Controller {
         static const unsigned int FLAG_CONTROLLER_ENABLE = (1 << 0);
-        static const unsigned int FLAG_CONTROLLER_LEFTHAND = (1 << 1); // 0: Left hand, 1: Right hand
+        static const unsigned int FLAG_CONTROLLER_LEFTHAND =
+            (1 << 1); // 0: Left hand, 1: Right hand
         static const unsigned int FLAG_CONTROLLER_GEARVR = (1 << 2);
         static const unsigned int FLAG_CONTROLLER_OCULUS_GO = (1 << 3);
         static const unsigned int FLAG_CONTROLLER_OCULUS_QUEST = (1 << 4);
@@ -148,7 +149,7 @@ struct PacketErrorReport {
 };
 // Send haptics feedback from server to client.
 struct HapticsFeedback {
-    unsigned int type;      // ALVR_PACKET_TYPE_HAPTICS
+    unsigned int type;            // ALVR_PACKET_TYPE_HAPTICS
     unsigned long long startTime; // Elapsed time from now when start haptics. In microseconds.
     float amplitude;
     float duration;
@@ -220,8 +221,12 @@ extern "C" GuardianData getGuardianData();
 
 extern "C" void
 initializeSocket(void *env, void *instance, void *nalClass, unsigned int codec, bool enableFEC);
-extern "C" void (*legacySend)(const unsigned char *buffer, unsigned int size);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
 extern "C" void sendTimeSync();
 extern "C" unsigned char isConnectedNative();
 extern "C" void closeSocket(void *env);
+
+extern "C" void (*legacySend)(const unsigned char *buffer, unsigned int size);
+extern "C" void (*inputSend)(TrackingInfo data);
+extern "C" void (*timeSyncSend)(TimeSync data);
+extern "C" void (*videoErrorReportSend)();

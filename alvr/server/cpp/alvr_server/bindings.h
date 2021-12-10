@@ -193,4 +193,7 @@ extern "C" void SetChaperone(const float transform[12],
                              unsigned int perimeterPointsCount);
 extern "C" void SetDefaultChaperone();
 extern "C" void LegacyReceive(unsigned char *buf, int len);
+extern "C" void InputReceive(TrackingInfo data);
+extern "C" void TimeSyncReceive(TimeSync data);
+extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();

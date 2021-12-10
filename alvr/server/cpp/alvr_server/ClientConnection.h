@@ -23,6 +23,9 @@ public:
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessRecv(unsigned char *buf, size_t len);
+	void ProcessTrackingInfo(TrackingInfo data);
+ 	void ProcessTimeSync(TimeSync data);
+ 	void ProcessVideoError();
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	float GetPoseTimeOffset();

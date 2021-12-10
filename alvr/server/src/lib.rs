@@ -296,6 +296,47 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
+    extern "C" fn haptics_send(haptics: HapticsFeedback) {
+        if let Some(sender) = &*HAPTICS_SENDER.lock() {
+            let haptics = Haptics {
+                device: if haptics.hand == 0 {
+                    TrackedDeviceType::LeftHand
+                } else {
+                    TrackedDeviceType::RightHand
+                },
+                duration: Duration::from_secs_f32(haptics.duration),
+                frequency: haptics.frequency,
+                amplitude: haptics.amplitude,
+            };
+
+            sender.send(haptics).ok();
+        }
+    }
+
+    extern "C" fn time_sync_send(data: TimeSync) {
+        if let Some(sender) = &*TIME_SYNC_SENDER.lock() {
+            let time_sync = TimeSyncPacket {
+                mode: data.mode,
+                server_time: data.serverTime,
+                client_time: data.clientTime,
+                packets_lost_total: data.packetsLostTotal,
+                packets_lost_in_second: data.packetsLostInSecond,
+                average_send_latency: data.averageSendLatency,
+                average_transport_latency: data.averageTransportLatency,
+                average_decode_latency: data.averageDecodeLatency,
+                idle_time: data.idleTime,
+                fec_failure: data.fecFailure,
+                fec_failure_in_second: data.fecFailureInSecond,
+                fec_failure_total: data.fecFailureTotal,
+                fps: data.fps,
+                server_total_latency: data.serverTotalLatency,
+                tracking_recv_frame_index: data.trackingRecvFrameIndex,
+            };
+
+            sender.send(time_sync).ok();
+        }
+    }
+
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
         alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
             FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
@@ -327,6 +368,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     DriverReadyIdle = Some(driver_ready_idle);
     LegacySend = Some(legacy_send);
     VideoSend = Some(video_send);
+    HapticsSend = Some(haptics_send);
+    TimeSyncSend = Some(time_sync_send);
     ShutdownRuntime = Some(_shutdown_runtime);
 
     // cast to usize to allow the variables to cross thread boundaries

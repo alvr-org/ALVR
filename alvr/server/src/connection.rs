@@ -1,6 +1,6 @@
 use crate::{
     connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
-    RESTART_NOTIFIER, SESSION_MANAGER, VIDEO_SENDER,
+    RESTART_NOTIFIER, SESSION_MANAGER, VIDEO_SENDER, TIME_SYNC_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::Mat4, prelude::*, semver::Version};
@@ -697,6 +697,25 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    let time_sync_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *TIME_SYNC_SENDER.lock() = Some(data_sender);
+
+            while let Some(time_sync) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ServerControlPacket::TimeSync(time_sync))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
     let legacy_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
         async move {
@@ -804,6 +823,7 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(video_send_loop) => res,
+        res = spawn_cancelable(time_sync_send_loop) => res,
         res = spawn_cancelable(legacy_receive_loop) => res,
 
         // leave these loops on the current task

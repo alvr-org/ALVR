@@ -406,5 +406,11 @@ fn main() {
         return;
     }
 
-    println!("\nDone (in {:?})\n", Instant::now() - begin_time);
+    let elapsed_time = Instant::now() - begin_time;
+
+    println!(
+        "\nDone [{}m {}s]\n",
+        elapsed_time.as_secs() / 60,
+        elapsed_time.as_secs() % 60
+    );
 }

@@ -62,6 +62,7 @@ pub enum ServerControlPacket {
     StartStream,
     Restarting,
     KeepAlive,
+    TimeSync(TimeSyncPacket),
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

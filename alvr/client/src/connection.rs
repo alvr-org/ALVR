@@ -1,6 +1,7 @@
 use crate::{
     connection_utils::{self, ConnectionError},
-    VideoFrame, MAYBE_LEGACY_SENDER,
+    HapticsFeedback, TimeSync, VideoFrame, INPUT_SENDER, LEGACY_SENDER, TIME_SYNC_SENDER,
+    VIDEO_ERROR_REPORT_SENDER,
 };
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
@@ -343,7 +344,7 @@ async fn connection_pipeline(
         let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+            *LEGACY_SENDER.lock() = Some(data_sender);
 
             while let Some(data) = data_receiver.recv().await {
                 let mut buffer = socket_sender.new_buffer(&(), data.len())?;
@@ -391,6 +392,7 @@ async fn connection_pipeline(
 
     let legacy_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
+        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
                 let packet = receiver.recv().await?;
@@ -594,6 +596,35 @@ async fn connection_pipeline(
                                 )?;
                                 break Ok(());
                             }
+                            Ok(ServerControlPacket::TimeSync(data)) => {
+                                let time_sync = TimeSync {
+                                    type_: 7, // ALVR_PACKET_TYPE_TIME_SYNC
+                                    mode: data.mode,
+                                    serverTime: data.server_time,
+                                    clientTime: data.client_time,
+                                    sequence: 0,
+                                    packetsLostTotal: data.packets_lost_total,
+                                    packetsLostInSecond: data.packets_lost_in_second,
+                                    averageTotalLatency: 0,
+                                    averageSendLatency: data.average_send_latency,
+                                    averageTransportLatency: data.average_transport_latency,
+                                    averageDecodeLatency: data.average_decode_latency,
+                                    idleTime: data.idle_time,
+                                    fecFailure: data.fec_failure,
+                                    fecFailureInSecond: data.fec_failure_in_second,
+                                    fecFailureTotal: data.fec_failure_total,
+                                    fps: data.fps,
+                                    serverTotalLatency: data.server_total_latency,
+                                    trackingRecvFrameIndex: data.tracking_recv_frame_index,
+                                };
+
+                                let mut buffer = vec![0_u8; mem::size_of::<TimeSync>()];
+                                buffer.copy_from_slice(unsafe {
+                                    &mem::transmute::<_, [u8; mem::size_of::<TimeSync>()]>(time_sync)
+                                });
+
+                                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                            },
                             Ok(_) => (),
                             Err(e) => {
                                 info!("Server disconnected. Cause: {}", e);

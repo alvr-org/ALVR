@@ -1,5 +1,5 @@
 use crate::{
-    connection_utils, ClientListAction, EyeFov, TrackingInfo, TrackingInfo_Controller,
+    connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
     TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
     HAPTICS_SENDER, RESTART_NOTIFIER, SESSION_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
 };
@@ -14,8 +14,8 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, HAPTICS, INPUT, LEGACY, VIDEO,
-}; 
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, HAPTICS, INPUT, VIDEO,
+};
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
 use std::{
@@ -723,17 +723,6 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
-        async move {
-            loop {
-                let mut data = receiver.recv().await?.buffer;
-
-                unsafe { crate::LegacyReceive(data.as_mut_ptr(), data.len() as _) };
-            }
-        }
-    };
-
     fn to_tracking_quat(quat: Quat) -> TrackingQuat {
         TrackingQuat {
             x: quat.x,
@@ -904,7 +893,7 @@ async fn connection_pipeline() -> StrResult {
                             angularAcceleration: to_tracking_vector3(Vec3::ZERO),
                             linearAcceleration: to_tracking_vector3(Vec3::ZERO),
                             boneRotations: {
-                                let vec = input.legacy.bone_rotations[0]
+                                let vec = input.legacy.bone_rotations[1]
                                     .iter()
                                     .cloned()
                                     .map(to_tracking_quat)
@@ -1015,6 +1004,33 @@ async fn connection_pipeline() -> StrResult {
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::TimeSync(data)) => {
+                    let time_sync = TimeSync {
+                        type_: 0,
+                        mode: data.mode,
+                        serverTime: data.server_time,
+                        clientTime: data.client_time,
+                        sequence: 0,
+                        packetsLostTotal: data.packets_lost_total,
+                        packetsLostInSecond: data.packets_lost_in_second,
+                        averageTotalLatency: 0,
+                        averageSendLatency: data.average_send_latency,
+                        averageTransportLatency: data.average_transport_latency,
+                        averageDecodeLatency: data.average_decode_latency,
+                        idleTime: data.idle_time,
+                        fecFailure: data.fec_failure,
+                        fecFailureInSecond: data.fec_failure_in_second,
+                        fecFailureTotal: data.fec_failure_total,
+                        fps: data.fps,
+                        serverTotalLatency: data.server_total_latency,
+                        trackingRecvFrameIndex: data.tracking_recv_frame_index,
+                    };
+
+                    unsafe { crate::TimeSyncReceive(time_sync) };
+                }
+                Ok(ClientControlPacket::VideoErrorReport) => unsafe {
+                    crate::VideoErrorReportReceive()
+                },
                 Ok(_) => (),
                 Err(e) => {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
@@ -1027,8 +1043,8 @@ async fn connection_pipeline() -> StrResult {
         Ok(())
     };
 
-    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
+        // Spawn new tasks and let the runtime manage threading
         res = spawn_cancelable(stream_socket.receive_loop()) => {
             alvr_session::log_event(ServerEvent::ClientDisconnected);
             if let Err(e) = res {
@@ -1042,10 +1058,9 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(video_send_loop) => res,
         res = spawn_cancelable(time_sync_send_loop) => res,
         res = spawn_cancelable(haptics_send_loop) => res,
-        res = spawn_cancelable(legacy_receive_loop) => res,
         res = spawn_cancelable(input_receive_loop) => res,
 
-        // leave these loops on the current task
+        // Leave these loops on the current task
         res = keepalive_loop => res,
         res = control_loop => res,
 

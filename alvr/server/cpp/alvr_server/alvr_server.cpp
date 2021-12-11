@@ -184,13 +184,6 @@ void RequestIDR() {
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->RequestIDR();
 }
 
-void LegacyReceive(unsigned char *buf, int len) {
-	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
-		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
-	{
-		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessRecv(buf, len);
-	}
-}
 void InputReceive(TrackingInfo data) {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
@@ -202,14 +195,14 @@ void InputReceive(TrackingInfo data) {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
- 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTimeSync(data);
+ 		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTimeSync(data);
  	}
  }
  void VideoErrorReportReceive() {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
- 		// g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessVideoError();
+ 		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessVideoError();
  	}
  }
 

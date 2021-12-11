@@ -62,7 +62,7 @@ pub enum ServerControlPacket {
     StartStream,
     Restarting,
     KeepAlive,
-    TimeSync(TimeSyncPacket),
+    TimeSync(TimeSyncPacket), // legacy
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -82,6 +82,8 @@ pub enum ClientControlPacket {
     RequestIdr,
     KeepAlive,
     StreamReady,
+    TimeSync(TimeSyncPacket), // legacy
+    VideoErrorReport,         // legacy
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

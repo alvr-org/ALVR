@@ -32,7 +32,6 @@ pub const INPUT: StreamId = 0; // tracking and buttons
 pub const HAPTICS: StreamId = 1;
 pub const AUDIO: StreamId = 2;
 pub const VIDEO: StreamId = 3;
-pub const LEGACY: StreamId = 4;
 
 #[derive(Clone)]
 enum StreamSendSocket {

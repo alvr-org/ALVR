@@ -226,7 +226,6 @@ extern "C" void sendTimeSync();
 extern "C" unsigned char isConnectedNative();
 extern "C" void closeSocket(void *env);
 
-extern "C" void (*legacySend)(const unsigned char *buffer, unsigned int size);
 extern "C" void (*inputSend)(TrackingInfo data);
 extern "C" void (*timeSyncSend)(TimeSync data);
 extern "C" void (*videoErrorReportSend)();

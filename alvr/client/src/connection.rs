@@ -14,7 +14,7 @@ use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
     ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket,
-    HAPTICS, INPUT, LEGACY, VIDEO,
+    HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -340,22 +340,6 @@ async fn connection_pipeline(
     //     }
     // };
 
-    let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *LEGACY_SENDER.lock() = Some(data_sender);
-
-            while let Some(data) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
-                buffer.get_mut().extend(data);
-                socket_sender.send_buffer(buffer).await.ok();
-            }
-
-            Ok(())
-        }
-    };
-
     let input_send_loop = {
         let mut socket_sender = stream_socket.request_stream::<_, INPUT>().await?;
         async move {
@@ -364,6 +348,44 @@ async fn connection_pipeline(
             while let Some(input) = data_receiver.recv().await {
                 socket_sender
                     .send_buffer(socket_sender.new_buffer(&input, 0)?)
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let time_sync_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *TIME_SYNC_SENDER.lock() = Some(data_sender);
+
+            while let Some(time_sync) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::TimeSync(time_sync))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let video_error_report_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *VIDEO_ERROR_REPORT_SENDER.lock() = Some(data_sender);
+
+            while let Some(()) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::VideoErrorReport)
                     .await
                     .ok();
             }
@@ -693,8 +715,9 @@ async fn connection_pipeline(
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
-        res = spawn_cancelable(legacy_send_loop) => res,
         res = spawn_cancelable(input_send_loop) => res,
+        res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(video_error_report_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,

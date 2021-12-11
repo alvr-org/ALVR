@@ -110,19 +110,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
     asset_manager: JObject,
     jout_result: JObject,
 ) {
-    extern "C" fn legacy_send(buffer_ptr: *const u8, len: u32) {
-        if let Some(sender) = &*LEGACY_SENDER.lock() {
-            let mut vec_buffer = vec![0; len as _];
-
-            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
-            unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
-            }
-
-            sender.send(vec_buffer).ok();
-        }
-    }
-
     extern "C" fn input_send(data: TrackingInfo) {
         fn from_tracking_quat(quat: TrackingQuat) -> Quat {
             Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
@@ -347,7 +334,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         }
     }
 
-    legacySend = Some(legacy_send);
     inputSend = Some(input_send);
     timeSyncSend = Some(time_sync_send);
     videoErrorReportSend = Some(video_error_report_send);

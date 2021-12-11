@@ -28,9 +28,10 @@ use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
 // todo: when const_generics reaches stable, convert this to an enum
 pub type StreamId = u8;
-pub const AUDIO: StreamId = 0;
-pub const LEGACY: StreamId = 1;
-pub const RESERVED: StreamId = 2;
+pub const INPUT: StreamId = 0; // tracking and buttons
+pub const HAPTICS: StreamId = 1;
+pub const AUDIO: StreamId = 2;
+pub const VIDEO: StreamId = 3;
 
 #[derive(Clone)]
 enum StreamSendSocket {

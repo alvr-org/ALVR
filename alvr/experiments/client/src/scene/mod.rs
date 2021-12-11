@@ -34,27 +34,27 @@ impl Scene {
     pub fn new(graphics_context: Arc<GraphicsContext>) -> StrResult<Self> {
         log::error!("create scene");
 
-        let iad = InstanceAdapterDevice {
-            instance: Arc::clone(&graphics_context.instance),
-            adapter: Arc::clone(&graphics_context.adapter),
-            device: Arc::clone(&graphics_context.device),
-            queue: Arc::clone(&graphics_context.queue),
-            mode: RendererMode::CPUPowered,
-            info: ExtendedAdapterInfo {
-                name: "".into(),
-                vendor: Vendor::Unknown(0),
-                device: 0,
-                device_type: DeviceType::Other,
-                backend: Backend::Vulkan,
-            },
-        };
+        // let iad = InstanceAdapterDevice {
+        //     instance: Arc::clone(&graphics_context.instance),
+        //     adapter: Arc::clone(&graphics_context.adapter),
+        //     device: Arc::clone(&graphics_context.device),
+        //     queue: Arc::clone(&graphics_context.queue),
+        //     mode: RendererMode::CPUPowered,
+        //     info: ExtendedAdapterInfo {
+        //         name: "".into(),
+        //         vendor: Vendor::Unknown(0),
+        //         device: 0,
+        //         device_type: DeviceType::Other,
+        //         backend: Backend::Vulkan,
+        //     },
+        // };
 
-        // let iad = pollster::block_on(rend3::create_iad(
-        //     None,
-        //     None,
-        //     Some(RendererMode::CPUPowered),
-        // ))
-        // .unwrap();
+        let iad = pollster::block_on(rend3::create_iad(
+            None,
+            None,
+            Some(RendererMode::CPUPowered),
+        ))
+        .unwrap();
 
         log::error!("create renderer");
 
@@ -62,13 +62,13 @@ impl Scene {
 
         log::error!("create pbr routine");
 
-        // let pbr_routine = PbrRenderRoutine::new(
-        //     &renderer,
-        //     RenderTextureOptions {
-        //         resolution: UVec2::new(100, 100),
-        //         samples: SampleCount::One,
-        //     },
-        // );
+        let pbr_routine = PbrRenderRoutine::new(
+            &renderer,
+            RenderTextureOptions {
+                resolution: UVec2::new(100, 100),
+                samples: SampleCount::One,
+            },
+        );
 
         log::error!("create skybox routine");
 

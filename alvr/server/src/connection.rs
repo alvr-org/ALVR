@@ -1,14 +1,20 @@
 use crate::{
-    connection_utils, ClientListAction, CLIENTS_UPDATED_NOTIFIER, MAYBE_LEGACY_SENDER,
-    RESTART_NOTIFIER, SESSION_MANAGER,
+    connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
+    TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
+    HAPTICS_SENDER, RESTART_NOTIFIER, SESSION_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{glam::Mat4, prelude::*, semver::Version};
+use alvr_common::{
+    glam::{Mat4, Quat, Vec3},
+    log,
+    prelude::*,
+    semver::Version,
+};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
-    ControlSocketSender, HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, ProtoControlSocket,
-    ServerControlPacket, StreamSocketBuilder, LEGACY,
+    ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -665,14 +671,14 @@ async fn connection_pipeline() -> StrResult {
         Box::pin(future::pending())
     };
 
-    let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
+    let video_send_loop = {
+        let mut socket_sender = stream_socket.request_stream::<_, VIDEO>().await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+            *VIDEO_SENDER.lock() = Some(data_sender);
 
-            while let Some(data) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
+            while let Some((header, data)) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&header, data.len())?;
                 buffer.get_mut().extend(data);
                 socket_sender.send_buffer(buffer).await.ok();
             }
@@ -681,13 +687,249 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
+    let time_sync_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *TIME_SYNC_SENDER.lock() = Some(data_sender);
+
+            while let Some(time_sync) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ServerControlPacket::TimeSync(time_sync))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let haptics_send_loop = {
+        let mut socket_sender = stream_socket.request_stream::<_, HAPTICS>().await?;
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *HAPTICS_SENDER.lock() = Some(data_sender);
+
+            while let Some(haptics) = data_receiver.recv().await {
+                socket_sender
+                    .send_buffer(socket_sender.new_buffer(&haptics, 0)?)
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    fn to_tracking_quat(quat: Quat) -> TrackingQuat {
+        TrackingQuat {
+            x: quat.x,
+            y: quat.y,
+            z: quat.z,
+            w: quat.w,
+        }
+    }
+
+    fn to_tracking_vector3(vec: Vec3) -> TrackingVector3 {
+        TrackingVector3 {
+            x: vec.x,
+            y: vec.y,
+            z: vec.z,
+        }
+    }
+
+    let input_receive_loop = {
+        let mut receiver = stream_socket.subscribe_to_stream::<Input, INPUT>().await?;
         async move {
             loop {
-                let mut data = receiver.recv().await?.buffer;
+                let input = receiver.recv().await?.header;
 
-                unsafe { crate::LegacyReceive(data.as_mut_ptr(), data.len() as _) };
+                let head_position =
+                    (input.view_configs[0].position + input.view_configs[1].position) / 2_f32;
+
+                let ipd = Vec3::distance(
+                    input.view_configs[0].position,
+                    input.view_configs[1].position,
+                );
+
+                let (other_position, other_orientation) = input
+                    .trackers_pose_input
+                    .get(0)
+                    .map(|motion| (motion.position, motion.orientation))
+                    .unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+
+                let tracking_info = TrackingInfo {
+                    type_: 6, // ALVR_PACKET_TYPE_TRACKING_INFO
+                    flags: input.legacy.flags,
+                    clientTime: input.legacy.client_time,
+                    FrameIndex: input.legacy.frame_index,
+                    predictedDisplayTime: input.target_timestamp.as_secs_f64(),
+                    HeadPose_Pose_Orientation: to_tracking_quat(input.view_configs[0].orientation),
+                    HeadPose_Pose_Position: to_tracking_vector3(head_position),
+                    HeadPose_AngularVelocity: to_tracking_vector3(Vec3::ZERO),
+                    HeadPose_LinearVelocity: to_tracking_vector3(Vec3::ZERO),
+                    HeadPose_AngularAcceleration: to_tracking_vector3(Vec3::ZERO),
+                    HeadPose_LinearAcceleration: to_tracking_vector3(Vec3::ZERO),
+                    Other_Tracking_Source_Position: to_tracking_vector3(other_position),
+                    Other_Tracking_Source_Orientation: to_tracking_quat(other_orientation),
+                    eyeFov: [
+                        EyeFov {
+                            left: input.view_configs[0].fov.left,
+                            right: input.view_configs[0].fov.right,
+                            top: input.view_configs[0].fov.top,
+                            bottom: input.view_configs[0].fov.bottom,
+                        },
+                        EyeFov {
+                            left: input.view_configs[1].fov.left,
+                            right: input.view_configs[1].fov.right,
+                            top: input.view_configs[1].fov.top,
+                            bottom: input.view_configs[1].fov.bottom,
+                        },
+                    ],
+                    ipd,
+                    battery: input.legacy.battery,
+                    plugged: input.legacy.plugged,
+                    controller: [
+                        TrackingInfo_Controller {
+                            flags: input.legacy.controller_flags[0],
+                            buttons: input.legacy.buttons[0],
+                            recenterCount: 0,
+                            trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
+                                x: input.legacy.trackpad_position[0].x,
+                                y: input.legacy.trackpad_position[0].y,
+                            },
+                            triggerValue: input.legacy.trigger_value[0],
+                            gripValue: input.legacy.grip_value[0],
+                            batteryPercentRemaining: input.legacy.controller_battery[0],
+                            orientation: to_tracking_quat(
+                                input.left_pose_input.grip_motion.orientation,
+                            ),
+                            position: to_tracking_vector3(
+                                input.left_pose_input.grip_motion.position,
+                            ),
+                            angularVelocity: to_tracking_vector3(
+                                input
+                                    .left_pose_input
+                                    .grip_motion
+                                    .angular_velocity
+                                    .unwrap_or(Vec3::ZERO),
+                            ),
+                            linearVelocity: to_tracking_vector3(
+                                input
+                                    .left_pose_input
+                                    .grip_motion
+                                    .linear_velocity
+                                    .unwrap_or(Vec3::ZERO),
+                            ),
+                            angularAcceleration: to_tracking_vector3(Vec3::ZERO),
+                            linearAcceleration: to_tracking_vector3(Vec3::ZERO),
+                            boneRotations: {
+                                let vec = input.legacy.bone_rotations[0]
+                                    .iter()
+                                    .cloned()
+                                    .map(to_tracking_quat)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [TrackingQuat::default(); 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+                            bonePositionsBase: {
+                                let vec = input.legacy.bone_positions_base[0]
+                                    .iter()
+                                    .cloned()
+                                    .map(to_tracking_vector3)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [TrackingVector3::default(); 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+                            boneRootOrientation: to_tracking_quat(
+                                input.left_pose_input.grip_motion.orientation,
+                            ),
+                            boneRootPosition: to_tracking_vector3(
+                                input.left_pose_input.grip_motion.position,
+                            ),
+                            inputStateStatus: input.legacy.input_state_status[0],
+                            fingerPinchStrengths: input.legacy.finger_pinch_strengths[0],
+                            handFingerConfidences: input.legacy.hand_finger_confience[0],
+                        },
+                        TrackingInfo_Controller {
+                            flags: input.legacy.controller_flags[1],
+                            buttons: input.legacy.buttons[1],
+                            recenterCount: 0,
+                            trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
+                                x: input.legacy.trackpad_position[1].x,
+                                y: input.legacy.trackpad_position[1].y,
+                            },
+                            triggerValue: input.legacy.trigger_value[1],
+                            gripValue: input.legacy.grip_value[1],
+                            batteryPercentRemaining: input.legacy.controller_battery[1],
+                            orientation: to_tracking_quat(
+                                input.right_pose_input.grip_motion.orientation,
+                            ),
+                            position: to_tracking_vector3(
+                                input.right_pose_input.grip_motion.position,
+                            ),
+                            angularVelocity: to_tracking_vector3(
+                                input
+                                    .right_pose_input
+                                    .grip_motion
+                                    .angular_velocity
+                                    .unwrap_or(Vec3::ZERO),
+                            ),
+                            linearVelocity: to_tracking_vector3(
+                                input
+                                    .right_pose_input
+                                    .grip_motion
+                                    .linear_velocity
+                                    .unwrap_or(Vec3::ZERO),
+                            ),
+                            angularAcceleration: to_tracking_vector3(Vec3::ZERO),
+                            linearAcceleration: to_tracking_vector3(Vec3::ZERO),
+                            boneRotations: {
+                                let vec = input.legacy.bone_rotations[1]
+                                    .iter()
+                                    .cloned()
+                                    .map(to_tracking_quat)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [TrackingQuat::default(); 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+                            bonePositionsBase: {
+                                let vec = input.legacy.bone_positions_base[1]
+                                    .iter()
+                                    .cloned()
+                                    .map(to_tracking_vector3)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [TrackingVector3::default(); 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+                            boneRootOrientation: to_tracking_quat(
+                                input.right_pose_input.grip_motion.orientation,
+                            ),
+                            boneRootPosition: to_tracking_vector3(
+                                input.right_pose_input.grip_motion.position,
+                            ),
+                            inputStateStatus: input.legacy.input_state_status[1],
+                            fingerPinchStrengths: input.legacy.finger_pinch_strengths[1],
+                            handFingerConfidences: input.legacy.hand_finger_confience[1],
+                        },
+                    ],
+                };
+
+                unsafe { crate::InputReceive(tracking_info) };
             }
         }
     };
@@ -762,6 +1004,33 @@ async fn connection_pipeline() -> StrResult {
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::TimeSync(data)) => {
+                    let time_sync = TimeSync {
+                        type_: 0,
+                        mode: data.mode,
+                        serverTime: data.server_time,
+                        clientTime: data.client_time,
+                        sequence: 0,
+                        packetsLostTotal: data.packets_lost_total,
+                        packetsLostInSecond: data.packets_lost_in_second,
+                        averageTotalLatency: 0,
+                        averageSendLatency: data.average_send_latency,
+                        averageTransportLatency: data.average_transport_latency,
+                        averageDecodeLatency: data.average_decode_latency,
+                        idleTime: data.idle_time,
+                        fecFailure: data.fec_failure,
+                        fecFailureInSecond: data.fec_failure_in_second,
+                        fecFailureTotal: data.fec_failure_total,
+                        fps: data.fps,
+                        serverTotalLatency: data.server_total_latency,
+                        trackingRecvFrameIndex: data.tracking_recv_frame_index,
+                    };
+
+                    unsafe { crate::TimeSyncReceive(time_sync) };
+                }
+                Ok(ClientControlPacket::VideoErrorReport) => unsafe {
+                    crate::VideoErrorReportReceive()
+                },
                 Ok(_) => (),
                 Err(e) => {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
@@ -774,8 +1043,8 @@ async fn connection_pipeline() -> StrResult {
         Ok(())
     };
 
-    // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
+        // Spawn new tasks and let the runtime manage threading
         res = spawn_cancelable(stream_socket.receive_loop()) => {
             alvr_session::log_event(ServerEvent::ClientDisconnected);
             if let Err(e) = res {
@@ -786,10 +1055,12 @@ async fn connection_pipeline() -> StrResult {
         },
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
-        res = spawn_cancelable(legacy_send_loop) => res,
-        res = spawn_cancelable(legacy_receive_loop) => res,
+        res = spawn_cancelable(video_send_loop) => res,
+        res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(haptics_send_loop) => res,
+        res = spawn_cancelable(input_receive_loop) => res,
 
-        // leave these loops on the current task
+        // Leave these loops on the current task
         res = keepalive_loop => res,
         res = control_loop => res,
 

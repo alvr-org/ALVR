@@ -53,17 +53,10 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned 
     LatencyCollector::Instance().resetAll();
 }
 
-void (*legacySend)(const unsigned char *buffer, unsigned int size);
-
 void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
                           uint32_t fromPacketCounter,
                           uint32_t toPacketCounter) {
-    PacketErrorReport report{};
-    report.type = ALVR_PACKET_TYPE_PACKET_ERROR_REPORT;
-    report.lostFrameType = frameType;
-    report.fromPacketCounter = fromPacketCounter;
-    report.toPacketCounter = toPacketCounter;
-    legacySend((const unsigned char *) &report, sizeof(report));
+    videoErrorReportSend();
 }
 
 void processVideoSequence(uint32_t sequence) {
@@ -130,7 +123,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
             TimeSync sendBuf = *timeSync;
             sendBuf.mode = 2;
             sendBuf.clientTime = Current;
-            legacySend((const unsigned char *) &sendBuf, sizeof(sendBuf));
+            timeSyncSend(sendBuf);
         }
         if (timeSync->mode == 3) {
             LatencyCollector::Instance().received(timeSync->trackingRecvFrameIndex);
@@ -176,7 +169,7 @@ void sendTimeSync() {
 
     timeSync.fps = LatencyCollector::Instance().getFramesInSecond();
 
-    legacySend((const unsigned char *) &timeSync, sizeof(timeSync));
+    timeSyncSend(timeSync);
 }
 
 unsigned char isConnectedNative() {

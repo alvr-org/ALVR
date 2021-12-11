@@ -22,7 +22,7 @@ members = [
 
 [patch.crates-io]
 # wgpu version that works both with rend3 and alvr_graphics vulkan interop
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
-wgpu-types = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu-hal = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu-types = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
 ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }

@@ -32,6 +32,10 @@
 using namespace std;
 using namespace gl_render_utils;
 
+void (*inputSend)(TrackingInfo data);
+void (*timeSyncSend)(TimeSync data);
+void (*videoErrorReportSend)();
+
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 360;
@@ -595,15 +599,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
-    memcpy(&info.HeadPose_Pose_Position, &trackingRaw.HeadPose.Pose.Position,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_AngularVelocity, &trackingRaw.HeadPose.AngularVelocity,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_LinearVelocity, &trackingRaw.HeadPose.LinearVelocity,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_AngularAcceleration, &trackingRaw.HeadPose.AngularAcceleration,
-           sizeof(ovrVector3f));
-    memcpy(&info.HeadPose_LinearAcceleration, &trackingRaw.HeadPose.LinearAcceleration,
+    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position,
            sizeof(ovrVector3f));
 
     setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);
@@ -611,7 +607,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
-    legacySend(reinterpret_cast<const unsigned char *>(&info), static_cast<int>(sizeof(info)));
+    inputSend(info);
 }
 
 OnResumeResult onResumeNative(void *v_surface, bool darkMode) {

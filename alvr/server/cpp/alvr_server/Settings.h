@@ -126,4 +126,5 @@ public:
 
 	bool m_useHeadsetTrackingSystem = false;
 	
+	bool m_enableFec;
 };

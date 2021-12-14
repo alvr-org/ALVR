@@ -446,6 +446,7 @@ async fn client_handshake(
         saturation: session_settings.video.color_correction.content.saturation,
         gamma: session_settings.video.color_correction.content.gamma,
         sharpening: session_settings.video.color_correction.content.sharpening,
+        enable_fec: session_settings.connection.enable_fec,
     };
 
     if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {

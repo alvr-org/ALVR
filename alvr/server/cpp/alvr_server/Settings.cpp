@@ -159,6 +159,8 @@ void Settings::Load()
 		m_saturation = (float)config.get("saturation").get<double>();
 		m_gamma = (float)config.get("gamma").get<double>();
 		m_sharpening = (float)config.get("sharpening").get<double>();
+
+		m_enableFec = config.get("enable_fec").get<bool>();
 		
 		Debug("Config JSON: %hs\n", json.c_str());
 		Info("Serial Number: %hs\n", mSerialNumber.c_str());

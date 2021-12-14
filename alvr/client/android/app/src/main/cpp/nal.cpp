@@ -49,7 +49,7 @@ bool NALParser::processPacket(VideoFrame *packet, int packetSize, bool &fecFailu
         m_queue.addVideoPacket(packet, packetSize, fecFailure);
     }
 
-    bool result = m_queue.reconstruct();
+    bool result = m_queue.reconstruct() || m_enableFEC;
     if (result)
     {
         const std::byte *frameBuffer;

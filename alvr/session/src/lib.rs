@@ -113,6 +113,7 @@ pub struct OpenvrConfig {
     pub saturation: f32,
     pub gamma: f32,
     pub sharpening: f32,
+    pub enable_fec: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

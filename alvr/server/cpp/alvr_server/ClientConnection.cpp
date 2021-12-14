@@ -122,7 +122,23 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 }
 
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
-	FECSend(buf, len, frameIndex, mVideoFrameIndex);
+	if (Settings::Instance().m_enableFec) {
+		FECSend(buf, len, frameIndex, mVideoFrameIndex);
+	} else {
+		VideoFrame header = {};
+		header.packetCounter = this->videoPacketCounter;
+		header.trackingFrameIndex = frameIndex;
+		header.videoFrameIndex = mVideoFrameIndex;
+		header.sentTime = GetTimestampUs();
+		header.frameByteSize = len;
+
+		VideoSend(header, buf, len);
+
+		m_Statistics->CountPacket(sizeof(VideoFrame) + len);
+
+		this->videoPacketCounter++;
+	}
+
 	mVideoFrameIndex++;
 }
 

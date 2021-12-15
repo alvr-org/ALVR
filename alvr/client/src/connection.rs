@@ -13,7 +13,7 @@ use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
-    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket,
+    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO,
     HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
@@ -225,7 +225,7 @@ async fn connection_pipeline(
         return Ok(());
     }
 
-    let mut stream_socket = tokio::select! {
+    let stream_socket = tokio::select! {
         res = stream_socket_builder.accept_from_server(
             server_ip,
             settings.connection.stream_port,
@@ -234,6 +234,7 @@ async fn connection_pipeline(
             return fmt_e!("Timeout while setting up streams");
         }
     };
+    let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
 
@@ -341,7 +342,7 @@ async fn connection_pipeline(
     // };
 
     let input_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, INPUT>().await?;
+        let mut socket_sender = stream_socket.request_stream(INPUT).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *INPUT_SENDER.lock() = Some(data_sender);
@@ -399,7 +400,7 @@ async fn connection_pipeline(
 
     let video_receive_loop = {
         let mut receiver = stream_socket
-            .subscribe_to_stream::<VideoFrameHeaderPacket, VIDEO>()
+            .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
@@ -430,7 +431,7 @@ async fn connection_pipeline(
 
     let haptics_receive_loop = {
         let mut receiver = stream_socket
-            .subscribe_to_stream::<Haptics<TrackedDeviceType>, HAPTICS>()
+            .subscribe_to_stream::<Haptics<TrackedDeviceType>>(HAPTICS)
             .await?;
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
@@ -574,7 +575,7 @@ async fn connection_pipeline(
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         #[cfg(target_os = "android")]
         {
-            let game_audio_receiver = stream_socket.subscribe_to_stream().await?;
+            let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
             Box::pin(audio::play_audio_loop(
                 config_packet.game_audio_sample_rate,
                 desc.config,
@@ -590,7 +591,7 @@ async fn connection_pipeline(
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
         #[cfg(target_os = "android")]
         {
-            let microphone_sender = stream_socket.request_stream().await?;
+            let microphone_sender = stream_socket.request_stream(AUDIO).await?;
             Box::pin(audio::record_audio_loop(
                 config.sample_rate,
                 microphone_sender,
@@ -696,9 +697,11 @@ async fn connection_pipeline(
         }
     };
 
+    let receive_loop = async move { stream_socket.receive_loop().await };
+
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = spawn_cancelable(stream_socket.receive_loop()) => {
+        res = spawn_cancelable(receive_loop) => {
             if let Err(e) = res {
                 info!("Server disconnected. Cause: {}", e);
             }

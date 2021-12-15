@@ -1,11 +1,17 @@
 use std::{collections::HashMap, time::Duration};
 
+use crate::StreamId;
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     semver::Version,
     Fov, MotionData,
 };
 use serde::{Deserialize, Serialize};
+
+pub const INPUT: StreamId = 0; // tracking and buttons
+pub const HAPTICS: StreamId = 1;
+pub const AUDIO: StreamId = 2;
+pub const VIDEO: StreamId = 3;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ClientHandshakePacket {

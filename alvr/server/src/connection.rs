@@ -14,7 +14,7 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, HAPTICS, INPUT, VIDEO,
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -592,6 +592,8 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    let stream_socket = Arc::new(stream_socket);
+
     alvr_session::log_event(ServerEvent::ClientConnected);
 
     {
@@ -614,7 +616,7 @@ async fn connection_pipeline() -> StrResult {
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
         let sample_rate = alvr_audio::get_sample_rate(&device)?;
-        let sender = stream_socket.request_stream().await?;
+        let sender = stream_socket.request_stream(AUDIO).await?;
         let mute_when_streaming = desc.mute_when_streaming;
 
         Box::pin(async move {
@@ -647,7 +649,7 @@ async fn connection_pipeline() -> StrResult {
             desc.input_device_id,
             AudioDeviceType::VirtualMicrophoneInput,
         )?;
-        let receiver = stream_socket.subscribe_to_stream().await?;
+        let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
         #[cfg(windows)]
         {
@@ -673,7 +675,7 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let video_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, VIDEO>().await?;
+        let mut socket_sender = stream_socket.request_stream(VIDEO).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *VIDEO_SENDER.lock() = Some(data_sender);
@@ -708,7 +710,7 @@ async fn connection_pipeline() -> StrResult {
     };
 
     let haptics_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, HAPTICS>().await?;
+        let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *HAPTICS_SENDER.lock() = Some(data_sender);
@@ -742,7 +744,7 @@ async fn connection_pipeline() -> StrResult {
     }
 
     let input_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<Input, INPUT>().await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<Input>(INPUT).await?;
         async move {
             loop {
                 let input = receiver.recv().await?.header;
@@ -1044,9 +1046,11 @@ async fn connection_pipeline() -> StrResult {
         Ok(())
     };
 
+    let receive_loop = async move { stream_socket.receive_loop().await };
+
     tokio::select! {
         // Spawn new tasks and let the runtime manage threading
-        res = spawn_cancelable(stream_socket.receive_loop()) => {
+        res = spawn_cancelable(receive_loop) => {
             alvr_session::log_event(ServerEvent::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {}", e);

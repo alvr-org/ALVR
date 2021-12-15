@@ -1,7 +1,7 @@
 use super::StreamId;
 use crate::{Ldc, LOCAL_IP};
 use alvr_common::prelude::*;
-use bytes::{Bytes, BytesMut};
+use bytes::{Bytes, BytesMut, Buf};
 use futures::{
     stream::{SplitSink, SplitStream},
     StreamExt,
@@ -61,13 +61,13 @@ pub async fn receive_loop(
     packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
     while let Some(maybe_packet) = socket.inner.next().await {
-        let (packet_bytes, address) = trace_err!(maybe_packet)?;
+        let (mut packet_bytes, address) = trace_err!(maybe_packet)?;
 
         if address != socket.peer_addr {
             continue;
         }
 
-        let stream_id = packet_bytes[0];
+        let stream_id = packet_bytes.get_u8();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
             trace_err!(enqueuer.send(packet_bytes))?;
         }

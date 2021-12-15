@@ -28,10 +28,6 @@ use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
 // todo: when const_generics reaches stable, convert this to an enum
 pub type StreamId = u8;
-pub const INPUT: StreamId = 0; // tracking and buttons
-pub const HAPTICS: StreamId = 1;
-pub const AUDIO: StreamId = 2;
-pub const VIDEO: StreamId = 3;
 
 #[derive(Clone)]
 enum StreamSendSocket {
@@ -71,13 +67,13 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
-pub struct SenderBuffer<T, const ID: StreamId> {
+pub struct SenderBuffer<T> {
     inner: BytesMut,
     offset: usize,
     _phantom: PhantomData<T>,
 }
 
-impl<T, const ID: StreamId> SenderBuffer<T, ID> {
+impl<T> SenderBuffer<T> {
     // Get the editable part of the buffer (the header part is excluded). The returned buffer can
     // be grown at zero-cost until `preferred_max_buffer_size` (set with send_buffer()) is reached.
     // After that a reallocation will be needed but there will be no other side effects.
@@ -90,17 +86,18 @@ impl<T, const ID: StreamId> SenderBuffer<T, ID> {
     }
 }
 
-pub struct StreamSender<T, const ID: StreamId> {
+pub struct StreamSender<T> {
+    stream_id: StreamId,
     socket: StreamSendSocket,
     // if the packet index overflows the worst that happens is a false positive packet loss
     next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
-impl<T, const ID: StreamId> StreamSender<T, ID> {
+impl<T> StreamSender<T> {
     // The buffer is moved into the method. There is no way of reusing the same buffer twice without
     // extra copies/allocations
-    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T, ID>) -> StrResult {
+    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
         buffer.inner[1..5].copy_from_slice(&self.next_packet_index.to_be_bytes());
         self.next_packet_index += 1;
 
@@ -123,19 +120,19 @@ impl<T, const ID: StreamId> StreamSender<T, ID> {
     }
 }
 
-impl<T: Serialize, const ID: StreamId> StreamSender<T, ID> {
+impl<T: Serialize> StreamSender<T> {
     pub fn new_buffer(
         &self,
         header: &T,
         preferred_max_buffer_size: usize,
-    ) -> StrResult<SenderBuffer<T, ID>> {
+    ) -> StrResult<SenderBuffer<T>> {
         let header_size = trace_err!(bincode::serialized_size(header))?;
         // the first byte is for the stream ID
         let offset = 1 + header_size as usize;
 
         let mut buffer = BytesMut::with_capacity(offset + preferred_max_buffer_size);
 
-        buffer.put_u8(ID);
+        buffer.put_u8(self.stream_id);
 
         // make space for the packet index
         buffer.put_u32(0);
@@ -167,20 +164,18 @@ pub struct ReceivedPacket<T> {
     pub had_packet_loss: bool,
 }
 
-pub struct StreamReceiver<T, const ID: StreamId> {
+pub struct StreamReceiver<T> {
+    stream_id: StreamId,
     receiver: StreamReceiverType,
     next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
-impl<T: DeserializeOwned, const ID: StreamId> StreamReceiver<T, ID> {
+impl<T: DeserializeOwned> StreamReceiver<T> {
     pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
         let mut bytes = match &mut self.receiver {
             StreamReceiverType::Queue(receiver) => trace_none!(receiver.recv().await)?,
         };
-
-        // pop the stream ID
-        bytes.get_u8();
 
         let packet_index = bytes.get_u32();
         let had_packet_loss = packet_index != self.next_packet_index;
@@ -248,7 +243,7 @@ impl StreamSocketBuilder {
 
         Ok(StreamSocket {
             send_socket,
-            receive_socket,
+            receive_socket: Arc::new(Mutex::new(Some(receive_socket))),
             packet_queues: Arc::new(Mutex::new(HashMap::new())),
         })
     }
@@ -292,7 +287,7 @@ impl StreamSocketBuilder {
 
         Ok(StreamSocket {
             send_socket,
-            receive_socket,
+            receive_socket: Arc::new(Mutex::new(Some(receive_socket))),
             packet_queues: Arc::new(Mutex::new(HashMap::new())),
         })
     }
@@ -300,38 +295,45 @@ impl StreamSocketBuilder {
 
 pub struct StreamSocket {
     send_socket: StreamSendSocket,
-    receive_socket: StreamReceiveSocket,
+    receive_socket: Arc<Mutex<Option<StreamReceiveSocket>>>,
     packet_queues: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
 }
 
 impl StreamSocket {
-    pub async fn request_stream<T, const ID: StreamId>(&self) -> StrResult<StreamSender<T, ID>> {
+    pub async fn request_stream<T>(&self, stream_id: StreamId) -> StrResult<StreamSender<T>> {
         Ok(StreamSender {
+            stream_id,
             socket: self.send_socket.clone(),
             next_packet_index: 0,
             _phantom: PhantomData,
         })
     }
 
-    pub async fn subscribe_to_stream<T, const ID: StreamId>(
-        &mut self,
-    ) -> StrResult<StreamReceiver<T, ID>> {
+    pub async fn subscribe_to_stream<T>(
+        &self,
+        stream_id: StreamId,
+    ) -> StrResult<StreamReceiver<T>> {
         let (enqueuer, dequeuer) = mpsc::unbounded_channel();
-        self.packet_queues.lock().await.insert(ID, enqueuer);
+        self.packet_queues.lock().await.insert(stream_id, enqueuer);
 
         Ok(StreamReceiver {
+            stream_id,
             receiver: StreamReceiverType::Queue(dequeuer),
             next_packet_index: 0,
             _phantom: PhantomData,
         })
     }
 
-    pub async fn receive_loop(self) -> StrResult {
-        match self.receive_socket {
-            StreamReceiveSocket::Udp(socket) => udp::receive_loop(socket, self.packet_queues).await,
-            StreamReceiveSocket::Tcp(socket) => tcp::receive_loop(socket, self.packet_queues).await,
+    pub async fn receive_loop(&self) -> StrResult {
+        match self.receive_socket.lock().await.take().unwrap() {
+            StreamReceiveSocket::Udp(socket) => {
+                udp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
+            }
+            StreamReceiveSocket::Tcp(socket) => {
+                tcp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
+            }
             StreamReceiveSocket::ThrottledUdp(socket) => {
-                throttled_udp::receive_loop(socket, self.packet_queues).await
+                throttled_udp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
             }
         }
     }

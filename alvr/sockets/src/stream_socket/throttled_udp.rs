@@ -160,7 +160,7 @@ pub async fn receive_loop(
     while let Some(maybe_packet) = socket.next().await {
         let (mut packet_bytes, _) = trace_err!(maybe_packet)?;
 
-        let stream_id = packet_bytes.get_u8();
+        let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
             trace_err!(enqueuer.send(packet_bytes))?;
         }

@@ -27,7 +27,7 @@ use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
 // todo: when const_generics reaches stable, convert this to an enum
-pub type StreamId = u8;
+pub type StreamId = u16;
 
 #[derive(Clone)]
 enum StreamSendSocket {
@@ -98,7 +98,7 @@ impl<T> StreamSender<T> {
     // The buffer is moved into the method. There is no way of reusing the same buffer twice without
     // extra copies/allocations
     pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
-        buffer.inner[1..5].copy_from_slice(&self.next_packet_index.to_be_bytes());
+        buffer.inner[2..6].copy_from_slice(&self.next_packet_index.to_be_bytes());
         self.next_packet_index += 1;
 
         match &self.socket {
@@ -127,12 +127,12 @@ impl<T: Serialize> StreamSender<T> {
         preferred_max_buffer_size: usize,
     ) -> StrResult<SenderBuffer<T>> {
         let header_size = trace_err!(bincode::serialized_size(header))?;
-        // the first byte is for the stream ID
-        let offset = 1 + header_size as usize;
+        // the first two bytes are for the stream ID
+        let offset = 2 + 4 + header_size as usize;
 
         let mut buffer = BytesMut::with_capacity(offset + preferred_max_buffer_size);
 
-        buffer.put_u8(self.stream_id);
+        buffer.put_u16(self.stream_id);
 
         // make space for the packet index
         buffer.put_u32(0);

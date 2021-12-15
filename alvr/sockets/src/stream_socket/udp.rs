@@ -67,7 +67,7 @@ pub async fn receive_loop(
             continue;
         }
 
-        let stream_id = packet_bytes.get_u8();
+        let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
             trace_err!(enqueuer.send(packet_bytes))?;
         }

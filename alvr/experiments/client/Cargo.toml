@@ -37,8 +37,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 raw-window-handle = "0.4"
 rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
 rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "f42342bbbfd9d7ebd61745acccc0669fc0e064d2" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "f42342bbbfd9d7ebd61745acccc0669fc0e064d2" }
+wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu-hal = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
 # Miscellaneous
 ash = "0.33"
 openxr = { git = "https://github.com/Ralith/openxrs" }

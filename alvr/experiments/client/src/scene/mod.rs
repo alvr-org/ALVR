@@ -9,11 +9,11 @@ use alvr_common::{
 };
 use alvr_graphics::GraphicsContext;
 use rend3::{
-    types::{Camera, CameraProjection, MipmapCount, MipmapSource, Texture},
+    types::{Camera, CameraProjection, MipmapCount, MipmapSource, SampleCount, Texture},
     util::output::OutputFrame,
     ExtendedAdapterInfo, InstanceAdapterDevice, RenderGraph, RendererMode, Vendor,
 };
-use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SampleCount, SkyboxRoutine};
+use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SkyboxRoutine};
 use std::sync::Arc;
 use wgpu::{
     Backend, Color, CommandEncoderDescriptor, DeviceType, LoadOp, Operations,
@@ -53,6 +53,7 @@ impl Scene {
             None,
             None,
             Some(RendererMode::CPUPowered),
+            None,
         ))
         .unwrap();
 

@@ -6,7 +6,7 @@ use ndk::{
     media::image_reader::{ImageFormat, ImageReader},
 };
 use ndk_sys as sys;
-use raw_window_handle::{android::AndroidHandle, HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{AndroidNdkHandle, HasRawWindowHandle, RawWindowHandle};
 use std::{ffi::CString, ptr, sync::Arc, time::Duration};
 use wgpu::{
     CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture, TextureAspect,
@@ -17,10 +17,10 @@ pub struct SurfaceHandle(*mut sys::ANativeWindow);
 
 unsafe impl HasRawWindowHandle for SurfaceHandle {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        RawWindowHandle::Android(AndroidHandle {
-            a_native_window: self.0 as _,
-            ..AndroidHandle::empty()
-        })
+        let mut handle = AndroidNdkHandle::empty();
+        handle.a_native_window = self.0 as _;
+
+        RawWindowHandle::AndroidNdk(handle)
     }
 }
 

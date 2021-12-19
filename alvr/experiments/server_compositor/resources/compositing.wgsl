@@ -1,4 +1,3 @@
-[[block]]
 struct PushConstants {
     rect_offset: vec2<f32>;
     rect_extent: vec2<f32>;

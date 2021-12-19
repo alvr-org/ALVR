@@ -22,7 +22,7 @@ pub fn get_vulkan_instance_extensions(
         flags |= hal::InstanceFlags::DEBUG;
     }
 
-    trace_err!(<hal::api::Vulkan as hal::Api>::Instance::required_extensions(entry, version, flags))
+    trace_err!(<hal::api::Vulkan as hal::Api>::Instance::required_extensions(entry, flags))
 }
 
 // Create wgpu-compatible Vulkan instance. Corresponds to xrCreateVulkanInstanceKHR
@@ -207,6 +207,7 @@ impl GraphicsContext {
                 desc.raw_device.clone(),
                 handle_is_owned,
                 &device_extensions,
+                exposed_adapter.features,
                 hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
                 desc.queue_family_index,
                 desc.queue_index,

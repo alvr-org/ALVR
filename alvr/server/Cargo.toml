@@ -57,7 +57,7 @@ reqwest = "0.11"
 tokio-tungstenite = "0.16"
 tokio-util = { version = "0.6", features = ["codec"] }
 # Graphics
-wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "f42342bbbfd9d7ebd61745acccc0669fc0e064d2" }
 winit = "0.26" # needed to get the screen size
 # Browser interop
 tempfile = "3.2.0"

@@ -1,7 +1,7 @@
 use super::StreamId;
 use crate::{Ldc, LOCAL_IP};
 use alvr_common::prelude::*;
-use bytes::{Bytes, BytesMut, Buf};
+use bytes::{Buf, Bytes, BytesMut};
 use futures::{
     stream::{SplitSink, SplitStream},
     StreamExt,

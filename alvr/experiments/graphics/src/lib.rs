@@ -114,6 +114,7 @@ pub fn create_default_render_pipeline(
                 write_mask: ColorWrites::ALL,
             }],
         }),
+        multiview: None,
     });
 
     let bind_group_entries = bindings

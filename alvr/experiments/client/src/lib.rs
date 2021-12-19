@@ -1,5 +1,6 @@
 mod connection;
 mod scene;
+mod storage;
 mod streaming_compositor;
 mod video_decoder;
 mod xr;
@@ -13,7 +14,8 @@ use alvr_common::{
 };
 use alvr_graphics::GraphicsContext;
 use alvr_session::CodecType;
-use connection::VideoFrameMetadataPacket;
+use alvr_sockets::VideoFrameHeaderPacket;
+use connection::VideoStreamingComponents;
 use parking_lot::{Mutex, RwLock};
 use scene::Scene;
 use std::{
@@ -40,12 +42,6 @@ pub struct ViewConfig {
     orientation: Quat,
     position: Vec3,
     fov: Fov,
-}
-
-struct VideoStreamingComponents {
-    compositor: StreamingCompositor,
-    video_decoders: Vec<VideoDecoder>,
-    frame_metadata_receiver: crossbeam_channel::Receiver<VideoFrameMetadataPacket>,
 }
 
 #[cfg_attr(target_os = "android", ndk_glue::main)]
@@ -203,9 +199,10 @@ fn video_streaming_pipeline(
 
         streaming_components.compositor.render(&compositor_target);
 
-        presentation_guard.display_timestamp = frame_metadata.timestamp;
+        // presentation_guard.display_timestamp = frame_metadata.timestamp;
 
-        Some(frame_metadata.view_configs)
+        // Some(frame_metadata.view_configs)
+        None
     } else {
         None
     }
@@ -216,7 +213,7 @@ fn get_video_frame_data(
     streaming_components: &VideoStreamingComponents,
     decoder_target: &Texture,
     timeout: Duration,
-) -> Option<VideoFrameMetadataPacket> {
+) -> Option<VideoFrameHeaderPacket> {
     let mut frame_metadata = streaming_components
         .frame_metadata_receiver
         .recv_timeout(timeout)
@@ -232,29 +229,29 @@ fn get_video_frame_data(
         );
     }
 
-    let greatest_timestamp = decoder_timestamps
-        .iter()
-        .cloned()
-        .fold(frame_metadata.timestamp, Duration::max);
+    // let greatest_timestamp = decoder_timestamps
+    //     .iter()
+    //     .cloned()
+    //     .fold(frame_metadata.timestamp, Duration::max);
 
-    while frame_metadata.timestamp < greatest_timestamp {
-        frame_metadata = streaming_components
-            .frame_metadata_receiver
-            .recv_timeout(timeout)
-            .ok()?;
-    }
+    // while frame_metadata.timestamp < greatest_timestamp {
+    //     frame_metadata = streaming_components
+    //         .frame_metadata_receiver
+    //         .recv_timeout(timeout)
+    //         .ok()?;
+    // }
 
-    for (mut timestamp, decoder) in decoder_timestamps
-        .into_iter()
-        .zip(streaming_components.video_decoders.iter())
-    {
-        while timestamp < greatest_timestamp {
-            timestamp = decoder
-                .get_output_frame(decoder_target, 0, timeout)
-                .ok()
-                .flatten()?;
-        }
-    }
+    // for (mut timestamp, decoder) in decoder_timestamps
+    //     .into_iter()
+    //     .zip(streaming_components.video_decoders.iter())
+    // {
+    //     while timestamp < greatest_timestamp {
+    //         timestamp = decoder
+    //             .get_output_frame(decoder_target, 0, timeout)
+    //             .ok()
+    //             .flatten()?;
+    //     }
+    // }
 
     Some(frame_metadata)
 }

@@ -21,7 +21,7 @@ alvr_common = { path = "../common" }
 alvr_filesystem = { path = "../filesystem" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
-alvr_gui = { path = "../experiments/gui" }
+# alvr_gui = { path = "../experiments/gui" }
 settings-schema = { path = "../settings-schema", features = [
     "rename_camel_case",
 ] }
@@ -57,7 +57,7 @@ reqwest = "0.11"
 tokio-tungstenite = "0.16"
 tokio-util = { version = "0.6", features = ["codec"] }
 # Graphics
-wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
+wgpu = "0.12"
 winit = "0.26" # needed to get the screen size
 # Browser interop
 tempfile = "3.2.0"
@@ -66,7 +66,7 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 fern = "0.6"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
-rhai = "1"
+rhai = { version = "1", features = ["serde", "f32_float"] }
 
 [build-dependencies]
 bindgen = "0.59"

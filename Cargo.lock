@@ -168,7 +168,7 @@ name = "alvr_common"
 version = "16.0.0"
 dependencies = [
  "backtrace",
- "glam 0.20.1",
+ "glam 0.20.2",
  "lazy_static",
  "log",
  "msgbox",
@@ -195,8 +195,8 @@ dependencies = [
  "ash",
  "bytemuck",
  "openxr-sys 0.9.0 (git+https://github.com/Ralith/openxrs)",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-hal 0.11.2 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.12.0",
+ "wgpu-hal 0.12.0",
 ]
 
 [[package]]
@@ -277,7 +277,6 @@ dependencies = [
  "alvr_commands",
  "alvr_common",
  "alvr_filesystem",
- "alvr_gui",
  "alvr_session",
  "alvr_sockets",
  "bincode",
@@ -303,7 +302,7 @@ dependencies = [
  "tokio-util",
  "walkdir",
  "webbrowser",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.12.0",
  "winit 0.26.0",
 ]
 
@@ -838,14 +837,12 @@ dependencies = [
  "pollster",
  "rand",
  "raw-window-handle 0.4.2",
- "rend3",
- "rend3-routine",
  "serde",
  "serde_json",
  "settings-schema",
  "tokio",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-hal 0.11.2 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.12.0",
+ "wgpu-hal 0.12.0",
 ]
 
 [[package]]
@@ -1697,19 +1694,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "flume"
-version = "0.10.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24c3fd473b3a903a62609e413ed7538f99e10b665ecb502b5e481a95283f8ab4"
-dependencies = [
- "futures-core",
- "futures-sink",
- "nanorand",
- "pin-project",
- "spin 0.9.2",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2004,10 +1988,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
- "js-sys",
  "libc",
  "wasi",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -2071,11 +2053,10 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.20.1"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68270e16582ea40f9c5b2fcd588fbc9cb696577222e04a64d9085cc314806a8a"
+checksum = "e4fa84eead97d5412b2a20aed4d66612a97a9e41e08eababdb9ae2bf88667490"
 dependencies = [
- "bytemuck",
  "serde",
 ]
 
@@ -2135,17 +2116,6 @@ name = "glow"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c07210904884e8e2e6a2d7f36f39040a9cefe3b379b721969b5275e9f5b464a"
-dependencies = [
- "js-sys",
- "slotmap",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "glow"
-version = "0.11.1"
-source = "git+https://github.com/grovesNL/glow?rev=5851ca6#5851ca65e6b6f4f2c59683245c07de1843c85452"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -2584,7 +2554,7 @@ dependencies = [
  "kamadak-exif",
  "log",
  "raw-window-handle 0.3.4",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.11.1",
  "wgpu_glyph",
 ]
 
@@ -2635,25 +2605,6 @@ dependencies = [
  "num-rational 0.3.2",
  "num-traits",
  "png",
-]
-
-[[package]]
-name = "include_dir"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "482a2e29200b7eed25d7fdbd14423326760b7f6658d21a4cf12d55a50713c69f"
-dependencies = [
- "include_dir_macros",
-]
-
-[[package]]
-name = "include_dir_macros"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e074c19deab2501407c91ba1860fa3d6820bfde307db6d8cb851b55a10be89b"
-dependencies = [
- "proc-macro2",
- "quote",
 ]
 
 [[package]]
@@ -2884,12 +2835,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
-name = "list-any"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb6e1a111fcefd9e4d7bbd27741b6922d4689e5b765787668c369daa4ae9c11c"
-
-[[package]]
 name = "locale_config"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3096,23 +3041,6 @@ checksum = "16cf681a23b4d0a43fc35024c176437f9dcd818db34e0f42ab456a0ee5ad497b"
 
 [[package]]
 name = "naga"
-version = "0.7.1"
-source = "git+https://github.com/gfx-rs/naga?rev=8ffd6ba#8ffd6ba929b4b93c9564f08fe8bb34b23fa72a6f"
-dependencies = [
- "bit-set",
- "bitflags",
- "codespan-reporting",
- "hexf-parse",
- "indexmap",
- "log",
- "num-traits",
- "rustc-hash",
- "spirv",
- "thiserror",
-]
-
-[[package]]
-name = "naga"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "806f448a7ce662ca79ef5484ef8f451a9b7c51b8166c95f5a667228b3825a6ca"
@@ -3125,18 +3053,27 @@ dependencies = [
  "indexmap",
  "log",
  "num-traits",
- "petgraph",
  "spirv",
  "thiserror",
 ]
 
 [[package]]
-name = "nanorand"
-version = "0.6.1"
+name = "naga"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "729eb334247daa1803e0a094d0a5c55711b85571179f5ec6e53eccfdf7008958"
+checksum = "bc7216bec6be822a562dda435236539c7fb5aa5e5ceecc8c565e81139ed1d4b0"
 dependencies = [
- "getrandom",
+ "bit-set",
+ "bitflags",
+ "codespan-reporting",
+ "hexf-parse",
+ "indexmap",
+ "log",
+ "num-traits",
+ "petgraph",
+ "rustc-hash",
+ "spirv",
+ "thiserror",
 ]
 
 [[package]]
@@ -3473,9 +3410,9 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.13.0"
+version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
+checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
 dependencies = [
  "hermit-abi",
  "libc",
@@ -3909,26 +3846,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pin-project"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "576bc800220cc65dac09e99e97b08b358cfab6e17078de8dc5fee223bd2d0c08"
-dependencies = [
- "pin-project-internal",
-]
-
-[[package]]
-name = "pin-project-internal"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e8fe8163d14ce7f0cdac2e040116f22eac817edabff0be91e8aff7e9accf389"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4210,64 +4127,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rend3"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=fee231028b95c9a050058b7e314ff1709a9f9eb9#fee231028b95c9a050058b7e314ff1709a9f9eb9"
-dependencies = [
- "arrayvec 0.7.2",
- "bitflags",
- "bumpalo 3.8.0",
- "bytemuck",
- "flume",
- "glam 0.20.1",
- "indexmap",
- "list-any",
- "log",
- "num-traits",
- "parking_lot",
- "profiling",
- "range-alloc",
- "rend3-types",
- "rustc-hash",
- "smallvec",
- "smartstring",
- "thiserror",
- "wgpu 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
- "wgpu-profiler",
-]
-
-[[package]]
-name = "rend3-routine"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=fee231028b95c9a050058b7e314ff1709a9f9eb9#fee231028b95c9a050058b7e314ff1709a9f9eb9"
-dependencies = [
- "arrayvec 0.7.2",
- "bitflags",
- "bytemuck",
- "flume",
- "glam 0.20.1",
- "include_dir",
- "log",
- "ordered-float",
- "parking_lot",
- "profiling",
- "rend3",
- "wgpu 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
- "wgpu-profiler",
-]
-
-[[package]]
-name = "rend3-types"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=fee231028b95c9a050058b7e314ff1709a9f9eb9#fee231028b95c9a050058b7e314ff1709a9f9eb9"
-dependencies = [
- "bitflags",
- "glam 0.20.1",
- "thiserror",
- "wgpu-types 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
-]
-
-[[package]]
 name = "renderdoc-sys"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4296,9 +4155,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.7"
+version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07bea77bc708afa10e59905c3d4af7c8fd43c9214251673095ff8b14345fcbc5"
+checksum = "7c4e0a76dc12a116108933f6301b95e83634e0c47b0afbed6abbaa0601e99258"
 dependencies = [
  "base64",
  "bytes",
@@ -4364,7 +4223,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin 0.5.2",
+ "spin",
  "untrusted",
  "web-sys",
  "winapi",
@@ -4608,8 +4467,8 @@ dependencies = [
  "env_logger 0.9.0",
  "openxr-sys 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pollster",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-hal 0.11.2 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.12.0",
+ "wgpu-hal 0.12.0",
  "winit 0.26.0",
 ]
 
@@ -4802,15 +4661,6 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
-name = "spin"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
-dependencies = [
- "lock_api",
-]
 
 [[package]]
 name = "spinning"
@@ -5714,48 +5564,50 @@ checksum = "d8b77fdfd5a253be4ab714e4ffa3c49caf146b4de743e97510c0656cf90f1e8e"
 
 [[package]]
 name = "wgpu"
-version = "0.11.0"
-source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eae7181fe6ba5f4b632a9079cc9e922a64555156c87def72c063f94b180c7d68"
 dependencies = [
  "arrayvec 0.7.2",
  "js-sys",
  "log",
- "naga 0.7.3",
  "parking_lot",
  "raw-window-handle 0.3.4",
  "smallvec",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-hal 0.11.2 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-types 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu-core 0.11.3",
+ "wgpu-hal 0.11.5",
+ "wgpu-types 0.11.0",
 ]
 
 [[package]]
 name = "wgpu"
-version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2#f42342bbbfd9d7ebd61745acccc0669fc0e064d2"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b97cd781ff044d6d697b632a2e212032c2e957d1afaa21dbf58069cbb8f78567"
 dependencies = [
  "arrayvec 0.7.2",
  "js-sys",
  "log",
- "naga 0.7.1",
+ "naga 0.8.0",
  "parking_lot",
  "raw-window-handle 0.4.2",
  "smallvec",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
- "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
- "wgpu-types 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
+ "wgpu-core 0.12.0",
+ "wgpu-hal 0.12.0",
+ "wgpu-types 0.12.0",
 ]
 
 [[package]]
 name = "wgpu-core"
-version = "0.11.0"
-source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
+version = "0.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35600627b6c718ad0e23ed75fb6140bfe32cdf21c8f539ce3c9ab8180e2cb38e"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -5769,14 +5621,15 @@ dependencies = [
  "raw-window-handle 0.3.4",
  "smallvec",
  "thiserror",
- "wgpu-hal 0.11.2 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
- "wgpu-types 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu-hal 0.11.5",
+ "wgpu-types 0.11.0",
 ]
 
 [[package]]
 name = "wgpu-core"
-version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2#f42342bbbfd9d7ebd61745acccc0669fc0e064d2"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "659a371d93a66fd0c15f0a5a730d0877416c82e0c539fd46741673a49f02afad"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -5785,20 +5638,21 @@ dependencies = [
  "copyless",
  "fxhash",
  "log",
- "naga 0.7.1",
+ "naga 0.8.0",
  "parking_lot",
  "profiling",
  "raw-window-handle 0.4.2",
  "smallvec",
  "thiserror",
- "wgpu-hal 0.11.2 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
- "wgpu-types 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
+ "wgpu-hal 0.12.0",
+ "wgpu-types 0.12.0",
 ]
 
 [[package]]
 name = "wgpu-hal"
-version = "0.11.2"
-source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af28b29ef0b44cd22dd9895d4349b9d5a687df42f58da234871198637eabe328"
 dependencies = [
  "arrayvec 0.7.2",
  "ash",
@@ -5809,7 +5663,7 @@ dependencies = [
  "d3d12",
  "foreign-types",
  "fxhash",
- "glow 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glow",
  "gpu-alloc",
  "gpu-descriptor",
  "inplace_it",
@@ -5828,14 +5682,15 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu-types 0.11.0",
  "winapi",
 ]
 
 [[package]]
 name = "wgpu-hal"
-version = "0.11.2"
-source = "git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2#f42342bbbfd9d7ebd61745acccc0669fc0e064d2"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1abbd51f4f3d61db9c02dd776f643437823b6fa85e8642b4bb6d278b74335fc1"
 dependencies = [
  "arrayvec 0.7.2",
  "ash",
@@ -5846,7 +5701,7 @@ dependencies = [
  "d3d12",
  "foreign-types",
  "fxhash",
- "glow 0.11.1 (git+https://github.com/grovesNL/glow?rev=5851ca6)",
+ "glow",
  "gpu-alloc",
  "gpu-descriptor",
  "inplace_it",
@@ -5855,7 +5710,7 @@ dependencies = [
  "libloading",
  "log",
  "metal",
- "naga 0.7.1",
+ "naga 0.8.0",
  "objc",
  "parking_lot",
  "profiling",
@@ -5865,32 +5720,24 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types 0.11.0 (git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2)",
+ "wgpu-types 0.12.0",
  "winapi",
-]
-
-[[package]]
-name = "wgpu-profiler"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bbb9608f7c1717777bb33209895624c15d656196083d112b539eab0560f9003"
-dependencies = [
- "futures-lite",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
 ]
 
 [[package]]
 name = "wgpu-types"
 version = "0.11.0"
-source = "git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51#c9fe5819c1f07782dceae80d0306abf0f6e2de51"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e15e44ba88ec415466e18e91881319e7c9e96cb905dc623305168aea65b85ccc"
 dependencies = [
  "bitflags",
 ]
 
 [[package]]
 name = "wgpu-types"
-version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu.git?rev=f42342bbbfd9d7ebd61745acccc0669fc0e064d2#f42342bbbfd9d7ebd61745acccc0669fc0e064d2"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "549533d9e1cdd4b4cda7718d33ff500fc4c34b5467b71d76b547ae0324f3b2a2"
 dependencies = [
  "bitflags",
 ]
@@ -5904,7 +5751,7 @@ dependencies = [
  "bytemuck",
  "glyph_brush",
  "log",
- "wgpu 0.11.0 (git+https://github.com/zarik5/wgpu?rev=c9fe5819c1f07782dceae80d0306abf0f6e2de51)",
+ "wgpu 0.11.1",
 ]
 
 [[package]]

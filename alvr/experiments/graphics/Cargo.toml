@@ -13,9 +13,5 @@ alvr_session = { path = "../../session" }
 ash = "0.33"
 bytemuck = "1"
 openxr-sys = { git = "https://github.com/Ralith/openxrs" }
-wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51", features = [
-    "spirv",
-] }
-wgpu-hal = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51", features = [
-    "vulkan",
-] }
+wgpu = { version = "0.12", features = ["spirv"] }
+wgpu-hal = { version = "0.12", features = ["vulkan"] }

@@ -21,7 +21,4 @@ members = [
 ]
 
 [patch.crates-io]
-wgpu = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
-wgpu-hal = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
-wgpu-types = { git = "https://github.com/zarik5/wgpu", rev = "c9fe5819c1f07782dceae80d0306abf0f6e2de51" }
 ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }

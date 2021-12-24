@@ -7,12 +7,11 @@ assignees: ''
 
 ---
 
-Note: If the bug affects multiple games, please open an issue for each game with the game in the title.
+<!-- Note: If the bug affects multiple games, please open an issue for each game with the game in the title. -->
 
-# Bug Reports
 
 ## Description
-Please replace this line with a brief summary of your issue
+<!-- Please add a brief summary of your issue -->
 
 ## General Troubleshooting
 - [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and successfully completed the setup wizard
@@ -41,5 +40,5 @@ Please replace this line with a brief summary of your issue
 
 **OS Name and Version** (`winver` on Windows or `grep PRETTY_NAME /etc/os-release` on most Linux distributions):
 
-# Feature Requests
-The quickest way to get a new feature is to file a pull request; these will be considered, but may be closed if they're something we're not actively planning to work on.
+<!-- Feature Requests
+The quickest way to get a new feature is to file a pull request; these will be considered, but may be closed if they're something we're not actively planning to work on. -->

@@ -2,6 +2,10 @@ pub mod convert;
 pub mod foveated_rendering;
 pub mod slicing;
 
+pub use ash;
+pub use wgpu;
+pub use wgpu_hal;
+
 use ash::vk;
 use std::{num::NonZeroU32, sync::Arc};
 use wgpu::{

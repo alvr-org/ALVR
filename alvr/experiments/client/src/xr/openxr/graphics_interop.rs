@@ -1,18 +1,20 @@
 use super::{OpenxrSwapchain, XrContext};
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
+    ash::{
+        self,
+        vk::{self, Handle},
+    },
     convert::{
         self, GraphicsContextVulkanInitDesc, SwapchainCreateData, SwapchainCreateInfo, TextureType,
         TARGET_VULKAN_VERSION,
     },
-    GraphicsContext,
+    wgpu::{Device, TextureFormat, TextureViewDescriptor},
+    wgpu_hal as hal, GraphicsContext,
 };
-use ash::vk::{self, Handle};
 use openxr as xr;
 use parking_lot::Mutex;
 use std::{ffi::CStr, mem, sync::Arc};
-use wgpu::{Device, TextureFormat, TextureViewDescriptor};
-use wgpu_hal as hal;
 
 pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
     let entry = unsafe { ash::Entry::new().unwrap() };

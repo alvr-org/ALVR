@@ -1,13 +1,13 @@
 use alvr_common::glam::UVec2;
 use alvr_graphics::{
     slicing::{AlignmentDirection, SlicingPass},
+    wgpu::{
+        Color, CommandEncoder, CommandEncoderDescriptor, RenderPassDescriptor, Texture, TextureView,
+    },
     GraphicsContext,
 };
 use alvr_session::FoveatedRenderingDesc;
 use std::sync::Arc;
-use wgpu::{
-    Color, CommandEncoder, CommandEncoderDescriptor, RenderPassDescriptor, Texture, TextureView,
-};
 
 // Responsible for manipulating the decoded frames
 pub struct StreamingCompositor {

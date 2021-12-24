@@ -49,7 +49,7 @@ pub async fn announce_client_loop(
                     if let Ok(HandshakePacket::Server(handshake_packet)) =
                         bincode::deserialize(&server_response_buffer[..packet_size])
                     {
-                        warn!("received packet {:?}", &handshake_packet);
+                        error!("received packet {:?}", &handshake_packet);
                         break Ok(ConnectionError::ServerMessage(handshake_packet));
                     }
                 }
@@ -59,7 +59,7 @@ pub async fn announce_client_loop(
         tokio::select! {
             res = receive_response_loop => break res,
             _ = time::sleep(CLIENT_HANDSHAKE_RESEND_INTERVAL) => {
-                warn!("Server not found, resending handhake packet");
+                error!("Server not found, resending handhake packet");
             }
         }
     }

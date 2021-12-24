@@ -194,7 +194,7 @@ dependencies = [
  "alvr_session",
  "ash",
  "bytemuck",
- "openxr-sys 0.9.0 (git+https://github.com/Ralith/openxrs)",
+ "openxr-sys",
  "wgpu 0.12.0",
  "wgpu-hal 0.12.0",
 ]
@@ -822,7 +822,6 @@ dependencies = [
  "alvr_graphics",
  "alvr_session",
  "alvr_sockets",
- "ash",
  "bincode",
  "bytes",
  "crossbeam-channel",
@@ -841,8 +840,6 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio",
- "wgpu 0.12.0",
- "wgpu-hal 0.12.0",
 ]
 
 [[package]]
@@ -3582,31 +3579,22 @@ dependencies = [
 
 [[package]]
 name = "openxr"
-version = "0.15.4"
-source = "git+https://github.com/Ralith/openxrs#bd469584afa82f12da18ff0c55218cbcdf47eeea"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20f6841f792057e89474dcc6b77fe45ed5687908e97cffda115d1152a2da1dc6"
 dependencies = [
  "libc",
  "libloading",
  "ndk-glue 0.5.0",
- "openxr-sys 0.9.0 (git+https://github.com/Ralith/openxrs)",
+ "openxr-sys",
  "winapi",
 ]
 
 [[package]]
 name = "openxr-sys"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c60b9787f1e4949f5597f8f8ad9da19a86f2461dc033ac00642ecbdfa4eaa73"
-dependencies = [
- "jni",
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "openxr-sys"
-version = "0.9.0"
-source = "git+https://github.com/Ralith/openxrs#bd469584afa82f12da18ff0c55218cbcdf47eeea"
+checksum = "5f2705ce9c69c69d73523fd1ca3059526a51f6c336b5605286fad5a71d95ffc2"
 dependencies = [
  "jni",
  "libc",
@@ -4462,13 +4450,10 @@ dependencies = [
  "alvr_common",
  "alvr_graphics",
  "alvr_session",
- "ash",
  "bytemuck",
  "env_logger 0.9.0",
- "openxr-sys 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openxr-sys",
  "pollster",
- "wgpu 0.12.0",
- "wgpu-hal 0.12.0",
  "winit 0.26.0",
 ]
 

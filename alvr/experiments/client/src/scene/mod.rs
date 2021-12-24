@@ -7,7 +7,13 @@ use alvr_common::{
     log,
     prelude::*,
 };
-use alvr_graphics::GraphicsContext;
+use alvr_graphics::{
+    wgpu::{
+        Backend, Color, CommandEncoderDescriptor, DeviceType, LoadOp, Operations,
+        RenderPassColorAttachment, RenderPassDescriptor, TextureFormat, TextureView,
+    },
+    GraphicsContext,
+};
 // use rend3::{
 //     types::{Camera, CameraProjection, MipmapCount, MipmapSource, SampleCount, Texture},
 //     util::output::OutputFrame,
@@ -15,10 +21,6 @@ use alvr_graphics::GraphicsContext;
 // };
 // use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SkyboxRoutine};
 use std::sync::Arc;
-use wgpu::{
-    Backend, Color, CommandEncoderDescriptor, DeviceType, LoadOp, Operations,
-    RenderPassColorAttachment, RenderPassDescriptor, TextureFormat, TextureView,
-};
 
 const NEAR_PLANE_M: f32 = 0.01;
 
@@ -124,28 +126,32 @@ impl Scene {
         output: Arc<TextureView>,
         output_resolution: UVec2,
     ) {
-        if self.should_render_lobby {
-            let mut encoder = self
-                .graphics_context
-                .device
-                .create_command_encoder(&CommandEncoderDescriptor::default());
+        let mut encoder = self
+            .graphics_context
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor::default());
 
-            {
-                let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-                    color_attachments: &[RenderPassColorAttachment {
-                        view: &output,
-                        resolve_target: None,
-                        ops: Operations {
-                            load: LoadOp::Clear(Color::RED),
-                            store: true,
-                        },
-                    }],
-                    ..Default::default()
-                });
-            }
+        {
+            let clear_color = if self.should_render_lobby {
+                Color::RED
+            } else {
+                Color::TRANSPARENT // let the stream pass through
+            };
 
-            self.graphics_context.queue.submit(Some(encoder.finish()));
+            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                color_attachments: &[RenderPassColorAttachment {
+                    view: &output,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(clear_color),
+                        store: true,
+                    },
+                }],
+                ..Default::default()
+            });
         }
+
+        self.graphics_context.queue.submit(Some(encoder.finish()));
 
         // self.renderer
         //     .set_aspect_ratio(output_resolution.x as f32 / output_resolution.y as f32);

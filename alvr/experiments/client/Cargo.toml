@@ -37,11 +37,8 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 raw-window-handle = "0.4"
 # rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
 # rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
-wgpu = "0.12"
-wgpu-hal = "0.12"
 # Miscellaneous
-ash = "0.33"
-openxr = { git = "https://github.com/Ralith/openxrs" }
+openxr = "0.15.5"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19"
@@ -64,6 +61,10 @@ target_sdk_version = 28
 compile_sdk_version = 28
 
 [[package.metadata.android.uses_feature]]
+name = "android.hardware.microphone"
+required = true
+
+[[package.metadata.android.uses_feature]]
 name = "android.hardware.vr.headtracking"
 required = true
 
@@ -74,24 +75,32 @@ required = true
 
 [[package.metadata.android.uses_feature]]
 name = "android.hardware.vulkan.level"
-version = 0
+version = 1
 required = true
 
-[[package.metadata.android.uses_permission]]
+[[package.metadata.android.uses_feature]]
 name = "android.hardware.vulkan.version"
 version = 0x00401000
 required = true
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.RECORD_AUDIO"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+
+[package.metadata.android.application]
+debuggable = true
+theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
 
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.supportedDevices"
 value = "all"
 
 [package.metadata.android.application.activity]
-theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
 config_changes = "density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
 launch_mode = "singleTask"
 orientation = "landscape"
-resizeable_activity = "false"
 
 [[package.metadata.android.application.activity.intent_filter]]
 actions = ["android.intent.action.MAIN"]

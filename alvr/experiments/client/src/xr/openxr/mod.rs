@@ -13,9 +13,8 @@ use alvr_common::{
     prelude::*,
     Fov, MotionData,
 };
-use alvr_graphics::GraphicsContext;
+use alvr_graphics::{ash::vk::Handle, wgpu::TextureView, GraphicsContext};
 use alvr_session::TrackingSpace;
-use ash::vk::Handle;
 use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
 use std::{
@@ -27,7 +26,6 @@ use std::{
     thread,
     time::Duration,
 };
-use wgpu::TextureView;
 
 pub struct XrContext {
     pub instance: xr::Instance,

@@ -87,14 +87,14 @@ dependencies = [
 
 [[package]]
 name = "alsa"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75c4da790adcb2ce5e758c064b4f3ec17a30349f9961d3e5e6c9688b052a9e18"
+checksum = "5915f52fe2cf65e83924d037b6c5290b7cee097c6b5c8700746e6168a343fd6b"
 dependencies = [
  "alsa-sys",
  "bitflags",
  "libc",
- "nix 0.20.0",
+ "nix 0.23.1",
 ]
 
 [[package]]
@@ -385,9 +385,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.51"
+version = "1.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b26702f315f53b6071259e15dd9d64528213b44d61de1ec926eca7715d62203"
+checksum = "84450d0b4a8bd1ba4144ce8ce718fbc5d071358b1e5384bace6536b3d1f2d5b3"
 
 [[package]]
 name = "approx"
@@ -1096,8 +1096,7 @@ dependencies = [
 [[package]]
 name = "cpal"
 version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98f45f0a21f617cd2c788889ef710b63f075c949259593ea09c826f1e47a2418"
+source = "git+https://github.com/zarik5/cpal#b86d2fa6d964a79f414068810bfcb501a2e723ed"
 dependencies = [
  "alsa",
  "core-foundation-sys 0.8.3",
@@ -1107,9 +1106,9 @@ dependencies = [
  "lazy_static",
  "libc",
  "mach",
- "ndk 0.3.0",
- "ndk-glue 0.3.0",
- "nix 0.20.0",
+ "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-glue 0.5.0",
+ "nix 0.23.1",
  "oboe",
  "parking_lot",
  "stdweb 0.1.3",
@@ -1618,6 +1617,18 @@ name = "fixedbitset"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
+
+[[package]]
+name = "flate2"
+version = "1.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e6988e897c1c9c485f43b47a529cef42fde0547f9d8d41a7062518f1d8fc53f"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crc32fast",
+ "libc",
+ "miniz_oxide 0.4.4",
+]
 
 [[package]]
 name = "float-ord"
@@ -3105,19 +3116,6 @@ dependencies = [
 
 [[package]]
 name = "ndk"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d64d6af06fde0e527b1ba5c7b79a6cc89cfc46325b0b2887dffe8f70197e0c3c"
-dependencies = [
- "bitflags",
- "jni-sys",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "num_enum",
- "thiserror",
-]
-
-[[package]]
-name = "ndk"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96d868f654c72e75f8687572699cdabe755f03effbb62542768e995d5b8d699d"
@@ -3157,29 +3155,16 @@ dependencies = [
 
 [[package]]
 name = "ndk-glue"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3e9e94628f24e7a3cb5b96a2dc5683acd9230bf11991c2a1677b87695138420"
-dependencies = [
- "lazy_static",
- "libc",
- "log",
- "ndk 0.4.0",
- "ndk-macro 0.2.0",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "ndk-glue"
 version = "0.5.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#240389f1e281f582b84a8049e2afaa8677d901c2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc291b8de2095cba8dab7cf381bf582ff4c17a09acf854c32e46545b08085d28"
 dependencies = [
  "lazy_static",
  "libc",
  "log",
- "ndk 0.5.0 (git+https://github.com/rust-windowing/android-ndk-rs)",
+ "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndk-macro 0.3.0",
- "ndk-sys 0.2.2 (git+https://github.com/rust-windowing/android-ndk-rs)",
+ "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3198,7 +3183,8 @@ dependencies = [
 [[package]]
 name = "ndk-macro"
 version = "0.3.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#240389f1e281f582b84a8049e2afaa8677d901c2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0df7ac00c4672f9d5aece54ee3347520b7e20f158656c7db2e6de01902eb7a6c"
 dependencies = [
  "darling 0.13.1",
  "proc-macro-crate 1.1.0",
@@ -3494,12 +3480,11 @@ dependencies = [
 [[package]]
 name = "oboe"
 version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e15e22bc67e047fe342a32ecba55f555e3be6166b04dd157cd0f803dfa9f48e1"
+source = "git+https://github.com/zarik5/oboe-rs#5a4636e2fc936b5ee4b144514ba3a98c0e212e47"
 dependencies = [
  "jni",
- "ndk 0.4.0",
- "ndk-glue 0.4.0",
+ "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-glue 0.5.0",
  "num-derive",
  "num-traits",
  "oboe-sys",
@@ -3508,8 +3493,7 @@ dependencies = [
 [[package]]
 name = "oboe-sys"
 version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "338142ae5ab0aaedc8275aa8f67f460e43ae0fca76a695a742d56da0a269eadc"
+source = "git+https://github.com/zarik5/oboe-rs#5a4636e2fc936b5ee4b144514ba3a98c0e212e47"
 dependencies = [
  "cc",
 ]
@@ -4792,9 +4776,9 @@ checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
 
 [[package]]
 name = "syn"
-version = "1.0.82"
+version = "1.0.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8daf5dd0bb60cbd4137b1b587d2fc0ae729bc07cf01cd70b36a1ed5ade3b9d59"
+checksum = "23a1dfb999630e338648c83e91c59a4e9fb7620f520c3194b6b89e276f2f1959"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5260,12 +5244,13 @@ checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "ureq"
-version = "2.3.1"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5c448dcb78ec38c7d59ec61f87f70a98ea19171e06c139357e012ee226fec90"
+checksum = "9399fa2f927a3d327187cbd201480cee55bee6ac5d3c77dd27f0c6814cff16d5"
 dependencies = [
  "base64",
  "chunked_transfer",
+ "flate2",
  "log",
  "once_cell",
  "rustls",

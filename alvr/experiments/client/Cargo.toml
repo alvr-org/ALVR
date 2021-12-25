@@ -47,9 +47,8 @@ ndk = { git = "https://github.com/rust-windowing/android-ndk-rs", features = [
     "hardware_buffer",
     "api-level-24",
 ] }
-ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }
+ndk-glue = "0.5"
 ndk-sys = { git = "https://github.com/rust-windowing/android-ndk-rs" }
-
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

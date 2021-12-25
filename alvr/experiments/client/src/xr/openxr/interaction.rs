@@ -125,20 +125,32 @@ impl OpenxrInteractionContext {
         stream_profile_descs: Vec<XrProfileDesc>,
         reference_space_type: TrackingSpace,
     ) -> StrResult<Self> {
-        let action_set = xr_context
-            .instance
-            .create_action_set("alvr_bindings", "ALVR bindings", 0)
-            .unwrap();
+        let action_set =
+            trace_err!(xr_context
+                .instance
+                .create_action_set("alvr_bindings", "ALVR bindings", 0))?;
 
-        let scene_select_action =
-            trace_err!(action_set.create_action(SELECT_ACTION_NAME, SELECT_ACTION_NAME, &[]))?;
-        let scene_menu_action =
-            trace_err!(action_set.create_action(MENU_ACTION_NAME, MENU_ACTION_NAME, &[]))?;
+        let mut button_actions = HashMap::new();
+        button_actions.insert(
+            SELECT_ACTION_NAME.to_owned(),
+            OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
+                SELECT_ACTION_NAME,
+                SELECT_ACTION_NAME,
+                &[]
+            ))?),
+        );
+        button_actions.insert(
+            MENU_ACTION_NAME.to_owned(),
+            OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
+                MENU_ACTION_NAME,
+                MENU_ACTION_NAME,
+                &[]
+            ))?),
+        );
 
-        let mut streaming_button_actions = HashMap::new();
         for (name, action_type) in stream_action_types {
             match action_type {
-                XrActionType::Binary => streaming_button_actions.insert(
+                XrActionType::Binary => button_actions.insert(
                     name.clone(),
                     OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
                         name,
@@ -146,7 +158,7 @@ impl OpenxrInteractionContext {
                         &[]
                     ))?),
                 ),
-                XrActionType::Scalar => streaming_button_actions.insert(
+                XrActionType::Scalar => button_actions.insert(
                     name.clone(),
                     OpenxrButtonAction::Scalar(trace_err!(action_set.create_action(
                         name,
@@ -209,7 +221,11 @@ impl OpenxrInteractionContext {
             let mut bindings = vec![];
 
             for (action_name, path_string) in &profile.button_bindings {
-                let action = trace_none!(streaming_button_actions.get(action_name))?;
+                let action = if let Some(res) = button_actions.get(action_name) {
+                    res
+                } else {
+                    return fmt_e!("Action {} not defined", action_name);
+                };
                 let path = trace_err!(xr_context.instance.string_to_path(path_string))?;
 
                 match action {
@@ -286,12 +302,21 @@ impl OpenxrInteractionContext {
         let reference_space =
             trace_err!(session.create_reference_space(reference_space_type, xr::Posef::IDENTITY))?;
 
+        let scene_select_action = match button_actions.remove(SELECT_ACTION_NAME).unwrap() {
+            OpenxrButtonAction::Binary(action) => action,
+            _ => unreachable!(),
+        };
+        let scene_menu_action = match button_actions.remove(MENU_ACTION_NAME).unwrap() {
+            OpenxrButtonAction::Binary(action) => action,
+            _ => unreachable!(),
+        };
+
         Ok(Self {
             session,
             action_set,
             scene_select_action,
             scene_menu_action,
-            streaming_button_actions,
+            streaming_button_actions: button_actions,
             reference_space_type,
             reference_space,
             left_hand_interaction,

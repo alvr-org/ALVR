@@ -153,7 +153,7 @@ pub fn create_swapchain(
                 .map(|raw_image| vk::Image::from_raw(*raw_image))
                 .collect(),
             hal_usage,
-            drop_guard: Some(Arc::clone(&swapchain) as _),
+            drop_guard: Some(Arc::new(()) as _),
         },
         SwapchainCreateInfo {
             usage,

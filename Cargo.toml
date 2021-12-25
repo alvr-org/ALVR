@@ -21,4 +21,5 @@ members = [
 ]
 
 [patch.crates-io]
-ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }
+oboe = { git = "https://github.com/zarik5/oboe-rs" }
+cpal = { git = "https://github.com/zarik5/cpal" }

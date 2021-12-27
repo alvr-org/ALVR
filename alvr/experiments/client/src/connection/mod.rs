@@ -8,7 +8,7 @@ use crate::{
     },
     storage,
     streaming_compositor::StreamingCompositor,
-    video_decoder::VideoDecoder,
+    video_decoder::{VideoDecoder, VideoDecoderDequeuer},
     xr::{XrActionType, XrContext, XrProfileDesc, XrSession},
     ViewConfig,
 };
@@ -46,7 +46,7 @@ const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
 pub struct VideoStreamingComponents {
     pub compositor: StreamingCompositor,
-    pub video_decoders: Vec<VideoDecoder>,
+    pub video_decoder_dequeuers: Vec<VideoDecoderDequeuer>,
     pub frame_metadata_receiver: crossbeam_channel::Receiver<VideoFrameHeaderPacket>,
 }
 
@@ -65,7 +65,7 @@ async fn connection_pipeline(
     xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
     xr_session: Arc<RwLock<Option<XrSession>>>,
-    video_streaming_components: Arc<RwLock<Option<VideoStreamingComponents>>>,
+    video_streaming_components: Arc<parking_lot::Mutex<Option<VideoStreamingComponents>>>,
     standby_status: Arc<AtomicBool>,
     idr_request_notifier: Arc<Notify>,
 ) -> StrResult {
@@ -270,6 +270,7 @@ async fn connection_pipeline(
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
         // let frame_metadata_sender = None;
+        // let decoder_enqueuer = None;
         let nal_parser = NalParser::new(settings.video.codec);
         async move {
             loop {
@@ -280,33 +281,33 @@ async fn connection_pipeline(
                 for (nal_type, buffer) in nals {
                     match nal_type {
                         NalType::Config => {
-                            if video_streaming_components.read().is_none() {
+                            if video_streaming_components.lock().is_none() {
                                 let compositor = StreamingCompositor::new(
                                     Arc::clone(&graphics_context),
                                     target_view_size,
                                     1,
                                 );
 
-                                // let video_decoders = vec![VideoDecoder::new(
-                                //     Arc::clone(&graphics_context),
-                                //     settings.video.codec,
-                                //     target_view_size,
-                                //     buffer,
-                                //     &[
-                                //         (
-                                //             "operating-rate".into(),
-                                //             MediacodecDataType::Int32(i32::MAX),
-                                //         ),
-                                //         ("priority".into(), MediacodecDataType::Int32(0)),
-                                //         // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-                                //         // cabable, since they are on level 29.
-                                //         ("low-latency".into(), MediacodecDataType::Int32(1)),
-                                //         (
-                                //             "vendor.qti-ext-dec-low-latency.enable".into(),
-                                //             MediacodecDataType::Int32(1),
-                                //         ),
-                                //     ],
-                                // )?];
+                                let video_decoders = vec![VideoDecoder::new(
+                                    Arc::clone(&graphics_context),
+                                    settings.video.codec,
+                                    target_view_size,
+                                    buffer,
+                                    &[
+                                        (
+                                            "operating-rate".into(),
+                                            MediacodecDataType::Int32(i16::MAX as _),
+                                        ),
+                                        ("priority".into(), MediacodecDataType::Int32(0)),
+                                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                                        // cabable, since they are on level 29.
+                                        // ("low-latency".into(), MediacodecDataType::Int32(1)),
+                                        (
+                                            "vendor.qti-ext-dec-low-latency.enable".into(),
+                                            MediacodecDataType::Int32(1),
+                                        ),
+                                    ],
+                                )?];
 
                                 // let (metadata_sender, metadata_receiver) =
                                 //     crossbeam_channel::unbounded();
@@ -323,21 +324,19 @@ async fn connection_pipeline(
                         }
                         NalType::Frame => {
                             if !standby_status.load(Ordering::Relaxed) {
-                                if let Some(streaming_components) =
-                                    &*video_streaming_components.read()
-                                {
-                                    //     let timestamp =
-                                    //         Duration::from_nanos(packet.header.packet_counter as _); // fixme: this is nonsensical
+                                // if let Some(decoder_enqueuer) = decoder_enqueuer.as_mut() {
+                                //     let timestamp =
+                                //         Duration::from_nanos(packet.header.packet_counter as _); // fixme: this is nonsensical
 
-                                    //     frame_metadata_sender.unwrap().send(packet.header);
-                                    //     streaming_components.video_decoders[0].push_frame_nals(
-                                    //         timestamp,
-                                    //         &buffer,
-                                    //         Duration::SECOND,
-                                    //     )?
-                                } else {
-                                    error!("Frame discarded because decoder is not initialized");
-                                }
+                                //     frame_metadata_sender.unwrap().send(packet.header);
+                                //     streaming_components.video_decoders[0].push_frame_nals(
+                                //         timestamp,
+                                //         &buffer,
+                                //         Duration::SECOND,
+                                //     )?
+                                // } else {
+                                //     error!("Frame discarded because decoder is not initialized");
+                                // }
                             } else {
                                 error!("Frame discarded because in standby");
                             }
@@ -400,6 +399,7 @@ async fn connection_pipeline(
             loop {
                 tokio::select! {
                     _ = idr_request_notifier.notified() => {
+                        error!("Sending IDR request");
                         control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
                     }
                     control_packet = control_receiver.recv() =>
@@ -452,7 +452,7 @@ pub async fn connection_lifecycle_loop(
     xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
     xr_session: Arc<RwLock<Option<XrSession>>>,
-    video_streaming_components: Arc<RwLock<Option<VideoStreamingComponents>>>,
+    video_streaming_components: Arc<parking_lot::Mutex<Option<VideoStreamingComponents>>>,
     standby_status: Arc<AtomicBool>,
     idr_request_notifier: Arc<Notify>,
 ) {
@@ -472,7 +472,7 @@ pub async fn connection_lifecycle_loop(
                 );
 
                 // stop streming receiver and return to lobby
-                video_streaming_components.write().take();
+                video_streaming_components.lock().take();
 
                 // let any running task or socket shutdown
                 time::sleep(CLEANUP_PAUSE).await;

@@ -835,7 +835,6 @@ dependencies = [
  "parking_lot",
  "pollster",
  "rand",
- "raw-window-handle 0.4.2",
  "serde",
  "serde_json",
  "settings-schema",

@@ -135,7 +135,7 @@ impl Scene {
             let clear_color = if self.should_render_lobby {
                 Color::RED
             } else {
-                Color::TRANSPARENT // let the stream pass through
+                Color::GREEN // let the stream pass through
             };
 
             let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {

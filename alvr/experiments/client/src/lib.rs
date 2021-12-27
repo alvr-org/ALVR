@@ -75,7 +75,7 @@ fn run() -> StrResult {
     )?;
     let xr_session = Arc::new(RwLock::new(Some(xr_session)));
 
-    let video_streaming_components = Arc::new(RwLock::new(None));
+    let video_streaming_components = Arc::new(Mutex::new(None));
 
     let standby_status = Arc::new(AtomicBool::new(true));
     let idr_request_notifier = Arc::new(Notify::new());
@@ -118,7 +118,7 @@ fn run() -> StrResult {
 fn rendering_loop(
     scene: &mut Scene,
     xr_session: Arc<RwLock<Option<XrSession>>>,
-    video_streaming_components: Arc<RwLock<Option<VideoStreamingComponents>>>,
+    video_streaming_components: Arc<Mutex<Option<VideoStreamingComponents>>>,
     standby_status: Arc<AtomicBool>,
     idr_request_notifier: Arc<Notify>,
 ) -> StrResult {
@@ -180,17 +180,15 @@ fn rendering_loop(
 
 // Returns true if stream is updated for the current frame
 fn video_streaming_pipeline(
-    streaming_components: &Arc<RwLock<Option<VideoStreamingComponents>>>,
+    streaming_components: &Arc<Mutex<Option<VideoStreamingComponents>>>,
     presentation_guard: &mut XrPresentationGuard,
 ) -> Option<Vec<ViewConfig>> {
-    if let Some(streaming_components) = streaming_components.read().as_ref() {
-        let decoder_target = streaming_components.compositor.input_texture();
-
+    if let Some(streaming_components) = streaming_components.lock().as_mut() {
         let timeout = Duration::from_micros(
             (presentation_guard.predicted_frame_interval.as_micros() as f32
                 * FRAME_TIMEOUT_MULTIPLIER) as _,
         );
-        let frame_metadata = get_video_frame_data(streaming_components, decoder_target, timeout)?;
+        let frame_metadata = get_video_frame_data(streaming_components, timeout)?;
 
         let compositor_target = presentation_guard
             .acquired_stream_swapchains
@@ -211,19 +209,20 @@ fn video_streaming_pipeline(
 
 // Dequeue decoded frames and metadata and makes sure they are on the same latest timestamp
 fn get_video_frame_data(
-    streaming_components: &VideoStreamingComponents,
-    decoder_target: &Texture,
+    streaming_components: &mut VideoStreamingComponents,
     timeout: Duration,
 ) -> Option<VideoFrameHeaderPacket> {
+    let decoder_target = streaming_components.compositor.input_texture();
+
     let mut frame_metadata = streaming_components
         .frame_metadata_receiver
         .recv_timeout(timeout)
         .ok()?;
 
     let mut decoder_timestamps = vec![];
-    for decoder in &streaming_components.video_decoders {
+    for dequeuer in &mut streaming_components.video_decoder_dequeuers {
         decoder_timestamps.push(
-            decoder
+            dequeuer
                 .get_output_frame(decoder_target, 0, timeout)
                 .ok()
                 .flatten()?,

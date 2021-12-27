@@ -14,7 +14,11 @@ use alvr_graphics::{
 };
 use openxr as xr;
 use parking_lot::Mutex;
-use std::{ffi::CStr, mem, sync::Arc};
+use std::{
+    ffi::{CStr, CString},
+    mem,
+    sync::Arc,
+};
 
 pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
     let entry = unsafe { ash::Entry::new().unwrap() };
@@ -50,6 +54,17 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
         .vulkan_graphics_device(xr_context.system, raw_instance.handle().as_raw() as _))?
         as _);
 
+    // unsafe {
+    //     let device_exts = raw_instance
+    //         .enumerate_device_extension_properties(raw_physical_device)
+    //         .unwrap();
+    //     let device_exts_cstrs = device_exts
+    //         .iter()
+    //         .map(|ext| CStr::from_ptr(ext.extension_name.as_ptr() as _))
+    //         .collect::<Vec<_>>();
+    //     dbg!(device_exts_cstrs);
+    // }
+
     let queue_family_index = unsafe {
         raw_instance
             .get_physical_device_queue_family_properties(raw_physical_device)
@@ -73,9 +88,38 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
             raw_instance.clone(),
             raw_physical_device,
         )?;
+
         let extensions = temp_adapter
             .adapter
             .required_device_extensions(temp_adapter.features);
+        let mut extensions_ptrs = extensions.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
+        const ANDROID_EXTRA_EXTENSIONS: [&str; 10] = [
+            // For importing decoder images into Vulkan
+            "VK_ANDROID_external_memory_android_hardware_buffer",
+            // Dependencies https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_ANDROID_external_memory_android_hardware_buffer.html :
+            "VK_KHR_sampler_ycbcr_conversion",
+            "VK_KHR_maintenance1",
+            "VK_KHR_bind_memory2",
+            "VK_KHR_get_memory_requirements2",
+            "VK_KHR_get_physical_device_properties2",
+            "VK_KHR_external_memory",
+            "VK_KHR_external_memory_capabilities",
+            "VK_EXT_queue_family_foreign",
+            "VK_KHR_dedicated_allocation",
+        ];
+        let android_extra_extensions_cstrings = ANDROID_EXTRA_EXTENSIONS
+            .iter()
+            .map(|ext| CString::new(*ext).unwrap())
+            .collect::<Vec<_>>();
+        // if cfg!(target_os = "android") {
+        //     extensions_ptrs.extend(
+        //         android_extra_extensions_cstrings
+        //             .iter()
+        //             .filter(|ext| extensions.iter().any(|e| *e != ext.as_c_str()))
+        //             .map(|ext| ext.as_ptr()),
+        //     );
+        // }
+
         let mut features = temp_adapter.adapter.physical_device_features(
             &extensions,
             temp_adapter.features,
@@ -86,7 +130,6 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
             .queue_family_index(queue_family_index)
             .queue_priorities(&[1.0])
             .build()];
-        let extensions_ptrs = extensions.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
         let info = vk::DeviceCreateInfo::builder()
             .queue_create_infos(&queue_infos)
             .enabled_extension_names(&extensions_ptrs);

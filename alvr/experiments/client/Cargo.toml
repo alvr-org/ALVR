@@ -34,7 +34,6 @@ futures = "0.3"
 pollster = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-raw-window-handle = "0.4"
 # rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
 # rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
 # Miscellaneous

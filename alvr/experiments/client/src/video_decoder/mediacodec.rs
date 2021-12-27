@@ -1,45 +1,137 @@
 use alvr_common::{glam::UVec2, log, prelude::*};
 use alvr_graphics::{
+    ash::{self, vk},
     wgpu::{
-        CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture,
-        TextureAspect, TextureView,
+        self, CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture,
+        TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+        TextureView,
     },
-    GraphicsContext,
+    wgpu_hal as hal, GraphicsContext,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
-    hardware_buffer::HardwareBufferUsage,
-    media::image_reader::{ImageFormat, ImageReader},
+    hardware_buffer::{HardwareBuffer, HardwareBufferUsage},
+    media::{
+        image_reader::{ImageFormat, ImageReader},
+        Result,
+    },
 };
 use ndk_sys as sys;
-use raw_window_handle::{AndroidNdkHandle, HasRawWindowHandle, RawWindowHandle};
-use std::{ffi::CString, ptr, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    ffi::CString,
+    ptr::{self, NonNull},
+    sync::Arc,
+    time::Duration,
+};
+use sys::AMediaCodec;
 
-pub struct SurfaceHandle(*mut sys::ANativeWindow);
+struct InnerSwapchainImage {
+    device: ash::Device,
+    image: vk::Image,
+    memory: vk::DeviceMemory,
+}
 
-unsafe impl HasRawWindowHandle for SurfaceHandle {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        let mut handle = AndroidNdkHandle::empty();
-        handle.a_native_window = self.0 as _;
-
-        RawWindowHandle::AndroidNdk(handle)
+impl Drop for InnerSwapchainImage {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_image(self.image, None);
+            self.device.free_memory(self.memory, None)
+        }
     }
 }
 
+// The format used is RGBA8
+unsafe fn create_swapchain_texture_from_hardware_buffer(
+    graphics_context: &GraphicsContext,
+    size: UVec2,
+    memory: *mut sys::AHardwareBuffer,
+) -> wgpu::Texture {
+    let image_create_info = vk::ImageCreateInfo::builder()
+        .image_type(vk::ImageType::TYPE_2D)
+        .format(vk::Format::R8G8B8A8_UNORM)
+        .extent(vk::Extent3D {
+            width: size.x,
+            height: size.y,
+            depth: 1,
+        })
+        .mip_levels(1)
+        .usage(vk::ImageUsageFlags::TRANSFER_SRC);
+    let image = graphics_context
+        .raw_device
+        .create_image(&image_create_info, None)
+        .unwrap();
+
+    let requirements = graphics_context
+        .raw_device
+        .get_image_memory_requirements(image);
+
+    let mut hardware_buffer_info = vk::ImportAndroidHardwareBufferInfoANDROID::builder()
+        .buffer(memory as _)
+        .build();
+    let memory_allocate_info = vk::MemoryAllocateInfo::builder()
+        .allocation_size((size.x * size.y * 4) as _)
+        .memory_type_index(requirements.memory_type_bits)
+        .push_next(&mut hardware_buffer_info);
+    let memory = graphics_context
+        .raw_device
+        .allocate_memory(&memory_allocate_info, None)
+        .unwrap();
+
+    let hal_texture = <hal::api::Vulkan as hal::Api>::Device::texture_from_raw(
+        image,
+        &hal::TextureDescriptor {
+            label: None,
+            size: Extent3d {
+                width: size.x,
+                height: size.y,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8Unorm,
+            usage: hal::TextureUses::COPY_SRC,
+            memory_flags: hal::MemoryFlags::empty(),
+        },
+        Some(Box::new(InnerSwapchainImage {
+            device: graphics_context.raw_device.clone(),
+            image,
+            memory,
+        })),
+    );
+
+    graphics_context
+        .device
+        .create_texture_from_hal::<hal::api::Vulkan>(
+            hal_texture,
+            &TextureDescriptor {
+                label: None,
+                size: Extent3d {
+                    width: size.x,
+                    height: size.y,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8Unorm,
+                usage: TextureUsages::COPY_SRC,
+            },
+        )
+}
+
+// 'AndroidSurface failed: ERROR_NATIVE_WINDOW_IN_USE_KHR', /Users/ric/.cargo/registry/src/github.com-1ecc6299db9ec823/wgpu-hal-0.12.0/src/vulkan/instance.rs:331:69
+
 pub struct VideoDecoder {
-    context: Arc<GraphicsContext>,
+    graphics_context: Arc<GraphicsContext>,
     codec: *mut sys::AMediaCodec,
     swapchain: ImageReader,
-    swapchain_surface: Surface,
     video_size: UVec2,
 }
 
 unsafe impl Send for VideoDecoder {}
-
-// fixme: MediaCodec is not actually Sync. push_frame_nals() and get_output_frame() can be called
-// concurrently but not multiple concurrent push_frame_nals() or get_output_frame(). The best way to
-// handle this is to have a Enqueuer and Dequeuer that are !Sync.
-unsafe impl Sync for VideoDecoder {}
+unsafe impl Sync for VideoDecoder {} // this is actually not Sync. The reason this is safe is because there are no mutable accessors
 
 impl VideoDecoder {
     pub fn new(
@@ -54,18 +146,14 @@ impl VideoDecoder {
         let swapchain = trace_err!(ImageReader::new_with_usage(
             video_size.x as _,
             video_size.y as _,
-            ImageFormat::RGBX_8888,
+            ImageFormat::RGBA_8888,
             HardwareBufferUsage::GPU_SAMPLED_IMAGE,
             2, // double buffered
         ))?;
 
-        let surface_handle = trace_err!(swapchain.get_window())?.ptr().as_ptr();
+        // let swapchain = trace_err!(ImageReader::new(1, 1, ImageFormat::YUV_420_888, 2))?;
 
-        let swapchain_surface = unsafe {
-            context
-                .instance
-                .create_surface(&SurfaceHandle(surface_handle))
-        };
+        let surface_handle = trace_err!(swapchain.get_window())?.ptr().as_ptr();
 
         let mime = match codec_type {
             CodecType::H264 => "video/avc",
@@ -74,12 +162,16 @@ impl VideoDecoder {
         let mime_cstring = CString::new(mime).unwrap();
 
         unsafe {
-            let codec = sys::AMediaCodec_createDecoderByType(mime_cstring.as_ptr());
-
             let format = sys::AMediaFormat_new();
             sys::AMediaFormat_setString(format, sys::AMEDIAFORMAT_KEY_MIME, mime_cstring.as_ptr());
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, video_size.x as _);
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, video_size.y as _);
+            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, 512);
+            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, 1024);
+            sys::AMediaFormat_setBuffer(
+                format,
+                sys::AMEDIAFORMAT_KEY_CSD_0,
+                csd_0.as_ptr() as _,
+                csd_0.len() as _,
+            );
 
             // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
             // only needed to add the trailing null character.
@@ -107,6 +199,11 @@ impl VideoDecoder {
                 }
             }
 
+            let codec = sys::AMediaCodec_createDecoderByType(mime_cstring.as_ptr());
+            if codec.is_null() {
+                panic!("Decoder is null");
+            }
+
             let res = sys::AMediaCodec_configure(codec, format, surface_handle, ptr::null_mut(), 0);
             if res != 0 {
                 return fmt_e!("Error configuring decoder ({})", res);
@@ -125,15 +222,29 @@ impl VideoDecoder {
             log::error!("video decoder created");
 
             Ok(Self {
-                context,
+                graphics_context: context,
                 codec,
                 swapchain,
-                swapchain_surface,
                 video_size,
             })
         }
     }
+}
 
+impl Drop for VideoDecoder {
+    fn drop(&mut self) {
+        let res = unsafe { sys::AMediaCodec_delete(self.codec) };
+        if res != 0 {
+            error!("Error deleting codec ({})", res);
+        }
+    }
+}
+
+pub struct VideoDecoderEnqueuer {
+    inner: Arc<VideoDecoder>,
+}
+
+impl VideoDecoderEnqueuer {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
     pub fn push_frame_nals(
         &self,
@@ -141,14 +252,15 @@ impl VideoDecoder {
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {
-        let index_or_error =
-            unsafe { sys::AMediaCodec_dequeueInputBuffer(self.codec, timeout.as_micros() as _) };
+        let index_or_error = unsafe {
+            sys::AMediaCodec_dequeueInputBuffer(self.inner.codec, timeout.as_micros() as _)
+        };
         if index_or_error >= 0 {
             unsafe {
                 // todo: check for overflow
                 let mut _out_size = 0;
                 let buffer_ptr = sys::AMediaCodec_getInputBuffer(
-                    self.codec,
+                    self.inner.codec,
                     index_or_error as _,
                     &mut _out_size,
                 );
@@ -158,7 +270,7 @@ impl VideoDecoder {
                 // complete precision, so when converted back to Duration it can compare correctly
                 // to other Durations
                 sys::AMediaCodec_queueInputBuffer(
-                    self.codec,
+                    self.inner.codec,
                     index_or_error as _,
                     0,
                     data.len() as _,
@@ -174,78 +286,98 @@ impl VideoDecoder {
             return fmt_e!("Error dequeueing decoder input ({})", index_or_error);
         }
     }
+}
 
+pub struct VideoDecoderDequeuer {
+    inner: Arc<VideoDecoder>,
+    swapchain_testures: HashMap<usize, Texture>,
+}
+
+impl VideoDecoderDequeuer {
     // Block until one frame is available or timeout is reached. Returns the frame timestamp (as
     // specified in push_frame_nals()). Returns None if timeout.
     pub fn get_output_frame(
-        &self,
+        &mut self,
         output: &Texture,
         slice_index: u32,
         timeout: Duration,
     ) -> StrResult<Option<Duration>> {
         let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
         let index_or_error = unsafe {
-            sys::AMediaCodec_dequeueOutputBuffer(self.codec, &mut info, timeout.as_micros() as _)
+            sys::AMediaCodec_dequeueOutputBuffer(
+                self.inner.codec,
+                &mut info,
+                timeout.as_micros() as _,
+            )
         };
         if index_or_error >= 0 {
             // Draw to the surface
             let res = unsafe {
-                sys::AMediaCodec_releaseOutputBuffer(self.codec, index_or_error as _, true)
+                sys::AMediaCodec_releaseOutputBuffer(self.inner.codec, index_or_error as _, true)
             };
             if res != 0 {
                 return fmt_e!("Error releasing decoder output buffer ({})", res);
             };
 
-            // Wgpu swapchain can throw Timeout or Outdated, but this should never happen here
-            let source = &trace_err!(self.swapchain_surface.get_current_texture())?.texture;
+            // After releasing the decoder output buffere there is always a swapchain image available.
+            let image = trace_none!(trace_err!(self.inner.swapchain.acquire_latest_image())?)?;
 
-            let mut encoder = self
-                .context
-                .device
-                .create_command_encoder(&Default::default());
+            let hardware_buffer = trace_err!(image.get_hardware_buffer())?;
 
-            // Copy surface/OES texture to normal texture
-            encoder.copy_texture_to_texture(
-                ImageCopyTexture {
-                    texture: source,
-                    mip_level: 0,
-                    origin: Origin3d::ZERO,
-                    aspect: TextureAspect::All,
-                },
-                ImageCopyTexture {
-                    texture: &output,
-                    mip_level: 0,
-                    origin: Origin3d {
-                        x: 0,
-                        y: 0,
-                        z: slice_index,
-                    },
-                    aspect: TextureAspect::All,
-                },
-                Extent3d {
-                    width: self.video_size.x,
-                    height: self.video_size.y,
-                    depth_or_array_layers: 1,
-                },
-            );
+            // let source = self
+            //     .swapchain_testures
+            //     .entry(hardware_buffer.as_ptr() as usize)
+            //     .or_insert_with(|| unsafe {
+            //         create_swapchain_texture_from_hardware_buffer(
+            //             &self.inner.graphics_context,
+            //             self.inner.video_size,
+            //             hardware_buffer.as_ptr(),
+            //         )
+            //     });
 
-            self.context.queue.submit(Some(encoder.finish()));
+            // let mut encoder = self
+            //     .inner
+            //     .graphics_context
+            //     .device
+            //     .create_command_encoder(&Default::default());
 
-            // NB: presentationTimeUs is actually nanos as explained in push_frame_nals()
-            Ok(Some(Duration::from_nanos(info.presentationTimeUs as _)))
+            // // Copy surface/OES texture to normal texture
+            // encoder.copy_texture_to_texture(
+            //     ImageCopyTexture {
+            //         texture: source,
+            //         mip_level: 0,
+            //         origin: Origin3d::ZERO,
+            //         aspect: TextureAspect::All,
+            //     },
+            //     ImageCopyTexture {
+            //         texture: &output,
+            //         mip_level: 0,
+            //         origin: Origin3d {
+            //             x: 0,
+            //             y: 0,
+            //             z: slice_index,
+            //         },
+            //         aspect: TextureAspect::All,
+            //     },
+            //     Extent3d {
+            //         width: self.inner.video_size.x,
+            //         height: self.inner.video_size.y,
+            //         depth_or_array_layers: 1,
+            //     },
+            // );
+
+            // self.inner
+            //     .graphics_context
+            //     .queue
+            //     .submit(Some(encoder.finish()));
+
+            Ok(Some(Duration::from_nanos(
+                trace_err!(image.get_timestamp())? as _,
+            )))
         } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
             Ok(None)
         } else {
             return fmt_e!("Error dequeueing decoder output ({})", index_or_error);
-        }
-    }
-}
-
-impl Drop for VideoDecoder {
-    fn drop(&mut self) {
-        let res = unsafe { sys::AMediaCodec_delete(self.codec) };
-        if res != 0 {
-            error!("Error deleting codec ({})", res);
         }
     }
 }

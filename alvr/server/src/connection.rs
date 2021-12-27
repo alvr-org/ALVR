@@ -186,7 +186,14 @@ async fn client_handshake(
     let version = Version::from_str(&headset_info.reserved).ok();
 
     let client_config = ClientConfigPacket {
-        session_desc: trace_err!(serde_json::to_string(SESSION_MANAGER.lock().get()))?,
+        session_desc: {
+            let mut session = SESSION_MANAGER.lock().get().clone();
+            if cfg!(target_os = "linux") {
+                session.session_settings.video.foveated_rendering.enabled = false;
+            }
+
+            trace_err!(serde_json::to_string(&session))?
+        },
         dashboard_url,
         eye_resolution_width: video_eye_width,
         eye_resolution_height: video_eye_height,

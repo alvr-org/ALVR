@@ -206,15 +206,14 @@ pub fn build_server(
         .unwrap();
     }
 
-    let dir_content =
-        dirx::get_dir_content2("alvr/resources", &dirx::DirOptions { depth: 1 }).unwrap();
-    let items: Vec<&String> = dir_content.directories[1..]
-        .iter()
-        .chain(dir_content.files.iter())
-        .collect();
-
-    fs::create_dir_all(&layout.resources_dir()).unwrap();
-    fsx::copy_items(&items, layout.resources_dir(), &dirx::CopyOptions::new()).unwrap();
+    // let dir_content =
+    //     dirx::get_dir_content2("alvr/resources", &dirx::DirOptions { depth: 1 }).unwrap();
+    // let items: Vec<&String> = dir_content.directories[1..]
+    //     .iter()
+    //     .chain(dir_content.files.iter())
+    //     .collect();
+    // fs::create_dir_all(&layout.resources_dir()).unwrap();
+    // fsx::copy_items(&items, layout.resources_dir(), &dirx::CopyOptions::new()).unwrap();
 
     let dir_content =
         dirx::get_dir_content2("alvr/dashboard", &dirx::DirOptions { depth: 1 }).unwrap();

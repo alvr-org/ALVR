@@ -51,6 +51,9 @@ pub fn ui_thread() -> StrResult {
 
     // prevent panic on window.close()
     *MAYBE_WINDOW.lock() = None;
+    crate::shutdown_runtime();
+
+    unsafe { crate::ShutdownSteamvr() };
 
     Ok(())
 }

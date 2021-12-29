@@ -3,6 +3,7 @@ use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     ash::{
         self,
+        extensions::khr,
         vk::{self, Handle},
     },
     convert::{
@@ -93,32 +94,17 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
             .adapter
             .required_device_extensions(temp_adapter.features);
         let mut extensions_ptrs = extensions.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
-        const ANDROID_EXTRA_EXTENSIONS: [&str; 10] = [
+        if cfg!(target_os = "android") {
             // For importing decoder images into Vulkan
-            "VK_ANDROID_external_memory_android_hardware_buffer",
-            // Dependencies https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_ANDROID_external_memory_android_hardware_buffer.html :
-            "VK_KHR_sampler_ycbcr_conversion",
-            "VK_KHR_maintenance1",
-            "VK_KHR_bind_memory2",
-            "VK_KHR_get_memory_requirements2",
-            "VK_KHR_get_physical_device_properties2",
-            "VK_KHR_external_memory",
-            "VK_KHR_external_memory_capabilities",
-            "VK_EXT_queue_family_foreign",
-            "VK_KHR_dedicated_allocation",
-        ];
-        let android_extra_extensions_cstrings = ANDROID_EXTRA_EXTENSIONS
-            .iter()
-            .map(|ext| CString::new(*ext).unwrap())
-            .collect::<Vec<_>>();
-        // if cfg!(target_os = "android") {
-        //     extensions_ptrs.extend(
-        //         android_extra_extensions_cstrings
-        //             .iter()
-        //             .filter(|ext| extensions.iter().any(|e| *e != ext.as_c_str()))
-        //             .map(|ext| ext.as_ptr()),
-        //     );
-        // }
+            let extra_extensions = [
+                vk::KhrExternalMemoryFn::name(),
+                vk::AndroidExternalMemoryAndroidHardwareBufferFn::name(),
+            ]
+            .into_iter()
+            .map(|ext| ext.as_ptr());
+
+            extensions_ptrs.extend(extra_extensions);
+        }
 
         let mut features = temp_adapter.adapter.physical_device_features(
             &extensions,

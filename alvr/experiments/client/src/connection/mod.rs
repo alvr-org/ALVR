@@ -8,7 +8,7 @@ use crate::{
     },
     storage,
     streaming_compositor::StreamingCompositor,
-    video_decoder::{VideoDecoder, VideoDecoderDequeuer},
+    video_decoder::{self, VideoDecoderDequeuer, VideoDecoderFrameGrabber},
     xr::{XrActionType, XrContext, XrProfileDesc, XrSession},
     ViewConfig,
 };
@@ -31,6 +31,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
+    thread,
     time::Duration,
 };
 use tokio::{
@@ -46,7 +47,7 @@ const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
 pub struct VideoStreamingComponents {
     pub compositor: StreamingCompositor,
-    pub video_decoder_dequeuers: Vec<VideoDecoderDequeuer>,
+    pub video_decoder_frame_grabbers: Vec<VideoDecoderFrameGrabber>,
     pub frame_metadata_receiver: crossbeam_channel::Receiver<VideoFrameHeaderPacket>,
 }
 
@@ -263,89 +264,128 @@ async fn connection_pipeline(
     //     }
     // };
 
+    let (video_bridge_sender, video_bridge_receiver) = crossbeam_channel::unbounded();
     let video_receive_loop = {
-        let video_streaming_components = Arc::clone(&video_streaming_components);
-        let standby_status = Arc::clone(&standby_status);
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
-        // let frame_metadata_sender = None;
-        // let decoder_enqueuer = None;
-        let nal_parser = NalParser::new(settings.video.codec);
+
         async move {
             loop {
                 let packet = receiver.recv().await?;
 
-                let nals = nal_parser.process_packet(packet.buffer.to_vec());
+                video_bridge_sender.send(packet).ok();
+            }
+        }
+    };
 
-                for (nal_type, buffer) in nals {
-                    match nal_type {
-                        NalType::Config => {
-                            if video_streaming_components.lock().is_none() {
+    thread::spawn({
+        let idr_request_notifier = Arc::clone(&idr_request_notifier);
+        let video_streaming_components = Arc::clone(&video_streaming_components);
+        let standby_status = Arc::clone(&standby_status);
+        let nal_parser = NalParser::new(settings.video.codec);
+        move || {
+            show_err(move || -> StrResult {
+                let mut frame_metadata_sender = None;
+                let mut video_decoder_enqueuer = None;
+                while is_connected.load(Ordering::Relaxed) {
+                    let packet = if let Ok(packet) =
+                        video_bridge_receiver.recv_timeout(Duration::from_millis(500))
+                    {
+                        packet
+                    } else {
+                        break;
+                    };
+
+                    let nals = nal_parser.process_packet(packet.buffer.to_vec());
+
+                    for (nal_type, buffer) in nals {
+                        match nal_type {
+                            NalType::Config if video_streaming_components.lock().is_none() => {
                                 let compositor = StreamingCompositor::new(
                                     Arc::clone(&graphics_context),
                                     target_view_size,
                                     1,
                                 );
 
-                                let video_decoders = vec![VideoDecoder::new(
-                                    Arc::clone(&graphics_context),
-                                    settings.video.codec,
-                                    target_view_size,
-                                    buffer,
-                                    &[
-                                        (
-                                            "operating-rate".into(),
-                                            MediacodecDataType::Int32(i16::MAX as _),
-                                        ),
-                                        ("priority".into(), MediacodecDataType::Int32(0)),
-                                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-                                        // cabable, since they are on level 29.
-                                        // ("low-latency".into(), MediacodecDataType::Int32(1)),
-                                        (
-                                            "vendor.qti-ext-dec-low-latency.enable".into(),
-                                            MediacodecDataType::Int32(1),
-                                        ),
-                                    ],
-                                )?];
+                                let (decoder_enqueuer, decoder_dequeuer, decoder_frame_grabber) =
+                                    video_decoder::split(
+                                        Arc::clone(&graphics_context),
+                                        settings.video.codec,
+                                        target_view_size,
+                                        buffer,
+                                        &[
+                                            (
+                                                "operating-rate".into(),
+                                                MediacodecDataType::Int32(i16::MAX as _),
+                                            ),
+                                            ("priority".into(), MediacodecDataType::Int32(0)),
+                                            // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                                            // capable, since they are on level 29.
+                                            // ("low-latency".into(), MediacodecDataType::Int32(1)),
+                                            (
+                                                "vendor.qti-ext-dec-low-latency.enable".into(),
+                                                MediacodecDataType::Int32(1),
+                                            ),
+                                        ],
+                                    )?;
+                                video_decoder_enqueuer = Some(decoder_enqueuer);
 
-                                // let (metadata_sender, metadata_receiver) =
-                                //     crossbeam_channel::unbounded();
+                                let is_connected = Arc::clone(&is_connected);
+                                thread::spawn(move || {
+                                    while is_connected.load(Ordering::Relaxed) {
+                                        show_err(decoder_dequeuer.poll(Duration::from_millis(500)));
+                                    }
+                                });
 
-                                // frame_metadata_sender = Some(metadata_sender);
+                                let (metadata_sender, metadata_receiver) =
+                                    crossbeam_channel::unbounded();
+                                frame_metadata_sender = Some(metadata_sender);
 
-                                // *video_streaming_components.write() =
-                                //     Some(VideoStreamingComponents {
-                                //         compositor,
-                                //         video_decoders,
-                                //         frame_metadata_receiver: metadata_receiver,
-                                //     });
+                                *video_streaming_components.lock() =
+                                    Some(VideoStreamingComponents {
+                                        compositor,
+                                        video_decoder_frame_grabbers: vec![decoder_frame_grabber],
+                                        frame_metadata_receiver: metadata_receiver,
+                                    });
                             }
-                        }
-                        NalType::Frame => {
-                            if !standby_status.load(Ordering::Relaxed) {
-                                // if let Some(decoder_enqueuer) = decoder_enqueuer.as_mut() {
-                                //     let timestamp =
-                                //         Duration::from_nanos(packet.header.packet_counter as _); // fixme: this is nonsensical
+                            _ => {
+                                if !standby_status.load(Ordering::Relaxed) {
+                                    if let Some(decoder_enqueuer) = &mut video_decoder_enqueuer {
+                                        let timestamp =
+                                            Duration::from_nanos(packet.header.packet_counter as _); // fixme: this is nonsensical
 
-                                //     frame_metadata_sender.unwrap().send(packet.header);
-                                //     streaming_components.video_decoders[0].push_frame_nals(
-                                //         timestamp,
-                                //         &buffer,
-                                //         Duration::SECOND,
-                                //     )?
-                                // } else {
-                                //     error!("Frame discarded because decoder is not initialized");
-                                // }
-                            } else {
-                                error!("Frame discarded because in standby");
+                                        trace_err!(frame_metadata_sender
+                                            .as_ref()
+                                            .unwrap()
+                                            .send(packet.header.clone()))?;
+                                        let success = decoder_enqueuer.push_frame_nals(
+                                            timestamp,
+                                            &buffer,
+                                            Duration::from_millis(500),
+                                        )?;
+                                        if !success {
+                                            error!("decoder enqueue error! requesting IDR");
+                                            idr_request_notifier.notify_one();
+                                        }
+                                        error!("frame submitted to decoder");
+                                    } else {
+                                        error!(
+                                            "Frame discarded because decoder is not initialized"
+                                        );
+                                    }
+                                } else {
+                                    error!("Frame discarded because in standby");
+                                }
                             }
                         }
                     }
                 }
-            }
+
+                Ok(())
+            }());
         }
-    };
+    });
 
     let haptics_receive_loop = {
         let mut receiver = stream_socket

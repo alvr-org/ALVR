@@ -12,7 +12,7 @@ use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
     hardware_buffer::{HardwareBuffer, HardwareBufferUsage},
     media::{
-        image_reader::{ImageFormat, ImageReader},
+        image_reader::{Image, ImageFormat, ImageReader},
         Result,
     },
 };
@@ -123,125 +123,21 @@ unsafe fn create_swapchain_texture_from_hardware_buffer(
 
 // 'AndroidSurface failed: ERROR_NATIVE_WINDOW_IN_USE_KHR', /Users/ric/.cargo/registry/src/github.com-1ecc6299db9ec823/wgpu-hal-0.12.0/src/vulkan/instance.rs:331:69
 
-pub struct VideoDecoder {
-    graphics_context: Arc<GraphicsContext>,
-    codec: *mut sys::AMediaCodec,
-    swapchain: ImageReader,
-    video_size: UVec2,
+pub struct MediaCodec {
+    inner: *mut sys::AMediaCodec,
 }
 
-unsafe impl Send for VideoDecoder {}
-unsafe impl Sync for VideoDecoder {} // this is actually not Sync. The reason this is safe is because there are no mutable accessors
+unsafe impl Send for MediaCodec {}
+unsafe impl Sync for MediaCodec {}
 
-impl VideoDecoder {
-    pub fn new(
-        context: Arc<GraphicsContext>,
-        codec_type: CodecType,
-        video_size: UVec2,
-        csd_0: Vec<u8>,
-        extra_options: &[(String, MediacodecDataType)],
-    ) -> StrResult<Self> {
-        log::error!("create video decoder");
-
-        let swapchain = trace_err!(ImageReader::new_with_usage(
-            video_size.x as _,
-            video_size.y as _,
-            ImageFormat::RGBA_8888,
-            HardwareBufferUsage::GPU_SAMPLED_IMAGE,
-            2, // double buffered
-        ))?;
-
-        // let swapchain = trace_err!(ImageReader::new(1, 1, ImageFormat::YUV_420_888, 2))?;
-
-        let surface_handle = trace_err!(swapchain.get_window())?.ptr().as_ptr();
-
-        let mime = match codec_type {
-            CodecType::H264 => "video/avc",
-            CodecType::HEVC => "video/hevc",
-        };
-        let mime_cstring = CString::new(mime).unwrap();
-
-        unsafe {
-            let format = sys::AMediaFormat_new();
-            sys::AMediaFormat_setString(format, sys::AMEDIAFORMAT_KEY_MIME, mime_cstring.as_ptr());
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, 512);
-            sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, 1024);
-            sys::AMediaFormat_setBuffer(
-                format,
-                sys::AMEDIAFORMAT_KEY_CSD_0,
-                csd_0.as_ptr() as _,
-                csd_0.len() as _,
-            );
-
-            // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
-            // only needed to add the trailing null character.
-            for (key, value) in extra_options {
-                let key_cstring = CString::new(key.clone()).unwrap();
-
-                match value {
-                    MediacodecDataType::Float(value) => {
-                        sys::AMediaFormat_setFloat(format, key_cstring.as_ptr(), *value)
-                    }
-                    MediacodecDataType::Int32(value) => {
-                        sys::AMediaFormat_setInt32(format, key_cstring.as_ptr(), *value)
-                    }
-                    MediacodecDataType::Int64(value) => {
-                        sys::AMediaFormat_setInt64(format, key_cstring.as_ptr(), *value)
-                    }
-                    MediacodecDataType::String(value) => {
-                        let value_cstring = CString::new(value.clone()).unwrap();
-                        sys::AMediaFormat_setString(
-                            format,
-                            key_cstring.as_ptr(),
-                            value_cstring.as_ptr(),
-                        )
-                    }
-                }
-            }
-
-            let codec = sys::AMediaCodec_createDecoderByType(mime_cstring.as_ptr());
-            if codec.is_null() {
-                panic!("Decoder is null");
-            }
-
-            let res = sys::AMediaCodec_configure(codec, format, surface_handle, ptr::null_mut(), 0);
-            if res != 0 {
-                return fmt_e!("Error configuring decoder ({})", res);
-            }
-
-            let res = sys::AMediaCodec_start(codec);
-            if res != 0 {
-                return fmt_e!("Error starting decoder ({})", res);
-            }
-
-            let res = sys::AMediaFormat_delete(format);
-            if res != 0 {
-                error!("Error deleting format ({})", res);
-            }
-
-            log::error!("video decoder created");
-
-            Ok(Self {
-                graphics_context: context,
-                codec,
-                swapchain,
-                video_size,
-            })
-        }
-    }
-}
-
-impl Drop for VideoDecoder {
+impl Drop for MediaCodec {
     fn drop(&mut self) {
-        let res = unsafe { sys::AMediaCodec_delete(self.codec) };
-        if res != 0 {
-            error!("Error deleting codec ({})", res);
-        }
+        unsafe { sys::AMediaCodec_delete(self.inner) };
     }
 }
 
 pub struct VideoDecoderEnqueuer {
-    inner: Arc<VideoDecoder>,
+    inner: Arc<MediaCodec>,
 }
 
 impl VideoDecoderEnqueuer {
@@ -253,14 +149,14 @@ impl VideoDecoderEnqueuer {
         timeout: Duration,
     ) -> StrResult<bool> {
         let index_or_error = unsafe {
-            sys::AMediaCodec_dequeueInputBuffer(self.inner.codec, timeout.as_micros() as _)
+            sys::AMediaCodec_dequeueInputBuffer(self.inner.inner, timeout.as_micros() as _)
         };
         if index_or_error >= 0 {
             unsafe {
                 // todo: check for overflow
                 let mut _out_size = 0;
                 let buffer_ptr = sys::AMediaCodec_getInputBuffer(
-                    self.inner.codec,
+                    self.inner.inner,
                     index_or_error as _,
                     &mut _out_size,
                 );
@@ -270,7 +166,7 @@ impl VideoDecoderEnqueuer {
                 // complete precision, so when converted back to Duration it can compare correctly
                 // to other Durations
                 sys::AMediaCodec_queueInputBuffer(
-                    self.inner.codec,
+                    self.inner.inner,
                     index_or_error as _,
                     0,
                     data.len() as _,
@@ -289,11 +185,48 @@ impl VideoDecoderEnqueuer {
 }
 
 pub struct VideoDecoderDequeuer {
-    inner: Arc<VideoDecoder>,
-    swapchain_testures: HashMap<usize, Texture>,
+    inner: Arc<MediaCodec>,
 }
 
 impl VideoDecoderDequeuer {
+    pub fn poll(&self, timeout: Duration) -> StrResult {
+        let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
+        let index_or_error = unsafe {
+            sys::AMediaCodec_dequeueOutputBuffer(
+                self.inner.inner,
+                &mut info,
+                timeout.as_micros() as _,
+            )
+        };
+        if index_or_error >= 0 {
+            let res = unsafe {
+                sys::AMediaCodec_releaseOutputBuffer(self.inner.inner, index_or_error as _, true)
+            };
+            if res != 0 {
+                return fmt_e!("Error releasing decoder output buffer ({})", res);
+            } else {
+                Ok(())
+            }
+        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
+            Ok(())
+        } else {
+            return fmt_e!("Error dequeueing decoder output ({})", index_or_error);
+        }
+    }
+}
+
+pub struct VideoDecoderFrameGrabber {
+    graphics_context: Arc<GraphicsContext>,
+    inner: Arc<MediaCodec>,
+    video_size: UVec2,
+    swapchain: ImageReader,
+    swapchain_textures: HashMap<usize, Texture>,
+    image_receiver: crossbeam_channel::Receiver<Image>,
+}
+
+unsafe impl Send for VideoDecoderFrameGrabber {}
+
+impl VideoDecoderFrameGrabber {
     // Block until one frame is available or timeout is reached. Returns the frame timestamp (as
     // specified in push_frame_nals()). Returns None if timeout.
     pub fn get_output_frame(
@@ -301,83 +234,182 @@ impl VideoDecoderDequeuer {
         output: &Texture,
         slice_index: u32,
         timeout: Duration,
-    ) -> StrResult<Option<Duration>> {
-        let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
-        let index_or_error = unsafe {
-            sys::AMediaCodec_dequeueOutputBuffer(
-                self.inner.codec,
-                &mut info,
-                timeout.as_micros() as _,
-            )
-        };
-        if index_or_error >= 0 {
-            // Draw to the surface
-            let res = unsafe {
-                sys::AMediaCodec_releaseOutputBuffer(self.inner.codec, index_or_error as _, true)
-            };
-            if res != 0 {
-                return fmt_e!("Error releasing decoder output buffer ({})", res);
-            };
+    ) -> StrResult<Duration> {
+        let image = trace_err!(self.image_receiver.recv_timeout(timeout))?;
 
-            // After releasing the decoder output buffere there is always a swapchain image available.
-            let image = trace_none!(trace_err!(self.inner.swapchain.acquire_latest_image())?)?;
+        let hardware_buffer = trace_err!(image.get_hardware_buffer())?;
 
-            let hardware_buffer = trace_err!(image.get_hardware_buffer())?;
+        let source = self
+            .swapchain_textures
+            .entry(hardware_buffer.as_ptr() as usize)
+            .or_insert_with(|| unsafe {
+                create_swapchain_texture_from_hardware_buffer(
+                    &self.graphics_context,
+                    self.video_size,
+                    hardware_buffer.as_ptr(),
+                )
+            });
 
-            // let source = self
-            //     .swapchain_testures
-            //     .entry(hardware_buffer.as_ptr() as usize)
-            //     .or_insert_with(|| unsafe {
-            //         create_swapchain_texture_from_hardware_buffer(
-            //             &self.inner.graphics_context,
-            //             self.inner.video_size,
-            //             hardware_buffer.as_ptr(),
-            //         )
-            //     });
+        let mut encoder = self
+            .graphics_context
+            .device
+            .create_command_encoder(&Default::default());
 
-            // let mut encoder = self
-            //     .inner
-            //     .graphics_context
-            //     .device
-            //     .create_command_encoder(&Default::default());
+        // Copy surface/OES texture to normal texture
+        encoder.copy_texture_to_texture(
+            ImageCopyTexture {
+                texture: source,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            ImageCopyTexture {
+                texture: &output,
+                mip_level: 0,
+                origin: Origin3d {
+                    x: 0,
+                    y: 0,
+                    z: slice_index,
+                },
+                aspect: TextureAspect::All,
+            },
+            Extent3d {
+                width: self.video_size.x,
+                height: self.video_size.y,
+                depth_or_array_layers: 1,
+            },
+        );
 
-            // // Copy surface/OES texture to normal texture
-            // encoder.copy_texture_to_texture(
-            //     ImageCopyTexture {
-            //         texture: source,
-            //         mip_level: 0,
-            //         origin: Origin3d::ZERO,
-            //         aspect: TextureAspect::All,
-            //     },
-            //     ImageCopyTexture {
-            //         texture: &output,
-            //         mip_level: 0,
-            //         origin: Origin3d {
-            //             x: 0,
-            //             y: 0,
-            //             z: slice_index,
-            //         },
-            //         aspect: TextureAspect::All,
-            //     },
-            //     Extent3d {
-            //         width: self.inner.video_size.x,
-            //         height: self.inner.video_size.y,
-            //         depth_or_array_layers: 1,
-            //     },
-            // );
+        self.graphics_context.queue.submit(Some(encoder.finish()));
 
-            // self.inner
-            //     .graphics_context
-            //     .queue
-            //     .submit(Some(encoder.finish()));
-
-            Ok(Some(Duration::from_nanos(
-                trace_err!(image.get_timestamp())? as _,
-            )))
-        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
-            Ok(None)
-        } else {
-            return fmt_e!("Error dequeueing decoder output ({})", index_or_error);
-        }
+        Ok(Duration::from_nanos(trace_err!(image.get_timestamp())? as _))
     }
+}
+
+pub fn split(
+    graphics_context: Arc<GraphicsContext>,
+    codec_type: CodecType,
+    video_size: UVec2,
+    csd_0: Vec<u8>,
+    extra_options: &[(String, MediacodecDataType)],
+) -> StrResult<(
+    VideoDecoderEnqueuer,
+    VideoDecoderDequeuer,
+    VideoDecoderFrameGrabber,
+)> {
+    log::error!("create video decoder");
+
+    let mut swapchain = trace_err!(ImageReader::new_with_usage(
+        // video_size.x as _,
+        // video_size.y as _,
+        1,
+        1,
+        // ImageFormat::RGBA_8888,
+        ImageFormat::YUV_420_888,
+        HardwareBufferUsage::GPU_SAMPLED_IMAGE,
+        3, // double buffered
+    ))?;
+
+    let (image_sender, image_receiver) = crossbeam_channel::unbounded();
+
+    swapchain.set_image_listener(Box::new(move |swapchain| {
+        let maybe_image = show_err(trace_err!(swapchain.acquire_next_image())).flatten();
+        error!("maybe acquired image");
+
+        // if let Some(image) = maybe_image {
+        //     image_sender.send(image).ok();
+        // }
+    }));
+
+    // let swapchain = trace_err!(ImageReader::new(1, 1, ImageFormat::YUV_420_888, 2))?;
+
+    let surface_handle = trace_err!(swapchain.get_window())?.ptr().as_ptr();
+
+    let decoder = unsafe {
+        let mime = match codec_type {
+            CodecType::H264 => "video/avc",
+            CodecType::HEVC => "video/hevc",
+        };
+        let mime_cstring = CString::new(mime).unwrap();
+
+        let format = sys::AMediaFormat_new();
+        sys::AMediaFormat_setString(format, sys::AMEDIAFORMAT_KEY_MIME, mime_cstring.as_ptr());
+        sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, 512);
+        sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, 1024);
+        sys::AMediaFormat_setBuffer(
+            format,
+            sys::AMEDIAFORMAT_KEY_CSD_0,
+            csd_0.as_ptr() as _,
+            csd_0.len() as _,
+        );
+
+        // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
+        // only needed to add the trailing null character.
+        for (key, value) in extra_options {
+            let key_cstring = CString::new(key.clone()).unwrap();
+
+            match value {
+                MediacodecDataType::Float(value) => {
+                    sys::AMediaFormat_setFloat(format, key_cstring.as_ptr(), *value)
+                }
+                MediacodecDataType::Int32(value) => {
+                    sys::AMediaFormat_setInt32(format, key_cstring.as_ptr(), *value)
+                }
+                MediacodecDataType::Int64(value) => {
+                    sys::AMediaFormat_setInt64(format, key_cstring.as_ptr(), *value)
+                }
+                MediacodecDataType::String(value) => {
+                    let value_cstring = CString::new(value.clone()).unwrap();
+                    sys::AMediaFormat_setString(
+                        format,
+                        key_cstring.as_ptr(),
+                        value_cstring.as_ptr(),
+                    )
+                }
+            }
+        }
+
+        let decoder = sys::AMediaCodec_createDecoderByType(mime_cstring.as_ptr());
+        if decoder.is_null() {
+            return fmt_e!("Decoder is null");
+        }
+
+        let res = sys::AMediaCodec_configure(decoder, format, surface_handle, ptr::null_mut(), 0);
+        if res != 0 {
+            return fmt_e!("Error configuring decoder ({})", res);
+        }
+
+        let res = sys::AMediaCodec_start(decoder);
+        if res != 0 {
+            return fmt_e!("Error starting decoder ({})", res);
+        }
+
+        let res = sys::AMediaFormat_delete(format);
+        if res != 0 {
+            error!("Error deleting format ({})", res);
+        }
+
+        log::error!("video decoder created");
+
+        MediaCodec { inner: decoder }
+    };
+
+    let decoder = Arc::new(decoder);
+
+    Ok((
+        VideoDecoderEnqueuer {
+            inner: Arc::clone(&decoder),
+        },
+        VideoDecoderDequeuer {
+            inner: Arc::clone(&decoder),
+        },
+        VideoDecoderFrameGrabber {
+            inner: decoder,
+            graphics_context,
+            video_size,
+            swapchain,
+            swapchain_textures: HashMap::new(),
+            image_receiver,
+        },
+    ))
 }

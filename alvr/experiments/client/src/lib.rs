@@ -31,7 +31,6 @@ use tokio::{
     runtime::{self, Runtime},
     sync::Notify,
 };
-use video_decoder::VideoDecoder;
 
 const MAX_RENDERING_LOOP_FAILS: usize = 5;
 
@@ -146,12 +145,12 @@ fn rendering_loop(
 
         let maybe_stream_view_configs =
             video_streaming_pipeline(&video_streaming_components, &mut presentation_guard);
-        presentation_guard.scene_view_configs =
-            if let Some(stream_view_configs) = maybe_stream_view_configs.clone() {
-                stream_view_configs
-            } else {
-                old_stream_view_configs.clone()
-            };
+        presentation_guard.stream_view_configs =
+            // if let Some(stream_view_configs) = maybe_stream_view_configs.clone() {
+            //     stream_view_configs
+            // } else {
+                old_stream_view_configs.clone();
+        // };
 
         let scene_input = xr_session.get_scene_input()?;
 
@@ -182,8 +181,8 @@ fn rendering_loop(
 fn video_streaming_pipeline(
     streaming_components: &Arc<Mutex<Option<VideoStreamingComponents>>>,
     presentation_guard: &mut XrPresentationGuard,
-) -> Option<Vec<ViewConfig>> {
-    if let Some(streaming_components) = streaming_components.lock().as_mut() {
+) -> Option<()> {
+    if let Some(streaming_components) = &mut *streaming_components.lock() {
         let timeout = Duration::from_micros(
             (presentation_guard.predicted_frame_interval.as_micros() as f32
                 * FRAME_TIMEOUT_MULTIPLIER) as _,
@@ -201,7 +200,7 @@ fn video_streaming_pipeline(
         // presentation_guard.display_timestamp = frame_metadata.timestamp;
 
         // Some(frame_metadata.view_configs)
-        None
+        Some(())
     } else {
         None
     }
@@ -220,14 +219,15 @@ fn get_video_frame_data(
         .ok()?;
 
     let mut decoder_timestamps = vec![];
-    for dequeuer in &mut streaming_components.video_decoder_dequeuers {
-        decoder_timestamps.push(
-            dequeuer
-                .get_output_frame(decoder_target, 0, timeout)
-                .ok()
-                .flatten()?,
-        );
+    for frame_grabber in &mut streaming_components.video_decoder_frame_grabbers {
+        let res = frame_grabber.get_output_frame(decoder_target, 0, timeout);
+
+        error!("frame dequeue: {:?}", res);
+
+        decoder_timestamps.push(res.ok()?);
     }
+
+    error!("frame decoded");
 
     // let greatest_timestamp = decoder_timestamps
     //     .iter()

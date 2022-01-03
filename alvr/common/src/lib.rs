@@ -29,11 +29,8 @@ lazy_static! {
 // Note: by not having to set the requirement manually, the major version is constrained to be
 // bumped when the packet layouts or some critical behaviour has changed.
 pub fn is_version_compatible(other_version: &Version) -> bool {
-    if other_version.pre != Prerelease::EMPTY
-        || other_version.build != BuildMetadata::EMPTY
-        || ALVR_VERSION.pre != Prerelease::EMPTY
-        || ALVR_VERSION.build != BuildMetadata::EMPTY
-    {
+    if other_version.pre != Prerelease::EMPTY || ALVR_VERSION.pre != Prerelease::EMPTY {
+        // Note: metadata (+) is always ignored in the version check
         *other_version == *ALVR_VERSION
     } else {
         other_version.major == ALVR_VERSION.major

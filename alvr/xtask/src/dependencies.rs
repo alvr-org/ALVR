@@ -94,10 +94,11 @@ pub fn build_ffmpeg_linux() -> std::path::PathBuf {
             "--disable-network",
             "--enable-lto",
             format!(
-                "--disable-everything {} {} {} {}",
+                "--disable-everything {} {} {} {} {}",
+                "--enable-encoder=h264_nvenc --enable-encoder=hevc_nvenc --enable-nonfree --enable-nvenc --enable-cuda --enable-cuda-nvcc --enable-libnpp --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=-I/usr/local/cuda/include/  --extra-ldflags=-L/usr/local/cuda/lib64/",
                 "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
                 "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
-                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
+                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi --enable-hwaccel=h264_nvenc --enable-hwaccel=hevc_nvenc",
                 "--enable-filter=scale --enable-filter=scale_vaapi",
             ),
             "--enable-libx264 --enable-libx265 --enable-vulkan",

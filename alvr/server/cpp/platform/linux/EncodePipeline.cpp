@@ -4,6 +4,7 @@
 #include "alvr_server/Settings.h"
 #include "EncodePipelineSW.h"
 #include "EncodePipelineVAAPI.h"
+#include "EncodePipelineNvEnc.h"
 #include "ffmpeg_helper.h"
 
 extern "C" {
@@ -74,6 +75,12 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(std::vector<V
   } catch (...)
   {
     Info("failed to create VAAPI encoder");
+  }
+  try {
+    return std::make_unique<alvr::EncodePipelineNvEnc>(input_frames, vk_frame_ctx);
+  } catch (...)
+  {
+    Info("failed to create NvEnc encoder");
   }
   return std::make_unique<alvr::EncodePipelineSW>(input_frames, vk_frame_ctx);
 }

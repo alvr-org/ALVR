@@ -1,6 +1,8 @@
 #include "pose.hpp"
 
 #include <cmath>
+#include <iostream>
+#include <fstream>
 #include <string.h>
 
 #define UNW_LOCAL_ONLY
@@ -81,7 +83,8 @@ const TrackedDevicePose_t & find_pose_in_call_stack()
     char name[1024];
     unw_word_t off;
     unw_get_proc_name(&cursor, name, sizeof(name), &off);
-    if (strcmp("_ZN13CRenderThread11UpdateAsyncEv", name) == 0)
+    debug_file << name << "\n";
+    if ((strcmp("_ZN13CRenderThread11UpdateAsyncEv", name) == 0) || (strcmp("_ZN13CRenderThread6UpdateEv", name) == 0))
     {
       unw_word_t sp, sp_end;
       unw_get_reg(&cursor, UNW_REG_SP, &sp);

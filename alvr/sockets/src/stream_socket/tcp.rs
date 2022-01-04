@@ -45,6 +45,7 @@ pub async fn connect_to_client(
     port: u16,
 ) -> StrResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
     let socket = trace_err!(TcpStream::connect((client_ip, port)).await)?;
+    trace_err!(socket.set_nodelay(true))?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 

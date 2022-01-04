@@ -118,7 +118,7 @@ public:
 				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
 					if (m_bitrate > m_adaptiveBitrateMaximum - m_adaptiveBitrateDownRate)
 						m_bitrate = m_adaptiveBitrateMaximum;
-					else if (m_bitsSentInSecondPrev * 1e-6 > m_bitrate * m_adaptiveBitrateLightLoadThreshold)
+					else if (m_bitsSentInSecondPrev * 1e-6 > m_bitrate * m_adaptiveBitrateLightLoadThreshold * (m_framesPrevious == 0 ? m_refreshRate : m_framesPrevious) / m_refreshRate)
 						m_bitrate += m_adaptiveBitrateUpRate;
 				}
 			}
@@ -209,6 +209,8 @@ private:
 
 	uint64_t m_bitrate = Settings::Instance().mEncodeBitrateMBs;
 	uint64_t m_bitrateUpdated = Settings::Instance().mEncodeBitrateMBs;
+
+	int64_t m_refreshRate = Settings::Instance().m_refreshRate;
 
 	bool m_enableAdaptiveBitrate = Settings::Instance().m_enableAdaptiveBitrate;
 	uint64_t m_adaptiveBitrateMaximum = Settings::Instance().m_adaptiveBitrateMaximum;

@@ -1,8 +1,6 @@
 #include "pose.hpp"
 
 #include <cmath>
-#include <iostream>
-#include <fstream>
 #include <string.h>
 
 #define UNW_LOCAL_ONLY

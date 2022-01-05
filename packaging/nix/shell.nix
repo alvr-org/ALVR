@@ -9,7 +9,7 @@ mkShell {
     alsaLib
     openssl
     glib
-    (ffmpeg-full.override { nonfreeLicensing = true; })
+    (ffmpeg-full.override { nonfreeLicensing = true; samba = null; })
     cairo
     pango
     atk

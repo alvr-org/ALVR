@@ -71,18 +71,24 @@ void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(std::vector<VkFrame> &input_frames, VkFrameCtx &vk_frame_ctx)
 {
   try {
-    return std::make_unique<alvr::EncodePipelineVAAPI>(input_frames, vk_frame_ctx);
+    auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(input_frames, vk_frame_ctx);
+    Info("using VAAPI encoder");
+    return vaapi;
   } catch (...)
   {
     Info("failed to create VAAPI encoder");
   }
   try {
-    return std::make_unique<alvr::EncodePipelineNvEnc>(input_frames, vk_frame_ctx);
+    auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frames, vk_frame_ctx);
+    Info("using NvEnc encoder");
+    return nvenc;
   } catch (...)
   {
     Info("failed to create NvEnc encoder");
   }
-  return std::make_unique<alvr::EncodePipelineSW>(input_frames, vk_frame_ctx);
+  auto sw = std::make_unique<alvr::EncodePipelineSW>(input_frames, vk_frame_ctx);
+  Info("using SW encoder");
+  return sw;
 }
 
 alvr::EncodePipeline::~EncodePipeline()

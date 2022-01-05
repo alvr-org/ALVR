@@ -103,8 +103,9 @@ fn build_windows_installer(wix_path: &str) {
 }
 
 pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool) {
-    build_server(true, false, false, true, false, root, reproducible);
-
+    let bundle_ffmpeg = cfg!(target_os = "linux");
+    build_server(true, false, false, bundle_ffmpeg, false, root, reproducible);
+    
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
     fs::create_dir_all(&licenses_dir).unwrap();

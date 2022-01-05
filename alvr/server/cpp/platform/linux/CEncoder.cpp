@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <iostream>
 
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/ChaperoneUpdater.h"
@@ -37,12 +38,13 @@ CEncoder::~CEncoder() { Stop(); }
 namespace {
 void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
     while (not exiting and size != 0) {
-        timeval timeout{.tv_sec = 0, .tv_usec = 15000};
+        timeval timeout{.tv_sec = 0, .tv_usec = 100};
         fd_set read_fd, write_fd, except_fd;
         FD_ZERO(&read_fd);
         FD_SET(fd, &read_fd);
         FD_ZERO(&write_fd);
         FD_ZERO(&except_fd);
+        // TODO move away from select as it can only take fd < 1024
         int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
         if (count < 0) {
             throw MakeException("select failed: %s", strerror(errno));
@@ -67,6 +69,7 @@ void read_latest(int fd, char *out, size_t size, std::atomic_bool &exiting) {
         FD_SET(fd, &read_fd);
         FD_ZERO(&write_fd);
         FD_ZERO(&except_fd);
+        // TODO move away from select as it can only take fd < 1024
         int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
         if (count == 0)
             return;
@@ -82,6 +85,7 @@ int accept_timeout(int socket, std::atomic_bool &exiting) {
         FD_SET(socket, &read_fd);
         FD_ZERO(&write_fd);
         FD_ZERO(&except_fd);
+        // TODO move away from select as it can only take fd < 1024
         int count = select(socket + 1, &read_fd, &write_fd, &except_fd, &timeout);
         if (count < 0) {
             throw MakeException("select failed: %s", strerror(errno));
@@ -216,10 +220,11 @@ void CEncoder::Run() {
       auto encode_pipeline = alvr::EncodePipeline::Create(images, vk_frame_ctx);
 
       fprintf(stderr, "CEncoder starting to read present packets");
-        present_packet frame_info;
+      present_packet frame_info;
       std::vector<uint8_t> encoded_data;
+      double avg_real_encode_time_ms = 0;
       while (not m_exiting) {
-          read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
+        read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         if (m_listener->GetStatistics()->CheckBitrateUpdated()) {
           encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1000000L); // in bits;

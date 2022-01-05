@@ -20,7 +20,7 @@ SUBCOMMANDS:
     build-android-deps  Download and compile external dependencies for Android
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    build-ffmpeg-linux  Build FFmpeg with VAAPI and Vulkan support. Only for CI
+    build-ffmpeg-linux  Build FFmpeg with VAAPI, NVenc and Vulkan support. Only for CI
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder

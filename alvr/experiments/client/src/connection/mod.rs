@@ -312,7 +312,6 @@ async fn connection_pipeline(
                                     video_decoder::split(
                                         Arc::clone(&graphics_context),
                                         settings.video.codec,
-                                        target_view_size,
                                         buffer,
                                         &[
                                             (
@@ -328,6 +327,9 @@ async fn connection_pipeline(
                                                 MediacodecDataType::Int32(1),
                                             ),
                                         ],
+                                        compositor.input_texture(),
+                                        compositor.input_size(),
+                                        0,
                                     )?;
                                 video_decoder_enqueuer = Some(decoder_enqueuer);
 

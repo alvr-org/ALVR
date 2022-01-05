@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, sync::Arc};
 
 use crate::{BindingDesc, TARGET_FORMAT};
 use alvr_common::{glam::UVec2, log};
@@ -51,8 +51,9 @@ pub enum AlignmentDirection {
 // Slices are assumed to be packed and unpacked by this same pass, following a particular layout
 // determined by the number of slices and the shape of the reconstructed frame.
 pub struct SlicingPass {
-    input_texture: Texture,
+    input_texture: Arc<Texture>,
     input_views: Vec<TextureView>,
+    input_size: UVec2,
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     input_slicing_layout: SlicingLayout,
@@ -77,7 +78,7 @@ impl SlicingPass {
             input_size = align_to_32(input_size);
         }
 
-        let input_texture = device.create_texture(&TextureDescriptor {
+        let input_texture = Arc::new(device.create_texture(&TextureDescriptor {
             label: Some("slicing input"),
             size: Extent3d {
                 width: input_size.x,
@@ -90,7 +91,7 @@ impl SlicingPass {
             dimension: TextureDimension::D2,
             format: TARGET_FORMAT,
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-        });
+        }));
 
         let input_views = (0..input_slices_count)
             .map(|idx| {
@@ -112,9 +113,6 @@ impl SlicingPass {
                     view_dimension: TextureViewDimension::D2Array,
                     multisampled: false,
                 },
-                // access: StorageTextureAccess::ReadOnly,
-                // format: TARGET_FORMAT,
-                // view_dimension: TextureViewDimension::D2Array,
                 array_size: Some(input_slices_count),
                 resource: BindingResource::TextureViewArray(
                     &input_views.iter().collect::<Vec<_>>(), // &[T] -> &[&T]
@@ -134,6 +132,7 @@ impl SlicingPass {
         Self {
             input_texture,
             input_views,
+            input_size,
             pipeline,
             bind_group,
             input_slicing_layout,
@@ -143,14 +142,19 @@ impl SlicingPass {
         }
     }
 
-    // Aligned slice size
+    // Aligned output slice size
     pub fn output_size(&self) -> UVec2 {
         self.target_size
     }
 
+    // Aligned input slice size
+    pub fn input_size(&self) -> UVec2 {
+        self.input_size
+    }
+
     // The texture has one layer for each slice
-    pub fn input_texture(&self) -> &Texture {
-        &self.input_texture
+    pub fn input_texture(&self) -> Arc<Texture> {
+        Arc::clone(&self.input_texture)
     }
 
     pub fn input_views(&self) -> &[TextureView] {

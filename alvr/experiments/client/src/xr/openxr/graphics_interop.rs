@@ -97,6 +97,7 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
         if cfg!(target_os = "android") {
             // For importing decoder images into Vulkan
             let extra_extensions = [
+                vk::ExtQueueFamilyForeignFn::name(),
                 vk::KhrExternalMemoryFn::name(),
                 vk::AndroidExternalMemoryAndroidHardwareBufferFn::name(),
             ]

@@ -815,7 +815,7 @@ checksum = "4bfbf56724aa9eca8afa4fcfadeb479e722935bb2a0900c2d37e0cc477af0688"
 
 [[package]]
 name = "client"
-version = "16.0.0-rc2"
+version = "17.0.0-dev.1"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -835,6 +835,8 @@ dependencies = [
  "parking_lot",
  "pollster",
  "rand",
+ "rend3",
+ "rend3-routine",
  "serde",
  "serde_json",
  "settings-schema",
@@ -1701,6 +1703,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "flume"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24c3fd473b3a903a62609e413ed7538f99e10b665ecb502b5e481a95283f8ab4"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+ "nanorand",
+ "pin-project",
+ "spin 0.9.2",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1995,8 +2010,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2064,6 +2081,7 @@ version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4fa84eead97d5412b2a20aed4d66612a97a9e41e08eababdb9ae2bf88667490"
 dependencies = [
+ "bytemuck",
  "serde",
 ]
 
@@ -2615,6 +2633,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "include_dir"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "482a2e29200b7eed25d7fdbd14423326760b7f6658d21a4cf12d55a50713c69f"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e074c19deab2501407c91ba1860fa3d6820bfde307db6d8cb851b55a10be89b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2840,6 +2877,12 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+
+[[package]]
+name = "list-any"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb6e1a111fcefd9e4d7bbd27741b6922d4689e5b765787668c369daa4ae9c11c"
 
 [[package]]
 name = "locale_config"
@@ -3081,6 +3124,15 @@ dependencies = [
  "rustc-hash",
  "spirv",
  "thiserror",
+]
+
+[[package]]
+name = "nanorand"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "729eb334247daa1803e0a094d0a5c55711b85571179f5ec6e53eccfdf7008958"
+dependencies = [
+ "getrandom",
 ]
 
 [[package]]
@@ -3817,6 +3869,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pin-project"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58ad3879ad3baf4e44784bc6a718a8698867bb991f8ce24d1bcbe2cfb4c3a75e"
+dependencies = [
+ "pin-project-internal",
+]
+
+[[package]]
+name = "pin-project-internal"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "744b6f092ba29c3650faf274db506afd39944f48420f6c86b17cfe0ee1cb36bb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4098,6 +4170,64 @@ dependencies = [
 ]
 
 [[package]]
+name = "rend3"
+version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+dependencies = [
+ "arrayvec 0.7.2",
+ "bitflags",
+ "bumpalo 3.8.0",
+ "bytemuck",
+ "flume",
+ "glam 0.20.2",
+ "indexmap",
+ "list-any",
+ "log",
+ "num-traits",
+ "parking_lot",
+ "profiling",
+ "range-alloc",
+ "rend3-types",
+ "rustc-hash",
+ "smallvec",
+ "smartstring",
+ "thiserror",
+ "wgpu 0.12.0",
+ "wgpu-profiler",
+]
+
+[[package]]
+name = "rend3-routine"
+version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+dependencies = [
+ "arrayvec 0.7.2",
+ "bitflags",
+ "bytemuck",
+ "flume",
+ "glam 0.20.2",
+ "include_dir",
+ "log",
+ "ordered-float",
+ "parking_lot",
+ "profiling",
+ "rend3",
+ "wgpu 0.12.0",
+ "wgpu-profiler",
+]
+
+[[package]]
+name = "rend3-types"
+version = "0.2.0"
+source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+dependencies = [
+ "bitflags",
+ "glam 0.20.2",
+ "thiserror",
+ "wgpu-types 0.12.0",
+]
+
+[[package]]
 name = "renderdoc-sys"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4194,7 +4324,7 @@ dependencies = [
  "cc",
  "libc",
  "once_cell",
- "spin",
+ "spin 0.5.2",
  "untrusted",
  "web-sys",
  "winapi",
@@ -4629,6 +4759,15 @@ name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
+name = "spin"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
+dependencies = [
+ "lock_api",
+]
 
 [[package]]
 name = "spinning"
@@ -5691,6 +5830,16 @@ dependencies = [
  "web-sys",
  "wgpu-types 0.12.0",
  "winapi",
+]
+
+[[package]]
+name = "wgpu-profiler"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad914efa8e5c4376b9fc97f03531cae1b2fbb0d23b6170b7f399c610f347ae60"
+dependencies = [
+ "futures-lite",
+ "wgpu 0.12.0",
 ]
 
 [[package]]

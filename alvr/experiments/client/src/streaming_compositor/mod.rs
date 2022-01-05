@@ -26,7 +26,7 @@ impl StreamingCompositor {
         let slicer = SlicingPass::new(
             &graphics_context.device,
             combined_size,
-            2, //slices_count,
+            slices_count,
             2,
             AlignmentDirection::Input,
         );
@@ -37,8 +37,12 @@ impl StreamingCompositor {
         }
     }
 
-    pub fn input_texture(&self) -> &Texture {
+    pub fn input_texture(&self) -> Arc<Texture> {
         self.slicer.input_texture()
+    }
+
+    pub fn input_size(&self) -> UVec2 {
+        self.slicer.input_size()
     }
 
     pub fn render(&self, target: &[Arc<TextureView>]) {

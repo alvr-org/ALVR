@@ -211,8 +211,6 @@ fn get_video_frame_data(
     streaming_components: &mut VideoStreamingComponents,
     timeout: Duration,
 ) -> Option<VideoFrameHeaderPacket> {
-    let decoder_target = streaming_components.compositor.input_texture();
-
     let mut frame_metadata = streaming_components
         .frame_metadata_receiver
         .recv_timeout(timeout)
@@ -220,7 +218,7 @@ fn get_video_frame_data(
 
     let mut decoder_timestamps = vec![];
     for frame_grabber in &mut streaming_components.video_decoder_frame_grabbers {
-        let res = frame_grabber.get_output_frame(decoder_target, 0, timeout);
+        let res = frame_grabber.get_output_frame(timeout);
 
         error!("frame dequeue: {:?}", res);
 

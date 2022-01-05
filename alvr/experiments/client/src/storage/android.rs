@@ -15,7 +15,7 @@ pub fn load_asset(fname: &str) -> Vec<u8> {
     asset.get_buffer().unwrap().to_vec()
 }
 
-pub fn get_preferences_object<'a>(env: &'a JNIEnv<'a>) -> JObject<'a> {
+fn get_preferences_object<'a>(env: &'a JNIEnv<'a>) -> JObject<'a> {
     let pref_name = env.new_string("alvr-pref").unwrap();
 
     env.call_method(

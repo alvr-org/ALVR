@@ -1,6 +1,6 @@
 [package]
 name = "client"
-version = "16.0.0-rc2"
+version = "17.0.0-dev.1"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -34,8 +34,8 @@ futures = "0.3"
 pollster = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-# rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
-# rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "fee231028b95c9a050058b7e314ff1709a9f9eb9" }
+rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
+rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
 # Miscellaneous
 openxr = "0.15.5"
 

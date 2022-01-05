@@ -14,12 +14,12 @@ use alvr_graphics::{
     },
     GraphicsContext,
 };
-// use rend3::{
-//     types::{Camera, CameraProjection, MipmapCount, MipmapSource, SampleCount, Texture},
-//     util::output::OutputFrame,
-//     ExtendedAdapterInfo, InstanceAdapterDevice, RenderGraph, RendererMode, Vendor,
-// };
-// use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SkyboxRoutine};
+use rend3::{
+    types::{Camera, CameraProjection, MipmapCount, MipmapSource, SampleCount, Texture},
+    util::output::OutputFrame,
+    ExtendedAdapterInfo, InstanceAdapterDevice, RenderGraph, RendererMode, Vendor,
+};
+use rend3_routine::{PbrRenderRoutine, RenderTextureOptions, SkyboxRoutine, TonemappingRoutine};
 use std::sync::Arc;
 
 const NEAR_PLANE_M: f32 = 0.01;
@@ -27,31 +27,31 @@ const NEAR_PLANE_M: f32 = 0.01;
 // Responsible for rendering the lobby room or HUD
 pub struct Scene {
     graphics_context: Arc<GraphicsContext>,
-    // renderer: Arc<rend3::Renderer>,
-    // skybox_routine: SkyboxRoutine,
-    // pbr_routine: PbrRenderRoutine,
-    // graphics_context: Arc<GraphicsContext>,
+    renderer: Arc<rend3::Renderer>,
+    pbr_routine: PbrRenderRoutine,
+    skybox_routine: SkyboxRoutine,
+    tonemapping_routine: TonemappingRoutine,
     should_render_lobby: bool,
 }
 
 impl Scene {
     pub fn new(graphics_context: Arc<GraphicsContext>) -> StrResult<Self> {
-        // log::error!("create scene");
+        log::error!("create scene");
 
-        // // let iad = InstanceAdapterDevice {
-        // //     instance: Arc::clone(&graphics_context.instance),
-        // //     adapter: Arc::clone(&graphics_context.adapter),
-        // //     device: Arc::clone(&graphics_context.device),
-        // //     queue: Arc::clone(&graphics_context.queue),
-        // //     mode: RendererMode::CPUPowered,
-        // //     info: ExtendedAdapterInfo {
-        // //         name: "".into(),
-        // //         vendor: Vendor::Unknown(0),
-        // //         device: 0,
-        // //         device_type: DeviceType::Other,
-        // //         backend: Backend::Vulkan,
-        // //     },
-        // // };
+        let iad = InstanceAdapterDevice {
+            instance: Arc::clone(&graphics_context.instance),
+            adapter: Arc::clone(&graphics_context.adapter),
+            device: Arc::clone(&graphics_context.device),
+            queue: Arc::clone(&graphics_context.queue),
+            mode: RendererMode::CPUPowered,
+            info: ExtendedAdapterInfo {
+                name: "".into(),
+                vendor: Vendor::Unknown(0),
+                device: 0,
+                device_type: DeviceType::Other,
+                backend: Backend::Vulkan,
+            },
+        };
 
         // let iad = pollster::block_on(rend3::create_iad(
         //     None,
@@ -61,50 +61,45 @@ impl Scene {
         // ))
         // .unwrap();
 
-        // log::error!("create renderer");
+        let renderer = trace_err!(rend3::Renderer::new(iad, None))?;
 
-        // let renderer = trace_err!(rend3::Renderer::new(iad, None))?;
+        let pbr_routine = PbrRenderRoutine::new(
+            &renderer,
+            RenderTextureOptions {
+                resolution: UVec2::new(1, 1),
+                samples: SampleCount::One,
+            },
+        );
 
-        // log::error!("create pbr routine");
+        let mut skybox_routine = SkyboxRoutine::new(
+            &renderer,
+            RenderTextureOptions {
+                resolution: UVec2::new(1, 1),
+                samples: SampleCount::One,
+            },
+        );
+        let skybox_handle = renderer.add_texture_cube(Texture {
+            label: Some("skybox".into()),
+            data: vec![
+                255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
+                255, 0, 0, 255,
+            ],
+            format: TextureFormat::Rgba8UnormSrgb,
+            size: UVec2::new(1, 1),
+            mip_count: MipmapCount::ONE,
+            mip_source: MipmapSource::Uploaded,
+        });
+        skybox_routine.set_background_texture(Some(skybox_handle));
 
-        // let pbr_routine = PbrRenderRoutine::new(
-        //     &renderer,
-        //     RenderTextureOptions {
-        //         resolution: UVec2::new(100, 100),
-        //         samples: SampleCount::One,
-        //     },
-        // );
-
-        // log::error!("create skybox routine");
-
-        // let mut skybox_routine = SkyboxRoutine::new(
-        //     &renderer,
-        //     RenderTextureOptions {
-        //         resolution: UVec2::new(1, 1),
-        //         samples: SampleCount::One,
-        //     },
-        // );
-        // let skybox_handle = renderer.add_texture_cube(Texture {
-        //     label: Some("skybox".into()),
-        //     data: vec![
-        //         255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255,
-        //         255, 0, 0, 255,
-        //     ],
-        //     format: TextureFormat::Rgba8UnormSrgb,
-        //     size: UVec2::new(1, 1),
-        //     mip_count: MipmapCount::ONE,
-        //     mip_source: MipmapSource::Uploaded,
-        // });
-        // skybox_routine.set_background_texture(Some(skybox_handle));
-
-        // Ok(Self {
-        //     renderer,
-        //     skybox_routine,
-        //     // pbr_routine,
-        // })
+        let tonemapping_routine =
+            TonemappingRoutine::new(&renderer, UVec2::new(1, 1), TextureFormat::Rgba8UnormSrgb);
 
         Ok(Self {
             graphics_context,
+            renderer,
+            skybox_routine,
+            pbr_routine,
+            tonemapping_routine,
             should_render_lobby: false,
         })
     }
@@ -153,9 +148,19 @@ impl Scene {
 
         self.graphics_context.queue.submit(Some(encoder.finish()));
 
+        // // Update view size
         // self.renderer
         //     .set_aspect_ratio(output_resolution.x as f32 / output_resolution.y as f32);
+        // self.pbr_routine.resize(
+        //     &self.renderer,
+        //     RenderTextureOptions {
+        //         resolution: output_resolution,
+        //         samples: SampleCount::One,
+        //     },
+        // );
+        // self.tonemapping_routine.resize(output_resolution);
 
+        // // Update camera
         // let l = camera_view_config.fov.left.tan();
         // let r = camera_view_config.fov.right.tan();
         // let t = camera_view_config.fov.top.tan();
@@ -167,30 +172,25 @@ impl Scene {
         //     Vec4::new((r + l) / (r - l), (t + b) / (t - b), -1_f32, -1_f32),
         //     Vec4::new(0_f32, 0_f32, -2_f32 * NEAR_PLANE_M, 0_f32),
         // );
-        // // self.renderer.set_camera_data(Camera {
-        // //     projection: CameraProjection::Raw(projection),
-        // //     view: Mat4::from_rotation_translation(
-        // //         camera_view_config.orientation,
-        // //         camera_view_config.position,
-        // //     ),
-        // // });
+        // self.renderer.set_camera_data(Camera {
+        //     projection: CameraProjection::Raw(projection),
+        //     view: Mat4::from_rotation_translation(
+        //         camera_view_config.orientation,
+        //         camera_view_config.position,
+        //     ),
+        // });
 
+        // // Render
         // let (command_buffers, ready_data) = self.renderer.ready();
-        // self.skybox_routine.ready(&self.renderer);
-
         // let mut graph = RenderGraph::new();
-
-        // // self.pbr_routine.add_pre_cull_to_graph(&mut graph);
-        // // self.pbr_routine
-        // //     .add_shadow_culling_to_graph(&mut graph, &ready_data);
-        // // self.pbr_routine.add_culling_to_graph(&mut graph);
-        // // self.pbr_routine
-        // //     .add_shadow_rendering_to_graph(&mut graph, &ready_data);
-        // // self.pbr_routine.add_prepass_to_graph(&mut graph);
-        // // self.skybox_routine.add_to_graph(&mut graph);
-        // // self.pbr_routine.add_forward_to_graph(&mut graph);
-
-        // // Note: consumes the graph, cannot keep between render() calls
+        // rend3_routine::add_default_rendergraph(
+        //     &mut graph,
+        //     &ready_data,
+        //     &self.pbr_routine,
+        //     Some(&self.skybox_routine),
+        //     &self.tonemapping_routine,
+        //     rend3::types::SampleCount::One,
+        // );
         // graph.execute(
         //     &self.renderer,
         //     OutputFrame::View(output),

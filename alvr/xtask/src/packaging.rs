@@ -103,7 +103,7 @@ fn build_windows_installer(wix_path: &str) {
 }
 
 pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool) {
-    build_server(true, false, false, false, root, reproducible);
+    build_server(true, false, false, true, false, root, reproducible);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");

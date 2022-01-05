@@ -38,6 +38,7 @@ FLAGS:
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
+    --no-nvidia         Additional flag for build-ffmpeg-linux subcommand. Build don't reqired NVidia libs ffmpeg
     --help              Print this text
 
 ARGS:
@@ -56,6 +57,7 @@ pub fn build_server(
     experiments: bool,
     fetch_crates: bool,
     bundle_ffmpeg: bool,
+    no_nvidia: bool,
     root: Option<String>,
     reproducible: bool,
 ) {
@@ -117,7 +119,8 @@ pub fn build_server(
     .unwrap();
 
     if bundle_ffmpeg {
-        let ffmpeg_path = dependencies::build_ffmpeg_linux();
+        let nvenc_flag = !no_nvidia;
+        let ffmpeg_path = dependencies::build_ffmpeg_linux(nvenc_flag);
         let lib_dir = afs::server_build_dir().join("lib64").join("alvr");
         fs::create_dir_all(lib_dir.clone()).unwrap();
         for lib in walkdir::WalkDir::new(ffmpeg_path)
@@ -357,6 +360,7 @@ fn main() {
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
+        let no_nvidia = args.contains("--no-nvidia");
         let reproducible = args.contains("--reproducible");
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
@@ -369,6 +373,7 @@ fn main() {
                     experiments,
                     fetch,
                     bundle_ffmpeg,
+                    no_nvidia,
                     root,
                     reproducible,
                 ),
@@ -382,7 +387,10 @@ fn main() {
                     }
                 }
                 "build-ffmpeg-linux" => {
-                    dependencies::build_ffmpeg_linux();
+                    dependencies::build_ffmpeg_linux(true);
+                }
+                "build-ffmpeg-linux-no-nvidia" => {
+                    dependencies::build_ffmpeg_linux(false);
                 }
                 "publish-server" => packaging::publish_server(is_nightly, root, reproducible),
                 "publish-client" => packaging::publish_client(is_nightly),

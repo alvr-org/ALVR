@@ -106,9 +106,11 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
                    Nvidia docs:
                    https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/#commonly-faced-issues-and-tips-to-resolve-them
                 */
+                (if nvenc_flag {"--enable-encoder=h264_nvenc --enable-encoder=hevc_nvenc --enable-nonfree --enable-cuda-nvcc --enable-libnpp --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=-I/usr/local/cuda/include/ --extra-ldflags=-L/usr/local/cuda/lib64/"} else {""}),
                 "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
                 "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
-                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi --enable-hwaccel=h264_nvenc --enable-hwaccel=hevc_nvenc",
+                "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
+                (if nvenc_flag {"--enable-hwaccel=h264_nvenc --enable-hwaccel=hevc_nvenc"} else {""}),
                 "--enable-filter=scale --enable-filter=scale_vaapi",
             ),
             "--enable-libx264 --enable-libx265 --enable-vulkan",

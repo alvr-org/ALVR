@@ -38,7 +38,7 @@ FLAGS:
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
-    --no-nvidia         Additional flag for build-ffmpeg-linux subcommand. Build don't reqired NVidia libs ffmpeg
+    --no-nvidia         Additional flag for `--bundle-ffmpeg` subcommand. Build don't require NVidia libs FFmpeg related
     --help              Print this text
 
 ARGS:

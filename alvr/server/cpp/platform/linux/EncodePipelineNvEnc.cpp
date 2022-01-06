@@ -25,6 +25,9 @@ const char *encoder(ALVR_CODEC codec) {
 } // namespace
 alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frames,
                                                VkFrameCtx &vk_frame_ctx) {
+    auto input_frame_ctx = (AVHWFramesContext *)vk_frame_ctx.ctx->data;
+    assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
+
     int err;
     for (auto &input_frame : input_frames) {
         vk_frames.push_back(input_frame.make_av_frame(vk_frame_ctx).release());

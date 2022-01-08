@@ -353,14 +353,8 @@ impl OpenxrInteractionContext {
         MotionData {
             orientation: convert::from_xr_orientation(location.pose.orientation),
             position: convert::from_xr_vec3(location.pose.position),
-            linear_velocity: velocity
-                .velocity_flags
-                .contains(xr::SpaceVelocityFlags::LINEAR_VALID)
-                .then(|| convert::from_xr_vec3(velocity.linear_velocity)),
-            angular_velocity: velocity
-                .velocity_flags
-                .contains(xr::SpaceVelocityFlags::ANGULAR_VALID)
-                .then(|| convert::from_xr_vec3(velocity.angular_velocity)),
+            linear_velocity: velocity.linear_velocity.map(convert::from_xr_vec3),
+            angular_velocity: velocity.angular_velocity.map(convert::from_xr_vec3),
         }
     }
 

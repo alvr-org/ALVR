@@ -36,6 +36,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
 rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
 rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
+naga = { version = "0.8", features = ["wgsl-in", "glsl-in", "spv-out"] }
 # Miscellaneous
 openxr = { git = "https://github.com/zarik5/openxrs" }
 

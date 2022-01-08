@@ -19,6 +19,7 @@ use wgpu::{
 };
 
 pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
+pub const QUAD_SHADER_WGSL: &str = include_str!("../resources/quad.wgsl");
 
 pub struct GraphicsContext {
     pub instance: Arc<Instance>,
@@ -35,7 +36,7 @@ pub struct GraphicsContext {
 pub fn quad_shader(device: &Device) -> ShaderModule {
     device.create_shader_module(&ShaderModuleDescriptor {
         label: None,
-        source: ShaderSource::Wgsl(include_str!("../resources/quad.wgsl").into()),
+        source: ShaderSource::Wgsl(QUAD_SHADER_WGSL.into()),
     })
 }
 

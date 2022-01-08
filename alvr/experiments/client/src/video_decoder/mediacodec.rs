@@ -1,17 +1,21 @@
 use alvr_common::{glam::UVec2, log, prelude::*};
 use alvr_graphics::{
-    ash::{
-        self,
-        vk::{self, FenceCreateFlags, SampleCountFlags, SharingMode},
-    },
+    ash::{self, vk},
     wgpu::{
-        self, CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture,
+        CommandEncoder, Device, Extent3d, ImageCopyTexture, Origin3d, Surface, Texture,
         TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         TextureView,
     },
-    wgpu_hal as hal, GraphicsContext,
+    wgpu_hal as hal, GraphicsContext, QUAD_SHADER_WGSL,
 };
 use alvr_session::{CodecType, MediacodecDataType};
+use naga::{
+    back::spv::{self, Options, PipelineOptions, WriterFlags},
+    front::{glsl, wgsl},
+    proc::{BoundsCheckPolicies, BoundsCheckPolicy},
+    valid::{Capabilities, ModuleInfo, ValidationFlags, Validator},
+    ShaderStage,
+};
 use ndk::{
     hardware_buffer::{HardwareBuffer, HardwareBufferUsage},
     media::{
@@ -33,17 +37,24 @@ use sys::AMediaCodec;
 
 pub struct ConversionPass {
     graphics_context: Arc<GraphicsContext>,
+    queue: vk::Queue,
+    ycbcr_conversion: vk::SamplerYcbcrConversion,
+    sampler: vk::Sampler,
     input_image: vk::Image,
     input_image_view: vk::ImageView,
     input_memory: vk::DeviceMemory,
     input_allocation_size: vk::DeviceSize,
-    sampler: vk::Sampler,
     descriptor_set_layout: vk::DescriptorSetLayout,
     pipeline_layout: vk::PipelineLayout,
+    vertex_shader_module: vk::ShaderModule,
+    fragment_shader_module: vk::ShaderModule,
+    render_pass: vk::RenderPass,
     pipeline: vk::Pipeline,
-    command_pool: vk::CommandPool,
     output_image_view: vk::ImageView,
     framebuffer: vk::Framebuffer,
+    descriptor_pool: vk::DescriptorPool,
+    command_pool: vk::CommandPool,
+    command_buffer: vk::CommandBuffer,
     fence: vk::Fence,
 }
 
@@ -58,6 +69,13 @@ impl ConversionPass {
     ) -> StrResult<Self> {
         error!("creating conversion pass");
 
+        let device = &graphics_context.raw_device;
+
+        let queue = device.get_device_queue(
+            graphics_context.queue_family_index,
+            graphics_context.queue_index,
+        );
+
         let mut hardware_buffer_format_properties =
             vk::AndroidHardwareBufferFormatPropertiesANDROID::default();
         let mut hardware_buffer_properties = vk::AndroidHardwareBufferPropertiesANDROID::builder()
@@ -68,14 +86,13 @@ impl ConversionPass {
             let ext_fns =
                 vk::AndroidExternalMemoryAndroidHardwareBufferFn::load(|name: &std::ffi::CStr| {
                     mem::transmute(
-                        graphics_context.raw_instance.get_device_proc_addr(
-                            graphics_context.raw_device.handle(),
-                            name.as_ptr(),
-                        ),
+                        graphics_context
+                            .raw_instance
+                            .get_device_proc_addr(device.handle(), name.as_ptr()),
                     )
                 });
             ext_fns.get_android_hardware_buffer_properties_android(
-                graphics_context.raw_device.handle(),
+                device.handle(),
                 input_buffer_ptr as _,
                 &mut hardware_buffer_properties as _,
             );
@@ -83,7 +100,7 @@ impl ConversionPass {
 
         // error!("buffer properties: {:?}", hardware_buffer_format_properties);
 
-        let conversion = trace_err!(graphics_context.raw_device.create_sampler_ycbcr_conversion(
+        let ycbcr_conversion = trace_err!(device.create_sampler_ycbcr_conversion(
             &vk::SamplerYcbcrConversionCreateInfo::builder()
                 .format(hardware_buffer_format_properties.format)
                 .ycbcr_model(hardware_buffer_format_properties.suggested_ycbcr_model)
@@ -95,18 +112,20 @@ impl ConversionPass {
             None
         ))?;
 
-        let sampler = trace_err!(graphics_context.raw_device.create_sampler(
+        let sampler = trace_err!(device.create_sampler(
             &vk::SamplerCreateInfo::builder()
                 .mag_filter(vk::Filter::LINEAR)
                 .min_filter(vk::Filter::LINEAR)
                 .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
                 .min_lod(0.0)
                 .max_lod(1.0)
-                .push_next(&mut vk::SamplerYcbcrConversionInfo::builder().conversion(conversion)),
+                .push_next(
+                    &mut vk::SamplerYcbcrConversionInfo::builder().conversion(ycbcr_conversion)
+                ),
             None,
         ))?;
 
-        let input_image = trace_err!(graphics_context.raw_device.create_image(
+        let input_image = trace_err!(device.create_image(
             &vk::ImageCreateInfo::builder()
                 // .flags(DISJOINT)
                 .image_type(vk::ImageType::TYPE_2D)
@@ -118,7 +137,7 @@ impl ConversionPass {
                 })
                 .mip_levels(1)
                 .array_layers(1)
-                .samples(SampleCountFlags::TYPE_1)
+                .samples(vk::SampleCountFlags::TYPE_1)
                 .tiling(vk::ImageTiling::LINEAR)
                 .usage(vk::ImageUsageFlags::SAMPLED)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE)
@@ -130,7 +149,7 @@ impl ConversionPass {
             None,
         ))?;
 
-        let input_image_view = trace_err!(graphics_context.raw_device.create_image_view(
+        let input_image_view = trace_err!(device.create_image_view(
             &vk::ImageViewCreateInfo::builder()
                 .image(input_image)
                 .view_type(vk::ImageViewType::TYPE_2D)
@@ -143,36 +162,77 @@ impl ConversionPass {
                     base_array_layer: 0,
                     layer_count: 1,
                 })
-                .push_next(&mut vk::SamplerYcbcrConversionInfo::builder().conversion(conversion)),
+                .push_next(
+                    &mut vk::SamplerYcbcrConversionInfo::builder().conversion(ycbcr_conversion)
+                ),
             None
         ))?;
 
-        let descriptor_set_layout =
-            trace_err!(graphics_context.raw_device.create_descriptor_set_layout(
-                &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[
-                    vk::DescriptorSetLayoutBinding::builder()
-                        .binding(0)
-                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                        .descriptor_count(1)
-                        .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                        .immutable_samplers(&[sampler])
-                        .build(),
-                ]),
-                None,
-            ))?;
+        let descriptor_set_layout = trace_err!(device.create_descriptor_set_layout(
+            &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[
+                vk::DescriptorSetLayoutBinding::builder()
+                    .binding(0)
+                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                    .descriptor_count(1)
+                    .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                    .immutable_samplers(&[sampler])
+                    .build(),
+            ]),
+            None,
+        ))?;
 
-        let pipeline_layout = trace_err!(graphics_context.raw_device.create_pipeline_layout(
+        let pipeline_layout = trace_err!(device.create_pipeline_layout(
             &vk::PipelineLayoutCreateInfo::builder().set_layouts(&[descriptor_set_layout]),
             None,
         ))?;
 
-        let vertex_shader_module = trace_err!(graphics_context
-            .raw_device
-            .create_shader_module(&vk::ShaderModuleCreateInfo::builder().code(todo!()), None))?;
+        let mut shader_validator = Validator::new(ValidationFlags::all(), Capabilities::all());
+        let spv_out_options = Options {
+            lang_version: (1, 0),
+            flags: WriterFlags::DEBUG | WriterFlags::FORCE_POINT_SIZE,
+            capabilities: None,
+            bounds_check_policies: BoundsCheckPolicies {
+                index: BoundsCheckPolicy::Unchecked,
+                buffer: BoundsCheckPolicy::Unchecked,
+                image: BoundsCheckPolicy::Unchecked,
+            },
+        };
 
-        let fragment_shader_module = trace_err!(graphics_context
-            .raw_device
-            .create_shader_module(&vk::ShaderModuleCreateInfo::builder().code(todo!()), None))?;
+        let naga_vertex_shader_module = trace_err!(wgsl::parse_str(QUAD_SHADER_WGSL))?;
+        let quad_shader_spirv = trace_err!(spv::write_vec(
+            &naga_vertex_shader_module,
+            &trace_err!(shader_validator.validate(&naga_vertex_shader_module))?,
+            &spv_out_options,
+            Some(&PipelineOptions {
+                shader_stage: ShaderStage::Vertex,
+                entry_point: "main".to_owned(),
+            }),
+        ))?;
+        let vertex_shader_module = trace_err!(device.create_shader_module(
+            &vk::ShaderModuleCreateInfo::builder().code(&quad_shader_spirv),
+            None
+        ))?;
+
+        let naga_fragment_shader_module = trace_err_dbg!(glsl::Parser::default().parse(
+            &glsl::Options {
+                stage: ShaderStage::Fragment,
+                defines: Default::default(),
+            },
+            include_str!("../../resources/ycbcr_conversion.glsl")
+        ))?;
+        let fragment_shader_spirv = trace_err!(spv::write_vec(
+            &naga_fragment_shader_module,
+            &trace_err!(shader_validator.validate(&naga_fragment_shader_module))?,
+            &spv_out_options,
+            Some(&PipelineOptions {
+                shader_stage: ShaderStage::Fragment,
+                entry_point: "main".to_owned(),
+            }),
+        ))?;
+        let fragment_shader_module = trace_err!(device.create_shader_module(
+            &vk::ShaderModuleCreateInfo::builder().code(&fragment_shader_spirv),
+            None
+        ))?;
 
         let noop_stencil_state = vk::StencilOpState {
             fail_op: vk::StencilOp::KEEP,
@@ -184,7 +244,7 @@ impl ConversionPass {
             reference: 0,
         };
 
-        let render_pass = trace_err!(graphics_context.raw_device.create_render_pass(
+        let render_pass = trace_err!(device.create_render_pass(
             &vk::RenderPassCreateInfo::builder()
                 .attachments(&[vk::AttachmentDescription {
                     format: vk::Format::R8G8B8A8_SRGB,
@@ -205,8 +265,7 @@ impl ConversionPass {
             None,
         ))?;
 
-        let pipelines = trace_err!(graphics_context
-            .raw_device
+        let pipelines = trace_err!(device
             .create_graphics_pipelines(
                 vk::PipelineCache::null(),
                 &[vk::GraphicsPipelineCreateInfo::builder()
@@ -295,7 +354,7 @@ impl ConversionPass {
             output_image = tex.unwrap().raw_handle();
         });
 
-        let output_image_view = trace_err!(graphics_context.raw_device.create_image_view(
+        let output_image_view = trace_err!(device.create_image_view(
             &vk::ImageViewCreateInfo::builder()
                 .image(output_image)
                 .view_type(vk::ImageViewType::TYPE_2D)
@@ -310,7 +369,7 @@ impl ConversionPass {
             None
         ))?;
 
-        let framebuffer = trace_err!(graphics_context.raw_device.create_framebuffer(
+        let framebuffer = trace_err!(device.create_framebuffer(
             &vk::FramebufferCreateInfo::builder()
                 .render_pass(render_pass)
                 .width(output_size.x)
@@ -320,7 +379,7 @@ impl ConversionPass {
             None,
         ))?;
 
-        let descriptor_pool = trace_err!(graphics_context.raw_device.create_descriptor_pool(
+        let descriptor_pool = trace_err!(device.create_descriptor_pool(
             &vk::DescriptorPoolCreateInfo::builder()
                 .max_sets(1)
                 .pool_sizes(&[vk::DescriptorPoolSize {
@@ -330,13 +389,13 @@ impl ConversionPass {
             None,
         ))?;
 
-        let descriptor_sets = trace_err!(graphics_context.raw_device.allocate_descriptor_sets(
+        let descriptor_sets = trace_err!(device.allocate_descriptor_sets(
             &vk::DescriptorSetAllocateInfo::builder()
                 .descriptor_pool(descriptor_pool)
                 .set_layouts(&[descriptor_set_layout]),
         ))?;
 
-        graphics_context.raw_device.update_descriptor_sets(
+        device.update_descriptor_sets(
             &[vk::WriteDescriptorSet::builder()
                 .dst_set(descriptor_sets[0])
                 .dst_binding(0)
@@ -351,33 +410,103 @@ impl ConversionPass {
             &[],
         );
 
-        // let command_pool = graphics_context.raw_device.create_command_pool(&vk::CommandPoolCreateInfo::builder().flags(), allocation_callbacks)
+        let command_pool = trace_err!(device.create_command_pool(
+            &vk::CommandPoolCreateInfo::builder()
+                .flags(vk::CommandPoolCreateFlags::empty()) // no transient, no reset
+                .queue_family_index(graphics_context.queue_family_index),
+            None,
+        ))?;
 
-        let fence = trace_err!(graphics_context.raw_device.create_fence(
+        let command_buffers = trace_err!(device.allocate_command_buffers(
+            &vk::CommandBufferAllocateInfo::builder()
+                .command_pool(command_pool)
+                .level(vk::CommandBufferLevel::PRIMARY)
+                .command_buffer_count(1),
+        ))?;
+        let command_buffer = command_buffers[0];
+
+        trace_err!(device.begin_command_buffer(command_buffer, &Default::default()))?;
+        device.cmd_begin_render_pass(
+            command_buffer,
+            &vk::RenderPassBeginInfo::builder()
+                .render_pass(render_pass)
+                .framebuffer(framebuffer)
+                .render_area(vk::Rect2D {
+                    offset: vk::Offset2D { x: 0, y: 0 },
+                    extent: vk::Extent2D {
+                        width: output_size.x,
+                        height: output_size.y,
+                    },
+                })
+                .clear_values(&[
+                    vk::ClearValue {
+                        color: vk::ClearColorValue {
+                            float32: [1.0, 1.0, 1.0, 1.0], // white
+                        },
+                    },
+                    vk::ClearValue {
+                        depth_stencil: vk::ClearDepthStencilValue {
+                            depth: 1.0,
+                            stencil: 0,
+                        },
+                    },
+                ]),
+            vk::SubpassContents::INLINE,
+        );
+        device.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, pipeline);
+        device.cmd_bind_descriptor_sets(
+            command_buffer,
+            vk::PipelineBindPoint::GRAPHICS,
+            pipeline_layout,
+            0,
+            &descriptor_sets,
+            &[],
+        );
+        device.cmd_draw_indexed(command_buffer, 6, 1, 0, 0, 0);
+        device.cmd_end_render_pass(command_buffer);
+        trace_err!(device.end_command_buffer(command_buffer))?;
+
+        let fence = trace_err!(device.create_fence(
             &vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED),
             None
         ))?;
 
-        error!("conversion context pass");
+        error!("conversion pass created");
 
         Ok(Self {
             graphics_context,
+            queue,
+            ycbcr_conversion,
+            sampler,
             input_image,
             input_image_view,
             input_memory: vk::DeviceMemory::null(),
             input_allocation_size: hardware_buffer_properties.allocation_size,
-            sampler,
             descriptor_set_layout,
             pipeline_layout,
+            vertex_shader_module,
+            fragment_shader_module,
+            render_pass,
             pipeline,
             output_image_view,
             framebuffer,
-            command_pool: todo!(),
+            descriptor_pool,
+            command_pool,
+            command_buffer,
             fence,
         })
     }
 
-    unsafe fn execute(&mut self, new_buffer_ptr: *mut sys::AHardwareBuffer) {
+    // returns false for fence wait timeout
+    unsafe fn execute(&mut self, new_buffer_ptr: *mut sys::AHardwareBuffer) -> StrResult {
+        let device = &self.graphics_context.raw_device;
+
+        trace_err!(device.wait_for_fences(&[self.fence], true, !0))?;
+        trace_err!(device.reset_fences(&[self.fence]))?;
+
+        device.free_memory(self.input_memory, None);
+        // the old hardware buffer is released here
+
         // Create memory from external buffer
         let allocate_info = vk::MemoryDedicatedAllocateInfo::builder()
             .image(self.input_image)
@@ -386,44 +515,54 @@ impl ConversionPass {
             .buffer(new_buffer_ptr as _)
             .build();
         hardware_buffer_info.p_next = &allocate_info as *const _ as _;
-        self.input_memory = self
-            .graphics_context
-            .raw_device
-            .allocate_memory(
-                &vk::MemoryAllocateInfo::builder()
-                    .allocation_size(self.input_allocation_size)
-                    .memory_type_index(1) // memory_type_bits must be 1 << 1 -> 2
-                    .push_next(&mut hardware_buffer_info),
-                None,
-            )
-            .unwrap();
+        self.input_memory = trace_err!(device.allocate_memory(
+            &vk::MemoryAllocateInfo::builder()
+                .allocation_size(self.input_allocation_size)
+                .memory_type_index(1) // memory_type_bits must be 1 << 1 -> 2
+                .push_next(&mut hardware_buffer_info),
+            None,
+        ))?;
 
-        self.graphics_context
-            .raw_device
-            .bind_image_memory(self.input_image, self.input_memory, 0);
+        trace_err!(device.bind_image_memory(self.input_image, self.input_memory, 0))?;
+
+        // conversion happens here
+        trace_err!(device.queue_submit(
+            self.queue,
+            &[vk::SubmitInfo::builder()
+                .command_buffers(&[self.command_buffer])
+                .build()],
+            self.fence,
+        ))
     }
 }
 
 impl Drop for ConversionPass {
     fn drop(&mut self) {
+        let device = &self.graphics_context.raw_device;
+
+        // Destroy in reverse order
         unsafe {
-            self.graphics_context
-                .raw_device
-                .destroy_fence(self.fence, None);
+            device.destroy_fence(self.fence, None);
 
-            self.graphics_context
-                .raw_device
-                .destroy_framebuffer(self.framebuffer, None);
-            self.graphics_context
-                .raw_device
-                .destroy_image_view(self.output_image_view, None);
+            device.destroy_command_pool(self.command_pool, None);
+            device.destroy_descriptor_pool(self.descriptor_pool, None);
 
-            self.graphics_context
-                .raw_device
-                .destroy_image(self.input_image, None);
-            self.graphics_context
-                .raw_device
-                .free_memory(self.input_memory, None);
+            device.destroy_framebuffer(self.framebuffer, None);
+            device.destroy_image_view(self.output_image_view, None);
+
+            device.destroy_pipeline(self.pipeline, None);
+            device.destroy_render_pass(self.render_pass, None);
+            device.destroy_shader_module(self.fragment_shader_module, None);
+            device.destroy_shader_module(self.vertex_shader_module, None);
+            device.destroy_pipeline_layout(self.pipeline_layout, None);
+            device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
+
+            device.destroy_image_view(self.input_image_view, None);
+            device.destroy_image(self.input_image, None);
+            device.destroy_sampler(self.sampler, None);
+            device.destroy_sampler_ycbcr_conversion(self.ycbcr_conversion, None);
+
+            device.free_memory(self.input_memory, None);
         }
     }
 }

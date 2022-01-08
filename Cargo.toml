@@ -21,5 +21,5 @@ members = [
 ]
 
 [patch.crates-io]
-oboe = { git = "https://github.com/zarik5/oboe-rs" }
+oboe = { git = "https://github.com/zarik5/oboe-rs", rev = "b4de4ddd8c5283e1ddef8935975556527b879b79" }
 cpal = { git = "https://github.com/zarik5/cpal" }

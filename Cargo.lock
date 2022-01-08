@@ -192,7 +192,7 @@ version = "0.1.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
- "ash 0.33.3+1.2.191",
+ "ash",
  "bytemuck",
  "openxr-sys",
  "wgpu",
@@ -303,7 +303,7 @@ dependencies = [
  "walkdir",
  "webbrowser",
  "wgpu",
- "winit 0.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winit 0.26.1",
 ]
 
 [[package]]
@@ -409,15 +409,6 @@ name = "arrayvec"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
-
-[[package]]
-name = "ash"
-version = "0.33.3+1.2.191"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc4f1d82f164f838ae413296d1131aa6fa79b917d25bebaa7033d25620c09219"
-dependencies = [
- "libloading",
-]
 
 [[package]]
 name = "ash"
@@ -636,9 +627,9 @@ checksum = "ad807f2fc2bf185eeb98ff3a901bd46dc5ad58163d0fa4577ba0d25674d71708"
 
 [[package]]
 name = "bumpalo"
-version = "3.8.0"
+version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
+checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
 name = "bytemuck"
@@ -837,9 +828,9 @@ dependencies = [
  "env_logger 0.9.0",
  "futures",
  "jni",
- "ndk 0.5.0 (git+https://github.com/zarik5/android-ndk-rs)",
- "ndk-glue",
- "ndk-sys 0.2.2 (git+https://github.com/zarik5/android-ndk-rs)",
+ "ndk 0.6.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
+ "ndk-glue 0.6.0",
+ "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
  "openxr",
  "parking_lot",
  "pollster",
@@ -895,9 +886,9 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.46"
+version = "0.1.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7b858541263efe664aead4a5209a4ae5c5d2811167d4ed4ee0944503f8d2089"
+checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
 dependencies = [
  "cc",
 ]
@@ -1106,7 +1097,7 @@ dependencies = [
 [[package]]
 name = "cpal"
 version = "0.13.4"
-source = "git+https://github.com/zarik5/cpal#478b0cb5165bb9c7bc084aafd58d7260e4a0c661"
+source = "git+https://github.com/zarik5/cpal#3a3b482de7942221e355f029939c6a8e74dfe0f7"
 dependencies = [
  "alsa",
  "core-foundation-sys 0.8.3",
@@ -1116,8 +1107,8 @@ dependencies = [
  "lazy_static",
  "libc",
  "mach",
- "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue",
+ "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-glue 0.6.0",
  "nix 0.23.1",
  "oboe",
  "parking_lot",
@@ -2275,9 +2266,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f072413d126e57991455e0a922b31e4c8ba7c2ffbebf6b78b4f8521397d65cd"
+checksum = "0c9de88456263e249e241fcd211d3954e2c9b0ef7ccfc235a444eb367cae3689"
 dependencies = [
  "bytes",
  "fnv",
@@ -2558,7 +2549,7 @@ dependencies = [
  "thiserror",
  "winapi",
  "window_clipboard",
- "winit 0.26.0 (git+https://github.com/iced-rs/winit?rev=02a12380960cec2f351c09a33d6a7cc2789d96a6)",
+ "winit 0.26.0",
 ]
 
 [[package]]
@@ -2616,9 +2607,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
+checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
@@ -3106,19 +3097,32 @@ checksum = "96d868f654c72e75f8687572699cdabe755f03effbb62542768e995d5b8d699d"
 dependencies = [
  "bitflags",
  "jni-sys",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-sys 0.2.2",
  "num_enum",
  "thiserror",
 ]
 
 [[package]]
 name = "ndk"
-version = "0.5.0"
-source = "git+https://github.com/zarik5/android-ndk-rs#a4bad4b6759a3ee6955c99069680c1abee8cc3ca"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2032c77e030ddee34a6787a64166008da93f6a352b629261d0fee232b8742dd4"
 dependencies = [
  "bitflags",
  "jni-sys",
- "ndk-sys 0.2.2 (git+https://github.com/zarik5/android-ndk-rs)",
+ "ndk-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_enum",
+ "thiserror",
+]
+
+[[package]]
+name = "ndk"
+version = "0.6.0"
+source = "git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07#b6a72f16e2484ec2748132402e074b0f5cb60e07"
+dependencies = [
+ "bitflags",
+ "jni-sys",
+ "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
  "num_enum",
  "thiserror",
 ]
@@ -3132,9 +3136,23 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk 0.5.0",
  "ndk-macro",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-sys 0.2.2",
+]
+
+[[package]]
+name = "ndk-glue"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04c0d14b0858eb9962a5dac30b809b19f19da7e4547d64af2b0bb051d2e55d79"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "log",
+ "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-macro",
+ "ndk-sys 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3158,8 +3176,20 @@ checksum = "e1bcdd74c20ad5d95aacd60ef9ba40fdf77f767051040541df557b7a9b2a2121"
 
 [[package]]
 name = "ndk-sys"
-version = "0.2.2"
-source = "git+https://github.com/zarik5/android-ndk-rs#a4bad4b6759a3ee6955c99069680c1abee8cc3ca"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e5a6ae77c8ee183dcbbba6150e2e6b9f3f4196a7666c02a715a95692ec1fa97"
+dependencies = [
+ "jni-sys",
+]
+
+[[package]]
+name = "ndk-sys"
+version = "0.3.0"
+source = "git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07#b6a72f16e2484ec2748132402e074b0f5cb60e07"
+dependencies = [
+ "jni-sys",
+]
 
 [[package]]
 name = "nix"
@@ -3436,11 +3466,11 @@ dependencies = [
 [[package]]
 name = "oboe"
 version = "0.4.4"
-source = "git+https://github.com/zarik5/oboe-rs#5a4636e2fc936b5ee4b144514ba3a98c0e212e47"
+source = "git+https://github.com/zarik5/oboe-rs?rev=b4de4ddd8c5283e1ddef8935975556527b879b79#b4de4ddd8c5283e1ddef8935975556527b879b79"
 dependencies = [
  "jni",
- "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue",
+ "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-glue 0.6.0",
  "num-derive",
  "num-traits",
  "oboe-sys",
@@ -3449,7 +3479,7 @@ dependencies = [
 [[package]]
 name = "oboe-sys"
 version = "0.4.4"
-source = "git+https://github.com/zarik5/oboe-rs#5a4636e2fc936b5ee4b144514ba3a98c0e212e47"
+source = "git+https://github.com/zarik5/oboe-rs?rev=b4de4ddd8c5283e1ddef8935975556527b879b79#b4de4ddd8c5283e1ddef8935975556527b879b79"
 dependencies = [
  "cc",
 ]
@@ -3520,12 +3550,11 @@ dependencies = [
 [[package]]
 name = "openxr"
 version = "0.15.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20f6841f792057e89474dcc6b77fe45ed5687908e97cffda115d1152a2da1dc6"
+source = "git+https://github.com/zarik5/openxrs#16d6bfa39e7ff55e08ac61a1c71fbe66fa7562de"
 dependencies = [
  "libc",
  "libloading",
- "ndk-glue",
+ "ndk-glue 0.6.0",
  "openxr-sys",
  "winapi",
 ]
@@ -3533,8 +3562,7 @@ dependencies = [
 [[package]]
 name = "openxr-sys"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f2705ce9c69c69d73523fd1ca3059526a51f6c336b5605286fad5a71d95ffc2"
+source = "git+https://github.com/zarik5/openxrs#16d6bfa39e7ff55e08ac61a1c71fbe66fa7562de"
 dependencies = [
  "jni",
  "libc",
@@ -3543,9 +3571,9 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "2.9.0"
+version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aa3d135650b150c29f0c3e385896f9d3ceb42d2d87b02f0d7a8cbd0fc7e19a6"
+checksum = "7940cf2ca942593318d07fcf2596cdca60a85c9e7fab408a5e21a4f9dcd40d87"
 dependencies = [
  "num-traits",
 ]
@@ -4079,7 +4107,7 @@ source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
- "bumpalo 3.8.0",
+ "bumpalo 3.9.1",
  "bytemuck",
  "flume",
  "glam 0.20.2",
@@ -4095,7 +4123,7 @@ dependencies = [
  "smallvec",
  "smartstring",
  "thiserror",
- "wgpu 0.12.0",
+ "wgpu",
  "wgpu-profiler",
 ]
 
@@ -4115,7 +4143,7 @@ dependencies = [
  "parking_lot",
  "profiling",
  "rend3",
- "wgpu 0.12.0",
+ "wgpu",
  "wgpu-profiler",
 ]
 
@@ -4127,7 +4155,7 @@ dependencies = [
  "bitflags",
  "glam 0.20.2",
  "thiserror",
- "wgpu-types 0.12.0",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -4470,7 +4498,7 @@ dependencies = [
  "env_logger 0.9.0",
  "openxr-sys",
  "pollster",
- "winit 0.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winit 0.26.1",
 ]
 
 [[package]]
@@ -4811,9 +4839,9 @@ checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
 
 [[package]]
 name = "syn"
-version = "1.0.84"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecb2e6da8ee5eb9a61068762a32fa9619cc591ceb055b3687f4cd4051ec2e06b"
+checksum = "a684ac3dcd8913827e18cd09a68384ee66c1de24157e3c556c9ab16d85695fb7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4964,9 +4992,9 @@ dependencies = [
 
 [[package]]
 name = "tinyfiledialogs"
-version = "3.8.3"
+version = "3.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9545b2375cbcb7a7d70cca5e92fbaa096fd89bebd2fbc54a3da7f37d15a54e6b"
+checksum = "adc577626a3c26e4e1d470dbe5fe33d6fabc14e57114cb377acdb4da1a17dde9"
 dependencies = [
  "cc",
  "libc",
@@ -5398,7 +5426,7 @@ version = "0.2.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a317bf8f9fba2476b4b2c85ef4c4af8ff39c3c7f0cdfeed4f82c34a880aa837b"
 dependencies = [
- "bumpalo 3.8.0",
+ "bumpalo 3.9.1",
  "lazy_static",
  "log",
  "proc-macro2",
@@ -5450,9 +5478,9 @@ checksum = "0237232789cf037d5480773fe568aac745bfe2afbc11a863e97901780a6b47cc"
 
 [[package]]
 name = "wayland-client"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e256a731597b4e264d2f342e44f3708814103fbab144676fa077b6d9f3e2966"
+checksum = "91223460e73257f697d9e23d401279123d36039a3f7a449e983f123292d4458f"
 dependencies = [
  "bitflags",
  "downcast-rs",
@@ -5466,9 +5494,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-commons"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96f28d05d154a6ae7a183f2d29906ccceae794047b3a97d35a627f483ed05ee2"
+checksum = "94f6e5e340d7c13490eca867898c4cec5af56c27a5ffe5c80c6fc4708e22d33e"
 dependencies = [
  "nix 0.22.0",
  "once_cell",
@@ -5478,9 +5506,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-cursor"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcb1afc06470809fea80281128ea2ed21b730589fe5f5ef0478eb8633bc1b003"
+checksum = "c52758f13d5e7861fc83d942d3d99bf270c83269575e52ac29e5b73cb956a6bd"
 dependencies = [
  "nix 0.22.0",
  "wayland-client",
@@ -5489,9 +5517,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b5199e12af7708dfb4eb6ea2f10b089d21b4b437cfde44b018ad11b093101b6"
+checksum = "60147ae23303402e41fe034f74fb2c35ad0780ee88a1c40ac09a3be1e7465741"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -5501,9 +5529,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-scanner"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cfd5edf014d2bcfd13607f6461acc15677676eeca58df0af7c4856be5faabf1"
+checksum = "39a1ed3143f7a143187156a2ab52742e89dac33245ba505c17224df48939f9e0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5512,9 +5540,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-sys"
-version = "0.29.3"
+version = "0.29.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beb0eb50984d3efb0642b58ee2f458a62d765563bebd94049b6f9f40979f12aa"
+checksum = "d9341df79a8975679188e37dab3889bfa57c44ac2cb6da166f519a81cbe452d4"
 dependencies = [
  "dlib",
  "lazy_static",
@@ -5618,7 +5646,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "742ec904d0577e1a88b82dba6cf0347c12197cd664b859b05f868bceb8cfff4d"
 dependencies = [
  "arrayvec 0.7.2",
- "ash 0.34.0+1.2.203",
+ "ash",
  "bit-set",
  "bitflags",
  "block",
@@ -5656,7 +5684,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad914efa8e5c4376b9fc97f03531cae1b2fbb0d23b6170b7f399c610f347ae60"
 dependencies = [
  "futures-lite",
- "wgpu 0.12.0",
+ "wgpu",
 ]
 
 [[package]]
@@ -5769,11 +5797,9 @@ dependencies = [
 [[package]]
 name = "winit"
 version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70466a5f4825cc88c92963591b06dbc255420bffe19d847bfcda475e82d079c0"
+source = "git+https://github.com/iced-rs/winit?rev=02a12380960cec2f351c09a33d6a7cc2789d96a6#02a12380960cec2f351c09a33d6a7cc2789d96a6"
 dependencies = [
  "bitflags",
- "block",
  "cocoa",
  "core-foundation 0.9.2",
  "core-graphics 0.22.3",
@@ -5784,9 +5810,9 @@ dependencies = [
  "libc",
  "log",
  "mio 0.8.0",
- "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk 0.5.0",
+ "ndk-glue 0.5.0",
+ "ndk-sys 0.2.2",
  "objc",
  "parking_lot",
  "percent-encoding",
@@ -5802,8 +5828,9 @@ dependencies = [
 
 [[package]]
 name = "winit"
-version = "0.26.0"
-source = "git+https://github.com/iced-rs/winit?rev=02a12380960cec2f351c09a33d6a7cc2789d96a6#02a12380960cec2f351c09a33d6a7cc2789d96a6"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b43cc931d58b99461188607efd7acb2a093e65fc621f54cad78517a6063e73a"
 dependencies = [
  "bitflags",
  "cocoa",
@@ -5816,9 +5843,9 @@ dependencies = [
  "libc",
  "log",
  "mio 0.8.0",
- "ndk 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue",
- "ndk-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk 0.5.0",
+ "ndk-glue 0.5.0",
+ "ndk-sys 0.2.2",
  "objc",
  "parking_lot",
  "percent-encoding",

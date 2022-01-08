@@ -6,7 +6,7 @@ mod version;
 use alvr_filesystem::{self as afs, Layout};
 use fs_extra::{self as fsx, dir as dirx};
 use pico_args::Arguments;
-use std::{env, fs, path::Path, time::Instant};
+use std::{env, fs, time::Instant};
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -110,11 +110,11 @@ pub fn build_server(
     let mut copy_options = dirx::CopyOptions::new();
     copy_options.copy_inside = true;
     fsx::copy_items(
-        &["alvr/xtask/resources/presets"],
+        &[afs::workspace_dir().join("alvr/xtask/resources/presets")],
         layout.presets_dir(),
         &copy_options,
     )
-    .expect("copy presets");
+    .unwrap();
 
     if bundle_ffmpeg {
         let ffmpeg_path = dependencies::build_ffmpeg_linux();
@@ -191,10 +191,10 @@ pub fn build_server(
     }
 
     fs::copy(
-        Path::new("alvr/xtask/resources/driver.vrdrivermanifest"),
+        afs::workspace_dir().join("alvr/xtask/resources/driver.vrdrivermanifest"),
         layout.openvr_driver_manifest(),
     )
-    .expect("copy openVR driver manifest");
+    .unwrap();
 
     if cfg!(windows) {
         let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
@@ -215,8 +215,11 @@ pub fn build_server(
     // fs::create_dir_all(&layout.resources_dir()).unwrap();
     // fsx::copy_items(&items, layout.resources_dir(), &dirx::CopyOptions::new()).unwrap();
 
-    let dir_content =
-        dirx::get_dir_content2("alvr/dashboard", &dirx::DirOptions { depth: 1 }).unwrap();
+    let dir_content = dirx::get_dir_content2(
+        afs::workspace_dir().join("alvr/dashboard"),
+        &dirx::DirOptions { depth: 1 },
+    )
+    .unwrap();
     let items: Vec<&String> = dir_content.directories[1..]
         .iter()
         .chain(dir_content.files.iter())

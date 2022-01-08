@@ -22,7 +22,7 @@ use std::{
 };
 
 pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
-    let entry = unsafe { ash::Entry::new().unwrap() };
+    let entry = unsafe { ash::Entry::load().unwrap() };
 
     let raw_instance = unsafe {
         let extensions_ptrs =

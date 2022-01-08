@@ -1,7 +1,7 @@
 mod data;
 mod logging;
 
-use semver::{BuildMetadata, Prerelease, Version};
+use semver::{Prerelease, Version};
 
 pub use data::*;
 pub use glam;

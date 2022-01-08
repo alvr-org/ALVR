@@ -312,7 +312,7 @@ async fn connection_pipeline(
                                     video_decoder::split(
                                         Arc::clone(&graphics_context),
                                         settings.video.codec,
-                                        buffer,
+                                        &buffer,
                                         &[
                                             (
                                                 "operating-rate".into(),

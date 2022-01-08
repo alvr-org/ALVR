@@ -37,7 +37,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
 rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
 # Miscellaneous
-openxr = "0.15.5"
+openxr = { git = "https://github.com/zarik5/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19"
@@ -45,9 +45,9 @@ ndk = { git = "https://github.com/zarik5/android-ndk-rs", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
-] }
-ndk-glue = "0.5"
-ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs" }
+], rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
+ndk-glue = "0.6"
+ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

@@ -16,6 +16,7 @@ use ndk::{
     hardware_buffer::{HardwareBuffer, HardwareBufferUsage},
     media::{
         image_reader::{Image, ImageFormat, ImageReader},
+        media_codec::{MediaCodec, MediaCodecDirection, MediaFormat},
         Result,
     },
 };
@@ -55,7 +56,7 @@ impl ConversionPass {
         output_size: UVec2,
         slice_index: u32,
     ) -> StrResult<Self> {
-        error!("creating conversion context");
+        error!("creating conversion pass");
 
         let mut hardware_buffer_format_properties =
             vk::AndroidHardwareBufferFormatPropertiesANDROID::default();
@@ -146,6 +147,43 @@ impl ConversionPass {
             None
         ))?;
 
+        let descriptor_set_layout =
+            trace_err!(graphics_context.raw_device.create_descriptor_set_layout(
+                &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[
+                    vk::DescriptorSetLayoutBinding::builder()
+                        .binding(0)
+                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                        .descriptor_count(1)
+                        .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                        .immutable_samplers(&[sampler])
+                        .build(),
+                ]),
+                None,
+            ))?;
+
+        let pipeline_layout = trace_err!(graphics_context.raw_device.create_pipeline_layout(
+            &vk::PipelineLayoutCreateInfo::builder().set_layouts(&[descriptor_set_layout]),
+            None,
+        ))?;
+
+        let vertex_shader_module = trace_err!(graphics_context
+            .raw_device
+            .create_shader_module(&vk::ShaderModuleCreateInfo::builder().code(todo!()), None))?;
+
+        let fragment_shader_module = trace_err!(graphics_context
+            .raw_device
+            .create_shader_module(&vk::ShaderModuleCreateInfo::builder().code(todo!()), None))?;
+
+        let noop_stencil_state = vk::StencilOpState {
+            fail_op: vk::StencilOp::KEEP,
+            pass_op: vk::StencilOp::KEEP,
+            depth_fail_op: vk::StencilOp::KEEP,
+            compare_op: vk::CompareOp::ALWAYS,
+            compare_mask: 0,
+            write_mask: 0,
+            reference: 0,
+        };
+
         let render_pass = trace_err!(graphics_context.raw_device.create_render_pass(
             &vk::RenderPassCreateInfo::builder()
                 .attachments(&[vk::AttachmentDescription {
@@ -153,7 +191,7 @@ impl ConversionPass {
                     samples: vk::SampleCountFlags::TYPE_1,
                     load_op: vk::AttachmentLoadOp::CLEAR,
                     store_op: vk::AttachmentStoreOp::STORE,
-                    initial_layout: vk::ImageLayout::UNDEFINED,
+                    initial_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
                     final_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
                     ..Default::default()
                 }])
@@ -167,18 +205,90 @@ impl ConversionPass {
             None,
         ))?;
 
-        let descriptor_set_layout =
-            trace_err!(graphics_context.raw_device.create_descriptor_set_layout(
-                &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[]),
-                None
-            ))?;
-
-        let pipeline_layout = trace_err!(graphics_context.raw_device.create_pipeline_layout(
-            &vk::PipelineLayoutCreateInfo::builder().set_layouts(&[descriptor_set_layout]),
-            None,
-        ))?;
-
-        // let pipeline = graphics_context.raw_device.pipeline
+        let pipelines = trace_err!(graphics_context
+            .raw_device
+            .create_graphics_pipelines(
+                vk::PipelineCache::null(),
+                &[vk::GraphicsPipelineCreateInfo::builder()
+                    .stages(&[
+                        vk::PipelineShaderStageCreateInfo {
+                            stage: vk::ShaderStageFlags::VERTEX,
+                            module: vertex_shader_module,
+                            p_name: b"main\0".as_ptr() as _,
+                            ..Default::default()
+                        },
+                        vk::PipelineShaderStageCreateInfo {
+                            stage: vk::ShaderStageFlags::FRAGMENT,
+                            module: fragment_shader_module,
+                            p_name: b"main\0".as_ptr() as _,
+                            ..Default::default()
+                        }
+                    ])
+                    .input_assembly_state(
+                        &vk::PipelineInputAssemblyStateCreateInfo::builder()
+                            .topology(vk::PrimitiveTopology::TRIANGLE_LIST),
+                    )
+                    .viewport_state(
+                        &vk::PipelineViewportStateCreateInfo::builder()
+                            .viewports(&[vk::Viewport {
+                                x: 0.0,
+                                y: 0.0,
+                                width: output_size.x as _,
+                                height: output_size.y as _,
+                                min_depth: 0.0,
+                                max_depth: 1.0,
+                            }])
+                            .scissors(&[vk::Rect2D {
+                                offset: vk::Offset2D { x: 0, y: 0 },
+                                extent: vk::Extent2D {
+                                    width: output_size.x,
+                                    height: output_size.y,
+                                },
+                            }]),
+                    )
+                    .rasterization_state(
+                        &vk::PipelineRasterizationStateCreateInfo::builder()
+                            .cull_mode(vk::CullModeFlags::NONE)
+                            .line_width(1.0),
+                    )
+                    .multisample_state(
+                        &vk::PipelineMultisampleStateCreateInfo::builder()
+                            .rasterization_samples(vk::SampleCountFlags::TYPE_1),
+                    )
+                    .depth_stencil_state(
+                        &vk::PipelineDepthStencilStateCreateInfo::builder()
+                            .depth_test_enable(false)
+                            .depth_write_enable(false)
+                            .front(noop_stencil_state)
+                            .back(noop_stencil_state),
+                    )
+                    .color_blend_state(
+                        &vk::PipelineColorBlendStateCreateInfo::builder()
+                            .logic_op_enable(false)
+                            .logic_op(vk::LogicOp::NO_OP)
+                            .attachments(&[vk::PipelineColorBlendAttachmentState {
+                                blend_enable: vk::FALSE,
+                                src_color_blend_factor: vk::BlendFactor::ONE,
+                                dst_color_blend_factor: vk::BlendFactor::ZERO,
+                                color_blend_op: vk::BlendOp::ADD,
+                                src_alpha_blend_factor: vk::BlendFactor::ONE,
+                                dst_alpha_blend_factor: vk::BlendFactor::ZERO,
+                                alpha_blend_op: vk::BlendOp::ADD,
+                                color_write_mask: vk::ColorComponentFlags::R
+                                    | vk::ColorComponentFlags::G
+                                    | vk::ColorComponentFlags::B
+                                    | vk::ColorComponentFlags::A,
+                            }])
+                            .blend_constants([1.0, 1.0, 1.0, 1.0]),
+                    )
+                    .layout(pipeline_layout)
+                    .render_pass(render_pass)
+                    .subpass(0)
+                    .build()],
+                None,
+            )
+            .map_err(|(_, err)| err))?;
+        let pipeline = pipelines[0];
 
         let mut output_image = vk::Image::null();
         output_texture.as_hal::<hal::api::Vulkan, _>(|tex| {
@@ -210,12 +320,45 @@ impl ConversionPass {
             None,
         ))?;
 
+        let descriptor_pool = trace_err!(graphics_context.raw_device.create_descriptor_pool(
+            &vk::DescriptorPoolCreateInfo::builder()
+                .max_sets(1)
+                .pool_sizes(&[vk::DescriptorPoolSize {
+                    ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                    descriptor_count: 1
+                }]),
+            None,
+        ))?;
+
+        let descriptor_sets = trace_err!(graphics_context.raw_device.allocate_descriptor_sets(
+            &vk::DescriptorSetAllocateInfo::builder()
+                .descriptor_pool(descriptor_pool)
+                .set_layouts(&[descriptor_set_layout]),
+        ))?;
+
+        graphics_context.raw_device.update_descriptor_sets(
+            &[vk::WriteDescriptorSet::builder()
+                .dst_set(descriptor_sets[0])
+                .dst_binding(0)
+                .dst_array_element(0)
+                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .image_info(&[vk::DescriptorImageInfo {
+                    sampler,
+                    image_view: input_image_view,
+                    image_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+                }])
+                .build()],
+            &[],
+        );
+
+        // let command_pool = graphics_context.raw_device.create_command_pool(&vk::CommandPoolCreateInfo::builder().flags(), allocation_callbacks)
+
         let fence = trace_err!(graphics_context.raw_device.create_fence(
             &vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::SIGNALED),
             None
         ))?;
 
-        error!("conversion context created");
+        error!("conversion context pass");
 
         Ok(Self {
             graphics_context,
@@ -226,21 +369,21 @@ impl ConversionPass {
             sampler,
             descriptor_set_layout,
             pipeline_layout,
-            pipeline: todo!(),
-            command_pool: todo!(),
+            pipeline,
             output_image_view,
             framebuffer,
+            command_pool: todo!(),
             fence,
         })
     }
 
-    unsafe fn update_input_memory(&mut self, buffer_ptr: *mut sys::AHardwareBuffer) {
+    unsafe fn execute(&mut self, new_buffer_ptr: *mut sys::AHardwareBuffer) {
         // Create memory from external buffer
         let allocate_info = vk::MemoryDedicatedAllocateInfo::builder()
             .image(self.input_image)
             .build();
         let mut hardware_buffer_info = vk::ImportAndroidHardwareBufferInfoANDROID::builder()
-            .buffer(buffer_ptr as _)
+            .buffer(new_buffer_ptr as _)
             .build();
         hardware_buffer_info.p_next = &allocate_info as *const _ as _;
         self.input_memory = self
@@ -285,22 +428,11 @@ impl Drop for ConversionPass {
     }
 }
 
-pub struct MediaCodec {
-    inner: *mut sys::AMediaCodec,
-}
-
-unsafe impl Send for MediaCodec {}
-unsafe impl Sync for MediaCodec {}
-
-impl Drop for MediaCodec {
-    fn drop(&mut self) {
-        unsafe { sys::AMediaCodec_delete(self.inner) };
-    }
-}
-
 pub struct VideoDecoderEnqueuer {
     inner: Arc<MediaCodec>,
 }
+
+unsafe impl Send for VideoDecoderEnqueuer {}
 
 impl VideoDecoderEnqueuer {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
@@ -310,38 +442,23 @@ impl VideoDecoderEnqueuer {
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {
-        let index_or_error = unsafe {
-            sys::AMediaCodec_dequeueInputBuffer(self.inner.inner, timeout.as_micros() as _)
-        };
-        if index_or_error >= 0 {
-            unsafe {
-                // todo: check for overflow
-                let mut _out_size = 0;
-                let buffer_ptr = sys::AMediaCodec_getInputBuffer(
-                    self.inner.inner,
-                    index_or_error as _,
-                    &mut _out_size,
-                );
-                ptr::copy_nonoverlapping(data.as_ptr(), buffer_ptr, data.len());
+        if let Some(mut buffer) = trace_err!(self.inner.dequeue_input_buffer(timeout))? {
+            buffer.get_mut()[..data.len()].copy_from_slice(data);
 
-                // NB: the function expects the timestamp in micros, but nanos is used to have
-                // complete precision, so when converted back to Duration it can compare correctly
-                // to other Durations
-                sys::AMediaCodec_queueInputBuffer(
-                    self.inner.inner,
-                    index_or_error as _,
-                    0,
-                    data.len() as _,
-                    timestamp.as_nanos() as _,
-                    0,
-                );
-            }
+            // NB: the function expects the timestamp in micros, but nanos is used to have complete
+            // precision, so when converted back to Duration it can compare correctly to other
+            // Durations
+            trace_err!(self.inner.queue_input_buffer(
+                buffer,
+                0,
+                data.len(),
+                timestamp.as_nanos() as _,
+                0
+            ))?;
 
             Ok(true)
-        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
-            Ok(false)
         } else {
-            return fmt_e!("Error dequeueing decoder input ({})", index_or_error);
+            Ok(false)
         }
     }
 }
@@ -350,29 +467,14 @@ pub struct VideoDecoderDequeuer {
     inner: Arc<MediaCodec>,
 }
 
+unsafe impl Send for VideoDecoderDequeuer {}
+
 impl VideoDecoderDequeuer {
     pub fn poll(&self, timeout: Duration) -> StrResult {
-        let mut info: sys::AMediaCodecBufferInfo = unsafe { std::mem::zeroed() }; // todo: derive default
-        let index_or_error = unsafe {
-            sys::AMediaCodec_dequeueOutputBuffer(
-                self.inner.inner,
-                &mut info,
-                timeout.as_micros() as _,
-            )
-        };
-        if index_or_error >= 0 {
-            let res = unsafe {
-                sys::AMediaCodec_releaseOutputBuffer(self.inner.inner, index_or_error as _, true)
-            };
-            if res != 0 {
-                return fmt_e!("Error releasing decoder output buffer ({})", res);
-            } else {
-                Ok(())
-            }
-        } else if index_or_error as i32 == sys::AMEDIACODEC_INFO_TRY_AGAIN_LATER {
-            Ok(())
+        if let Some(buffer) = trace_err!(self.inner.dequeue_output_buffer(timeout))? {
+            trace_err!(self.inner.release_output_buffer(buffer, true))
         } else {
-            return fmt_e!("Error dequeueing decoder output ({})", index_or_error);
+            Ok(())
         }
     }
 }
@@ -406,8 +508,6 @@ impl VideoDecoderFrameGrabber {
             image.get_plane_row_stride(1),
         );
 
-        image.get_width();
-
         let hardware_buffer = trace_err!(image.get_hardware_buffer())?;
 
         let conversion_pass = if let Some(pass) = &mut self.conversion_pass {
@@ -430,41 +530,7 @@ impl VideoDecoderFrameGrabber {
             self.conversion_pass.as_mut().unwrap()
         };
 
-        unsafe { conversion_pass.update_input_memory(hardware_buffer.as_ptr()) };
-
-        // error!("swapchain images count: {:?}");
-
-        // let mut encoder = self
-        //     .graphics_context
-        //     .device
-        //     .create_command_encoder(&Default::default());
-
-        // // Copy surface/OES texture to normal texture
-        // encoder.copy_texture_to_texture(
-        //     ImageCopyTexture {
-        //         texture: source,
-        //         mip_level: 0,
-        //         origin: Origin3d::ZERO,
-        //         aspect: TextureAspect::All,
-        //     },
-        //     ImageCopyTexture {
-        //         texture: &output,
-        //         mip_level: 0,
-        //         origin: Origin3d {
-        //             x: 0,
-        //             y: 0,
-        //             z: slice_index,
-        //         },
-        //         aspect: TextureAspect::All,
-        //     },
-        //     Extent3d {
-        //         width: self.video_size.x,
-        //         height: self.video_size.y,
-        //         depth_or_array_layers: 1,
-        //     },
-        // );
-
-        // self.graphics_context.queue.submit(Some(encoder.finish()));
+        unsafe { conversion_pass.execute(hardware_buffer.as_ptr()) };
 
         Ok(Duration::from_nanos(trace_err!(image.get_timestamp())? as _))
     }
@@ -473,7 +539,7 @@ impl VideoDecoderFrameGrabber {
 pub fn split(
     graphics_context: Arc<GraphicsContext>,
     codec_type: CodecType,
-    csd_0: Vec<u8>,
+    csd_0: &[u8],
     extra_options: &[(String, MediacodecDataType)],
     output_texture: Arc<Texture>,
     output_size: UVec2,
@@ -483,8 +549,6 @@ pub fn split(
     VideoDecoderDequeuer,
     VideoDecoderFrameGrabber,
 )> {
-    log::error!("create video decoder");
-
     let mut swapchain = trace_err!(ImageReader::new_with_usage(
         1,
         1,
@@ -504,78 +568,33 @@ pub fn split(
         }
     }));
 
-    let surface_handle = trace_err!(swapchain.get_window())?.ptr().as_ptr();
-
-    let decoder = unsafe {
-        let mime = match codec_type {
-            CodecType::H264 => "video/avc",
-            CodecType::HEVC => "video/hevc",
-        };
-        let mime_cstring = CString::new(mime).unwrap();
-
-        let format = sys::AMediaFormat_new();
-        sys::AMediaFormat_setString(format, sys::AMEDIAFORMAT_KEY_MIME, mime_cstring.as_ptr());
-        sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_WIDTH, 512);
-        sys::AMediaFormat_setInt32(format, sys::AMEDIAFORMAT_KEY_HEIGHT, 1024);
-        sys::AMediaFormat_setBuffer(
-            format,
-            sys::AMEDIAFORMAT_KEY_CSD_0,
-            csd_0.as_ptr() as _,
-            csd_0.len() as _,
-        );
-
-        // Note: string keys and values are memcpy-ed internally into AMediaFormat. CString is
-        // only needed to add the trailing null character.
-        for (key, value) in extra_options {
-            let key_cstring = CString::new(key.clone()).unwrap();
-
-            match value {
-                MediacodecDataType::Float(value) => {
-                    sys::AMediaFormat_setFloat(format, key_cstring.as_ptr(), *value)
-                }
-                MediacodecDataType::Int32(value) => {
-                    sys::AMediaFormat_setInt32(format, key_cstring.as_ptr(), *value)
-                }
-                MediacodecDataType::Int64(value) => {
-                    sys::AMediaFormat_setInt64(format, key_cstring.as_ptr(), *value)
-                }
-                MediacodecDataType::String(value) => {
-                    let value_cstring = CString::new(value.clone()).unwrap();
-                    sys::AMediaFormat_setString(
-                        format,
-                        key_cstring.as_ptr(),
-                        value_cstring.as_ptr(),
-                    )
-                }
-            }
-        }
-
-        let decoder = sys::AMediaCodec_createDecoderByType(mime_cstring.as_ptr());
-        if decoder.is_null() {
-            return fmt_e!("Decoder is null");
-        }
-
-        let res = sys::AMediaCodec_configure(decoder, format, surface_handle, ptr::null_mut(), 0);
-        if res != 0 {
-            return fmt_e!("Error configuring decoder ({})", res);
-        }
-
-        let res = sys::AMediaCodec_start(decoder);
-        if res != 0 {
-            return fmt_e!("Error starting decoder ({})", res);
-        }
-
-        let res = sys::AMediaFormat_delete(format);
-        if res != 0 {
-            error!("Error deleting format ({})", res);
-        }
-
-        log::error!("video decoder created");
-
-        MediaCodec { inner: decoder }
+    let mime = match codec_type {
+        CodecType::H264 => "video/avc",
+        CodecType::HEVC => "video/hevc",
     };
 
-    let decoder = Arc::new(decoder);
+    let format = MediaFormat::new();
+    format.set_str("mime", mime);
+    format.set_i32("width", 512);
+    format.set_i32("height", 1024);
+    format.set_buffer("csd-0", csd_0);
+
+    for (key, value) in extra_options {
+        match value {
+            MediacodecDataType::Float(value) => format.set_f32(key, *value),
+            MediacodecDataType::Int32(value) => format.set_i32(key, *value),
+            MediacodecDataType::Int64(value) => format.set_i64(key, *value),
+            MediacodecDataType::String(value) => format.set_str(key, value),
+        }
+    }
+
+    let decoder = Arc::new(trace_none!(MediaCodec::from_decoder_type(mime))?);
+    trace_err!(decoder.configure(
+        &format,
+        &trace_err!(swapchain.get_window())?,
+        MediaCodecDirection::Decoder,
+    ))?;
+    trace_err!(decoder.start())?;
 
     Ok((
         VideoDecoderEnqueuer {

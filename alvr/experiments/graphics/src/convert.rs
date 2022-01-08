@@ -249,7 +249,7 @@ impl GraphicsContext {
 
     // This constructor is used for the Windows OpenVR driver
     pub fn new(adapter_index: Option<usize>) -> StrResult<Self> {
-        let entry = unsafe { trace_err!(ash::Entry::new())? };
+        let entry = unsafe { trace_err!(ash::Entry::load())? };
 
         let raw_instance = trace_err!(create_vulkan_instance(
             &entry,

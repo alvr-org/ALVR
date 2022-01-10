@@ -214,7 +214,6 @@ pub struct XrStreamingInput {
 
 pub struct XrSession {
     xr_context: Arc<XrContext>,
-    graphics_context: Arc<GraphicsContext>,
     inner: xr::Session<xr::Vulkan>,
     recommended_view_sizes: Vec<UVec2>,
     scene_swapchains: Vec<OpenxrSwapchain>,
@@ -241,7 +240,6 @@ impl XrSession {
         stream_views_size: UVec2,
         stream_action_types: &[(String, XrActionType)],
         stream_profile_descs: Vec<XrProfileDesc>,
-        reference_space_type: TrackingSpace,
         environment_blend_mode: xr::EnvironmentBlendMode,
     ) -> StrResult<Self> {
         let (session, frame_waiter, frame_stream) = unsafe {
@@ -299,12 +297,10 @@ impl XrSession {
             session.clone(),
             stream_action_types,
             stream_profile_descs,
-            reference_space_type,
         )?;
 
         Ok(Self {
             xr_context,
-            graphics_context,
             inner: session,
             recommended_view_sizes,
             scene_swapchains,

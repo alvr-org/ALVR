@@ -69,7 +69,6 @@ fn run() -> StrResult {
         UVec2::new(1, 1),
         &[],
         vec![],
-        TrackingSpace::Local,
         openxr::EnvironmentBlendMode::OPAQUE,
     )?;
     let xr_session = Arc::new(RwLock::new(Some(xr_session)));

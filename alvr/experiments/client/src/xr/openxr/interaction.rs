@@ -48,7 +48,6 @@ pub struct OpenxrInteractionContext {
     scene_select_action: xr::Action<bool>,
     scene_menu_action: xr::Action<bool>,
     streaming_button_actions: HashMap<String, OpenxrButtonAction>,
-    reference_space_type: xr::ReferenceSpaceType,
     pub reference_space: xr::Space,
     pub left_hand_interaction: HandInteractionContext,
     pub right_hand_interaction: HandInteractionContext,
@@ -123,7 +122,6 @@ impl OpenxrInteractionContext {
         session: xr::Session<xr::Vulkan>,
         stream_action_types: &[(String, XrActionType)],
         stream_profile_descs: Vec<XrProfileDesc>,
-        reference_space_type: TrackingSpace,
     ) -> StrResult<Self> {
         let action_set =
             trace_err!(xr_context
@@ -294,13 +292,21 @@ impl OpenxrInteractionContext {
 
         trace_err!(session.attach_action_sets(&[&action_set]))?;
 
-        let reference_space_type = match reference_space_type {
-            // todo: add TrackingSpace::Viewer
-            TrackingSpace::Local => xr::ReferenceSpaceType::LOCAL,
-            TrackingSpace::Stage => xr::ReferenceSpaceType::STAGE,
-        };
-        let reference_space =
-            trace_err!(session.create_reference_space(reference_space_type, xr::Posef::IDENTITY))?;
+        let reference_space = trace_err!(session
+            .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
+            .or_else(|_| {
+                session.create_reference_space(
+                    xr::ReferenceSpaceType::LOCAL,
+                    xr::Posef {
+                        orientation: xr::Quaternionf::IDENTITY,
+                        position: xr::Vector3f {
+                            x: 0.0,
+                            y: -1.5, // todo: make configurable
+                            z: 0.0,
+                        },
+                    },
+                )
+            }))?;
 
         let scene_select_action = match button_actions.remove(SELECT_ACTION_NAME).unwrap() {
             OpenxrButtonAction::Binary(action) => action,
@@ -317,7 +323,6 @@ impl OpenxrInteractionContext {
             scene_select_action,
             scene_menu_action,
             streaming_button_actions: button_actions,
-            reference_space_type,
             reference_space,
             left_hand_interaction,
             right_hand_interaction,

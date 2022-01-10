@@ -120,7 +120,12 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
         let info = vk::DeviceCreateInfo::builder()
             .queue_create_infos(&queue_infos)
             .enabled_extension_names(&extensions_ptrs);
-        let info = features.add_to_device_create_builder(info);
+        let mut info = features.add_to_device_create_builder(info);
+
+        let mut ycbcr_conversion_feature =
+            vk::PhysicalDeviceSamplerYcbcrConversionFeaturesKHR::builder()
+                .sampler_ycbcr_conversion(true);
+        let info = info.push_next(&mut ycbcr_conversion_feature);
 
         let raw_device_ptr = trace_err!(trace_err!(xr_context.instance.create_vulkan_device(
             xr_context.system,

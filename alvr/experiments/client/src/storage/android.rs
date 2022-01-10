@@ -36,7 +36,7 @@ pub fn load_config_string() -> String {
 
     let shared_preferences = get_preferences_object(&env);
 
-    let key = env.new_string("config").unwrap();
+    let key = env.new_string(CONFIG_KEY).unwrap();
     let default = env.new_string("").unwrap();
 
     let config = env
@@ -69,7 +69,7 @@ pub fn store_config_string(config: String) {
         .l()
         .unwrap();
 
-    let key = env.new_string("config").unwrap();
+    let key = env.new_string(CONFIG_KEY).unwrap();
     let value = env.new_string(config).unwrap();
     env.call_method(
         editor,

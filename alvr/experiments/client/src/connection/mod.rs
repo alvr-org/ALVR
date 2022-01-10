@@ -215,7 +215,6 @@ async fn connection_pipeline(
                 tracked: true,
                 has_haptics: true,
             }],
-            settings.headset.tracking_space,
             openxr::EnvironmentBlendMode::OPAQUE,
         );
 
@@ -232,7 +231,6 @@ async fn connection_pipeline(
                         UVec2::new(1, 1),
                         &[],
                         vec![],
-                        TrackingSpace::Local,
                         openxr::EnvironmentBlendMode::OPAQUE,
                     )
                     .unwrap(),

@@ -59,6 +59,34 @@ pub struct ConversionPass {
 }
 
 impl ConversionPass {
+    unsafe fn bind_hardware_buffer(
+        device: &ash::Device,
+        image: vk::Image,
+        buffer_ptr: *mut sys::AHardwareBuffer,
+        allocation_size: vk::DeviceSize,
+    ) -> StrResult<vk::DeviceMemory> {
+        let mut dedicated_allocate_info = vk::MemoryDedicatedAllocateInfo::builder().image(image);
+        let mut hardware_buffer_info =
+            vk::ImportAndroidHardwareBufferInfoANDROID::builder().buffer(buffer_ptr as _);
+        let memory = trace_err!(device.allocate_memory(
+            &vk::MemoryAllocateInfo::builder()
+                .allocation_size(allocation_size)
+                .memory_type_index(1)
+                .push_next(&mut dedicated_allocate_info)
+                .push_next(&mut hardware_buffer_info),
+            None,
+        ))?;
+
+        trace_err!(
+            device.bind_image_memory2(&[vk::BindImageMemoryInfo::builder()
+                .image(image)
+                .memory(memory)
+                .build()])
+        )?;
+
+        Ok(memory)
+    }
+
     unsafe fn new(
         graphics_context: Arc<GraphicsContext>,
         input_size: UVec2,
@@ -91,11 +119,14 @@ impl ConversionPass {
                             .get_device_proc_addr(device.handle(), name.as_ptr()),
                     )
                 });
-            ext_fns.get_android_hardware_buffer_properties_android(
+            let res = ext_fns.get_android_hardware_buffer_properties_android(
                 device.handle(),
                 input_buffer_ptr as _,
                 &mut hardware_buffer_properties as _,
             );
+            if res != vk::Result::SUCCESS {
+                return fmt_e!("{}", res);
+            }
         }
 
         // error!("buffer properties: {:?}", hardware_buffer_format_properties);
@@ -108,7 +139,11 @@ impl ConversionPass {
                 .components(hardware_buffer_format_properties.sampler_ycbcr_conversion_components)
                 .x_chroma_offset(hardware_buffer_format_properties.suggested_x_chroma_offset)
                 .y_chroma_offset(hardware_buffer_format_properties.suggested_y_chroma_offset)
-                .chroma_filter(vk::Filter::LINEAR),
+                .chroma_filter(vk::Filter::LINEAR)
+                .push_next(
+                    &mut vk::ExternalFormatANDROID::builder()
+                        .external_format(hardware_buffer_format_properties.external_format),
+                ),
             None
         ))?;
 
@@ -117,6 +152,9 @@ impl ConversionPass {
                 .mag_filter(vk::Filter::LINEAR)
                 .min_filter(vk::Filter::LINEAR)
                 .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+                .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
                 .min_lod(0.0)
                 .max_lod(1.0)
                 .push_next(
@@ -127,7 +165,6 @@ impl ConversionPass {
 
         let input_image = trace_err!(device.create_image(
             &vk::ImageCreateInfo::builder()
-                // .flags(DISJOINT)
                 .image_type(vk::ImageType::TYPE_2D)
                 .format(hardware_buffer_format_properties.format)
                 .extent(vk::Extent3D {
@@ -138,16 +175,22 @@ impl ConversionPass {
                 .mip_levels(1)
                 .array_layers(1)
                 .samples(vk::SampleCountFlags::TYPE_1)
-                .tiling(vk::ImageTiling::LINEAR)
+                .tiling(vk::ImageTiling::OPTIMAL)
                 .usage(vk::ImageUsageFlags::SAMPLED)
                 .sharing_mode(vk::SharingMode::EXCLUSIVE)
-                // .initial_layout(vk::ImageLayout::PREINITIALIZED)
                 .push_next(
                     &mut vk::ExternalFormatANDROID::builder()
                         .external_format(hardware_buffer_format_properties.external_format),
                 ),
             None,
         ))?;
+
+        let input_memory = Self::bind_hardware_buffer(
+            device,
+            input_image,
+            input_buffer_ptr,
+            hardware_buffer_properties.allocation_size,
+        )?;
 
         let input_image_view = trace_err!(device.create_image_view(
             &vk::ImageViewCreateInfo::builder()
@@ -480,7 +523,7 @@ impl ConversionPass {
             sampler,
             input_image,
             input_image_view,
-            input_memory: vk::DeviceMemory::null(),
+            input_memory,
             input_allocation_size: hardware_buffer_properties.allocation_size,
             descriptor_set_layout,
             pipeline_layout,
@@ -499,6 +542,8 @@ impl ConversionPass {
 
     // returns false for fence wait timeout
     unsafe fn execute(&mut self, new_buffer_ptr: *mut sys::AHardwareBuffer) -> StrResult {
+        error!("Execute conversion pass");
+
         let device = &self.graphics_context.raw_device;
 
         trace_err!(device.wait_for_fences(&[self.fence], true, !0))?;
@@ -507,23 +552,12 @@ impl ConversionPass {
         device.free_memory(self.input_memory, None);
         // the old hardware buffer is released here
 
-        // Create memory from external buffer
-        let allocate_info = vk::MemoryDedicatedAllocateInfo::builder()
-            .image(self.input_image)
-            .build();
-        let mut hardware_buffer_info = vk::ImportAndroidHardwareBufferInfoANDROID::builder()
-            .buffer(new_buffer_ptr as _)
-            .build();
-        hardware_buffer_info.p_next = &allocate_info as *const _ as _;
-        self.input_memory = trace_err!(device.allocate_memory(
-            &vk::MemoryAllocateInfo::builder()
-                .allocation_size(self.input_allocation_size)
-                .memory_type_index(1) // memory_type_bits must be 1 << 1 -> 2
-                .push_next(&mut hardware_buffer_info),
-            None,
-        ))?;
-
-        trace_err!(device.bind_image_memory(self.input_image, self.input_memory, 0))?;
+        self.input_memory = Self::bind_hardware_buffer(
+            device,
+            self.input_image,
+            new_buffer_ptr,
+            self.input_allocation_size,
+        )?;
 
         // conversion happens here
         trace_err!(device.queue_submit(
@@ -669,7 +703,7 @@ impl VideoDecoderFrameGrabber {
             self.conversion_pass.as_mut().unwrap()
         };
 
-        unsafe { conversion_pass.execute(hardware_buffer.as_ptr()) };
+        unsafe { conversion_pass.execute(hardware_buffer.as_ptr())? };
 
         Ok(Duration::from_nanos(trace_err!(image.get_timestamp())? as _))
     }
@@ -698,14 +732,14 @@ pub fn split(
 
     let (image_sender, image_receiver) = crossbeam_channel::unbounded();
 
-    swapchain.set_image_listener(Box::new(move |swapchain| {
+    trace_err!(swapchain.set_image_listener(Box::new(move |swapchain| {
         let maybe_image = swapchain.acquire_next_image();
         error!("maybe acquired image: {:?}", maybe_image);
 
         if let Some(image) = maybe_image.ok().flatten() {
             image_sender.send(image).ok();
         }
-    }));
+    })))?;
 
     let mime = match codec_type {
         CodecType::H264 => "video/avc",

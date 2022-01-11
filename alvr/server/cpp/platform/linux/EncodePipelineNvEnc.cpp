@@ -44,7 +44,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
 
     encoder_ctx = AVCODEC.avcodec_alloc_context3(codec);
     if (not encoder_ctx) {
-        throw std::runtime_error("failed to allocate NVEnc encoder");
+        throw std::runtime_error("failed to allocate NvEnc encoder");
     }
 
     switch (codec_id) {

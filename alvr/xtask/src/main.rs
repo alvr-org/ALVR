@@ -20,7 +20,7 @@ SUBCOMMANDS:
     build-android-deps  Download and compile external dependencies for Android
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    build-ffmpeg-linux  Build FFmpeg with VAAPI, NVenc and Vulkan support. Only for CI
+    build-ffmpeg-linux  Build FFmpeg with VAAPI, NvEnc and Vulkan support. Only for CI
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
@@ -38,7 +38,7 @@ FLAGS:
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
-    --no-nvidia         Additional flag for `--bundle-ffmpeg` subcommand. Build don't require NVidia libs FFmpeg related
+    --no-nvidia         Additional flag to use with `build-server`. Disables nVidia support.
     --help              Print this text
 
 ARGS:

@@ -353,6 +353,7 @@ dependencies = [
  "alvr_filesystem",
  "fs_extra",
  "pico-args",
+ "pkg-config",
  "walkdir",
 ]
 

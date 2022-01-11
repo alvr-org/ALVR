@@ -36,6 +36,9 @@ pub enum MediacodecDataType {
 pub struct LatencyUseFrametimeDesc {
     #[schema(advanced, min = 10000, max = 100000, step = 1000)]
     pub latency_target_maximum: u64,
+
+    #[schema(advanced, min = -4000, max = 8000, step = 500)]
+    pub latency_target_offset: i32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -535,7 +538,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     latency_use_frametime: SwitchDefault {
                         enabled: false,
                         content: LatencyUseFrametimeDescDefault {
-                            latency_target_maximum: 50000,
+                            latency_target_maximum: 30000,
+                            latency_target_offset: 3000,
                         },
                     },
                     latency_threshold: 3000,

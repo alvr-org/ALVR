@@ -68,6 +68,7 @@ public:
 	uint64_t m_adaptiveBitrateTarget;
 	bool m_adaptiveBitrateUseFrametime;
 	uint64_t m_adaptiveBitrateTargetMaximum;
+	int32_t m_adaptiveBitrateTargetOffset;
 	uint64_t m_adaptiveBitrateThreshold;
 	uint64_t m_adaptiveBitrateUpRate;
 	uint64_t m_adaptiveBitrateDownRate;

@@ -92,6 +92,10 @@ define({
             "Latency target limit (us)", // adv
         "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.description":
             "Adaptive bitrate will not use a target network latency higher than this limit if using frame time", // adv
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetOffset.name":
+            "Latency target offset (us)", // adv
+        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetOffset.description":
+            "The target latency is offset by this amount", // adv
         "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency threshold (us)", // adv
         "_root_video_adaptiveBitrate_content_latencyThreshold.description":
             "Adaptive bitrate will adjust bitrate when the network latency reaches the latency threshold", // adv

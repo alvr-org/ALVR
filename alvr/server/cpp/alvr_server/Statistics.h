@@ -168,7 +168,7 @@ private:
 
 		if (m_adaptiveBitrateUseFrametime) {
 			if (m_framesPrevious > 0) {
-				m_adaptiveBitrateTarget = 1e6 / m_framesPrevious;
+				m_adaptiveBitrateTarget = 1e6 / m_framesPrevious + m_adaptiveBitrateTargetOffset;
 			}
 			if (m_adaptiveBitrateTarget > m_adaptiveBitrateTargetMaximum) {
 				m_adaptiveBitrateTarget = m_adaptiveBitrateTargetMaximum;
@@ -217,6 +217,7 @@ private:
 	uint64_t m_adaptiveBitrateTarget = Settings::Instance().m_adaptiveBitrateTarget;
 	bool m_adaptiveBitrateUseFrametime = Settings::Instance().m_adaptiveBitrateUseFrametime;
 	uint64_t m_adaptiveBitrateTargetMaximum = Settings::Instance().m_adaptiveBitrateTargetMaximum;
+	int32_t m_adaptiveBitrateTargetOffset = Settings::Instance().m_adaptiveBitrateTargetOffset;
 	uint64_t m_adaptiveBitrateThreshold = Settings::Instance().m_adaptiveBitrateThreshold;
 
 	uint64_t m_adaptiveBitrateUpRate = Settings::Instance().m_adaptiveBitrateUpRate;

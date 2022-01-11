@@ -266,6 +266,13 @@ async fn client_handshake(
             .latency_use_frametime
             .content
             .latency_target_maximum,
+        latency_target_offset: session_settings
+            .video
+            .adaptive_bitrate
+            .content
+            .latency_use_frametime
+            .content
+            .latency_target_offset,
         latency_threshold: session_settings
             .video
             .adaptive_bitrate

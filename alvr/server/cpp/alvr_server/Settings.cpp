@@ -92,6 +92,7 @@ void Settings::Load()
 		m_adaptiveBitrateTarget = (int)config.get("latency_target").get<int64_t>();
 		m_adaptiveBitrateUseFrametime = config.get("latency_use_frametime").get<bool>();
 		m_adaptiveBitrateTargetMaximum = (int)config.get("latency_target_maximum").get<int64_t>();
+		m_adaptiveBitrateTargetOffset = (int)config.get("latency_target_offset").get<int64_t>();
 		m_adaptiveBitrateThreshold = (int)config.get("latency_threshold").get<int64_t>();
 		m_adaptiveBitrateUpRate = (int)config.get("bitrate_up_rate").get<int64_t>();
 		m_adaptiveBitrateDownRate = (int)config.get("bitrate_down_rate").get<int64_t>();

@@ -30,7 +30,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
 
     int err;
     for (auto &input_frame : input_frames) {
-        vk_frames.push_back(input_frame.make_av_frame(vk_frame_ctx).release());
+        vk_frames.push_back(std::move(input_frame.make_av_frame(vk_frame_ctx)));
     }
 
     const auto &settings = Settings::Instance();
@@ -88,8 +88,6 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
 }
 
 alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
-    for (auto &vk_frame : vk_frames)
-        AVUTIL.av_frame_free(&vk_frame);
     AVUTIL.av_buffer_unref(&hw_ctx);
     AVUTIL.av_frame_free(&hw_frame);
 }
@@ -97,7 +95,7 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
 void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, bool idr) {
     assert(frame_index < vk_frames.size());
 
-    int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frames[frame_index], 0);
+    int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frames[frame_index].get(), 0);
     if (err) {
         throw alvr::AvException("av_hwframe_transfer_data", err);
     }

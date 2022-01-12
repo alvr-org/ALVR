@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include "EncodePipeline.h"
 
 extern "C" struct AVBufferRef;
@@ -19,7 +20,7 @@ public:
 
 private:
   AVBufferRef *hw_ctx = nullptr;
-  std::vector<AVFrame *> vk_frames;
+  std::vector<std::unique_ptr<AVFrame, std::function<void(AVFrame*)>>> vk_frames;
   AVFrame * hw_frame = nullptr;
 };
 }

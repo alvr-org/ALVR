@@ -2,6 +2,9 @@ Source: alvr
 Section: games
 Priority: optional
 Maintainer: Trae Santiago <trae32566@gmail.com>
+Depends:
+ libx264-dev,
+ libx265-dev
 Build-Depends:
  build-essential,
  imagemagick,

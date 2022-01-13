@@ -72,7 +72,7 @@ impl Compositor {
         foveation_desc: Option<&FoveatedRenderingDesc>,
         slices_count: usize,
     ) -> Self {
-        let inner = CompositingPass::new(&context.device);
+        let inner = CompositingPass::new(Arc::clone(&context.device));
 
         let color_corrector = ColorCorrectionPass::new(&context.device, target_view_size);
 

@@ -36,6 +36,9 @@ pub enum MediacodecDataType {
 pub struct LatencyUseFrametimeDesc {
     #[schema(advanced, min = 10000, max = 100000, step = 1000)]
     pub latency_target_maximum: u64,
+
+    #[schema(advanced, min = -4000, max = 8000, step = 500)]
+    pub latency_target_offset: i32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -535,7 +538,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     latency_use_frametime: SwitchDefault {
                         enabled: false,
                         content: LatencyUseFrametimeDescDefault {
-                            latency_target_maximum: 50000,
+                            latency_target_maximum: 30000,
+                            latency_target_offset: 3000,
                         },
                     },
                     latency_threshold: 3000,
@@ -626,8 +630,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     tracking_system_name: "oculus".into(),
                     manufacturer_name: "Oculus".into(),
                     model_number: "Miramar".into(),
-                    render_model_name_left: "{alvr_server}oculus_quest2_controller_left".into(),
-                    render_model_name_right: "{alvr_server}oculus_quest2_controller_right".into(),
+                    render_model_name_left: "oculus_quest2_controller_left".into(),
+                    render_model_name_right: "oculus_quest2_controller_right".into(),
                     serial_number: "1WMGH000XX0000_Controller".into(),
                     ctrl_type_left: "oculus_touch".into(),
                     ctrl_type_right: "oculus_touch".into(),

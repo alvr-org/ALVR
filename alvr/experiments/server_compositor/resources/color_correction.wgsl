@@ -1,4 +1,3 @@
-[[block]]
 struct PushConstants {
     brightness: f32;
     contrast: f32;

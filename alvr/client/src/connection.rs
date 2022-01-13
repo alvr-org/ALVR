@@ -1,17 +1,20 @@
 use crate::{
     connection_utils::{self, ConnectionError},
-    MAYBE_LEGACY_SENDER,
+    HapticsFeedback, TimeSync, VideoFrame, INPUT_SENDER, LEGACY_SENDER, TIME_SYNC_SENDER,
+    VIDEO_ERROR_REPORT_SENDER,
 };
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
+    log,
     prelude::*,
-    ALVR_NAME, ALVR_VERSION,
+    Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
-    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, LEGACY,
+    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO,
+    HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -21,7 +24,7 @@ use jni::{
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
-    future, slice,
+    future, mem, ptr, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
@@ -222,7 +225,7 @@ async fn connection_pipeline(
         return Ok(());
     }
 
-    let mut stream_socket = tokio::select! {
+    let stream_socket = tokio::select! {
         res = stream_socket_builder.accept_from_server(
             server_ip,
             settings.connection.stream_port,
@@ -231,6 +234,7 @@ async fn connection_pipeline(
             return fmt_e!("Timeout while setting up streams");
         }
     };
+    let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
 
@@ -337,16 +341,54 @@ async fn connection_pipeline(
     //     }
     // };
 
-    let legacy_send_loop = {
-        let mut socket_sender = stream_socket.request_stream::<_, LEGACY>().await?;
+    let input_send_loop = {
+        let mut socket_sender = stream_socket.request_stream(INPUT).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *MAYBE_LEGACY_SENDER.lock() = Some(data_sender);
+            *INPUT_SENDER.lock() = Some(data_sender);
+            while let Some(input) = data_receiver.recv().await {
+                socket_sender
+                    .send_buffer(socket_sender.new_buffer(&input, 0)?)
+                    .await
+                    .ok();
+            }
 
-            while let Some(data) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&(), data.len())?;
-                buffer.get_mut().extend(data);
-                socket_sender.send_buffer(buffer).await.ok();
+            Ok(())
+        }
+    };
+
+    let time_sync_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *TIME_SYNC_SENDER.lock() = Some(data_sender);
+
+            while let Some(time_sync) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::TimeSync(time_sync))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let video_error_report_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *VIDEO_ERROR_REPORT_SENDER.lock() = Some(data_sender);
+
+            while let Some(()) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::VideoErrorReport)
+                    .await
+                    .ok();
             }
 
             Ok(())
@@ -354,12 +396,67 @@ async fn connection_pipeline(
     };
 
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
-    let legacy_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<(), LEGACY>().await?;
+    let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
+
+    let video_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
+            .await?;
+        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
                 let packet = receiver.recv().await?;
-                legacy_receive_data_sender.send(packet.buffer).ok();
+
+                let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
+                let header = VideoFrame {
+                    type_: 9, // ALVR_PACKET_TYPE_VIDEO_FRAME
+                    packetCounter: packet.header.packet_counter,
+                    trackingFrameIndex: packet.header.tracking_frame_index,
+                    videoFrameIndex: packet.header.video_frame_index,
+                    sentTime: packet.header.sent_time,
+                    frameByteSize: packet.header.frame_byte_size,
+                    fecIndex: packet.header.fec_index,
+                    fecPercentage: packet.header.fec_percentage,
+                };
+
+                buffer[..mem::size_of::<VideoFrame>()].copy_from_slice(unsafe {
+                    &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
+                });
+                buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
+
+                legacy_receive_data_sender.lock().await.send(buffer).ok();
+            }
+        }
+    };
+
+    let haptics_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<Haptics<TrackedDeviceType>>(HAPTICS)
+            .await?;
+        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
+        async move {
+            loop {
+                let packet = receiver.recv().await?;
+
+                let haptics = HapticsFeedback {
+                    type_: 13, // ALVR_PACKET_TYPE_HAPTICS
+                    startTime: 0,
+                    amplitude: packet.header.amplitude,
+                    duration: packet.header.duration.as_secs_f32(),
+                    frequency: packet.header.frequency,
+                    hand: if matches!(packet.header.device, TrackedDeviceType::LeftHand) {
+                        0
+                    } else {
+                        1
+                    },
+                };
+
+                let mut buffer = vec![0_u8; mem::size_of::<HapticsFeedback>()];
+                buffer.copy_from_slice(unsafe {
+                    &mem::transmute::<_, [u8; mem::size_of::<HapticsFeedback>()]>(haptics)
+                });
+
+                legacy_receive_data_sender.lock().await.send(buffer).ok();
             }
         }
     };
@@ -478,7 +575,7 @@ async fn connection_pipeline(
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         #[cfg(target_os = "android")]
         {
-            let game_audio_receiver = stream_socket.subscribe_to_stream().await?;
+            let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
             Box::pin(audio::play_audio_loop(
                 config_packet.game_audio_sample_rate,
                 desc.config,
@@ -494,7 +591,7 @@ async fn connection_pipeline(
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
         #[cfg(target_os = "android")]
         {
-            let microphone_sender = stream_socket.request_stream().await?;
+            let microphone_sender = stream_socket.request_stream(AUDIO).await?;
             Box::pin(audio::record_audio_loop(
                 config.sample_rate,
                 microphone_sender,
@@ -554,6 +651,35 @@ async fn connection_pipeline(
                                 )?;
                                 break Ok(());
                             }
+                            Ok(ServerControlPacket::TimeSync(data)) => {
+                                let time_sync = TimeSync {
+                                    type_: 7, // ALVR_PACKET_TYPE_TIME_SYNC
+                                    mode: data.mode,
+                                    serverTime: data.server_time,
+                                    clientTime: data.client_time,
+                                    sequence: 0,
+                                    packetsLostTotal: data.packets_lost_total,
+                                    packetsLostInSecond: data.packets_lost_in_second,
+                                    averageTotalLatency: 0,
+                                    averageSendLatency: data.average_send_latency,
+                                    averageTransportLatency: data.average_transport_latency,
+                                    averageDecodeLatency: data.average_decode_latency,
+                                    idleTime: data.idle_time,
+                                    fecFailure: data.fec_failure,
+                                    fecFailureInSecond: data.fec_failure_in_second,
+                                    fecFailureTotal: data.fec_failure_total,
+                                    fps: data.fps,
+                                    serverTotalLatency: data.server_total_latency,
+                                    trackingRecvFrameIndex: data.tracking_recv_frame_index,
+                                };
+
+                                let mut buffer = vec![0_u8; mem::size_of::<TimeSync>()];
+                                buffer.copy_from_slice(unsafe {
+                                    &mem::transmute::<_, [u8; mem::size_of::<TimeSync>()]>(time_sync)
+                                });
+
+                                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                            },
                             Ok(_) => (),
                             Err(e) => {
                                 info!("Server disconnected. Cause: {}", e);
@@ -571,9 +697,11 @@ async fn connection_pipeline(
         }
     };
 
+    let receive_loop = async move { stream_socket.receive_loop().await };
+
     // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
     tokio::select! {
-        res = spawn_cancelable(stream_socket.receive_loop()) => {
+        res = spawn_cancelable(receive_loop) => {
             if let Err(e) = res {
                 info!("Server disconnected. Cause: {}", e);
             }
@@ -590,8 +718,11 @@ async fn connection_pipeline(
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
-        res = spawn_cancelable(legacy_send_loop) => res,
-        res = spawn_cancelable(legacy_receive_loop) => res,
+        res = spawn_cancelable(input_send_loop) => res,
+        res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(video_error_report_send_loop) => res,
+        res = spawn_cancelable(video_receive_loop) => res,
+        res = spawn_cancelable(haptics_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,
 
         // keep these loops on the current task

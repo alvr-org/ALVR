@@ -1,21 +1,28 @@
-use super::{OpenxrContext, OpenxrSwapchain};
+use super::{OpenxrSwapchain, XrContext};
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
+    ash::{
+        self,
+        extensions::khr,
+        vk::{self, Handle},
+    },
     convert::{
-        self, SwapchainCreateData, SwapchainCreateInfo, TextureType, DEVICE_FEATURES,
+        self, GraphicsContextVulkanInitDesc, SwapchainCreateData, SwapchainCreateInfo, TextureType,
         TARGET_VULKAN_VERSION,
     },
-    GraphicsContext,
+    wgpu::{Device, TextureFormat, TextureViewDescriptor},
+    wgpu_hal as hal, GraphicsContext,
 };
-use ash::vk::{self, Handle};
 use openxr as xr;
 use parking_lot::Mutex;
-use std::{mem, sync::Arc};
-use wgpu::{Device, TextureFormat, TextureViewDescriptor};
-use wgpu_hal as hal;
+use std::{
+    ffi::{CStr, CString},
+    mem,
+    sync::Arc,
+};
 
-pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<GraphicsContext> {
-    let entry = unsafe { ash::Entry::new().unwrap() };
+pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
+    let entry = unsafe { ash::Entry::load().unwrap() };
 
     let raw_instance = unsafe {
         let extensions_ptrs =
@@ -23,6 +30,9 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
                 .iter()
                 .map(|x| x.as_ptr())
                 .collect::<Vec<_>>();
+        let layers = vec![CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0").unwrap()];
+        let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
+
         let raw_instance_ptr =
             trace_err!(trace_err!(xr_context.instance.create_vulkan_instance(
                 xr_context.system,
@@ -31,8 +41,8 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
                     .application_info(
                         &vk::ApplicationInfo::builder().api_version(TARGET_VULKAN_VERSION),
                     )
-                    .enabled_extension_names(&extensions_ptrs) as *const _
-                    as *const _,
+                    .enabled_extension_names(&extensions_ptrs)
+                    .enabled_layer_names(&layers_ptrs) as *const _ as *const _,
             ))?)?;
         ash::Instance::load(
             entry.static_fn(),
@@ -44,6 +54,17 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
         .instance
         .vulkan_graphics_device(xr_context.system, raw_instance.handle().as_raw() as _))?
         as _);
+
+    // unsafe {
+    //     let device_exts = raw_instance
+    //         .enumerate_device_extension_properties(raw_physical_device)
+    //         .unwrap();
+    //     let device_exts_cstrs = device_exts
+    //         .iter()
+    //         .map(|ext| CStr::from_ptr(ext.extension_name.as_ptr() as _))
+    //         .collect::<Vec<_>>();
+    //     dbg!(device_exts_cstrs);
+    // }
 
     let queue_family_index = unsafe {
         raw_instance
@@ -68,22 +89,43 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
             raw_instance.clone(),
             raw_physical_device,
         )?;
-        let extensions = temp_adapter.required_device_extensions(DEVICE_FEATURES);
-        let mut features = temp_adapter.physical_device_features(
+
+        let extensions = temp_adapter
+            .adapter
+            .required_device_extensions(temp_adapter.features);
+        let mut extensions_ptrs = extensions.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
+        if cfg!(target_os = "android") {
+            // For importing decoder images into Vulkan
+            let extra_extensions = [
+                vk::ExtQueueFamilyForeignFn::name(),
+                vk::KhrExternalMemoryFn::name(),
+                vk::AndroidExternalMemoryAndroidHardwareBufferFn::name(),
+            ]
+            .into_iter()
+            .map(|ext| ext.as_ptr());
+
+            extensions_ptrs.extend(extra_extensions);
+        }
+
+        let mut features = temp_adapter.adapter.physical_device_features(
             &extensions,
-            DEVICE_FEATURES,
-            wgpu_hal::UpdateAfterBindTypes::empty(),
+            temp_adapter.features,
+            hal::UpdateAfterBindTypes::empty(),
         );
 
         let queue_infos = [vk::DeviceQueueCreateInfo::builder()
             .queue_family_index(queue_family_index)
             .queue_priorities(&[1.0])
             .build()];
-        let extensions_ptrs = extensions.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
         let info = vk::DeviceCreateInfo::builder()
             .queue_create_infos(&queue_infos)
             .enabled_extension_names(&extensions_ptrs);
-        let info = features.add_to_device_create_builder(info);
+        let mut info = features.add_to_device_create_builder(info);
+
+        let mut ycbcr_conversion_feature =
+            vk::PhysicalDeviceSamplerYcbcrConversionFeaturesKHR::builder()
+                .sampler_ycbcr_conversion(true);
+        let info = info.push_next(&mut ycbcr_conversion_feature);
 
         let raw_device_ptr = trace_err!(trace_err!(xr_context.instance.create_vulkan_device(
             xr_context.system,
@@ -97,16 +139,16 @@ pub fn create_graphics_context(xr_context: &OpenxrContext) -> StrResult<Graphics
         )
     };
 
-    GraphicsContext::from_vulkan(
+    GraphicsContext::from_vulkan(GraphicsContextVulkanInitDesc {
         entry,
-        TARGET_VULKAN_VERSION,
+        version: TARGET_VULKAN_VERSION,
         raw_instance,
         raw_physical_device,
         raw_device,
         queue_family_index,
         queue_index,
-        Some(Box::new(xr_context.instance.clone())),
-    )
+        drop_guard: Some(Box::new(xr_context.instance.clone())),
+    })
 }
 
 pub fn create_swapchain(
@@ -115,12 +157,15 @@ pub fn create_swapchain(
     size: UVec2,
 ) -> OpenxrSwapchain {
     const FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
-    const USAGE: xr::SwapchainUsageFlags = xr::SwapchainUsageFlags::COLOR_ATTACHMENT;
+
+    let usage = xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED;
+    // This corresponds to USAGE
+    let hal_usage = hal::TextureUses::COLOR_TARGET | hal::TextureUses::RESOURCE;
 
     let swapchain = session
         .create_swapchain(&xr::SwapchainCreateInfo {
             create_flags: xr::SwapchainCreateFlags::EMPTY,
-            usage_flags: USAGE,
+            usage_flags: usage,
             format: FORMAT.as_raw() as _,
             sample_count: 1,
             width: size.x,
@@ -142,13 +187,11 @@ pub fn create_swapchain(
                 .iter()
                 .map(|raw_image| vk::Image::from_raw(*raw_image))
                 .collect(),
-            vk_usage: vk::ImageUsageFlags::COLOR_ATTACHMENT,
-            vk_format: FORMAT,
-            hal_usage: hal::TextureUses::COLOR_TARGET,
-            drop_guard: Some(Arc::clone(&swapchain) as _),
+            hal_usage,
+            drop_guard: Some(Arc::new(()) as _),
         },
         SwapchainCreateInfo {
-            usage: USAGE,
+            usage,
             format: TextureFormat::Rgba8UnormSrgb,
             sample_count: 1,
             size,

@@ -1,6 +1,6 @@
 [package]
 name = "client"
-version = "16.0.0-rc2"
+version = "17.0.0-dev.1"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -21,10 +21,12 @@ settings-schema = { path = "../../settings-schema", features = [
 
 # Basic utilities
 crossbeam-channel = "0.5"
+env_logger = "0.9"
 parking_lot = "0.11"
 rand = "0.8"
 # Serialization
 bincode = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Async and networking
 bytes = "1"
@@ -32,39 +34,72 @@ futures = "0.3"
 pollster = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-raw-window-handle = "0.4"
-rend3 = { git = "https://github.com/BVE-Reborn/rend3" }
-rend3-routine = { git = "https://github.com/BVE-Reborn/rend3" }
-wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
-wgpu-hal = { git = "https://github.com/gfx-rs/wgpu", rev = "d2d8affb79b21ce7c1ba101e24a4c311d399f0c4" }
+rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
+rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
+naga = { version = "0.8", features = ["wgsl-in", "glsl-in", "spv-out"] }
 # Miscellaneous
-ash = "0.33"
-openxr = { git = "https://github.com/Ralith/openxrs" }
+openxr = { git = "https://github.com/zarik5/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-ndk = { git = "https://github.com/rust-windowing/android-ndk-rs", features = [
+jni = "0.19"
+ndk = { git = "https://github.com/zarik5/android-ndk-rs", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
-] }
-ndk-glue = { git = "https://github.com/rust-windowing/android-ndk-rs" }
-ndk-sys = { git = "https://github.com/rust-windowing/android-ndk-rs" }
-
+], rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
+ndk-glue = "0.6"
+ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../../deps/android/oculus_openxr"
 
 [package.metadata.android.sdk]
-min_sdk_version = 21
-target_sdk_version = 30
+min_sdk_version = 28
+target_sdk_version = 28
+compile_sdk_version = 28
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.microphone"
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vr.headtracking"
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vulkan.compute"
+version = 0
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vulkan.level"
+version = 1
+required = true
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vulkan.version"
+version = 0x00401000
+required = true
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.RECORD_AUDIO"
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+
+[package.metadata.android.application]
+debuggable = true
+theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
+
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.supportedDevices"
+value = "all"
 
 [package.metadata.android.application.activity]
-theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
 config_changes = "density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
 launch_mode = "singleTask"
 orientation = "landscape"
-resizeable_activity = "false"
 
 [[package.metadata.android.application.activity.intent_filter]]
 actions = ["android.intent.action.MAIN"]

@@ -1,6 +1,6 @@
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
-    Fov, OpenvrPropValue,
+    glam::{Quat, Vec2},
+    Fov, MotionData, OpenvrPropValue,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -97,14 +97,6 @@ pub enum ResponseForDriver {
         textures: Vec<u64>, // HANDLEs or file descriptors
     },
     SwapchainIndex(usize),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct MotionData {
-    pub orientation: Quat,
-    pub position: Vec3,
-    pub linear_velocity: Option<Vec3>,
-    pub angular_velocity: Option<Vec3>,
 }
 
 #[derive(Serialize, Deserialize)]

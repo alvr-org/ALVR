@@ -1,4 +1,3 @@
-[[block]]
 struct PushConstants {
     input_size: vec2<i32>;    // unaligned input slice size
     input_columns: i32;       // number of slices per row

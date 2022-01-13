@@ -1,9 +1,15 @@
-use crate::TARGET_FORMAT;
-use alvr_common::glam::UVec2;
+use std::{mem, sync::Arc};
+
+use crate::{BindingDesc, TARGET_FORMAT};
+use alvr_common::{glam::UVec2, log};
 use wgpu::{
-    BindGroup, CommandEncoder, Device, Extent3d, RenderPipeline, Texture, TextureDescriptor,
-    TextureDimension, TextureUsages, TextureView, TextureViewDescriptor,
+    BindGroup, BindingResource, BindingType, CommandEncoder, Device, Extent3d, RenderPipeline,
+    Texture, TextureDescriptor, TextureDimension, TextureSampleType, TextureUsages, TextureView,
+    TextureViewDescriptor, TextureViewDimension,
 };
+
+const VARS_COUNT_ALIGNED: usize = 10;
+const VARS_SIZE: usize = VARS_COUNT_ALIGNED * mem::size_of::<i32>();
 
 pub struct SlicingLayout {
     slice_size: UVec2,
@@ -45,8 +51,9 @@ pub enum AlignmentDirection {
 // Slices are assumed to be packed and unpacked by this same pass, following a particular layout
 // determined by the number of slices and the shape of the reconstructed frame.
 pub struct SlicingPass {
-    input_texture: Texture,
+    input_texture: Arc<Texture>,
     input_views: Vec<TextureView>,
+    input_size: UVec2,
     pipeline: RenderPipeline,
     bind_group: BindGroup,
     input_slicing_layout: SlicingLayout,
@@ -63,28 +70,28 @@ impl SlicingPass {
         output_slices_count: usize,
         alignment_direction: AlignmentDirection,
     ) -> Self {
+        log::error!("create slicing pass");
+
         let input_slicing_layout = get_slicing_layout(combined_size, input_slices_count);
         let mut input_size = input_slicing_layout.slice_size;
         if matches!(alignment_direction, AlignmentDirection::Input) {
             input_size = align_to_32(input_size);
         }
 
-        let input_texture = device.create_texture(&TextureDescriptor {
-            label: None,
+        let input_texture = Arc::new(device.create_texture(&TextureDescriptor {
+            label: Some("slicing input"),
             size: Extent3d {
                 width: input_size.x,
                 height: input_size.y,
                 // make sure the texture is still an array, even if the second texture is unused
-                depth_or_array_layers: u32::max(input_slices_count as _, 2),
+                depth_or_array_layers: input_slices_count.max(2) as _,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: TARGET_FORMAT,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::STORAGE_BINDING,
-        });
-
-        let texture_view = input_texture.create_view(&Default::default());
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+        }));
 
         let input_views = (0..input_slices_count)
             .map(|idx| {
@@ -93,14 +100,26 @@ impl SlicingPass {
                     ..Default::default()
                 })
             })
-            .collect();
+            .collect::<Vec<_>>();
 
-        let pipeline = super::create_default_render_pipeline(
+        let (pipeline, bind_group) = super::create_default_render_pipeline(
+            "slicing",
             device,
             include_str!("../resources/slicing.wgsl"),
+            vec![BindingDesc {
+                index: 0,
+                binding_type: BindingType::Texture {
+                    sample_type: TextureSampleType::Float { filterable: false },
+                    view_dimension: TextureViewDimension::D2Array,
+                    multisampled: false,
+                },
+                array_size: Some(input_slices_count),
+                resource: BindingResource::TextureViewArray(
+                    &input_views.iter().collect::<Vec<_>>(), // &[T] -> &[&T]
+                ),
+            }],
+            VARS_SIZE,
         );
-
-        let bind_group = super::create_default_bind_group(device, &pipeline, &texture_view);
 
         let output_slicing_layout = get_slicing_layout(combined_size, output_slices_count);
         let mut target_size = output_slicing_layout.slice_size;
@@ -108,9 +127,12 @@ impl SlicingPass {
             target_size = align_to_32(target_size);
         }
 
+        log::error!("slicing pass created");
+
         Self {
             input_texture,
             input_views,
+            input_size,
             pipeline,
             bind_group,
             input_slicing_layout,
@@ -120,14 +142,19 @@ impl SlicingPass {
         }
     }
 
-    // Aligned slice size
+    // Aligned output slice size
     pub fn output_size(&self) -> UVec2 {
         self.target_size
     }
 
+    // Aligned input slice size
+    pub fn input_size(&self) -> UVec2 {
+        self.input_size
+    }
+
     // The texture has one layer for each slice
-    pub fn input_texture(&self) -> &Texture {
-        &self.input_texture
+    pub fn input_texture(&self) -> Arc<Texture> {
+        Arc::clone(&self.input_texture)
     }
 
     pub fn input_views(&self) -> &[TextureView] {
@@ -135,10 +162,11 @@ impl SlicingPass {
     }
 
     pub fn draw(&self, encoder: &mut CommandEncoder, slice_index: usize, output: &TextureView) {
-        let data = [
+        let data: [i32; VARS_COUNT_ALIGNED] = [
             self.input_slicing_layout.slice_size.x as i32,
             self.input_slicing_layout.slice_size.y as i32,
             self.input_slicing_layout.columns as i32,
+            0,
             self.combined_size.x as i32,
             self.combined_size.y as i32,
             (self.output_slicing_layout.slice_size.x

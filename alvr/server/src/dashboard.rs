@@ -1,6 +1,6 @@
-use crate::{graphics_info, ClientListAction, MAYBE_NEW_DASHBOARD, MAYBE_WINDOW, SESSION_MANAGER};
+use crate::{graphics_info, ClientListAction, MAYBE_WINDOW, SESSION_MANAGER};
 use alvr_common::{lazy_static, prelude::*};
-use alvr_gui::Dashboard;
+// use alvr_gui::Dashboard;
 use alvr_session::SessionDesc;
 use parking_lot::Mutex;
 use std::{
@@ -69,9 +69,9 @@ pub async fn event_listener(events_sender: Sender<String>) {
     loop {
         match receiver.recv().await {
             Ok(event) => {
-                if let Some(dashboard) = &*MAYBE_NEW_DASHBOARD.lock() {
-                    dashboard.report_event(serde_json::from_str(&event).unwrap());
-                }
+                // if let Some(dashboard) = &*MAYBE_NEW_DASHBOARD.lock() {
+                //     dashboard.report_event(serde_json::from_str(&event).unwrap());
+                // }
             }
             Err(RecvError::Lagged(_)) => {
                 // warn!("Some log lines have been lost because the buffer is full");

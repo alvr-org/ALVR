@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::GraphicsContext;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{sync::Arc, time::Duration};
@@ -10,7 +10,7 @@ impl VideoDecoder {
     pub fn new(
         context: Arc<GraphicsContext>,
         codec_type: CodecType,
-        video_size: (u32, u32),
+        video_size: UVec2,
         extra_options: &[(String, MediacodecDataType)],
     ) -> StrResult<Self> {
         todo!()

@@ -1,5 +1,5 @@
 ---
-name: Bug report
+name: Bug Report
 about: Create a report to help us improve
 title: ''
 labels: ''
@@ -7,26 +7,38 @@ assignees: ''
 
 ---
 
-# Please follow the general troubleshooting steps first:
+<!-- Note: If the bug affects multiple games, please open an issue for each game with the game in the title. -->
 
-- [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and completed successfully the setup wizard.
+
+## Description
+<!-- Please add a brief summary of your issue -->
+
+## General Troubleshooting
+- [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and successfully completed the setup wizard
 - [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/alvr-org/ALVR/wiki)
 
-If your issue is about games not working, please open an issue for every game and list the game in the title.
+## Environement
 
-### Bug reports:
+### Hardware
+**Note**: for Linux, an upload to the [`hw-probe`](https://linux-hardware.org/) database is preferred: `hw-probe -all -upload`
 
-Please replace this line with a brief summary of your issue
+**CPU**:
 
-#### Environement
+**GPU**:
 
-What hardware do you have: CPU, GPU, Audio
-What version of ALVR and SteamVR have you tried. 
-Do you have the latest Windows updates? Run "winver" in Windows 10 to get the version number
+**Audio**:
 
+### Installation
+**ALVR Version**:
 
-### Features:
+**SteamVR Version**:
 
-**Please note by far the quickest way to get a new feature is to file a Pull Request.**
+**Install Type**:
+- [ ] Packaged (`exe`, `deb`, `rpm`, etc)
+- [ ] Portable (`zip`)
+- [ ] Source
 
-We will consider your request but it may be closed if it's something we're not actively planning to work on.
+**OS Name and Version** (`winver` on Windows or `grep PRETTY_NAME /etc/os-release` on most Linux distributions):
+
+<!-- Feature Requests
+The quickest way to get a new feature is to file a pull request; these will be considered, but may be closed if they're something we're not actively planning to work on. -->

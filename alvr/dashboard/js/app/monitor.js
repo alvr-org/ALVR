@@ -820,7 +820,6 @@ define([
             const now = parseInt(new Date().getTime());
 
             if (now > lastGraphRedraw + 32) {
-
                 latencyGraphData[0].pop();
                 latencyGraphData[0].push(statistics[0]);
 

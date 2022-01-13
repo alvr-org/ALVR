@@ -181,7 +181,6 @@ prep_fedora_server() {
     basePackages=(
         'dnf-utils'
         'git'
-        'cmake'
         "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${VERSION_ID}.noarch.rpm"
         "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${VERSION_ID}.noarch.rpm"
     )

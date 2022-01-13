@@ -1,4 +1,5 @@
-// Note: wgsl does not have combined samplers
+// Note: naga (and wgsl) does not have combined samplers.
+// spirv generated with https://shader-playground.timjones.io
 
 #version 450
 

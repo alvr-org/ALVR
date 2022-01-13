@@ -19,6 +19,7 @@ use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
 use std::{
     collections::HashMap,
+    path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -35,7 +36,11 @@ pub struct XrContext {
 
 impl XrContext {
     pub fn new() -> Self {
-        let entry = xr::Entry::load().unwrap();
+        let entry = if cfg!(feature = "oculus") {
+            xr::Entry::load_from(Path::new("libopenxr_loader_oculus.so")).unwrap()
+        } else {
+            xr::Entry::load().unwrap()
+        };
 
         #[cfg(target_os = "android")]
         entry.initialize_android_loader().unwrap();

@@ -73,7 +73,7 @@ define([
                 updateClients();
             });
 
-            setInterval(fillPerformanceGraphs, 8);
+            setInterval(fillPerformanceGraphs, 31);
         }
 
         function updateClients() {
@@ -788,9 +788,6 @@ define([
                 latencyGraphData[i].shift();
             }
 
-            latencyGraphData[0].pop();
-            latencyGraphData[0].push(statistics[0]);
-
             latencyGraphData[0].push(statistics[0]);
             if (statistics[1] < Infinity) {
                 latencyGraphData[1].push(statistics[2]);
@@ -811,9 +808,6 @@ define([
                 framerateGraphData[i].shift();
             }
 
-            framerateGraphData[0].pop();
-            framerateGraphData[0].push(statistics[0]);
-
             framerateGraphData[0].push(statistics[0]);
             framerateGraphData[1].push(statistics[11]);
             framerateGraphData[2].push(statistics[10]);
@@ -825,19 +819,20 @@ define([
         function redrawPerformanceGraphs(statistics) {
             const now = parseInt(new Date().getTime());
 
-            latencyGraphData[0].pop();
-            latencyGraphData[0].push(statistics[0]);
+            if (now > lastGraphRedraw + 32) {
 
-            latencyGraphData[0].shift();
-            latencyGraphData[0].unshift(statistics[0] - duration);
+                latencyGraphData[0].pop();
+                latencyGraphData[0].push(statistics[0]);
 
-            framerateGraphData[0].pop();
-            framerateGraphData[0].push(statistics[0]);
+                latencyGraphData[0].shift();
+                latencyGraphData[0].unshift(statistics[0] - duration);
 
-            framerateGraphData[0].shift();
-            framerateGraphData[0].unshift(statistics[0] - duration);
+                framerateGraphData[0].pop();
+                framerateGraphData[0].push(statistics[0]);
 
-            if (now > lastGraphRedraw + 16) {
+                framerateGraphData[0].shift();
+                framerateGraphData[0].unshift(statistics[0] - duration);
+
                 const ldata = []
                     .concat(latencyGraphData[latencyGraphData.length - 1])
                     .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
@@ -883,12 +878,12 @@ define([
             if (!statisticsRedrawStopped) {
                 const now = parseInt(new Date().getTime());
                 lastStatistics[0] = now;
-                if ((now - 16 > lastGraphRedraw) & (now - 1000 < lastStatisticsUpdate)) {
+                if ((now - 32 > lastGraphRedraw) & (now - 1000 < lastStatisticsUpdate)) {
                     if (now - 100 > lastGraphUpdate) {
                         if (!statisticsUpdateStopped) {
                             statisticsUpdateStopped = true;
                             lastStatistics.fill(null);
-                            lastStatistics[0] = lastGraphUpdate + 16;
+                            lastStatistics[0] = lastGraphUpdate + 20;
                             updatePerformanceGraphs(lastStatistics);
                         }
                     }
@@ -946,7 +941,7 @@ define([
 
             if (statisticsUpdateStopped) statisticsUpdateStopped = false;
             if (statisticsRedrawStopped) {
-                lastStatistics[0] = now - 1;
+                lastStatistics[0] = now - 20;
                 updatePerformanceGraphs(lastStatistics);
                 statisticsRedrawStopped = false;
             }

@@ -26,11 +26,17 @@ rawContentProvider='https://raw.githubusercontent.com'
 # Android NDK version
 ndkVersion=30
 
-# Grab the directory git creates
-repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
+# Grab the repository directory
+repoDir="$(dirname "${0}")/../"
+if ! [ -d "${repoDir}/.git" ]; then
+    # Get the absolute directory the script is running in, and add the repo name
+    repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
+fi
+
 # Set a temporary working directory
 tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
 buildDir="${repoDir}/build/alvr_server_linux/"
+
 # Import OS info - provides ${ID}
 . /etc/os-release
 

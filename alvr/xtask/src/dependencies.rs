@@ -70,8 +70,10 @@ fn build_rust_android_gradle() {
     fs::remove_dir_all(temp_build_dir).ok();
 }
 
-pub fn build_ffmpeg_linux() -> std::path::PathBuf {
-    // dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev
+pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
+    /* dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev
+                     libx264-dev libx265-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
+    */
 
     let download_path = afs::deps_dir().join("linux");
     let ffmpeg_path = download_path.join("FFmpeg-n4.4");
@@ -94,7 +96,32 @@ pub fn build_ffmpeg_linux() -> std::path::PathBuf {
             "--disable-network",
             "--enable-lto",
             format!(
-                "--disable-everything {} {} {} {}",
+                "--disable-everything {} {} {} {} {}",
+                /*
+                   Describing Nvidia specific options --nvccflags: 
+                   nvcc from CUDA toolkit version 11.0 or higher does not support compiling for 'compute_30' (default in ffmpeg)
+                   52 is the minimum required for the current CUDA 11 version (Quadro M6000 , GeForce 900, GTX-970, GTX-980, GTX Titan X)
+                   https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+                   Anyway below 50 arch card don't support nvenc encoding hevc https://developer.nvidia.com/nvidia-video-codec-sdk (Supported devices)
+                   Nvidia docs:
+                   https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/#commonly-faced-issues-and-tips-to-resolve-them
+                */
+                (if nvenc_flag {
+                    let cuda = pkg_config::Config::new().probe("cuda").unwrap();
+                    let include_flags = cuda.include_paths
+                        .iter()
+                        .map(|path| format!("-I{:?}", path))
+                        .reduce(|a, b| { format!("{}{}", a, b) })
+                        .expect("pkg-config cuda entry to have include-paths");
+                    let link_flags = cuda.link_paths
+                        .iter()
+                        .map(|path| format!("-L{:?}", path))
+                        .reduce(|a, b| { format!("{}{}", a, b) })
+                        .expect("pkg-config cuda entry to have link-paths");
+
+                    format!("--enable-encoder=h264_nvenc --enable-encoder=hevc_nvenc --enable-nonfree --enable-cuda-nvcc --enable-libnpp --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=\"{}\" --extra-ldflags=\"{}\" --enable-hwaccel=h264_nvenc --enable-hwaccel=hevc_nvenc",
+                            include_flags, link_flags)
+                } else {"".to_string()}),
                 "--enable-encoder=h264_vaapi --enable-encoder=hevc_vaapi",
                 "--enable-encoder=libx264 --enable-encoder=libx264rgb --enable-encoder=libx265",
                 "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",

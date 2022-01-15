@@ -20,7 +20,7 @@ SUBCOMMANDS:
     build-android-deps  Download and compile external dependencies for Android
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    build-ffmpeg-linux  Build FFmpeg with VAAPI and Vulkan support. Only for CI
+    build-ffmpeg-linux  Build FFmpeg with VAAPI, NvEnc and Vulkan support. Only for CI
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
     clean               Removes build folder
@@ -38,6 +38,7 @@ FLAGS:
     --oculus-quest      Oculus Quest build. Used only for build-client subcommand
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
+    --no-nvidia         Additional flag to use with `build-server`. Disables nVidia support.
     --help              Print this text
 
 ARGS:
@@ -56,6 +57,7 @@ pub fn build_server(
     experiments: bool,
     fetch_crates: bool,
     bundle_ffmpeg: bool,
+    no_nvidia: bool,
     root: Option<String>,
     reproducible: bool,
 ) {
@@ -117,7 +119,8 @@ pub fn build_server(
     .unwrap();
 
     if bundle_ffmpeg {
-        let ffmpeg_path = dependencies::build_ffmpeg_linux();
+        let nvenc_flag = !no_nvidia;
+        let ffmpeg_path = dependencies::build_ffmpeg_linux(nvenc_flag);
         let lib_dir = afs::server_build_dir().join("lib64").join("alvr");
         fs::create_dir_all(lib_dir.clone()).unwrap();
         for lib in walkdir::WalkDir::new(ffmpeg_path)
@@ -357,6 +360,7 @@ fn main() {
         let for_oculus_quest = args.contains("--oculus-quest");
         let for_oculus_go = args.contains("--oculus-go");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
+        let no_nvidia = args.contains("--no-nvidia");
         let reproducible = args.contains("--reproducible");
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
@@ -369,6 +373,7 @@ fn main() {
                     experiments,
                     fetch,
                     bundle_ffmpeg,
+                    no_nvidia,
                     root,
                     reproducible,
                 ),
@@ -382,7 +387,10 @@ fn main() {
                     }
                 }
                 "build-ffmpeg-linux" => {
-                    dependencies::build_ffmpeg_linux();
+                    dependencies::build_ffmpeg_linux(true);
+                }
+                "build-ffmpeg-linux-no-nvidia" => {
+                    dependencies::build_ffmpeg_linux(false);
                 }
                 "publish-server" => packaging::publish_server(is_nightly, root, reproducible),
                 "publish-client" => packaging::publish_client(is_nightly),

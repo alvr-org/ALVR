@@ -249,7 +249,10 @@ void CEncoder::Run() {
         }
 
         encoded_data.clear();
-        while (encode_pipeline->GetEncoded(encoded_data)) {}
+        // Encoders can req more then once frame, need to accumulate more data before sending it to the client
+        if (!encode_pipeline->GetEncoded(encoded_data)) {
+          continue;
+        }
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
 

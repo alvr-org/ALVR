@@ -38,7 +38,7 @@ struct HandTrackingContext {
 pub struct HandInteractionContext {
     grip_action: xr::Action<xr::Posef>,
     grip_space: xr::Space,
-    hand_tracking_context: Option<HandTrackingContext>,
+    skeleton_tracking_context: Option<HandTrackingContext>,
     vibration_action: xr::Action<xr::Haptic>,
 }
 
@@ -75,7 +75,7 @@ impl OpenxrInteractionContext {
             xr::Posef::IDENTITY
         ))?;
 
-        let hand_tracking_context = if trace_err!(xr_context
+        let skeleton_tracking_context = if trace_err!(xr_context
             .instance
             .supports_hand_tracking(xr_context.system))?
         {
@@ -112,7 +112,7 @@ impl OpenxrInteractionContext {
         Ok(HandInteractionContext {
             grip_action,
             grip_space,
-            hand_tracking_context,
+            skeleton_tracking_context,
             vibration_action,
         })
     }
@@ -243,7 +243,9 @@ impl OpenxrInteractionContext {
                         .instance
                         .string_to_path("/user/hand/left/input/grip/pose"))?,
                 ));
-                if let Some(hand_tracking_context) = &left_hand_interaction.hand_tracking_context {
+                if let Some(hand_tracking_context) =
+                    &left_hand_interaction.skeleton_tracking_context
+                {
                     bindings.push(xr::Binding::new(
                         &hand_tracking_context.target_ray_action,
                         trace_err!(xr_context
@@ -258,7 +260,9 @@ impl OpenxrInteractionContext {
                         .instance
                         .string_to_path("/user/hand/right/input/grip/pose"))?,
                 ));
-                if let Some(hand_tracking_context) = &right_hand_interaction.hand_tracking_context {
+                if let Some(hand_tracking_context) =
+                    &right_hand_interaction.skeleton_tracking_context
+                {
                     bindings.push(xr::Binding::new(
                         &hand_tracking_context.target_ray_action,
                         trace_err!(xr_context
@@ -373,7 +377,7 @@ impl OpenxrInteractionContext {
             .relate(&self.reference_space, display_time))?;
         let grip_motion = Self::get_motion(grip_location, grip_velocity);
 
-        let hand_tracking_input = if let Some(ctx) = &hand_interaction.hand_tracking_context {
+        let hand_tracking_input = if let Some(ctx) = &hand_interaction.skeleton_tracking_context {
             let (target_ray_location, target_ray_velocity) = trace_err!(ctx
                 .target_ray_space
                 .relate(&self.reference_space, display_time))?;

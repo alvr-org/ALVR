@@ -46,14 +46,17 @@ impl XrContext {
         entry.initialize_android_loader().unwrap();
 
         let available_extensions = entry.enumerate_extensions().unwrap();
+        error!("{:#?}", available_extensions);
 
         let mut enabled_extensions = xr::ExtensionSet::default();
+        // Mandatory
         enabled_extensions.khr_vulkan_enable2 = true;
-        enabled_extensions.ext_hand_tracking = true;
         #[cfg(target_os = "android")]
         {
             enabled_extensions.khr_android_create_instance = true;
         }
+        // Optional
+        enabled_extensions.ext_hand_tracking = available_extensions.ext_hand_tracking;
         let instance = entry
             .create_instance(
                 &xr::ApplicationInfo {

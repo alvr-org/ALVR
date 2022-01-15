@@ -10,7 +10,7 @@ rust-version = "1.56"
 crate_type = ["cdylib"]
 
 [features]
-default = ["oculus"]
+default = [] # ["oculus"]
 oculus = []
 
 [dependencies]
@@ -49,9 +49,9 @@ ndk = { git = "https://github.com/zarik5/android-ndk-rs", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
-], rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
+], rev = "0a547b5ab2d698d80bde1b8ebb6dfe06d550baff" }
 ndk-glue = "0.6"
-ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "b6a72f16e2484ec2748132402e074b0f5cb60e07" }
+ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "0a547b5ab2d698d80bde1b8ebb6dfe06d550baff" }
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

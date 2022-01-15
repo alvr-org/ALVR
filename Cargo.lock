@@ -829,9 +829,9 @@ dependencies = [
  "env_logger 0.9.0",
  "futures",
  "jni",
- "ndk 0.6.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
+ "ndk 0.6.0 (git+https://github.com/zarik5/android-ndk-rs?rev=0a547b5ab2d698d80bde1b8ebb6dfe06d550baff)",
  "ndk-glue 0.6.0",
- "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
+ "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=0a547b5ab2d698d80bde1b8ebb6dfe06d550baff)",
  "openxr",
  "parking_lot",
  "pollster",
@@ -1950,9 +1950,9 @@ dependencies = [
 
 [[package]]
 name = "gethostname"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e692e296bfac1d2533ef168d0b60ff5897b8b70a4009276834014dd8924cc028"
+checksum = "4addc164932852d066774c405dbbdb7914742d2b39e39e1a7ca949c856d054d1"
 dependencies = [
  "libc",
  "winapi",
@@ -1960,9 +1960,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
+checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -2444,7 +2444,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2457,7 +2457,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "bitflags",
 ]
@@ -2465,7 +2465,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "futures",
  "log",
@@ -2475,7 +2475,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -2489,7 +2489,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2502,7 +2502,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "iced_core",
 ]
@@ -2510,7 +2510,7 @@ dependencies = [
 [[package]]
 name = "iced_web"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "base64",
  "dodrio",
@@ -2527,7 +2527,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2547,7 +2547,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#1a31aefab401712e44cd613fc1337ab90579d926"
+source = "git+https://github.com/iced-rs/iced#b7bc169120d3447ead238e974007027a5152d341"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2825,9 +2825,9 @@ checksum = "1b03d17f364a3a042d5e5d46b053bbbf82c92c9430c592dd4c064dc6ee997125"
 
 [[package]]
 name = "libloading"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afe203d669ec979b7128619bae5a63b7b42e9203c1b29146079ee05e2f604b52"
+checksum = "efbc0f03f9a775e9f6aed295c6a1ba2253c5757a9e03d55c6caa46a681abcddd"
 dependencies = [
  "cfg-if 1.0.0",
  "winapi",
@@ -3125,11 +3125,11 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.6.0"
-source = "git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07#b6a72f16e2484ec2748132402e074b0f5cb60e07"
+source = "git+https://github.com/zarik5/android-ndk-rs?rev=0a547b5ab2d698d80bde1b8ebb6dfe06d550baff#0a547b5ab2d698d80bde1b8ebb6dfe06d550baff"
 dependencies = [
  "bitflags",
  "jni-sys",
- "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07)",
+ "ndk-sys 0.3.0 (git+https://github.com/zarik5/android-ndk-rs?rev=0a547b5ab2d698d80bde1b8ebb6dfe06d550baff)",
  "num_enum",
  "thiserror",
 ]
@@ -3193,7 +3193,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.3.0"
-source = "git+https://github.com/zarik5/android-ndk-rs?rev=b6a72f16e2484ec2748132402e074b0f5cb60e07#b6a72f16e2484ec2748132402e074b0f5cb60e07"
+source = "git+https://github.com/zarik5/android-ndk-rs?rev=0a547b5ab2d698d80bde1b8ebb6dfe06d550baff#0a547b5ab2d698d80bde1b8ebb6dfe06d550baff"
 dependencies = [
  "jni-sys",
 ]
@@ -4641,9 +4641,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "smartstring"

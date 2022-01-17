@@ -48,6 +48,7 @@ define({
         serverFPS: "Server FPS",
         packets: "Packets",
         packetss: "Packets / s",
+        batteries: "Batteries",
         // Logging tab
         logging: "Logging",
         // validation errors

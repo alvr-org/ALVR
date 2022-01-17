@@ -168,7 +168,7 @@ void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
 	sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
 	sendBuf.mode = 3;
 	sendBuf.serverTime = serverToClientTime(Current);
-	sendBuf.trackingRecvFrameIndex = m_TrackingInfo.FrameIndex;
+	sendBuf.trackingRecvFrameIndex = data.FrameIndex;
 	TimeSyncSend(sendBuf);
 
 	{

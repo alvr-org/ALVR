@@ -37,7 +37,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
 
     auto codec_id = ALVR_CODEC(settings.m_codec);
     const char *encoder_name = encoder(codec_id);
-    AVCodec *codec = AVCODEC.avcodec_find_encoder_by_name(encoder_name);
+    const AVCodec *codec = AVCODEC.avcodec_find_encoder_by_name(encoder_name);
     if (codec == nullptr) {
         throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
     }

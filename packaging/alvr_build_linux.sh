@@ -27,7 +27,7 @@ rawContentProvider='https://raw.githubusercontent.com'
 ndkVersion=30
 
 # Grab the repository directory
-repoDir="$(dirname "${0}")/../"
+repoDir="$(realpath $(dirname "${0}"))/.."
 if ! [ -d "${repoDir}/.git" ]; then
     # Get the absolute directory the script is running in, and add the repo name
     repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"

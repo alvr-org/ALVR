@@ -76,10 +76,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
     */
 
     let download_path = afs::deps_dir().join("linux");
-    let ffmpeg_path = download_path.join("FFmpeg-n5.0");
+    let ffmpeg_path = download_path.join("FFmpeg-n4.4");
     if !ffmpeg_path.exists() {
         download_and_extract_zip(
-            "https://codeload.github.com/FFmpeg/FFmpeg/zip/n5.0",
+            "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
             &download_path,
         );
     }

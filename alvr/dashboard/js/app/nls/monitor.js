@@ -50,8 +50,8 @@ define({
         packetss: "Packets / s",
         batteries: "Batteries",
         headset: "Headset",
-        leftController: "Left Controller",
-        rightController: "Right Controller",
+        left: "Left",
+        right: "Right",
         // Logging tab
         logging: "Logging",
         // validation errors

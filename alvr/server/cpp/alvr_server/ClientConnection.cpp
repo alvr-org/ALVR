@@ -250,7 +250,10 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 				"\"fecFailureTotal\": %llu, "
 				"\"fecFailureInSecond\": %llu, "
 				"\"clientFPS\": %.3f, "
-				"\"serverFPS\": %.3f"
+				"\"serverFPS\": %.3f, "
+				"\"batteryHMD\": %llu, "
+				"\"batteryLeft\": %llu, "
+				"\"batteryRight\": %llu"
 				"} }#\n",
 				m_Statistics->GetPacketsSentTotal(),
 				m_Statistics->GetPacketsSentInSecond(),
@@ -268,7 +271,10 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 				m_reportedStatistics.fecFailureTotal,
 				m_reportedStatistics.fecFailureInSecond,
 				m_Statistics->Get(4),  //clientFPS
-				m_Statistics->GetFPS());
+				m_Statistics->GetFPS(),
+				m_TrackingInfo.battery,
+				m_TrackingInfo.controller[0].batteryPercentRemaining,
+				m_TrackingInfo.controller[1].batteryPercentRemaining);
 
 			m_LastStatisticsUpdate = now;
 			m_Statistics->Reset();

@@ -48,6 +48,10 @@ define({
         serverFPS: "Server FPS",
         packets: "Packets",
         packetss: "Packets / s",
+        batteries: "Batteries",
+        headset: "Headset",
+        left: "Left",
+        right: "Right",
         // Logging tab
         logging: "Logging",
         // validation errors

@@ -74,6 +74,8 @@ public:
 
 	std::shared_ptr<ClientConnection> m_Listener;
 	float m_poseTimeOffset;
+
+	vr::VRInputComponentHandle_t m_proximity;
 private:
 	bool m_baseComponentsInitialized;
 	bool m_streamComponentsInitialized;

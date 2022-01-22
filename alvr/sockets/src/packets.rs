@@ -158,6 +158,7 @@ pub struct LegacyInput {
     pub frame_index: u64,
     pub battery: u64,
     pub plugged: u64,
+    pub mounted: u64,
     pub controller_flags: [u32; 2],
     pub buttons: [u64; 2],
     pub trackpad_position: [Vec2; 2],

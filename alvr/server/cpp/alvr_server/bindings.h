@@ -46,6 +46,7 @@ struct TrackingInfo {
     float ipd;
     unsigned long long battery;
     unsigned long long plugged;
+    unsigned long long mounted;
 
     static const unsigned int MAX_CONTROLLERS = 2;
     struct Controller {

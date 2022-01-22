@@ -208,6 +208,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                     frame_index: data.FrameIndex,
                     battery: data.battery,
                     plugged: data.plugged,
+                    mounted: data.mounted,
                     controller_flags: [data.controller[0].flags, data.controller[1].flags],
                     buttons: [data.controller[0].buttons, data.controller[1].buttons],
                     trackpad_position: [

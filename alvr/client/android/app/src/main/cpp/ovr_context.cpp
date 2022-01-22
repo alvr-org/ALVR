@@ -600,6 +600,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
     info.eyeFov[1] = fovPair.second;
     info.battery = g_ctx.batteryLevel;
     info.plugged = g_ctx.batteryPlugged;
+    info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
 
     memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));

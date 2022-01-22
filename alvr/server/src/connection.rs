@@ -808,6 +808,7 @@ async fn connection_pipeline() -> StrResult {
                     ipd,
                     battery: input.legacy.battery,
                     plugged: input.legacy.plugged,
+                    mounted: input.legacy.mounted,
                     controller: [
                         TrackingInfo_Controller {
                             flags: input.legacy.controller_flags[0],

@@ -45,8 +45,8 @@ struct TrackingInfo {
     struct EyeFov eyeFov[2];
     float ipd;
     unsigned long long battery;
-    unsigned long long plugged;
-    unsigned long long mounted;
+    unsigned char plugged;
+    unsigned char mounted;
 
     static const unsigned int MAX_CONTROLLERS = 2;
     struct Controller {

@@ -308,7 +308,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
 
 			// set prox sensor
-			vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1 ? true : false, 0.0);
+			vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1, 0.0);
 
 			Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
 				pose.qRotation.x,

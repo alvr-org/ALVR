@@ -1,4 +1,4 @@
-use std::os::raw::c_char;
+use std::{ffi::c_void, os::raw::c_char};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -238,8 +238,8 @@ pub extern "C" fn alvr_create_swapchain(
     height: u32,
     format: u32,
     sample_count: u32,
-    handle: bool,       // create handle to DXGI resource, ignored on Linux
-    textures: *mut u64, // array of size images_count
+    handle: bool,          // create handle to DXGI resource, ignored on Linux
+    textures: *mut c_void, // array of size images_count
 ) -> u64 {
     0
 }

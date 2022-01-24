@@ -2,7 +2,7 @@ use std::{ffi::c_void, os::raw::c_char};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AFov {
+pub struct AlvrFov {
     pub left: f32,
     pub right: f32,
     pub top: f32,
@@ -11,7 +11,7 @@ pub struct AFov {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AQuat {
+pub struct AlvrQuat {
     pub w: f32,
     pub x: f32,
     pub y: f32,
@@ -19,14 +19,14 @@ pub struct AQuat {
 }
 
 #[repr(C)]
-pub struct AVec2 {
+pub struct AlvrVec2 {
     pub x: f32,
     pub y: f32,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AVec3 {
+pub struct AlvrVec3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
@@ -34,23 +34,21 @@ pub struct AVec3 {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AVideoConfig {
+pub struct AlvrVideoConfig {
     pub preferred_view_width: u32,
     pub preferred_view_height: u32,
-    pub suggegested_fov: [AFov; 2],
-    pub initial_ipd_m: f32,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct ABatteryValue {
-    device_index: u32,
+pub struct AlvrBatteryValue {
+    top_level_path: [c_char; 32],
     value: f32, // [0, 1]
 }
 
 #[repr(u8)]
 #[derive(Clone, Copy)]
-pub enum AOpenvrPropType {
+pub enum AlvrOpenvrPropType {
     Bool,
     Float,
     Int32,
@@ -62,64 +60,77 @@ pub enum AOpenvrPropType {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union AOpenvrPropValue {
+pub union AlvrOpenvrPropValue {
     bool: bool,
     float: f32,
     int32: i32,
     uint64: u64,
-    vector3: AVec3,
+    vector3: AlvrVec3,
     double: f64,
     string: [c_char; 64],
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AOpenvrProp {
+pub struct AlvrOpenvrProp {
     name: [c_char; 64],
-    ty: AOpenvrPropType,
-    value: AOpenvrPropValue,
+    ty: AlvrOpenvrPropType,
+    value: AlvrOpenvrPropValue,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union AInputButtonValue {
+pub union AlvrInputButtonValue {
     bool: bool,
     float: f32,
 }
 
+// the profile is implied
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AInputButton {
+pub struct AlvrInputButton {
     path: [c_char; 64],
-    value: AInputButtonValue,
+    value: AlvrInputButtonValue,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AMotionData {
-    pub orientation: AQuat,
-    pub position: AVec3,
-    pub linear_velocity: AVec3,
-    pub angular_velocity: AVec3,
+pub struct AlvrMotionData {
+    pub orientation: AlvrQuat,
+    pub position: AlvrVec3,
+    pub linear_velocity: AlvrVec3,
+    pub angular_velocity: AlvrVec3,
     pub has_velocity: bool,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct ATrackingInput {
-    device_index: u32,
-    data: AMotionData,
+pub struct AlvrDevicePose {
+    pub top_level_path: [c_char; 32],
+    pub data: AlvrMotionData,
+    pub timestamp_ns: u64, // client reference
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct HandSkeleton {
-    device_index: u32,
-    joints: [AMotionData; 25],
+pub struct AlvrViewInput {
+    pub view_index: u32,
+    pub orientation: AlvrQuat,
+    pub position: AlvrVec3,
+    pub fov: AlvrFov,
+    pub timestamp_ns: u64, // client reference
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AlvrHandSkeleton {
+    pub top_level_path: [c_char; 32],
+    pub joints: [AlvrMotionData; 25],
+    pub timestamp_ns: u64, // client reference
 }
 
 #[repr(u8)]
-pub enum AEventType {
+pub enum AlvrEventType {
     None,
     ClientConnected,
     ClientDisconnected,
@@ -127,111 +138,95 @@ pub enum AEventType {
     BatteryUpdated,
     OpenvrPropertyChanged,
     ButtonUpdated,
-    TrackingUpdated,
+    DevicePoseUpdated, // HMD pose will never be reported. Use ViewInputUpdated
+    ViewInputUpdated,
     HandsSkeletonUpdated,
     RestartRequested,
     ShutdownRequested,
 }
 
 #[repr(C)]
-pub union AEventData {
+pub union AlvrEventData {
     none: (),
-    video_config: AVideoConfig,
-    battery: ABatteryValue,
-    openvr_prop: AOpenvrProp,
-    button: AInputButton,
-    tracking: ATrackingInput,
-    hand_skeleton: HandSkeleton, // this field is way oversized. todo: workaround
+    video_config: AlvrVideoConfig,
+    battery: AlvrBatteryValue,
+    openvr_prop: AlvrOpenvrProp,
+    button: AlvrInputButton,
+    device_pose: AlvrDevicePose,
+    view_input: AlvrViewInput,
+    hand_skeleton: AlvrHandSkeleton, // this field is way oversized. todo: workaround
 }
 
 #[repr(C)]
-pub struct AEvent {
-    ty: AEventType,
-    data: AEventData,
-}
-
-#[repr(u32)]
-pub enum ADeviceType {
-    None,
-    Hmd,
-    LeftHand,
-    RightHand,
-    GenericTracker,
+pub struct AlvrEvent {
+    ty: AlvrEventType,
+    data: AlvrEventData,
 }
 
 #[repr(C)]
-pub struct ADeviceConfig {
-    pub ty: ADeviceType,
+pub struct AlvrDisplayConfig {
+    pub presentation: bool,
+    pub config: AlvrVideoConfig,
+}
+
+#[repr(C)]
+pub struct AlvrLayer {
+    pub orientation: AlvrQuat,
+    pub fov: AlvrFov,
+    pub swapchain_id: u64,
+    pub rect_offset: AlvrVec2,
+    pub rect_size: AlvrVec2,
+}
+
+#[repr(C)]
+pub struct AlvrDeviceProfile {
+    pub top_level_path: [c_char; 32],
+    pub interaction_profile: [c_char; 64],
     pub serial_number: [c_char; 64],
 }
 
-#[repr(C)]
-pub struct ADisplayConfig {
-    pub presentation: bool,
-    pub config: AVideoConfig,
-}
-
-#[repr(C)]
-pub enum AInputButtonType {
-    Binary,
-    NormalizedOneSided,
-    NormalizedTwoSided,
-}
-
-#[repr(C)]
-pub struct AInputButtonDef {
-    path: [c_char; 64],
-    ty: AInputButtonType,
-}
-
-#[repr(C)]
-pub struct ALayer {
-    pub orientation: AQuat,
-    pub fov: AFov,
-    pub swapchain_id: u64,
-    pub rect_offset: AVec2,
-    pub rect_size: AVec2,
-}
-
-pub extern "C" fn alvr_read_event(timeout_ns: u64) -> AEvent {
-    AEvent {
-        ty: AEventType::None,
-        data: AEventData { none: () },
+#[no_mangle]
+pub extern "C" fn alvr_read_event(timeout_ns: u64) -> AlvrEvent {
+    AlvrEvent {
+        ty: AlvrEventType::None,
+        data: AlvrEventData { none: () },
     }
 }
 
-// These are virtual devices. The number and type of deviced will not change.
-pub extern "C" fn alvr_get_device_config(device_index: u32) -> ADeviceConfig {
-    ADeviceConfig {
-        ty: ADeviceType::None,
-        serial_number: [0; 64],
-    }
+// Use config == null to get the number of devices
+#[no_mangle]
+pub extern "C" fn alvr_get_available_devices_profiles(
+    device_profiles: *mut *const AlvrDeviceProfile,
+) -> usize {
+    // /user/head
+    // /user/hand/left
+    // /user/hand/right
+    // /user/gamepad
+    // /user/treadmill
+    // /user/eyes_ext
+    // /user/vive_tracker_htcx/role/X
+    todo!()
 }
 
-pub extern "C" fn alvr_get_display_config() -> ADisplayConfig {
-    ADisplayConfig {
+#[no_mangle]
+pub extern "C" fn alvr_get_display_config() -> AlvrDisplayConfig {
+    AlvrDisplayConfig {
         presentation: true, // false for tracker only
         config: todo!(),
     }
 }
 
-// use props == null to get props_count
+// use props == null to get the number of properties
+#[no_mangle]
 pub extern "C" fn alvr_get_static_openvr_properties(
-    device_index: u32,
-    props: *mut AOpenvrProp,
-    props_count: *mut usize,
-) {
-}
-
-// use props == null to get props_count
-pub extern "C" fn alvr_get_button_layout(
-    device_index: u32,
-    layout: *mut AInputButtonDef,
-    input_count: *mut usize,
-) {
+    top_level_path: *const c_char,
+    props: *mut AlvrOpenvrProp,
+) -> usize {
+    0
 }
 
 // returns the id of the swapchain
+#[no_mangle]
 pub extern "C" fn alvr_create_swapchain(
     images_count: u64,
     width: u32,
@@ -244,19 +239,24 @@ pub extern "C" fn alvr_create_swapchain(
     0
 }
 
+#[no_mangle]
 pub extern "C" fn alvr_destroy_swapchain(id: u64) {}
 
-pub extern "C" fn alvr_swapchain_get_next_index(id: u64) -> u32 {
+#[no_mangle]
+pub extern "C" fn alvr_swapchain_get_next_index(swapchain_id: u64) -> u32 {
     0
 }
 
 // this function is used both to set the framerate and apply phase sync
+#[no_mangle]
 pub extern "C" fn alvr_wait_for_vsync() {}
 
-pub extern "C" fn alvr_present_layers(layers: *mut [ALayer; 2], layers_count: usize) {}
+#[no_mangle]
+pub extern "C" fn alvr_present_layers(layers: *mut [AlvrLayer; 2], layers_count: usize) {}
 
+#[no_mangle]
 pub extern "C" fn alvr_send_haptics(
-    decide_index: u32,
+    top_level_path: *const c_char,
     duration_ns: u64,
     frequency: f32,
     amplitude: f32,

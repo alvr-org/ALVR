@@ -42,8 +42,8 @@ pub struct AlvrVideoConfig {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrBatteryValue {
-    top_level_path: [c_char; 32],
-    value: f32, // [0, 1]
+    pub top_level_path: [c_char; 64],
+    pub value: f32, // [0, 1]
 }
 
 #[repr(u8)]
@@ -61,36 +61,37 @@ pub enum AlvrOpenvrPropType {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub union AlvrOpenvrPropValue {
-    bool: bool,
-    float: f32,
-    int32: i32,
-    uint64: u64,
-    vector3: AlvrVec3,
-    double: f64,
-    string: [c_char; 64],
+    pub bool: bool,
+    pub float: f32,
+    pub int32: i32,
+    pub uint64: u64,
+    pub vector3: AlvrVec3,
+    pub double: f64,
+    pub string: [c_char; 64],
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrOpenvrProp {
-    name: [c_char; 64],
-    ty: AlvrOpenvrPropType,
-    value: AlvrOpenvrPropValue,
+    pub name: [c_char; 64],
+    pub ty: AlvrOpenvrPropType,
+    pub value: AlvrOpenvrPropValue,
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub union AlvrInputButtonValue {
-    bool: bool,
-    float: f32,
+pub union AlvrButtonInputValue {
+    pub bool: bool,
+    pub float: f32,
 }
 
 // the profile is implied
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AlvrInputButton {
-    path: [c_char; 64],
-    value: AlvrInputButtonValue,
+pub struct AlvrButtonInput {
+    pub path: [c_char; 64],
+    pub value: AlvrButtonInputValue,
+    pub timestamp_ns: u64, // client reference
 }
 
 #[repr(C)]
@@ -106,39 +107,59 @@ pub struct AlvrMotionData {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrDevicePose {
-    pub top_level_path: [c_char; 32],
+    pub top_level_path: [c_char; 64],
     pub data: AlvrMotionData,
     pub timestamp_ns: u64, // client reference
 }
 
+// for now ALVR expects only two eye views. OpenVR supports only 2 and OpenXR supports more than 2
+// only through extensions.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AlvrViewInput {
-    pub view_index: u32,
-    pub orientation: AlvrQuat,
-    pub position: AlvrVec3,
+pub struct AlvrViewsInfo {
+    pub ipd_m: f32,
     pub fov: AlvrFov,
     pub timestamp_ns: u64, // client reference
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub enum AlvrHandType {
+    Left,
+    Right,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub struct AlvrHandSkeleton {
-    pub top_level_path: [c_char; 32],
+    pub hand_type: AlvrHandType,
     pub joints: [AlvrMotionData; 25],
     pub timestamp_ns: u64, // client reference
+}
+
+// /user/head
+// /user/hand/left
+// /user/hand/right
+// /user/gamepad
+// /user/treadmill
+// /user/eyes_ext
+// /user/vive_tracker_htcx/role/X
+#[repr(C)]
+pub struct AlvrDeviceProfile {
+    pub top_level_path: [c_char; 64],
+    pub interaction_profile: [c_char; 64],
 }
 
 #[repr(u8)]
 pub enum AlvrEventType {
     None,
-    ClientConnected,
-    ClientDisconnected,
+    DeviceConnected,
+    DeviceDisconnected,
     VideoConfigUpdated,
     BatteryUpdated,
     OpenvrPropertyChanged,
     ButtonUpdated,
-    DevicePoseUpdated, // HMD pose will never be reported. Use ViewInputUpdated
+    DevicePoseUpdated,
     ViewInputUpdated,
     HandsSkeletonUpdated,
     RestartRequested,
@@ -147,26 +168,21 @@ pub enum AlvrEventType {
 
 #[repr(C)]
 pub union AlvrEventData {
-    none: (),
-    video_config: AlvrVideoConfig,
-    battery: AlvrBatteryValue,
-    openvr_prop: AlvrOpenvrProp,
-    button: AlvrInputButton,
-    device_pose: AlvrDevicePose,
-    view_input: AlvrViewInput,
-    hand_skeleton: AlvrHandSkeleton, // this field is way oversized. todo: workaround
+    pub none: (),
+    pub top_level_path: [c_char; 64],
+    pub video_config: AlvrVideoConfig,
+    pub battery: AlvrBatteryValue,
+    pub openvr_prop: AlvrOpenvrProp,
+    pub button: AlvrButtonInput,
+    pub device_pose: AlvrDevicePose,
+    pub views_info: AlvrViewsInfo,
+    pub hand_skeleton: AlvrHandSkeleton, // this field is way oversized. todo: workaround
 }
 
 #[repr(C)]
 pub struct AlvrEvent {
-    ty: AlvrEventType,
-    data: AlvrEventData,
-}
-
-#[repr(C)]
-pub struct AlvrDisplayConfig {
-    pub presentation: bool,
-    pub config: AlvrVideoConfig,
+    pub ty: AlvrEventType,
+    pub data: AlvrEventData,
 }
 
 #[repr(C)]
@@ -179,11 +195,19 @@ pub struct AlvrLayer {
 }
 
 #[repr(C)]
-pub struct AlvrDeviceProfile {
-    pub top_level_path: [c_char; 32],
-    pub interaction_profile: [c_char; 64],
-    pub serial_number: [c_char; 64],
+pub struct AlvrGraphicsContext {
+    vk_get_device_proc_addr: *mut c_void,
+    vk_instance: u64,
+    vk_physical_device: u64,
+    vk_device: u64,
+    vk_queue_family_index: u64,
+    vk_queue_index: u64,
 }
+
+// Initialize ALVR runtime and create the graphics context
+// for OpenVR/Windows use vk_get_device_proc_addr == null
+#[no_mangle]
+pub extern "C" fn alvr_initialize(graphics_handles: AlvrGraphicsContext) {}
 
 #[no_mangle]
 pub extern "C" fn alvr_read_event(timeout_ns: u64) -> AlvrEvent {
@@ -193,27 +217,10 @@ pub extern "C" fn alvr_read_event(timeout_ns: u64) -> AlvrEvent {
     }
 }
 
-// Use config == null to get the number of devices
+// returns false if (virtual) HMD not connected
 #[no_mangle]
-pub extern "C" fn alvr_get_available_devices_profiles(
-    device_profiles: *mut *const AlvrDeviceProfile,
-) -> usize {
-    // /user/head
-    // /user/hand/left
-    // /user/hand/right
-    // /user/gamepad
-    // /user/treadmill
-    // /user/eyes_ext
-    // /user/vive_tracker_htcx/role/X
-    todo!()
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_get_display_config() -> AlvrDisplayConfig {
-    AlvrDisplayConfig {
-        presentation: true, // false for tracker only
-        config: todo!(),
-    }
+pub extern "C" fn alvr_get_display_config(config: *mut AlvrVideoConfig) -> bool {
+    false
 }
 
 // use props == null to get the number of properties
@@ -225,15 +232,16 @@ pub extern "C" fn alvr_get_static_openvr_properties(
     0
 }
 
-// returns the id of the swapchain
+// returns the id of the swapchain. image handles obtained from `textures`. `textures` can be
+// already initialized (from the Vulkan layer)
 #[no_mangle]
 pub extern "C" fn alvr_create_swapchain(
-    images_count: u64,
+    images_count: usize,
     width: u32,
     height: u32,
     format: u32,
     sample_count: u32,
-    handle: bool,          // create handle to DXGI resource, ignored on Linux
+    dxgi_handle: bool,     // create HANDLEs to DXGI resource, ignored on Linux.
     textures: *mut c_void, // array of size images_count
 ) -> u64 {
     0
@@ -249,14 +257,14 @@ pub extern "C" fn alvr_swapchain_get_next_index(swapchain_id: u64) -> u32 {
 
 // this function is used both to set the framerate and apply phase sync
 #[no_mangle]
-pub extern "C" fn alvr_wait_for_vsync() {}
+pub extern "C" fn alvr_wait_for_vsync(timeout_ns: u64) {}
 
 #[no_mangle]
 pub extern "C" fn alvr_present_layers(layers: *mut [AlvrLayer; 2], layers_count: usize) {}
 
 #[no_mangle]
 pub extern "C" fn alvr_send_haptics(
-    top_level_path: *const c_char,
+    path: *const c_char,
     duration_ns: u64,
     frequency: f32,
     amplitude: f32,

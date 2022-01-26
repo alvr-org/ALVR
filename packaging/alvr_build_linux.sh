@@ -86,6 +86,8 @@ Arguments:
         server          Prepare and build ALVR server
     FLAGS
         --build-only    Only build ALVR package(s)
+        --bump-versions Bump versions before building
+        --no-nvidia     Build without NVIDIA CUDA support
         --prep-only     Only prepare system for ALVR package build
 HELPME
 }
@@ -273,9 +275,6 @@ build_ubuntu_server() {
         'usr/lib/firewalld/services'
         'usr/libexec/alvr/'
     )
-
-    # Add debian Package config
-    export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${repoDir}/packaging/deb/cuda.pc"
 
     cd "${repoDir}" > /dev/null || return 4
     # There's no vulkan-enabled ffmpeg afaik

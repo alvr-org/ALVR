@@ -38,13 +38,6 @@ const MAX_RENDERING_LOOP_FAILS: usize = 5;
 // compensate for it.
 const FRAME_TIMEOUT_MULTIPLIER: f32 = 0.9;
 
-#[derive(Clone)]
-pub struct ViewConfig {
-    orientation: Quat,
-    position: Vec3,
-    fov: Fov,
-}
-
 #[cfg_attr(target_os = "android", ndk_glue::main)]
 pub fn main() {
     env_logger::init();
@@ -154,8 +147,8 @@ fn rendering_loop(
         let scene_input = xr_session.get_scene_input()?;
 
         scene.update(
-            scene_input.left_pose_input,
-            scene_input.right_pose_input,
+            scene_input.left_hand_motion,
+            scene_input.right_hand_motion,
             scene_input.buttons,
             maybe_stream_view_configs.is_some(),
             scene_input.is_focused,

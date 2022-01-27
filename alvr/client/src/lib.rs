@@ -13,11 +13,10 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     lazy_static,
     prelude::*,
-    Fov, MotionData, ALVR_VERSION,
+    Fov, MotionData, ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_sockets::{
-    HandPoseInput, HeadsetInfoPacket, Input, LegacyInput, PrivateIdentity, TimeSyncPacket,
-    ViewConfig,
+    HeadsetInfoPacket, Input, LegacyInput, PrivateIdentity, TimeSyncPacket, ViewsConfig,
 };
 use jni::{
     objects::{JClass, JObject, JString},
@@ -120,87 +119,88 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         }
 
         if let Some(sender) = &*INPUT_SENDER.lock() {
-            let head_orientation = from_tracking_quat(data.HeadPose_Pose_Orientation);
-            let head_to_right_eye_position = head_orientation * Vec3::X * data.ipd / 2_f32;
-            let head_position = from_tracking_vector3(data.HeadPose_Pose_Position);
-            let right_eye_position = head_position + head_to_right_eye_position;
-            let left_eye_position = head_position - head_to_right_eye_position;
-
             let input = Input {
                 target_timestamp: Duration::from_secs_f64(data.predictedDisplayTime),
-                view_configs: vec![
-                    ViewConfig {
-                        orientation: head_orientation,
-                        position: left_eye_position,
-                        fov: Fov {
+                views_config: ViewsConfig {
+                    ipd_m: data.ipd,
+                    fov: [
+                        Fov {
                             left: data.eyeFov[0].left,
                             right: data.eyeFov[0].right,
                             top: data.eyeFov[0].top,
                             bottom: data.eyeFov[0].bottom,
                         },
-                    },
-                    ViewConfig {
-                        orientation: head_orientation,
-                        position: right_eye_position,
-                        fov: Fov {
+                        Fov {
                             left: data.eyeFov[1].left,
                             right: data.eyeFov[1].right,
                             top: data.eyeFov[1].top,
                             bottom: data.eyeFov[1].bottom,
                         },
-                    },
+                    ],
+                },
+                device_motions: vec![
+                    (
+                        *HEAD_ID,
+                        MotionData {
+                            orientation: from_tracking_quat(data.HeadPose_Pose_Orientation),
+                            position: from_tracking_vector3(data.HeadPose_Pose_Position),
+                            linear_velocity: None,
+                            angular_velocity: None,
+                        },
+                    ),
+                    (
+                        *LEFT_HAND_ID,
+                        MotionData {
+                            orientation: from_tracking_quat(
+                                if data.controller[0].flags & (1 << 5) > 0 {
+                                    data.controller[0].boneRootOrientation
+                                } else {
+                                    data.controller[0].orientation
+                                },
+                            ),
+                            position: from_tracking_vector3(
+                                if data.controller[0].flags & (1 << 5) > 0 {
+                                    data.controller[0].boneRootPosition
+                                } else {
+                                    data.controller[0].position
+                                },
+                            ),
+                            linear_velocity: Some(from_tracking_vector3(
+                                data.controller[0].linearVelocity,
+                            )),
+                            angular_velocity: Some(from_tracking_vector3(
+                                data.controller[0].angularVelocity,
+                            )),
+                        },
+                    ),
+                    (
+                        *RIGHT_HAND_ID,
+                        MotionData {
+                            orientation: from_tracking_quat(
+                                if data.controller[1].flags & (1 << 5) > 0 {
+                                    data.controller[1].boneRootOrientation
+                                } else {
+                                    data.controller[1].orientation
+                                },
+                            ),
+                            position: from_tracking_vector3(
+                                if data.controller[1].flags & (1 << 5) > 0 {
+                                    data.controller[1].boneRootPosition
+                                } else {
+                                    data.controller[1].position
+                                },
+                            ),
+                            linear_velocity: Some(from_tracking_vector3(
+                                data.controller[1].linearVelocity,
+                            )),
+                            angular_velocity: Some(from_tracking_vector3(
+                                data.controller[1].angularVelocity,
+                            )),
+                        },
+                    ),
                 ],
-                left_pose_input: HandPoseInput {
-                    grip_motion: MotionData {
-                        orientation: from_tracking_quat(
-                            if data.controller[0].flags & (1 << 5) > 0 {
-                                data.controller[0].boneRootOrientation
-                            } else {
-                                data.controller[0].orientation
-                            },
-                        ),
-                        position: from_tracking_vector3(
-                            if data.controller[0].flags & (1 << 5) > 0 {
-                                data.controller[0].boneRootPosition
-                            } else {
-                                data.controller[0].position
-                            },
-                        ),
-                        linear_velocity: Some(from_tracking_vector3(
-                            data.controller[0].linearVelocity,
-                        )),
-                        angular_velocity: Some(from_tracking_vector3(
-                            data.controller[0].angularVelocity,
-                        )),
-                    },
-                    hand_tracking_input: None,
-                },
-                right_pose_input: HandPoseInput {
-                    grip_motion: MotionData {
-                        orientation: from_tracking_quat(
-                            if data.controller[1].flags & (1 << 5) > 0 {
-                                data.controller[1].boneRootOrientation
-                            } else {
-                                data.controller[1].orientation
-                            },
-                        ),
-                        position: from_tracking_vector3(
-                            if data.controller[1].flags & (1 << 5) > 0 {
-                                data.controller[1].boneRootPosition
-                            } else {
-                                data.controller[1].position
-                            },
-                        ),
-                        linear_velocity: Some(from_tracking_vector3(
-                            data.controller[1].linearVelocity,
-                        )),
-                        angular_velocity: Some(from_tracking_vector3(
-                            data.controller[1].angularVelocity,
-                        )),
-                    },
-                    hand_tracking_input: None,
-                },
-                trackers_pose_input: vec![],
+                left_hand_tracking: None,
+                right_hand_tracking: None,
                 button_values: HashMap::new(), // unused for now
                 legacy: LegacyInput {
                     flags: data.flags,

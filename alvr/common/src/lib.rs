@@ -2,6 +2,10 @@ mod data;
 mod logging;
 
 use semver::{Prerelease, Version};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
 pub use data::*;
 pub use glam;
@@ -35,4 +39,17 @@ pub fn is_version_compatible(other_version: &Version) -> bool {
     } else {
         other_version.major == ALVR_VERSION.major
     }
+}
+
+// Consistent across architectures, might not be consistent across different compiler versions.
+pub fn hash_string(string: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    string.hash(&mut hasher);
+    hasher.finish()
+}
+
+lazy_static! {
+    pub static ref HEAD_ID: u64 = hash_string("/user/head");
+    pub static ref LEFT_HAND_ID: u64 = hash_string("/user/hand/left");
+    pub static ref RIGHT_HAND_ID: u64 = hash_string("/user/hand/right");
 }

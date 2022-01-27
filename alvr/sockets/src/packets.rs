@@ -138,17 +138,11 @@ pub struct HandTrackingInput {
     pub skeleton_motion: Vec<MotionData>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct HandPoseInput {
-    pub grip_motion: MotionData,
-    pub hand_tracking_input: Option<HandTrackingInput>,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ViewConfig {
-    pub orientation: Quat,
-    pub position: Vec3,
-    pub fov: Fov,
+pub struct ViewsConfig {
+    // Note: the head-to-eye transform is always a translation along the x axis
+    pub ipd_m: f32,
+    pub fov: [Fov; 2],
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -175,10 +169,10 @@ pub struct LegacyInput {
 #[derive(Serialize, Deserialize)]
 pub struct Input {
     pub target_timestamp: Duration,
-    pub view_configs: Vec<ViewConfig>,
-    pub left_pose_input: HandPoseInput,
-    pub right_pose_input: HandPoseInput,
-    pub trackers_pose_input: Vec<MotionData>,
-    pub button_values: HashMap<String, ButtonValue>, // unused for now
+    pub device_motions: Vec<(u64, MotionData)>,
+    pub left_hand_tracking: Option<HandTrackingInput>, // unused for now
+    pub right_hand_tracking: Option<HandTrackingInput>, // unused for now
+    pub views_config: ViewsConfig,
+    pub button_values: HashMap<u64, ButtonValue>, // unused for now
     pub legacy: LegacyInput,
 }

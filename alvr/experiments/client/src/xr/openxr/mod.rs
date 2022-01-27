@@ -6,12 +6,11 @@ pub use graphics_interop::create_graphics_context;
 
 use self::interaction::OpenxrInteractionContext;
 use super::{XrActionType, XrActionValue, XrProfileDesc};
-use crate::ViewConfig;
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
-    log,
+    lazy_static, log,
     prelude::*,
-    Fov, MotionData,
+    Fov, MotionData, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_graphics::{ash::vk::Handle, wgpu::TextureView, GraphicsContext};
 use alvr_session::TrackingSpace;
@@ -90,6 +89,12 @@ impl XrContext {
             environment_blend_modes,
         }
     }
+}
+
+pub struct ViewConfig {
+    pub orientation: Quat,
+    pub position: Vec3,
+    pub fov: Fov,
 }
 
 pub struct OpenxrSwapchain {
@@ -190,16 +195,6 @@ impl<'a> Drop for XrPresentationGuard<'a> {
     }
 }
 
-pub struct XrHandTrackingInput {
-    pub target_ray_motion: MotionData,
-    pub skeleton_motion: Vec<MotionData>,
-}
-
-pub struct XrHandPoseInput {
-    pub grip_motion: MotionData,
-    pub hand_tracking_input: Option<XrHandTrackingInput>,
-}
-
 pub struct SceneButtons {
     pub select: bool,
     pub menu: bool,
@@ -207,17 +202,17 @@ pub struct SceneButtons {
 
 pub struct XrSceneInput {
     pub view_configs: Vec<ViewConfig>,
-    pub left_pose_input: XrHandPoseInput,
-    pub right_pose_input: XrHandPoseInput,
+    pub left_hand_motion: XrHandPoseInput,
+    pub right_hand_motion: XrHandPoseInput,
     pub buttons: SceneButtons,
     pub is_focused: bool,
 }
 
 pub struct XrStreamingInput {
-    pub view_configs: Vec<ViewConfig>,
-    pub left_pose_input: XrHandPoseInput,
-    pub right_pose_input: XrHandPoseInput,
-    pub button_values: HashMap<String, XrActionValue>,
+    pub device_motions: Vec<(u64, MotionData)>,
+    pub left_hand_tracking_input: Option<XrHandTrackingInput>,
+    pub right_hand_tracking_input: Option<XrHandTrackingInput>,
+    pub button_values: Vec<(u64, XrActionValue)>,
 }
 
 pub struct XrSession {
@@ -448,8 +443,9 @@ impl XrSession {
 
         Ok(XrSceneInput {
             view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
-            left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
-            right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            left_hand_motion: ctx.get_tracker_pose(&ctx.left_hand_tracker_context, display_time)?,
+            right_hand_motion: ctx
+                .get_tracker_pose(&ctx.right_hand_tracker_context, display_time)?,
             buttons: ctx.get_scene_buttons()?,
             is_focused: self.focused_state.load(Ordering::Relaxed),
         })
@@ -461,10 +457,47 @@ impl XrSession {
 
         ctx.sync_input()?;
 
+        let views = ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?;
+
+        // this assumes 2 views and on the same plane. This is not the case with Pimax. todo: fix
+        assert_eq!(views.len(), 2);
+        let head_pose = MotionData {
+            orientation: views[0].orientation,
+            position: (views[0].position + views[1].position) / 2.0,
+            linear_velocity: None,
+            angular_velocity: None,
+        };
+
+        let left_hand_pose = ctx.get_tracker_pose(&ctx.left_hand_tracker_context, display_time)?;
+        let right_hand_pose =
+            ctx.get_tracker_pose(&ctx.right_hand_tracker_context, display_time)?;
+
+        let device_motions = [
+            (*HEAD_ID, head_pose),
+            (*LEFT_HAND_ID, left_hand_pose),
+            (*RIGHT_HAND_ID, right_hand_pose),
+        ]
+        .into_iter()
+        .collect();
+
+        let left_hand_tracking_input =
+            if let Some(tracking_context) = &ctx.left_hand_tracking_context {
+                ctx.get_hand_tracking_input(tracking_context, display_time)?
+            } else {
+                None
+            };
+
+        let right_hand_tracking_input =
+            if let Some(tracking_context) = &ctx.right_hand_tracking_context {
+                ctx.get_hand_tracking_input(tracking_context, display_time)?
+            } else {
+                None
+            };
+
         Ok(XrStreamingInput {
-            view_configs: ctx.get_views(xr::ViewConfigurationType::PRIMARY_STEREO, display_time)?,
-            left_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
-            right_pose_input: ctx.get_poses(&ctx.left_hand_interaction, display_time)?,
+            device_motions,
+            left_hand_tracking_input,
+            right_hand_tracking_input,
             button_values: ctx.get_streming_buttons()?,
         })
     }

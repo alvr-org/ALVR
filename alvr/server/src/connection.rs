@@ -9,6 +9,7 @@ use alvr_common::{
     log,
     prelude::*,
     semver::Version,
+    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
@@ -594,7 +595,7 @@ async fn connection_pipeline() -> StrResult {
 
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
-    let mut stream_socket = tokio::select! {
+    let stream_socket = tokio::select! {
         res = StreamSocketBuilder::connect_to_client(
             client_ip,
             settings.connection.stream_port,
@@ -605,7 +606,6 @@ async fn connection_pipeline() -> StrResult {
             return fmt_e!("Timeout while setting up streams");
         }
     };
-
     let stream_socket = Arc::new(stream_socket);
 
     alvr_session::log_event(ServerEvent::ClientConnected);
@@ -763,19 +763,26 @@ async fn connection_pipeline() -> StrResult {
             loop {
                 let input = receiver.recv().await?.header;
 
-                let head_position =
-                    (input.view_configs[0].position + input.view_configs[1].position) / 2_f32;
+                let head_motion = &input
+                    .device_motions
+                    .iter()
+                    .find(|(id, _)| *id == *HEAD_ID)
+                    .unwrap()
+                    .1;
 
-                let ipd = Vec3::distance(
-                    input.view_configs[0].position,
-                    input.view_configs[1].position,
-                );
+                let left_hand_motion = &input
+                    .device_motions
+                    .iter()
+                    .find(|(id, _)| *id == *LEFT_HAND_ID)
+                    .unwrap()
+                    .1;
 
-                let (other_position, other_orientation) = input
-                    .trackers_pose_input
-                    .get(0)
-                    .map(|motion| (motion.position, motion.orientation))
-                    .unwrap_or((Vec3::ZERO, Quat::IDENTITY));
+                let right_hand_motion = &input
+                    .device_motions
+                    .iter()
+                    .find(|(id, _)| *id == *RIGHT_HAND_ID)
+                    .unwrap()
+                    .1;
 
                 let tracking_info = TrackingInfo {
                     type_: 6, // ALVR_PACKET_TYPE_TRACKING_INFO
@@ -783,29 +790,29 @@ async fn connection_pipeline() -> StrResult {
                     clientTime: input.legacy.client_time,
                     FrameIndex: input.legacy.frame_index,
                     predictedDisplayTime: input.target_timestamp.as_secs_f64(),
-                    HeadPose_Pose_Orientation: to_tracking_quat(input.view_configs[0].orientation),
-                    HeadPose_Pose_Position: to_tracking_vector3(head_position),
+                    HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),
+                    HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
                     HeadPose_AngularVelocity: to_tracking_vector3(Vec3::ZERO),
                     HeadPose_LinearVelocity: to_tracking_vector3(Vec3::ZERO),
                     HeadPose_AngularAcceleration: to_tracking_vector3(Vec3::ZERO),
                     HeadPose_LinearAcceleration: to_tracking_vector3(Vec3::ZERO),
-                    Other_Tracking_Source_Position: to_tracking_vector3(other_position),
-                    Other_Tracking_Source_Orientation: to_tracking_quat(other_orientation),
+                    Other_Tracking_Source_Position: to_tracking_vector3(Vec3::ZERO),
+                    Other_Tracking_Source_Orientation: to_tracking_quat(Quat::IDENTITY),
                     eyeFov: [
                         EyeFov {
-                            left: input.view_configs[0].fov.left,
-                            right: input.view_configs[0].fov.right,
-                            top: input.view_configs[0].fov.top,
-                            bottom: input.view_configs[0].fov.bottom,
+                            left: input.views_config.fov[0].left,
+                            right: input.views_config.fov[0].right,
+                            top: input.views_config.fov[0].top,
+                            bottom: input.views_config.fov[0].bottom,
                         },
                         EyeFov {
-                            left: input.view_configs[1].fov.left,
-                            right: input.view_configs[1].fov.right,
-                            top: input.view_configs[1].fov.top,
-                            bottom: input.view_configs[1].fov.bottom,
+                            left: input.views_config.fov[1].left,
+                            right: input.views_config.fov[1].right,
+                            top: input.views_config.fov[1].top,
+                            bottom: input.views_config.fov[1].bottom,
                         },
                     ],
-                    ipd,
+                    ipd: input.views_config.ipd_m,
                     battery: input.legacy.battery,
                     plugged: input.legacy.plugged,
                     mounted: input.legacy.mounted,
@@ -821,25 +828,13 @@ async fn connection_pipeline() -> StrResult {
                             triggerValue: input.legacy.trigger_value[0],
                             gripValue: input.legacy.grip_value[0],
                             batteryPercentRemaining: input.legacy.controller_battery[0],
-                            orientation: to_tracking_quat(
-                                input.left_pose_input.grip_motion.orientation,
-                            ),
-                            position: to_tracking_vector3(
-                                input.left_pose_input.grip_motion.position,
-                            ),
+                            orientation: to_tracking_quat(left_hand_motion.orientation),
+                            position: to_tracking_vector3(left_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
-                                input
-                                    .left_pose_input
-                                    .grip_motion
-                                    .angular_velocity
-                                    .unwrap_or(Vec3::ZERO),
+                                left_hand_motion.angular_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             linearVelocity: to_tracking_vector3(
-                                input
-                                    .left_pose_input
-                                    .grip_motion
-                                    .linear_velocity
-                                    .unwrap_or(Vec3::ZERO),
+                                left_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             angularAcceleration: to_tracking_vector3(Vec3::ZERO),
                             linearAcceleration: to_tracking_vector3(Vec3::ZERO),
@@ -867,12 +862,8 @@ async fn connection_pipeline() -> StrResult {
 
                                 array
                             },
-                            boneRootOrientation: to_tracking_quat(
-                                input.left_pose_input.grip_motion.orientation,
-                            ),
-                            boneRootPosition: to_tracking_vector3(
-                                input.left_pose_input.grip_motion.position,
-                            ),
+                            boneRootOrientation: to_tracking_quat(left_hand_motion.orientation),
+                            boneRootPosition: to_tracking_vector3(left_hand_motion.position),
                             inputStateStatus: input.legacy.input_state_status[0],
                             fingerPinchStrengths: input.legacy.finger_pinch_strengths[0],
                             handFingerConfidences: input.legacy.hand_finger_confience[0],
@@ -888,25 +879,13 @@ async fn connection_pipeline() -> StrResult {
                             triggerValue: input.legacy.trigger_value[1],
                             gripValue: input.legacy.grip_value[1],
                             batteryPercentRemaining: input.legacy.controller_battery[1],
-                            orientation: to_tracking_quat(
-                                input.right_pose_input.grip_motion.orientation,
-                            ),
-                            position: to_tracking_vector3(
-                                input.right_pose_input.grip_motion.position,
-                            ),
+                            orientation: to_tracking_quat(right_hand_motion.orientation),
+                            position: to_tracking_vector3(right_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
-                                input
-                                    .right_pose_input
-                                    .grip_motion
-                                    .angular_velocity
-                                    .unwrap_or(Vec3::ZERO),
+                                right_hand_motion.angular_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             linearVelocity: to_tracking_vector3(
-                                input
-                                    .right_pose_input
-                                    .grip_motion
-                                    .linear_velocity
-                                    .unwrap_or(Vec3::ZERO),
+                                right_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             angularAcceleration: to_tracking_vector3(Vec3::ZERO),
                             linearAcceleration: to_tracking_vector3(Vec3::ZERO),
@@ -934,12 +913,8 @@ async fn connection_pipeline() -> StrResult {
 
                                 array
                             },
-                            boneRootOrientation: to_tracking_quat(
-                                input.right_pose_input.grip_motion.orientation,
-                            ),
-                            boneRootPosition: to_tracking_vector3(
-                                input.right_pose_input.grip_motion.position,
-                            ),
+                            boneRootOrientation: to_tracking_quat(right_hand_motion.orientation),
+                            boneRootPosition: to_tracking_vector3(right_hand_motion.position),
                             inputStateStatus: input.legacy.input_state_status[1],
                             fingerPinchStrengths: input.legacy.finger_pinch_strengths[1],
                             handFingerConfidences: input.legacy.hand_finger_confience[1],

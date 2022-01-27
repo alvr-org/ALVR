@@ -42,7 +42,7 @@ pub struct AlvrVideoConfig {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrBatteryValue {
-    pub top_level_path: [c_char; 64],
+    pub top_level_path: u64,
     pub value: f32, // [0, 1]
 }
 
@@ -89,7 +89,7 @@ pub union AlvrButtonInputValue {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrButtonInput {
-    pub path: [c_char; 64],
+    pub path: u64,
     pub value: AlvrButtonInputValue,
     pub timestamp_ns: u64, // client reference
 }
@@ -107,7 +107,7 @@ pub struct AlvrMotionData {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrDevicePose {
-    pub top_level_path: [c_char; 64],
+    pub top_level_path: u64,
     pub data: AlvrMotionData,
     pub timestamp_ns: u64, // client reference
 }
@@ -146,8 +146,8 @@ pub struct AlvrHandSkeleton {
 // /user/vive_tracker_htcx/role/X
 #[repr(C)]
 pub struct AlvrDeviceProfile {
-    pub top_level_path: [c_char; 64],
-    pub interaction_profile: [c_char; 64],
+    pub top_level_path: u64,
+    pub interaction_profile: u64,
 }
 
 #[repr(u8)]
@@ -169,7 +169,7 @@ pub enum AlvrEventType {
 #[repr(C)]
 pub union AlvrEventData {
     pub none: (),
-    pub top_level_path: [c_char; 64],
+    pub top_level_path: u64,
     pub video_config: AlvrVideoConfig,
     pub battery: AlvrBatteryValue,
     pub openvr_prop: AlvrOpenvrProp,
@@ -196,18 +196,25 @@ pub struct AlvrLayer {
 
 #[repr(C)]
 pub struct AlvrGraphicsContext {
-    vk_get_device_proc_addr: *mut c_void,
-    vk_instance: u64,
-    vk_physical_device: u64,
-    vk_device: u64,
-    vk_queue_family_index: u64,
-    vk_queue_index: u64,
+    pub vk_get_device_proc_addr: *mut c_void,
+    pub vk_instance: u64,
+    pub vk_physical_device: u64,
+    pub vk_device: u64,
+    pub vk_queue_family_index: u64,
+    pub vk_queue_index: u64,
 }
 
 // Initialize ALVR runtime and create the graphics context
 // for OpenVR/Windows use vk_get_device_proc_addr == null
 #[no_mangle]
 pub extern "C" fn alvr_initialize(graphics_handles: AlvrGraphicsContext) {}
+
+// Purpose: make interface more efficient by using integers instead of strings for IDs
+// note: inverse function not provided. match with a map
+#[no_mangle]
+pub extern "C" fn alvr_path_string_to_hash(path: *const c_char) -> u64 {
+    0
+}
 
 #[no_mangle]
 pub extern "C" fn alvr_read_event(timeout_ns: u64) -> AlvrEvent {
@@ -226,7 +233,7 @@ pub extern "C" fn alvr_get_display_config(config: *mut AlvrVideoConfig) -> bool 
 // use props == null to get the number of properties
 #[no_mangle]
 pub extern "C" fn alvr_get_static_openvr_properties(
-    top_level_path: *const c_char,
+    top_level_path: u64,
     props: *mut AlvrOpenvrProp,
 ) -> usize {
     0
@@ -263,10 +270,4 @@ pub extern "C" fn alvr_wait_for_vsync(timeout_ns: u64) {}
 pub extern "C" fn alvr_present_layers(layers: *mut [AlvrLayer; 2], layers_count: usize) {}
 
 #[no_mangle]
-pub extern "C" fn alvr_send_haptics(
-    path: *const c_char,
-    duration_ns: u64,
-    frequency: f32,
-    amplitude: f32,
-) {
-}
+pub extern "C" fn alvr_send_haptics(path: u64, duration_ns: u64, frequency: f32, amplitude: f32) {}

@@ -1,6 +1,6 @@
 [package]
 name = "alvr_xtask"
-version = "17.0.0-dev.2"
+version = "17.0.0-dev.3"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"

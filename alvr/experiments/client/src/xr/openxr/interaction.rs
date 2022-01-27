@@ -1,8 +1,8 @@
 use super::{convert, SceneButtons, ViewConfig, XrContext};
-use crate::xr::{XrActionType, XrActionValue, XrHandTrackingInput, XrProfileDesc};
-use alvr_common::{ prelude::*, MotionData};
+use crate::xr::{XrActionType, XrActionValue, XrProfileDesc};
+use alvr_common::{prelude::*, MotionData};
 use openxr as xr;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 const OCULUS_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
 

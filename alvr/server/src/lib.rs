@@ -1,3 +1,4 @@
+mod capi;
 mod connection;
 mod connection_utils;
 mod dashboard;

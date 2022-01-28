@@ -260,11 +260,9 @@ dependencies = [
 name = "alvr_openvr_driver"
 version = "0.1.0"
 dependencies = [
- "alvr_common",
- "alvr_ipc",
  "bindgen 0.59.2",
+ "cbindgen",
  "cc",
- "parking_lot 0.12.0",
  "regex",
 ]
 
@@ -333,14 +331,6 @@ dependencies = [
  "serde",
  "tokio",
  "tokio-util",
-]
-
-[[package]]
-name = "alvr_streamer"
-version = "0.1.0"
-dependencies = [
- "alvr_common",
- "alvr_session",
 ]
 
 [[package]]
@@ -713,6 +703,25 @@ name = "cassowary"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df8670b8c7b9dae1793364eafadf7239c40d669904660c5960d74cfd80b46a53"
+
+[[package]]
+name = "cbindgen"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51e3973b165dc0f435831a9e426de67e894de532754ff7a3f307c03ee5dec7dc"
+dependencies = [
+ "clap",
+ "heck",
+ "indexmap",
+ "log",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn",
+ "tempfile",
+ "toml",
+]
 
 [[package]]
 name = "cc"
@@ -3445,6 +3454,18 @@ version = "0.1.0+1.16.8"
 dependencies = [
  "bindgen 0.59.2",
  "cc",
+ "regex",
+]
+
+[[package]]
+name = "openvr_driver_old"
+version = "0.1.0"
+dependencies = [
+ "alvr_common",
+ "alvr_ipc",
+ "bindgen 0.59.2",
+ "cc",
+ "parking_lot 0.12.0",
  "regex",
 ]
 

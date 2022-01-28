@@ -8,9 +8,8 @@ use crate::{
     },
     storage,
     streaming_compositor::StreamingCompositor,
-    video_decoder::{self, VideoDecoderDequeuer, VideoDecoderFrameGrabber},
+    video_decoder,
     xr::{XrActionType, XrContext, XrProfileDesc, XrSession},
-    ViewConfig,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION};

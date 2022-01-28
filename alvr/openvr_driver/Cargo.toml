@@ -1,5 +1,5 @@
 [package]
-name = "openvr_driver_old"
+name = "alvr_openvr_driver"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
@@ -9,13 +9,8 @@ rust-version = "1.56"
 [lib]
 crate-type = ["cdylib"]
 
-[dependencies]
-alvr_common = { path = "../../common" }
-alvr_ipc = { path = "../ipc" }
-
-parking_lot = "0.12"
-
 [build-dependencies]
-cc = "1"
 bindgen = "0.59"
+cbindgen = "0.20"
+cc = "1"
 regex = "1"

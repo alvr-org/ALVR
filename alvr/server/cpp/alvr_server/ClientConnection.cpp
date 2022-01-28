@@ -229,6 +229,15 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 			m_reportedStatistics.fps,
 			m_RTT / 2. / 1000.);
 
+		for (int i = 0; i < 2; i++) {
+			if (m_TrackingInfo.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE) {
+				if ((m_TrackingInfo.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0)
+					leftBattery = (int)m_TrackingInfo.controller[i].batteryPercentRemaining;
+				else
+					rightBattery = (int)m_TrackingInfo.controller[i].batteryPercentRemaining;
+			}
+		}
+
 		uint64_t now = GetTimestampUs();
 		if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
 		{
@@ -273,8 +282,8 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 				m_Statistics->Get(4),  //clientFPS
 				m_Statistics->GetFPS(),
 				m_TrackingInfo.battery,
-				(int)m_TrackingInfo.controller[0].batteryPercentRemaining,
-				(int)m_TrackingInfo.controller[1].batteryPercentRemaining);
+				(int)leftBattery,
+				(int)rightBattery);
 
 			m_LastStatisticsUpdate = now;
 			m_Statistics->Reset();

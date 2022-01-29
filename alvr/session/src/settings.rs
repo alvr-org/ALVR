@@ -539,7 +539,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: false,
                         content: LatencyUseFrametimeDescDefault {
                             latency_target_maximum: 30000,
-                            latency_target_offset: 3000,
+                            latency_target_offset: 0,
                         },
                     },
                     latency_threshold: 3000,

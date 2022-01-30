@@ -29,7 +29,8 @@
             android:icon="@drawable/ic_launcher"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:exported="true">
         </activity>
     </application>
 </manifest>

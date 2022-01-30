@@ -7,7 +7,7 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     log,
     prelude::*,
-    Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION,
+    Haptics, ALVR_NAME, ALVR_VERSION, LEFT_HAND_HAPTIC_ID,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
@@ -431,7 +431,7 @@ async fn connection_pipeline(
 
     let haptics_receive_loop = {
         let mut receiver = stream_socket
-            .subscribe_to_stream::<Haptics<TrackedDeviceType>>(HAPTICS)
+            .subscribe_to_stream::<Haptics>(HAPTICS)
             .await?;
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
@@ -444,7 +444,7 @@ async fn connection_pipeline(
                     amplitude: packet.header.amplitude,
                     duration: packet.header.duration.as_secs_f32(),
                     frequency: packet.header.frequency,
-                    hand: if matches!(packet.header.device, TrackedDeviceType::LeftHand) {
+                    hand: if packet.header.path == *LEFT_HAND_HAPTIC_ID {
                         0
                     } else {
                         1

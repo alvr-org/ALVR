@@ -1,4 +1,9 @@
 use crate::{
+    capi::{
+        to_capi_quat, to_capi_vec3, AlvrBatteryValue, AlvrDevicePose, AlvrEvent, AlvrEventData,
+        AlvrEventType, AlvrFov, AlvrMotionData, AlvrQuat, AlvrVec3, AlvrViewsConfig,
+        DRIVER_EVENT_SENDER,
+    },
     connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
     TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
     HAPTICS_SENDER, RESTART_NOTIFIER, SESSION_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
@@ -9,7 +14,7 @@ use alvr_common::{
     log,
     prelude::*,
     semver::Version,
-    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    Fov, MotionData, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
 use alvr_sockets::{
@@ -20,6 +25,7 @@ use alvr_sockets::{
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
 use std::{
+    f32::consts::PI,
     future,
     net::IpAddr,
     process::Command,
@@ -757,11 +763,91 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
+    fn to_capi_motion(motion: MotionData) -> AlvrMotionData {
+        let has_velocity = motion.linear_velocity.is_some() && motion.angular_velocity.is_some();
+        AlvrMotionData {
+            orientation: to_capi_quat(motion.orientation),
+            position: to_capi_vec3(motion.position),
+            linear_velocity: motion.linear_velocity.map(to_capi_vec3).unwrap_or_default(),
+            angular_velocity: motion
+                .angular_velocity
+                .map(to_capi_vec3)
+                .unwrap_or_default(),
+            has_velocity,
+        }
+    }
+
     let input_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<Input>(INPUT).await?;
         async move {
             loop {
                 let input = receiver.recv().await?.header;
+
+                if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+                    sender.send(AlvrEvent {
+                        ty: AlvrEventType::ViewsConfigUpdated,
+                        data: AlvrEventData {
+                            views_config: AlvrViewsConfig {
+                                ipd_m: input.views_config.ipd_m,
+                                fov: [
+                                    AlvrFov {
+                                        left: -input.views_config.fov[0].left / 180.0 * PI,
+                                        right: input.views_config.fov[0].right / 180.0 * PI,
+                                        top: input.views_config.fov[0].top / 180.0 * PI,
+                                        bottom: -input.views_config.fov[0].bottom / 180.0 * PI,
+                                    },
+                                    AlvrFov {
+                                        left: -input.views_config.fov[1].left / 180.0 * PI,
+                                        right: input.views_config.fov[1].right / 180.0 * PI,
+                                        top: input.views_config.fov[1].top / 180.0 * PI,
+                                        bottom: -input.views_config.fov[1].bottom / 180.0 * PI,
+                                    },
+                                ],
+                            },
+                        },
+                    });
+
+                    for (id, motion) in &input.device_motions {
+                        sender.send(AlvrEvent {
+                            ty: AlvrEventType::DevicePoseUpdated,
+                            data: AlvrEventData {
+                                device_pose: AlvrDevicePose {
+                                    top_level_path: *id,
+                                    data: to_capi_motion(motion.clone()),
+                                    timestamp_ns: input.target_timestamp.as_nanos() as _,
+                                },
+                            },
+                        });
+                    }
+
+                    sender.send(AlvrEvent {
+                        ty: AlvrEventType::BatteryUpdated,
+                        data: AlvrEventData {
+                            battery: AlvrBatteryValue {
+                                top_level_path: *HEAD_ID,
+                                value: input.legacy.battery as f32 / 100.0,
+                            },
+                        },
+                    });
+                    sender.send(AlvrEvent {
+                        ty: AlvrEventType::BatteryUpdated,
+                        data: AlvrEventData {
+                            battery: AlvrBatteryValue {
+                                top_level_path: *LEFT_HAND_ID,
+                                value: input.legacy.controller_battery[0] as f32 / 100.0,
+                            },
+                        },
+                    });
+                    sender.send(AlvrEvent {
+                        ty: AlvrEventType::BatteryUpdated,
+                        data: AlvrEventData {
+                            battery: AlvrBatteryValue {
+                                top_level_path: *RIGHT_HAND_ID,
+                                value: input.legacy.controller_battery[0] as f32 / 100.0,
+                            },
+                        },
+                    });
+                }
 
                 let head_motion = &input
                     .device_motions

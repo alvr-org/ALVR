@@ -31,7 +31,7 @@ pub enum OpenvrPropValue {
     String(String),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MotionData {
     pub orientation: Quat,
     pub position: Vec3,
@@ -40,17 +40,8 @@ pub struct MotionData {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum TrackedDeviceType {
-    Hmd,
-    LeftHand,
-    RightHand,
-    GenericTracker(usize),
-}
-
-// D: DeviceType for client interop, u64 for driver interop. Bindings are done in settings
-#[derive(Serialize, Deserialize)]
-pub struct Haptics<D> {
-    pub device: D,
+pub struct Haptics {
+    pub path: u64,
     pub duration: Duration,
     pub frequency: f32,
     pub amplitude: f32,

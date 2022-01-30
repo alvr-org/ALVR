@@ -1,4 +1,4 @@
-use crate::{graphics_info, ClientListAction, MAYBE_WINDOW, SESSION_MANAGER};
+use crate::{graphics, ClientListAction, MAYBE_WINDOW, SESSION_MANAGER};
 use alvr_common::{lazy_static, prelude::*};
 // use alvr_gui::Dashboard;
 use alvr_session::SessionDesc;
@@ -20,7 +20,7 @@ pub fn ui_thread() -> StrResult {
     const WINDOW_HEIGHT: u32 = 600;
 
     let (pos_left, pos_top) =
-        if let Ok((screen_width, screen_height)) = graphics_info::get_screen_size() {
+        if let Ok((screen_width, screen_height)) = graphics::get_screen_size() {
             (
                 (screen_width - WINDOW_WIDTH) / 2,
                 (screen_height - WINDOW_HEIGHT) / 2,

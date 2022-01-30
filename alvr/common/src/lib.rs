@@ -52,4 +52,6 @@ lazy_static! {
     pub static ref HEAD_ID: u64 = hash_string("/user/head");
     pub static ref LEFT_HAND_ID: u64 = hash_string("/user/hand/left");
     pub static ref RIGHT_HAND_ID: u64 = hash_string("/user/hand/right");
+    pub static ref LEFT_HAND_HAPTIC_ID: u64 = hash_string("/user/hand/left/output/haptic");
+    pub static ref RIGHT_HAND_HAPTIC_ID: u64 = hash_string("/user/hand/right/output/haptic");
 }

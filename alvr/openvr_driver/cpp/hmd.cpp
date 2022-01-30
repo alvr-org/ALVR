@@ -87,25 +87,25 @@ vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v)
 void Hmd::CreateSwapTextureSet(uint32_t pid,
                                const SwapTextureSetDesc_t *swap_texture_set_desc,
                                SwapTextureSet_t *swap_texture_set) {
-    vr::SharedTextureHandle_t *texture_handles;
-    uint64_t id = alvr_create_swapchain(3,
-                                        swap_texture_set_desc->nWidth,
-                                        swap_texture_set_desc->nHeight,
-                                        swap_texture_set_desc->nFormat,
-                                        swap_texture_set_desc->nSampleCount,
-                                        true,
-                                        (void *)texture_handles);
-
     auto swapchain = SwapchainData{};
-    swapchain.id = id;
     swapchain.pid = pid;
-    swapchain.texture_handles[0] = texture_handles[0];
-    swapchain.texture_handles[1] = texture_handles[1];
-    swapchain.texture_handles[2] = texture_handles[2];
 
-    this->swapchains[texture_handles[0]] = swapchain;
-    this->swapchains[texture_handles[1]] = swapchain;
-    this->swapchains[texture_handles[2]] = swapchain;
+    for (int idx = 0; idx < 3; idx++) {
+        vr::SharedTextureHandle_t texture_handle;
+        uint64_t id = alvr_create_texture(swap_texture_set_desc->nWidth,
+                                          swap_texture_set_desc->nHeight,
+                                          swap_texture_set_desc->nFormat,
+                                          swap_texture_set_desc->nSampleCount,
+                                          true,
+                                          (void *)&texture_handle);
+        swapchain.texture_handles[idx] = texture_handle;
+        swap_texture_set->rSharedTextureHandles[idx] = texture_handle;
+        this->texture_ids[texture_handle] = id;
+    }
+
+    this->swapchains[swapchain.texture_handles[0]] = swapchain;
+    this->swapchains[swapchain.texture_handles[1]] = swapchain;
+    this->swapchains[swapchain.texture_handles[2]] = swapchain;
 }
 
 void Hmd::DestroySwapTextureSet(vr::SharedTextureHandle_t shared_texture_handle) {
@@ -114,10 +114,11 @@ void Hmd::DestroySwapTextureSet(vr::SharedTextureHandle_t shared_texture_handle)
     if (maybe_entry != this->swapchains.end()) {
         auto [_, swapchain] = *maybe_entry;
 
-        alvr_destroy_swapchain(swapchain.id);
-
-        for (auto handle : swapchain.texture_handles) {
-            this->swapchains.erase(handle);
+        for (int idx = 0; idx < 3; idx++) {
+            auto texture_handle = swapchain.texture_handles[idx];
+            alvr_destroy_texture(this->texture_ids[texture_handle]);
+            this->texture_ids.erase(texture_handle);
+            this->swapchains.erase(texture_handle);
         }
     }
 }
@@ -132,18 +133,15 @@ void Hmd::DestroyAllSwapTextureSets(uint32_t pid) {
     }
 }
 
-void Hmd::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t shared_texture_handles[2],
-                                     uint32_t (*indices)[2]) {
-    for (int idx = 0; idx < 2; idx++) {
-        auto swapchain = this->swapchains.at(shared_texture_handles[idx]);
-        (*indices)[idx] = alvr_swapchain_get_next_index(swapchain.id);
-    }
+void Hmd::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t[2], uint32_t (*indices)[2]) {
+    (*indices)[0] = ((*indices)[0] + 1) % 3;
+    (*indices)[1] = ((*indices)[1] + 1) % 3;
 }
 
 void Hmd::SubmitLayer(const SubmitLayerPerEye_t (&eye)[2]) {
     auto layer = AlvrLayer{};
     for (int idx = 0; idx < 2; idx++) {
-        layer.views[idx].swapchain_id = this->swapchains.at(eye[idx].hTexture).id;
+        layer.views[idx].texture_id = this->texture_ids[eye[idx].hTexture];
         layer.views[idx].fov = this->views_config.fov[idx];
         layer.views[idx].rect_offset.x = eye[idx].bounds.uMin;
         layer.views[idx].rect_offset.y = eye[idx].bounds.vMin;
@@ -157,7 +155,7 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
     // todo: acquire lock on sync_texture
 
     // This call will block until the server finished rendering
-    alvr_present_layers(&this->current_layers[0], (uint64_t)this->current_layers.size());
+    alvr_present_layers((void *)sync_texture, &this->current_layers[0], (uint64_t)this->current_layers.size());
 
     this->current_layers.clear();
 }

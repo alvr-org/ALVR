@@ -8,7 +8,6 @@
 const uint64_t HEAD_PATH = alvr_path_string_to_hash("/user/head");
 
 struct SwapchainData {
-    uint64_t id;
     uint32_t pid;
     vr::SharedTextureHandle_t texture_handles[3];
 };
@@ -19,7 +18,8 @@ class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectMo
     AlvrViewsConfig views_config;
     std::vector<AlvrLayer> current_layers; // reset after every Present()
 
-    // map texture handles to their swapchain, which can be repeated
+    std::map<vr::SharedTextureHandle_t, uint64_t> texture_ids;
+    // Note: each swapchain is repeated 3 times, one for each handle it contains
     std::map<vr::SharedTextureHandle_t, SwapchainData> swapchains;
 
     // TrackedDevice

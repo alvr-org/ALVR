@@ -196,3 +196,25 @@ extern "C" void InputReceive(TrackingInfo data);
 extern "C" void TimeSyncReceive(TimeSync data);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
+
+struct LayerView {
+    unsigned long long texture_id;
+    TrackingQuat orientation;
+    TrackingVector2 rect_offset;
+    TrackingVector2 rect_size;
+    // todo: this should include fov. the compositor should take into account fov.
+};
+
+struct Layer {
+    LayerView views[2];
+};
+
+extern "C" void CppInit();
+extern "C" unsigned long long CreateTexture(unsigned int width,
+                                            unsigned int height,
+                                            unsigned int format,
+                                            unsigned int sampleCount,
+                                            void *texture);
+extern "C" void DestroyTexture(unsigned long long id);
+extern "C" void
+PresentLayers(void *syncTexture, const Layer *layers, unsigned long long layer_count);

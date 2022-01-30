@@ -17,6 +17,16 @@
 #include "driverlog.h"
 #include "Settings.h"
 #include "Logger.h"
+#include "PoseHistory.h"
+
+#ifdef _WIN32
+	#include "platform/win32/CEncoder.h"
+	#include "platform/win32/Compositor.h"
+#elif __APPLE__
+	#include "platform/macos/CEncoder.h"
+#else
+	#include "platform/linux/CEncoder.h"
+#endif
 
 
 static void load_debug_privilege(void)
@@ -121,6 +131,14 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpReserved)
 }
 #endif
 
+std::shared_ptr<PoseHistory> g_poseHistory;
+#ifdef _WIN32
+std::shared_ptr<CD3DRender> g_d3dRenderer;
+std::shared_ptr<Compositor> g_compositor;
+#endif
+std::shared_ptr<ClientConnection> g_listener;
+std::shared_ptr<CEncoder> g_encoder;
+
 // bindigs for Rust
 
 const unsigned char *FRAME_RENDER_VS_CSO_PTR;
@@ -167,11 +185,42 @@ void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 }
 
 void InitializeStreaming() {
-	// set correct client ip
 	Settings::Instance().Load();
 
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->StartStreaming();
+	else if (!g_encoder) {
+		g_listener.reset(new ClientConnection([&]() { 
+			TrackingInfo info;
+			g_listener->GetTrackingInfo(info);
+			g_poseHistory->OnPoseUpdated(info);
+		}, [&]() {
+			g_encoder->OnPacketLoss();
+		}));
+
+#ifdef _WIN32
+		g_encoder = std::make_shared<CEncoder>();
+		try {
+			g_encoder->Initialize(g_d3dRenderer, g_listener);
+		}
+		catch (Exception e) {
+			Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
+				"If you get this error after changing some settings, you can revert them by",
+				"deleting the file \"session.json\" in the installation folder.",
+				"Failed to initialize CEncoder:", e.what());
+		}
+		g_encoder->Start();
+
+		g_encoder->OnStreamStart();
+
+		g_compositor = std::make_shared<Compositor>(g_d3dRenderer, g_encoder, g_poseHistory);
+#elif __APPLE__
+		g_encoder = std::make_shared<CEncoder>();
+#else
+		g_encoder = std::make_shared<CEncoder>(g_listener, g_poseHistory);
+		g_encoder->Start();
+#endif
+	}
 }
 
 void DeinitializeStreaming() {
@@ -182,6 +231,9 @@ void DeinitializeStreaming() {
 void RequestIDR() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->RequestIDR();
+	else if (g_encoder) {
+		g_encoder->InsertIDR();
+	}
 }
 
 void InputReceive(TrackingInfo data) {
@@ -189,24 +241,80 @@ void InputReceive(TrackingInfo data) {
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
  		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTrackingInfo(data);
- 	}
- }
- void TimeSyncReceive(TimeSync data) {
+ 	} else if (g_listener) {
+		g_listener->ProcessTrackingInfo(data);
+	}
+}
+void TimeSyncReceive(TimeSync data) {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
  		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessTimeSync(data);
- 	}
- }
- void VideoErrorReportReceive() {
+ 	} else if (g_listener) {
+		g_listener->ProcessTimeSync(data);
+	}
+}
+void VideoErrorReportReceive() {
  	if (g_serverDriverDisplayRedirect.m_pRemoteHmd
  		&& g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener)
  	{
  		g_serverDriverDisplayRedirect.m_pRemoteHmd->m_Listener->ProcessVideoError();
- 	}
- }
+ 	} else if (g_listener) {
+		g_listener->ProcessVideoError();
+	}
+}
 
-extern "C" void ShutdownSteamvr() {
+void ShutdownSteamvr() {
 	if (g_serverDriverDisplayRedirect.m_pRemoteHmd)
 		g_serverDriverDisplayRedirect.m_pRemoteHmd->OnShutdown();
+}
+
+// new driver entry point
+void CppInit() {
+    Settings::Instance().Load();
+    load_debug_privilege();
+
+	InitDriverLog(vr::VRDriverLog());
+	g_poseHistory = std::make_shared<PoseHistory>();
+
+#ifdef _WIN32
+	g_d3dRenderer = std::make_shared<CD3DRender>();
+
+	// Use the same adapter as vrcompositor uses. If another adapter is used, vrcompositor says "failed to open shared texture" and then crashes.
+	// It seems vrcompositor selects always(?) first adapter. vrcompositor may use Intel iGPU when user sets it as primary adapter. I don't know what happens on laptop which support optimus.
+	// Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct mode driver. So we can't specify an adapter for vrcompositor.
+	// m_nAdapterIndex is set 0 on the launcher.
+	if (!g_d3dRenderer->Initialize(Settings::Instance().m_nAdapterIndex))
+	{
+		Error("Could not create graphics device for adapter %d.\n", Settings::Instance().m_nAdapterIndex);
+	}
+#endif
+}
+
+unsigned long long CreateTexture(unsigned int width,
+								unsigned int height,
+								unsigned int format,
+								unsigned int sampleCount,
+								void *texture){
+#ifdef _WIN32
+	if (g_compositor) {
+		return g_compositor->CreateTexture(width, height, format, sampleCount, texture);
+	}
+#endif
+}
+
+void DestroyTexture(unsigned long long id) {
+#ifdef _WIN32
+	if (g_compositor) {
+		g_compositor->DestroyTexture(id);
+	}
+#endif
+}
+
+void PresentLayers(void *syncTexture, const Layer *layers, unsigned long long layer_count) {
+#ifdef _WIN32
+	if (g_compositor) {
+		g_compositor->PresentLayers(syncTexture, layers, layer_count);
+	}
+#endif
 }

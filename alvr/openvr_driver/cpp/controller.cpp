@@ -18,7 +18,7 @@ vr::EVRInitError Controller::Activate(uint32_t id) {
     vr::VRProperties()->SetInt32Property(
         this->prop_container, vr::Prop_ControllerRoleHint_Int32, this->role);
 
-    set_static_properties(this->device_path, this->prop_container);
+    TrackedDevice::set_static_props();
 
     vr::VRDriverInput()->CreateHapticComponent(
         this->prop_container, "/output/haptic", &this->haptics_container);
@@ -26,6 +26,10 @@ vr::EVRInitError Controller::Activate(uint32_t id) {
     return vr::VRInitError_None;
 }
 
-void try_update_button(uint64_t path, AlvrButtonInputValue value) {}
+void Controller::try_update_button(AlvrButtonInput input) {
+    // todo
+}
 
-void update_hand_skeleton(AlvrMotionData data[26]) {}
+void Controller::update_hand_skeleton(AlvrMotionData data[25], uint64_t timestamp_ns) {
+    // todo
+}

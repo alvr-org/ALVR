@@ -36,7 +36,7 @@ fn main() {
 #include <string.h>
 #include "openvr_driver.h"
 
-vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char *prop_name) {
+inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char *prop_name) {
     "#,
     );
 
@@ -90,6 +90,15 @@ vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char *prop_
         .unwrap()
         .write_to_file(out_dir.join("bindings.rs"))
         .unwrap();
+
+    println!(
+        "cargo:rustc-link-search={}/../../../",
+        out_dir.to_string_lossy()
+    );
+
+    // Note: compilation problems when using static lib
+    // todo: rename to alvr_streamer
+    println!("cargo:rustc-link-lib=dylib=alvr_server");
 
     println!("cargo:rerun-if-changed=cpp");
 }

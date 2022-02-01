@@ -3,6 +3,7 @@
 #include "controller.h"
 #include "generic_tracker.h"
 #include "hmd.h"
+#include "openvr_properties_mapping.h"
 #include "tracked_devices.h"
 #include <map>
 #include <optional>
@@ -56,14 +57,16 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                 }
             } else if (event.ty == AlvrEventType::DeviceDisconnected) {
                 auto device_it = this->tracked_devices.find(event.data.top_level_path);
-
                 if (device_it != this->tracked_devices.end()) {
                     vr::VRServerDriverHost()->VendorSpecificEvent(
                         device_it->second->object_id, vr::VREvent_WirelessDisconnect, {}, 0);
                     device_it->second->clear_pose();
                 }
             } else if (event.ty == AlvrEventType::OpenvrPropertyChanged) {
-                // todo
+                auto device_it = this->tracked_devices.find(event.data.openvr_prop.top_level_path);
+                if (device_it != this->tracked_devices.end()) {
+                    device_it->second->set_prop(event.data.openvr_prop.prop);
+                }
             } else if (event.ty == AlvrEventType::VideoConfigUpdated) {
                 this->hmd->update_video_config(event.data.video_config);
             } else if (event.ty == AlvrEventType::ViewsConfigUpdated) {

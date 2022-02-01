@@ -9,7 +9,7 @@ GenericTracker::GenericTracker(uint64_t device_path, const char *serial_number)
 vr::EVRInitError GenericTracker::Activate(uint32_t id) {
     TrackedDevice::Activate(id);
 
-    set_static_properties(this->device_path, this->prop_container);
+    TrackedDevice::set_static_props();
 
     return vr::VRInitError_None;
 }

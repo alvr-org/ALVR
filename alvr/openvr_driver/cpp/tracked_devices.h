@@ -2,6 +2,7 @@
 
 #include "alvr_streamer.h"
 #include "openvr_driver.h"
+#include "openvr_properties_mapping.h"
 #include <map>
 
 class TrackedDevice : public vr::ITrackedDeviceServerDriver {
@@ -24,6 +25,59 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
                               char *response_buffer,
                               uint32_t response_buffer_size) override {}
     virtual vr::DriverPose_t GetPose() override { return this->pose; }
+
+    void set_prop(AlvrOpenvrProp prop) {
+        auto key = tracked_device_property_name_to_key(prop.name);
+        vr::ETrackedPropertyError result;
+
+        if (prop.ty == AlvrOpenvrPropType::Bool) {
+            result =
+                vr::VRProperties()->SetBoolProperty(this->prop_container, key, prop.value.bool_);
+        } else if (prop.ty == AlvrOpenvrPropType::Float) {
+            result =
+                vr::VRProperties()->SetFloatProperty(this->prop_container, key, prop.value.float_);
+        } else if (prop.ty == AlvrOpenvrPropType::Int32) {
+            result =
+                vr::VRProperties()->SetInt32Property(this->prop_container, key, prop.value.int32);
+        } else if (prop.ty == AlvrOpenvrPropType::Uint64) {
+            result =
+                vr::VRProperties()->SetUint64Property(this->prop_container, key, prop.value.uint64);
+        } else if (prop.ty == AlvrOpenvrPropType::Vector3) {
+            auto vec3 = vr::HmdVector3_t{};
+            vec3.v[0] = prop.value.vector3.x;
+            vec3.v[1] = prop.value.vector3.y;
+            vec3.v[2] = prop.value.vector3.z;
+            result = vr::VRProperties()->SetVec3Property(this->prop_container, key, vec3);
+        } else if (prop.ty == AlvrOpenvrPropType::Double) {
+            result = vr::VRProperties()->SetDoubleProperty(
+                this->prop_container, key, prop.value.double_);
+        } else if (prop.ty == AlvrOpenvrPropType::String) {
+            result =
+                vr::VRProperties()->SetStringProperty(this->prop_container, key, prop.value.string);
+        } else {
+            alvr_popup_error("Unreachable");
+        }
+
+        if (result != vr::TrackedProp_Success) {
+            auto error_message = std::string("Error setting property") + prop.name + ": " +
+                                 vr::VRPropertiesRaw()->GetPropErrorNameFromEnum(result);
+            alvr_error(error_message.c_str());
+        }
+    }
+
+    // Properties that are set by the user in the dashboard. This should be called last in Activate
+    void set_static_props() {
+        auto props_count = alvr_get_static_openvr_properties(this->device_path, nullptr);
+
+        if (props_count > 0) {
+            auto props = std::vector<AlvrOpenvrProp>(props_count);
+            alvr_get_static_openvr_properties(device_path, &props[0]);
+
+            for (auto prop : props) {
+                this->set_prop(prop);
+            }
+        }
+    }
 
     void update_pose(AlvrMotionData motion, uint64_t timestamp_ns) {
         this->pose.vecPosition[0] = motion.position.x;
@@ -73,18 +127,3 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
 
     TrackedDevice(uint64_t device_path) : device_path(device_path) { clear_pose(); }
 };
-
-void set_static_properties(uint64_t device_path, vr::PropertyContainerHandle_t container) {
-    // auto props_count = alvr_get_static_openvr_properties(device_path, nullptr);
-
-    // auto props = std::vector<AlvrOpenvrProp>(props_count);
-
-    // alvr_get_static_openvr_properties(device_path, &props[0]);
-
-    // for (auto prop : props) {
-    //     if (prop.ty == AlvrOpenvrPropType::Bool) {
-    //         // vr::VRProperties()->SetBoolProperty(container, )
-    //     }
-    //     // todo: generate prop map function
-    // }
-}

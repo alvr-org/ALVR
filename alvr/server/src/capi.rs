@@ -1,5 +1,8 @@
 use crate::connection;
-use alvr_common::{lazy_static, log, Haptics, glam::{Vec3, Quat}};
+use alvr_common::{
+    glam::{Quat, Vec3},
+    lazy_static, log, Haptics,
+};
 use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
@@ -117,6 +120,13 @@ pub struct AlvrOpenvrProp {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub struct AlvrOpenvrDeviceProp {
+    pub top_level_path: u64,
+    pub prop: AlvrOpenvrProp,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub union AlvrButtonInputValue {
     pub bool_: bool,
     pub float_: f32,
@@ -209,7 +219,7 @@ pub union AlvrEventData {
     pub none: (),
     pub device_profile: AlvrDeviceProfile,
     pub top_level_path: u64,
-    pub openvr_prop: AlvrOpenvrProp,
+    pub openvr_prop: AlvrOpenvrDeviceProp,
     pub video_config: AlvrVideoConfig,
     pub views_config: AlvrViewsConfig,
     pub device_pose: AlvrDevicePose,
@@ -530,27 +540,27 @@ pub extern "C" fn alvr_get_best_effort_client_time_ns(top_level_path: u64) -> u6
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn show_error(message: *const c_char) {
+pub unsafe extern "C" fn alvr_popup_error(message: *const c_char) {
     alvr_common::show_e(CStr::from_ptr(message).to_string_lossy());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn log_error(message: *const c_char) {
+pub unsafe extern "C" fn alvr_error(message: *const c_char) {
     log(log::Level::Error, message);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn log_warning(message: *const c_char) {
+pub unsafe extern "C" fn alvr_warning(message: *const c_char) {
     log(log::Level::Warn, message);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn log_info(message: *const c_char) {
+pub unsafe extern "C" fn alvr_info(message: *const c_char) {
     log(log::Level::Info, message);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn log_debug(message: *const c_char) {
+pub unsafe extern "C" fn alvr_debug(message: *const c_char) {
     log(log::Level::Debug, message);
 }
 

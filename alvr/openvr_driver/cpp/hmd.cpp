@@ -32,7 +32,7 @@ Hmd::Hmd(const char *serial_number) : TrackedDevice(HEAD_PATH) {
 vr::EVRInitError Hmd::Activate(uint32_t id) {
     TrackedDevice::Activate(id);
 
-    set_static_properties(this->device_path, this->prop_container);
+    TrackedDevice::set_static_props();
 
     return vr::VRInitError_None;
 };
@@ -155,7 +155,8 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
     // todo: acquire lock on sync_texture
 
     // This call will block until the server finished rendering
-    alvr_present_layers((void *)sync_texture, &this->current_layers[0], (uint64_t)this->current_layers.size());
+    alvr_present_layers(
+        (void *)sync_texture, &this->current_layers[0], (uint64_t)this->current_layers.size(), 0);
 
     this->current_layers.clear();
 }

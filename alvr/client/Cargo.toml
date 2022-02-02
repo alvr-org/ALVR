@@ -19,7 +19,7 @@ settings-schema = { path = "../settings-schema", features = [
 ] }
 
 # Basic utilities
-parking_lot = "0.11"
+parking_lot = "0.12"
 rand = "0.8"
 # Serialization
 serde_json = "1"
@@ -29,7 +29,7 @@ bytes = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Miscellaneous
-cpal = "0.13"
+cpal = "0.13.5"
 
 # todo: move to target_os = "android"
 jni = "0.19"

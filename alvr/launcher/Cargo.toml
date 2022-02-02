@@ -17,7 +17,7 @@ alvr_filesystem = { path = "../filesystem" }
 druid = "0.7"
 serde_json = "1"
 single-instance = "0.3"
-sysinfo = "0.21"
+sysinfo = "0.23"
 ureq = "2"
 
 [target.'cfg(windows)'.dependencies]

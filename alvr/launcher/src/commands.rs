@@ -7,7 +7,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessExt, RefreshKind, System, SystemExt};
+use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -26,21 +26,27 @@ fn spawn_no_window(command: &mut Command) {
 }
 
 pub fn is_steamvr_running() -> bool {
-    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
+    let mut system = System::new_with_specifics(
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+    );
     system.refresh_processes();
 
-    !system
-        .process_by_name(&afs::exec_fname("vrserver"))
-        .is_empty()
+    system
+        .processes_by_name(&afs::exec_fname("vrserver"))
+        .count()
+        != 0
 }
 
 pub fn maybe_launch_steamvr() {
-    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
+    let mut system = System::new_with_specifics(
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+    );
     system.refresh_processes();
 
     if system
-        .process_by_name(&afs::exec_fname("vrserver"))
-        .is_empty()
+        .processes_by_name(&afs::exec_fname("vrserver"))
+        .count()
+        == 0
     {
         #[cfg(windows)]
         spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
@@ -61,23 +67,25 @@ fn kill_process(pid: usize) {
 
 // this will not kill the child process "ALVR launcher"
 pub fn kill_steamvr() {
-    let mut system = System::new_with_specifics(RefreshKind::new().with_processes());
+    let mut system = System::new_with_specifics(
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+    );
     system.refresh_processes();
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
-    for process in system.process_by_name(&afs::exec_fname("vrmonitor")) {
+    for process in system.processes_by_name(&afs::exec_fname("vrmonitor")) {
         #[cfg(not(windows))]
-        process.kill(sysinfo::Signal::Term);
+        process.kill_with(Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }
 
     thread::sleep(Duration::from_secs(1));
 
-    for process in system.process_by_name(&afs::exec_fname("vrserver")) {
+    for process in system.processes_by_name(&afs::exec_fname("vrserver")) {
         #[cfg(not(windows))]
-        process.kill(sysinfo::Signal::Term);
+        process.kill_with(Signal::Term);
         #[cfg(windows)]
         kill_process(process.pid());
     }

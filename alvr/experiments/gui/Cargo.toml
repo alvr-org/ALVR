@@ -30,7 +30,7 @@ iced = { git = "https://github.com/iced-rs/iced", optional = true, features = [
 ] }
 iced_native = { git = "https://github.com/iced-rs/iced", optional = true }
 termion = { version = "1", optional = true }
-tui = { version = "0.16", optional = true }
+tui = { version = "0.17", optional = true }
 # Translation
 fluent = "0.16"
 fluent-syntax = "0.11"

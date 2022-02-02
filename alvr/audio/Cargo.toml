@@ -11,9 +11,9 @@ alvr_common = { path = "../common" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
 
-cpal = "0.13"
-parking_lot = "0.11"
-rodio = "0.14"
+cpal = "0.13.5"
+parking_lot = "0.12"
+rodio = "0.15"
 serde = "1"
 tokio = "1"
 

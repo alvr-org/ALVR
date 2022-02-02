@@ -192,7 +192,7 @@ version = "0.1.0"
 dependencies = [
  "alvr_common",
  "alvr_session",
- "ash",
+ "ash 0.35.1+1.2.203",
  "bytemuck",
  "openxr-sys",
  "wgpu",
@@ -424,6 +424,15 @@ name = "ash"
 version = "0.34.0+1.2.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0f780da53d0063880d45554306489f09dd8d1bda47688b4a57bc579119356df"
+dependencies = [
+ "libloading",
+]
+
+[[package]]
+name = "ash"
+version = "0.35.1+1.2.203"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7fd04def1c9101b5fb488c131022d2d6f87753ef4b1b11b279e2af404fae6b9"
 dependencies = [
  "libloading",
 ]
@@ -5534,7 +5543,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93b1a9400e8d7f32dd4dd909bb9a391015d70633d639775ddd3f14d1104bc970"
 dependencies = [
  "arrayvec 0.7.2",
- "ash",
+ "ash 0.34.0+1.2.203",
  "bit-set",
  "bitflags",
  "block",

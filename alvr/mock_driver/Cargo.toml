@@ -1,5 +1,5 @@
 [package]
-name = "alvr_mock_driver_old"
+name = "alvr_mock_driver"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
@@ -7,5 +7,4 @@ edition = "2021"
 rust-version = "1.56"
 
 [dependencies]
-alvr_common = { path = "../../common" }
-alvr_ipc = { path = "../ipc" }
+alvr_server = { path = "../server" }

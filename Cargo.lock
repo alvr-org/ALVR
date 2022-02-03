@@ -252,6 +252,13 @@ dependencies = [
 name = "alvr_mock_driver"
 version = "0.1.0"
 dependencies = [
+ "alvr_server",
+]
+
+[[package]]
+name = "alvr_mock_driver_old"
+version = "0.1.0"
+dependencies = [
  "alvr_common",
  "alvr_ipc",
 ]

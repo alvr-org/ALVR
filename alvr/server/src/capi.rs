@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use crate::connection;
 use alvr_common::{
     glam::{Quat, Vec3},
@@ -338,55 +340,52 @@ pub unsafe extern "C" fn alvr_initialize(graphics_handles: AlvrGraphicsContext) 
 
     extern "C" fn _shutdown_runtime() {}
 
-    static INIT_ONCE: Once = Once::new();
-    INIT_ONCE.call_once(|| {
-        crate::init();
+    crate::FRAME_RENDER_VS_CSO_PTR = crate::FRAME_RENDER_VS_CSO.as_ptr();
+    crate::FRAME_RENDER_VS_CSO_LEN = crate::FRAME_RENDER_VS_CSO.len() as _;
+    crate::FRAME_RENDER_PS_CSO_PTR = crate::FRAME_RENDER_PS_CSO.as_ptr();
+    crate::FRAME_RENDER_PS_CSO_LEN = crate::FRAME_RENDER_PS_CSO.len() as _;
+    crate::QUAD_SHADER_CSO_PTR = crate::QUAD_SHADER_CSO.as_ptr();
+    crate::QUAD_SHADER_CSO_LEN = crate::QUAD_SHADER_CSO.len() as _;
+    crate::COMPRESS_AXIS_ALIGNED_CSO_PTR = crate::COMPRESS_AXIS_ALIGNED_CSO.as_ptr();
+    crate::COMPRESS_AXIS_ALIGNED_CSO_LEN = crate::COMPRESS_AXIS_ALIGNED_CSO.len() as _;
+    crate::COLOR_CORRECTION_CSO_PTR = crate::COLOR_CORRECTION_CSO.as_ptr();
+    crate::COLOR_CORRECTION_CSO_LEN = crate::COLOR_CORRECTION_CSO.len() as _;
 
-        crate::FRAME_RENDER_VS_CSO_PTR = crate::FRAME_RENDER_VS_CSO.as_ptr();
-        crate::FRAME_RENDER_VS_CSO_LEN = crate::FRAME_RENDER_VS_CSO.len() as _;
-        crate::FRAME_RENDER_PS_CSO_PTR = crate::FRAME_RENDER_PS_CSO.as_ptr();
-        crate::FRAME_RENDER_PS_CSO_LEN = crate::FRAME_RENDER_PS_CSO.len() as _;
-        crate::QUAD_SHADER_CSO_PTR = crate::QUAD_SHADER_CSO.as_ptr();
-        crate::QUAD_SHADER_CSO_LEN = crate::QUAD_SHADER_CSO.len() as _;
-        crate::COMPRESS_AXIS_ALIGNED_CSO_PTR = crate::COMPRESS_AXIS_ALIGNED_CSO.as_ptr();
-        crate::COMPRESS_AXIS_ALIGNED_CSO_LEN = crate::COMPRESS_AXIS_ALIGNED_CSO.len() as _;
-        crate::COLOR_CORRECTION_CSO_PTR = crate::COLOR_CORRECTION_CSO.as_ptr();
-        crate::COLOR_CORRECTION_CSO_LEN = crate::COLOR_CORRECTION_CSO.len() as _;
+    crate::LogError = Some(log_error);
+    crate::LogWarn = Some(log_warn);
+    crate::LogInfo = Some(log_info);
+    crate::LogDebug = Some(log_debug);
+    crate::DriverReadyIdle = Some(driver_ready_idle);
+    crate::VideoSend = Some(video_send);
+    crate::HapticsSend = Some(haptics_send);
+    crate::TimeSyncSend = Some(time_sync_send);
+    crate::ShutdownRuntime = Some(_shutdown_runtime);
 
-        crate::LogError = Some(log_error);
-        crate::LogWarn = Some(log_warn);
-        crate::LogInfo = Some(log_info);
-        crate::LogDebug = Some(log_debug);
-        crate::DriverReadyIdle = Some(driver_ready_idle);
-        crate::VideoSend = Some(video_send);
-        crate::HapticsSend = Some(haptics_send);
-        crate::TimeSyncSend = Some(time_sync_send);
-        crate::ShutdownRuntime = Some(_shutdown_runtime);
+    crate::init();
 
-        crate::CppInit();
+    crate::CppInit();
 
-        let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = mpsc::channel();
 
-        *DRIVER_EVENT_SENDER.lock() = Some(sender);
-        *DRIVER_EVENT_RECEIVER.lock() = Some(receiver);
+    *DRIVER_EVENT_SENDER.lock() = Some(sender);
+    *DRIVER_EVENT_RECEIVER.lock() = Some(receiver);
 
-        alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
-            crate::FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
-        ));
+    alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
+        crate::FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
+    ));
 
-        if let Some(runtime) = &mut *crate::RUNTIME.lock() {
-            runtime.spawn(async move {
-                // call this when inside a new tokio thread. Calling this on the parent thread will
-                // crash SteamVR
-                unsafe { crate::SetDefaultChaperone() };
+    if let Some(runtime) = &mut *crate::RUNTIME.lock() {
+        runtime.spawn(async move {
+            // call this when inside a new tokio thread. Calling this on the parent thread will
+            // crash SteamVR
+            unsafe { crate::SetDefaultChaperone() };
 
-                tokio::select! {
-                    _ = connection::connection_lifecycle_loop() => (),
-                    _ = crate::SHUTDOWN_NOTIFIER.notified() => (),
-                }
-            });
-        }
-    });
+            tokio::select! {
+                _ = connection::connection_lifecycle_loop() => (),
+                _ = crate::SHUTDOWN_NOTIFIER.notified() => (),
+            }
+        });
+    }
 
     true
 }

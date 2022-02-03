@@ -5,6 +5,7 @@ members = [
     "alvr/settings-schema",
     "alvr/openvr-driver-sys",
     "alvr/openvr_driver",
+    "alvr/mock_driver",
     "alvr/filesystem",
     "alvr/common",
     "alvr/commands",

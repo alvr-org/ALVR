@@ -7,7 +7,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
+use sysinfo::{PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, Signal, System, SystemExt};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -56,7 +56,7 @@ pub fn maybe_launch_steamvr() {
 }
 
 #[cfg(windows)]
-fn kill_process(pid: usize) {
+fn kill_process(pid: u32) {
     use std::os::windows::process::CommandExt;
     Command::new("taskkill.exe")
         .args(&["/PID", &pid.to_string(), "/F"])
@@ -78,7 +78,7 @@ pub fn kill_steamvr() {
         #[cfg(not(windows))]
         process.kill_with(Signal::Term);
         #[cfg(windows)]
-        kill_process(process.pid());
+        kill_process(process.pid().as_u32());
     }
 
     thread::sleep(Duration::from_secs(1));
@@ -87,7 +87,7 @@ pub fn kill_steamvr() {
         #[cfg(not(windows))]
         process.kill_with(Signal::Term);
         #[cfg(windows)]
-        kill_process(process.pid());
+        kill_process(process.pid().as_u32());
     }
 }
 

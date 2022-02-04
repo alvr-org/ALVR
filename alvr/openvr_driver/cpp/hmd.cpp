@@ -10,6 +10,8 @@ vr::HmdRect2_t fov_to_projection(AlvrFov fov) {
     proj_bounds.vTopLeft.v[0] = tanf(fov.top);
     proj_bounds.vTopLeft.v[0] = -tanf(fov.right);
     proj_bounds.vTopLeft.v[0] = -tanf(fov.bottom);
+
+    return proj_bounds;
 }
 
 Hmd::Hmd(const char *serial_number) : TrackedDevice(HEAD_PATH) {

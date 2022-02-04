@@ -159,3 +159,34 @@ pub fn publish_client(is_nightly: bool) {
     build_client(!is_nightly, is_nightly, false);
     build_client(!is_nightly, is_nightly, true);
 }
+
+pub fn publish_libalvr_streamer() {
+    command::run_in(
+        &afs::workspace_dir(),
+        "cargo build -p alvr_server --release",
+    )
+    .unwrap();
+    fs::copy(
+        afs::target_dir()
+            .join("release")
+            .join(afs::dynlib_fname("alvr_server")),
+        afs::build_dir().join(afs::dynlib_fname("alvr_streamer")),
+    )
+    .unwrap();
+
+    let header_path = afs::build_dir().join("alvr_streamer.h");
+
+    command::run("cargo install --force cbindgen").unwrap();
+    command::run_in(
+        &afs::workspace_dir(),
+        &format!(
+            "cbindgen --crate alvr_server --output {} --lang c",
+            header_path.to_string_lossy()
+        ),
+    )
+    .unwrap();
+
+    // add missing pragma
+    let header_content = fs::read_to_string(&header_path).unwrap();
+    fs::write(header_path, format!("#pragma once\n\n{}", header_content)).unwrap();
+}

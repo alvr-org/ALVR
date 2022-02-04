@@ -1,9 +1,11 @@
+extern "C" {
 #include "alvr_streamer.h"
+}
 #include "bindings.h"
+#include "chaperone.h"
 #include "controller.h"
 #include "generic_tracker.h"
 #include "hmd.h"
-#include "openvr_properties_mapping.h"
 #include "tracked_devices.h"
 #include <map>
 #include <optional>
@@ -23,10 +25,12 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     bool running = false;
 
     void event_loop() {
+        // set_chaperone({1.0, 1.0});
+
         while (this->running) {
             auto event = alvr_read_event(100); // ms
 
-            if (event.ty == AlvrEventType::DeviceConnected) {
+            if (event.ty == ALVR_EVENT_TYPE_DEVICE_CONNECTED) {
                 auto profile = event.data.device_profile;
 
                 auto device_it = this->tracked_devices.find(profile.top_level_path);
@@ -55,51 +59,53 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                     vr::VRServerDriverHost()->VendorSpecificEvent(
                         device_it->second->object_id, vr::VREvent_WirelessReconnect, {}, 0);
                 }
-            } else if (event.ty == AlvrEventType::DeviceDisconnected) {
+            } else if (event.ty == ALVR_EVENT_TYPE_DEVICE_DISCONNECTED) {
                 auto device_it = this->tracked_devices.find(event.data.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     vr::VRServerDriverHost()->VendorSpecificEvent(
                         device_it->second->object_id, vr::VREvent_WirelessDisconnect, {}, 0);
                     device_it->second->clear_pose();
                 }
-            } else if (event.ty == AlvrEventType::OpenvrPropertyChanged) {
+            } else if (event.ty == ALVR_EVENT_TYPE_OPENVR_PROPERTY_CHANGED) {
                 auto device_it = this->tracked_devices.find(event.data.openvr_prop.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     device_it->second->set_prop(event.data.openvr_prop.prop);
                 }
-            } else if (event.ty == AlvrEventType::VideoConfigUpdated) {
+            } else if (event.ty == ALVR_EVENT_TYPE_VIDEO_CONFIG_UPDATED) {
                 this->hmd->update_video_config(event.data.video_config);
-            } else if (event.ty == AlvrEventType::ViewsConfigUpdated) {
+            } else if (event.ty == ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED) {
                 this->hmd->update_views_config(event.data.views_config);
-            } else if (event.ty == AlvrEventType::DevicePoseUpdated) {
+            } else if (event.ty == ALVR_EVENT_TYPE_DEVICE_POSE_UPDATED) {
                 auto event_data = event.data.device_pose;
 
                 auto device_it = this->tracked_devices.find(event_data.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     device_it->second->update_pose(event_data.data, event_data.timestamp_ns);
                 }
-            } else if (event.ty == AlvrEventType::ButtonUpdated) {
+            } else if (event.ty == ALVR_EVENT_TYPE_BUTTON_UPDATED) {
                 this->left_controller->try_update_button(event.data.button);
                 this->right_controller->try_update_button(event.data.button);
-            } else if (event.ty == AlvrEventType::HandSkeletonUpdated) {
-                if (event.data.hand_skeleton.hand_type == AlvrHandType::Left) {
+            } else if (event.ty == ALVR_EVENT_TYPE_HAND_SKELETON_UPDATED) {
+                if (event.data.hand_skeleton.hand_type == ALVR_HAND_TYPE_LEFT) {
                     this->left_controller->update_hand_skeleton(
                         event.data.hand_skeleton.joints, event.data.hand_skeleton.timestamp_ns);
                 } else {
                     this->right_controller->update_hand_skeleton(
                         event.data.hand_skeleton.joints, event.data.hand_skeleton.timestamp_ns);
                 }
-            } else if (event.ty == AlvrEventType::BatteryUpdated) {
+            } else if (event.ty == ALVR_EVENT_TYPE_BATTERY_UPDATED) {
                 auto device_it = this->tracked_devices.find(event.data.battery.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     vr::VRProperties()->SetFloatProperty(device_it->second->object_id,
                                                          vr::Prop_DeviceBatteryPercentage_Float,
                                                          event.data.battery.value);
                 }
-            } else if (event.ty == AlvrEventType::RestartRequested) {
+            } else if (event.ty == ALVR_EVENT_TYPE_BOUNDS_UPDATED) {
+                set_chaperone(event.data.bounds_rect);
+            } else if (event.ty == ALVR_EVENT_TYPE_RESTART_REQUESTED) {
                 vr::VRServerDriverHost()->RequestRestart(
                     "ALVR requested SteamVR restart", "", "", "");
-            } else if (event.ty == AlvrEventType::ShutdownRequested) {
+            } else if (event.ty == ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED) {
                 vr::VRServerDriverHost()->VendorSpecificEvent(
                     0, vr::VREvent_DriverRequestedQuit, {}, 0);
             }

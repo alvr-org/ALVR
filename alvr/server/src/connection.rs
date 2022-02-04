@@ -1,7 +1,7 @@
 use crate::{
     capi::{
-        to_capi_quat, to_capi_vec3, AlvrBatteryValue, AlvrDevicePose, AlvrEvent, AlvrEventData,
-        AlvrEventType, AlvrFov, AlvrMotionData, AlvrQuat, AlvrVec3, AlvrViewsConfig,
+        to_capi_quat, to_capi_vec3, AlvrBatteryValue, AlvrDevicePose, AlvrDeviceProfile, AlvrEvent,
+        AlvrEventData, AlvrEventType, AlvrFov, AlvrMotionData, AlvrQuat, AlvrVec3, AlvrViewsConfig,
         DRIVER_EVENT_SENDER,
     },
     connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
@@ -26,9 +26,11 @@ use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
 use std::{
     f32::consts::PI,
+    ffi::CString,
     future,
     net::IpAddr,
     process::Command,
+    ptr,
     str::FromStr,
     sync::{mpsc as smpsc, Arc},
     thread,
@@ -630,6 +632,79 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
+    if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+        let mut serial_number = [0; 64];
+        let c_string = CString::new(settings.headset.serial_number).unwrap();
+        unsafe {
+            ptr::copy_nonoverlapping(
+                c_string.as_ptr(),
+                serial_number.as_mut_ptr(),
+                c_string.as_bytes_with_nul().len(),
+            )
+        };
+        sender
+            .send(AlvrEvent {
+                ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
+                data: AlvrEventData {
+                    device_profile: AlvrDeviceProfile {
+                        top_level_path: *HEAD_ID,
+                        interaction_profile: 0, // head has no interaction profile
+                        serial_number,
+                    },
+                },
+            })
+            .unwrap();
+
+        if let Switch::Enabled(controllers) = settings.headset.controllers {
+            let interaction_profile =
+                alvr_common::hash_string("/interaction_profiles/oculus/touch_controller");
+
+            let mut serial_number = [0; 64];
+            let c_string = CString::new(format!("{}_Left", controllers.serial_number)).unwrap();
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    c_string.as_ptr(),
+                    serial_number.as_mut_ptr(),
+                    c_string.as_bytes_with_nul().len(),
+                )
+            };
+            sender
+                .send(AlvrEvent {
+                    ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
+                    data: AlvrEventData {
+                        device_profile: AlvrDeviceProfile {
+                            top_level_path: *LEFT_HAND_ID,
+                            interaction_profile,
+                            serial_number,
+                        },
+                    },
+                })
+                .unwrap();
+
+            let mut serial_number = [0; 64];
+            let c_string = CString::new(format!("{}_Right", controllers.serial_number)).unwrap();
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    c_string.as_ptr(),
+                    serial_number.as_mut_ptr(),
+                    c_string.as_bytes_with_nul().len(),
+                )
+            }
+            sender
+                .send(AlvrEvent {
+                    ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
+                    data: AlvrEventData {
+                        device_profile: AlvrDeviceProfile {
+                            top_level_path: *RIGHT_HAND_ID,
+                            interaction_profile,
+                            serial_number,
+                        },
+                    },
+                })
+                .unwrap();
+        }
+    }
+
     unsafe { crate::InitializeStreaming() };
     let _stream_guard = StreamCloseGuard;
 
@@ -784,69 +859,80 @@ async fn connection_pipeline() -> StrResult {
                 let input = receiver.recv().await?.header;
 
                 if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
-                    sender.send(AlvrEvent {
-                        ty: AlvrEventType::ViewsConfigUpdated,
-                        data: AlvrEventData {
-                            views_config: AlvrViewsConfig {
-                                ipd_m: input.views_config.ipd_m,
-                                fov: [
-                                    AlvrFov {
-                                        left: -input.views_config.fov[0].left / 180.0 * PI,
-                                        right: input.views_config.fov[0].right / 180.0 * PI,
-                                        top: input.views_config.fov[0].top / 180.0 * PI,
-                                        bottom: -input.views_config.fov[0].bottom / 180.0 * PI,
-                                    },
-                                    AlvrFov {
-                                        left: -input.views_config.fov[1].left / 180.0 * PI,
-                                        right: input.views_config.fov[1].right / 180.0 * PI,
-                                        top: input.views_config.fov[1].top / 180.0 * PI,
-                                        bottom: -input.views_config.fov[1].bottom / 180.0 * PI,
-                                    },
-                                ],
-                            },
-                        },
-                    });
-
-                    for (id, motion) in &input.device_motions {
-                        sender.send(AlvrEvent {
-                            ty: AlvrEventType::DevicePoseUpdated,
+                    sender
+                        .send(AlvrEvent {
+                            ty: AlvrEventType::ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED,
                             data: AlvrEventData {
-                                device_pose: AlvrDevicePose {
-                                    top_level_path: *id,
-                                    data: to_capi_motion(motion.clone()),
-                                    timestamp_ns: input.target_timestamp.as_nanos() as _,
+                                views_config: AlvrViewsConfig {
+                                    ipd_m: input.views_config.ipd_m,
+                                    fov: [
+                                        AlvrFov {
+                                            left: -input.views_config.fov[0].left / 180.0 * PI,
+                                            right: input.views_config.fov[0].right / 180.0 * PI,
+                                            top: input.views_config.fov[0].top / 180.0 * PI,
+                                            bottom: -input.views_config.fov[0].bottom / 180.0 * PI,
+                                        },
+                                        AlvrFov {
+                                            left: -input.views_config.fov[1].left / 180.0 * PI,
+                                            right: input.views_config.fov[1].right / 180.0 * PI,
+                                            top: input.views_config.fov[1].top / 180.0 * PI,
+                                            bottom: -input.views_config.fov[1].bottom / 180.0 * PI,
+                                        },
+                                    ],
                                 },
                             },
-                        });
+                        })
+                        .ok();
+
+                    for (id, motion) in &input.device_motions {
+                        sender
+                            .send(AlvrEvent {
+                                ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_POSE_UPDATED,
+                                data: AlvrEventData {
+                                    device_pose: AlvrDevicePose {
+                                        top_level_path: *id,
+                                        data: to_capi_motion(motion.clone()),
+                                        timestamp_ns: input.target_timestamp.as_nanos() as _,
+                                    },
+                                },
+                            })
+                            .ok();
                     }
 
-                    sender.send(AlvrEvent {
-                        ty: AlvrEventType::BatteryUpdated,
-                        data: AlvrEventData {
-                            battery: AlvrBatteryValue {
-                                top_level_path: *HEAD_ID,
-                                value: input.legacy.battery as f32 / 100.0,
-                            },
-                        },
-                    });
-                    sender.send(AlvrEvent {
-                        ty: AlvrEventType::BatteryUpdated,
-                        data: AlvrEventData {
-                            battery: AlvrBatteryValue {
-                                top_level_path: *LEFT_HAND_ID,
-                                value: input.legacy.controller_battery[0] as f32 / 100.0,
-                            },
-                        },
-                    });
-                    sender.send(AlvrEvent {
-                        ty: AlvrEventType::BatteryUpdated,
-                        data: AlvrEventData {
-                            battery: AlvrBatteryValue {
-                                top_level_path: *RIGHT_HAND_ID,
-                                value: input.legacy.controller_battery[0] as f32 / 100.0,
-                            },
-                        },
-                    });
+                    // sender
+                    //     .send(AlvrEvent {
+                    //         ty: AlvrEventType::ALVR_EVENT_TYPE_BATTERY_UPDATED,
+                    //         data: AlvrEventData {
+                    //             battery: AlvrBatteryValue {
+                    //                 top_level_path: *HEAD_ID,
+                    //                 value: input.legacy.battery as f32 / 100.0,
+                    //             },
+                    //         },
+                    //     })
+                    //     .ok();
+
+                    // sender
+                    //     .send(AlvrEvent {
+                    //         ty: AlvrEventType::ALVR_EVENT_TYPE_BATTERY_UPDATED,
+                    //         data: AlvrEventData {
+                    //             battery: AlvrBatteryValue {
+                    //                 top_level_path: *LEFT_HAND_ID,
+                    //                 value: input.legacy.controller_battery[0] as f32 / 100.0,
+                    //             },
+                    //         },
+                    //     })
+                    //     .ok();
+                    // sender
+                    //     .send(AlvrEvent {
+                    //         ty: AlvrEventType::ALVR_EVENT_TYPE_BATTERY_UPDATED,
+                    //         data: AlvrEventData {
+                    //             battery: AlvrBatteryValue {
+                    //                 top_level_path: *RIGHT_HAND_ID,
+                    //                 value: input.legacy.controller_battery[0] as f32 / 100.0,
+                    //             },
+                    //         },
+                    //     })
+                    //     .ok();
                 }
 
                 let head_motion = &input

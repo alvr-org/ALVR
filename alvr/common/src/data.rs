@@ -20,17 +20,6 @@ pub struct Fov {
     pub bottom: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum OpenvrPropValue {
-    Bool(bool),
-    Float(f32),
-    Int32(i32),
-    Uint64(u64),
-    Vector3([f32; 3]),
-    Double(f64),
-    String(String),
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MotionData {
     pub orientation: Quat,

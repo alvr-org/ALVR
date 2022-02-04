@@ -46,6 +46,8 @@ uint64_t Compositor::CreateTexture(
     m_textures.insert({id, d3dTexture});
 
     pResource->Release();
+
+    return id;
 }
 
 void Compositor::DestroyTexture(uint64_t id) { this->m_textures.erase(id); }

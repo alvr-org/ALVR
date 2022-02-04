@@ -1,6 +1,8 @@
 #pragma once
 
+extern "C" {
 #include "alvr_streamer.h"
+}
 #include "openvr_driver.h"
 #include "tracked_devices.h"
 

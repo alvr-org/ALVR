@@ -1,6 +1,8 @@
 #pragma once
 
+extern "C" {
 #include "alvr_streamer.h"
+}
 #include "openvr_driver.h"
 #include "openvr_properties_mapping.h"
 #include <map>
@@ -30,32 +32,33 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
         auto key = tracked_device_property_name_to_key(prop.name);
         vr::ETrackedPropertyError result;
 
-        if (prop.ty == AlvrOpenvrPropType::Bool) {
+        if (prop.ty == ALVR_OPENVR_PROP_TYPE_BOOL) {
             result =
                 vr::VRProperties()->SetBoolProperty(this->prop_container, key, prop.value.bool_);
-        } else if (prop.ty == AlvrOpenvrPropType::Float) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_FLOAT) {
             result =
                 vr::VRProperties()->SetFloatProperty(this->prop_container, key, prop.value.float_);
-        } else if (prop.ty == AlvrOpenvrPropType::Int32) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_INT32) {
             result =
                 vr::VRProperties()->SetInt32Property(this->prop_container, key, prop.value.int32);
-        } else if (prop.ty == AlvrOpenvrPropType::Uint64) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_UINT64) {
             result =
                 vr::VRProperties()->SetUint64Property(this->prop_container, key, prop.value.uint64);
-        } else if (prop.ty == AlvrOpenvrPropType::Vector3) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_VECTOR3) {
             auto vec3 = vr::HmdVector3_t{};
-            vec3.v[0] = prop.value.vector3.x;
-            vec3.v[1] = prop.value.vector3.y;
-            vec3.v[2] = prop.value.vector3.z;
+            vec3.v[0] = prop.value.vector3[0];
+            vec3.v[1] = prop.value.vector3[1];
+            vec3.v[2] = prop.value.vector3[2];
             result = vr::VRProperties()->SetVec3Property(this->prop_container, key, vec3);
-        } else if (prop.ty == AlvrOpenvrPropType::Double) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_DOUBLE) {
             result = vr::VRProperties()->SetDoubleProperty(
                 this->prop_container, key, prop.value.double_);
-        } else if (prop.ty == AlvrOpenvrPropType::String) {
+        } else if (prop.ty == ALVR_OPENVR_PROP_TYPE_STRING) {
             result =
                 vr::VRProperties()->SetStringProperty(this->prop_container, key, prop.value.string);
         } else {
             alvr_popup_error("Unreachable");
+            result = vr::TrackedProp_Success;
         }
 
         if (result != vr::TrackedProp_Success) {

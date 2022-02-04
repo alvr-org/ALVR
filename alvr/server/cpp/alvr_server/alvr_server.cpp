@@ -274,7 +274,6 @@ void CppInit() {
     Settings::Instance().Load();
     load_debug_privilege();
 
-	InitDriverLog(vr::VRDriverLog());
 	g_poseHistory = std::make_shared<PoseHistory>();
 
 #ifdef _WIN32

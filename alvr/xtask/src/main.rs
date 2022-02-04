@@ -23,6 +23,7 @@ SUBCOMMANDS:
     build-ffmpeg-linux  Build FFmpeg with VAAPI, NvEnc and Vulkan support. Only for CI
     publish-server      Build server in release mode, make portable version and installer
     publish-client      Build client for all headsets
+    publish-lib         Build alvr_streamer and generate header
     clean               Removes build folder
     kill-oculus         Kill all Oculus processes
     bump-versions       Bump server and client package versions
@@ -394,6 +395,7 @@ fn main() {
                 }
                 "publish-server" => packaging::publish_server(is_nightly, root, reproducible),
                 "publish-client" => packaging::publish_client(is_nightly),
+                "publish-lib" => packaging::publish_libalvr_streamer(),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),
                 "bump-versions" => version::bump_version(version, is_nightly),

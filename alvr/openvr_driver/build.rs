@@ -1,3 +1,4 @@
+use cbindgen::Language;
 use regex::Regex;
 use std::{
     env, fs,
@@ -12,6 +13,7 @@ fn main() {
 
     cbindgen::Builder::new()
         .with_crate("../server")
+        .with_language(Language::C)
         .generate()
         .unwrap()
         .write_to_file(&alvr_streamer_header_path);
@@ -37,22 +39,23 @@ fn main() {
 #include "openvr_driver.h"
 
 inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char *prop_name) {
-    "#,
+"#,
     );
 
+    // Note: this generates disjoint if branches. This is a workaround for MSVC nesting limit of 128
     for entry in property_finder.captures_iter(&openvr_driver_header_string) {
         mappings_fn_string.push_str(&format!(
-            r#"if (strcmp(prop_name, "{}") == 0) {{
+            r#"    if (strcmp(prop_name, "{}") == 0) {{
         return vr::{};
-    }} else "#,
+    }}
+"#,
             &entry[1], &entry[1],
         ));
     }
 
     mappings_fn_string.push_str(
-        r#"{
-        return vr::Prop_Invalid;
-    }
+        r#"
+    return vr::Prop_Invalid;
 }"#,
     );
 
@@ -73,6 +76,7 @@ inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char
             "cpp/hmd.cpp",
             "cpp/controller.cpp",
             "cpp/generic_tracker.cpp",
+            "cpp/chaperone.cpp",
             "cpp/driver.cpp",
         ])
         .include("cpp")
@@ -98,7 +102,15 @@ inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char
 
     // Note: compilation problems when using static lib
     // todo: rename to alvr_streamer
-    println!("cargo:rustc-link-lib=dylib=alvr_server");
+    println!("cargo:rustc-link-lib=alvr_server");
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join("resources/lib")
+            .to_string_lossy()
+    );
+    println!("cargo:rustc-link-lib=openvr_api");
 
     println!("cargo:rerun-if-changed=cpp");
 }

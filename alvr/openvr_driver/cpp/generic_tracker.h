@@ -9,5 +9,5 @@ extern "C" {
 class GenericTracker : public TrackedDevice {
   public:
     virtual vr::EVRInitError Activate(uint32_t object_id) override;
-    GenericTracker(uint64_t device_path, const char *serial_number);
+    GenericTracker(uint64_t device_path);
 };

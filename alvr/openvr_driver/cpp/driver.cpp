@@ -15,7 +15,7 @@ extern "C" {
 
 class DriverProvider : vr::IServerTrackedDeviceProvider {
   public:
-    std::optional<Hmd> hmd;
+    Hmd hmd;
     std::optional<Controller> left_controller, right_controller;
     std::vector<GenericTracker> generic_trackers;
 
@@ -36,21 +36,17 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                 auto device_it = this->tracked_devices.find(profile.top_level_path);
                 if (device_it == this->tracked_devices.end()) {
                     if (profile.top_level_path == HEAD_PATH) {
-                        this->hmd = Hmd(profile.serial_number);
-                        this->tracked_devices.insert({profile.top_level_path, &*this->hmd});
+                        // unreachable
                     } else if (profile.top_level_path == LEFT_HAND_PATH) {
-                        this->left_controller = Controller(
-                            LEFT_HAND_PATH, profile.interaction_profile, profile.serial_number);
-                        this->tracked_devices.insert(
-                            {profile.top_level_path, &*this->left_controller});
+                        this->left_controller =
+                            Controller(LEFT_HAND_PATH, profile.interaction_profile);
+                        this->tracked_devices.insert({LEFT_HAND_PATH, &*this->left_controller});
                     } else if (profile.top_level_path == RIGHT_HAND_PATH) {
-                        this->right_controller = Controller(
-                            RIGHT_HAND_PATH, profile.interaction_profile, profile.serial_number);
-                        this->tracked_devices.insert(
-                            {profile.top_level_path, &*this->right_controller});
+                        this->right_controller =
+                            Controller(RIGHT_HAND_PATH, profile.interaction_profile);
+                        this->tracked_devices.insert({RIGHT_HAND_PATH, &*this->right_controller});
                     } else {
-                        this->generic_trackers.push_back(
-                            GenericTracker(profile.top_level_path, profile.serial_number));
+                        this->generic_trackers.push_back(GenericTracker(profile.top_level_path));
                         this->tracked_devices.insert(
                             {profile.top_level_path,
                              &this->generic_trackers[this->generic_trackers.size() - 1]});
@@ -72,9 +68,9 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                     device_it->second->set_prop(event.data.openvr_prop.prop);
                 }
             } else if (event.ty == ALVR_EVENT_TYPE_VIDEO_CONFIG_UPDATED) {
-                this->hmd->update_video_config(event.data.video_config);
+                this->hmd.update_video_config(event.data.video_config);
             } else if (event.ty == ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED) {
-                this->hmd->update_views_config(event.data.views_config);
+                this->hmd.update_views_config(event.data.views_config);
             } else if (event.ty == ALVR_EVENT_TYPE_DEVICE_POSE_UPDATED) {
                 auto event_data = event.data.device_pose;
 
@@ -123,8 +119,18 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
 #endif
 
         if (alvr_initialize(graphics_context)) {
+            this->tracked_devices.insert({HEAD_PATH, &this->hmd});
+
+            char hmd_serial_number[64];
+            alvr_get_serial_number(HEAD_PATH, hmd_serial_number, 64);
+
+            // If there is another HMD connected this call will fail. ALVR will continue using the
+            // Hmd instance, but its data will remain unused.
+            vr::VRServerDriverHost()->TrackedDeviceAdded(
+                hmd_serial_number, vr::TrackedDeviceClass_HMD, &this->hmd);
+
             this->running = true;
-            this->event_thread = std::thread(&DriverProvider::event_loop, this);
+            // this->event_thread = std::thread(&DriverProvider::event_loop, this);
 
             return vr::VRInitError_None;
         } else {
@@ -133,8 +139,15 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     }
 
     virtual void Cleanup() override {
+        alvr_popup_error("cleanup");
+
         running = false;
+        if (event_thread) {
+            event_thread->join();
+        }
+
         alvr_shutdown();
+
         VR_CLEANUP_SERVER_DRIVER_CONTEXT();
     }
 
@@ -145,25 +158,29 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     }
 
     virtual void RunFrame() override {
-        vr::VREvent_t event;
-        while (vr::VRServerDriverHost()->PollNextEvent(&event, sizeof(vr::VREvent_t))) {
-            if (event.eventType == vr::VREvent_Input_HapticVibration) {
-                vr::VREvent_HapticVibration_t haptics_info = event.data.hapticVibration;
+        // vr::VRServerDriverHost()->VsyncEvent(0.016);
 
-                if (haptics_info.containerHandle == this->left_controller->haptics_container) {
-                    alvr_send_haptics(LEFT_HAND_PATH,
-                                      haptics_info.fDurationSeconds,
-                                      haptics_info.fFrequency,
-                                      haptics_info.fAmplitude);
-                } else if (haptics_info.containerHandle ==
-                           this->right_controller->haptics_container) {
-                    alvr_send_haptics(RIGHT_HAND_PATH,
-                                      haptics_info.fDurationSeconds,
-                                      haptics_info.fFrequency,
-                                      haptics_info.fAmplitude);
-                }
-            }
-        }
+        // vr::VREvent_t event;
+        // while (vr::VRServerDriverHost()->PollNextEvent(&event, sizeof(vr::VREvent_t))) {
+        //     if (event.eventType == vr::VREvent_Input_HapticVibration) {
+        //         vr::VREvent_HapticVibration_t haptics_info = event.data.hapticVibration;
+
+        //         if (this->left_controller &&
+        //             haptics_info.containerHandle == this->left_controller->haptics_container) {
+        //             alvr_send_haptics(LEFT_HAND_PATH,
+        //                               haptics_info.fDurationSeconds,
+        //                               haptics_info.fFrequency,
+        //                               haptics_info.fAmplitude);
+        //         } else if (this->right_controller &&
+        //                    haptics_info.containerHandle ==
+        //                        this->right_controller->haptics_container) {
+        //             alvr_send_haptics(RIGHT_HAND_PATH,
+        //                               haptics_info.fDurationSeconds,
+        //                               haptics_info.fFrequency,
+        //                               haptics_info.fAmplitude);
+        //         }
+        //     }
+        // }
     }
 
     virtual bool ShouldBlockStandbyMode() override { return false; }

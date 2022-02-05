@@ -1,12 +1,14 @@
 #include "controller.h"
 
-Controller::Controller(uint64_t device_path, uint64_t profile_path, const char *serial_number)
-    : TrackedDevice(device_path) {
+Controller::Controller(uint64_t device_path, uint64_t profile_path) : TrackedDevice(device_path) {
     if (device_path == LEFT_HAND_PATH) {
         this->role = vr::TrackedControllerRole_LeftHand;
     } else if (device_path == LEFT_HAND_PATH) {
         this->role = vr::TrackedControllerRole_RightHand;
     }
+
+    char serial_number[64];
+    alvr_get_serial_number(device_path, serial_number, 64);
 
     vr::VRServerDriverHost()->TrackedDeviceAdded(
         serial_number, vr::TrackedDeviceClass_Controller, this);

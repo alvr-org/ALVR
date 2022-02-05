@@ -83,9 +83,9 @@ pub fn build_server(
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
     }
-    if experiments {
-        server_features.push("new-dashboard")
-    }
+    // if experiments {
+    //     server_features.push("new-dashboard")
+    // }
 
     if server_features.is_empty() {
         server_features.push("default")
@@ -148,20 +148,57 @@ pub fn build_server(
         .unwrap();
     }
 
-    command::run_in(
-        &afs::workspace_dir().join("alvr/server"),
-        &format!(
-            "cargo build {} --no-default-features --features {}",
-            build_flags,
-            server_features.join(",")
-        ),
-    )
-    .unwrap();
-    fs::copy(
-        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
-        layout.openvr_driver_lib(),
-    )
-    .unwrap();
+    if experiments {
+        command::run_in(
+            &afs::workspace_dir().join("alvr/server"),
+            &format!(
+                "cargo build {} --no-default-features --features {}",
+                build_flags,
+                server_features.join(",")
+            ),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+            layout
+                .openvr_driver_lib_dir()
+                .join(afs::dynlib_fname("alvr_server")),
+        )
+        .unwrap();
+
+        #[cfg(windows)]
+        fs::copy(
+            artifacts_dir.join("alvr_server.dll.lib"),
+            artifacts_dir.join("alvr_server.lib"),
+        )
+        .ok();
+
+        command::run_in(
+            &afs::workspace_dir().join("alvr/openvr_driver"),
+            &format!("cargo build {}", build_flags),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(afs::dynlib_fname("alvr_openvr_driver")),
+            layout.openvr_driver_lib(),
+        )
+        .unwrap();
+    } else {
+        command::run_in(
+            &afs::workspace_dir().join("alvr/server"),
+            &format!(
+                "cargo build {} --no-default-features --features {}",
+                build_flags,
+                server_features.join(",")
+            ),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+            layout.openvr_driver_lib(),
+        )
+        .unwrap();
+    }
 
     command::run_in(
         &afs::workspace_dir().join("alvr/launcher"),
@@ -178,21 +215,21 @@ pub fn build_server(
     )
     .unwrap();
 
-    if experiments {
-        let dir_content = dirx::get_dir_content2(
-            "alvr/experiments/gui/resources/languages",
-            &dirx::DirOptions { depth: 1 },
-        )
-        .unwrap();
-        let items: Vec<&String> = dir_content.directories[1..]
-            .iter()
-            .chain(dir_content.files.iter())
-            .collect();
+    // if experiments {
+    //     let dir_content = dirx::get_dir_content2(
+    //         "alvr/experiments/gui/resources/languages",
+    //         &dirx::DirOptions { depth: 1 },
+    //     )
+    //     .unwrap();
+    //     let items: Vec<&String> = dir_content.directories[1..]
+    //         .iter()
+    //         .chain(dir_content.files.iter())
+    //         .collect();
 
-        let destination = afs::server_build_dir().join("languages");
-        fs::create_dir_all(&destination).unwrap();
-        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-    }
+    //     let destination = afs::server_build_dir().join("languages");
+    //     fs::create_dir_all(&destination).unwrap();
+    //     fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
+    // }
 
     fs::copy(
         afs::workspace_dir().join("alvr/xtask/resources/driver.vrdrivermanifest"),

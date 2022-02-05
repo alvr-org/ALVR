@@ -10,6 +10,7 @@ use alvr_session::OpenvrPropValue;
 use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
+    cmp,
     collections::HashMap,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
@@ -202,7 +203,6 @@ pub struct AlvrHandSkeleton {
 pub struct AlvrDeviceProfile {
     pub top_level_path: u64,
     pub interaction_profile: u64,
-    pub serial_number: [c_char; 64],
 }
 
 #[allow(non_camel_case_types)]
@@ -418,6 +418,35 @@ pub extern "C" fn alvr_read_event(timeout_ms: u64) -> AlvrEvent {
             ty: AlvrEventType::ALVR_EVENT_TYPE_NONE,
             data: AlvrEventData { none: () },
         })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_get_serial_number(
+    top_level_path: u64,
+    serial_number: *mut c_char,
+    max_length: u64,
+) {
+    let session_manager = &*SESSION_MANAGER.lock();
+    let settings = &session_manager.get().session_settings;
+    let value = if top_level_path == *HEAD_ID {
+        settings.headset.serial_number.clone()
+    } else if top_level_path == *LEFT_HAND_ID {
+        format!(
+            "{}_Left",
+            settings.headset.controllers.content.serial_number
+        )
+    } else if top_level_path == *RIGHT_HAND_ID {
+        format!(
+            "{}_Right",
+            settings.headset.controllers.content.serial_number
+        )
+    } else {
+        unreachable!()
+    };
+
+    let c_string = CString::new(value).unwrap();
+    let length = cmp::min(c_string.as_bytes_with_nul().len(), max_length as usize);
+    ptr::copy_nonoverlapping(c_string.as_ptr(), serial_number, length);
 }
 
 /// Use properties == null to get the number of properties

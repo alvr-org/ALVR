@@ -54,7 +54,7 @@ class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectMo
     virtual void PostPresent() override;
     virtual void GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) override;
 
-    Hmd(const char *serial_number);
+    Hmd();
 
     void update_video_config(AlvrVideoConfig config);
     void update_views_config(AlvrViewsConfig config);

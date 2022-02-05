@@ -633,15 +633,6 @@ async fn connection_pipeline() -> StrResult {
     }
 
     if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
-        let mut serial_number = [0; 64];
-        let c_string = CString::new(settings.headset.serial_number).unwrap();
-        unsafe {
-            ptr::copy_nonoverlapping(
-                c_string.as_ptr(),
-                serial_number.as_mut_ptr(),
-                c_string.as_bytes_with_nul().len(),
-            )
-        };
         sender
             .send(AlvrEvent {
                 ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
@@ -649,7 +640,6 @@ async fn connection_pipeline() -> StrResult {
                     device_profile: AlvrDeviceProfile {
                         top_level_path: *HEAD_ID,
                         interaction_profile: 0, // head has no interaction profile
-                        serial_number,
                     },
                 },
             })
@@ -659,15 +649,6 @@ async fn connection_pipeline() -> StrResult {
             let interaction_profile =
                 alvr_common::hash_string("/interaction_profiles/oculus/touch_controller");
 
-            let mut serial_number = [0; 64];
-            let c_string = CString::new(format!("{}_Left", controllers.serial_number)).unwrap();
-            unsafe {
-                ptr::copy_nonoverlapping(
-                    c_string.as_ptr(),
-                    serial_number.as_mut_ptr(),
-                    c_string.as_bytes_with_nul().len(),
-                )
-            };
             sender
                 .send(AlvrEvent {
                     ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
@@ -675,21 +656,11 @@ async fn connection_pipeline() -> StrResult {
                         device_profile: AlvrDeviceProfile {
                             top_level_path: *LEFT_HAND_ID,
                             interaction_profile,
-                            serial_number,
                         },
                     },
                 })
                 .unwrap();
 
-            let mut serial_number = [0; 64];
-            let c_string = CString::new(format!("{}_Right", controllers.serial_number)).unwrap();
-            unsafe {
-                ptr::copy_nonoverlapping(
-                    c_string.as_ptr(),
-                    serial_number.as_mut_ptr(),
-                    c_string.as_bytes_with_nul().len(),
-                )
-            }
             sender
                 .send(AlvrEvent {
                     ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
@@ -697,7 +668,6 @@ async fn connection_pipeline() -> StrResult {
                         device_profile: AlvrDeviceProfile {
                             top_level_path: *RIGHT_HAND_ID,
                             interaction_profile,
-                            serial_number,
                         },
                     },
                 })

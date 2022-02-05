@@ -95,14 +95,23 @@ inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char
         .write_to_file(out_dir.join("bindings.rs"))
         .unwrap();
 
+    let artifacts_dir = out_dir.join("../../..");
+
+    #[cfg(windows)]
+    fs::copy(
+        artifacts_dir.join("alvr_server.dll.lib"),
+        artifacts_dir.join("alvr_server.lib"),
+    )
+    .ok();
+
     println!(
-        "cargo:rustc-link-search={}/../../../",
-        out_dir.to_string_lossy()
+        "cargo:rustc-link-search={}",
+        artifacts_dir.to_string_lossy()
     );
 
     // Note: compilation problems when using static lib
     // todo: rename to alvr_streamer
-    println!("cargo:rustc-link-lib=alvr_server");
+    println!("cargo:rustc-link-lib=dylib=alvr_server");
 
     println!(
         "cargo:rustc-link-search=native={}",

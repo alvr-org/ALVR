@@ -1,7 +1,8 @@
 #include "generic_tracker.h"
 
-GenericTracker::GenericTracker(uint64_t device_path, const char *serial_number)
-    : TrackedDevice(device_path) {
+GenericTracker::GenericTracker(uint64_t device_path) : TrackedDevice(device_path) {
+    char serial_number[64];
+    alvr_get_serial_number(device_path, serial_number, 64);
     vr::VRServerDriverHost()->TrackedDeviceAdded(
         serial_number, vr::TrackedDeviceClass_GenericTracker, this);
 }

@@ -706,7 +706,7 @@ pub fn session_settings_default() -> SettingsDefault {
             update_channel: UpdateChannelDefault {
                 variant: UpdateChannelDefaultVariant::Stable,
             },
-            log_to_disk: cfg!(debug_assertions),
+            log_to_disk: true,
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info

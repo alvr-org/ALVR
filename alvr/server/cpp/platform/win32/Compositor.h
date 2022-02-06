@@ -13,8 +13,9 @@
 class Compositor {
   public:
     Compositor(std::shared_ptr<CD3DRender> m_pD3DRender,
-               std::shared_ptr<CEncoder> m_pEncoder,
                std::shared_ptr<PoseHistory> m_poseHistory);
+
+    void SetEncoder(std::shared_ptr<CEncoder> m_pEncoder);
 
     uint64_t CreateTexture(
         uint32_t width, uint32_t height, uint32_t format, uint32_t sampleCount, void *texture);

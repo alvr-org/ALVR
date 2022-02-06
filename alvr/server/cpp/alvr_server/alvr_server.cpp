@@ -213,7 +213,7 @@ void InitializeStreaming() {
 
 		g_encoder->OnStreamStart();
 
-		g_compositor = std::make_shared<Compositor>(g_d3dRenderer, g_encoder, g_poseHistory);
+		g_compositor->SetEncoder(g_encoder);
 #elif __APPLE__
 		g_encoder = std::make_shared<CEncoder>();
 #else
@@ -287,6 +287,7 @@ void CppInit() {
 	{
 		Error("Could not create graphics device for adapter %d.\n", Settings::Instance().m_nAdapterIndex);
 	}
+	g_compositor = std::make_shared<Compositor>(g_d3dRenderer, g_poseHistory);
 #endif
 }
 

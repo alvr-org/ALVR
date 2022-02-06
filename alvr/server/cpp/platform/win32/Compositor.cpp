@@ -7,9 +7,10 @@ uint64_t getNextId() {
 }
 
 Compositor::Compositor(std::shared_ptr<CD3DRender> pD3DRender,
-                       std::shared_ptr<CEncoder> pEncoder,
                        std::shared_ptr<PoseHistory> poseHistory)
-    : m_pD3DRender(pD3DRender), m_pEncoder(pEncoder), m_poseHistory(poseHistory) {}
+    : m_pD3DRender(pD3DRender), m_poseHistory(poseHistory) {}
+
+void Compositor::SetEncoder(std::shared_ptr<CEncoder> pEncoder) { this->m_pEncoder = pEncoder; }
 
 uint64_t Compositor::CreateTexture(
     uint32_t width, uint32_t height, uint32_t format, uint32_t sampleCount, void *texture) {
@@ -39,7 +40,7 @@ uint64_t Compositor::CreateTexture(
     IDXGIResource *pResource;
     hr = d3dTexture->QueryInterface(__uuidof(IDXGIResource), (void **)&pResource);
 
-    hr = pResource->GetSharedHandle(&texture);
+    hr = pResource->GetSharedHandle((HANDLE *)texture);
 
     auto id = getNextId();
 
@@ -53,6 +54,7 @@ uint64_t Compositor::CreateTexture(
 void Compositor::DestroyTexture(uint64_t id) { this->m_textures.erase(id); }
 
 void Compositor::PresentLayers(void *syncTexture, const Layer *layers, uint64_t layerCount) {
+    Warn("Present");
     auto orientation = layers[0].views[0].orientation;
 
     vr::HmdMatrix34_t pPose;
@@ -118,32 +120,34 @@ void Compositor::PresentLayers(void *syncTexture, const Layer *layers, uint64_t 
     // This can go away, but is useful to see it as a separate packet on the gpu in traces.
     m_pD3DRender->GetContext()->Flush();
 
-    Debug("Waiting for finish of previous encode.\n");
+    if (m_pEncoder) {
+        Debug("Waiting for finish of previous encode.\n");
 
-    // Wait for the encoder to be ready.  This is important because the encoder thread
-    // blocks on transmit which uses our shared d3d context (which is not thread safe).
-    m_pEncoder->WaitForEncode();
+        // Wait for the encoder to be ready.  This is important because the encoder thread
+        // blocks on transmit which uses our shared d3d context (which is not thread safe).
+        m_pEncoder->WaitForEncode();
 
-    std::string debugText;
+        std::string debugText;
 
-    uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
-    Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n",
-          m_submitFrameIndex,
-          Settings::Instance().m_trackingFrameOffset,
-          submitFrameIndex);
+        uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
+        Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n",
+              m_submitFrameIndex,
+              Settings::Instance().m_trackingFrameOffset,
+              submitFrameIndex);
 
-    // Copy entire texture to staging so we can read the pixels to send to remote device.
-    m_pEncoder->CopyToStaging(pTexture,
-                              bounds,
-                              layerCount,
-                              false,
-                              presentationTime,
-                              submitFrameIndex,
-                              m_submitClientTime,
-                              "",
-                              debugText);
+        // Copy entire texture to staging so we can read the pixels to send to remote device.
+        m_pEncoder->CopyToStaging(pTexture,
+                                  bounds,
+                                  layerCount,
+                                  false,
+                                  presentationTime,
+                                  submitFrameIndex,
+                                  m_submitClientTime,
+                                  "",
+                                  debugText);
 
-    m_pD3DRender->GetContext()->Flush();
+        m_pD3DRender->GetContext()->Flush();
+    }
 
     if (pKeyedMutex) {
         pKeyedMutex->ReleaseSync(0);
@@ -151,5 +155,7 @@ void Compositor::PresentLayers(void *syncTexture, const Layer *layers, uint64_t 
     }
     Debug("[VDispDvr] Mutex Released.\n");
 
-    m_pEncoder->NewFrameReady();
+    if (m_pEncoder) {
+        m_pEncoder->NewFrameReady();
+    }
 }

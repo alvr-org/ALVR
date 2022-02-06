@@ -14,14 +14,11 @@ class TrackedDevice : public vr::ITrackedDeviceServerDriver {
     vr::PropertyContainerHandle_t prop_container = vr::k_ulInvalidPropertyContainer;
     vr::DriverPose_t pose;
 
-    virtual vr::EVRInitError Activate(uint32_t id) override {
-        this->object_id = id;
-        this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(id);
-
-        return vr::VRInitError_None;
-    }
     virtual void *GetComponent(const char *component_name_and_version) override { return nullptr; }
-    virtual void Deactivate() override {}
+    virtual void Deactivate() override {
+        this->object_id = vr::k_unTrackedDeviceIndexInvalid;
+        this->prop_container = vr::k_ulInvalidPropertyContainer;
+    }
     virtual void EnterStandby() override {}
     virtual void DebugRequest(const char *request,
                               char *response_buffer,

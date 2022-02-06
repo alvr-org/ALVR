@@ -15,7 +15,8 @@ Controller::Controller(uint64_t device_path, uint64_t profile_path) : TrackedDev
 }
 
 vr::EVRInitError Controller::Activate(uint32_t id) {
-    TrackedDevice::Activate(id);
+    this->object_id = id;
+    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(id);
 
     vr::VRProperties()->SetInt32Property(
         this->prop_container, vr::Prop_ControllerRoleHint_Int32, this->role);

@@ -54,33 +54,34 @@ uint64_t Compositor::CreateTexture(
 void Compositor::DestroyTexture(uint64_t id) { this->m_textures.erase(id); }
 
 void Compositor::PresentLayers(void *syncTexture, const Layer *layers, uint64_t layerCount) {
-    Warn("Present");
-    auto orientation = layers[0].views[0].orientation;
+    if (layerCount > 0) {
+        auto orientation = layers[0].views[0].orientation;
 
-    vr::HmdMatrix34_t pPose;
-    HmdMatrix_QuatToMat(orientation.w, orientation.x, orientation.y, orientation.z, &pPose);
+        vr::HmdMatrix34_t pPose;
+        HmdMatrix_QuatToMat(orientation.w, orientation.x, orientation.y, orientation.z, &pPose);
 
-    auto pose = m_poseHistory->GetBestPoseMatch(pPose);
-    if (pose) {
-        // found the frameIndex
-        m_prevSubmitFrameIndex = m_submitFrameIndex;
-        m_prevSubmitClientTime = m_submitClientTime;
-        m_submitFrameIndex = pose->info.FrameIndex;
-        m_submitClientTime = pose->info.clientTime;
+        auto pose = m_poseHistory->GetBestPoseMatch(pPose);
+        if (pose) {
+            // found the frameIndex
+            m_prevSubmitFrameIndex = m_submitFrameIndex;
+            m_prevSubmitClientTime = m_submitClientTime;
+            m_submitFrameIndex = pose->info.FrameIndex;
+            m_submitClientTime = pose->info.clientTime;
 
-        m_prevFramePoseRotation = m_framePoseRotation;
-        m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
-        m_framePoseRotation.y = pose->info.HeadPose_Pose_Orientation.y;
-        m_framePoseRotation.z = pose->info.HeadPose_Pose_Orientation.z;
-        m_framePoseRotation.w = pose->info.HeadPose_Pose_Orientation.w;
+            m_prevFramePoseRotation = m_framePoseRotation;
+            m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
+            m_framePoseRotation.y = pose->info.HeadPose_Pose_Orientation.y;
+            m_framePoseRotation.z = pose->info.HeadPose_Pose_Orientation.z;
+            m_framePoseRotation.w = pose->info.HeadPose_Pose_Orientation.w;
 
-        Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n",
-              m_prevSubmitFrameIndex,
-              m_submitFrameIndex);
-    } else {
-        m_submitFrameIndex = 0;
-        m_submitClientTime = 0;
-        m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
+            Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n",
+                  m_prevSubmitFrameIndex,
+                  m_submitFrameIndex);
+        } else {
+            m_submitFrameIndex = 0;
+            m_submitClientTime = 0;
+            m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
+        }
     }
 
     IDXGIKeyedMutex *pKeyedMutex = NULL;

@@ -776,17 +776,18 @@ pub unsafe extern "C" fn alvr_destroy_texture(id: u64) {
 pub extern "C" fn alvr_wait_for_vsync(timeout_ms: u64) {
     // naive implementation. todo: phase sync
 
+    let last_vsync_ref = &mut *LAST_VSYNC.lock();
+
     let frame_time = *FRAME_TIME.lock();
-    let last_vsync = *LAST_VSYNC.lock();
 
     let now = Instant::now();
 
     thread::sleep(Duration::min(
-        last_vsync + frame_time - now,
+        (*last_vsync_ref + frame_time).saturating_duration_since(now),
         Duration::from_millis(timeout_ms),
     ));
 
-    *LAST_VSYNC.lock() = last_vsync + frame_time;
+    *last_vsync_ref += frame_time;
 }
 
 /// syncTexture should be ignored on linux

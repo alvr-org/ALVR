@@ -241,19 +241,17 @@ void Hmd::SubmitLayer(const SubmitLayerPerEye_t (&eye)[2]) {
 }
 
 void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
-    // todo: acquire lock on sync_texture
 
     // This call will block until the server finished rendering
-    // alvr_present_layers(
-    //     (void *)sync_texture, &this->current_layers[0], (uint64_t)this->current_layers.size(),
-    //     0);
+    alvr_present_layers(
+        (void *)sync_texture, &this->current_layers[0], (uint64_t)this->current_layers.size(), 0);
 
     this->current_layers.clear();
 }
 
 void Hmd::PostPresent() {
-    // alvr_wait_for_vsync(100); // timeout ms
-    // vr::VRServerDriverHost()->VsyncEvent(0.0);
+    alvr_wait_for_vsync(100); // timeout ms
+    vr::VRServerDriverHost()->VsyncEvent(0.0);
 }
 
 void Hmd::GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) {

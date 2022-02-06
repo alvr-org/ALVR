@@ -6,6 +6,7 @@ extern "C" {
 #include "controller.h"
 #include "generic_tracker.h"
 #include "hmd.h"
+#include "paths.h"
 #include "tracked_devices.h"
 #include <map>
 #include <optional>
@@ -23,6 +24,13 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
 
     std::optional<std::thread> event_thread;
     bool running = false;
+
+    DriverProvider() {
+        // Make sure paths are initialized before instantiating hmd
+        init_paths();
+
+        this->hmd = Hmd();
+    }
 
     void event_loop() {
         // set_chaperone({1.0, 1.0});
@@ -188,8 +196,6 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     virtual void EnterStandby() override {}
 
     virtual void LeaveStandby() override {}
-
-    DriverProvider() {}
 } g_driver_provider;
 
 void *entry_point(const char *interface_name, int *return_code) {

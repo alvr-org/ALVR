@@ -7,8 +7,6 @@ extern "C" {
 #include "tracked_devices.h"
 #include <map>
 
-const uint64_t HEAD_PATH = alvr_path_string_to_hash("/user/head");
-
 struct SwapchainData {
     uint32_t pid;
     vr::SharedTextureHandle_t texture_handles[3];

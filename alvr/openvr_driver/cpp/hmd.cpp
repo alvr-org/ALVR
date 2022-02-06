@@ -1,4 +1,5 @@
 #include "hmd.h"
+#include "paths.h"
 #include <cmath>
 #include <sstream>
 
@@ -34,86 +35,7 @@ vr::EVRInitError Hmd::Activate(uint32_t id) {
     this->object_id = id;
     this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(id);
 
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_TrackingSystemName_String, "oculus");
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_ModelNumber_String, "Miramar");
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_ManufacturerName_String, "Oculus");
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_RenderModelName_String, "generic_hmd");
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_RegisteredDeviceType_String, "oculus/1WMGH000XX0000");
-    vr::VRProperties()->SetStringProperty(
-        this->prop_container, vr::Prop_DriverVersion_String, "1.55.0");
-    vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_UserIpdMeters_Float, 0.063);
-    vr::VRProperties()->SetFloatProperty(
-        this->prop_container, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-    vr::VRProperties()->SetFloatProperty(
-        this->prop_container, vr::Prop_DisplayFrequency_Float, 60.0);
-    vr::VRProperties()->SetFloatProperty(
-        this->prop_container, vr::Prop_SecondsFromVsyncToPhotons_Float, 0.);
-    // vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
-    // vr::Prop_SecondsFromVsyncToPhotons_Float,
-    // Settings::Instance().m_flSecondsFromVsyncToPhotons);
-
-    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(
-        this->prop_container, vr::Prop_CurrentUniverseId_Uint64, 2);
-
-#ifdef _WIN32
-    // avoid "not fullscreen" warnings from vrmonitor
-    vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_IsOnDesktop_Bool, false);
-
-    // Manually send VSync events on direct mode.
-    // ref:https://github.com/ValveSoftware/virtual_display/issues/1
-    vr::VRProperties()->SetBoolProperty(
-        this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
-#endif
-
-    // Set battery as true
-    vr::VRProperties()->SetBoolProperty(
-        this->prop_container, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
-
-    // vr::VRProperties()->SetBoolProperty(
-    //     this->prop_container, vr::Prop_ContainsProximitySensor_Bool, true);
-    // vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity",
-    // &m_proximity);
-
-#ifdef _WIN32
-    float originalIPD =
-        vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
-    vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, 0.63);
-#endif
-
-    // set the icons in steamvr to the default icons used for Oculus Link
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceOff_String,
-                                          "{oculus}/icons/quest_headset_off.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceSearching_String,
-                                          "{oculus}/icons/quest_headset_searching.gif");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceSearchingAlert_String,
-                                          "{oculus}/icons/quest_headset_alert_searching.gif");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceReady_String,
-                                          "{oculus}/icons/quest_headset_ready.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceReadyAlert_String,
-                                          "{oculus}/icons/quest_headset_ready_alert.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceStandby_String,
-                                          "{oculus}/icons/quest_headset_standby.png");
-
-    // TrackedDevice::set_static_props();
-
-    vr::VREvent_Data_t eventData;
-    eventData.ipd = {0.063};
-    vr::VRServerDriverHost()->VendorSpecificEvent(id, vr::VREvent_IpdChanged, eventData, 0);
-
-    // HMD device is always added before it connects, so disconnect it
-    // vr::VRServerDriverHost()->VendorSpecificEvent(id, vr::VREvent_WirelessDisconnect, {}, 0);
+    TrackedDevice::set_static_props();
 
     return vr::VRInitError_None;
 };

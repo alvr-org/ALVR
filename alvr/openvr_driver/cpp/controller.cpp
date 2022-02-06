@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "paths.h"
 
 Controller::Controller(uint64_t device_path, uint64_t profile_path) : TrackedDevice(device_path) {
     if (device_path == LEFT_HAND_PATH) {

@@ -73,6 +73,7 @@ inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char
         .flag_if_supported("/std:c++17")
         .flag_if_supported("-Wno-unused-parameter")
         .files([
+            "cpp/paths.cpp",
             "cpp/hmd.cpp",
             "cpp/controller.cpp",
             "cpp/generic_tracker.cpp",

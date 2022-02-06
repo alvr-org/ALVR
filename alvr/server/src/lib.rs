@@ -19,6 +19,7 @@ use alvr_common::{
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
 use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
+use capi::{AlvrEvent, AlvrEventData, AlvrEventType, DRIVER_EVENT_SENDER};
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -98,6 +99,15 @@ pub fn notify_shutdown_driver() {
         shutdown_runtime();
 
         unsafe { ShutdownSteamvr() };
+
+        if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+            sender
+                .send(AlvrEvent {
+                    ty: AlvrEventType::ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED,
+                    data: AlvrEventData { none: () },
+                })
+                .ok();
+        }
     });
 }
 

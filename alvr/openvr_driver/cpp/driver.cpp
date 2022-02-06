@@ -107,6 +107,8 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
             } else if (event.ty == ALVR_EVENT_TYPE_BOUNDS_UPDATED) {
                 set_chaperone(event.data.bounds_rect);
             } else if (event.ty == ALVR_EVENT_TYPE_RESTART_REQUESTED) {
+                // Note: Currently unused. The launcher is in charge of restarting SteamVR to set
+                // the correct driver path
                 vr::VRServerDriverHost()->RequestRestart(
                     "ALVR requested SteamVR restart", "", "", "");
             } else if (event.ty == ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED) {
@@ -138,7 +140,7 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                 hmd_serial_number, vr::TrackedDeviceClass_HMD, &this->hmd);
 
             this->running = true;
-            // this->event_thread = std::thread(&DriverProvider::event_loop, this);
+            this->event_thread = std::thread(&DriverProvider::event_loop, this);
 
             return vr::VRInitError_None;
         } else {
@@ -147,8 +149,6 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
     }
 
     virtual void Cleanup() override {
-        alvr_popup_error("cleanup");
-
         running = false;
         if (event_thread) {
             event_thread->join();

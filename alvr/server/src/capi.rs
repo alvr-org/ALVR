@@ -489,12 +489,6 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 "Prop_DriverVersion_String".into(),
                 OpenvrPropValue::String(session_settings.headset.driver_version),
             ),
-            // Prop_UserIpdMeters_Float
-            // Prop_UserHeadToEyeDepthMeters_Float
-            (
-                "Prop_DisplayFrequency_Float".into(),
-                OpenvrPropValue::Float(72.0),
-            ),
             (
                 "Prop_SecondsFromVsyncToPhotons_Float".into(),
                 OpenvrPropValue::Float(0.0),
@@ -508,7 +502,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
             #[cfg(windows)]
             (
                 "Prop_DriverDirectModeSendsVsyncEvents_Bool".into(),
-                OpenvrPropValue::Bool(true),
+                OpenvrPropValue::Bool(false),
             ),
             (
                 "Prop_DeviceProvidesBatteryStatus_Bool".into(),

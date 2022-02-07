@@ -173,7 +173,7 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
 
 void Hmd::PostPresent() {
     alvr_wait_for_vsync(100); // timeout ms
-    vr::VRServerDriverHost()->VsyncEvent(0.0);
+    // vr::VRServerDriverHost()->VsyncEvent(0.0);
 }
 
 void Hmd::GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) {

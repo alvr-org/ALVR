@@ -838,34 +838,45 @@ async fn connection_pipeline() -> StrResult {
     let input_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<Input>(INPUT).await?;
         async move {
+            let mut old_ipd = 0_f32;
+            let mut old_fov = Fov::default();
             loop {
                 let input = receiver.recv().await?.header;
 
                 if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
-                    sender
-                        .send(AlvrEvent {
-                            ty: AlvrEventType::ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED,
-                            data: AlvrEventData {
-                                views_config: AlvrViewsConfig {
-                                    ipd_m: input.views_config.ipd_m,
-                                    fov: [
-                                        AlvrFov {
-                                            left: -input.views_config.fov[0].left / 180.0 * PI,
-                                            right: input.views_config.fov[0].right / 180.0 * PI,
-                                            top: input.views_config.fov[0].top / 180.0 * PI,
-                                            bottom: -input.views_config.fov[0].bottom / 180.0 * PI,
-                                        },
-                                        AlvrFov {
-                                            left: -input.views_config.fov[1].left / 180.0 * PI,
-                                            right: input.views_config.fov[1].right / 180.0 * PI,
-                                            top: input.views_config.fov[1].top / 180.0 * PI,
-                                            bottom: -input.views_config.fov[1].bottom / 180.0 * PI,
-                                        },
-                                    ],
+                    if f32::abs(input.views_config.ipd_m - old_ipd) > f32::EPSILON
+                        || input.views_config.fov[0] != old_fov
+                    {
+                        sender
+                            .send(AlvrEvent {
+                                ty: AlvrEventType::ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED,
+                                data: AlvrEventData {
+                                    views_config: AlvrViewsConfig {
+                                        ipd_m: input.views_config.ipd_m,
+                                        fov: [
+                                            AlvrFov {
+                                                left: -input.views_config.fov[0].left / 180.0 * PI,
+                                                right: input.views_config.fov[0].right / 180.0 * PI,
+                                                top: input.views_config.fov[0].top / 180.0 * PI,
+                                                bottom: -input.views_config.fov[0].bottom / 180.0
+                                                    * PI,
+                                            },
+                                            AlvrFov {
+                                                left: -input.views_config.fov[1].left / 180.0 * PI,
+                                                right: input.views_config.fov[1].right / 180.0 * PI,
+                                                top: input.views_config.fov[1].top / 180.0 * PI,
+                                                bottom: -input.views_config.fov[1].bottom / 180.0
+                                                    * PI,
+                                            },
+                                        ],
+                                    },
                                 },
-                            },
-                        })
-                        .ok();
+                            })
+                            .ok();
+
+                        old_ipd = input.views_config.ipd_m;
+                        old_fov = input.views_config.fov[0];
+                    }
 
                     for (id, motion) in &input.device_motions {
                         if *id == *HEAD_ID {

@@ -26,7 +26,7 @@ lazy_static! {
     pub static ref DRIVER_EVENT_SENDER: Arc<Mutex<Option<mpsc::Sender<AlvrEvent>>>> =
         Arc::new(Mutex::new(None));
     static ref FRAME_TIME: Arc<Mutex<Duration>> =
-        Arc::new(Mutex::new(Duration::from_secs_f32(1.0 / 60.0)));
+        Arc::new(Mutex::new(Duration::from_secs_f32(1.0 / 72.0)));
     static ref LAST_VSYNC: Arc<Mutex<Instant>> = Arc::new(Mutex::new(Instant::now()));
 }
 
@@ -270,9 +270,12 @@ pub struct AlvrGraphicsContext {
 
 /// Initialize ALVR runtime and create the graphics context
 /// For OpenVR/Windows use vk_get_device_proc_addr == null
-/// Returns true is success
+/// Returns true if success
 #[no_mangle]
-pub unsafe extern "C" fn alvr_initialize(graphics_handles: AlvrGraphicsContext) -> bool {
+pub unsafe extern "C" fn alvr_initialize(
+    graphics_handles: AlvrGraphicsContext,
+    rendering_statistics_callback: Option<unsafe extern "C" fn(*mut f32, *mut f32, *mut f32)>, // render_ms, idle_ms, wait_ms
+) -> bool {
     // graphics_handles is ignored for now. todo: create GraphicsContext
 
     unsafe extern "C" fn log_error(string_ptr: *const c_char) {
@@ -368,6 +371,7 @@ pub unsafe extern "C" fn alvr_initialize(graphics_handles: AlvrGraphicsContext) 
     crate::HapticsSend = Some(haptics_send);
     crate::TimeSyncSend = Some(time_sync_send);
     crate::ShutdownRuntime = Some(_shutdown_runtime);
+    crate::RenderingStatistics = rendering_statistics_callback;
 
     crate::init();
 
@@ -487,7 +491,10 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
             ),
             // Prop_UserIpdMeters_Float
             // Prop_UserHeadToEyeDepthMeters_Float
-            // Prop_DisplayFrequency_Float
+            (
+                "Prop_DisplayFrequency_Float".into(),
+                OpenvrPropValue::Float(72.0),
+            ),
             (
                 "Prop_SecondsFromVsyncToPhotons_Float".into(),
                 OpenvrPropValue::Float(0.0),

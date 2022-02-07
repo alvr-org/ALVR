@@ -183,7 +183,6 @@ void Hmd::GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) {
 }
 
 void Hmd::update_video_config(AlvrVideoConfig config) {
-    alvr_popup_error("update_video_config");
     this->video_config = config;
 
     vr::VRServerDriverHost()->SetRecommendedRenderTargetSize(
@@ -191,7 +190,6 @@ void Hmd::update_video_config(AlvrVideoConfig config) {
 }
 
 void Hmd::update_views_config(AlvrViewsConfig config) {
-    alvr_popup_error("update_views_config");
     this->views_config = config;
 
     auto left_transform = MATRIX_IDENTITY;

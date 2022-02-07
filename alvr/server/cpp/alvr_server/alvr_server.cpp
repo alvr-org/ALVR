@@ -164,6 +164,7 @@ void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(HapticsFeedback packet);
 void (*TimeSyncSend)(TimeSync packet);
 void (*ShutdownRuntime)();
+void (*RenderingStatistics)(float *render_ms, float *idle_ms, float *wait_ms) = nullptr;
 
 void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode)
 {

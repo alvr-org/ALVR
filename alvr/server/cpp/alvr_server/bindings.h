@@ -181,6 +181,7 @@ extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 extern "C" void (*HapticsSend)(HapticsFeedback packet);
 extern "C" void (*TimeSyncSend)(TimeSync packet);
 extern "C" void (*ShutdownRuntime)();
+extern "C" void (*RenderingStatistics)(float *render_ms, float *idle_ms, float *wait_ms);
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

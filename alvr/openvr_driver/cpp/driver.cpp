@@ -14,6 +14,19 @@ extern "C" {
 #include <thread>
 #include <vector>
 
+void rendering_statistics(float *render_ms, float *idle_ms, float *wait_ms) {
+    vr::Compositor_FrameTiming timing[2];
+    timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
+    vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
+
+    *render_ms = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs +
+                 timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs +
+                 timing[0].m_flCompositorRenderCpuMs;
+    *idle_ms = timing[0].m_flCompositorIdleCpuMs;
+    *wait_ms = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs +
+               timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
+}
+
 class DriverProvider : vr::IServerTrackedDeviceProvider {
   public:
     Hmd hmd;
@@ -64,6 +77,7 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                         device_it->second->object_id, vr::VREvent_WirelessReconnect, {}, 0);
                 }
             } else if (event.ty == ALVR_EVENT_TYPE_DEVICE_DISCONNECTED) {
+                alvr_popup_error("device disconnected event");
                 auto device_it = this->tracked_devices.find(event.data.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     vr::VRServerDriverHost()->VendorSpecificEvent(
@@ -71,6 +85,7 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
                     device_it->second->clear_pose();
                 }
             } else if (event.ty == ALVR_EVENT_TYPE_OPENVR_PROPERTY_CHANGED) {
+                alvr_popup_error("prop changed event");
                 auto device_it = this->tracked_devices.find(event.data.openvr_prop.top_level_path);
                 if (device_it != this->tracked_devices.end()) {
                     device_it->second->set_prop(event.data.openvr_prop.prop);
@@ -128,7 +143,7 @@ class DriverProvider : vr::IServerTrackedDeviceProvider {
         // todo: initialize from vulkan layer
 #endif
 
-        if (alvr_initialize(graphics_context)) {
+        if (alvr_initialize(graphics_context, rendering_statistics)) {
             this->tracked_devices.insert({HEAD_PATH, &this->hmd});
 
             char hmd_serial_number[64];

@@ -200,23 +200,32 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 	if (timeSync->mode == 0) {
 		//timings might be a little incorrect since it is a mix from a previous sent frame and latest frame
 
-		vr::Compositor_FrameTiming timing[2];
-		timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
-		vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
+		float renderTime;
+		float idleTime;
+		float waitTime;
+		if (RenderingStatistics != nullptr) {
+			RenderingStatistics(&renderTime, &idleTime, &waitTime);
+		} else {
+			vr::Compositor_FrameTiming timing[2];
+			timing[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
+			vr::VRServerDriverHost()->GetFrameTimings(&timing[0], 2);
+
+			renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
+			idleTime = timing[0].m_flCompositorIdleCpuMs;
+			waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
+		}
+		
 
 		m_reportedStatistics = *timeSync;
 		TimeSync sendBuf = *timeSync;
 		sendBuf.mode = 1;
 		sendBuf.serverTime = Current;
-		sendBuf.serverTotalLatency = (int)(m_reportedStatistics.averageSendLatency + (timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs + timing[0].m_flCompositorIdleCpuMs + timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency + m_reportedStatistics.idleTime);
+		sendBuf.serverTotalLatency = (int)(m_reportedStatistics.averageSendLatency + (renderTime + idleTime + waitTime) * 1000 + m_Statistics->GetEncodeLatencyAverage() + m_reportedStatistics.averageTransportLatency + m_reportedStatistics.averageDecodeLatency + m_reportedStatistics.idleTime);
 		TimeSyncSend(sendBuf);
 
 		m_Statistics->NetworkTotal(sendBuf.serverTotalLatency);
 		m_Statistics->NetworkSend(m_reportedStatistics.averageTransportLatency);
 
-		float renderTime = timing[0].m_flPreSubmitGpuMs + timing[0].m_flPostSubmitGpuMs + timing[0].m_flTotalRenderGpuMs + timing[0].m_flCompositorRenderGpuMs + timing[0].m_flCompositorRenderCpuMs;
-		float idleTime = timing[0].m_flCompositorIdleCpuMs;
-		float waitTime = timing[0].m_flClientFrameIntervalMs + timing[0].m_flPresentCallCpuMs + timing[0].m_flWaitForPresentCpuMs + timing[0].m_flSubmitFrameMs;
 
 		if (timeSync->fecFailure) {
 			OnFecFailure();

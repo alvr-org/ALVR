@@ -276,8 +276,11 @@ build_ubuntu_server() {
         'usr/libexec/alvr/'
     )
 
+    # Add package config (required for Ubuntu)
+    export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${repoDir}/packaging/deb/cuda.pc"
+
     cd "${repoDir}" > /dev/null || return 4
-    # There's no vulkan-enabled ffmpeg afaik
+    # There's no vulkan-enabled ffmpeg in the ubuntu repos afaik
     log info 'Building ALVR server ...'
     if cargo xtask build-server --release --bundle-ffmpeg; then
         cd - > /dev/null || return 4

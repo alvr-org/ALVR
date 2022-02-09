@@ -5,12 +5,8 @@
 # 1 - Invalid command
 # 2 - Invalid action
 # 3 - Failed to copy UFW configuration
-# 99 - Feature not implemented
+# 99 - Firewall not found
 # 126 - pkexec failed - Request dismissed
-
-iptables_cfg() {
-    exit 99
-}
 
 firewalld_cfg() {
     # Iterate around each active zone
@@ -68,9 +64,8 @@ main() {
         # Check if ufw exists and is running
         elif which ufw >/dev/null 2>&1 && ! ufw status | grep 'Status: inactive' >/dev/null 2>&1; then
             ufw_cfg "${1,,}"
-        # Check if iptables exists
-        elif which iptables >/dev/null 2>&1; then
-            iptables_cfg "${1,,}"
+        else
+            exit 99
         fi
     else
         pkexec $(realpath "${0}") "${@}"

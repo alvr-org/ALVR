@@ -51,7 +51,7 @@ async fn text_websocket(
                         match log_receiver.recv().await {
                             Ok(line) => {
                                 if let Err(e) = ws.send(protocol::Message::text(line)).await {
-                                    info!("Failed to send log with websocket: {e}" );
+                                    info!("Failed to send log with websocket: {e}");
                                     break;
                                 }
                             }

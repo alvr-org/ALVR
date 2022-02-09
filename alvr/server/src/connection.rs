@@ -977,7 +977,7 @@ async fn connection_pipeline() -> StrResult {
                     .await;
                 if let Err(e) = res {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
-                    info!("Client disconnected. Cause: {e}" );
+                    info!("Client disconnected. Cause: {e}");
                     break Ok(());
                 }
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -1024,7 +1024,7 @@ async fn connection_pipeline() -> StrResult {
                 Ok(_) => (),
                 Err(e) => {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
-                    info!("Client disconnected. Cause: {e}" );
+                    info!("Client disconnected. Cause: {e}");
                     break;
                 }
             }

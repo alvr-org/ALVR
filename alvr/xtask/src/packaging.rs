@@ -180,13 +180,12 @@ pub fn publish_libalvr_streamer() {
     command::run_in(
         &afs::workspace_dir(),
         &format!(
-            "cbindgen --crate alvr_server --output {} --lang c",
+            "cbindgen --config {} --crate alvr_server --output {}",
+            afs::workspace_dir()
+                .join("alvr/server/cbindgen.toml")
+                .to_string_lossy(),
             header_path.to_string_lossy()
         ),
     )
     .unwrap();
-
-    // add missing pragma
-    let header_content = fs::read_to_string(&header_path).unwrap();
-    fs::write(header_path, format!("#pragma once\n\n{}", header_content)).unwrap();
 }

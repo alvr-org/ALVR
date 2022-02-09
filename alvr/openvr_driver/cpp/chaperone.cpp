@@ -9,21 +9,21 @@
 
 using namespace std;
 
-void set_chaperone(AlvrVec2 bounds_rect) {
+void set_chaperone(float bounds_rect[2]) {
 #ifndef __APPLE__
     const vr::HmdMatrix34_t MATRIX_IDENTITY = {
         {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
     const uint32_t perimeterPointsCount = 4;
 
     static float perimeterPoints[perimeterPointsCount][2];
-    perimeterPoints[0][0] = -bounds_rect.x / 2.0f;
-    perimeterPoints[0][1] = -bounds_rect.y / 2.0f;
-    perimeterPoints[1][0] = -bounds_rect.x / 2.0f;
-    perimeterPoints[1][1] = bounds_rect.y / 2.0f;
-    perimeterPoints[2][0] = bounds_rect.x / 2.0f;
-    perimeterPoints[2][1] = bounds_rect.y / 2.0f;
-    perimeterPoints[3][0] = bounds_rect.x / 2.0f;
-    perimeterPoints[3][1] = -bounds_rect.y / 2.0f;
+    perimeterPoints[0][0] = -bounds_rect[0] / 2.0f;
+    perimeterPoints[0][1] = -bounds_rect[1] / 2.0f;
+    perimeterPoints[1][0] = -bounds_rect[0] / 2.0f;
+    perimeterPoints[1][1] = bounds_rect[1] / 2.0f;
+    perimeterPoints[2][0] = bounds_rect[0] / 2.0f;
+    perimeterPoints[2][1] = bounds_rect[1] / 2.0f;
+    perimeterPoints[3][0] = bounds_rect[0] / 2.0f;
+    perimeterPoints[3][1] = -bounds_rect[1] / 2.0f;
 
     vr::EVRInitError error;
     vr::VR_Init(&error, vr::VRApplication_Utility);
@@ -42,7 +42,7 @@ void set_chaperone(AlvrVec2 bounds_rect) {
         reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), perimeterPointsCount);
     vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
     vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
-    vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(bounds_rect.x, bounds_rect.y);
+    vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(bounds_rect[0], bounds_rect[1]);
     vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
 
     // Hide SteamVR Chaperone

@@ -64,6 +64,14 @@ void Hmd::GetWindowBounds(int32_t *x, int32_t *y, uint32_t *width, uint32_t *hei
     *height = this->video_config.preferred_view_height;
 }
 
+bool Hmd::IsDisplayRealDisplay() {
+#ifdef _WIN32
+    return false;
+#else
+    return true;
+#endif
+}
+
 void Hmd::GetRecommendedRenderTargetSize(uint32_t *width, uint32_t *height) {
     *width = this->video_config.preferred_view_width;
     *height = this->video_config.preferred_view_height;
@@ -103,9 +111,6 @@ void Hmd::CreateSwapTextureSet(uint32_t pid,
                                           swap_texture_set_desc->nSampleCount,
                                           true,
                                           &handle);
-        // std::stringstream message;
-        // message << "texture handle: " << texture_handle;
-        // alvr_popup_error(message.str().c_str());
 
         auto texture_handle = (vr::SharedTextureHandle_t)handle;
 
@@ -154,10 +159,10 @@ void Hmd::SubmitLayer(const SubmitLayerPerEye_t (&eye)[2]) {
     for (int idx = 0; idx < 2; idx++) {
         layer.views[idx].texture_id = this->texture_ids[eye[idx].hTexture];
         layer.views[idx].fov = this->views_config.fov[idx];
-        layer.views[idx].rect_offset.x = eye[idx].bounds.uMin;
-        layer.views[idx].rect_offset.y = eye[idx].bounds.vMin;
-        layer.views[idx].rect_size.x = eye[idx].bounds.uMax - eye[idx].bounds.uMin;
-        layer.views[idx].rect_size.y = eye[idx].bounds.vMax - eye[idx].bounds.vMin;
+        layer.views[idx].rect_offset[0] = eye[idx].bounds.uMin;
+        layer.views[idx].rect_offset[1] = eye[idx].bounds.vMin;
+        layer.views[idx].rect_size[0] = eye[idx].bounds.uMax - eye[idx].bounds.uMin;
+        layer.views[idx].rect_size[1] = eye[idx].bounds.vMax - eye[idx].bounds.vMin;
     }
     this->current_layers.push_back(layer);
 }
@@ -173,7 +178,6 @@ void Hmd::Present(vr::SharedTextureHandle_t sync_texture) {
 
 void Hmd::PostPresent() {
     alvr_wait_for_vsync(100); // timeout ms
-    // vr::VRServerDriverHost()->VsyncEvent(0.0);
 }
 
 void Hmd::GetFrameTiming(vr::DriverDirectMode_FrameTiming *frame_timing) {

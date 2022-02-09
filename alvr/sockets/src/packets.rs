@@ -4,8 +4,8 @@ use crate::StreamId;
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     semver::Version,
-    Fov, MotionData,
 };
+use alvr_session::Fov;
 use serde::{Deserialize, Serialize};
 
 pub const INPUT: StreamId = 0; // tracking and buttons
@@ -132,6 +132,14 @@ pub enum ButtonValue {
     Scalar(f32),
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct MotionData {
+    pub orientation: Quat,
+    pub position: Vec3,
+    pub linear_velocity: Option<Vec3>,
+    pub angular_velocity: Option<Vec3>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct HandTrackingInput {
     pub target_ray_motion: MotionData,
@@ -175,4 +183,12 @@ pub struct Input {
     pub views_config: ViewsConfig,
     pub button_values: HashMap<u64, ButtonValue>, // unused for now
     pub legacy: LegacyInput,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Haptics {
+    pub path: u64,
+    pub duration: Duration,
+    pub frequency: f32,
+    pub amplitude: f32,
 }

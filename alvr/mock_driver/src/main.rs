@@ -11,7 +11,7 @@ fn main() {
         vk_queue_index: 0,
     };
 
-    if unsafe { !alvr_initialize(graphics_handles) } {
+    if unsafe { !alvr_initialize(graphics_handles, None) } {
         return;
     }
 

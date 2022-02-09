@@ -13,13 +13,11 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{
-    lazy_static, log, prelude::*, Haptics, LEFT_HAND_HAPTIC_ID, RIGHT_HAND_HAPTIC_ID,
-};
+use alvr_common::{lazy_static, log, prelude::*, LEFT_HAND_HAPTIC_ID, RIGHT_HAND_HAPTIC_ID};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
-use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
-use capi::{AlvrEvent, AlvrEventData, AlvrEventType, DRIVER_EVENT_SENDER};
+use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
+use capi::{AlvrEvent, DRIVER_EVENT_SENDER};
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -101,12 +99,7 @@ pub fn notify_shutdown_driver() {
         unsafe { ShutdownSteamvr() };
 
         if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
-            sender
-                .send(AlvrEvent {
-                    ty: AlvrEventType::ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED,
-                    data: AlvrEventData { none: () },
-                })
-                .ok();
+            sender.send(AlvrEvent::Shutdown).ok();
         }
     });
 }

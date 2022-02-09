@@ -1,10 +1,8 @@
 #pragma once
 
-extern "C" {
 #include "alvr_streamer.h"
-}
 #include "openvr_driver.h"
-#include "tracked_devices.h"
+#include "tracked_device.h"
 #include <map>
 
 struct SwapchainData {
@@ -30,13 +28,7 @@ class Hmd : public TrackedDevice, vr::IVRDisplayComponent, vr::IVRDriverDirectMo
     virtual void
     GetWindowBounds(int32_t *x, int32_t *y, uint32_t *width, uint32_t *height) override;
     virtual bool IsDisplayOnDesktop() override { return false; }
-    virtual bool IsDisplayRealDisplay() override {
-#ifdef _WIN32
-        return false;
-#else
-        return true;
-#endif
-    }
+    virtual bool IsDisplayRealDisplay() override;
     virtual void GetRecommendedRenderTargetSize(uint32_t *width, uint32_t *height) override;
     virtual void GetEyeOutputViewport(
         vr::EVREye eye, uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height) override;

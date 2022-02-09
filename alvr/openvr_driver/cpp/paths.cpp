@@ -1,7 +1,5 @@
 #include "paths.h"
-extern "C" {
 #include "alvr_streamer.h"
-}
 
 uint64_t HEAD_PATH;
 uint64_t LEFT_HAND_PATH;

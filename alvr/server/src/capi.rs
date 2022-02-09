@@ -3,11 +3,11 @@
 use crate::{connection, SESSION_MANAGER};
 use alvr_common::{
     glam::{Quat, Vec3},
-    lazy_static, log, Haptics, HEAD_ID, HEAD_PATH, LEFT_HAND_ID, LEFT_HAND_PATH, RIGHT_HAND_ID,
+    lazy_static, log, HEAD_ID, HEAD_PATH, LEFT_HAND_ID, LEFT_HAND_PATH, RIGHT_HAND_ID,
     RIGHT_HAND_PATH,
 };
-use alvr_session::OpenvrPropValue;
-use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
+use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
+use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
     cmp,
@@ -64,21 +64,6 @@ impl Default for AlvrQuat {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct AlvrVec2 {
-    pub x: f32,
-    pub y: f32,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct AlvrVec3 {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-}
-
-#[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrVideoConfig {
     pub preferred_view_width: u32,
@@ -89,39 +74,27 @@ pub struct AlvrVideoConfig {
 #[derive(Clone, Copy)]
 pub struct AlvrBatteryValue {
     pub top_level_path: u64,
-    pub value: f32, // [0, 1]
+    /// [0, 1]
+    pub value: f32,
 }
 
-#[allow(non_camel_case_types)]
+// NB: The only difference with alvr_session::OpenvrPropValue is the raw string
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub enum AlvrOpenvrPropType {
-    ALVR_OPENVR_PROP_TYPE_BOOL,
-    ALVR_OPENVR_PROP_TYPE_FLOAT,
-    ALVR_OPENVR_PROP_TYPE_INT32,
-    ALVR_OPENVR_PROP_TYPE_UINT64,
-    ALVR_OPENVR_PROP_TYPE_VECTOR3,
-    ALVR_OPENVR_PROP_TYPE_DOUBLE,
-    ALVR_OPENVR_PROP_TYPE_STRING,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub union AlvrOpenvrPropValue {
-    pub bool_: bool,
-    pub float_: f32,
-    pub int32: i32,
-    pub uint64: u64,
-    pub vector3: [f32; 3],
-    pub double_: f64,
-    pub string: [c_char; 64],
+pub enum AlvrOpenvrPropValue {
+    Bool(bool),
+    Float(f32),
+    Int32(i32),
+    Uint64(u64),
+    Vector3([f32; 3]),
+    Double(f64),
+    String([c_char; 64]),
 }
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrOpenvrProp {
-    pub name: [c_char; 64],
-    pub ty: AlvrOpenvrPropType,
+    pub key: u32,
     pub value: AlvrOpenvrPropValue,
 }
 
@@ -152,9 +125,9 @@ pub struct AlvrButtonInput {
 #[derive(Clone, Copy)]
 pub struct AlvrMotionData {
     pub orientation: AlvrQuat,
-    pub position: AlvrVec3,
-    pub linear_velocity: AlvrVec3,
-    pub angular_velocity: AlvrVec3,
+    pub position: [f32; 3],
+    pub linear_velocity: [f32; 3],
+    pub angular_velocity: [f32; 3],
     pub has_velocity: bool,
 }
 
@@ -179,8 +152,8 @@ pub struct AlvrViewsConfig {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub enum AlvrHandType {
-    ALVR_HAND_TYPE_LEFT,
-    ALVR_HAND_TYPE_RIGHT,
+    Left,
+    Right,
 }
 
 #[repr(C)]
@@ -205,43 +178,21 @@ pub struct AlvrDeviceProfile {
     pub interaction_profile: u64,
 }
 
-#[allow(non_camel_case_types)]
 #[repr(C)]
-pub enum AlvrEventType {
-    ALVR_EVENT_TYPE_NONE,
-    ALVR_EVENT_TYPE_DEVICE_CONNECTED,
-    ALVR_EVENT_TYPE_DEVICE_DISCONNECTED,
-    ALVR_EVENT_TYPE_OPENVR_PROPERTY_CHANGED,
-    ALVR_EVENT_TYPE_VIDEO_CONFIG_UPDATED, // Updated only once per hmd connection
-    ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED, // Can be updated multiple times but not every frame
-    ALVR_EVENT_TYPE_DEVICE_POSE_UPDATED,
-    ALVR_EVENT_TYPE_BUTTON_UPDATED,
-    ALVR_EVENT_TYPE_HAND_SKELETON_UPDATED,
-    ALVR_EVENT_TYPE_BATTERY_UPDATED,
-    ALVR_EVENT_TYPE_BOUNDS_UPDATED,
-    ALVR_EVENT_TYPE_RESTART_REQUESTED,
-    ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED,
-}
-
-#[repr(C)]
-pub union AlvrEventData {
-    pub none: (),
-    pub device_profile: AlvrDeviceProfile,
-    pub top_level_path: u64,
-    pub openvr_prop: AlvrOpenvrDeviceProp,
-    pub video_config: AlvrVideoConfig,
-    pub views_config: AlvrViewsConfig,
-    pub device_pose: AlvrDevicePose,
-    pub button: AlvrButtonInput,
-    pub hand_skeleton: AlvrHandSkeleton, // this field is way oversized. todo: workaround
-    pub battery: AlvrBatteryValue,
-    pub bounds_rect: AlvrVec2,
-}
-
-#[repr(C)]
-pub struct AlvrEvent {
-    pub ty: AlvrEventType,
-    pub data: AlvrEventData,
+pub enum AlvrEvent {
+    None,
+    DeviceConnected(AlvrDeviceProfile),
+    DeviceDisconnected(u64),
+    OpenvrProperty(AlvrOpenvrDeviceProp),
+    VideoConfig(AlvrVideoConfig),
+    ViewsConfig(AlvrViewsConfig),
+    DevicePose(AlvrDevicePose),
+    Button(AlvrButtonInput),
+    HandSkeleton(AlvrHandSkeleton), // this variant is way oversized. todo: workaround
+    Battery(AlvrBatteryValue),
+    Bounds([f32; 2]),
+    Restart,
+    Shutdown,
 }
 
 #[repr(C)]
@@ -249,8 +200,8 @@ pub struct AlvrLayerView {
     pub texture_id: u64,
     pub orientation: AlvrQuat,
     pub fov: AlvrFov,
-    pub rect_offset: AlvrVec2,
-    pub rect_size: AlvrVec2,
+    pub rect_offset: [f32; 2],
+    pub rect_size: [f32; 2],
 }
 
 #[repr(C)]
@@ -418,10 +369,7 @@ pub extern "C" fn alvr_read_event(timeout_ms: u64) -> AlvrEvent {
         .as_ref()
         .unwrap()
         .recv_timeout(Duration::from_millis(timeout_ms))
-        .unwrap_or(AlvrEvent {
-            ty: AlvrEventType::ALVR_EVENT_TYPE_NONE,
-            data: AlvrEventData { none: () },
-        })
+        .unwrap_or(AlvrEvent::None)
 }
 
 #[no_mangle]
@@ -466,70 +414,70 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
         HEAD_PATH.to_owned(),
         vec![
             (
-                "Prop_TrackingSystemName_String".to_owned(),
+                OpenvrPropertyKey::TrackingSystemName,
                 OpenvrPropValue::String(session_settings.headset.tracking_system_name),
             ),
             (
-                "Prop_ModelNumber_String".into(),
+                OpenvrPropertyKey::ModelNumber,
                 OpenvrPropValue::String(session_settings.headset.model_number),
             ),
             (
-                "Prop_ManufacturerName_String".into(),
+                OpenvrPropertyKey::ManufacturerName,
                 OpenvrPropValue::String(session_settings.headset.manufacturer_name),
             ),
             (
-                "Prop_RenderModelName_String".into(),
+                OpenvrPropertyKey::RenderModelName,
                 OpenvrPropValue::String(session_settings.headset.render_model_name),
             ),
             (
-                "Prop_RegisteredDeviceType_String".into(),
+                OpenvrPropertyKey::RegisteredDeviceType,
                 OpenvrPropValue::String(session_settings.headset.registered_device_type),
             ),
             (
-                "Prop_DriverVersion_String".into(),
+                OpenvrPropertyKey::DriverVersion,
                 OpenvrPropValue::String(session_settings.headset.driver_version),
             ),
             (
-                "Prop_SecondsFromVsyncToPhotons_Float".into(),
+                OpenvrPropertyKey::SecondsFromVsyncToPhotons,
                 OpenvrPropValue::Float(0.0),
             ),
             (
-                "Prop_CurrentUniverseId_Uint64".into(),
+                OpenvrPropertyKey::CurrentUniverseId,
                 OpenvrPropValue::Uint64(session_settings.headset.universe_id),
             ),
             #[cfg(windows)]
-            ("Prop_IsOnDesktop_Bool".into(), OpenvrPropValue::Bool(true)),
+            (OpenvrPropertyKey::IsOnDesktop, OpenvrPropValue::Bool(true)),
             #[cfg(windows)]
             (
-                "Prop_DriverDirectModeSendsVsyncEvents_Bool".into(),
+                OpenvrPropertyKey::DriverDirectModeSendsVsyncEvents,
                 OpenvrPropValue::Bool(false),
             ),
             (
-                "Prop_DeviceProvidesBatteryStatus_Bool".into(),
+                OpenvrPropertyKey::DeviceProvidesBatteryStatus,
                 OpenvrPropValue::Bool(true),
             ),
             (
-                "Prop_NamedIconPathDeviceOff_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceOff,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_off.png".into()),
             ),
             (
-                "Prop_NamedIconPathDeviceSearching_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceSearching,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_searching.gif".into()),
             ),
             (
-                "Prop_NamedIconPathDeviceSearchingAlert_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceSearchingAlert,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_alert_searching.gif".into()),
             ),
             (
-                "Prop_NamedIconPathDeviceReady_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceReady,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_ready.png".into()),
             ),
             (
-                "Prop_NamedIconPathDeviceReadyAlert_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceReadyAlert,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_ready_alert.png".into()),
             ),
             (
-                "Prop_NamedIconPathDeviceStandby_String".into(),
+                OpenvrPropertyKey::NamedIconPathDeviceStandby,
                 OpenvrPropValue::String("{oculus}/icons/quest_headset_standby.png".into()),
             ),
         ],
@@ -538,7 +486,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
         LEFT_HAND_PATH.into(),
         vec![
             (
-                "Prop_TrackingSystemName_String".into(),
+                OpenvrPropertyKey::TrackingSystemName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -549,7 +497,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_ModelNumber_String".into(),
+                OpenvrPropertyKey::ModelNumber,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -560,7 +508,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_ManufacturerName_String".into(),
+                OpenvrPropertyKey::ManufacturerName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -571,7 +519,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_RenderModelName_String".into(),
+                OpenvrPropertyKey::RenderModelName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -581,7 +529,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_RegisteredDeviceType_String".into(),
+                OpenvrPropertyKey::RegisteredDeviceType,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -594,17 +542,17 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
             // Prop_SerialNumber_String
             // Prop_AttachedDeviceId_String
             (
-                "Prop_DeviceProvidesBatteryStatus_Bool".into(),
+                OpenvrPropertyKey::DeviceProvidesBatteryStatus,
                 OpenvrPropValue::Bool(true),
             ),
             (
-                "Prop_ControllerType_String".into(),
+                OpenvrPropertyKey::ControllerType,
                 OpenvrPropValue::String(
                     session_settings.headset.controllers.content.ctrl_type_left,
                 ),
             ),
             (
-                "Prop_ControllerType_String".into(),
+                OpenvrPropertyKey::ControllerType,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -620,7 +568,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
         RIGHT_HAND_PATH.into(),
         vec![
             (
-                "Prop_TrackingSystemName_String".into(),
+                OpenvrPropertyKey::TrackingSystemName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -630,11 +578,11 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_ModelNumber_String".into(),
+                OpenvrPropertyKey::ModelNumber,
                 OpenvrPropValue::String(session_settings.headset.controllers.content.model_number),
             ),
             (
-                "Prop_ManufacturerName_String".into(),
+                OpenvrPropertyKey::ManufacturerName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -644,7 +592,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_RenderModelName_String".into(),
+                OpenvrPropertyKey::RenderModelName,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -654,7 +602,7 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
                 ),
             ),
             (
-                "Prop_RegisteredDeviceType_String".into(),
+                OpenvrPropertyKey::RegisteredDeviceType,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -666,17 +614,17 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
             // Prop_SerialNumber_String
             // Prop_AttachedDeviceId_String
             (
-                "Prop_DeviceProvidesBatteryStatus_Bool".into(),
+                OpenvrPropertyKey::DeviceProvidesBatteryStatus,
                 OpenvrPropValue::Bool(true),
             ),
             (
-                "Prop_ControllerType_String".into(),
+                OpenvrPropertyKey::ControllerType,
                 OpenvrPropValue::String(
                     session_settings.headset.controllers.content.ctrl_type_right,
                 ),
             ),
             (
-                "Prop_ControllerType_String".into(),
+                OpenvrPropertyKey::ControllerType,
                 OpenvrPropValue::String(
                     session_settings
                         .headset
@@ -704,49 +652,8 @@ pub unsafe extern "C" fn alvr_get_static_openvr_properties(
     if !properties.is_null() {
         let properties = slice::from_raw_parts_mut(properties, prop_count);
         for idx in 0..prop_count {
-            let (name, value) = props[idx].clone();
-
-            let c_string = CString::new(name).unwrap();
-            let mut name = [0; 64];
-
-            ptr::copy_nonoverlapping(
-                c_string.as_ptr(),
-                name.as_mut_ptr(),
-                c_string.as_bytes_with_nul().len(),
-            );
-
-            let ty = match &value {
-                OpenvrPropValue::Bool(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_BOOL,
-                OpenvrPropValue::Float(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_FLOAT,
-                OpenvrPropValue::Int32(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_INT32,
-                OpenvrPropValue::Uint64(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_UINT64,
-                OpenvrPropValue::Vector3(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_VECTOR3,
-                OpenvrPropValue::Double(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_DOUBLE,
-                OpenvrPropValue::String(_) => AlvrOpenvrPropType::ALVR_OPENVR_PROP_TYPE_STRING,
-            };
-
-            let value = match value {
-                OpenvrPropValue::Bool(bool_) => AlvrOpenvrPropValue { bool_ },
-                OpenvrPropValue::Float(float_) => AlvrOpenvrPropValue { float_ },
-                OpenvrPropValue::Int32(int32) => AlvrOpenvrPropValue { int32 },
-                OpenvrPropValue::Uint64(uint64) => AlvrOpenvrPropValue { uint64 },
-                OpenvrPropValue::Vector3(vector3) => AlvrOpenvrPropValue { vector3 },
-                OpenvrPropValue::Double(double_) => AlvrOpenvrPropValue { double_ },
-                OpenvrPropValue::String(value) => {
-                    let c_string = CString::new(value).unwrap();
-                    let mut string = [0; 64];
-
-                    ptr::copy_nonoverlapping(
-                        c_string.as_ptr(),
-                        string.as_mut_ptr(),
-                        c_string.as_bytes_with_nul().len(),
-                    );
-
-                    AlvrOpenvrPropValue { string }
-                }
-            };
-
-            properties[idx] = AlvrOpenvrProp { name, ty, value };
+            let (key, value) = props[idx].clone();
+            properties[idx] = to_capi_prop(key, value);
         }
     }
 
@@ -761,7 +668,7 @@ pub unsafe extern "C" fn alvr_create_texture(
     height: u32,
     format: u32,
     sample_count: u32,
-    dxgi_handle: bool,    // create HANDLEs to DXGI resource, ignored on Linux.
+    is_dxgi_handle: bool, // create HANDLE to DXGI resource, ignored on Linux.
     texture: *mut c_void, // array of size images_count
 ) -> u64 {
     crate::CreateTexture(width, height, format, sample_count, texture)
@@ -811,12 +718,12 @@ pub unsafe extern "C" fn alvr_present_layers(
                     z: layer.views[0].orientation.z,
                 },
                 rect_offset: crate::TrackingVector2 {
-                    x: layer.views[0].rect_offset.x,
-                    y: layer.views[0].rect_offset.y,
+                    x: layer.views[0].rect_offset[0],
+                    y: layer.views[0].rect_offset[1],
                 },
                 rect_size: crate::TrackingVector2 {
-                    x: layer.views[0].rect_size.x,
-                    y: layer.views[0].rect_size.y,
+                    x: layer.views[0].rect_size[0],
+                    y: layer.views[0].rect_size[1],
                 },
             };
             let right_view = crate::LayerView {
@@ -828,12 +735,12 @@ pub unsafe extern "C" fn alvr_present_layers(
                     z: layer.views[1].orientation.z,
                 },
                 rect_offset: crate::TrackingVector2 {
-                    x: layer.views[1].rect_offset.x,
-                    y: layer.views[1].rect_offset.y,
+                    x: layer.views[1].rect_offset[0],
+                    y: layer.views[1].rect_offset[1],
                 },
                 rect_size: crate::TrackingVector2 {
-                    x: layer.views[1].rect_size.x,
-                    y: layer.views[1].rect_size.y,
+                    x: layer.views[1].rect_size[0],
+                    y: layer.views[1].rect_size[1],
                 },
             };
 
@@ -907,10 +814,36 @@ pub fn to_capi_quat(quat: Quat) -> AlvrQuat {
     }
 }
 
-pub fn to_capi_vec3(vec: Vec3) -> AlvrVec3 {
-    AlvrVec3 {
-        x: vec.x,
-        y: vec.y,
-        z: vec.z,
+pub fn to_capi_vec3(vec: Vec3) -> [f32; 3] {
+    [vec.x, vec.y, vec.z]
+}
+
+pub fn to_capi_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> AlvrOpenvrProp {
+    let value = match value {
+        OpenvrPropValue::Bool(value) => AlvrOpenvrPropValue::Bool(value),
+        OpenvrPropValue::Float(value) => AlvrOpenvrPropValue::Float(value),
+        OpenvrPropValue::Int32(value) => AlvrOpenvrPropValue::Int32(value),
+        OpenvrPropValue::Uint64(value) => AlvrOpenvrPropValue::Uint64(value),
+        OpenvrPropValue::Vector3(value) => AlvrOpenvrPropValue::Vector3(value),
+        OpenvrPropValue::Double(value) => AlvrOpenvrPropValue::Double(value),
+        OpenvrPropValue::String(value) => {
+            let c_string = CString::new(value).unwrap();
+            let mut raw_string = [0; 64];
+
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    c_string.as_ptr(),
+                    raw_string.as_mut_ptr(),
+                    c_string.as_bytes_with_nul().len(),
+                );
+            }
+
+            AlvrOpenvrPropValue::String(raw_string)
+        }
+    };
+
+    AlvrOpenvrProp {
+        key: key as u32,
+        value,
     }
 }

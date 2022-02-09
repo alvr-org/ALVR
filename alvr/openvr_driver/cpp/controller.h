@@ -1,10 +1,8 @@
 #pragma once
 
-extern "C" {
 #include "alvr_streamer.h"
-}
 #include "openvr_driver.h"
-#include "tracked_devices.h"
+#include "tracked_device.h"
 #include <map>
 
 class Controller : public TrackedDevice {

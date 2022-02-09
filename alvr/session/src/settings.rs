@@ -2,6 +2,24 @@ use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
 
+include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
+
+/// Field of view in radians
+#[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone, Copy)]
+pub struct Fov {
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub left: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub right: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub top: f32,
+
+    #[schema(min = 0., max = 90., step = 0.1, gui = "UpDown")]
+    pub bottom: f32,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum FrameSize {
@@ -242,7 +260,7 @@ pub enum OpenvrPropValue {
     String(String),
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
     // Dropdown:

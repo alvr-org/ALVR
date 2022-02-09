@@ -1,5 +1,4 @@
-use cbindgen::Language;
-use regex::Regex;
+use cbindgen::Config;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -12,58 +11,11 @@ fn main() {
     let alvr_streamer_header_path = alvr_streamer_header_dir.join("alvr_streamer.h");
 
     cbindgen::Builder::new()
+        .with_config(Config::from_file("../server/cbindgen.toml").unwrap())
         .with_crate("../server")
-        .with_language(Language::C)
         .generate()
         .unwrap()
         .write_to_file(&alvr_streamer_header_path);
-
-    fs::write(
-        &alvr_streamer_header_path,
-        format!(
-            "#pragma once\n\n{}",
-            fs::read_to_string(&alvr_streamer_header_path).unwrap()
-        ),
-    )
-    .unwrap();
-
-    let openvr_driver_header_string = fs::read_to_string("cpp/openvr_driver.h").unwrap();
-
-    let property_finder =
-        Regex::new(r"\t(Prop_[A-Za-z\d_]*_(?:Bool|Int32|Uint64|Float|String|Vector3))\W").unwrap();
-
-    let mut mappings_fn_string: String = String::from(
-        r#"#pragma once
-
-#include <string.h>
-#include "openvr_driver.h"
-
-inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char *prop_name) {
-"#,
-    );
-
-    // Note: this generates disjoint if branches. This is a workaround for MSVC nesting limit of 128
-    for entry in property_finder.captures_iter(&openvr_driver_header_string) {
-        mappings_fn_string.push_str(&format!(
-            r#"    if (strcmp(prop_name, "{}") == 0) {{
-        return vr::{};
-    }}
-"#,
-            &entry[1], &entry[1],
-        ));
-    }
-
-    mappings_fn_string.push_str(
-        r#"
-    return vr::Prop_Invalid;
-}"#,
-    );
-
-    fs::write(
-        "../../build/openvr_properties_mapping.h",
-        mappings_fn_string,
-    )
-    .unwrap();
 
     let mut build = cc::Build::new();
 
@@ -74,6 +26,7 @@ inline vr::ETrackedDeviceProperty tracked_device_property_name_to_key(const char
         .flag_if_supported("-Wno-unused-parameter")
         .files([
             "cpp/paths.cpp",
+            "cpp/tracked_device.cpp",
             "cpp/hmd.cpp",
             "cpp/controller.cpp",
             "cpp/generic_tracker.cpp",

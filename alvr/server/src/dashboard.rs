@@ -1,7 +1,7 @@
 use crate::{graphics, ClientListAction, MAYBE_WINDOW, SESSION_MANAGER};
 use alvr_common::{lazy_static, prelude::*};
 // use alvr_gui::Dashboard;
-use crate::capi::{AlvrEvent, AlvrEventData, AlvrEventType, DRIVER_EVENT_SENDER};
+use crate::capi::{AlvrEvent, DRIVER_EVENT_SENDER};
 use alvr_session::SessionDesc;
 use parking_lot::Mutex;
 use std::{
@@ -57,12 +57,7 @@ pub fn ui_thread() -> StrResult {
     unsafe { crate::ShutdownSteamvr() };
 
     if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
-        sender
-            .send(AlvrEvent {
-                ty: AlvrEventType::ALVR_EVENT_TYPE_SHUTDOWN_REQUESTED,
-                data: AlvrEventData { none: () },
-            })
-            .ok();
+        sender.send(AlvrEvent::Shutdown).ok();
     }
 
     Ok(())

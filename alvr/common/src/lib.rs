@@ -1,4 +1,3 @@
-mod data;
 mod logging;
 
 use semver::{Prerelease, Version};
@@ -7,7 +6,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-pub use data::*;
 pub use glam;
 pub use lazy_static::lazy_static;
 pub use log;

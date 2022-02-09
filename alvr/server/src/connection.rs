@@ -1,8 +1,8 @@
 use crate::{
     capi::{
-        to_capi_quat, to_capi_vec3, AlvrBatteryValue, AlvrDevicePose, AlvrDeviceProfile, AlvrEvent,
-        AlvrEventData, AlvrEventType, AlvrFov, AlvrMotionData, AlvrQuat, AlvrVec3, AlvrVideoConfig,
-        AlvrViewsConfig, DRIVER_EVENT_SENDER,
+        to_capi_prop, to_capi_quat, to_capi_vec3, AlvrDevicePose, AlvrDeviceProfile, AlvrEvent,
+        AlvrFov, AlvrMotionData, AlvrOpenvrDeviceProp, AlvrVideoConfig, AlvrViewsConfig,
+        DRIVER_EVENT_SENDER,
     },
     connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
     TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
@@ -11,15 +11,16 @@ use crate::{
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Mat4, Quat, Vec3},
-    log,
     prelude::*,
     semver::Version,
-    Fov, MotionData, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
+use alvr_session::{
+    CodecType, Fov, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey, ServerEvent,
+};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
-    ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
+    ControlSocketSender, HeadsetInfoPacket, Input, MotionData, PeerType, PlayspaceSyncPacket,
     ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
@@ -635,57 +636,37 @@ async fn connection_pipeline() -> StrResult {
 
     if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
         sender
-            .send(AlvrEvent {
-                ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
-                data: AlvrEventData {
-                    device_profile: AlvrDeviceProfile {
-                        top_level_path: *HEAD_ID,
-                        interaction_profile: 0, // head has no interaction profile
-                    },
-                },
-            })
+            .send(AlvrEvent::DeviceConnected(AlvrDeviceProfile {
+                top_level_path: *HEAD_ID,
+                interaction_profile: 0, // head has no interaction profile
+            }))
             .unwrap();
 
         sender
-            .send(AlvrEvent {
-                ty: AlvrEventType::ALVR_EVENT_TYPE_VIDEO_CONFIG_UPDATED,
-                data: AlvrEventData {
-                    video_config: AlvrVideoConfig {
-                        preferred_view_width: session.openvr_config.eye_resolution_width,
-                        preferred_view_height: session.openvr_config.eye_resolution_height,
-                    },
-                },
-            })
+            .send(AlvrEvent::VideoConfig(AlvrVideoConfig {
+                preferred_view_width: session.openvr_config.eye_resolution_width,
+                preferred_view_height: session.openvr_config.eye_resolution_height,
+            }))
             .unwrap();
 
-        // if let Switch::Enabled(controllers) = settings.headset.controllers {
-        //     let interaction_profile =
-        //         alvr_common::hash_string("/interaction_profiles/oculus/touch_controller");
+        if matches!(settings.headset.controllers, Switch::Enabled(_)) {
+            let interaction_profile =
+                alvr_common::hash_string("/interaction_profiles/oculus/touch_controller");
 
-        //     sender
-        //         .send(AlvrEvent {
-        //             ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
-        //             data: AlvrEventData {
-        //                 device_profile: AlvrDeviceProfile {
-        //                     top_level_path: *LEFT_HAND_ID,
-        //                     interaction_profile,
-        //                 },
-        //             },
-        //         })
-        //         .unwrap();
+            sender
+                .send(AlvrEvent::DeviceConnected(AlvrDeviceProfile {
+                    top_level_path: *LEFT_HAND_ID,
+                    interaction_profile,
+                }))
+                .unwrap();
 
-        //     sender
-        //         .send(AlvrEvent {
-        //             ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_CONNECTED,
-        //             data: AlvrEventData {
-        //                 device_profile: AlvrDeviceProfile {
-        //                     top_level_path: *RIGHT_HAND_ID,
-        //                     interaction_profile,
-        //                 },
-        //             },
-        //         })
-        //         .unwrap();
-        // }
+            sender
+                .send(AlvrEvent::DeviceConnected(AlvrDeviceProfile {
+                    top_level_path: *RIGHT_HAND_ID,
+                    interaction_profile,
+                }))
+                .unwrap();
+        }
     }
 
     unsafe { crate::InitializeStreaming() };
@@ -698,23 +679,50 @@ async fn connection_pipeline() -> StrResult {
         let mute_when_streaming = desc.mute_when_streaming;
 
         Box::pin(async move {
-            // #[cfg(windows)]
-            // crate::openvr::set_game_output_audio_device_id(alvr_audio::get_windows_device_id(
-            //     &device,
-            // )?);
+            #[cfg(windows)]
+            {
+                let device_id = alvr_audio::get_windows_device_id(&device)?;
+
+                if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+                    sender
+                        .send(AlvrEvent::OpenvrProperty(AlvrOpenvrDeviceProp {
+                            top_level_path: *HEAD_ID,
+                            prop: to_capi_prop(
+                                OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                OpenvrPropValue::String(device_id),
+                            ),
+                        }))
+                        .ok();
+                } else {
+                    crate::openvr::set_game_output_audio_device_id(device_id);
+                }
+            }
 
             alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
                 .await?;
 
-            // #[cfg(windows)]
-            // {
-            //     let default_device = AudioDevice::new(
-            //         alvr_session::AudioDeviceId::Default,
-            //         AudioDeviceType::Output,
-            //     )?;
-            //     let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
-            //     crate::openvr::set_game_output_audio_device_id(default_device_id);
-            // }
+            #[cfg(windows)]
+            {
+                let default_device = AudioDevice::new(
+                    alvr_session::AudioDeviceId::Default,
+                    AudioDeviceType::Output,
+                )?;
+                let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
+
+                if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+                    sender
+                        .send(AlvrEvent::OpenvrProperty(AlvrOpenvrDeviceProp {
+                            top_level_path: *HEAD_ID,
+                            prop: to_capi_prop(
+                                OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                OpenvrPropValue::String(default_device_id),
+                            ),
+                        }))
+                        .ok();
+                } else {
+                    crate::openvr::set_game_output_audio_device_id(default_device_id);
+                }
+            }
 
             Ok(())
         })
@@ -729,17 +737,30 @@ async fn connection_pipeline() -> StrResult {
         )?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
-        // #[cfg(windows)]
-        // {
-        //     let microphone_device = AudioDevice::new(
-        //         desc.output_device_id,
-        //         AudioDeviceType::VirtualMicrophoneOutput {
-        //             matching_input_device_name: input_device.name()?,
-        //         },
-        //     )?;
-        //     let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
-        //     crate::openvr::set_headset_microphone_audio_device_id(microphone_device_id);
-        // }
+        #[cfg(windows)]
+        {
+            let microphone_device = AudioDevice::new(
+                desc.output_device_id,
+                AudioDeviceType::VirtualMicrophoneOutput {
+                    matching_input_device_name: input_device.name()?,
+                },
+            )?;
+            let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
+
+            if let Some(sender) = &*DRIVER_EVENT_SENDER.lock() {
+                sender
+                    .send(AlvrEvent::OpenvrProperty(AlvrOpenvrDeviceProp {
+                        top_level_path: *HEAD_ID,
+                        prop: to_capi_prop(
+                            OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
+                            OpenvrPropValue::String(microphone_device_id),
+                        ),
+                    }))
+                    .ok();
+            } else {
+                crate::openvr::set_headset_microphone_audio_device_id(microphone_device_id);
+            }
+        }
 
         Box::pin(alvr_audio::play_audio_loop(
             input_device,
@@ -837,6 +858,7 @@ async fn connection_pipeline() -> StrResult {
 
     let input_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<Input>(INPUT).await?;
+        let controllers = settings.headset.controllers.clone();
         async move {
             let mut old_ipd = 0_f32;
             let mut old_fov = Fov::default();
@@ -848,30 +870,23 @@ async fn connection_pipeline() -> StrResult {
                         || input.views_config.fov[0] != old_fov
                     {
                         sender
-                            .send(AlvrEvent {
-                                ty: AlvrEventType::ALVR_EVENT_TYPE_VIEWS_CONFIG_UPDATED,
-                                data: AlvrEventData {
-                                    views_config: AlvrViewsConfig {
-                                        ipd_m: input.views_config.ipd_m,
-                                        fov: [
-                                            AlvrFov {
-                                                left: -input.views_config.fov[0].left / 180.0 * PI,
-                                                right: input.views_config.fov[0].right / 180.0 * PI,
-                                                top: input.views_config.fov[0].top / 180.0 * PI,
-                                                bottom: -input.views_config.fov[0].bottom / 180.0
-                                                    * PI,
-                                            },
-                                            AlvrFov {
-                                                left: -input.views_config.fov[1].left / 180.0 * PI,
-                                                right: input.views_config.fov[1].right / 180.0 * PI,
-                                                top: input.views_config.fov[1].top / 180.0 * PI,
-                                                bottom: -input.views_config.fov[1].bottom / 180.0
-                                                    * PI,
-                                            },
-                                        ],
+                            .send(AlvrEvent::ViewsConfig(AlvrViewsConfig {
+                                ipd_m: input.views_config.ipd_m,
+                                fov: [
+                                    AlvrFov {
+                                        left: -input.views_config.fov[0].left / 180.0 * PI,
+                                        right: input.views_config.fov[0].right / 180.0 * PI,
+                                        top: input.views_config.fov[0].top / 180.0 * PI,
+                                        bottom: -input.views_config.fov[0].bottom / 180.0 * PI,
                                     },
-                                },
-                            })
+                                    AlvrFov {
+                                        left: -input.views_config.fov[1].left / 180.0 * PI,
+                                        right: input.views_config.fov[1].right / 180.0 * PI,
+                                        top: input.views_config.fov[1].top / 180.0 * PI,
+                                        bottom: -input.views_config.fov[1].bottom / 180.0 * PI,
+                                    },
+                                ],
+                            }))
                             .ok();
 
                         old_ipd = input.views_config.ipd_m;
@@ -879,18 +894,15 @@ async fn connection_pipeline() -> StrResult {
                     }
 
                     for (id, motion) in &input.device_motions {
-                        if *id == *HEAD_ID {
+                        if matches!(&controllers, Switch::Enabled(..))
+                            || (*id != *LEFT_HAND_ID && *id != *RIGHT_HAND_ID)
+                        {
                             sender
-                                .send(AlvrEvent {
-                                    ty: AlvrEventType::ALVR_EVENT_TYPE_DEVICE_POSE_UPDATED,
-                                    data: AlvrEventData {
-                                        device_pose: AlvrDevicePose {
-                                            top_level_path: *id,
-                                            data: to_capi_motion(motion.clone()),
-                                            timestamp_ns: input.target_timestamp.as_nanos() as _,
-                                        },
-                                    },
-                                })
+                                .send(AlvrEvent::DevicePose(AlvrDevicePose {
+                                    top_level_path: *id,
+                                    data: to_capi_motion(motion.clone()),
+                                    timestamp_ns: input.target_timestamp.as_nanos() as _,
+                                }))
                                 .ok();
                         }
                     }

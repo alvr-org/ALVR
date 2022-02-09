@@ -37,8 +37,8 @@ ufw_cfg() {
     # Try and install the application file
     if ! ufw app info 'alvr'; then
         # Pull application file from local build first if the script lives inside it
-        if [ -f "$(dirname $(realpath ${0}))/ufw-alvr" ]; then
-            cp "$(dirname $(realpath ${0}))/ufw-alvr" '/etc/ufw/applications.d/'
+        if [ -f "$(dirname "$(realpath "${0}")")/ufw-alvr" ]; then
+            cp "$(dirname "$(realpath "${0}")")/ufw-alvr" '/etc/ufw/applications.d/'
         elif [ -f '/usr/share/alvr/ufw-alvr' ]; then
             cp '/usr/share/alvr/ufw-alvr' '/etc/ufw/applications.d/'
         else
@@ -68,7 +68,7 @@ main() {
             exit 99
         fi
     else
-        pkexec $(realpath "${0}") "${@}"
+        pkexec "$(realpath "${0}")" "${@}"
     fi
 }
 

@@ -82,9 +82,6 @@ pub fn build_server(
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
     }
-    if experiments {
-        server_features.push("new-dashboard")
-    }
 
     if server_features.is_empty() {
         server_features.push("default")

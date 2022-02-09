@@ -12,7 +12,6 @@ crate-type = ["cdylib"]
 [features]
 default = []
 bundled_ffmpeg = []
-new-dashboard = []
 
 [dependencies]
 alvr_audio = { path = "../audio" }
@@ -21,7 +20,6 @@ alvr_common = { path = "../common" }
 alvr_filesystem = { path = "../filesystem" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
-# alvr_gui = { path = "../experiments/gui" }
 settings-schema = { path = "../settings-schema", features = [
     "rename_camel_case",
 ] }
@@ -66,7 +64,6 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 fern = "0.6"
 openvr-driver-sys = { path = "../openvr-driver-sys" }
-rhai = { version = "1", features = ["serde", "f32_float"] }
 
 [build-dependencies]
 bindgen = "0.59"

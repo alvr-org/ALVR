@@ -43,7 +43,6 @@ lazy_static! {
         Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
-    // static ref MAYBE_NEW_DASHBOARD: Mutex<Option<Arc<alvr_gui::Dashboard>>> = Mutex::new(None);
 
     static ref VIDEO_SENDER: Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>> =
         Mutex::new(None);
@@ -191,11 +190,8 @@ fn init() {
                 events_sender.clone(),
             ));
 
-            let dashboard_event_handler = dashboard::event_listener(events_sender);
-
             tokio::select! {
                 _ = web_server => (),
-                _ = dashboard_event_handler => (),
                 _ = SHUTDOWN_NOTIFIER.notified() => (),
             }
         });

@@ -262,7 +262,6 @@ dependencies = [
  "parking_lot 0.12.0",
  "pkg-config",
  "reqwest",
- "rhai",
  "serde",
  "serde_json",
  "settings-schema",

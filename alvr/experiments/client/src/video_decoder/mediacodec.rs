@@ -123,7 +123,7 @@ impl ConversionPass {
             }
         }
 
-        // error!("buffer properties: {:?}", hardware_buffer_format_properties);
+        // error!("buffer properties: {hardware_buffer_format_properties:?}");
 
         let ycbcr_conversion = trace_err!(device.create_sampler_ycbcr_conversion(
             &vk::SamplerYcbcrConversionCreateInfo::builder()

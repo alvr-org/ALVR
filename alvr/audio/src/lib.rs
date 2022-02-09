@@ -564,7 +564,7 @@ pub async fn receive_samples_loop(
         // todo: use smarter policy with EventTiming
         let buffer_frames_size = sample_buffer_ref.len() / channels_count;
         if buffer_frames_size > 2 * average_buffer_frames_count + batch_frames_count {
-            info!("Audio buffer overflow! size: {}", buffer_frames_size);
+            info!("Audio buffer overflow! size: {buffer_frames_size}");
 
             let drained_samples = sample_buffer_ref
                 .drain(0..(buffer_frames_size - average_buffer_frames_count) * channels_count)

@@ -99,7 +99,7 @@ fn run() -> StrResult {
             fails_count += 1;
 
             if fails_count == MAX_RENDERING_LOOP_FAILS {
-                log::error!("Rendering loop failed {} times. Terminating.", fails_count);
+                log::error!("Rendering loop failed {fails_count} times. Terminating.");
                 break Ok(());
             }
         }
@@ -212,7 +212,7 @@ fn get_video_frame_data(
     for frame_grabber in &mut streaming_components.video_decoder_frame_grabbers {
         let res = frame_grabber.get_output_frame(timeout);
 
-        error!("frame dequeue: {:?}", res);
+        error!("frame dequeue: {res:?}");
 
         decoder_timestamps.push(res.ok()?);
     }

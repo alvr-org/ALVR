@@ -121,7 +121,7 @@ async fn connection_pipeline(
         res = connection_utils::announce_client_loop(handshake_packet) => {
             match res? {
                 ConnectionError::ServerMessage(message) => {
-                    info!("Server response: {:?}", message);
+                    info!("Server response: {message:?}");
                     let message_str = match message {
                         ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
                         ServerHandshakePacket::IncompatibleVersions =>
@@ -181,7 +181,7 @@ async fn connection_pipeline(
             return Ok(());
         }
         Err(e) => {
-            info!("Server disconnected. Cause: {}", e);
+            info!("Server disconnected. Cause: {e}");
             set_loading_message(
                 &*java_vm,
                 &*activity_ref,
@@ -215,7 +215,7 @@ async fn connection_pipeline(
         .send(&ClientControlPacket::StreamReady)
         .await
     {
-        info!("Server disconnected. Cause: {}", e);
+        info!("Server disconnected. Cause: {e}");
         set_loading_message(
             &*java_vm,
             &*activity_ref,
@@ -615,7 +615,7 @@ async fn connection_pipeline(
                     .send(&ClientControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    info!("Server disconnected. Cause: {}", e);
+                    info!("Server disconnected. Cause: {e}");
                     set_loading_message(
                         &*java_vm,
                         &*activity_ref,
@@ -682,7 +682,7 @@ async fn connection_pipeline(
                             },
                             Ok(_) => (),
                             Err(e) => {
-                                info!("Server disconnected. Cause: {}", e);
+                                info!("Server disconnected. Cause: {e}");
                                 set_loading_message(
                                     &*java_vm,
                                     &*activity_ref,
@@ -703,7 +703,7 @@ async fn connection_pipeline(
     tokio::select! {
         res = spawn_cancelable(receive_loop) => {
             if let Err(e) = res {
-                info!("Server disconnected. Cause: {}", e);
+                info!("Server disconnected. Cause: {e}");
             }
             set_loading_message(
                 &*java_vm,
@@ -764,7 +764,7 @@ pub async fn connection_lifecycle_loop(
                 if let Err(e) = maybe_error {
                     let message =
                         format!("Connection error:\n{}\nCheck the PC for more details", e);
-                    error!("{}", message);
+                    error!("{message}");
                     set_loading_message(
                         &*java_vm,
                         &*activity_ref,

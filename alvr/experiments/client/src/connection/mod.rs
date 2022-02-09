@@ -72,7 +72,7 @@ async fn connection_pipeline(
 ) -> StrResult {
     let config = storage::load_config()?;
     let hostname = config.hostname;
-    error!("hostname: {}", hostname);
+    error!("hostname: {hostname}");
 
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -87,7 +87,7 @@ async fn connection_pipeline(
         res = connection_utils::announce_client_loop(handshake_packet) => {
             match res? {
                 ConnectionError::ServerMessage(message) => {
-                    error!("Server response: {:?}", message);
+                    error!("Server response: {message:?}");
                     return Ok(());
                 }
                 ConnectionError::NetworkUnreachable => {
@@ -135,7 +135,7 @@ async fn connection_pipeline(
             return Ok(());
         }
         Err(e) => {
-            error!("Server disconnected. Cause: {}", e);
+            error!("Server disconnected. Cause: {e}");
             return Ok(());
         }
         _ => {
@@ -162,7 +162,7 @@ async fn connection_pipeline(
         .send(&ClientControlPacket::StreamReady)
         .await
     {
-        error!("Server disconnected. Cause: {}", e);
+        error!("Server disconnected. Cause: {e}");
         return Ok(());
     }
 
@@ -221,7 +221,7 @@ async fn connection_pipeline(
         *xr_session_ref = match maybe_new_session {
             Ok(session) => Some(session),
             Err(e) => {
-                error!("Error recreating session for stream: {}", e);
+                error!("Error recreating session for stream: {e}");
 
                 // recreate a session for presenting the lobby room
                 Some(
@@ -425,7 +425,7 @@ async fn connection_pipeline(
                     .send(&ClientControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    error!("Server disconnected. Cause: {}", e);
+                    error!("Server disconnected. Cause: {e}");
                     break Ok(());
                 }
 
@@ -450,7 +450,7 @@ async fn connection_pipeline(
                             }
                             Ok(_) => (),
                             Err(e) => {
-                                error!("Server disconnected. Cause: {}", e);
+                                error!("Server disconnected. Cause: {e}");
                                 break Ok(());
                             }
                         }
@@ -465,7 +465,7 @@ async fn connection_pipeline(
     tokio::select! {
         res = spawn_cancelable(receive_loop) => {
             if let Err(e) = res {
-                error!("Server disconnected. Cause: {}", e);
+                error!("Server disconnected. Cause: {e}");
             }
 
             Ok(())

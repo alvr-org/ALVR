@@ -4,7 +4,7 @@ version = "0.3.1"
 authors = ["Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.58"
 
 [features]
 default = []

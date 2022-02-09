@@ -156,12 +156,12 @@ async fn client_handshake(
         .available_refresh_rates
         .contains(&settings.video.preferred_fps)
     {
-        warn!("Chosen refresh rate not supported. Using {}Hz", fps);
+        warn!("Chosen refresh rate not supported. Using {fps}Hz");
     }
 
     let dashboard_url = format!(
-        "http://{}:{}/",
-        server_ip, settings.connection.web_server_port
+        "http://{server_ip}:{}/",
+        settings.connection.web_server_port
     );
 
     let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
@@ -497,15 +497,12 @@ impl Drop for StreamCloseGuard {
 
         let on_disconnect_script = settings.connection.on_disconnect_script;
         if !on_disconnect_script.is_empty() {
-            info!(
-                "Running on disconnect script (disconnect): {}",
-                on_disconnect_script
-            );
+            info!("Running on disconnect script (disconnect): {on_disconnect_script}");
             if let Err(e) = Command::new(&on_disconnect_script)
                 .env("ACTION", "disconnect")
                 .spawn()
             {
-                warn!("Failed to run disconnect script: {}", e);
+                warn!("Failed to run disconnect script: {e}");
             }
         }
     }
@@ -550,7 +547,7 @@ async fn connection_pipeline() -> StrResult {
                         trusted_discovered_client_id = Some(client_ip);
                     }
                     Either::Left(Err(e)) => {
-                        error!("Client discovery failed: {}", e);
+                        error!("Client discovery failed: {e}");
                         return Ok(())
                     }
                     Either::Right(Ok(connection_info)) => {
@@ -558,7 +555,7 @@ async fn connection_pipeline() -> StrResult {
                     }
                     Either::Right(Err(e)) => {
                         // do not treat handshake problems as an hard error
-                        warn!("Handshake: {}", e);
+                        warn!("Handshake: {e}");
                         return Ok(());
                     }
                 }
@@ -614,12 +611,12 @@ async fn connection_pipeline() -> StrResult {
         let on_connect_script = settings.connection.on_connect_script;
 
         if !on_connect_script.is_empty() {
-            info!("Running on connect script (connect): {}", on_connect_script);
+            info!("Running on connect script (connect): {on_connect_script}");
             if let Err(e) = Command::new(&on_connect_script)
                 .env("ACTION", "connect")
                 .spawn()
             {
-                warn!("Failed to run connect script: {}", e);
+                warn!("Failed to run connect script: {e}");
             }
         }
     }
@@ -980,7 +977,7 @@ async fn connection_pipeline() -> StrResult {
                     .await;
                 if let Err(e) = res {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
-                    info!("Client disconnected. Cause: {}", e);
+                    info!("Client disconnected. Cause: {e}" );
                     break Ok(());
                 }
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
@@ -1027,7 +1024,7 @@ async fn connection_pipeline() -> StrResult {
                 Ok(_) => (),
                 Err(e) => {
                     alvr_session::log_event(ServerEvent::ClientDisconnected);
-                    info!("Client disconnected. Cause: {}", e);
+                    info!("Client disconnected. Cause: {e}" );
                     break;
                 }
             }
@@ -1043,7 +1040,7 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(receive_loop) => {
             alvr_session::log_event(ServerEvent::ClientDisconnected);
             if let Err(e) = res {
-                info!("Client disconnected. Cause: {}", e);
+                info!("Client disconnected. Cause: {e}" );
             }
 
             Ok(())

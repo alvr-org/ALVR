@@ -45,7 +45,7 @@ impl XrContext {
         entry.initialize_android_loader().unwrap();
 
         let available_extensions = entry.enumerate_extensions().unwrap();
-        error!("{:#?}", available_extensions);
+        error!("{available_extensions:#?}");
 
         let mut enabled_extensions = xr::ExtensionSet::default();
         // Mandatory

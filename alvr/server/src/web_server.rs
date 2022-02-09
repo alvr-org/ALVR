@@ -51,7 +51,7 @@ async fn text_websocket(
                         match log_receiver.recv().await {
                             Ok(line) => {
                                 if let Err(e) = ws.send(protocol::Message::text(line)).await {
-                                    info!("Failed to send log with websocket: {}", e);
+                                    info!("Failed to send log with websocket: {e}" );
                                     break;
                                 }
                             }
@@ -64,7 +64,7 @@ async fn text_websocket(
 
                     ws.close(None).await.ok();
                 }
-                Err(e) => error!("{}", e),
+                Err(e) => error!("{e}"),
             }
         });
 
@@ -100,7 +100,7 @@ async fn http_api(
                     .get_mut()
                     .merge_from_json(&json::json!({ "session_settings": session_settings }));
                 if let Err(e) = res {
-                    warn!("{}", e);
+                    warn!("{e}");
                     // HTTP Code: WARNING
                     reply(trace_err!(StatusCode::from_u16(199))?)?
                 } else {
@@ -115,7 +115,7 @@ async fn http_api(
                 if let Some(value) = data.get("session") {
                     let res = SESSION_MANAGER.lock().get_mut().merge_from_json(value);
                     if let Err(e) = res {
-                        warn!("{}", e);
+                        warn!("{e}");
                         // HTTP Code: WARNING
                         reply(trace_err!(StatusCode::from_u16(199))?)?
                     } else {
@@ -160,7 +160,7 @@ async fn http_api(
             let add = uri.ends_with("add");
             let maybe_err = alvr_commands::firewall_rules(add).err();
             if let Some(e) = &maybe_err {
-                error!("Setting firewall rules failed: code {}", e);
+                error!("Setting firewall rules failed: code {e}");
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
@@ -231,7 +231,7 @@ async fn http_api(
                         Ok(None) => break,
                         Err(e) => {
                             alvr_session::log_event(ServerEvent::UpdateDownloadError);
-                            error!("Download update failed: {}", e);
+                            error!("Download update failed: {e}");
                             return reply(StatusCode::BAD_GATEWAY);
                         }
                     }

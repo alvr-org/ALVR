@@ -4,7 +4,7 @@ version = "17.0.0-dev.3"
 authors = ["alvr-org", "polygraphene", "Valve Corporation"]
 license = "MIT"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.58"
 
 [lib]
 crate-type = ["cdylib"]

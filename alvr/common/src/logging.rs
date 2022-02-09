@@ -12,7 +12,7 @@ pub fn set_panic_hook() {
             backtrace::Backtrace::new()
         );
 
-        log::error!("{}", err_str);
+        log::error!("{err_str}");
 
         #[cfg(windows)]
         std::thread::spawn(move || {
@@ -22,7 +22,7 @@ pub fn set_panic_hook() {
 }
 
 pub fn show_w<W: Display>(w: W) {
-    log::warn!("{}", w);
+    log::warn!("{w}");
 
     // GDK crashes because of initialization in multiple thread
     #[cfg(windows)]
@@ -45,7 +45,7 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
 
 #[allow(unused_variables)]
 fn show_e_block<E: Display>(e: E, blocking: bool) {
-    log::error!("{}", e);
+    log::error!("{e}");
 
     // GDK crashes because of initialization in multiple thread
     #[cfg(windows)]

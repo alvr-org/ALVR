@@ -1,4 +1,3 @@
-mod data;
 mod logging;
 
 use semver::{Prerelease, Version};
@@ -7,7 +6,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-pub use data::*;
 pub use glam;
 pub use lazy_static::lazy_static;
 pub use log;
@@ -48,8 +46,16 @@ pub fn hash_string(string: &str) -> u64 {
     hasher.finish()
 }
 
+pub const HEAD_PATH: &str = "/user/head";
+pub const LEFT_HAND_PATH: &str = "/user/hand/left";
+pub const RIGHT_HAND_PATH: &str = "/user/hand/right";
+pub const LEFT_HAND_HAPTIC_PATH: &str = "/user/hand/left/output/haptic";
+pub const RIGHT_HAND_HAPTIC_PATH: &str = "/user/hand/right/output/haptic";
+
 lazy_static! {
-    pub static ref HEAD_ID: u64 = hash_string("/user/head");
-    pub static ref LEFT_HAND_ID: u64 = hash_string("/user/hand/left");
-    pub static ref RIGHT_HAND_ID: u64 = hash_string("/user/hand/right");
+    pub static ref HEAD_ID: u64 = hash_string(HEAD_PATH);
+    pub static ref LEFT_HAND_ID: u64 = hash_string(LEFT_HAND_PATH);
+    pub static ref RIGHT_HAND_ID: u64 = hash_string(RIGHT_HAND_PATH);
+    pub static ref LEFT_HAND_HAPTIC_ID: u64 = hash_string(LEFT_HAND_HAPTIC_PATH);
+    pub static ref RIGHT_HAND_HAPTIC_ID: u64 = hash_string(RIGHT_HAND_HAPTIC_PATH);
 }

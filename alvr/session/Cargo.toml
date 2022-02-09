@@ -1,6 +1,6 @@
 [package]
 name = "alvr_session"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"

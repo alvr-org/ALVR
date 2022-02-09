@@ -12,10 +12,10 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, prelude::*, Haptics, TrackedDeviceType};
+use alvr_common::{lazy_static, log, prelude::*, LEFT_HAND_HAPTIC_ID, RIGHT_HAND_HAPTIC_ID};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
-use alvr_sockets::{TimeSyncPacket, VideoFrameHeaderPacket};
+use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -46,7 +46,7 @@ lazy_static! {
 
     static ref VIDEO_SENDER: Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>> =
         Mutex::new(None);
-    static ref HAPTICS_SENDER: Mutex<Option<mpsc::UnboundedSender<Haptics<TrackedDeviceType>>>> =
+    static ref HAPTICS_SENDER: Mutex<Option<mpsc::UnboundedSender<Haptics>>> =
         Mutex::new(None);
     static ref TIME_SYNC_SENDER: Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>> =
         Mutex::new(None);
@@ -280,10 +280,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     extern "C" fn haptics_send(haptics: HapticsFeedback) {
         if let Some(sender) = &*HAPTICS_SENDER.lock() {
             let haptics = Haptics {
-                device: if haptics.hand == 0 {
-                    TrackedDeviceType::LeftHand
+                path: if haptics.hand == 0 {
+                    *LEFT_HAND_HAPTIC_ID
                 } else {
-                    TrackedDeviceType::RightHand
+                    *RIGHT_HAND_HAPTIC_ID
                 },
                 duration: Duration::from_secs_f32(haptics.duration),
                 frequency: haptics.frequency,

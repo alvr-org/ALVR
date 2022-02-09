@@ -13,10 +13,11 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     lazy_static,
     prelude::*,
-    Fov, MotionData, ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
+use alvr_session::Fov;
 use alvr_sockets::{
-    HeadsetInfoPacket, Input, LegacyInput, PrivateIdentity, TimeSyncPacket, ViewsConfig,
+    HeadsetInfoPacket, Input, LegacyInput, MotionData, PrivateIdentity, TimeSyncPacket, ViewsConfig,
 };
 use jni::{
     objects::{JClass, JObject, JString},

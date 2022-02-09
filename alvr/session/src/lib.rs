@@ -595,7 +595,7 @@ impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, self.session_path).unwrap();
         log_event(ServerEvent::SessionUpdated); // deprecated
-        log_event(ServerEvent::Session(self.session_desc.clone()));
+        log_event(ServerEvent::Session(Box::new(self.session_desc.clone())));
     }
 }
 

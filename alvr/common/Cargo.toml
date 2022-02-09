@@ -1,22 +1,17 @@
 [package]
 name = "alvr_common"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
 rust-version = "1.58"
 
 [dependencies]
-settings-schema = { path = "../settings-schema", features = [
-    "rename_camel_case",
-] }
-
 backtrace = "0.3"
 lazy_static = "1"
 log = "0.4"
 glam = { version = "0.20", features = ["serde"] }
 semver = { version = "1", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
 msgbox = "0.6"

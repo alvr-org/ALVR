@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "backtrace",
  "glam 0.20.2",
@@ -174,13 +174,11 @@ dependencies = [
  "msgbox",
  "parking_lot 0.12.0",
  "semver 1.0.4",
- "serde",
- "settings-schema",
 ]
 
 [[package]]
 name = "alvr_filesystem"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -223,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -240,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -277,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -288,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -306,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.2",
@@ -317,7 +315,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "alvr_filesystem",
  "fs_extra",
@@ -5116,7 +5114,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "17.0.0-dev.3"
+version = "17.0.0-dev.4"
 dependencies = [
  "exec",
 ]

@@ -47,7 +47,7 @@ pub struct Raw {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum ServerEvent {
-    Session(SessionDesc),
+    Session(Box<SessionDesc>),
     SessionUpdated, // deprecated
     SessionSettingsExtrapolationFailed,
     ClientFoundOk,

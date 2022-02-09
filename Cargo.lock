@@ -305,14 +305,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_streamer"
-version = "0.1.0"
-dependencies = [
- "alvr_common",
- "alvr_session",
-]
-
-[[package]]
 name = "alvr_vulkan-layer"
 version = "17.0.0-dev.3"
 dependencies = [

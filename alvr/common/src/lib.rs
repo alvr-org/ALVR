@@ -32,8 +32,11 @@ lazy_static! {
 // bumped when the packet layouts or some critical behaviour has changed.
 pub fn is_version_compatible(other_version: &Version) -> bool {
     if other_version.pre != Prerelease::EMPTY || ALVR_VERSION.pre != Prerelease::EMPTY {
+        other_version.major == ALVR_VERSION.major
+            && other_version.minor == ALVR_VERSION.minor
+            && other_version.patch == ALVR_VERSION.patch
+            && other_version.pre == ALVR_VERSION.pre
         // Note: metadata (+) is always ignored in the version check
-        *other_version == *ALVR_VERSION
     } else {
         other_version.major == ALVR_VERSION.major
     }

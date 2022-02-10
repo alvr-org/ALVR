@@ -27,11 +27,7 @@ pub async fn accept_from_server(
     let (socket, server_address) = trace_err!(listener.accept().await)?;
 
     if server_address.ip() != server_ip {
-        return fmt_e!(
-            "Connected to wrong client: {} != {}",
-            server_address,
-            server_ip,
-        );
+        return fmt_e!("Connected to wrong client: {server_address} != {server_ip}");
     }
 
     let socket = Framed::new(socket, Ldc::new());

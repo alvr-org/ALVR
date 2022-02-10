@@ -9,20 +9,20 @@ pub fn exec_fname(name: &str) -> String {
 }
 #[cfg(windows)]
 pub fn exec_fname(name: &str) -> String {
-    format!("{}.exe", name)
+    format!("{name}.exe")
 }
 
 #[cfg(target_os = "linux")]
 pub fn dynlib_fname(name: &str) -> String {
-    format!("lib{}.so", name)
+    format!("lib{name}.so")
 }
 #[cfg(windows)]
 pub fn dynlib_fname(name: &str) -> String {
-    format!("{}.dll", name)
+    format!("{name}.dll")
 }
 #[cfg(target_os = "macos")]
 pub fn dynlib_fname(name: &str) -> String {
-    format!("lib{}.dylib", name)
+    format!("lib{name}.dylib")
 }
 
 pub fn target_dir() -> PathBuf {
@@ -217,7 +217,7 @@ impl Layout {
         };
 
         self.openvr_driver_lib_dir()
-            .join(format!("driver_alvr_server.{}", ext))
+            .join(format!("driver_alvr_server.{ext}"))
     }
 
     // path to the manifest file for openVR

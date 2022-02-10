@@ -41,17 +41,15 @@ fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
 
     // Replace versionName
     let (file_start, _, file_end) = split_string(&file_content, "versionName \"", '\"');
-    let file_content = format!("{}{}{}", file_start, new_version, file_end);
+    let file_content = format!("{file_start}{new_version}{file_end}");
 
     let file_content = if !is_nightly {
         // Replace versionCode
         let (file_start, old_version_code_string, file_end) =
             split_string(&file_content, "versionCode ", '\n');
         format!(
-            "{}{}{}",
-            file_start,
+            "{file_start}{}{file_end}",
             old_version_code_string.parse::<usize>().unwrap() + 1,
-            file_end
         )
     } else {
         file_content
@@ -66,7 +64,7 @@ fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
     let manifest = fs::read_to_string(&manifest_path).unwrap();
 
     let (file_start, _, file_end) = split_string(&manifest, "version = \"", '\"');
-    let manifest = format!("{}{}{}", file_start, new_version, file_end);
+    let manifest = format!("{file_start}{new_version}{file_end}");
 
     fs::write(manifest_path, manifest).unwrap();
 }
@@ -80,7 +78,7 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
         if new_version.contains('-') {
             let (_, tmp_start, mut tmp_end) = split_string(new_version, "", '-');
             tmp_end.remove(0);
-            (tmp_start, format!("0.0.1{}", tmp_end))
+            (tmp_start, format!("0.0.1{tmp_end}"))
         } else {
             (new_version.to_string(), "1.0.0".to_string())
         }
@@ -88,11 +86,11 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
 
     // Replace Version
     let (file_start, _, file_end) = split_string(&spec, "Version: ", '\n');
-    let spec = format!("{}{}{}", file_start, version_start, file_end);
+    let spec = format!("{file_start}{version_start}{file_end}");
 
     // Reset Release to 1.0.0
     let (file_start, _, file_end) = split_string(&spec, "Release: ", '\n');
-    let spec = format!("{}{}{}", file_start, version_end, file_end);
+    let spec = format!("{file_start}{version_end}{file_end}");
 
     // Replace Source in github URL
     let spec = {
@@ -101,7 +99,7 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
         } else {
             // Grab version (ex: https://github.com/alvr-org/ALVR/archive/refs/tags/v16.0.0-rc1.tar.gz)
             let (file_start, _, file_end) = split_string(&spec, "refs/tags/v", 't');
-            format!("{}{}.{}", file_start, new_version, file_end)
+            format!("{file_start}{new_version}.{file_end}")
         }
     };
 
@@ -114,7 +112,7 @@ fn bump_deb_control_version(new_version: &str) {
 
     // Replace Version
     let (file_start, _, file_end) = split_string(&control, "\nVersion: ", '\n');
-    let control = format!("{}{}{}", file_start, new_version, file_end);
+    let control = format!("{file_start}{new_version}{file_end}");
 
     fs::write(control_path, control).unwrap();
 }
@@ -123,7 +121,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        version = format!("{}+nightly.{}", version, date_utc_yyyymmdd());
+        version = format!("{version}+nightly.{}", date_utc_yyyymmdd());
     }
 
     for dir_name in [

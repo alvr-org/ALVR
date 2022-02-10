@@ -7,8 +7,7 @@ pub fn set_panic_hook() {
             .downcast_ref::<&str>()
             .unwrap_or(&"Unavailable");
         let err_str = format!(
-            "Message: {:?}\nBacktrace:\n{:?}",
-            message,
+            "Message: {message:?}\nBacktrace:\n{:?}",
             backtrace::Backtrace::new()
         );
 
@@ -89,7 +88,7 @@ pub fn show_e<E: Display>(e: E) {
 }
 
 pub fn show_e_dbg<E: std::fmt::Debug>(e: E) {
-    show_e_block(format!("{:?}", e), false);
+    show_e_block(format!("{e:?}"), false);
 }
 
 pub fn show_e_blocking<E: Display>(e: E) {
@@ -127,7 +126,7 @@ macro_rules! trace_str {
 #[macro_export]
 macro_rules! trace_err {
     ($res:expr) => {
-        $res.map_err(|e| format!("{}: {}", trace_str!(), e))
+        $res.map_err(|e| format!("{}: {e}", trace_str!()))
     };
 }
 

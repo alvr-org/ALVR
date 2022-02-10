@@ -114,10 +114,10 @@ where
                 (data.request_handler)(format!(
                     r#"
                         let session = load_session();
-                        {} = {};
+                        {} = {value_string};
                         store_session(session);
                     "#,
-                    data.string_path, value_string
+                    data.string_path,
                 ))
                 .unwrap();
             }
@@ -149,7 +149,7 @@ where
                 self.text.parse().unwrap_or(self.value),
                 |value| SettingControlEvent {
                     path: vec![],
-                    event_type: SettingControlEventType::TempValueChanged(format!("{}", value)),
+                    event_type: SettingControlEventType::TempValueChanged(format!("{value}")),
                 },
             )
             .step(slider_state.step)

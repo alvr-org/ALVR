@@ -9,10 +9,7 @@ fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String
 }
 
 fn netsh_delete_rule_command_string(rule_name: &str) -> String {
-    format!(
-        "netsh advfirewall firewall delete rule name=\"{}\"",
-        rule_name,
-    )
+    format!("netsh advfirewall firewall delete rule name=\"{rule_name}\"")
 }
 
 // Errors:

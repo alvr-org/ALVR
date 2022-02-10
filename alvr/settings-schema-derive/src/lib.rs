@@ -24,10 +24,7 @@ fn schema_fn_ident(ty: &Ident) -> Ident {
 }
 
 fn suffix_ident(ty_ident: &Ident, suffix: &str) -> Ident {
-    Ident::new(
-        &format!("{}{}", ty_ident.to_string(), suffix),
-        ty_ident.span(),
-    )
+    Ident::new(&format!("{ty_ident}{suffix}"), ty_ident.span())
 }
 
 fn get_only_type_argument(arguments: &PathArguments) -> &Type {
@@ -145,10 +142,8 @@ fn bool_type_schema(schema_attrs: SchemaAttributes) -> Result<TokenStream2, Toke
         Some(max)
     } else if let Some(step) = schema_attrs.step {
         Some(step)
-    } else if let Some(gui) = schema_attrs.gui {
-        Some(gui)
     } else {
-        None
+        schema_attrs.gui
     };
     if let Some(arg) = maybe_invalid_arg {
         error("Unexpected argument for bool type", arg)?;
@@ -240,10 +235,8 @@ fn string_type_schema(schema_attrs: SchemaAttributes) -> Result<TokenStream2, To
         Some(max)
     } else if let Some(step) = schema_attrs.step {
         Some(step)
-    } else if let Some(gui) = schema_attrs.gui {
-        Some(gui)
     } else {
-        None
+        schema_attrs.gui
     };
     if let Some(arg) = maybe_invalid_arg {
         error("Unexpected argument for String type", arg)?;
@@ -262,10 +255,8 @@ fn custom_leaf_type_schema(
         Some(max)
     } else if let Some(step) = schema_attrs.step {
         Some(step)
-    } else if let Some(gui) = schema_attrs.gui {
-        Some(gui)
     } else {
-        None
+        schema_attrs.gui
     };
     if let Some(arg) = maybe_invalid_arg {
         error("Unexpected argument for custom type", arg)?;
@@ -313,7 +304,7 @@ fn type_schema(ty: &Type, schema_attrs: SchemaAttributes) -> Result<TypeSchema, 
                     "String" => string_type_schema(schema_attrs)?,
                     _ => {
                         custom_default_ty_ts =
-                            Some(suffix_ident(&ty_ident, "Default").to_token_stream());
+                            Some(suffix_ident(ty_ident, "Default").to_token_stream());
                         custom_leaf_type_schema(ty_ident, schema_attrs)?
                     }
                 };
@@ -564,7 +555,7 @@ fn schema(input: DeriveInput) -> Result<TokenStream2, TokenStream> {
                         let schema_variant_fields_code_ts = variant_fields_data.schema_code_ts;
 
                         let variant_default_ty_ident =
-                            suffix_ident(&input.ident, &format!("{}Default", variant_string));
+                            suffix_ident(&input.ident, &format!("{variant_string}Default"));
 
                         field_idents.push(variant_ident.clone());
                         field_tys_ts.push(variant_default_ty_ident.to_token_stream());

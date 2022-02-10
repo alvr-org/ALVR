@@ -38,7 +38,7 @@ impl Control {
             let index = data.path.pop().unwrap();
             let entry = &mut self.entries[index];
             entry.update(UpdatingData {
-                string_path: format!("{}[{}]", data.string_path, index),
+                string_path: format!("{}[{index}]", data.string_path),
                 ..data
             })
         }

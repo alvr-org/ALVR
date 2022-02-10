@@ -229,10 +229,7 @@ impl SessionDesc {
                 *self = session_desc_mut;
 
                 log_event(ServerEvent::SessionSettingsExtrapolationFailed);
-                fmt_e!(
-                    "Error while deserializing extrapolated session settings: {}",
-                    e
-                )
+                fmt_e!("Error while deserializing extrapolated session settings: {e}")
             }
         }
     }

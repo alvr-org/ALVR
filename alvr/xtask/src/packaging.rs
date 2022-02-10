@@ -45,7 +45,7 @@ fn build_windows_installer(wix_path: &str) {
             "-dBuildRoot=build\\alvr_server_windows",
             "-ext",
             "WixUtilExtension",
-            &format!("-dVersion={}", version),
+            &format!("-dVersion={version}"),
             "alvr\\xtask\\wix\\main.wxs",
             "target\\wix\\harvested.wxs",
             "-o",
@@ -96,7 +96,7 @@ fn build_windows_installer(wix_path: &str) {
             "-ext",
             "WixBalExtension",
             "-o",
-            &format!("build\\ALVR_Installer_v{}.exe", version),
+            &format!("build\\ALVR_Installer_v{version}.exe"),
         ],
     )
     .unwrap();

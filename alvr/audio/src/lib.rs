@@ -160,14 +160,11 @@ impl AudioDevice {
                     }
                 })
                 .ok_or_else(|| {
-                    format!(
-                        "Cannot find audio device which name contains \"{}\"",
-                        name_substring
-                    )
+                    format!("Cannot find audio device which name contains \"{name_substring}\"")
                 })?,
             AudioDeviceId::Index(index) => trace_err!(host.devices())?
                 .nth(*index as usize - 1)
-                .ok_or_else(|| format!("Cannot find audio device at index {}", index))?,
+                .ok_or_else(|| format!("Cannot find audio device at index {index}"))?,
         };
 
         Ok(Self {
@@ -207,10 +204,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
             &mut mm_device_enumerator_ptr as *mut _ as _,
         );
         if FAILED(hr) {
-            return fmt_e!(
-                "CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{:08x}",
-                hr
-            );
+            return fmt_e!("CoCreateInstance(IMMDeviceEnumerator) failed: hr = 0x{hr:08x}",);
         }
         let mm_device_enumerator = ComPtr::from_raw(mm_device_enumerator_ptr);
 
@@ -221,10 +215,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
             &mut mm_device_collection_ptr as _,
         );
         if FAILED(hr) {
-            return fmt_e!(
-                "IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{:08x}",
-                hr
-            );
+            return fmt_e!("IMMDeviceEnumerator::EnumAudioEndpoints failed: hr = 0x{hr:08x}",);
         }
         let mm_device_collection = ComPtr::from_raw(mm_device_collection_ptr);
 
@@ -234,28 +225,28 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
         let mut count = 0;
         let hr = mm_device_collection.GetCount(&count);
         if FAILED(hr) {
-            return fmt_e!("IMMDeviceCollection::GetCount failed: hr = 0x{:08x}", hr);
+            return fmt_e!("IMMDeviceCollection::GetCount failed: hr = 0x{hr:08x}");
         }
 
         for i in 0..count {
             let mut mm_device_ptr: *mut IMMDevice = ptr::null_mut();
             let hr = mm_device_collection.Item(i as _, &mut mm_device_ptr as _);
             if FAILED(hr) {
-                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{:08x}", hr);
+                return fmt_e!("IMMDeviceCollection::Item failed: hr = 0x{hr:08x}");
             }
             let mm_device = ComPtr::from_raw(mm_device_ptr);
 
             let mut property_store_ptr: *mut IPropertyStore = ptr::null_mut();
             let hr = mm_device.OpenPropertyStore(STGM_READ, &mut property_store_ptr as _);
             if FAILED(hr) {
-                return fmt_e!("IMMDevice::OpenPropertyStore failed: hr = 0x{:08x}", hr);
+                return fmt_e!("IMMDevice::OpenPropertyStore failed: hr = 0x{hr:08x}");
             }
             let property_store = ComPtr::from_raw(property_store_ptr);
 
             let mut prop_variant = PROPVARIANT::default();
             let hr = property_store.GetValue(&PKEY_Device_FriendlyName, &mut prop_variant);
             if FAILED(hr) {
-                return fmt_e!("IPropertyStore::GetValue failed: hr = 0x{:08x}", hr);
+                return fmt_e!("IPropertyStore::GetValue failed: hr = 0x{hr:08x}");
             }
             if prop_variant.vt as u32 != VT_LPWSTR {
                 return fmt_e!(
@@ -266,7 +257,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
             let utf16_name = U16CStr::from_ptr_str(*prop_variant.data.pwszVal());
             let hr = PropVariantClear(&mut prop_variant);
             if FAILED(hr) {
-                return fmt_e!("PropVariantClear failed: hr = 0x{:08x}", hr);
+                return fmt_e!("PropVariantClear failed: hr = 0x{hr:08x}");
             }
 
             let mm_device_name = trace_err!(utf16_name.to_string())?;
@@ -308,15 +299,14 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
         );
         if FAILED(hr) {
             return fmt_e!(
-                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{:08x}",
-                hr,
+                "IMMDevice::Activate() for IAudioEndpointVolume failed: hr = 0x{hr:08x}"
             );
         }
         let endpoint_volume = ComPtr::from_raw(endpoint_volume_ptr);
 
         let hr = endpoint_volume.SetMute(mute as _, ptr::null_mut());
         if FAILED(hr) {
-            return fmt_e!("Failed to mute audio device: hr = 0x{:08x}", hr,);
+            return fmt_e!("Failed to mute audio device: hr = 0x{hr:08x}");
         }
     }
 
@@ -418,7 +408,7 @@ pub async fn record_audio_loop(
                     let data_sender = data_sender.clone();
                     move |e| {
                         data_sender
-                            .send(fmt_e!("Error while recording audio: {}", e))
+                            .send(fmt_e!("Error while recording audio: {e}"))
                             .ok();
                     }
                 }

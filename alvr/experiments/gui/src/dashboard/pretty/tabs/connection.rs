@@ -67,14 +67,13 @@ impl ConnectionPanel {
                     .collect::<Vec<_>>();
             }
             ConnectionEvent::AddClient(hostname, ip_address) => {
-                request_handler(format!(r#"add_client("{}", "{}")"#, hostname, ip_address))
-                    .unwrap();
+                request_handler(format!(r#"add_client("{hostname}", "{ip_address}")"#)).unwrap();
             }
             ConnectionEvent::TrustClient(hostname) => {
-                request_handler(format!(r#"trust_client("{}")"#, hostname)).unwrap();
+                request_handler(format!(r#"trust_client("{hostname}")"#)).unwrap();
             }
             ConnectionEvent::RemoveClient(hostname) => {
-                request_handler(format!(r#"remove_client("{}")"#, hostname)).unwrap();
+                request_handler(format!(r#"remove_client("{hostname}")"#)).unwrap();
             }
         }
     }

@@ -77,10 +77,8 @@ fn set_loading_message(
     message: &str,
 ) -> StrResult {
     let message = format!(
-        "ALVR v{}\nhostname: {}\n \n{}",
-        ALVR_VERSION.to_string(),
-        hostname,
-        message
+        "ALVR v{}\nhostname: {hostname}\n \n{message}",
+        *ALVR_VERSION,
     );
 
     // Note: env = java_vm.attach_current_thread() cannot be saved into a variable because it is
@@ -762,8 +760,7 @@ pub async fn connection_lifecycle_loop(
                 .await;
 
                 if let Err(e) = maybe_error {
-                    let message =
-                        format!("Connection error:\n{}\nCheck the PC for more details", e);
+                    let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
                     set_loading_message(
                         &*java_vm,

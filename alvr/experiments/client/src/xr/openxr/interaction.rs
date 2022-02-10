@@ -65,7 +65,7 @@ impl OpenxrInteractionContext {
             "alvr_right"
         };
 
-        let pose_action_name = format!("{}_grip", hand_str);
+        let pose_action_name = format!("{hand_str}_grip");
         let pose_action =
             trace_err!(action_set.create_action(&pose_action_name, &pose_action_name, &[]))?;
         let space = trace_err!(pose_action.create_space(
@@ -80,7 +80,7 @@ impl OpenxrInteractionContext {
         {
             let tracker = trace_err!(session.create_hand_tracker(hand))?;
 
-            let target_ray_action_name = format!("{}_aim", hand_str);
+            let target_ray_action_name = format!("{hand_str}_aim");
             let target_ray_action = trace_err!(action_set.create_action(
                 &target_ray_action_name,
                 &target_ray_action_name,
@@ -101,7 +101,7 @@ impl OpenxrInteractionContext {
             None
         };
 
-        let vibration_action_name = format!("{}_haptics", hand_str);
+        let vibration_action_name = format!("{hand_str}_haptics");
         let vibration_action = trace_err!(action_set.create_action(
             &vibration_action_name,
             &vibration_action_name,
@@ -223,7 +223,7 @@ impl OpenxrInteractionContext {
                 let action = if let Some(res) = button_actions.get(action_name) {
                     res
                 } else {
-                    return fmt_e!("Action {} not defined", action_name);
+                    return fmt_e!("Action {action_name} not defined");
                 };
                 let path = trace_err!(xr_context.instance.string_to_path(path_string))?;
 

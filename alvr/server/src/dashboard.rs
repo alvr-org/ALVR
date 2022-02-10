@@ -30,7 +30,7 @@ pub fn ui_thread() -> StrResult {
         .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
         .custom_args(&[
             "--disk-cache-size=1",
-            &format!("--window-position={},{}", pos_left, pos_top)
+            &format!("--window-position={pos_left},{pos_top}")
         ])
         .run())?);
 

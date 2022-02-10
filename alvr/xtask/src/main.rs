@@ -133,7 +133,7 @@ pub fn build_server(
     if cfg!(target_os = "linux") {
         command::run_in(
             &afs::workspace_dir().join("alvr/vrcompositor-wrapper"),
-            &format!("cargo build {}", build_flags),
+            &format!("cargo build {build_flags}"),
         )
         .unwrap();
         fs::create_dir_all(&layout.vrcompositor_wrapper_dir).unwrap();
@@ -147,8 +147,7 @@ pub fn build_server(
     command::run_in(
         &afs::workspace_dir().join("alvr/server"),
         &format!(
-            "cargo build {} --no-default-features --features {}",
-            build_flags,
+            "cargo build {build_flags} --no-default-features --features {}",
             server_features.join(",")
         ),
     )
@@ -162,8 +161,7 @@ pub fn build_server(
     command::run_in(
         &afs::workspace_dir().join("alvr/launcher"),
         &format!(
-            "cargo build {} --no-default-features --features {}",
-            build_flags,
+            "cargo build {build_flags} --no-default-features --features {}",
             launcher_features.join(",")
         ),
     )
@@ -231,7 +229,7 @@ pub fn build_server(
     if cfg!(target_os = "linux") {
         command::run_in(
             &afs::workspace_dir().join("alvr/vulkan-layer"),
-            &format!("cargo build {}", build_flags),
+            &format!("cargo build {build_flags}"),
         )
         .unwrap();
 
@@ -268,7 +266,7 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
     let build_type = if is_release { "release" } else { "debug" };
 
-    let build_task = format!("assemble{}{}{}", headset_type, package_type, build_type);
+    let build_task = format!("assemble{headset_type}{package_type}{build_type}");
 
     let client_dir = afs::workspace_dir().join("alvr/client/android");
     let command_name = if cfg!(not(windows)) {
@@ -277,25 +275,24 @@ pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
         "gradlew.bat"
     };
 
-    let artifact_name = format!("alvr_client_{}", headset_name);
+    let artifact_name = format!("alvr_client_{headset_name}");
     fs::create_dir_all(&afs::build_dir().join(&artifact_name)).unwrap();
 
     env::set_current_dir(&client_dir).unwrap();
-    command::run(&format!("{} {}", command_name, build_task)).unwrap();
+    command::run(&format!("{command_name} {build_task}")).unwrap();
     env::set_current_dir(afs::workspace_dir()).unwrap();
 
     fs::copy(
         client_dir
             .join("app/build/outputs/apk")
-            .join(format!("{}{}", headset_type, package_type))
+            .join(format!("{headset_type}{package_type}"))
             .join(build_type)
             .join(format!(
-                "app-{}-{}-{}.apk",
-                headset_type, package_type, build_type
+                "app-{headset_type}-{package_type}-{build_type}.apk",
             )),
         afs::build_dir()
             .join(&artifact_name)
-            .join(format!("{}.apk", artifact_name)),
+            .join(format!("{artifact_name}.apk")),
     )
     .unwrap();
 }

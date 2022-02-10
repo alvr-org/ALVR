@@ -57,10 +57,10 @@ impl Control {
             (data.request_handler)(format!(
                 r#"
                     let session = load_session();
-                    {}.enabled = {};
+                    {}.enabled = {enabled};
                     store_session(session);
                 "#,
-                data.string_path, enabled
+                data.string_path,
             ))
             .unwrap();
 

@@ -15,7 +15,7 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
             let path = ffmpeg_path.clone() + lib;
             env::set_var(
                 "PKG_CONFIG_PATH",
-                env::var("PKG_CONFIG_PATH").map_or(path.clone(), |old| format!("{}:{}", path, old)),
+                env::var("PKG_CONFIG_PATH").map_or(path.clone(), |old| format!("{path}:{old}")),
             );
         }
     }

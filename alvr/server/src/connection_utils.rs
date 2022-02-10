@@ -21,7 +21,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
             match handshake_socket.recv_from(&mut packet_buffer).await {
                 Ok(pair) => pair,
                 Err(e) => {
-                    break fmt_e!("Error receiving handshake packet: {}", e);
+                    break fmt_e!("Error receiving handshake packet: {e}");
                 }
             };
 

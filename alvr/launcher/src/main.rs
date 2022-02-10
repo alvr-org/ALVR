@@ -31,18 +31,15 @@ fn launcher_lifecycle(handle: ExtEventSink, window_id: WindowId) {
         if steamvr_ok {
             break;
         } else {
-            let steamvr = format!(
-                "SteamVR installed: {}",
-                if steamvr_ok {
-                    "✅"
-                } else {
-                    "❌ Make sure you launched it at least once, then close it."
-                }
-            );
+            let steamvr_string =
+                "SteamVR not installed: make sure you launched it at least once, then close it.";
+
             handle
                 .submit_command(
                     CHANGE_VIEW_CMD,
-                    View::RequirementsCheck { steamvr },
+                    View::RequirementsCheck {
+                        steamvr: steamvr_string.to_owned(),
+                    },
                     Target::Auto,
                 )
                 .ok();
@@ -200,8 +197,9 @@ fn make_window() -> StrResult {
 
         if driver_dir.to_str().filter(|s| s.is_ascii()).is_none() {
             alvr_common::show_e_blocking(format!(
-                "The path of this folder ({}) contains non ASCII characters. Please move it somewhere else (for example in C:\\Users\\Public\\Documents).",
+                "The path of this folder ({}) contains non ASCII characters. {}",
                 driver_dir.to_string_lossy(),
+                "Please move it somewhere else (for example in C:\\Users\\Public\\Documents).",
             ));
             return Ok(());
         }

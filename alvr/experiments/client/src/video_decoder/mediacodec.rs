@@ -119,7 +119,7 @@ impl ConversionPass {
                 &mut hardware_buffer_properties as _,
             );
             if res != vk::Result::SUCCESS {
-                return fmt_e!("{}", res);
+                return fmt_e!("{res}");
             }
         }
 

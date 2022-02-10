@@ -34,10 +34,10 @@ impl Control {
             (data.request_handler)(format!(
                 r#"
                     let session = load_session();
-                    {} = {};
+                    {} = {value};
                     store_session(session);
                 "#,
-                data.string_path, value
+                data.string_path,
             ))
             .unwrap();
 

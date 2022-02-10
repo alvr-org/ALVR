@@ -588,7 +588,7 @@ async fn connection_pipeline() -> StrResult {
             return fmt_e!("Got unexpected packet waiting for stream ack");
         }
         Err(e) => {
-            return fmt_e!("Error while waiting for stream ack: {}", e);
+            return fmt_e!("Error while waiting for stream ack: {e}");
         }
     }
 

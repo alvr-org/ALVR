@@ -252,9 +252,8 @@ async fn http_api(
                 };
 
                 let maybe_file = tokio::fs::File::open(format!(
-                    "{}{}",
+                    "{}{path_branch}",
                     FILESYSTEM_LAYOUT.dashboard_dir().to_string_lossy(),
-                    path_branch
                 ))
                 .await;
 

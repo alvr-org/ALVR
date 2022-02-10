@@ -110,10 +110,10 @@ impl Control {
             (data.request_handler)(format!(
                 r#"
                     let session = load_session();
-                    {}.variant = "{}";
+                    {}.variant = "{variant}";
                     store_session(session);
                 "#,
-                data.string_path, variant
+                data.string_path,
             ))
             .unwrap();
 

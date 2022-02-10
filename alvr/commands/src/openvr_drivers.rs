@@ -57,7 +57,7 @@ pub fn get_driver_dir_from_registered() -> StrResult<PathBuf> {
 
 pub fn get_driver_dir() -> StrResult<PathBuf> {
     get_driver_dir_from_registered()
-        .map_err(|e| format!("ALVR driver path not stored and not registered ({})", e))
+        .map_err(|e| format!("ALVR driver path not stored and not registered ({e})"))
 }
 
 fn driver_paths_backup_present() -> bool {

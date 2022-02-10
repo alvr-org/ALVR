@@ -120,6 +120,6 @@ pub fn build_deps(target_os: &str) {
 
         get_oculus_openxr_mobile_loader();
     } else {
-        println!("Nothing to do for {}!", target_os)
+        println!("Nothing to do for {target_os}!")
     }
 }

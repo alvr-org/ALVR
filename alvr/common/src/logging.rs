@@ -134,7 +134,7 @@ macro_rules! trace_err {
 #[macro_export]
 macro_rules! trace_err_dbg {
     ($res:expr) => {
-        $res.map_err(|e| format!("{}: {:?}", trace_str!(), e))
+        $res.map_err(|e| format!("{}: {e:?}", trace_str!()))
     };
 }
 

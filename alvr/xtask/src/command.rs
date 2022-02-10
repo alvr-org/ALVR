@@ -23,7 +23,7 @@ pub fn run_as_shell_in(
     shell_flag: &str,
     cmd: &str,
 ) -> Result<(), Box<dyn Error>> {
-    println!("\n> {}", cmd);
+    println!("\n> {cmd}");
 
     let output = Command::new(shell)
         .args(&[shell_flag, cmd])

@@ -2,14 +2,14 @@ mod control_socket;
 mod packets;
 mod stream_socket;
 
-pub use control_socket::*;
-pub use packets::*;
-use rand::Rng;
-pub use stream_socket::*;
-
 use alvr_common::prelude::*;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
+
+pub use control_socket::*;
+pub use packets::*;
+pub use stream_socket::*;
 
 pub const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 pub const CONTROL_PORT: u16 = 9943;

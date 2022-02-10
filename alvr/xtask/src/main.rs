@@ -344,7 +344,7 @@ fn main() {
     let mut args = Arguments::from_env();
 
     if args.contains(["-h", "--help"]) {
-        println!("{}", HELP_STR);
+        println!("{HELP_STR}");
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let fetch = args.contains("--fetch");
         let is_release = args.contains("--release");
@@ -395,18 +395,18 @@ fn main() {
                 "prettier" => prettier(),
                 _ => {
                     println!("\nUnrecognized subcommand.");
-                    println!("{}", HELP_STR);
+                    println!("{HELP_STR}");
                     return;
                 }
             }
         } else {
             println!("\nWrong arguments.");
-            println!("{}", HELP_STR);
+            println!("{HELP_STR}");
             return;
         }
     } else {
         println!("\nMissing subcommand.");
-        println!("{}", HELP_STR);
+        println!("{HELP_STR}");
         return;
     }
 

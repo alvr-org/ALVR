@@ -126,8 +126,8 @@ fn main() {
         .expect("bindings.rs");
 
     println!(
-        "cargo:rustc-link-search=native={}/openvr/lib",
-        cpp_dir.to_string_lossy()
+        "cargo:rustc-link-search=native={}",
+        cpp_dir.join("openvr/lib").to_string_lossy()
     );
     println!("cargo:rustc-link-lib=openvr_api");
 

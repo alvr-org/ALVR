@@ -45,7 +45,7 @@ fn main() {
         .expect("layer_bindings.rs");
 
     for lib in libunwind.libs {
-        println!("cargo:rustc-link-lib={}", lib);
+        println!("cargo:rustc-link-lib={lib}");
     }
 
     // fail build if there are undefined symbols in final library

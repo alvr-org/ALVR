@@ -6,7 +6,7 @@ fn main() {
             .parent()
             .unwrap()
             .join("../../share/vulkan/explicit_layer.d"),
-        Err(err) => panic!("Failed to read vrcompositor symlink: {}", err),
+        Err(err) => panic!("Failed to read vrcompositor symlink: {err}"),
     };
     std::env::set_var("VK_LAYER_PATH", layer_path);
     std::env::set_var("VK_INSTANCE_LAYERS", "VK_LAYER_ALVR_capture");
@@ -14,5 +14,5 @@ fn main() {
     std::env::set_var("DISABLE_VK_LAYER_VALVE_steam_fossilize_1", "1");
 
     let err = exec::execvp(argv0 + ".real", std::env::args());
-    println!("Failed to run vrcompositor {}", err);
+    println!("Failed to run vrcompositor {err}");
 }

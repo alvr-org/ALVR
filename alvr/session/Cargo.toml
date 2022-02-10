@@ -15,3 +15,6 @@ settings-schema = { path = "../settings-schema", features = [
 bytemuck = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[build-dependencies]
+regex = "1"

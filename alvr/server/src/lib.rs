@@ -3,7 +3,6 @@ mod connection_utils;
 mod dashboard;
 mod graphics_info;
 mod logging_backend;
-mod openvr;
 mod web_server;
 
 #[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
@@ -14,7 +13,9 @@ use bindings::*;
 
 use alvr_common::{lazy_static, log, prelude::*, LEFT_HAND_HAPTIC_ID, RIGHT_HAND_HAPTIC_ID};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_session::{ClientConnectionDesc, ServerEvent, SessionManager};
+use alvr_session::{
+    ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
+};
 use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use parking_lot::Mutex;
 use std::{
@@ -65,6 +66,47 @@ lazy_static! {
         include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec();
     static ref COLOR_CORRECTION_CSO: Vec<u8> =
         include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec();
+}
+
+pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
+    let type_ = match value {
+        OpenvrPropValue::Bool(_) => OpenvrPropertyType_Bool,
+        OpenvrPropValue::Float(_) => OpenvrPropertyType_Float,
+        OpenvrPropValue::Int32(_) => OpenvrPropertyType_Int32,
+        OpenvrPropValue::Uint64(_) => OpenvrPropertyType_Uint64,
+        OpenvrPropValue::Vector3(_) => OpenvrPropertyType_Vector3,
+        OpenvrPropValue::Double(_) => OpenvrPropertyType_Double,
+        OpenvrPropValue::String(_) => OpenvrPropertyType_String,
+    };
+
+    let value = match value {
+        OpenvrPropValue::Bool(bool_) => OpenvrPropertyValue { bool_ },
+        OpenvrPropValue::Float(float_) => OpenvrPropertyValue { float_ },
+        OpenvrPropValue::Int32(int32) => OpenvrPropertyValue { int32 },
+        OpenvrPropValue::Uint64(uint64) => OpenvrPropertyValue { uint64 },
+        OpenvrPropValue::Vector3(vector3) => OpenvrPropertyValue { vector3 },
+        OpenvrPropValue::Double(double_) => OpenvrPropertyValue { double_ },
+        OpenvrPropValue::String(value) => {
+            let c_string = CString::new(value).unwrap();
+            let mut string = [0; 64];
+
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    c_string.as_ptr(),
+                    string.as_mut_ptr(),
+                    c_string.as_bytes_with_nul().len(),
+                );
+            }
+
+            OpenvrPropertyValue { string }
+        }
+    };
+
+    OpenvrProperty {
+        key: key as u32,
+        type_,
+        value,
+    }
 }
 
 pub fn shutdown_runtime() {

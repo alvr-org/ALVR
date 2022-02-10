@@ -11,7 +11,9 @@ use alvr_common::{
     semver::Version,
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_session::{CodecType, FrameSize, OpenvrConfig, ServerEvent};
+use alvr_session::{
+    CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey, ServerEvent,
+};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
     ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
@@ -632,9 +634,16 @@ async fn connection_pipeline() -> StrResult {
 
         Box::pin(async move {
             #[cfg(windows)]
-            crate::openvr::set_game_output_audio_device_id(alvr_audio::get_windows_device_id(
-                &device,
-            )?);
+            unsafe {
+                let device_id = alvr_audio::get_windows_device_id(&device)?;
+                crate::SetOpenvrProperty(
+                    *HEAD_ID,
+                    crate::to_cpp_openvr_prop(
+                        OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                        OpenvrPropValue::String(device_id),
+                    ),
+                )
+            }
 
             alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
                 .await?;
@@ -646,7 +655,16 @@ async fn connection_pipeline() -> StrResult {
                     AudioDeviceType::Output,
                 )?;
                 let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
-                crate::openvr::set_game_output_audio_device_id(default_device_id);
+
+                unsafe {
+                    crate::SetOpenvrProperty(
+                        *HEAD_ID,
+                        crate::to_cpp_openvr_prop(
+                            OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                            OpenvrPropValue::String(default_device_id),
+                        ),
+                    )
+                }
             }
 
             Ok(())
@@ -671,7 +689,15 @@ async fn connection_pipeline() -> StrResult {
                 },
             )?;
             let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
-            crate::openvr::set_headset_microphone_audio_device_id(microphone_device_id);
+            unsafe {
+                crate::SetOpenvrProperty(
+                    *HEAD_ID,
+                    crate::to_cpp_openvr_prop(
+                        OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
+                        OpenvrPropValue::String(microphone_device_id),
+                    ),
+                )
+            }
         }
 
         Box::pin(alvr_audio::play_audio_loop(

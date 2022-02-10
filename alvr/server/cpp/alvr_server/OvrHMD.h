@@ -76,12 +76,13 @@ public:
 	float m_poseTimeOffset;
 
 	vr::VRInputComponentHandle_t m_proximity;
+
+	vr::TrackedDeviceIndex_t m_unObjectId;
+	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 private:
 	bool m_baseComponentsInitialized;
 	bool m_streamComponentsInitialized;
 	vr::ETrackedDeviceClass m_deviceClass;
-	vr::TrackedDeviceIndex_t m_unObjectId;
-	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 	
 	vr::HmdMatrix34_t m_eyeToHeadLeft;
 	vr::HmdMatrix34_t m_eyeToHeadRight;

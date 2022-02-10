@@ -63,7 +63,6 @@ alcro = "0.5"
 webbrowser = "0.5" # this is just for opening links in the default browser
 # Miscellaneous
 fern = "0.6"
-openvr-driver-sys = { path = "../openvr-driver-sys" }
 
 [build-dependencies]
 bindgen = "0.59"

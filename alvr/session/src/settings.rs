@@ -2,6 +2,8 @@ use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
 
+include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
+
 // Field of view in radians
 #[derive(SettingsSchema, Serialize, Deserialize, PartialEq, Default, Clone, Copy)]
 pub struct Fov {

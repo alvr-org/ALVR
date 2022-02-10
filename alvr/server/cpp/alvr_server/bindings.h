@@ -158,6 +158,32 @@ struct HapticsFeedback {
     unsigned char hand; // 0:Right, 1:Left
 };
 
+enum OpenvrPropertyType {
+    Bool,
+    Float,
+    Int32,
+    Uint64,
+    Vector3,
+    Double,
+    String,
+};
+
+union OpenvrPropertyValue {
+    bool bool_;
+    float float_;
+    int int32;
+    unsigned long long uint64;
+    float vector3[3];
+    double double_;
+    char string[64];
+};
+
+struct OpenvrProperty {
+    unsigned int key;
+    OpenvrPropertyType type;
+    OpenvrPropertyValue value;
+};
+
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
@@ -196,3 +222,5 @@ extern "C" void InputReceive(TrackingInfo data);
 extern "C" void TimeSyncReceive(TimeSync data);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
+
+extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, OpenvrProperty prop);

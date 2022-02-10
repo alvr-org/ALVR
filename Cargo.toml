@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "alvr/settings-schema-derive",
     "alvr/settings-schema",
-    "alvr/openvr-driver-sys",
     "alvr/filesystem",
     "alvr/common",
     "alvr/commands",

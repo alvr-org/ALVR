@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 extern uint64_t HEAD_PATH;
 extern uint64_t LEFT_HAND_PATH;

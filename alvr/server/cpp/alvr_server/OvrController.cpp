@@ -9,8 +9,8 @@
 #include "include/openvr_math.h"
 #include "Logger.h"
 
-OvrController::OvrController(bool isLeftHand, int index, float* poseTimeOffset)
-	: m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
+OvrController::OvrController(uint64_t devicePath, bool isLeftHand, int index, float* poseTimeOffset)
+	: TrackedDevice(devicePath)
 	, m_isLeftHand(isLeftHand)
 	, m_index(index)
 	, m_poseTimeOffset(poseTimeOffset)
@@ -67,20 +67,20 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 	const bool isViveTracker = Settings::Instance().m_controllerMode == 8 ||
 							   Settings::Instance().m_controllerMode == 9;
-	m_unObjectId = unObjectId;
-	m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+	this->object_id = unObjectId;
+	this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String,
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_TrackingSystemName_String,
 		Settings::Instance().m_useHeadsetTrackingSystem ?
 			Settings::Instance().mTrackingSystemName.c_str() :
 		 	Settings::Instance().m_controllerTrackingSystemName.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().m_controllerManufacturerName.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, m_isLeftHand ? (Settings::Instance().m_controllerModelNumber + " (Left Controller)").c_str() : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ManufacturerName_String, Settings::Instance().m_controllerManufacturerName.c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ModelNumber_String, m_isLeftHand ? (Settings::Instance().m_controllerModelNumber + " (Left Controller)").c_str() : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, m_isLeftHand ? Settings::Instance().m_controllerRenderModelNameLeft.c_str() : Settings::Instance().m_controllerRenderModelNameRight.c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_RenderModelName_String, m_isLeftHand ? Settings::Instance().m_controllerRenderModelNameLeft.c_str() : Settings::Instance().m_controllerRenderModelNameRight.c_str());
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_SerialNumber_String, GetSerialNumber().c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_SerialNumber_String, GetSerialNumber().c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_AttachedDeviceId_String, GetSerialNumber().c_str());
 
 	const std::string regDeviceTypeString = [this, isViveTracker]()
 	{
@@ -99,22 +99,22 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			(Settings::Instance().mControllerRegisteredDeviceType + "_Left") :
 			(Settings::Instance().mControllerRegisteredDeviceType + "_Right");
 	}();
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, regDeviceTypeString.c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_RegisteredDeviceType_String, regDeviceTypeString.c_str());
 
 	uint64_t supportedButtons = 0xFFFFFFFFFFFFFFFFULL;
-	vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_SupportedButtons_Uint64, supportedButtons);
+	vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_SupportedButtons_Uint64, supportedButtons);
 
-	vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
+	vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
 
-	vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_Joystick);
+	vr::VRProperties()->SetInt32Property(this->prop_container, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_Joystick);
 
-	vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerRoleHint_Int32, isViveTracker ? 
+	vr::VRProperties()->SetInt32Property(this->prop_container, vr::Prop_ControllerRoleHint_Int32, isViveTracker ? 
 																										vr::TrackedControllerRole_Invalid :
 																										(m_isLeftHand ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand));
 
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ControllerType_String, m_isLeftHand ? Settings::Instance().m_controllerTypeLeft.c_str() : Settings::Instance().m_controllerTypeRight.c_str());
-	vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_InputProfilePath_String, Settings::Instance().m_controllerInputProfilePath.c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ControllerType_String, m_isLeftHand ? Settings::Instance().m_controllerTypeLeft.c_str() : Settings::Instance().m_controllerTypeRight.c_str());
+	vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_InputProfilePath_String, Settings::Instance().m_controllerInputProfilePath.c_str());
 
 	switch (Settings::Instance().m_controllerMode) {
 	case 0:	//Oculus Rift
@@ -122,166 +122,166 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	case 6:	//Oculus Quest
 	case 7:	//Oculus Quest no pinch
 
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/touch", &m_handles[ALVR_INPUT_THUMB_REST_TOUCH]);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
-	vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/grip/value", &m_handles[ALVR_INPUT_GRIP_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/system/touch", &m_handles[ALVR_INPUT_THUMB_REST_TOUCH]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
+	vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/grip/value", &m_handles[ALVR_INPUT_GRIP_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
 
 	if (!m_isLeftHand) {
 		// A,B for right hand.
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/touch", &m_handles[ALVR_INPUT_A_TOUCH]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/touch", &m_handles[ALVR_INPUT_B_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/a/touch", &m_handles[ALVR_INPUT_A_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/b/touch", &m_handles[ALVR_INPUT_B_TOUCH]);
 
-		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
+		vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
 	
 
 		//icons
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String,"{oculus}/icons/rifts_right_controller_off.png" );
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String,"{oculus}/icons/rifts_right_controller_searching.gif" );
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String,"{oculus}/icons/rifts_right_controller_searching_alert.gif" );
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String,"{oculus}/icons/rifts_right_controller_ready.png" );
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String,"{oculus}/icons/rifts_right_controller_ready_alert.png" );
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String,"{oculus}/icons/rifts_right_controller_ready_low.png" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceOff_String,"{oculus}/icons/rifts_right_controller_off.png" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearching_String,"{oculus}/icons/rifts_right_controller_searching.gif" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearchingAlert_String,"{oculus}/icons/rifts_right_controller_searching_alert.gif" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReady_String,"{oculus}/icons/rifts_right_controller_ready.png" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReadyAlert_String,"{oculus}/icons/rifts_right_controller_ready_alert.png" );
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceAlertLow_String,"{oculus}/icons/rifts_right_controller_ready_low.png" );
 			   	
 	
 	}
 	else {
 		// X,Y for left hand.
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/x/click", &m_handles[ALVR_INPUT_X_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/x/touch", &m_handles[ALVR_INPUT_X_TOUCH]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/click", &m_handles[ALVR_INPUT_Y_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/y/touch", &m_handles[ALVR_INPUT_Y_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/x/click", &m_handles[ALVR_INPUT_X_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/x/touch", &m_handles[ALVR_INPUT_X_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/y/click", &m_handles[ALVR_INPUT_Y_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/y/touch", &m_handles[ALVR_INPUT_Y_TOUCH]);
 
-		vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
+		vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, SKELETON_BONE_COUNT, &m_compSkeleton);
 	
 		//icons
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{oculus}/icons/rifts_left_controller_off.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{oculus}/icons/rifts_left_controller_searching.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{oculus}/icons/rifts_left_controller_searching_alert.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{oculus}/icons/rifts_left_controller_ready.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{oculus}/icons/rifts_left_controller_ready_alert.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{oculus}/icons/rifts_left_controller_ready_low.png");	
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceOff_String, "{oculus}/icons/rifts_left_controller_off.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearching_String, "{oculus}/icons/rifts_left_controller_searching.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{oculus}/icons/rifts_left_controller_searching_alert.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReady_String, "{oculus}/icons/rifts_left_controller_ready.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{oculus}/icons/rifts_left_controller_ready_alert.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceAlertLow_String, "{oculus}/icons/rifts_left_controller_ready_low.png");	
 	
 	}
 
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick/click", &m_handles[ALVR_INPUT_JOYSTICK_CLICK]);
-	vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick/x", &m_handles[ALVR_INPUT_JOYSTICK_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-	vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/joystick/y", &m_handles[ALVR_INPUT_JOYSTICK_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/joystick/touch", &m_handles[ALVR_INPUT_JOYSTICK_TOUCH]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/joystick/click", &m_handles[ALVR_INPUT_JOYSTICK_CLICK]);
+	vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/joystick/x", &m_handles[ALVR_INPUT_JOYSTICK_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+	vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/joystick/y", &m_handles[ALVR_INPUT_JOYSTICK_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/joystick/touch", &m_handles[ALVR_INPUT_JOYSTICK_TOUCH]);
 
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/back/click", &m_handles[ALVR_INPUT_BACK_CLICK]);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/guide/click", &m_handles[ALVR_INPUT_GUIDE_CLICK]);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/start/click", &m_handles[ALVR_INPUT_START_CLICK]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/back/click", &m_handles[ALVR_INPUT_BACK_CLICK]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/guide/click", &m_handles[ALVR_INPUT_GUIDE_CLICK]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/start/click", &m_handles[ALVR_INPUT_START_CLICK]);
 
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
-	vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-	vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/touch", &m_handles[ALVR_INPUT_TRIGGER_TOUCH]);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
+	vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+	vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trigger/touch", &m_handles[ALVR_INPUT_TRIGGER_TOUCH]);
 
-	vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
+	vr::VRDriverInput()->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 	break;
 
 	case 2:	//Index
 	case 3:	//Index no pinch
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/a/touch", &m_handles[ALVR_INPUT_A_TOUCH]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/b/touch", &m_handles[ALVR_INPUT_B_TOUCH]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/touch", &m_handles[ALVR_INPUT_TRIGGER_TOUCH]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[ALVR_INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[ALVR_INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/force", &m_handles[ALVR_INPUT_TRACKPAD_FORCE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/grip/force", &m_handles[ALVR_INPUT_GRIP_FORCE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/grip/value", &m_handles[ALVR_INPUT_GRIP_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/thumbstick/x", &m_handles[ALVR_INPUT_JOYSTICK_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/thumbstick/y", &m_handles[ALVR_INPUT_JOYSTICK_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/thumbstick/click", &m_handles[ALVR_INPUT_JOYSTICK_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/thumbstick/touch", &m_handles[ALVR_INPUT_JOYSTICK_TOUCH]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/finger/index", &m_handles[ALVR_INPUT_FINGER_INDEX], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/finger/middle", &m_handles[ALVR_INPUT_FINGER_MIDDLE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/finger/ring", &m_handles[ALVR_INPUT_FINGER_RING], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/finger/pinky", &m_handles[ALVR_INPUT_FINGER_PINKY], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/a/touch", &m_handles[ALVR_INPUT_A_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/b/click", &m_handles[ALVR_INPUT_B_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/b/touch", &m_handles[ALVR_INPUT_B_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trigger/touch", &m_handles[ALVR_INPUT_TRIGGER_TOUCH]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trackpad/x", &m_handles[ALVR_INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trackpad/y", &m_handles[ALVR_INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trackpad/force", &m_handles[ALVR_INPUT_TRACKPAD_FORCE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/grip/force", &m_handles[ALVR_INPUT_GRIP_FORCE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/grip/value", &m_handles[ALVR_INPUT_GRIP_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/thumbstick/x", &m_handles[ALVR_INPUT_JOYSTICK_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/thumbstick/y", &m_handles[ALVR_INPUT_JOYSTICK_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/thumbstick/click", &m_handles[ALVR_INPUT_JOYSTICK_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/thumbstick/touch", &m_handles[ALVR_INPUT_JOYSTICK_TOUCH]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/finger/index", &m_handles[ALVR_INPUT_FINGER_INDEX], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/finger/middle", &m_handles[ALVR_INPUT_FINGER_MIDDLE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/finger/ring", &m_handles[ALVR_INPUT_FINGER_RING], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/finger/pinky", &m_handles[ALVR_INPUT_FINGER_PINKY], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
 		if (m_isLeftHand) {
-			vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
+			vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
 		}
 		else {
-			vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
+			vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
 		}
-		vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
+		vr::VRDriverInput()->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 		break;
 
 	case 8:
 	case 9: { // Vive Tracker
 		// All of these property values were dumped from real a vive tracker via https://github.com/SDraw/openvr_dumper
 		// and were copied from https://github.com/SDraw/driver_kinectV2
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ResourceRoot_String, "htc");
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_WillDriftInYaw_Bool, false);
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingFirmwareVersion_String, "1541800000 RUNNER-WATCHMAN$runner-watchman@runner-watchman 2018-01-01 FPGA 512(2.56/0/0) BL 0 VRC 1541800000 Radio 1518800000"); // Changed
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_HardwareRevision_String, "product 128 rev 2.5.6 lot 2000/0/0 0");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ConnectedWirelessDongle_String, "D0000BE000");
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsWireless_Bool, true);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsCharging_Bool, false);
-		vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_ControllerHandSelectionPriority_Int32, -1);
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ResourceRoot_String, "htc");
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_WillDriftInYaw_Bool, false);
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_TrackingFirmwareVersion_String, "1541800000 RUNNER-WATCHMAN$runner-watchman@runner-watchman 2018-01-01 FPGA 512(2.56/0/0) BL 0 VRC 1541800000 Radio 1518800000"); // Changed
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_HardwareRevision_String, "product 128 rev 2.5.6 lot 2000/0/0 0");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ConnectedWirelessDongle_String, "D0000BE000");
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceIsWireless_Bool, true);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceIsCharging_Bool, false);
+		vr::VRProperties()->SetInt32Property(this->prop_container, vr::Prop_ControllerHandSelectionPriority_Int32, -1);
 		vr::HmdMatrix34_t l_transform = { -1.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 0.f, -1.f, 0.f, 0.f };
-		vr::VRProperties()->SetProperty(m_ulPropertyContainer, vr::Prop_StatusDisplayTransform_Matrix34, &l_transform, sizeof(vr::HmdMatrix34_t), vr::k_unHmdMatrix34PropertyTag);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_UpdateAvailable_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_ManualUpdate_Bool, false);
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_Firmware_ManualUpdateURL_String, "https://developer.valvesoftware.com/wiki/SteamVR/HowTo_Update_Firmware");
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_HardwareRevision_Uint64, 2214720000);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_FirmwareVersion_Uint64, 1541800000);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_FPGAVersion_Uint64, 512);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_VRCVersion_Uint64, 1514800000);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_RadioVersion_Uint64, 1518800000);
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_DongleVersion_Uint64, 8933539758);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceCanPowerOff_Bool, true);
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_Firmware_ProgrammingTarget_String, GetSerialNumber().c_str());
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_ForceUpdateRequired_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Identifiable_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_Firmware_RemindUpdate_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasDisplayComponent_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasCameraComponent_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasDriverDirectModeComponent_Bool, false);
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_HasVirtualDisplayComponent_Bool, false);
+		vr::VRProperties()->SetProperty(this->prop_container, vr::Prop_StatusDisplayTransform_Matrix34, &l_transform, sizeof(vr::HmdMatrix34_t), vr::k_unHmdMatrix34PropertyTag);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_Firmware_UpdateAvailable_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_Firmware_ManualUpdate_Bool, false);
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_Firmware_ManualUpdateURL_String, "https://developer.valvesoftware.com/wiki/SteamVR/HowTo_Update_Firmware");
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_HardwareRevision_Uint64, 2214720000);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_FirmwareVersion_Uint64, 1541800000);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_FPGAVersion_Uint64, 512);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_VRCVersion_Uint64, 1514800000);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_RadioVersion_Uint64, 1518800000);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_DongleVersion_Uint64, 8933539758);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceCanPowerOff_Bool, true);
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_Firmware_ProgrammingTarget_String, GetSerialNumber().c_str());
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_Firmware_ForceUpdateRequired_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_Identifiable_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_Firmware_RemindUpdate_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_HasDisplayComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_HasCameraComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_HasDriverDirectModeComponent_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_HasVirtualDisplayComponent_Bool, false);
 
 		//icons
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{htc}/icons/tracker_status_off.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{htc}/icons/tracker_status_searching.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{htc}/icons/tracker_status_searching_alert.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{htc}/icons/tracker_status_ready.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{htc}/icons/tracker_status_ready_alert.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{htc}/icons/tracker_status_error.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{htc}/icons/tracker_status_standby.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{htc}/icons/tracker_status_ready_low.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceOff_String, "{htc}/icons/tracker_status_off.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearching_String, "{htc}/icons/tracker_status_searching.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{htc}/icons/tracker_status_searching_alert.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReady_String, "{htc}/icons/tracker_status_ready.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{htc}/icons/tracker_status_ready_alert.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceNotReady_String, "{htc}/icons/tracker_status_error.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceStandby_String, "{htc}/icons/tracker_status_standby.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceAlertLow_String, "{htc}/icons/tracker_status_ready_low.png");
 		// yes we want to explicitly fallthrough to vive case!, vive trackers can have input when POGO pins are connected to a peripheral.
 		// the input bindings are only active when the tracker role is set to "vive_tracker_handed"/held_in_hand roles.
 		[[fallthrough]];
 	}
 	case 4: //Vive
 	case 5: //Vive no pinch
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trackpad/click", &m_handles[ALVR_INPUT_TRACKPAD_CLICK]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/x", &m_handles[ALVR_INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trackpad/y", &m_handles[ALVR_INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
-		vr::VRDriverInput()->CreateScalarComponent(m_ulPropertyContainer, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trackpad/touch", &m_handles[ALVR_INPUT_TRACKPAD_TOUCH]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trackpad/click", &m_handles[ALVR_INPUT_TRACKPAD_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trackpad/x", &m_handles[ALVR_INPUT_TRACKPAD_X], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trackpad/y", &m_handles[ALVR_INPUT_TRACKPAD_Y], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/trigger/click", &m_handles[ALVR_INPUT_TRIGGER_CLICK]);
+		vr::VRDriverInput()->CreateScalarComponent(this->prop_container, "/input/trigger/value", &m_handles[ALVR_INPUT_TRIGGER_VALUE], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/grip/click", &m_handles[ALVR_INPUT_GRIP_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/application_menu/click", &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
 		if (m_isLeftHand) {
-			vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
+			vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/left", "/skeleton/hand/left", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
 		}
 		else {
-			vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
+			vr::VRDriverInput()->CreateSkeletonComponent(this->prop_container, "/input/skeleton/right", "/skeleton/hand/right", "/pose/raw", vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial, nullptr, 0U, &m_compSkeleton);
 		}
-		vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer, "/output/haptic", &m_compHaptic);
+		vr::VRDriverInput()->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 		break;
 	}
 
@@ -291,7 +291,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId)
 void OvrController::Deactivate()
 {
 	Debug("RemoteController::Deactivate\n");
-	m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+	this->object_id = vr::k_unTrackedDeviceIndexInvalid;
 }
 
 void OvrController::EnterStandby()
@@ -371,7 +371,7 @@ vr::HmdQuaternionf_t QuatMultiply(const vr::HmdQuaternionf_t* q1, const vr::HmdQ
 
 bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) {
 
-	if (m_unObjectId == vr::k_unTrackedDeviceIndexInvalid) {
+	if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
 		return false;
 	}
 
@@ -504,7 +504,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 	   
 
 	auto& c = info.controller[controllerIndex];
-	Debug("Controller%d %d %lu: %08llX %08X %f:%f\n", m_index,controllerIndex, (unsigned long)m_unObjectId, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
+	Debug("Controller%d %d %lu: %08llX %08X %f:%f\n", m_index,controllerIndex, (unsigned long)this->object_id, c.buttons, c.flags, c.trackpadPosition.x, c.trackpadPosition.y);
 
 	if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
 		//m_pose.poseTimeOffset = 0.;
@@ -795,7 +795,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_RING], rotRing, 0.0);
 		vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_PINKY], rotPinky, 0.0);
 
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(this->object_id, m_pose, sizeof(vr::DriverPose_t));
 	}
 	else {
 
@@ -971,9 +971,9 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		}
 
 		// Battery
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
+		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
 
-		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, m_pose, sizeof(vr::DriverPose_t));
+		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(this->object_id, m_pose, sizeof(vr::DriverPose_t));
 
 	}
 

@@ -384,6 +384,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
         shutdown_runtime();
     }
 
+    unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
+        alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
+    }
+
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
@@ -393,6 +397,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     HapticsSend = Some(haptics_send);
     TimeSyncSend = Some(time_sync_send);
     ShutdownRuntime = Some(_shutdown_runtime);
+    PathStringToHash = Some(path_string_to_hash);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

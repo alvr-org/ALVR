@@ -10,6 +10,7 @@
 #include "ClientConnection.h"
 #include "OvrDisplayComponent.h"
 #include "PoseHistory.h"
+#include "Paths.h"
 
 #ifdef _WIN32
 	#include "platform/win32/CEncoder.h"
@@ -36,11 +37,10 @@ inline vr::ETrackedDeviceClass getControllerDeviceClass()
 }
 
 OvrHmd::OvrHmd()
-		: m_baseComponentsInitialized(false)
+		: TrackedDevice(HEAD_PATH)
+		, m_baseComponentsInitialized(false)
 		, m_streamComponentsInitialized(false)
-		,m_unObjectId(vr::k_unTrackedDeviceIndexInvalid)
 	{
-		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 		m_poseHistory = std::make_shared<PoseHistory>();
 
 		m_deviceClass = Settings::Instance().m_TrackingRefOnly ?
@@ -56,7 +56,7 @@ OvrHmd::OvrHmd()
 		}
 
 		if (!Settings::Instance().m_disableController) {
-			m_leftController = std::make_shared<OvrController>(true, 0, &m_poseTimeOffset);
+			m_leftController = std::make_shared<OvrController>(LEFT_HAND_PATH, true, 0, &m_poseTimeOffset);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_leftController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
@@ -65,7 +65,7 @@ OvrHmd::OvrHmd()
 				Warn("Failed to register left controller");
 			}
 
-			m_rightController = std::make_shared<OvrController>(false, 1, &m_poseTimeOffset);
+			m_rightController = std::make_shared<OvrController>(RIGHT_HAND_PATH, false, 1, &m_poseTimeOffset);
 			ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
 				m_rightController->GetSerialNumber().c_str(),
 				getControllerDeviceClass(),
@@ -131,38 +131,38 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
 		Debug("CRemoteHmd Activate %d\n", unObjectId);
 
-		m_unObjectId = unObjectId;
-		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+		this->object_id = unObjectId;
+		this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
 
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().mTrackingSystemName.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ModelNumber_String, Settings::Instance().mModelNumber.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_ManufacturerName_String, Settings::Instance().mManufacturerName.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RenderModelName_String, Settings::Instance().mRenderModelName.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_RegisteredDeviceType_String, Settings::Instance().mRegisteredDeviceType.c_str());
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_DriverVersion_String, Settings::Instance().mDriverVersion.c_str());
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
-		vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, 0.);
-		//vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_TrackingSystemName_String, Settings::Instance().mTrackingSystemName.c_str());
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ModelNumber_String, Settings::Instance().mModelNumber.c_str());
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_ManufacturerName_String, Settings::Instance().mManufacturerName.c_str());
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_RenderModelName_String, Settings::Instance().mRenderModelName.c_str());
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_RegisteredDeviceType_String, Settings::Instance().mRegisteredDeviceType.c_str());
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_DriverVersion_String, Settings::Instance().mDriverVersion.c_str());
+		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
+		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
+		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
+		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_SecondsFromVsyncToPhotons_Float, 0.);
+		//vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_SecondsFromVsyncToPhotons_Float, Settings::Instance().m_flSecondsFromVsyncToPhotons);
 
 		// return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-		vr::VRProperties()->SetUint64Property(m_ulPropertyContainer, vr::Prop_CurrentUniverseId_Uint64, Settings::Instance().m_universeId);
+		vr::VRProperties()->SetUint64Property(this->prop_container, vr::Prop_CurrentUniverseId_Uint64, Settings::Instance().m_universeId);
 
 #ifdef _WIN32
 		// avoid "not fullscreen" warnings from vrmonitor
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_IsOnDesktop_Bool, false);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_IsOnDesktop_Bool, false);
 
 		// Manually send VSync events on direct mode. ref:https://github.com/ValveSoftware/virtual_display/issues/1
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
 #endif
 
 		// Set battery as true
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
 		// Use proximity sensor
-		vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_ContainsProximitySensor_Bool, true);
-		vr::VRDriverInput()->CreateBooleanComponent(m_ulPropertyContainer, "/proximity", &m_proximity);
+		vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_ContainsProximitySensor_Bool, true);
+		vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
 
 #ifdef _WIN32
 		float originalIPD = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
@@ -173,12 +173,12 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		HmdMatrix_SetIdentity(&m_eyeToHeadRight);
 
 		//set the icons in steamvr to the default icons used for Oculus Link
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String, "{oculus}/icons/quest_headset_off.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String, "{oculus}/icons/quest_headset_searching.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{oculus}/icons/quest_headset_alert_searching.gif");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String, "{oculus}/icons/quest_headset_ready.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{oculus}/icons/quest_headset_ready_alert.png");
-		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{oculus}/icons/quest_headset_standby.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceOff_String, "{oculus}/icons/quest_headset_off.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearching_String, "{oculus}/icons/quest_headset_searching.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceSearchingAlert_String, "{oculus}/icons/quest_headset_alert_searching.gif");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReady_String, "{oculus}/icons/quest_headset_ready.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceReadyAlert_String, "{oculus}/icons/quest_headset_ready_alert.png");
+		vr::VRProperties()->SetStringProperty(this->prop_container, vr::Prop_NamedIconPathDeviceStandby_String, "{oculus}/icons/quest_headset_standby.png");
 
 		// Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent which never applies reprojection
 		vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, true);
@@ -231,7 +231,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		{
 			vr::VREvent_Data_t eventData;
 			eventData.ipd = { Settings::Instance().m_flIPD };
-			vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_IpdChanged, eventData, 0);
+			vr::VRServerDriverHost()->VendorSpecificEvent(this->object_id, vr::VREvent_IpdChanged, eventData, 0);
 		}
 
 		return vr::VRInitError_None;
@@ -240,7 +240,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	 void OvrHmd::Deactivate() 
 	{
 		Debug("CRemoteHmd Deactivate\n");
-		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		this->object_id = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
 	 void OvrHmd::EnterStandby()
@@ -307,8 +307,8 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
 
 			// set battery percentage
-			vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer, vr::Prop_DeviceIsCharging_Bool, info.plugged);
-			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
+			vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceIsCharging_Bool, info.plugged);
+			vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
 
 			// set prox sensor
 			vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1, 0.0);
@@ -335,15 +335,15 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		// In a real driver, this should happen from some pose tracking thread.
 		// The RunFrame interval is unspecified and can be very irregular if some other
 		// driver blocks it for some periodic task.
-		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		if (this->object_id != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			//LogDriver("RunFrame");
-			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+			//vr::VRServerDriverHost()->TrackedDevicePoseUpdated(this->object_id, GetPose(), sizeof(vr::DriverPose_t));
 		}
 	}
 
 	void OvrHmd::OnPoseUpdated() {
-		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid)
+		if (this->object_id != vr::k_unTrackedDeviceIndexInvalid)
 		{
 			if (!m_Listener || !m_Listener->HasValidTrackingInfo()) {
 				return;
@@ -366,7 +366,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 			m_poseHistory->OnPoseUpdated(info);
 		
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, GetPose(), sizeof(vr::DriverPose_t));
+			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(this->object_id, GetPose(), sizeof(vr::DriverPose_t));
 
 			if (m_viveTrackerProxy != nullptr)
 				m_viveTrackerProxy->update();
@@ -405,7 +405,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			m_encoder = std::make_shared<CEncoder>();
 #else
 			// This has to be set after initialization is done, because something in vrcompositor is setting it to 90Hz in the meantime
-			vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
+			vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DisplayFrequency_Float, static_cast<float>(Settings::Instance().m_refreshRate));
 			m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
 			m_encoder->Start();
 #endif
@@ -422,7 +422,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
 		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
-		vr::VRServerDriverHost()->SetDisplayEyeToHead(m_unObjectId, m_eyeToHeadLeft, m_eyeToHeadRight);
+		vr::VRServerDriverHost()->SetDisplayEyeToHead(this->object_id, m_eyeToHeadLeft, m_eyeToHeadRight);
 #ifdef _WIN32
 		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, info.ipd);
 #endif
@@ -441,10 +441,10 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			&m_eyeFoVRight.vTopLeft.v[1],
 			&m_eyeFoVRight.vBottomRight.v[1]);
 
-		vr::VRServerDriverHost()->SetDisplayProjectionRaw(m_unObjectId, m_eyeFoVLeft, m_eyeFoVRight);
+		vr::VRServerDriverHost()->SetDisplayProjectionRaw(this->object_id, m_eyeFoVLeft, m_eyeFoVRight);
 		Settings::Instance().m_flIPD = info.ipd;
 
-		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_LensDistortionChanged, {}, 0);
+		vr::VRServerDriverHost()->VendorSpecificEvent(this->object_id, vr::VREvent_LensDistortionChanged, {}, 0);
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {
@@ -542,7 +542,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	void OvrHmd::OnShutdown() {
 		Info("Sending shutdown signal to vrserver.\n");
 		vr::VREvent_Reserved_t data = {};
-		vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
+		vr::VRServerDriverHost()->VendorSpecificEvent(this->object_id, vr::VREvent_DriverRequestedQuit, (vr::VREvent_Data_t&)data, 0);
 	}
 
 	void OvrHmd::RequestIDR() {

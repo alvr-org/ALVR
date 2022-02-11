@@ -207,6 +207,7 @@ extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 extern "C" void (*HapticsSend)(HapticsFeedback packet);
 extern "C" void (*TimeSyncSend)(TimeSync packet);
 extern "C" void (*ShutdownRuntime)();
+extern "C" unsigned long long (*PathStringToHash)(const char *path);
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

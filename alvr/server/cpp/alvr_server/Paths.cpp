@@ -1,4 +1,4 @@
-#include "paths.h"
+#include "Paths.h"
 #include "bindings.h"
 
 uint64_t HEAD_PATH;

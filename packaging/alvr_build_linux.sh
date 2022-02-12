@@ -25,8 +25,6 @@ branch='master'
 specFile='packaging/rpm/alvr.spec'
 # deb control file
 controlFile='packaging/deb/control'
-# Raw file provider
-rawContentProvider='https://raw.githubusercontent.com'
 # Android NDK version
 ndkVersion=30
 
@@ -96,7 +94,7 @@ Arguments:
         --client-args=  List of ALL cargo xtask client build arguments
         --prep-only     Only prepare system for ALVR package build
         --server-args=  List of ALL cargo xtask server build arguments
-Example: ./ALVR/packaging/alvr_build_linux.sh server --build-only --server-args='--release --no-nvidia --experimental'
+Example: ./ALVR/packaging/alvr_build_linux.sh server --build-only --server-args='--release --no-nvidia --experiments'
 HELPME
 }
 
@@ -109,13 +107,11 @@ maybe_clone() {
     # Get the short hash for this commit
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
 
-    # Check if a tag exists; if not we're a nightly
-    if [ "$(git -C "${repoDir}" tag --points-at HEAD)" == '' ]; then
-        nightly=true
-    fi
-    nightlyVer="+$(date +%s)+${shortHash}"
+    # If branch is master it's a development build
+    # We need something better here... this doesn't take into account non-master dev branches
+    ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
 
-    # Import distro helper functions once we know ${repoDir} exists
+    # Import distro-specific helper functions once ${repoDir} exists
     for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
         . "${helper}"
     done
@@ -134,7 +130,7 @@ main() {
     # Create temporary directory if it doesn't exist
     ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
 
-    # We need to clone either way for distro-specific bash functions
+    # We need to clone either way for distro-specific bash functions and deb control file
     ! maybe_clone && log critical 'Unable to clone repository!'
 
     case "${1,,}" in

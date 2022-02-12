@@ -22,6 +22,15 @@ SUDOCMDS
 }
 
 prep_fedora_server() {
+    log info 'Copying spec file ...'
+    cp "${repoDir}/${specFile}" "${tmpDir}/tmp.spec"
+
+# Nvidia + CUDA build deps need to be added to the spec, then stripped here if --no-nvidia is use
+#    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
+#        log info 'Removing unused nvidia build dependency ...'
+#        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/tmp.spec"
+#    fi
+
     basePackages=(
         'dnf-utils'
         'git'
@@ -31,7 +40,7 @@ prep_fedora_server() {
     # ONLY these need sudo
     sudo -s <<SUDOCMDS
 dnf -y install ${basePackages[@]}
-yum-builddep -y ${rawContentProvider}/${repo}/${branch}/${specFile}
+yum-builddep -y "${tmpDir}/tmp.spec"
 SUDOCMDS
 }
 
@@ -44,11 +53,7 @@ build_fedora_server() {
     # The relative path at the end here is a rlly bad idea, but where does it live?!
     if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${repoDir}/${specFile}" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
         log info 'Mangling spec file version and building RPMS ...'
-        if $nightly; then
-            sed "s/Release:.*/\0+$(date +%s)+${shortHash}/" "${repoDir}/${specFile}" > "${tmpDir}/tmp.spec"
-        else
-            cp "${repoDir}/${specFile}" "${tmpDir}/tmp.spec"
-        fi
+        [ "${buildVer}" != '' ] && sed -i "s/Release:.*/\0${buildVer}/" "${tmpDir}/tmp.spec"
 
         # Replace build arguments in specfile if needed
         if [ "${kwArgs['--server-args']}" != '' ]; then

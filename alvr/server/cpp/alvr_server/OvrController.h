@@ -6,7 +6,7 @@
 
 class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
   public:
-    OvrController(uint64_t devicePath, bool isLeftHand, int index, float *poseTimeOffset);
+    OvrController(uint64_t devicePath, float *poseTimeOffset);
 
     virtual ~OvrController(){};
 
@@ -51,8 +51,6 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
 
-    bool m_isLeftHand;
-    int m_index;
     float *m_poseTimeOffset;
 
     vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
@@ -93,8 +91,6 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
         HSB_Count
     };
     vr::VRBoneTransform_t m_boneTransform[HSB_Count];
-
-    vr::DriverPose_t m_pose;
 
     float m_thumbAnimationProgress = 0;
     float m_indexAnimationProgress = 0;

@@ -80,11 +80,6 @@ class OvrHmd : public TrackedDevice,
     bool m_streamComponentsInitialized;
     vr::ETrackedDeviceClass m_deviceClass;
 
-    vr::HmdMatrix34_t m_eyeToHeadLeft;
-    vr::HmdMatrix34_t m_eyeToHeadRight;
-    vr::HmdRect2_t m_eyeFoVLeft;
-    vr::HmdRect2_t m_eyeFoVRight;
-
     std::wstring m_adapterName;
 
 #ifdef _WIN32

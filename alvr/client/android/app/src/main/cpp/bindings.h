@@ -127,11 +127,6 @@ struct VideoFrame {
     unsigned short fecPercentage;
     // char frameBuffer[];
 };
-struct HapticsFeedback {
-    unsigned long long duration_ns;
-    float frequency;
-    float amplitude;
-};
 
 struct OnCreateResult {
     int streamSurfaceHandle;
@@ -190,7 +185,10 @@ extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);
 extern "C" void setStreamConfig(StreamConfig config);
 extern "C" void onStreamStartNative();
 extern "C" void onPauseNative();
-extern "C" void onHapticsFeedbackNative(unsigned long long path, HapticsFeedback packet);
+extern "C" void onHapticsFeedbackNative(unsigned long long path,
+                                        float duration_s,
+                                        float frequency,
+                                        float amplitude);
 extern "C" void onBatteryChangedNative(int battery, int plugged);
 extern "C" GuardianData getGuardianData();
 

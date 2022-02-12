@@ -2,7 +2,7 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
-    HapticsFeedback, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
+    TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{
@@ -471,18 +471,18 @@ async fn connection_pipeline(
         let mut receiver = stream_socket
             .subscribe_to_stream::<Haptics>(HAPTICS)
             .await?;
-        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
                 let packet = receiver.recv().await?.header;
 
-                let haptics = HapticsFeedback {
-                    duration_ns: packet.duration.as_nanos() as _,
-                    frequency: packet.frequency,
-                    amplitude: packet.amplitude,
+                unsafe {
+                    crate::onHapticsFeedbackNative(
+                        packet.path,
+                        packet.duration.as_secs_f32(),
+                        packet.frequency,
+                        packet.amplitude,
+                    )
                 };
-
-                unsafe { crate::onHapticsFeedbackNative(packet.path, haptics) };
             }
         }
     };

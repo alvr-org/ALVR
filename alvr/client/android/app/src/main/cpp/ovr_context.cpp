@@ -978,13 +978,16 @@ void renderLoadingNative() {
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 }
 
-void onHapticsFeedbackNative(unsigned long long path, HapticsFeedback packet) {
+void onHapticsFeedbackNative(unsigned long long path,
+                            float duration_s,
+                            float frequency,
+                            float amplitude) {
     int curHandIndex = (path == RIGHT_CONTROLLER_HAPTICS_PATH ? 0 : 1);
     auto &s = g_ctx.mHapticsState[curHandIndex];
     s.startUs = 0;
-    s.endUs = packet.duration_ns / 1000;
-    s.amplitude = packet.amplitude;
-    s.frequency = packet.frequency;
+    s.endUs = (uint64_t)(duration_s * 1000'000);
+    s.amplitude = amplitude;
+    s.frequency = frequency;
     s.fresh = true;
     s.buffered = false;
 }

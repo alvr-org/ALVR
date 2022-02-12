@@ -41,11 +41,6 @@ struct TrackingInfo {
     TrackingVector3 Other_Tracking_Source_Position;
     TrackingQuat Other_Tracking_Source_Orientation;
 
-    // FOV of left and right eyes.
-    struct EyeFov eyeFov[2];
-    float ipd;
-    unsigned long long battery;
-    unsigned char plugged;
     unsigned char mounted;
 
     static const unsigned int MAX_CONTROLLERS = 2;
@@ -68,7 +63,6 @@ struct TrackingInfo {
         float triggerValue;
         float gripValue;
 
-        unsigned char batteryPercentRemaining;
         unsigned char recenterCount;
 
         // Tracking info of controller. (float * 19 = 76 bytes)
@@ -230,3 +224,6 @@ extern "C" void closeSocket(void *env);
 extern "C" void (*inputSend)(TrackingInfo data);
 extern "C" void (*timeSyncSend)(TimeSync data);
 extern "C" void (*videoErrorReportSend)();
+extern "C" void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
+extern "C" void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);
+extern "C" unsigned long long (*pathStringToHash)(const char *path);

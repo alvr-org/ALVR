@@ -82,12 +82,28 @@ pub struct PlayspaceSyncPacket {
     pub perimeter_points: Option<Vec<Vec2>>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ViewsConfig {
+    // Note: the head-to-eye transform is always a translation along the x axis
+    pub ipd_m: f32,
+    pub fov: [Fov; 2],
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BatteryPacket {
+    pub device_id: u64,
+    pub gauge_value: f32, // range [0, 1]
+    pub is_plugged: bool,
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(PlayspaceSyncPacket),
     RequestIdr,
     KeepAlive,
     StreamReady,
+    ViewsConfig(ViewsConfig),
+    Battery(BatteryPacket),
     TimeSync(TimeSyncPacket), // legacy
     VideoErrorReport,         // legacy
     Reserved(String),
@@ -146,27 +162,17 @@ pub struct HandTrackingInput {
     pub skeleton_motion: Vec<MotionData>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ViewsConfig {
-    // Note: the head-to-eye transform is always a translation along the x axis
-    pub ipd_m: f32,
-    pub fov: [Fov; 2],
-}
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct LegacyInput {
     pub flags: u32,
     pub client_time: u64,
     pub frame_index: u64,
-    pub battery: u64,
-    pub plugged: u8,
     pub mounted: u8,
     pub controller_flags: [u32; 2],
     pub buttons: [u64; 2],
     pub trackpad_position: [Vec2; 2],
     pub trigger_value: [f32; 2],
     pub grip_value: [f32; 2],
-    pub controller_battery: [u8; 2],
     pub bone_rotations: [[Quat; 19]; 2],
     pub bone_positions_base: [[Vec3; 19]; 2],
     pub input_state_status: [u32; 2],
@@ -180,8 +186,7 @@ pub struct Input {
     pub device_motions: Vec<(u64, MotionData)>,
     pub left_hand_tracking: Option<HandTrackingInput>, // unused for now
     pub right_hand_tracking: Option<HandTrackingInput>, // unused for now
-    pub views_config: ViewsConfig,
-    pub button_values: HashMap<u64, ButtonValue>, // unused for now
+    pub button_values: HashMap<u64, ButtonValue>,      // unused for now
     pub legacy: LegacyInput,
 }
 

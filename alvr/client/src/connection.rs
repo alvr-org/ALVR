@@ -1,7 +1,9 @@
+#![allow(clippy::if_same_then_else)]
+
 use crate::{
     connection_utils::{self, ConnectionError},
-    HapticsFeedback, TimeSync, VideoFrame, INPUT_SENDER, LEGACY_SENDER, TIME_SYNC_SENDER,
-    VIDEO_ERROR_REPORT_SENDER,
+    HapticsFeedback, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
+    VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
@@ -393,6 +395,44 @@ async fn connection_pipeline(
         }
     };
 
+    let views_config_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *VIEWS_CONFIG_SENDER.lock() = Some(data_sender);
+
+            while let Some(config) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::ViewsConfig(config))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
+    let battery_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            *BATTERY_SENDER.lock() = Some(data_sender);
+
+            while let Some(packet) = data_receiver.recv().await {
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ClientControlPacket::Battery(packet))
+                    .await
+                    .ok();
+            }
+
+            Ok(())
+        }
+    };
+
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
     let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
 
@@ -719,6 +759,8 @@ async fn connection_pipeline(
         res = spawn_cancelable(input_send_loop) => res,
         res = spawn_cancelable(time_sync_send_loop) => res,
         res = spawn_cancelable(video_error_report_send_loop) => res,
+        res = spawn_cancelable(views_config_send_loop) => res,
+        res = spawn_cancelable(battery_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = legacy_stream_socket_loop => trace_err!(res)?,

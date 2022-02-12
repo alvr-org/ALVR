@@ -51,9 +51,6 @@ private:
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
 
-	int leftBattery = 0;
-	int rightBattery = 0;
-
 	float m_hapticsAmplitudeCurve = Settings::Instance().m_hapticsAmplitudeCurve;
 	float m_hapticsMinDuration = Settings::Instance().m_hapticsMinDuration;
 	float m_hapticsLowDurationAmplitudeMultiplier = Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier;

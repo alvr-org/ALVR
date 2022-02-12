@@ -35,6 +35,13 @@ using namespace gl_render_utils;
 void (*inputSend)(TrackingInfo data);
 void (*timeSyncSend)(TimeSync data);
 void (*videoErrorReportSend)();
+void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
+void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);
+unsigned long long (*pathStringToHash)(const char *path);
+
+uint64_t HEAD_PATH;
+uint64_t LEFT_HAND_PATH;
+uint64_t RIGHT_HAND_PATH;
 
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
@@ -79,9 +86,11 @@ public:
     bool darkMode;
     ovrRenderer Renderer;
 
-    // headset battery level
-    int batteryLevel;
-    int batteryPlugged;
+    uint8_t lastLeftControllerBattery;
+    uint8_t lastRightControllerBattery;
+
+    float lastIpd;
+    EyeFov lastFov;
 
     ovrHandPose lastHandPose[2];
     ovrTracking lastTrackingRot[2];
@@ -112,6 +121,10 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     auto *env = (JNIEnv *) v_env;
     auto activity = (jobject) v_activity;
     auto assetManager = (jobject) v_assetManager;
+
+    HEAD_PATH = pathStringToHash("/user/head");
+    LEFT_HAND_PATH = pathStringToHash("/user/hand/left");
+    RIGHT_HAND_PATH = pathStringToHash("/user/hand/right");
 
     LOG("Initializing EGL.");
 
@@ -421,7 +434,9 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
 
+            uint64_t hand_path;
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
+                hand_path = LEFT_HAND_PATH;
                 c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND;
 
                 if (remoteInputState.Buttons & ovrButton_Enter) {
@@ -435,6 +450,8 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                     g_ctx.mMenuNotPressedLastInstant = std::chrono::system_clock::now();
                     g_ctx.mMenuLongPressActivated = false;
                 }
+            } else {
+                hand_path = RIGHT_HAND_PATH;
             }
 
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelGearVR) !=
@@ -469,7 +486,18 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             c.triggerValue = remoteInputState.IndexTrigger;
             c.gripValue = remoteInputState.GripTrigger;
 
-            c.batteryPercentRemaining = remoteInputState.BatteryPercentRemaining;
+            if (hand_path == LEFT_HAND_PATH) {
+                if (remoteInputState.BatteryPercentRemaining != g_ctx.lastLeftControllerBattery) {
+                    batterySend(hand_path, (float)remoteInputState.BatteryPercentRemaining / 100.0, false);
+                    g_ctx.lastLeftControllerBattery = remoteInputState.BatteryPercentRemaining;
+                }
+            } else {
+                 if (remoteInputState.BatteryPercentRemaining != g_ctx.lastRightControllerBattery) {
+                    batterySend(hand_path, (float)remoteInputState.BatteryPercentRemaining / 100.0, false);
+                    g_ctx.lastRightControllerBattery = remoteInputState.BatteryPercentRemaining;
+                }
+            }
+
             c.recenterCount = remoteInputState.RecenterCount;
 
 
@@ -530,6 +558,7 @@ float getIPD() {
     return ipd;
 }
 
+// return fov in OpenXR convention
 std::pair<EyeFov, EyeFov> getFov() {
     ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.0);
 
@@ -552,12 +581,10 @@ std::pair<EyeFov, EyeFov> getFov() {
         double maxY = (h1 + h2) / 2.0;
         double minY = h2 - maxY;
 
-        double rr = 180 / M_PI;
-
-        fov[eye].left = (float) (atan(minX / -n) * rr);
-        fov[eye].right = (float) (-atan(maxX / -n) * rr);
-        fov[eye].top = (float) (atan(minY / -n) * rr);
-        fov[eye].bottom = (float) (-atan(maxY / -n) * rr);
+        fov[eye].left = (float)atan(minX / n);
+        fov[eye].right = (float)atan(maxX / n);
+        fov[eye].top = -(float)atan(minY / n);
+        fov[eye].bottom = -(float)atan(maxY / n);
     }
     return {fov[0], fov[1]};
 }
@@ -594,12 +621,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     info.FrameIndex = g_ctx.FrameIndex;
     info.predictedDisplayTime = frame->displayTime;
 
-    info.ipd = getIPD();
-    auto fovPair = getFov();
-    info.eyeFov[0] = fovPair.first;
-    info.eyeFov[1] = fovPair.second;
-    info.battery = g_ctx.batteryLevel;
-    info.plugged = g_ctx.batteryPlugged;
     info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
 
     memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
@@ -613,6 +634,15 @@ void sendTrackingInfo(bool clientsidePrediction) {
     LatencyCollector::Instance().tracking(frame->frameIndex);
 
     inputSend(info);
+
+    float new_ipd = getIPD();
+    auto new_fov = getFov();
+    if (abs(new_ipd - g_ctx.lastIpd) > 0.001 || abs(new_fov.first.left - g_ctx.lastFov.left) > 0.001) {
+        EyeFov fov[2] = { new_fov.first, new_fov.second };
+        viewsConfigSend(fov, new_ipd);
+        g_ctx.lastIpd = new_ipd;
+        g_ctx.lastFov = new_fov.first;
+    }
 }
 
 OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
@@ -964,8 +994,7 @@ void onHapticsFeedbackNative(long long startTime, float amplitude, float duratio
 }
 
 void onBatteryChangedNative(int battery, int plugged) {
-    g_ctx.batteryLevel = battery;
-    g_ctx.batteryPlugged = plugged;
+    batterySend(HEAD_PATH, (float)battery / 100.0, (bool)plugged);
 }
 
 GuardianData getGuardianData() {

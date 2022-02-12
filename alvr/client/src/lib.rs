@@ -17,7 +17,8 @@ use alvr_common::{
 };
 use alvr_session::Fov;
 use alvr_sockets::{
-    HeadsetInfoPacket, Input, LegacyInput, MotionData, PrivateIdentity, TimeSyncPacket, ViewsConfig,
+    BatteryPacket, HeadsetInfoPacket, Input, LegacyInput, MotionData, PrivateIdentity,
+    TimeSyncPacket, ViewsConfig,
 };
 use jni::{
     objects::{JClass, JObject, JString},
@@ -26,6 +27,8 @@ use jni::{
 use parking_lot::Mutex;
 use std::{
     collections::HashMap,
+    ffi::CStr,
+    os::raw::c_char,
     ptr, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -38,11 +41,14 @@ use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 lazy_static! {
     static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
     static ref IDR_PARSED: AtomicBool = AtomicBool::new(false);
-    static ref LEGACY_SENDER: Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>> = Mutex::new(None);
     static ref INPUT_SENDER: Mutex<Option<mpsc::UnboundedSender<Input>>> = Mutex::new(None);
     static ref TIME_SYNC_SENDER: Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>> =
         Mutex::new(None);
     static ref VIDEO_ERROR_REPORT_SENDER: Mutex<Option<mpsc::UnboundedSender<()>>> =
+        Mutex::new(None);
+    static ref VIEWS_CONFIG_SENDER: Mutex<Option<mpsc::UnboundedSender<ViewsConfig>>> =
+        Mutex::new(None);
+    static ref BATTERY_SENDER: Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>> =
         Mutex::new(None);
     static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
     static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
@@ -110,6 +116,10 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
     asset_manager: JObject,
     jout_result: JObject,
 ) {
+    unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
+        alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
+    }
+
     extern "C" fn input_send(data: TrackingInfo) {
         fn from_tracking_quat(quat: TrackingQuat) -> Quat {
             Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
@@ -122,23 +132,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         if let Some(sender) = &*INPUT_SENDER.lock() {
             let input = Input {
                 target_timestamp: Duration::from_secs_f64(data.predictedDisplayTime),
-                views_config: ViewsConfig {
-                    ipd_m: data.ipd,
-                    fov: [
-                        Fov {
-                            left: data.eyeFov[0].left,
-                            right: data.eyeFov[0].right,
-                            top: data.eyeFov[0].top,
-                            bottom: data.eyeFov[0].bottom,
-                        },
-                        Fov {
-                            left: data.eyeFov[1].left,
-                            right: data.eyeFov[1].right,
-                            top: data.eyeFov[1].top,
-                            bottom: data.eyeFov[1].bottom,
-                        },
-                    ],
-                },
                 device_motions: vec![
                     (
                         *HEAD_ID,
@@ -207,8 +200,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                     flags: data.flags,
                     client_time: data.clientTime,
                     frame_index: data.FrameIndex,
-                    battery: data.battery,
-                    plugged: data.plugged,
                     mounted: data.mounted,
                     controller_flags: [data.controller[0].flags, data.controller[1].flags],
                     buttons: [data.controller[0].buttons, data.controller[1].buttons],
@@ -227,10 +218,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                         data.controller[1].triggerValue,
                     ],
                     grip_value: [data.controller[0].gripValue, data.controller[1].gripValue],
-                    controller_battery: [
-                        data.controller[0].batteryPercentRemaining,
-                        data.controller[1].batteryPercentRemaining,
-                    ],
                     bone_rotations: [
                         {
                             let vec = data.controller[0]
@@ -336,9 +323,49 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         }
     }
 
+    extern "C" fn views_config_send(fov: *mut EyeFov, ipd_m: f32) {
+        let fov = unsafe { slice::from_raw_parts(fov, 2) };
+        if let Some(sender) = &*VIEWS_CONFIG_SENDER.lock() {
+            sender
+                .send(ViewsConfig {
+                    fov: [
+                        Fov {
+                            left: fov[0].left,
+                            right: fov[0].right,
+                            top: fov[0].top,
+                            bottom: fov[0].bottom,
+                        },
+                        Fov {
+                            left: fov[1].left,
+                            right: fov[1].right,
+                            top: fov[1].top,
+                            bottom: fov[1].bottom,
+                        },
+                    ],
+                    ipd_m,
+                })
+                .ok();
+        }
+    }
+
+    extern "C" fn battery_send(device_id: u64, gauge_value: f32, is_plugged: bool) {
+        if let Some(sender) = &*BATTERY_SENDER.lock() {
+            sender
+                .send(BatteryPacket {
+                    device_id,
+                    gauge_value,
+                    is_plugged,
+                })
+                .ok();
+        }
+    }
+
+    pathStringToHash = Some(path_string_to_hash);
     inputSend = Some(input_send);
     timeSyncSend = Some(time_sync_send);
     videoErrorReportSend = Some(video_error_report_send);
+    viewsConfigSend = Some(views_config_send);
+    batterySend = Some(battery_send);
 
     alvr_common::show_err(|| -> StrResult {
         let result = onCreate(

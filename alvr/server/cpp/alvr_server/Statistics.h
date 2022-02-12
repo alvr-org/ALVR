@@ -149,6 +149,11 @@ public:
 		return (m_statistics[i] / m_statisticsCount);
 	}
 
+	float m_hmdBattery;
+	bool m_hmdPlugged;
+	float m_leftControllerBattery;
+	float m_rightControllerBattery;
+
 private:
 	void ResetSecond() {
 		m_packetsSentInSecondPrev = m_packetsSentInSecond;

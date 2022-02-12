@@ -6,6 +6,7 @@
 #include "OvrHMD.h"
 #include "Paths.h"
 #include "Settings.h"
+#include "Statistics.h"
 #include "TrackedDevice.h"
 #include "bindings.h"
 #include "driverlog.h"
@@ -182,5 +183,35 @@ void SetOpenvrProperty(unsigned long long top_level_path, OpenvrProperty prop) {
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
         device_it->second->set_prop(prop);
+    }
+}
+
+void SetViewsConfig(ViewsConfigData config) {
+    if (g_driver_provider.hmd) {
+        g_driver_provider.hmd->SetViewsConfig(config);
+    }
+}
+
+void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_plugged) {
+    auto device_it = g_driver_provider.tracked_devices.find(top_level_path);
+
+    if (device_it != g_driver_provider.tracked_devices.end()) {
+        vr::VRProperties()->SetBoolProperty(
+            device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value);
+        vr::VRProperties()->SetBoolProperty(
+            device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged);
+    }
+
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
+        auto stats = g_driver_provider.hmd->m_Listener->GetStatistics();
+
+        if (top_level_path == HEAD_PATH) {
+            stats->m_hmdBattery = gauge_value;
+            stats->m_hmdPlugged = is_plugged;
+        } else if (top_level_path == LEFT_HAND_PATH) {
+            stats->m_leftControllerBattery = gauge_value;
+        } else if (top_level_path == RIGHT_HAND_PATH) {
+            stats->m_rightControllerBattery = gauge_value;
+        }
     }
 }

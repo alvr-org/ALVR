@@ -971,7 +971,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 		}
 
 		// Battery
-		vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
+		// vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, c.batteryPercentRemaining / 100.0f);
 
 		vr::VRServerDriverHost()->TrackedDevicePoseUpdated(this->object_id, m_pose, sizeof(vr::DriverPose_t));
 

@@ -821,23 +821,20 @@ async fn connection_pipeline() -> StrResult {
                     HeadPose_LinearAcceleration: to_tracking_vector3(Vec3::ZERO),
                     Other_Tracking_Source_Position: to_tracking_vector3(Vec3::ZERO),
                     Other_Tracking_Source_Orientation: to_tracking_quat(Quat::IDENTITY),
-                    eyeFov: [
-                        EyeFov {
-                            left: input.views_config.fov[0].left,
-                            right: input.views_config.fov[0].right,
-                            top: input.views_config.fov[0].top,
-                            bottom: input.views_config.fov[0].bottom,
-                        },
-                        EyeFov {
-                            left: input.views_config.fov[1].left,
-                            right: input.views_config.fov[1].right,
-                            top: input.views_config.fov[1].top,
-                            bottom: input.views_config.fov[1].bottom,
-                        },
-                    ],
-                    ipd: input.views_config.ipd_m,
-                    battery: input.legacy.battery,
-                    plugged: input.legacy.plugged,
+                    // eyeFov: [
+                    //     EyeFov {
+                    //         left: input.views_config.fov[0].left,
+                    //         right: input.views_config.fov[0].right,
+                    //         top: input.views_config.fov[0].top,
+                    //         bottom: input.views_config.fov[0].bottom,
+                    //     },
+                    //     EyeFov {
+                    //         left: input.views_config.fov[1].left,
+                    //         right: input.views_config.fov[1].right,
+                    //         top: input.views_config.fov[1].top,
+                    //         bottom: input.views_config.fov[1].bottom,
+                    //     },
+                    // ],
                     mounted: input.legacy.mounted,
                     controller: [
                         TrackingInfo_Controller {
@@ -850,7 +847,6 @@ async fn connection_pipeline() -> StrResult {
                             },
                             triggerValue: input.legacy.trigger_value[0],
                             gripValue: input.legacy.grip_value[0],
-                            batteryPercentRemaining: input.legacy.controller_battery[0],
                             orientation: to_tracking_quat(left_hand_motion.orientation),
                             position: to_tracking_vector3(left_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
@@ -901,7 +897,6 @@ async fn connection_pipeline() -> StrResult {
                             },
                             triggerValue: input.legacy.trigger_value[1],
                             gripValue: input.legacy.grip_value[1],
-                            batteryPercentRemaining: input.legacy.controller_battery[1],
                             orientation: to_tracking_quat(right_hand_motion.orientation),
                             position: to_tracking_vector3(right_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
@@ -1046,6 +1041,28 @@ async fn connection_pipeline() -> StrResult {
                 }
                 Ok(ClientControlPacket::VideoErrorReport) => unsafe {
                     crate::VideoErrorReportReceive()
+                },
+                Ok(ClientControlPacket::ViewsConfig(config)) => unsafe {
+                    crate::SetViewsConfig(crate::ViewsConfigData {
+                        fov: [
+                            EyeFov {
+                                left: config.fov[0].left,
+                                right: config.fov[0].right,
+                                top: config.fov[0].top,
+                                bottom: config.fov[0].bottom,
+                            },
+                            EyeFov {
+                                left: config.fov[1].left,
+                                right: config.fov[1].right,
+                                top: config.fov[1].top,
+                                bottom: config.fov[1].bottom,
+                            },
+                        ],
+                        ipd_m: config.ipd_m,
+                    });
+                },
+                Ok(ClientControlPacket::Battery(packet)) => unsafe {
+                    crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
                 },
                 Ok(_) => (),
                 Err(e) => {

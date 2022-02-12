@@ -15,17 +15,15 @@ class OvrController;
 class OvrController;
 class OvrViveTrackerProxy;
 
-class OvrDisplayComponent;
 class CEncoder;
 #ifdef _WIN32
 class CD3DRender;
 #endif
 class PoseHistory;
 
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-class OvrHmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
+class OvrHmd : public TrackedDevice,
+               public vr::ITrackedDeviceServerDriver,
+               vr::IVRDisplayComponent {
   public:
     OvrHmd();
 
@@ -64,10 +62,28 @@ class OvrHmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 
     void updateController(const TrackingInfo &info);
 
-    void updateIPDandFoV(const TrackingInfo &info);
+    void SetViewsConfig(ViewsConfigData config);
 
     bool IsTrackingRef() const { return m_deviceClass == vr::TrackedDeviceClass_TrackingReference; }
     bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
+
+    // IVRDisplayComponent
+
+    virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight);
+
+    virtual bool IsDisplayOnDesktop();
+
+    virtual bool IsDisplayRealDisplay();
+
+    virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight);
+
+    virtual void GetEyeOutputViewport(
+        vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight);
+
+    virtual void
+    GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom);
+
+    virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV);
 
     std::shared_ptr<ClientConnection> m_Listener;
     float m_poseTimeOffset;
@@ -78,6 +94,8 @@ class OvrHmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
     std::shared_ptr<OvrController> m_rightController;
 
   private:
+    ViewsConfigData views_config;
+
     bool m_baseComponentsInitialized;
     bool m_streamComponentsInitialized;
     vr::ETrackedDeviceClass m_deviceClass;
@@ -95,7 +113,6 @@ class OvrHmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
     std::shared_ptr<CEncoder> m_encoder;
     std::shared_ptr<VSyncThread> m_VSyncThread;
 
-    std::shared_ptr<OvrDisplayComponent> m_displayComponent;
 #ifdef _WIN32
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif

@@ -41,11 +41,6 @@ struct TrackingInfo {
     TrackingVector3 Other_Tracking_Source_Position;
     TrackingQuat Other_Tracking_Source_Orientation;
 
-    // FOV of left and right eyes.
-    struct EyeFov eyeFov[2];
-    float ipd;
-    unsigned long long battery;
-    unsigned char plugged;
     unsigned char mounted;
 
     static const unsigned int MAX_CONTROLLERS = 2;
@@ -68,7 +63,6 @@ struct TrackingInfo {
         float triggerValue;
         float gripValue;
 
-        unsigned char batteryPercentRemaining;
         unsigned char recenterCount;
 
         // Tracking info of controller. (float * 19 = 76 bytes)
@@ -184,6 +178,11 @@ struct OpenvrProperty {
     OpenvrPropertyValue value;
 };
 
+struct ViewsConfigData {
+    EyeFov fov[2];
+    float ipd_m;
+};
+
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
@@ -225,3 +224,5 @@ extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, OpenvrProperty prop);
+extern "C" void SetViewsConfig(ViewsConfigData config);
+extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);

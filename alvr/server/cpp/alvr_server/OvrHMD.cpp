@@ -8,7 +8,6 @@
 #include "VSyncThread.h"
 #include "Utils.h"
 #include "ClientConnection.h"
-#include "OvrDisplayComponent.h"
 #include "PoseHistory.h"
 #include "Paths.h"
 
@@ -19,6 +18,19 @@
 #else
 	#include "platform/linux/CEncoder.h"
 #endif
+
+const vr::HmdMatrix34_t MATRIX_IDENTITY = {
+    {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
+
+vr::HmdRect2_t fov_to_projection(EyeFov fov) {
+	auto proj_bounds = vr::HmdRect2_t{};
+	proj_bounds.vTopLeft.v[0] = tanf(fov.left);
+	proj_bounds.vBottomRight.v[0] = tanf(fov.right);
+	proj_bounds.vTopLeft.v[1] = -tanf(fov.top);
+	proj_bounds.vBottomRight.v[1] = -tanf(fov.bottom);
+
+	return proj_bounds;
+}
 
 void fixInvalidHaptics(float hapticFeedback[3])
 {
@@ -41,6 +53,13 @@ OvrHmd::OvrHmd()
 		, m_baseComponentsInitialized(false)
 		, m_streamComponentsInitialized(false)
 	{
+		auto dummy_fov = EyeFov{-1.0, 1.0, 1.0, -1.0};
+
+		this->views_config = ViewsConfigData{};
+		this->views_config.ipd_m = 0.063;
+		this->views_config.fov[0] = dummy_fov;
+		this->views_config.fov[1] = dummy_fov;
+
 		m_poseHistory = std::make_shared<PoseHistory>();
 
 		m_deviceClass = Settings::Instance().m_TrackingRefOnly ?
@@ -208,18 +227,13 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 					Error("Failed to get primary adapter info!\n");
 					return vr::VRInitError_Driver_Failed;
 				}
-#endif
 
-#ifdef _WIN32
 				Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
 				Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
 				m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
 				m_VSyncThread->Start();
-#endif
 
-				m_displayComponent = std::make_shared<OvrDisplayComponent>();
-#ifdef _WIN32
 				m_directModeComponent = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
 #endif
 			}
@@ -247,22 +261,22 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	{
 	}
 
-	void* OvrHmd::GetComponent(const char *pchComponentNameAndVersion)
+	void* OvrHmd::GetComponent(const char *component_name_and_version)
 	{
-		Debug("GetComponent %hs\n", pchComponentNameAndVersion);
-		if (!strcmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
-		{
-			return m_displayComponent.get();
+		// NB: "this" pointer needs to be statically cast to point to the correct vtable
+
+		auto name_and_vers = std::string(component_name_and_version);
+		if (name_and_vers == vr::IVRDisplayComponent_Version) {
+			return (vr::IVRDisplayComponent *)this;
 		}
-#ifdef _WIN32
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDriverDirectModeComponent_Version))
-		{
+
+	#ifdef _WIN32
+		if (name_and_vers == vr::IVRDriverDirectModeComponent_Version) {
 			return m_directModeComponent.get();
 		}
-#endif
+	#endif
 
-		// override this to add a component to a driver
-		return NULL;
+		return nullptr;
 	}
 
 	/** debug request from a client */
@@ -307,8 +321,8 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 			pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
 
 			// set battery percentage
-			vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceIsCharging_Bool, info.plugged);
-			vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
+			// vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_DeviceIsCharging_Bool, info.plugged);
+			// vr::VRProperties()->SetFloatProperty(this->prop_container, vr::Prop_DeviceBatteryPercentage_Float, info.battery / 100.0f);
 
 			// set prox sensor
 			vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1, 0.0);
@@ -356,12 +370,6 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 
 			if (!Settings::Instance().m_disableController) {
 				updateController(info);
-			}
-
-			if (IsHMD() && (std::abs(info.ipd - Settings::Instance().m_flIPD) > 0.0001f
-				|| std::abs(info.eyeFov[0].left - Settings::Instance().m_eyeFov[0].left) > 0.1f
-				|| std::abs(info.eyeFov[0].right - Settings::Instance().m_eyeFov[0].right) > 0.1f)) {
-				updateIPDandFoV(info);
 			}
 
 			m_poseHistory->OnPoseUpdated(info);
@@ -417,34 +425,23 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	void OvrHmd::StopStreaming() {
 	}
 
-	void OvrHmd::updateIPDandFoV(const TrackingInfo& info) {
-		Info("Setting new IPD to: %f\n", info.ipd);
+	void OvrHmd::SetViewsConfig(ViewsConfigData config) {
+ 	this->views_config = config;
 
-		m_eyeToHeadLeft.m[0][3]  = -info.ipd / 2.0f;
-		m_eyeToHeadRight.m[0][3] =  info.ipd / 2.0f;
-		vr::VRServerDriverHost()->SetDisplayEyeToHead(this->object_id, m_eyeToHeadLeft, m_eyeToHeadRight);
-#ifdef _WIN32
-		vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, info.ipd);
-#endif
+    auto left_transform = MATRIX_IDENTITY;
+    left_transform.m[0][3] = -config.ipd_m / 2.0;
+    auto right_transform = MATRIX_IDENTITY;
+    right_transform.m[0][3] = config.ipd_m / 2.0;
+    vr::VRServerDriverHost()->SetDisplayEyeToHead(object_id, left_transform, right_transform);
 
-		Settings::Instance().m_eyeFov[0] = info.eyeFov[0];
-		Settings::Instance().m_eyeFov[1] = info.eyeFov[1];
+    auto left_proj = fov_to_projection(config.fov[0]);
+    auto right_proj = fov_to_projection(config.fov[1]);
 
-		m_displayComponent->GetProjectionRaw(vr::EVREye::Eye_Left,
-			&m_eyeFoVLeft.vTopLeft.v[0],
-			&m_eyeFoVLeft.vBottomRight.v[0],
-			&m_eyeFoVLeft.vTopLeft.v[1],
-			&m_eyeFoVLeft.vBottomRight.v[1]);
-		m_displayComponent->GetProjectionRaw(vr::EVREye::Eye_Right,
-			&m_eyeFoVRight.vTopLeft.v[0],
-			&m_eyeFoVRight.vBottomRight.v[0],
-			&m_eyeFoVRight.vTopLeft.v[1],
-			&m_eyeFoVRight.vBottomRight.v[1]);
+    vr::VRServerDriverHost()->SetDisplayProjectionRaw(object_id, left_proj, right_proj);
 
-		vr::VRServerDriverHost()->SetDisplayProjectionRaw(this->object_id, m_eyeFoVLeft, m_eyeFoVRight);
-		Settings::Instance().m_flIPD = info.ipd;
-
-		vr::VRServerDriverHost()->VendorSpecificEvent(this->object_id, vr::VREvent_LensDistortionChanged, {}, 0);
+    // todo: check if this is still needed
+    vr::VRServerDriverHost()->VendorSpecificEvent(
+        object_id, vr::VREvent_LensDistortionChanged, {}, 0);
 	}
 
 	void OvrHmd::updateController(const TrackingInfo& info) {
@@ -552,3 +549,76 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId)
 		Debug("RequestIDR()\n");
 		m_encoder->InsertIDR();
 	}
+
+void OvrHmd::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+{
+	Debug("GetWindowBounds %dx%d - %dx%d\n", 0, 0, Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight);
+	*pnX = 0;
+	*pnY = 0;
+	*pnWidth = Settings::Instance().m_renderWidth;
+	*pnHeight = Settings::Instance().m_renderHeight;
+}
+
+ bool OvrHmd::IsDisplayOnDesktop()
+{
+#ifdef _WIN32
+	return false;
+#else
+	return false;
+#endif
+}
+
+ bool OvrHmd::IsDisplayRealDisplay()
+{
+#ifdef _WIN32
+	return false;
+#else
+	return true;
+#endif
+}
+
+ void OvrHmd::GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
+{
+	*pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
+	*pnHeight = Settings::Instance().m_recommendedTargetHeight;
+	Debug("GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
+}
+
+void OvrHmd::GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight)
+{
+	*pnY = 0;
+	*pnWidth = Settings::Instance().m_renderWidth / 2;
+	*pnHeight = Settings::Instance().m_renderHeight;
+
+	if (eEye == vr::Eye_Left)
+	{
+		*pnX = 0;
+	}
+	else
+	{
+		*pnX = Settings::Instance().m_renderWidth / 2;
+	}
+	Debug("GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
+}
+
+void OvrHmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top, float *bottom)
+{
+    auto proj = fov_to_projection(this->views_config.fov[eye]);
+    *left = proj.vTopLeft.v[0];
+    *right = proj.vBottomRight.v[0];
+    *top = proj.vTopLeft.v[1];
+    *bottom = proj.vBottomRight.v[1];
+}
+
+vr::DistortionCoordinates_t OvrHmd::ComputeDistortion(vr::EVREye /*eEye*/, float fU, float fV) 
+{
+	vr::DistortionCoordinates_t coordinates;
+	coordinates.rfBlue[0] = fU;
+	coordinates.rfBlue[1] = fV;
+	coordinates.rfGreen[0] = fU;
+	coordinates.rfGreen[1] = fV;
+	coordinates.rfRed[0] = fU;
+	coordinates.rfRed[1] = fV;
+	Debug("ComputeDistortion %f,%f\n", fU, fV);
+	return coordinates;
+}

@@ -182,7 +182,6 @@ void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
 		m_TrackingInfo.HeadPose_Pose_Position.y = 0;
 		m_TrackingInfo.HeadPose_Pose_Position.z = 0;
 	}
-	Debug("got battery level: %d\n", (int)m_TrackingInfo.battery);
 	Debug("got tracking info %d %f %f %f %f\n", (int)m_TrackingInfo.FrameIndex,
 		m_TrackingInfo.HeadPose_Pose_Orientation.x,
 		m_TrackingInfo.HeadPose_Pose_Orientation.y,
@@ -229,15 +228,6 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 			m_reportedStatistics.fps,
 			m_RTT / 2. / 1000.);
 
-		for (int i = 0; i < 2; i++) {
-			if (m_TrackingInfo.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE) {
-				if ((m_TrackingInfo.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0)
-					leftBattery = (int)m_TrackingInfo.controller[i].batteryPercentRemaining;
-				else
-					rightBattery = (int)m_TrackingInfo.controller[i].batteryPercentRemaining;
-			}
-		}
-
 		uint64_t now = GetTimestampUs();
 		if (now - m_LastStatisticsUpdate > STATISTICS_TIMEOUT_US)
 		{
@@ -260,7 +250,7 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 				"\"fecFailureInSecond\": %llu, "
 				"\"clientFPS\": %.3f, "
 				"\"serverFPS\": %.3f, "
-				"\"batteryHMD\": %llu, "
+				"\"batteryHMD\": %d, "
 				"\"batteryLeft\": %d, "
 				"\"batteryRight\": %d"
 				"} }#\n",
@@ -281,9 +271,9 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 				m_reportedStatistics.fecFailureInSecond,
 				m_Statistics->Get(4),  //clientFPS
 				m_Statistics->GetFPS(),
-				m_TrackingInfo.battery,
-				(int)leftBattery,
-				(int)rightBattery);
+				(int)(m_Statistics->m_hmdBattery * 100),
+				(int)(m_Statistics->m_leftControllerBattery * 100),
+				(int)(m_Statistics->m_rightControllerBattery * 100));
 
 			m_LastStatisticsUpdate = now;
 			m_Statistics->Reset();

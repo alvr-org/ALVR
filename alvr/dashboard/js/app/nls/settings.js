@@ -251,17 +251,9 @@ define({
             "Linear velocity cutoff (m/s)", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.description":
             "Prediction cutoff for linear velocity", // adv
-        "_root_headset_controllers_content_linearAccelerationCutoff.name":
-            "Linear acceleration cutoff (m/s^2)", // adv
-        "_root_headset_controllers_content_linearAccelerationCutoff.description":
-            "Prediction cutoff for linear acceleration", // adv
         "_root_headset_controllers_content_angularVelocityCutoff.name":
             "Angular velocity cutoff (deg/s)", // adv
         "_root_headset_controllers_content_angularVelocityCutoff.description":
-            "Prediction cutoff for angular velocity", // adv
-        "_root_headset_controllers_content_angularAccelerationCutoff.name":
-            "Angular acceleration cutoff (deg/s^2)", // adv
-        "_root_headset_controllers_content_angularAccelerationCutoff.description":
             "Prediction cutoff for angular velocity", // adv
         "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
         "_root_headset_controllers_content_positionOffsetLeft.description":

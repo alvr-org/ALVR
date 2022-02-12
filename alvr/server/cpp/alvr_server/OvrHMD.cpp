@@ -325,13 +325,6 @@ vr::DriverPose_t OvrHmd::GetPose() {
         pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
         pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
 
-        pose.vecVelocity[0] = info.HeadPose_LinearVelocity.x;
-        pose.vecVelocity[1] = info.HeadPose_LinearVelocity.y;
-        pose.vecVelocity[2] = info.HeadPose_LinearVelocity.z;
-        pose.vecAcceleration[0] = info.HeadPose_LinearAcceleration.x;
-        pose.vecAcceleration[1] = info.HeadPose_LinearAcceleration.y;
-        pose.vecAcceleration[2] = info.HeadPose_LinearAcceleration.z;
-
         // set prox sensor
         vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1, 0.0);
 

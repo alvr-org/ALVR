@@ -371,21 +371,11 @@ async fn client_handshake(
             .controllers
             .content
             .linear_velocity_cutoff,
-        linear_acceleration_cutoff: session_settings
-            .headset
-            .controllers
-            .content
-            .linear_acceleration_cutoff,
         angular_velocity_cutoff: session_settings
             .headset
             .controllers
             .content
             .angular_velocity_cutoff,
-        angular_acceleration_cutoff: session_settings
-            .headset
-            .controllers
-            .content
-            .angular_acceleration_cutoff,
         position_offset_left: session_settings
             .headset
             .controllers
@@ -815,10 +805,6 @@ async fn connection_pipeline() -> StrResult {
                     predictedDisplayTime: input.target_timestamp.as_secs_f64(),
                     HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),
                     HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
-                    HeadPose_AngularVelocity: to_tracking_vector3(Vec3::ZERO),
-                    HeadPose_LinearVelocity: to_tracking_vector3(Vec3::ZERO),
-                    HeadPose_AngularAcceleration: to_tracking_vector3(Vec3::ZERO),
-                    HeadPose_LinearAcceleration: to_tracking_vector3(Vec3::ZERO),
                     Other_Tracking_Source_Position: to_tracking_vector3(Vec3::ZERO),
                     Other_Tracking_Source_Orientation: to_tracking_quat(Quat::IDENTITY),
                     // eyeFov: [
@@ -855,8 +841,6 @@ async fn connection_pipeline() -> StrResult {
                             linearVelocity: to_tracking_vector3(
                                 left_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
-                            angularAcceleration: to_tracking_vector3(Vec3::ZERO),
-                            linearAcceleration: to_tracking_vector3(Vec3::ZERO),
                             boneRotations: {
                                 let vec = input.legacy.bone_rotations[0]
                                     .iter()
@@ -905,8 +889,6 @@ async fn connection_pipeline() -> StrResult {
                             linearVelocity: to_tracking_vector3(
                                 right_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
-                            angularAcceleration: to_tracking_vector3(Vec3::ZERO),
-                            linearAcceleration: to_tracking_vector3(Vec3::ZERO),
                             boneRotations: {
                                 let vec = input.legacy.bone_rotations[1]
                                     .iter()

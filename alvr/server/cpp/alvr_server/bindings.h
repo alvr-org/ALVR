@@ -33,10 +33,6 @@ struct TrackingInfo {
     double predictedDisplayTime;
     TrackingQuat HeadPose_Pose_Orientation;
     TrackingVector3 HeadPose_Pose_Position;
-    TrackingVector3 HeadPose_AngularVelocity;
-    TrackingVector3 HeadPose_LinearVelocity;
-    TrackingVector3 HeadPose_AngularAcceleration;
-    TrackingVector3 HeadPose_LinearAcceleration;
 
     TrackingVector3 Other_Tracking_Source_Position;
     TrackingQuat Other_Tracking_Source_Orientation;
@@ -70,8 +66,6 @@ struct TrackingInfo {
         TrackingVector3 position;
         TrackingVector3 angularVelocity;
         TrackingVector3 linearVelocity;
-        TrackingVector3 angularAcceleration;
-        TrackingVector3 linearAcceleration;
 
         // Tracking info of hand. A3
         TrackingQuat boneRotations[19];

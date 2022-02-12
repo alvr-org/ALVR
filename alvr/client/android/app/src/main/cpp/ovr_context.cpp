@@ -538,14 +538,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 memcpy(&c.linearVelocity,
                        &tracking.HeadPose.LinearVelocity,
                        sizeof(tracking.HeadPose.LinearVelocity));
-
-                memcpy(&c.angularAcceleration,
-                       &tracking.HeadPose.AngularAcceleration,
-                       sizeof(tracking.HeadPose.AngularAcceleration));
-
-                memcpy(&c.linearAcceleration,
-                       &tracking.HeadPose.LinearAcceleration,
-                       sizeof(tracking.HeadPose.LinearAcceleration));
             }
             controller++;
         }

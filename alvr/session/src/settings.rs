@@ -318,14 +318,8 @@ pub struct ControllersDesc {
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
-    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
-    pub linear_acceleration_cutoff: f32,
-
     #[schema(advanced, min = 0., max = 100., step = 1.)]
     pub angular_velocity_cutoff: f32,
-
-    #[schema(advanced, min = 0., max = 100., step = 1.)]
-    pub angular_acceleration_cutoff: f32,
 
     #[schema(advanced)]
     pub position_offset_left: [f32; 3],
@@ -671,9 +665,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     clientside_prediction: false,
                     serverside_prediction: true,
                     linear_velocity_cutoff: 0.01,
-                    linear_acceleration_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
-                    angular_acceleration_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],
                     rotation_offset_left: [40., 0., 0.],
                     haptics_intensity: 1.,

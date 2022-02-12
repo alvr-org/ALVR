@@ -1,5 +1,10 @@
 #ifdef _WIN32
 #include <windows.h>
+#include "platform/win32/CEncoder.h"
+#elif __APPLE__
+#include "platform/macos/CEncoder.h"
+#else
+#include "platform/linux/CEncoder.h"
 #endif
 #include "ClientConnection.h"
 #include "Logger.h"
@@ -143,18 +148,19 @@ void InitializeStreaming() {
     // set correct client ip
     Settings::Instance().Load();
 
-    if (g_driver_provider.hmd)
+    if (g_driver_provider.hmd) {
         g_driver_provider.hmd->StartStreaming();
+    }
 }
 
 void DeinitializeStreaming() {
-    if (g_driver_provider.hmd)
-        g_driver_provider.hmd->StopStreaming();
+    // nothing to do
 }
 
 void RequestIDR() {
-    if (g_driver_provider.hmd)
-        g_driver_provider.hmd->RequestIDR();
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
+        g_driver_provider.hmd->m_encoder->InsertIDR();
+    }
 }
 
 void InputReceive(TrackingInfo data) {
@@ -174,8 +180,10 @@ void VideoErrorReportReceive() {
 }
 
 void ShutdownSteamvr() {
-    if (g_driver_provider.hmd)
-        g_driver_provider.hmd->OnShutdown();
+    if (g_driver_provider.hmd) {
+        vr::VRServerDriverHost()->VendorSpecificEvent(
+            g_driver_provider.hmd->object_id, vr::VREvent_DriverRequestedQuit, {}, 0);
+    }
 }
 
 void SetOpenvrProperty(unsigned long long top_level_path, OpenvrProperty prop) {

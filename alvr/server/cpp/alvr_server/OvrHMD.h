@@ -32,33 +32,17 @@ class OvrHmd : public TrackedDevice,
     std::string GetSerialNumber() const;
 
     virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
-
     virtual void Deactivate();
-    virtual void EnterStandby();
-
+    virtual void EnterStandby() {}
     void *GetComponent(const char *pchComponentNameAndVersion);
-
-    /** debug request from a client */
-    virtual void
-    DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize);
-
+    virtual void DebugRequest(const char *request, char *response_buffer, uint32_t size) {}
     virtual vr::DriverPose_t GetPose();
-
-    void RunFrame();
 
     void OnPoseUpdated();
 
     void StartStreaming();
 
-    void StopStreaming();
-
     void OnStreamStart();
-
-    void OnPacketLoss();
-
-    void OnShutdown();
-
-    void RequestIDR();
 
     void updateController(const TrackingInfo &info);
 
@@ -69,20 +53,14 @@ class OvrHmd : public TrackedDevice,
 
     // IVRDisplayComponent
 
-    virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight);
-
-    virtual bool IsDisplayOnDesktop();
-
+    virtual void GetWindowBounds(int32_t *x, int32_t *y, uint32_t *width, uint32_t *height);
+    virtual bool IsDisplayOnDesktop() { return false; }
     virtual bool IsDisplayRealDisplay();
-
-    virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight);
-
+    virtual void GetRecommendedRenderTargetSize(uint32_t *width, uint32_t *height);
     virtual void GetEyeOutputViewport(
-        vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight);
-
+        vr::EVREye eye, uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height);
     virtual void
     GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom);
-
     virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV);
 
     std::shared_ptr<ClientConnection> m_Listener;
@@ -92,6 +70,8 @@ class OvrHmd : public TrackedDevice,
 
     std::shared_ptr<OvrController> m_leftController;
     std::shared_ptr<OvrController> m_rightController;
+
+    std::shared_ptr<CEncoder> m_encoder;
 
   private:
     ViewsConfigData views_config;
@@ -110,7 +90,6 @@ class OvrHmd : public TrackedDevice,
 #ifdef _WIN32
     std::shared_ptr<CD3DRender> m_D3DRender;
 #endif
-    std::shared_ptr<CEncoder> m_encoder;
     std::shared_ptr<VSyncThread> m_VSyncThread;
 
 #ifdef _WIN32

@@ -4,6 +4,8 @@
 uint64_t HEAD_PATH;
 uint64_t LEFT_HAND_PATH;
 uint64_t RIGHT_HAND_PATH;
+uint64_t LEFT_CONTROLLER_HAPTIC_PATH;
+uint64_t RIGHT_CONTROLLER_HAPTIC_PATH;
 
 uint64_t OCULUS_CONTROLLER_PROFILE_PATH;
 uint64_t INDEX_CONTROLLER_PROFILE_PATH;
@@ -13,6 +15,8 @@ void init_paths() {
     HEAD_PATH = PathStringToHash("/user/head");
     LEFT_HAND_PATH = PathStringToHash("/user/hand/left");
     RIGHT_HAND_PATH = PathStringToHash("/user/hand/right");
+    LEFT_CONTROLLER_HAPTIC_PATH = PathStringToHash("/user/hand/left/output/haptic");
+    RIGHT_CONTROLLER_HAPTIC_PATH = PathStringToHash("/user/hand/right/output/haptic");
 
     OCULUS_CONTROLLER_PROFILE_PATH =
         PathStringToHash("/interaction_profiles/oculus/touch_controller");

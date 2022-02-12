@@ -374,8 +374,6 @@ public class OvrActivity extends Activity {
 
     native void onStreamStartNative();
 
-    native void onHapticsFeedbackNative(long startTime, float amplitude, float duration, float frequency, boolean hand);
-
     native void onBatteryChangedNative(int battery, int plugged);
 
     native boolean isConnectedNative();
@@ -411,15 +409,6 @@ public class OvrActivity extends Activity {
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
         }
-    }
-
-    @SuppressWarnings("unused")
-    public void onHapticsFeedback(long startTime, float amplitude, float duration, float frequency, boolean hand) {
-        mRenderingHandler.post(() -> {
-            if (mResumed && mScreenSurface != null) {
-                onHapticsFeedbackNative(startTime, amplitude, duration, frequency, hand);
-            }
-        });
     }
 
     @SuppressWarnings("unused")

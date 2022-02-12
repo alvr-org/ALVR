@@ -127,23 +127,6 @@ struct VideoFrame {
     unsigned short fecPercentage;
     // char frameBuffer[];
 };
-// Report packet loss/error from client to server.
-struct PacketErrorReport {
-    unsigned int type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT
-    unsigned int lostFrameType;
-    unsigned int fromPacketCounter;
-    unsigned int toPacketCounter;
-};
-// Send haptics feedback from server to client.
-struct HapticsFeedback {
-    unsigned int type;            // ALVR_PACKET_TYPE_HAPTICS
-    unsigned long long startTime; // Elapsed time from now when start haptics. In microseconds.
-    float amplitude;
-    float duration;
-    float frequency;
-    unsigned char hand; // 0:Right, 1:Left
-};
-
 enum OpenvrPropertyType {
     Bool,
     Float,
@@ -195,7 +178,10 @@ extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
-extern "C" void (*HapticsSend)(HapticsFeedback packet);
+extern "C" void (*HapticsSend)(unsigned long long path,
+                               float duration_s,
+                               float frequency,
+                               float amplitude);
 extern "C" void (*TimeSyncSend)(TimeSync packet);
 extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);

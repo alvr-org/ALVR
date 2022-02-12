@@ -1,6 +1,6 @@
 #ifdef _WIN32
-#include <windows.h>
 #include "platform/win32/CEncoder.h"
+#include <windows.h>
 #elif __APPLE__
 #include "platform/macos/CEncoder.h"
 #else
@@ -8,6 +8,7 @@
 #endif
 #include "ClientConnection.h"
 #include "Logger.h"
+#include "OvrController.h"
 #include "OvrHMD.h"
 #include "Paths.h"
 #include "Settings.h"
@@ -94,7 +95,50 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
     virtual const char *GetTrackedDeviceDriverVersion() {
         return vr::ITrackedDeviceServerDriver_Version;
     }
-    virtual void RunFrame() override {}
+    virtual void RunFrame() override {
+        vr::VREvent_t event;
+        while (vr::VRServerDriverHost()->PollNextEvent(&event, sizeof(vr::VREvent_t))) {
+            if (event.eventType == vr::VREvent_Input_HapticVibration) {
+                vr::VREvent_HapticVibration_t haptics_info = event.data.hapticVibration;
+
+                auto duration = haptics_info.fDurationSeconds;
+                auto amplitude = haptics_info.fAmplitude;
+
+                if (duration < Settings::Instance().m_hapticsMinDuration * 0.5)
+                    duration = Settings::Instance().m_hapticsMinDuration * 0.5;
+
+                amplitude =
+                    pow(amplitude *
+                            ((Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier - 1) *
+                                 Settings::Instance().m_hapticsMinDuration *
+                                 Settings::Instance().m_hapticsLowDurationRange /
+                                 (pow(Settings::Instance().m_hapticsMinDuration *
+                                          Settings::Instance().m_hapticsLowDurationRange,
+                                      2) *
+                                      0.25 /
+                                      (duration -
+                                       0.5 * Settings::Instance().m_hapticsMinDuration *
+                                           (1 - Settings::Instance().m_hapticsLowDurationRange)) +
+                                  (duration -
+                                   0.5 * Settings::Instance().m_hapticsMinDuration *
+                                       (1 - Settings::Instance().m_hapticsLowDurationRange))) +
+                             1),
+                        1 - Settings::Instance().m_hapticsAmplitudeCurve);
+                duration =
+                    pow(Settings::Instance().m_hapticsMinDuration, 2) * 0.25 / duration + duration;
+
+                if (this->left_controller &&
+                    haptics_info.containerHandle == this->left_controller->prop_container) {
+                    HapticsSend(
+                        LEFT_CONTROLLER_HAPTIC_PATH, duration, haptics_info.fFrequency, amplitude);
+                } else if (this->right_controller &&
+                           haptics_info.containerHandle == this->right_controller->prop_container) {
+                    HapticsSend(
+                        RIGHT_CONTROLLER_HAPTIC_PATH, duration, haptics_info.fFrequency, amplitude);
+                }
+            }
+        }
+    }
     virtual bool ShouldBlockStandbyMode() override { return false; }
     virtual void EnterStandby() override {}
     virtual void LeaveStandby() override {}
@@ -122,7 +166,7 @@ void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
-void (*HapticsSend)(HapticsFeedback packet);
+void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*TimeSyncSend)(TimeSync packet);
 void (*ShutdownRuntime)();
 unsigned long long (*PathStringToHash)(const char *path);

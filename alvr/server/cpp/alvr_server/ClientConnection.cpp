@@ -142,24 +142,6 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	mVideoFrameIndex++;
 }
 
-void ClientConnection::SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand)
-{
-	Debug("Sending haptics feedback. startTime=%llu amplitude=%f duration=%f frequency=%f\n", startTime, amplitude, duration, frequency);
-
-	if (duration < m_hapticsMinDuration * 0.5)
-		duration = m_hapticsMinDuration * 0.5;
-
-	HapticsFeedback packetBuffer;
-	packetBuffer.type = ALVR_PACKET_TYPE_HAPTICS;
-	packetBuffer.startTime = startTime;
-	// packetBuffer.amplitude = pow(amplitude * ((m_hapticsLowDurationAmplitudeMultiplier - 1) * m_hapticsMinDuration / (pow(m_hapticsMinDuration, 2) * 0.25 / duration + duration) + 1), 1 - m_hapticsAmplitudeCurve);
-	packetBuffer.amplitude = pow(amplitude * ((m_hapticsLowDurationAmplitudeMultiplier - 1) * m_hapticsMinDuration * m_hapticsLowDurationRange / (pow(m_hapticsMinDuration * m_hapticsLowDurationRange, 2) * 0.25 / (duration - 0.5 * m_hapticsMinDuration * (1 - m_hapticsLowDurationRange)) + (duration - 0.5 * m_hapticsMinDuration * (1 - m_hapticsLowDurationRange))) + 1), 1 - m_hapticsAmplitudeCurve);
-	packetBuffer.duration = pow(m_hapticsMinDuration, 2) * 0.25 / duration + duration;
-	packetBuffer.frequency = frequency;
-	packetBuffer.hand = hand;
-	HapticsSend(packetBuffer);
-}
-
 void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
 	m_Statistics->CountPacket(sizeof(TrackingInfo));
 

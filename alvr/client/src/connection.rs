@@ -9,7 +9,7 @@ use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     log,
     prelude::*,
-    ALVR_NAME, ALVR_VERSION, LEFT_HAND_HAPTIC_ID,
+    ALVR_NAME, ALVR_VERSION,
 };
 use alvr_session::{CodecType, SessionDesc, TrackingSpace};
 use alvr_sockets::{
@@ -474,27 +474,15 @@ async fn connection_pipeline(
         let legacy_receive_data_sender = legacy_receive_data_sender.clone();
         async move {
             loop {
-                let packet = receiver.recv().await?;
+                let packet = receiver.recv().await?.header;
 
                 let haptics = HapticsFeedback {
-                    type_: 13, // ALVR_PACKET_TYPE_HAPTICS
-                    startTime: 0,
-                    amplitude: packet.header.amplitude,
-                    duration: packet.header.duration.as_secs_f32(),
-                    frequency: packet.header.frequency,
-                    hand: if packet.header.path == *LEFT_HAND_HAPTIC_ID {
-                        0
-                    } else {
-                        1
-                    },
+                    duration_ns: packet.duration.as_nanos() as _,
+                    frequency: packet.frequency,
+                    amplitude: packet.amplitude,
                 };
 
-                let mut buffer = vec![0_u8; mem::size_of::<HapticsFeedback>()];
-                buffer.copy_from_slice(unsafe {
-                    &mem::transmute::<_, [u8; mem::size_of::<HapticsFeedback>()]>(haptics)
-                });
-
-                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                unsafe { crate::onHapticsFeedbackNative(packet.path, haptics) };
             }
         }
     };

@@ -420,63 +420,6 @@ void OvrHmd::SetViewsConfig(ViewsConfigData config) {
 }
 
 void OvrHmd::updateController(const TrackingInfo &info) {
-    // haptic feedback
-    float hapticFeedbackLeft[3]{0, 0, 0};
-    float hapticFeedbackRight[3]{0, 0, 0};
-    vr::VREvent_t vrEvent;
-
-    // collect events since the last update
-    while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-        if (vrEvent.eventType == vr::VREvent_Input_HapticVibration) {
-
-            // if multiple events occurred within one frame, they are ignored except for last event
-
-            if (m_leftController->getHapticComponent() ==
-                vrEvent.data.hapticVibration.componentHandle) {
-
-                hapticFeedbackLeft[0] = vrEvent.data.hapticVibration.fAmplitude *
-                                        Settings::Instance().m_hapticsIntensity;
-                hapticFeedbackLeft[1] = vrEvent.data.hapticVibration.fDurationSeconds;
-                hapticFeedbackLeft[2] = vrEvent.data.hapticVibration.fFrequency;
-
-                fixInvalidHaptics(hapticFeedbackLeft);
-
-            } else if (m_rightController->getHapticComponent() ==
-                       vrEvent.data.hapticVibration.componentHandle) {
-
-                hapticFeedbackRight[0] = vrEvent.data.hapticVibration.fAmplitude *
-                                         Settings::Instance().m_hapticsIntensity;
-                hapticFeedbackRight[1] = vrEvent.data.hapticVibration.fDurationSeconds;
-                hapticFeedbackRight[2] = vrEvent.data.hapticVibration.fFrequency;
-
-                fixInvalidHaptics(hapticFeedbackRight);
-            }
-        }
-    }
-
-    if (m_Listener) {
-        // send feedback if changed
-        if (hapticFeedbackLeft[0] != 0 || hapticFeedbackLeft[1] != 0 ||
-            hapticFeedbackLeft[2] != 0) {
-
-            m_Listener->SendHapticsFeedback(0,
-                                            hapticFeedbackLeft[0],
-                                            hapticFeedbackLeft[1],
-                                            hapticFeedbackLeft[2],
-                                            m_leftController->GetHand() ? 1 : 0);
-        }
-
-        if (hapticFeedbackRight[0] != 0 || hapticFeedbackRight[1] != 0 ||
-            hapticFeedbackRight[2] != 0) {
-
-            m_Listener->SendHapticsFeedback(0,
-                                            hapticFeedbackRight[0],
-                                            hapticFeedbackRight[1],
-                                            hapticFeedbackRight[2],
-                                            m_rightController->GetHand() ? 1 : 0);
-        }
-    }
-
     // Update controller
 
     if (Settings::Instance().m_serversidePrediction)

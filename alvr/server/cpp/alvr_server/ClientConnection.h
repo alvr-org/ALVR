@@ -21,7 +21,6 @@ public:
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
 	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
-	void SendHapticsFeedback(uint64_t startTime, float amplitude, float duration, float frequency, uint8_t hand);
 	void ProcessTrackingInfo(TrackingInfo data);
  	void ProcessTimeSync(TimeSync data);
  	void ProcessVideoError();
@@ -50,11 +49,6 @@ private:
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void()> m_PacketLossCallback;
 	TrackingInfo m_TrackingInfo;
-
-	float m_hapticsAmplitudeCurve = Settings::Instance().m_hapticsAmplitudeCurve;
-	float m_hapticsMinDuration = Settings::Instance().m_hapticsMinDuration;
-	float m_hapticsLowDurationAmplitudeMultiplier = Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier;
-	float m_hapticsLowDurationRange = Settings::Instance().m_hapticsLowDurationRange;
 
 	uint64_t m_RTT = 0;
 	int64_t m_TimeDiff = 0;

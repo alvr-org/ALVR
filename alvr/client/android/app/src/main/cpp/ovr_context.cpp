@@ -42,6 +42,8 @@ unsigned long long (*pathStringToHash)(const char *path);
 uint64_t HEAD_PATH;
 uint64_t LEFT_HAND_PATH;
 uint64_t RIGHT_HAND_PATH;
+uint64_t LEFT_CONTROLLER_HAPTICS_PATH;
+uint64_t RIGHT_CONTROLLER_HAPTICS_PATH;
 
 const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
@@ -125,6 +127,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     HEAD_PATH = pathStringToHash("/user/head");
     LEFT_HAND_PATH = pathStringToHash("/user/hand/left");
     RIGHT_HAND_PATH = pathStringToHash("/user/hand/right");
+    LEFT_CONTROLLER_HAPTICS_PATH = pathStringToHash("/user/hand/left/output/haptic");
+    RIGHT_CONTROLLER_HAPTICS_PATH = pathStringToHash("/user/hand/right/output/haptic");
 
     LOG("Initializing EGL.");
 
@@ -974,14 +978,13 @@ void renderLoadingNative() {
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 }
 
-void onHapticsFeedbackNative(long long startTime, float amplitude, float duration,
-                             float frequency, unsigned char hand) {
-    int curHandIndex = (hand == 0) ? 0 : 1;
+void onHapticsFeedbackNative(unsigned long long path, HapticsFeedback packet) {
+    int curHandIndex = (path == RIGHT_CONTROLLER_HAPTICS_PATH ? 0 : 1);
     auto &s = g_ctx.mHapticsState[curHandIndex];
-    s.startUs = startTime;
-    s.endUs = static_cast<uint64_t>(duration * 1000000);
-    s.amplitude = amplitude;
-    s.frequency = frequency;
+    s.startUs = 0;
+    s.endUs = packet.duration_ns / 1000;
+    s.amplitude = packet.amplitude;
+    s.frequency = packet.frequency;
     s.fresh = true;
     s.buffered = false;
 }

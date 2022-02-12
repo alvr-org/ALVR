@@ -11,7 +11,9 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, prelude::*, LEFT_HAND_HAPTIC_ID, RIGHT_HAND_HAPTIC_ID};
+use alvr_common::{
+    lazy_static, log, prelude::*, LEFT_CONTROLLER_HAPTIC_ID, RIGHT_CONTROLLER_HAPTIC_ID,
+};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{
     ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
@@ -319,17 +321,13 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn haptics_send(haptics: HapticsFeedback) {
+    extern "C" fn haptics_send(path: u64, duration_s: f32, frequency: f32, amplitude: f32) {
         if let Some(sender) = &*HAPTICS_SENDER.lock() {
             let haptics = Haptics {
-                path: if haptics.hand == 0 {
-                    *LEFT_HAND_HAPTIC_ID
-                } else {
-                    *RIGHT_HAND_HAPTIC_ID
-                },
-                duration: Duration::from_secs_f32(haptics.duration),
-                frequency: haptics.frequency,
-                amplitude: haptics.amplitude,
+                path,
+                duration: Duration::from_secs_f32(duration_s),
+                frequency,
+                amplitude,
             };
 
             sender.send(haptics).ok();

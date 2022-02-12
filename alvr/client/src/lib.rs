@@ -500,19 +500,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onHapticsFeedbackNative(
-    _: JNIEnv,
-    _: JObject,
-    start_time: i64,
-    amplitude: f32,
-    duration: f32,
-    frequency: f32,
-    hand: u8,
-) {
-    onHapticsFeedbackNative(start_time, amplitude, duration, frequency, hand)
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
     _: JNIEnv,
     _: JObject,

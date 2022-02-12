@@ -23,7 +23,6 @@ public:
     JNIEnv *m_env;
     jobject m_instance;
     jmethodID mOnDisconnectedMethodID;
-    jmethodID mOnHapticsFeedbackID;
 };
 
 namespace {
@@ -44,7 +43,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned 
 
     jclass clazz = env->GetObjectClass(instance);
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
-    g_socket.mOnHapticsFeedbackID = env->GetMethodID(clazz, "onHapticsFeedback", "(JFFFZ)V");
     env->DeleteLocalRef(clazz);
 
     g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass, enableFEC);
@@ -128,16 +126,6 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
         if (timeSync->mode == 3) {
             LatencyCollector::Instance().received(timeSync->trackingRecvFrameIndex);
         }
-    } else if (type == ALVR_PACKET_TYPE_HAPTICS) {
-        if (packetSize < sizeof(HapticsFeedback)) {
-            return;
-        }
-        auto header = (HapticsFeedback *) packet;
-
-        g_socket.m_env->CallVoidMethod(g_socket.m_instance, g_socket.mOnHapticsFeedbackID,
-                                       static_cast<jlong>(header->startTime),
-                                       header->amplitude, header->duration, header->frequency,
-                                       static_cast<jboolean>(header->hand));
     }
 }
 

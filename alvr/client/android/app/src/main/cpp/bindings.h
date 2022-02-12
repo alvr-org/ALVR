@@ -127,21 +127,10 @@ struct VideoFrame {
     unsigned short fecPercentage;
     // char frameBuffer[];
 };
-// Report packet loss/error from client to server.
-struct PacketErrorReport {
-    unsigned int type; // ALVR_PACKET_TYPE_PACKET_ERROR_REPORT
-    unsigned int lostFrameType;
-    unsigned int fromPacketCounter;
-    unsigned int toPacketCounter;
-};
-// Send haptics feedback from server to client.
 struct HapticsFeedback {
-    unsigned int type;            // ALVR_PACKET_TYPE_HAPTICS
-    unsigned long long startTime; // Elapsed time from now when start haptics. In microseconds.
-    float amplitude;
-    float duration;
+    unsigned long long duration_ns;
     float frequency;
-    unsigned char hand; // 0:Right, 1:Left
+    float amplitude;
 };
 
 struct OnCreateResult {
@@ -201,8 +190,7 @@ extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);
 extern "C" void setStreamConfig(StreamConfig config);
 extern "C" void onStreamStartNative();
 extern "C" void onPauseNative();
-extern "C" void onHapticsFeedbackNative(
-    long long startTime, float amplitude, float duration, float frequency, unsigned char hand);
+extern "C" void onHapticsFeedbackNative(unsigned long long path, HapticsFeedback packet);
 extern "C" void onBatteryChangedNative(int battery, int plugged);
 extern "C" GuardianData getGuardianData();
 

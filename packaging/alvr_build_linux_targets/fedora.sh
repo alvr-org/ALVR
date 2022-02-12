@@ -51,7 +51,7 @@ build_fedora_server() {
     mkdir -p "${HOME}/rpmbuild/SOURCES" > /dev/null 2>&1
     log info 'Building tarball ...'
     # The relative path at the end here is a rlly bad idea, but where does it live?!
-    if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${repoDir}/${specFile}" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
+    if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${tmpDir}/tmp.spec" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
         log info 'Mangling spec file version and building RPMS ...'
         [ "${buildVer}" != '' ] && sed -i "s/Release:.*/\0${buildVer}/" "${tmpDir}/tmp.spec"
 

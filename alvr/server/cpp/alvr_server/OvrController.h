@@ -4,7 +4,7 @@
 #include "TrackedDevice.h"
 #include "openvr_driver.h"
 
-class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
+class OvrController : public TrackedDevice {
   public:
     OvrController(uint64_t devicePath, float *poseTimeOffset);
 

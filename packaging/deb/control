@@ -33,7 +33,7 @@ Vcs-Browser: https://github.com/alvr-org/ALVR
 Vcs-Git: https://github.com/alvr-org/ALVR.git
 Rules-Requires-Root: no
 Package: alvr
-Version: 17.0.0-dev.5
+Version: 17.0.0-dev.6
 Architecture: amd64
 Recommends: steam
 Description: Stream VR games from your PC to your headset via Wi-Fi

@@ -21,9 +21,7 @@ class CD3DRender;
 #endif
 class PoseHistory;
 
-class OvrHmd : public TrackedDevice,
-               public vr::ITrackedDeviceServerDriver,
-               vr::IVRDisplayComponent {
+class OvrHmd : public TrackedDevice, vr::IVRDisplayComponent {
   public:
     OvrHmd();
 

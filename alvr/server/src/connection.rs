@@ -867,8 +867,6 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(left_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(left_hand_motion.position),
-                            inputStateStatus: input.legacy.input_state_status[0],
-                            fingerPinchStrengths: input.legacy.finger_pinch_strengths[0],
                             handFingerConfidences: input.legacy.hand_finger_confience[0],
                         },
                         TrackingInfo_Controller {
@@ -915,8 +913,6 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(right_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(right_hand_motion.position),
-                            inputStateStatus: input.legacy.input_state_status[1],
-                            fingerPinchStrengths: input.legacy.finger_pinch_strengths[1],
                             handFingerConfidences: input.legacy.hand_finger_confience[1],
                         },
                     ],

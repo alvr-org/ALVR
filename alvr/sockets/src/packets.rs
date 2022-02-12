@@ -175,8 +175,6 @@ pub struct LegacyInput {
     pub grip_value: [f32; 2],
     pub bone_rotations: [[Quat; 19]; 2],
     pub bone_positions_base: [[Vec3; 19]; 2],
-    pub input_state_status: [u32; 2],
-    pub finger_pinch_strengths: [[f32; 4]; 2],
     pub hand_finger_confience: [u32; 2],
 }
 

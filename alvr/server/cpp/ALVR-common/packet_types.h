@@ -99,13 +99,6 @@ enum ALVR_HAND {
 	alvrHandBone_Pinky3 = 18,	// pinky distal phalange bone
 	alvrHandBone_MaxSkinnable = 19,
 };
-enum ALVR_FINGER_PINCH {
-	alvrFingerPinch_Index = 0,
-	alvrFingerPinch_Middle = 1,
-	alvrFingerPinch_Ring = 2,
-	alvrFingerPinch_Pinky = 3,
-	alvrFingerPinch_MaxPinches = 4,
-};
 enum ALVR_HAND_CONFIDENCE {
 	alvrThumbConfidence_High = (1 << 0),
 	alvrIndexConfidence_High = (1 << 1),
@@ -113,15 +106,6 @@ enum ALVR_HAND_CONFIDENCE {
 	alvrRingConfidence_High = (1 << 3),
 	alvrPinkyConfidence_High = (1 << 4),
 	alvrHandConfidence_High = (1 << 5),
-};
-enum ALVR_HAND_INPUT {
-	alvrInputStateHandStatus_PointerValid = (1 << 1),	// if this is set the PointerPose and PinchStrength contain valid data, otherwise they should not be used.
-	alvrInputStateHandStatus_IndexPinching = (1 << 2),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_MiddlePinching = (1 << 3),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_RingPinching = (1 << 4),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_PinkyPinching = (1 << 5),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_SystemGestureProcessing = (1 << 6),	// if this is set the hand is currently processing a system gesture
-	alvrInputStateHandStatus_EnumSize = 0x7fffffff
 };
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 

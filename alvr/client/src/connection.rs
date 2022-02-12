@@ -250,6 +250,12 @@ async fn connection_pipeline(
         &[settings.extra.client_dark_mode.into()],
     ))?;
 
+    // create this before initializing the stream on cpp side
+    let (views_config_sender, mut views_config_receiver) = tmpsc::unbounded_channel();
+    *VIEWS_CONFIG_SENDER.lock() = Some(views_config_sender);
+    let (battery_sender, mut battery_receiver) = tmpsc::unbounded_channel();
+    *BATTERY_SENDER.lock() = Some(battery_sender);
+
     unsafe {
         crate::setStreamConfig(crate::StreamConfig {
             eyeWidth: config_packet.eye_resolution_width,
@@ -398,10 +404,7 @@ async fn connection_pipeline(
     let views_config_send_loop = {
         let control_sender = Arc::clone(&control_sender);
         async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *VIEWS_CONFIG_SENDER.lock() = Some(data_sender);
-
-            while let Some(config) = data_receiver.recv().await {
+            while let Some(config) = views_config_receiver.recv().await {
                 control_sender
                     .lock()
                     .await
@@ -417,10 +420,7 @@ async fn connection_pipeline(
     let battery_send_loop = {
         let control_sender = Arc::clone(&control_sender);
         async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *BATTERY_SENDER.lock() = Some(data_sender);
-
-            while let Some(packet) = data_receiver.recv().await {
+            while let Some(packet) = battery_receiver.recv().await {
                 control_sender
                     .lock()
                     .await

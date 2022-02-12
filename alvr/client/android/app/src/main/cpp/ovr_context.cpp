@@ -86,8 +86,8 @@ public:
     bool darkMode;
     ovrRenderer Renderer;
 
-    uint8_t lastLeftControllerBattery;
-    uint8_t lastRightControllerBattery;
+    uint8_t lastLeftControllerBattery = 0;
+    uint8_t lastRightControllerBattery = 0;
 
     float lastIpd;
     EyeFov lastFov;
@@ -751,6 +751,11 @@ void onStreamStartNative() {
         LOGE("Failed to set tracking space: %d", result);
     }
     g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
+
+    // reset battery and view config to make sure they get sent
+    g_ctx.lastIpd = 0;
+    g_ctx.lastLeftControllerBattery = 0;
+    g_ctx.lastRightControllerBattery = 0;
 }
 
 void onPauseNative() {

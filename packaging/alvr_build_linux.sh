@@ -82,19 +82,24 @@ Usage: $(basename "${0}") ACTION
 Description: Script to prepare the system and build ALVR package(s)
 Arguments:
     ACTIONS
-        all             Prepare and build ALVR client and server
-        client          Prepare and build ALVR client
-        server          Prepare and build ALVR server
-    BUILD DEFAULTS
-        Fedora          --release
-        Debian-based    --release --bundle-ffmpeg
-        Client          --release
+        all                 Prepare and build ALVR client and server
+        client              Prepare and build ALVR client
+        server              Prepare and build ALVR server
+    CARGO BUILD DEFAULTS
+        Fedora              --release
+        Debian-based        --release --bundle-ffmpeg
+        Client              --release
     FLAGS
-        --build-only    Only build ALVR package(s)
-        --client-args=  List of ALL cargo xtask client build arguments
-        --prep-only     Only prepare system for ALVR package build
-        --server-args=  List of ALL cargo xtask server build arguments
-Example: ./ALVR/packaging/alvr_build_linux.sh server --build-only --server-args='--release --no-nvidia --experiments'
+        --build-only        Only build ALVR package(s)
+        --client-args=      List of ALL cargo xtask client build arguments
+        --prep-only         Only prepare system for ALVR package build
+        --server-args=      List of ALL cargo xtask server build arguments
+        --rustup-src=       Source to install rustup from if not found:
+            WARNING: This does NOT affect Fedora server builds
+            rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
+            snapd           Snapcraft package       [Default]
+
+Example: $(basename "${0}") server --build-only --server-args='--release --no-nvidia'
 HELPME
 }
 
@@ -107,8 +112,7 @@ maybe_clone() {
     # Get the short hash for this commit
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
 
-    # If branch is master it's a development build
-    # We need something better here... this doesn't take into account non-master dev branches
+    # If the branch is 'v###' exactly, it's probably a release
     ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
 
     # Import distro-specific helper functions once ${repoDir} exists
@@ -159,7 +163,7 @@ main() {
             fi
         ;;
         'server')
-            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR client${kwArgs['--server-args']:+" with arguments: ${kwArgs['--server-args']}"}"
+            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR server${kwArgs['--server-args']:+" with arguments: ${kwArgs['--server-args']}"}"
             if [ "${kwArgs['--build-only']}" != '' ] && build_"${ID}"_server; then
                 log info "${PRETTY_NAME} (${ID}) package built successfully."
             elif [ "${kwArgs['--build-only']}" != '' ]; then

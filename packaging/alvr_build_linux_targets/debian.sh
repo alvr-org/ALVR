@@ -35,6 +35,7 @@ prep_debian_server() {
     sudo -s <<SUDOCMDS
 apt -y install ${basePackages[@]}
 yes | mk-build-deps -ir "${tmpDir}/control"
+rm -f 'alvr-build-deps_'*'_amd64.'{'buildinfo','changes'}
 SUDOCMDS
     # shellcheck disable=SC2181
     if [ $? -eq 0 ]; then

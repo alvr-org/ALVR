@@ -16,35 +16,20 @@ class ClientConnection {
 public:
 
 	ClientConnection(std::function<void()> poseUpdatedCallback, std::function<void()> packetLossCallback);
-	~ClientConnection();
 
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
-	void SendAudio(uint8_t *buf, int len, uint64_t presentationTime);
 	void ProcessTrackingInfo(TrackingInfo data);
  	void ProcessTimeSync(TimeSync data);
- 	void ProcessVideoError();
 	bool HasValidTrackingInfo() const;
 	void GetTrackingInfo(TrackingInfo &info);
 	float GetPoseTimeOffset();
-	uint64_t clientToServerTime(uint64_t clientTime) const;
-	uint64_t serverToClientTime(uint64_t serverTime) const;
 	void OnFecFailure();
 	std::shared_ptr<Statistics> GetStatistics();
 private:
-	bool m_bExiting;
 	std::shared_ptr<Statistics> m_Statistics;
 
-	std::ofstream outfile;
-
-	// Maximum UDP payload
-	static const int PACKET_SIZE = 1400;
-	static const int64_t REQUEST_TIMEOUT = 5 * 1000 * 1000;
-	static const int64_t CONNECTION_TIMEOUT = 5 * 1000 * 1000;
-	static const int64_t STATISTICS_TIMEOUT_US = 100 * 1000;
-
 	uint32_t videoPacketCounter = 0;
-	uint32_t soundPacketCounter = 0;
 
 	std::function<void()> m_PoseUpdatedCallback;
 	std::function<void()> m_PacketLossCallback;

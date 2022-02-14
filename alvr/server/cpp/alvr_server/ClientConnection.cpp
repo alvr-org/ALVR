@@ -8,11 +8,12 @@
 #include "Utils.h"
 #include "Settings.h"
 
+const int64_t STATISTICS_TIMEOUT_US = 100 * 1000;
+
 ClientConnection::ClientConnection(
 	std::function<void()> poseUpdatedCallback,
 	std::function<void()> packetLossCallback)
-	: m_bExiting(false)
-	, m_LastStatisticsUpdate(0) {
+	: m_LastStatisticsUpdate(0) {
 	m_PoseUpdatedCallback = poseUpdatedCallback;
 	m_PacketLossCallback = packetLossCallback;
 
@@ -23,13 +24,9 @@ ClientConnection::ClientConnection(
 	reed_solomon_init();
 	
 	videoPacketCounter = 0;
-	soundPacketCounter = 0;
 	m_fecPercentage = INITIAL_FEC_PERCENTAGE;
 	memset(&m_reportedStatistics, 0, sizeof(m_reportedStatistics));
 	m_Statistics->ResetAll();
-}
-
-ClientConnection::~ClientConnection() {
 }
 
 void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
@@ -149,7 +146,7 @@ void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
 	TimeSync sendBuf = {};
 	sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
 	sendBuf.mode = 3;
-	sendBuf.serverTime = serverToClientTime(Current);
+	sendBuf.serverTime = Current - m_TimeDiff;
 	sendBuf.trackingRecvFrameIndex = data.FrameIndex;
 	TimeSyncSend(sendBuf);
 
@@ -288,12 +285,6 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 	}
 }
 
-void ClientConnection::ProcessVideoError() {
- 	Debug("Packet loss was reported.");
-
- 	OnFecFailure();
- }
-
 bool ClientConnection::HasValidTrackingInfo() const {
 	return m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
 }
@@ -305,14 +296,6 @@ void ClientConnection::GetTrackingInfo(TrackingInfo &info) {
 
 float ClientConnection::GetPoseTimeOffset() {
 	return -(double)(m_Statistics->GetTotalLatencyAverage()) / 1000.0 / 1000.0;
-}
-
-uint64_t ClientConnection::clientToServerTime(uint64_t clientTime) const {
-	return clientTime + m_TimeDiff;
-}
-
-uint64_t ClientConnection::serverToClientTime(uint64_t serverTime) const {
-	return serverTime - m_TimeDiff;
 }
 
 void ClientConnection::OnFecFailure() {

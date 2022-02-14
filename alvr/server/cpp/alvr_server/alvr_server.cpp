@@ -219,7 +219,7 @@ void TimeSyncReceive(TimeSync data) {
 }
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->ProcessVideoError();
+        g_driver_provider.hmd->m_Listener->OnFecFailure();
     }
 }
 

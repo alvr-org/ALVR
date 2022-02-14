@@ -19,8 +19,6 @@
 
 # GitHub repo
 repo='alvr-org/ALVR'
-# Git branch
-branch='master'
 # RPM spec file
 specFile='packaging/rpm/alvr.spec'
 # deb control file
@@ -91,9 +89,10 @@ Arguments:
         Client              --release
     FLAGS
         --build-only        Only build ALVR package(s)
+        --branch=           Branch to clone
         --client-args=      List of ALL cargo xtask client build arguments
-        --prep-only         Only prepare system for ALVR package build
         --server-args=      List of ALL cargo xtask server build arguments
+        --prep-only         Only prepare system for ALVR package build
         --rustup-src=       Source to install rustup from if not found:
             WARNING: This does NOT affect Fedora server builds
             rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
@@ -104,21 +103,28 @@ HELPME
 }
 
 maybe_clone() {
-    if ! [ -e "${repoDir}" ]; then
+    if ! [ -d "${repoDir}" ]; then
         log info "Cloning ${repo} into ${repoDir} ..."
-        git clone -b "${branch}" "https://github.com/${repo}.git"
+        git clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git"
     fi
 
-    # Get the short hash for this commit
+    # Import distro-specific helper functions once ${repoDir} exists but BEFORE changing branches
+    for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+        . "${helper}"
+    done
+
+    if [ "${kwArgs['--branch']}" != '' ]; then
+        log info "Changing branches to ${kwArgs['--branch']} ..."
+        # Change the current repository branch
+        git --work-tree="${repoDir}" checkout "${kwArgs['--branch']}"
+    fi
+
+    # Get the short hash for this commit AFTER all git stuff
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
 
     # If the branch is 'v###' exactly, it's probably a release
     ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
 
-    # Import distro-specific helper functions once ${repoDir} exists
-    for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
-        . "${helper}"
-    done
 }
 
 main() {

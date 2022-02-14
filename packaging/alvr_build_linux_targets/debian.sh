@@ -64,7 +64,7 @@ build_debian_server() {
         'DEBIAN'
         'etc/ufw/applications.d'
         'usr/bin'
-        'usr/share/'{'applications','licenses/alvr','selinux/packages'}
+        'usr/share/'{'applications','licenses/alvr'}
         'usr/lib64'
         'usr/lib/firewalld/services'
         'usr/libexec/alvr/'
@@ -99,8 +99,8 @@ build_debian_server() {
     cp -ar "${buildDir}libexec/alvr/" "${debTmpDir}/usr/libexec/"
     cp -ar "${buildDir}share/"* "${debTmpDir}/usr/share/"
     cp "${repoDir}/LICENSE" "${debTmpDir}/usr/share/licenses/alvr/"
-    # Copy source files
-    cp "${repoDir}/packaging/deb/"* "${debTmpDir}/DEBIAN/"
+    # Copy control and changelog files
+    cp "${repoDir}/packaging/deb/changelog" "${tmpDir}/control" "${debTmpDir}/DEBIAN/"
     # Mangle version to version+<short-hash> AFTER it's copied
     sed -i "s/^Ver.*/Version: ${debVer}/" "${debTmpDir}/DEBIAN/control"
     cp "${repoDir}/packaging/freedesktop/alvr.desktop" "${debTmpDir}/usr/share/applications/"

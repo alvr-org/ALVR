@@ -10,14 +10,7 @@
 
 const int64_t STATISTICS_TIMEOUT_US = 100 * 1000;
 
-ClientConnection::ClientConnection(
-	std::function<void()> poseUpdatedCallback,
-	std::function<void()> packetLossCallback)
-	: m_LastStatisticsUpdate(0) {
-	m_PoseUpdatedCallback = poseUpdatedCallback;
-	m_PacketLossCallback = packetLossCallback;
-
-	m_TrackingInfo = {};
+ClientConnection::ClientConnection() : m_LastStatisticsUpdate(0) {
 
 	m_Statistics = std::make_shared<Statistics>();
 
@@ -149,24 +142,6 @@ void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
 	sendBuf.serverTime = Current - m_TimeDiff;
 	sendBuf.trackingRecvFrameIndex = data.FrameIndex;
 	TimeSyncSend(sendBuf);
-
-	{
-		std::unique_lock lock(m_CS);
-		m_TrackingInfo = data;
-	}
-
-	// if 3DOF, zero the positional data!
-	if (Settings::Instance().m_force3DOF) {
-		m_TrackingInfo.HeadPose_Pose_Position.x = 0;
-		m_TrackingInfo.HeadPose_Pose_Position.y = 0;
-		m_TrackingInfo.HeadPose_Pose_Position.z = 0;
-	}
-	Debug("got tracking info %d %f %f %f %f\n", (int)m_TrackingInfo.FrameIndex,
-		m_TrackingInfo.HeadPose_Pose_Orientation.x,
-		m_TrackingInfo.HeadPose_Pose_Orientation.y,
-		m_TrackingInfo.HeadPose_Pose_Orientation.z,
-		m_TrackingInfo.HeadPose_Pose_Orientation.w);
-	m_PoseUpdatedCallback();
 }
 
 void ClientConnection::ProcessTimeSync(TimeSync data) {
@@ -285,15 +260,6 @@ void ClientConnection::ProcessTimeSync(TimeSync data) {
 	}
 }
 
-bool ClientConnection::HasValidTrackingInfo() const {
-	return m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO;
-}
-
-void ClientConnection::GetTrackingInfo(TrackingInfo &info) {
-	std::unique_lock<std::mutex> lock(m_CS);
-	info = m_TrackingInfo;
-}
-
 float ClientConnection::GetPoseTimeOffset() {
 	return -(double)(m_Statistics->GetTotalLatencyAverage()) / 1000.0 / 1000.0;
 }
@@ -306,7 +272,6 @@ void ClientConnection::OnFecFailure() {
 		}
 	}
 	m_lastFecFailure = GetTimestampUs();
-	m_PacketLossCallback();
 }
 
 std::shared_ptr<Statistics> ClientConnection::GetStatistics() {

@@ -36,7 +36,7 @@ class OvrHmd : public TrackedDevice, vr::IVRDisplayComponent {
     virtual void DebugRequest(const char *request, char *response_buffer, uint32_t size) {}
     virtual vr::DriverPose_t GetPose();
 
-    void OnPoseUpdated();
+    void OnPoseUpdated(TrackingInfo info);
 
     void StartStreaming();
 
@@ -71,6 +71,7 @@ class OvrHmd : public TrackedDevice, vr::IVRDisplayComponent {
 
     std::shared_ptr<CEncoder> m_encoder;
 
+    TrackingInfo m_TrackingInfo;
   private:
     ViewsConfigData views_config;
 

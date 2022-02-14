@@ -57,6 +57,8 @@ OvrHmd::OvrHmd()
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
+    m_TrackingInfo = {};
+
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
@@ -299,10 +301,8 @@ vr::DriverPose_t OvrHmd::GetPose() {
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    if (m_Listener && m_Listener->HasValidTrackingInfo()) {
-
-        TrackingInfo info;
-        m_Listener->GetTrackingInfo(info);
+    if (m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO) {
+        TrackingInfo &info = m_TrackingInfo;
 
         pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
                                             info.HeadPose_Pose_Orientation.x,
@@ -331,14 +331,16 @@ vr::DriverPose_t OvrHmd::GetPose() {
     return pose;
 }
 
-void OvrHmd::OnPoseUpdated() {
+void OvrHmd::OnPoseUpdated(TrackingInfo info) {
     if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
-        if (!m_Listener || !m_Listener->HasValidTrackingInfo()) {
-            return;
+        // if 3DOF, zero the positional data!
+        if (Settings::Instance().m_force3DOF) {
+            info.HeadPose_Pose_Position.x = 0;
+            info.HeadPose_Pose_Position.y = 0;
+            info.HeadPose_Pose_Position.z = 0;
         }
 
-        TrackingInfo info;
-        m_Listener->GetTrackingInfo(info);
+        m_TrackingInfo = info;
 
         // TODO: Right order?
 
@@ -362,8 +364,7 @@ void OvrHmd::StartStreaming() {
     }
 
     // create listener
-    m_Listener.reset(
-        new ClientConnection([&]() { OnPoseUpdated(); }, [&]() { m_encoder->OnPacketLoss(); }));
+    m_Listener.reset(new ClientConnection());
 
     // Spin up a separate thread to handle the overlapped encoding/transmit step.
     if (IsHMD()) {

@@ -210,6 +210,7 @@ void RequestIDR() {
 void InputReceive(TrackingInfo data) {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
         g_driver_provider.hmd->m_Listener->ProcessTrackingInfo(data);
+        g_driver_provider.hmd->OnPoseUpdated(data);
     }
 }
 void TimeSyncReceive(TimeSync data) {
@@ -220,6 +221,7 @@ void TimeSyncReceive(TimeSync data) {
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
         g_driver_provider.hmd->m_Listener->OnFecFailure();
+        g_driver_provider.hmd->m_encoder->OnPacketLoss();
     }
 }
 

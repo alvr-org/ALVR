@@ -9,10 +9,13 @@
 # 6 - Unable to download Deb control file
 # 7 - Unable to install / upgrade rustup
 # 8 - Unable to create deb
+# 9 - Unable to clone repository
 # 99 - Script run as root
-#
-# Disable warnings about importing snapd
-# shellcheck disable=SC1091
+# Disable warnings for:
+# - Dynamic import shellcheck incompatibility
+# - Importing snapd
+# - Variable assigned but not referenced
+# shellcheck disable=SC1090,SC1091,SC2034
 
 # GitHub repo
 repo='alvr-org/ALVR'
@@ -22,13 +25,11 @@ branch='master'
 specFile='packaging/rpm/alvr.spec'
 # deb control file
 controlFile='packaging/deb/control'
-# Raw file provider
-rawContentProvider='https://raw.githubusercontent.com'
 # Android NDK version
 ndkVersion=30
 
 # Grab the repository directory
-repoDir="$(realpath $(dirname "${0}"))/.."
+repoDir="$(realpath "$(dirname "${0}")")/.."
 if ! [ -d "${repoDir}/.git" ]; then
     # Get the absolute directory the script is running in, and add the repo name
     repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
@@ -81,12 +82,24 @@ Usage: $(basename "${0}") ACTION
 Description: Script to prepare the system and build ALVR package(s)
 Arguments:
     ACTIONS
-        all             Prepare and build ALVR client and server
-        client          Prepare and build ALVR client
-        server          Prepare and build ALVR server
+        all                 Prepare and build ALVR client and server
+        client              Prepare and build ALVR client
+        server              Prepare and build ALVR server
+    CARGO BUILD DEFAULTS
+        Fedora              --release
+        Debian-based        --release --bundle-ffmpeg
+        Client              --release
     FLAGS
-        --build-only    Only build ALVR package(s)
-        --prep-only     Only prepare system for ALVR package build
+        --build-only        Only build ALVR package(s)
+        --client-args=      List of ALL cargo xtask client build arguments
+        --prep-only         Only prepare system for ALVR package build
+        --server-args=      List of ALL cargo xtask server build arguments
+        --rustup-src=       Source to install rustup from if not found:
+            WARNING: This does NOT affect Fedora server builds
+            rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
+            snapd           Snapcraft package       [Default]
+
+Example: $(basename "${0}") server --build-only --server-args='--release --no-nvidia'
 HELPME
 }
 
@@ -99,262 +112,48 @@ maybe_clone() {
     # Get the short hash for this commit
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
 
-    # Check if a tag exists; if not we're a nightly
-    if [ "$(git -C "${repoDir}" tag --points-at HEAD)" == '' ]; then
-        nightly=true
-    fi
-    nightlyVer="+$(date +%s)+${shortHash}"
-}
+    # If the branch is 'v###' exactly, it's probably a release
+    ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
 
-###########
-# Generic #
-###########
-prep_rustup() {
-    # Manually add the default path
-    export PATH="${PATH}:/snap/bin:/var/lib/snapd/snap"
-
-    # Install rustup if it does not exist
-    if ! command -v rustup > /dev/null 2>&1 && ! sudo snap install rustup --classic; then
-        return 7
-    fi
-    log info 'Installing rust nightly ...'
-    if ! rustup install nightly; then
-        return 7
-    fi
-    # This doesn't necessarily need to succeed, but ideally it will
-    rustup default nightly
-}
-
-build_generic_client() {
-    # Make sure we agreed to licenses
-    log info 'Accepting licenses ...'
-    yes | androidsdk --licenses > /dev/null 2>&1
-
-    # Grab the SDK root
-    log info 'Installing Android NDK bundle ...'
-    export "$(androidsdk ndk-bundle 2>&1 | grep 'SDK_ROOT=')"
-    export ANDROID_SDK_ROOT="${SDK_ROOT}"
-    log info "Using Android SDK: ${ANDROID_SDK_ROOT}"
-
-    # Add LLVM / Clang Android path
-    toolchainRoot="${SDK_ROOT}/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin/"
-    export PATH="${PATH}:${toolchainRoot}"
-
-    log info "Linking Android ${ndkVersion} NDK toolchain to generic..."
-    if ! [ -L "${toolchainRoot}/aarch64-linux-android-clang" ]; then
-        ln -s "${toolchainRoot}/"{"aarch64-linux-android${ndkVersion}-clang",'aarch64-linux-android-clang'}
-    fi
-    if ! [ -L "${toolchainRoot}/aarch64-linux-android-clang++" ]; then
-        ln -s "${toolchainRoot}/"{"aarch64-linux-android${ndkVersion}-clang++",'aarch64-linux-android-clang++'}
-    fi
-
-
-    log info 'Starting client build ...'
-    # no subshell expansion warnings
-    cd "${repoDir}" > /dev/null || return 2
-    if cargo xtask build-android-deps && cargo xtask build-client --release; then
-        # This needs stable support, only nightlies get built right now
-        cp "${repoDir}/build/alvr_client_oculus_go/"* "../alvr_client_oculus_go${nightlyVer}.apk"
-        cp "${repoDir}/build/alvr_client_oculus_quest/"* "../alvr_client_oculus_quest${nightlyVer}.apk"
-        cd - > /dev/null || return 2
-    else
-        cd - > /dev/null && return 2
-    fi
-}
-
-##########
-# Fedora #
-##########
-prep_fedora_client() {
-    log error 'Fedora client builds are not recommended, as they currently install and utilize non-rpm Rust packages'
-    sudo -s <<SUDOCMDS
-dnf -y install java snapd
-systemctl enable --now snapd
-
-snap install androidsdk
-SUDOCMDS
-    # This is a very basic check; ideally this and others should be checked individually in the heredoc above
-    # shellcheck disable=SC2181
-    if [ $? -eq 0 ]; then
-        # Load any additional snapd binary locations
-        . /etc/profile.d/snapd.sh
-        prep_rustup
-    else
-        return 1
-    fi
-}
-
-prep_fedora_server() {
-    basePackages=(
-        'dnf-utils'
-        'git'
-        "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${VERSION_ID}.noarch.rpm"
-        "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${VERSION_ID}.noarch.rpm"
-    )
-    # ONLY these need sudo
-    sudo -s <<SUDOCMDS
-dnf -y install ${basePackages[@]}
-yum-builddep -y ${rawContentProvider}/${repo}/${branch}/${specFile}
-SUDOCMDS
-}
-
-build_fedora_server() {
-    # Don't care if this fails
-    mkdir -p "${HOME}/rpmbuild/SOURCES" > /dev/null 2>&1
-    log info 'Building tarball ...'
-    if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${repoDir}/${specFile}" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
-        log info 'Mangling spec file version and building RPMS ...'
-        if $nightly; then
-            sed "s/Release:.*/\0+$(date +%s)+${shortHash}/" "${repoDir}/${specFile}" > "${tmpDir}/tmp.spec"
-        else
-            cp "${repoDir}/${specFile}" "${tmpDir}/tmp.spec"
-        fi
-
-        rpmbuild -ba "${tmpDir}/tmp.spec"
-    else
-        log critical 'Failed to build tarball!' 5
-    fi
-}
-
-#############################
-# Debian / Pop!_OS / Ubuntu #
-#############################
-prep_ubuntu_client() {
-    sudo -s <<SUDOCMDS
-apt -y install default-jre python snapd
-snap install androidsdk
-SUDOCMDS
-    # shellcheck disable=SC2181
-    if [ $? -eq 0 ]; then
-        prep_rustup
-    else
-        return 1
-    fi
-}
-
-prep_ubuntu_server() {
-    log info "Downloading control file and installing packages ..."
-    if ! curl "${rawContentProvider}/${repo}/${branch}/${controlFile}" > "${tmpDir}/control"; then
-        log critical "Unable to download control file from ${rawContentProvider}/${repo}/${branch}/${controlFile}" 6
-    fi
-    sudo -s <<SUDOCMDS
-apt -y install devscripts equivs snapd
-yes | mk-build-deps -ir "${tmpDir}/control"
-SUDOCMDS
-    # shellcheck disable=SC2181
-    if [ $? -eq 0 ]; then
-        prep_rustup
-    else
-        return 1
-    fi
-}
-
-# This needs srs error checking
-build_ubuntu_server() {
-    # Create version
-    debVer="$(grep '^Version' "${repoDir}/${controlFile}" | awk '{ print $2 }')"
-    if $nightly; then
-        debVer+="${nightlyVer}"
-    fi
-
-    debTmpDir="${tmpDir}/alvr_${debVer}"
-    newBins=(
-        'bin/alvr_launcher'
-        'lib64/alvr/bin/linux64/driver_alvr_server.so'
-        'lib64/libalvr_vulkan_layer.so'
-        'libexec/alvr/vrcompositor-wrapper'
-    )
-    newDirs=(
-        'DEBIAN'
-        'etc/ufw/applications.d'
-        'usr/bin'
-        'usr/share/'{'applications','licenses/alvr','selinux/packages'}
-        'usr/lib64'
-        'usr/lib/firewalld/services'
-        'usr/libexec/alvr/'
-    )
-
-    # Add debian Package config
-    export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${repoDir}/packaging/deb/cuda.pc"
-
-    cd "${repoDir}" > /dev/null || return 4
-    # There's no vulkan-enabled ffmpeg afaik
-    log info 'Building ALVR server ...'
-    if cargo xtask build-server --release --bundle-ffmpeg; then
-        cd - > /dev/null || return 4
-    else
-        cd - > /dev/null && return 4
-    fi
-
-    log info 'Creating directories ...'
-    for newDir in "${newDirs[@]}"; do
-        mkdir -p "${debTmpDir}/${newDir}"
+    # Import distro-specific helper functions once ${repoDir} exists
+    for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+        . "${helper}"
     done
-
-    log info 'Stripping binaries ...'
-    for newBin in "${newBins[@]}"; do
-        strip "${buildDir}/${newBin}"
-    done
-
-    log info 'Copying files and mangling control file version...'
-    # Copy build files
-    cp "${buildDir}/bin/alvr_launcher" "${debTmpDir}/usr/bin/"
-    cp -ar "${buildDir}/lib64/"*"alvr"* "${debTmpDir}/usr/lib64/"
-    cp -ar "${buildDir}/libexec/alvr/" "${debTmpDir}/usr/libexec/"
-    cp -ar "${buildDir}/share/"* "${debTmpDir}/usr/share/"
-    cp "${repoDir}/LICENSE" "${debTmpDir}/usr/share/licenses/alvr/"
-    # Copy source files
-    cp "${repoDir}/packaging/deb/"* "${debTmpDir}/DEBIAN/"
-    # Mangle version to version+<short-hash> AFTER it's copied
-    sed -i "s/^Ver.*/Version: ${debVer}/" "${debTmpDir}/DEBIAN/control"
-    cp "${repoDir}/packaging/freedesktop/alvr.desktop" "${debTmpDir}/usr/share/applications/"
-    cp "${repoDir}/packaging/firewall/alvr-firewalld.xml" "${debTmpDir}/usr/share/alvr/"
-    cp "${repoDir}/packaging/firewall/alvr_fw_config.sh" "${debTmpDir}/usr/libexec/alvr/"
-    cp "${repoDir}/packaging/firewall/ufw-alvr" "${debTmpDir}/etc/ufw/applications.d/"
-
-    log info 'Generating icons ...'
-    for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
-        mkdir -p "${debTmpDir}/usr/share/icons/hicolor/${res}/apps"
-        convert "${repoDir}/alvr/launcher/res/launcher.ico" -thumbnail "${res}" -alpha on -background none -flatten "${debTmpDir}/usr/share/icons/hicolor/${res}/apps/alvr.png"
-    done
-
-    log info 'Generating package ...'
-    if dpkg-deb --build --root-owner-group "${debTmpDir}"; then
-        # dpkg-deb puts the resulting file in the top level directory
-        cp "${tmpDir}/alvr_${debVer}.deb" "${HOME}"
-    else
-        log critical 'Unable to create package!' 8
-    fi
 }
-
-# Debian
-prep_debian_client() { prep_ubuntu_client "${@}"; }
-prep_debian_server() { prep_ubuntu_server "${@}"; }
-build_debian_server() { build_ubuntu_server "${@}"; }
-# Pop!_OS
-prep_pop_client() { prep_ubuntu_client "${@}"; }
-prep_pop_server() { prep_ubuntu_server "${@}"; }
-build_pop_server() { build_ubuntu_server "${@}"; }
 
 main() {
-    mkdir "${tmpDir}"
+    # Parse any flags or key / value pairs into an associative array
+    declare -A kwArgs
+    for kwArg in "${@:2}"; do
+        # Remove everything after the '=' as the key and remove everything before the '=' as the value
+        # NOTE: If there is no actual value, the value is set to the key name for ease of conditional comparisons
+        # with an empty string ('')
+        kwArgs["${kwArg%%=*}"]="${kwArg#*=}"
+    done
+
+    # Create temporary directory if it doesn't exist
+    ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
+
+    # We need to clone either way for distro-specific bash functions and deb control file
+    ! maybe_clone && log critical 'Unable to clone repository!'
 
     case "${1,,}" in
         'client')
-            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR client..."
+            # This conditionally logs any build arguments
+            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR client${kwArgs['--client-args']:+" with arguments: ${kwArgs['--client-args']}"}"
             # If we're only building, clone, build, and check the exit codes
-            if [ "${2,,}" == '--build-only' ] && maybe_clone && build_generic_client; then
+            if [ "${kwArgs['--build-only']}" != '' ] && build_"${ID}"_client; then
                 log info 'ALVR client built successfully.'
             # If we got here that means we failed something
-            elif [ "${2,,}" == '--build-only' ]; then
+            elif [ "${kwArgs['--build-only']}" != '' ]; then
                 log critical 'Failed to build ALVR client!' 2
             # Prepare and check return code
             elif prep_"${ID}"_client; then
                 # Exit successfully if we're only preparing
-                if [ "${2,,}" == '--prep-only' ]; then
+                if [ "${kwArgs['--prep-only']}" != '' ]; then
                     exit 0
-                # Clone, build, and check the exit codes
-                elif maybe_clone && build_generic_client; then
+                # Clone, build, and check exit codes
+                elif build_generic_client; then
                     log info 'ALVR client built successfully.'
                 else
                     log critical 'Failed to build ALVR client!' 2
@@ -364,15 +163,15 @@ main() {
             fi
         ;;
         'server')
-            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR server..."
-            if [ "${2,,}" == '--build-only' ] && (maybe_clone || exit) && build_"${ID}"_server; then
+            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR server${kwArgs['--server-args']:+" with arguments: ${kwArgs['--server-args']}"}"
+            if [ "${kwArgs['--build-only']}" != '' ] && build_"${ID}"_server; then
                 log info "${PRETTY_NAME} (${ID}) package built successfully."
-            elif [ "${2,,}" == '--build-only' ]; then
+            elif [ "${kwArgs['--build-only']}" != '' ]; then
                 log critical "Failed to build ${PRETTY_NAME} (${ID}) package!" 4
             elif prep_"${ID}"_server; then
-                if [ "${2,,}" == '--prep-only' ]; then
+                if [ "${kwArgs['--prep-only']}" != '' ]; then
                     exit 0
-                elif maybe_clone && build_"${ID}"_server; then
+                elif build_"${ID}"_server; then
                     log info "${PRETTY_NAME} (${ID}) package built successfully."
                 else
                     log critical "Failed to build ${PRETTY_NAME} (${ID}) package!" 4

@@ -5,12 +5,8 @@
 # 1 - Invalid command
 # 2 - Invalid action
 # 3 - Failed to copy UFW configuration
-# 99 - Feature not implemented
+# 99 - Firewall not found
 # 126 - pkexec failed - Request dismissed
-
-iptables_cfg() {
-    exit 99
-}
 
 firewalld_cfg() {
     # Iterate around each active zone
@@ -41,8 +37,8 @@ ufw_cfg() {
     # Try and install the application file
     if ! ufw app info 'alvr'; then
         # Pull application file from local build first if the script lives inside it
-        if [ -f "$(dirname $(realpath ${0}))/ufw-alvr" ]; then
-            cp "$(dirname $(realpath ${0}))/ufw-alvr" '/etc/ufw/applications.d/'
+        if [ -f "$(dirname "$(realpath "${0}")")/ufw-alvr" ]; then
+            cp "$(dirname "$(realpath "${0}")")/ufw-alvr" '/etc/ufw/applications.d/'
         elif [ -f '/usr/share/alvr/ufw-alvr' ]; then
             cp '/usr/share/alvr/ufw-alvr' '/etc/ufw/applications.d/'
         else
@@ -68,12 +64,11 @@ main() {
         # Check if ufw exists and is running
         elif which ufw >/dev/null 2>&1 && ! ufw status | grep 'Status: inactive' >/dev/null 2>&1; then
             ufw_cfg "${1,,}"
-        # Check if iptables exists
-        elif which iptables >/dev/null 2>&1; then
-            iptables_cfg "${1,,}"
+        else
+            exit 99
         fi
     else
-        pkexec $(realpath "${0}") "${@}"
+        pkexec "$(realpath "${0}")" "${@}"
     fi
 }
 

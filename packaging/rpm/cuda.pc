@@ -1,9 +1,0 @@
-prefix=/usr/local/cuda
-includedir=${prefix}/include
-libdir=${prefix}/lib64
-
-Name: cuda
-Description: CUDA Driver Library
-Version: 0.0.0
-Libs: -L${libdir}/stubs -lcuda
-Cflags: -I${includedir}

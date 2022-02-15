@@ -74,6 +74,7 @@ public:
 	uint64_t m_adaptiveBitrateDownRate;
 	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
+	uint32_t m_swThreadCount;
 
 	// Controller configs
 	std::string m_controllerTrackingSystemName;

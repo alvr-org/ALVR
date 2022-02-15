@@ -70,9 +70,13 @@ define({
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
         "_root_video_clientRequestRealtimeDecoder.name":
             "Request realtime decoder priority (client)", // adv
-        "_root_video_use10bitEncoder.name": "Reduce color banding (newer nVidia cards only)",
+        "_root_video_use10bitEncoder.name":
+            "Reduce color banding (newer nVidia cards or SW encoding only)",
         "_root_video_use10bitEncoder.description":
             "This increases visual quality by streaming 10 bit per color channel instead of 8",
+        "_root_video_swThreadCount.name": "Number of threads (software encoding)",
+        "_root_video_swThreadCount.description":
+            "Sets the amount of threads to use when using software encoding. Setting to 0 will use the max amount available.",
         "_root_video_encodeBitrateMbs.name": "Video Bitrate",
         "_root_video_encodeBitrateMbs.description":
             "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",

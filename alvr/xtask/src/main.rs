@@ -39,6 +39,7 @@ FLAGS:
     --oculus-go         Oculus Go build. Used only for build-client subcommand
     --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
     --no-nvidia         Additional flag to use with `build-server`. Disables nVidia support.
+    --gpl               Enables usage of GPL libs like ffmpeg on Windows, allowing software encoding.
     --help              Print this text
 
 ARGS:
@@ -58,6 +59,7 @@ pub fn build_server(
     fetch_crates: bool,
     bundle_ffmpeg: bool,
     no_nvidia: bool,
+    gpl: bool,
     root: Option<String>,
     reproducible: bool,
 ) {
@@ -81,6 +83,10 @@ pub fn build_server(
 
     if bundle_ffmpeg {
         server_features.push("bundled_ffmpeg");
+    }
+
+    if gpl {
+        server_features.push("gpl");
     }
 
     if server_features.is_empty() {
@@ -127,6 +133,20 @@ pub fn build_server(
             .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
         {
             fs::copy(lib.clone(), lib_dir.join(lib.file_name().unwrap())).unwrap();
+        }
+    }
+
+    if gpl && cfg!(windows) {
+        let ffmpeg_path = dependencies::extract_ffmpeg_windows();
+        let bin_dir = afs::server_build_dir().join("bin").join("win64");
+        fs::create_dir_all(bin_dir.clone()).unwrap();
+        for dll in walkdir::WalkDir::new(ffmpeg_path.clone().join("bin"))
+            .into_iter()
+            .filter_map(|maybe_entry| maybe_entry.ok())
+            .map(|entry| entry.into_path())
+            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".dll"))
+        {
+            fs::copy(dll.clone(), bin_dir.join(dll.file_name().unwrap())).unwrap();
         }
     }
 
@@ -355,6 +375,7 @@ fn main() {
         let for_oculus_go = args.contains("--oculus-go");
         let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
         let no_nvidia = args.contains("--no-nvidia");
+        let gpl = args.contains("--gpl");
         let reproducible = args.contains("--reproducible");
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
@@ -368,6 +389,7 @@ fn main() {
                     fetch,
                     bundle_ffmpeg,
                     no_nvidia,
+                    gpl,
                     root,
                     reproducible,
                 ),

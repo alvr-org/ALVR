@@ -126,7 +126,7 @@ pub fn unzip(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
 pub fn download(url: &str, destination: &Path) -> Result<(), Box<dyn Error>> {
     run_without_shell(
         "curl",
-        &["-o", &destination.to_string_lossy(), "--url", url],
+        &["-L", "-o", &destination.to_string_lossy(), "--url", url],
     )
 }
 

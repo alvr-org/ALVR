@@ -27,6 +27,9 @@
 
 			Exception vceException;
 			Exception nvencException;
+#ifdef ALVR_GPL
+			Exception swException;
+#endif
 			try {
 				Debug("Try to use VideoEncoderVCE.\n");
 				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener, encoderWidth, encoderHeight);
@@ -45,7 +48,20 @@
 			catch (Exception e) {
 				nvencException = e;
 			}
+#ifdef ALVR_GPL
+			try {
+				Debug("Try to use VideoEncoderSW.\n");
+				m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, listener, encoderWidth, encoderHeight);
+				m_videoEncoder->Initialize();
+				return;
+			}
+			catch (Exception e) {
+				swException = e;
+			}
+			throw MakeException("All VideoEncoder are not available. VCE: %s, NVENC: %s, SW: %s", vceException.what(), nvencException.what(), swException.what());
+#else
 			throw MakeException("All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
+#endif
 		}
 
 		bool CEncoder::CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering

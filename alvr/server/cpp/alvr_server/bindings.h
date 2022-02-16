@@ -73,6 +73,8 @@ struct TrackingInfo {
         TrackingVector3 bonePositionsBase[19];
         TrackingQuat boneRootOrientation;
         TrackingVector3 boneRootPosition;
+        unsigned int inputStateStatus;
+        float fingerPinchStrengths[4];
         unsigned int handFingerConfidences;
     } controller[2];
 };

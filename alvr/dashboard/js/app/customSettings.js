@@ -83,11 +83,18 @@ define([
                 vivetracker,
             ];
 
-            controller.append(`<option value="1">Oculus Rift S</option>`);
-            controller.append(`<option value="3">Valve Index</option>`);
-            controller.append(`<option value="5">HTC Vive</option>`);
-            controller.append(`<option value="7">Oculus Quest 2</option>`);
-            controller.append(`<option value="9">HTC Vive Tracker</option>`);
+            controller.append(`<option value="0">Oculus Rift S</option>`);
+            controller.append(`<option value="1">Oculus Rift S (no handtracking pinch)</option>`);
+            controller.append(`<option value="2">Valve Index</option>`);
+            controller.append(`<option value="3">Valve Index (no handtracking pinch)</option>`);
+            controller.append(`<option value="4">HTC Vive</option>`);
+            controller.append(`<option value="5">HTC Vive (no handtracking pinch)</option>`);
+            controller.append(`<option value="6">Oculus Quest 2</option>`);
+            controller.append(`<option value="7">Oculus Quest 2 (no handtracking pinch)</option>`);
+            controller.append(`<option value="8">HTC Vive Tracker</option>`);
+            controller.append(
+                `<option value="9">HTC Vive Tracker (no handtracking pinch)</option>`
+            );
 
             const select = new Selectal("#_root_headset_controllers_content_controllerMode");
             controller = $("#_root_headset_controllers_content_controllerMode");

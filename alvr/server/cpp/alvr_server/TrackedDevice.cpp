@@ -44,16 +44,3 @@ void TrackedDevice::set_prop(OpenvrProperty prop) {
     vr::VRServerDriverHost()->VendorSpecificEvent(
         this->object_id, vr::VREvent_PropertyChanged, event_data, 0.);
 }
-
-void TrackedDevice::clear_pose() {
-    auto pose = vr::DriverPose_t{};
-
-    pose.qWorldFromDriverRotation = vr::HmdQuaternion_t{1.0, 0.0, 0.0, 0.0};
-    pose.qDriverFromHeadRotation = vr::HmdQuaternion_t{1.0, 0.0, 0.0, 0.0};
-
-    pose.result = vr::TrackingResult_Uninitialized;
-    pose.poseIsValid = false;
-    pose.deviceIsConnected = false;
-
-    this->pose = pose;
-} 

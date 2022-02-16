@@ -274,6 +274,14 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                             array
                         },
                     ],
+                    input_state_status: [
+                        data.controller[0].inputStateStatus,
+                        data.controller[1].inputStateStatus,
+                    ],
+                    finger_pinch_strengths: [
+                        data.controller[0].fingerPinchStrengths,
+                        data.controller[1].fingerPinchStrengths,
+                    ],
                     hand_finger_confience: [
                         data.controller[0].handFingerConfidences,
                         data.controller[1].handFingerConfidences,

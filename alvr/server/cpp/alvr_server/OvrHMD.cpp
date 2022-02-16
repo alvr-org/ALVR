@@ -72,7 +72,8 @@ OvrHmd::OvrHmd()
     }
 
     if (!Settings::Instance().m_disableController) {
-        m_leftController = std::make_shared<OvrController>(LEFT_HAND_PATH, &m_poseTimeOffset);
+        m_leftController =
+            std::make_shared<OvrController>(LEFT_HAND_PATH, true, 0, &m_poseTimeOffset);
         ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
             m_leftController->GetSerialNumber().c_str(),
             getControllerDeviceClass(),
@@ -81,7 +82,8 @@ OvrHmd::OvrHmd()
             Warn("Failed to register left controller");
         }
 
-        m_rightController = std::make_shared<OvrController>(RIGHT_HAND_PATH, &m_poseTimeOffset);
+        m_rightController =
+            std::make_shared<OvrController>(RIGHT_HAND_PATH, false, 1, &m_poseTimeOffset);
         ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
             m_rightController->GetSerialNumber().c_str(),
             getControllerDeviceClass(),
@@ -192,6 +194,16 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetBoolProperty(
         this->prop_container, vr::Prop_ContainsProximitySensor_Bool, true);
     vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
+
+#ifdef _WIN32
+    float originalIPD =
+        vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
+    vr::VRSettings()->SetFloat(
+        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, Settings::Instance().m_flIPD);
+#endif
+
+    HmdMatrix_SetIdentity(&m_eyeToHeadLeft);
+    HmdMatrix_SetIdentity(&m_eyeToHeadRight);
 
     // set the icons in steamvr to the default icons used for Oculus Link
     vr::VRProperties()->SetStringProperty(this->prop_container,

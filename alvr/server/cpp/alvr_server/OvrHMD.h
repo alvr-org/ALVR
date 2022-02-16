@@ -21,7 +21,9 @@ class CD3DRender;
 #endif
 class PoseHistory;
 
-class OvrHmd : public TrackedDevice, vr::IVRDisplayComponent {
+class OvrHmd : public TrackedDevice,
+               public vr::ITrackedDeviceServerDriver,
+               vr::IVRDisplayComponent {
   public:
     OvrHmd();
 
@@ -78,6 +80,11 @@ class OvrHmd : public TrackedDevice, vr::IVRDisplayComponent {
     bool m_baseComponentsInitialized;
     bool m_streamComponentsInitialized;
     vr::ETrackedDeviceClass m_deviceClass;
+
+    vr::HmdMatrix34_t m_eyeToHeadLeft;
+    vr::HmdMatrix34_t m_eyeToHeadRight;
+    vr::HmdRect2_t m_eyeFoVLeft;
+    vr::HmdRect2_t m_eyeFoVRight;
 
     std::wstring m_adapterName;
 

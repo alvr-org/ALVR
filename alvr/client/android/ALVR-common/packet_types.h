@@ -91,6 +91,13 @@ enum ALVR_HAND {
     alvrHandBone_Pinky3						= 18,	// pinky distal phalange bone
     alvrHandBone_MaxSkinnable				= 19,
 };
+enum ALVR_FINGER_PINCH {
+    alvrFingerPinch_Index                   = 0,
+    alvrFingerPinch_Middle                  = 1,
+    alvrFingerPinch_Ring                    = 2,
+    alvrFingerPinch_Pinky                   = 3,
+    alvrFingerPinch_MaxPinches              = 4,
+};
 enum ALVR_HAND_CONFIDENCE {
     alvrThumbConfidence_High                  = (1 << 0),
     alvrIndexConfidence_High                  = (1 << 1),

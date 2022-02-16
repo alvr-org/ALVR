@@ -265,7 +265,9 @@ pub enum OpenvrPropValue {
 pub struct ControllersDesc {
     // Dropdown:
     // Oculus Rift S
+    // Oculus Rift S (no handtracking pinch)
     // Valve Index
+    // Valve Index (no handtracking pinch)
     // modeIdx and the following strings must be set accordingly
     #[schema(placeholder = "controller_mode")]
     //

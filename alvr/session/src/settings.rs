@@ -385,6 +385,7 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub position_offset: [f32; 3],
 
+    #[schema(advanced)]
     pub force_3dof: bool,
 
     #[schema(advanced)]

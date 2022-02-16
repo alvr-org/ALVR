@@ -339,10 +339,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND;
 
-            c.inputStateStatus = inputStateHand.InputStateStatus;
-            memcpy(&c.fingerPinchStrengths, &inputStateHand.PinchStrength,
-                   sizeof(c.fingerPinchStrengths));
-
             memcpy(&c.orientation, &inputStateHand.PointerPose.Orientation,
                    sizeof(inputStateHand.PointerPose.Orientation));
             memcpy(&c.position, &inputStateHand.PointerPose.Position,
@@ -501,9 +497,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                     g_ctx.lastRightControllerBattery = remoteInputState.BatteryPercentRemaining;
                 }
             }
-
-            c.recenterCount = remoteInputState.RecenterCount;
-
 
             ovrTracking tracking;
             if (vrapi_GetInputTrackingState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,

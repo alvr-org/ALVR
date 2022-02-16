@@ -1,5 +1,6 @@
 #include "OvrController.h"
 #include "Logger.h"
+#include "Paths.h"
 #include "Settings.h"
 #include "Utils.h"
 #include "include/openvr_math.h"
@@ -7,10 +8,9 @@
 #include <cstring>
 #include <string_view>
 
-OvrController::OvrController(uint64_t devicePath, bool isLeftHand, int index, float *poseTimeOffset)
-    : TrackedDevice(devicePath), m_isLeftHand(isLeftHand), m_index(index),
-      m_poseTimeOffset(poseTimeOffset) {
-    double rightHandSignFlip = isLeftHand ? 1. : -1.;
+OvrController::OvrController(uint64_t devicePath, float *poseTimeOffset)
+    : TrackedDevice(devicePath), m_poseTimeOffset(poseTimeOffset) {
+    double rightHandSignFlip = devicePath == LEFT_HAND_PATH ? 1. : -1.;
 
     memset(&m_pose, 0, sizeof(m_pose));
     m_pose.poseIsValid = true;
@@ -47,7 +47,7 @@ OvrController::OvrController(uint64_t devicePath, bool isLeftHand, int index, fl
     }
 }
 
-bool OvrController::GetHand() { return m_isLeftHand; }
+bool OvrController::GetHand() { return this->device_path == LEFT_HAND_PATH; }
 
 //
 // ITrackedDeviceServerDriver
@@ -74,15 +74,16 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetStringProperty(
         this->prop_container,
         vr::Prop_ModelNumber_String,
-        m_isLeftHand
+        this->device_path == LEFT_HAND_PATH
             ? (Settings::Instance().m_controllerModelNumber + " (Left Controller)").c_str()
             : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
 
     vr::VRProperties()->SetStringProperty(
         this->prop_container,
         vr::Prop_RenderModelName_String,
-        m_isLeftHand ? Settings::Instance().m_controllerRenderModelNameLeft.c_str()
-                     : Settings::Instance().m_controllerRenderModelNameRight.c_str());
+        this->device_path == LEFT_HAND_PATH
+            ? Settings::Instance().m_controllerRenderModelNameLeft.c_str()
+            : Settings::Instance().m_controllerRenderModelNameRight.c_str());
 
     vr::VRProperties()->SetStringProperty(
         this->prop_container, vr::Prop_SerialNumber_String, GetSerialNumber().c_str());
@@ -93,8 +94,9 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         const auto &settings = Settings::Instance();
         if (isViveTracker) {
             static constexpr const std::string_view vive_prefix = "vive_tracker_";
-            const auto &ctrlType =
-                m_isLeftHand ? settings.m_controllerTypeLeft : settings.m_controllerTypeRight;
+            const auto &ctrlType = this->device_path == LEFT_HAND_PATH
+                                       ? settings.m_controllerTypeLeft
+                                       : settings.m_controllerTypeRight;
             std::string ret = settings.mControllerRegisteredDeviceType;
             if (ret.length() > 0 && ret[ret.length() - 1] != '/')
                 ret += '/';
@@ -103,8 +105,9 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                        : ctrlType.substr(vive_prefix.length());
             return ret;
         }
-        return m_isLeftHand ? (Settings::Instance().mControllerRegisteredDeviceType + "_Left")
-                            : (Settings::Instance().mControllerRegisteredDeviceType + "_Right");
+        return this->device_path == LEFT_HAND_PATH
+                   ? (Settings::Instance().mControllerRegisteredDeviceType + "_Left")
+                   : (Settings::Instance().mControllerRegisteredDeviceType + "_Right");
     }();
     vr::VRProperties()->SetStringProperty(
         this->prop_container, vr::Prop_RegisteredDeviceType_String, regDeviceTypeString.c_str());
@@ -119,16 +122,17 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetInt32Property(
         this->prop_container, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_Joystick);
 
-    vr::VRProperties()->SetInt32Property(
-        this->prop_container,
-        vr::Prop_ControllerRoleHint_Int32,
-        isViveTracker ? vr::TrackedControllerRole_Invalid
-                      : (m_isLeftHand ? vr::TrackedControllerRole_LeftHand
-                                      : vr::TrackedControllerRole_RightHand));
+    vr::VRProperties()->SetInt32Property(this->prop_container,
+                                         vr::Prop_ControllerRoleHint_Int32,
+                                         isViveTracker
+                                             ? vr::TrackedControllerRole_Invalid
+                                             : (this->device_path == LEFT_HAND_PATH
+                                                    ? vr::TrackedControllerRole_LeftHand
+                                                    : vr::TrackedControllerRole_RightHand));
 
     vr::VRProperties()->SetStringProperty(this->prop_container,
                                           vr::Prop_ControllerType_String,
-                                          m_isLeftHand
+                                          this->device_path == LEFT_HAND_PATH
                                               ? Settings::Instance().m_controllerTypeLeft.c_str()
                                               : Settings::Instance().m_controllerTypeRight.c_str());
     vr::VRProperties()->SetStringProperty(
@@ -159,7 +163,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRDriverInput()->CreateBooleanComponent(
             this->prop_container, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
 
-        if (!m_isLeftHand) {
+        if (this->device_path == RIGHT_HAND_PATH) {
             // A,B for right hand.
             vr::VRDriverInput()->CreateBooleanComponent(
                 this->prop_container, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
@@ -371,7 +375,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                                    &m_handles[ALVR_INPUT_FINGER_PINKY],
                                                    vr::VRScalarType_Absolute,
                                                    vr::VRScalarUnits_NormalizedOneSided);
-        if (m_isLeftHand) {
+        if (this->device_path == LEFT_HAND_PATH) {
             vr::VRDriverInput()->CreateSkeletonComponent(
                 this->prop_container,
                 "/input/skeleton/left",
@@ -528,7 +532,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                                     &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
         vr::VRDriverInput()->CreateBooleanComponent(
             this->prop_container, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
-        if (m_isLeftHand) {
+        if (this->device_path == LEFT_HAND_PATH) {
             vr::VRDriverInput()->CreateSkeletonComponent(
                 this->prop_container,
                 "/input/skeleton/left",
@@ -580,18 +584,7 @@ void OvrController::DebugRequest(const char * /*pchRequest*/,
         pchResponseBuffer[0] = 0;
 }
 
-vr::DriverPose_t OvrController::GetPose() {
-
-    Debug("Controller%d getPose %lf %lf %lf\n",
-          m_index,
-          m_pose.vecPosition[0],
-          m_pose.vecPosition[1],
-          m_pose.vecPosition[2]);
-
-    return m_pose;
-}
-
-int OvrController::getControllerIndex() { return m_index; }
+vr::DriverPose_t OvrController::GetPose() { return m_pose; }
 
 vr::VRInputComponentHandle_t OvrController::getHapticComponent() { return m_compHaptic; }
 
@@ -732,15 +725,6 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
     m_pose.vecVelocity[2] = velRes.v[2];
     */
 
-    Debug("CONTROLLER %d %f,%f,%f - %f,%f,%f\n",
-          m_index,
-          m_pose.vecVelocity[0],
-          m_pose.vecVelocity[1],
-          m_pose.vecVelocity[2],
-          m_pose.vecAngularVelocity[0],
-          m_pose.vecAngularVelocity[1],
-          m_pose.vecAngularVelocity[2]);
-
     /*
     double rotation[3] = { 0.0, 0.0, 36 * M_PI / 180 };
     m_pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
@@ -770,14 +754,6 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
     m_pose.poseTimeOffset = *m_poseTimeOffset;
 
     auto &c = info.controller[controllerIndex];
-    Debug("Controller%d %d %lu: %08llX %08X %f:%f\n",
-          m_index,
-          controllerIndex,
-          (unsigned long)this->object_id,
-          c.buttons,
-          c.flags,
-          c.trackpadPosition.x,
-          c.trackpadPosition.y);
 
     if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
         // m_pose.poseTimeOffset = 0.;
@@ -835,7 +811,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
                 m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_THUMB_REST_TOUCH], false, 0.0);
-            if (!m_isLeftHand) {
+            if (this->device_path == RIGHT_HAND_PATH) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK],
                     registerRingPinch &&
@@ -917,7 +893,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
                 m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_THUMB_REST_TOUCH], false, 0.0);
-            if (!m_isLeftHand) {
+            if (this->device_path == RIGHT_HAND_PATH) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK], false, 0.0);
                 vr::VRDriverInput()->UpdateBooleanComponent(
@@ -1178,7 +1154,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
         // Use position data (and orientation for missing bones - index, middle and ring finger bone
         // 0) from the functions below.
-        if (m_isLeftHand) {
+        if (this->device_path == LEFT_HAND_PATH) {
             m_boneTransform[2].position = {-0.012083f, 0.028070f, 0.025050f, 1.f};
             m_boneTransform[3].position = {0.040406f, 0.000000f, -0.000000f, 1.f};
             m_boneTransform[4].position = {0.032517f, 0.000000f, 0.000000f, 1.f};
@@ -1239,7 +1215,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
         // Move the hand itself back to counteract the translation applied to the controller
         // position. (more or less)
         float bonePosFixer[3] = {0.025f, 0.f, 0.1f};
-        if (!m_isLeftHand)
+        if (this->device_path == RIGHT_HAND_PATH)
             bonePosFixer[0] = -bonePosFixer[0];
         m_boneTransform[HSB_Wrist].position.v[0] =
             m_boneTransform[HSB_Wrist].position.v[0] + bonePosFixer[0];
@@ -1249,7 +1225,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
             m_boneTransform[HSB_Wrist].position.v[2] + bonePosFixer[2];
 
         // Rotate thumb0 and pinky0 properly.
-        if (m_isLeftHand) {
+        if (this->device_path == LEFT_HAND_PATH) {
             vr::HmdQuaternion_t fixer = HmdQuaternion_Init(0.5, 0.5, -0.5, 0.5);
             m_boneTransform[HSB_Thumb0].orientation =
                 QuatMultiply(&fixer, &m_boneTransform[HSB_Thumb0].orientation);
@@ -1312,7 +1288,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
                 m_handles[ALVR_INPUT_JOYSTICK_TOUCH],
                 (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0,
                 0.0);
-            if (!m_isLeftHand) {
+            if (this->device_path == RIGHT_HAND_PATH) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK],
                     (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0,
@@ -1421,7 +1397,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
                 (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0,
                 0.0);
 
-            if (!m_isLeftHand) {
+            if (this->device_path == RIGHT_HAND_PATH) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK],
                     (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0,
@@ -1461,7 +1437,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
                 (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH)) != 0,
                 0.0);
 
-            if (!m_isLeftHand) {
+            if (this->device_path == RIGHT_HAND_PATH) {
                 // A,B for right hand.
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK],
@@ -1571,7 +1547,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
             // pose, first to create a pose "With Controller", that is as close to the pose of the
             // user's real hand as possible
             GetBoneTransform(true,
-                             m_isLeftHand,
+                             this->device_path == LEFT_HAND_PATH,
                              m_thumbAnimationProgress,
                              m_indexAnimationProgress,
                              lastPoseTouch,
@@ -1590,7 +1566,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
             }
 
             GetBoneTransform(false,
-                             m_isLeftHand,
+                             this->device_path == LEFT_HAND_PATH,
                              m_thumbAnimationProgress,
                              m_indexAnimationProgress,
                              lastPoseTouch,
@@ -2535,6 +2511,6 @@ void OvrController::GetBoneTransform(bool withController,
 
 std::string OvrController::GetSerialNumber() {
     char str[100];
-    snprintf(str, sizeof(str), "_%s", m_index == 0 ? "Left" : "Right");
+    snprintf(str, sizeof(str), "_%s", this->device_path == LEFT_HAND_PATH ? "Left" : "Right");
     return Settings::Instance().m_controllerSerialNumber + str;
 }

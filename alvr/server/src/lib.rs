@@ -5,15 +5,18 @@ mod graphics_info;
 mod logging_backend;
 mod web_server;
 
-#[allow(non_camel_case_types, non_upper_case_globals, dead_code)]
+#[allow(
+    non_camel_case_types,
+    non_upper_case_globals,
+    dead_code,
+    non_snake_case
+)]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 use bindings::*;
 
-use alvr_common::{
-    lazy_static, log, prelude::*, LEFT_CONTROLLER_HAPTIC_ID, RIGHT_CONTROLLER_HAPTIC_ID,
-};
+use alvr_common::{lazy_static, log, prelude::*};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{
     ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,

@@ -807,26 +807,11 @@ async fn connection_pipeline() -> StrResult {
                     HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
                     Other_Tracking_Source_Position: to_tracking_vector3(Vec3::ZERO),
                     Other_Tracking_Source_Orientation: to_tracking_quat(Quat::IDENTITY),
-                    // eyeFov: [
-                    //     EyeFov {
-                    //         left: input.views_config.fov[0].left,
-                    //         right: input.views_config.fov[0].right,
-                    //         top: input.views_config.fov[0].top,
-                    //         bottom: input.views_config.fov[0].bottom,
-                    //     },
-                    //     EyeFov {
-                    //         left: input.views_config.fov[1].left,
-                    //         right: input.views_config.fov[1].right,
-                    //         top: input.views_config.fov[1].top,
-                    //         bottom: input.views_config.fov[1].bottom,
-                    //     },
-                    // ],
                     mounted: input.legacy.mounted,
                     controller: [
                         TrackingInfo_Controller {
                             flags: input.legacy.controller_flags[0],
                             buttons: input.legacy.buttons[0],
-                            recenterCount: 0,
                             trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
                                 x: input.legacy.trackpad_position[0].x,
                                 y: input.legacy.trackpad_position[0].y,
@@ -867,14 +852,11 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(left_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(left_hand_motion.position),
-                            inputStateStatus: 0,
-                            fingerPinchStrengths: [0.0; 4],
                             handFingerConfidences: input.legacy.hand_finger_confience[0],
                         },
                         TrackingInfo_Controller {
                             flags: input.legacy.controller_flags[1],
                             buttons: input.legacy.buttons[1],
-                            recenterCount: 0,
                             trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
                                 x: input.legacy.trackpad_position[1].x,
                                 y: input.legacy.trackpad_position[1].y,
@@ -915,8 +897,6 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(right_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(right_hand_motion.position),
-                            inputStateStatus: 0,
-                            fingerPinchStrengths: [0.0; 4],
                             handFingerConfidences: input.legacy.hand_finger_confience[1],
                         },
                     ],

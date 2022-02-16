@@ -59,8 +59,6 @@ struct TrackingInfo {
         float triggerValue;
         float gripValue;
 
-        unsigned char recenterCount;
-
         // Tracking info of controller. (float * 19 = 76 bytes)
         TrackingQuat orientation;
         TrackingVector3 position;
@@ -73,8 +71,6 @@ struct TrackingInfo {
         TrackingVector3 bonePositionsBase[19];
         TrackingQuat boneRootOrientation;
         TrackingVector3 boneRootPosition;
-        unsigned int inputStateStatus;
-        float fingerPinchStrengths[4];
         unsigned int handFingerConfidences;
     } controller[2];
 };

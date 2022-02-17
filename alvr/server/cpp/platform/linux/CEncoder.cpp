@@ -14,13 +14,11 @@
 #include <iostream>
 
 #include "ALVR-common/packet_types.h"
-#include "alvr_server/ChaperoneUpdater.h"
 #include "alvr_server/ClientConnection.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Statistics.h"
-#include "alvr_server/include/openvr_math.h"
 #include "protocol.h"
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
@@ -235,16 +233,9 @@ void CEncoder::Run() {
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 
-        // tranform provided by the compositor needs to be converted back to raw position, as configured in chaperone
-        auto t = vrmath::matMul33(vrmath::transposeMul33(*(const vr::HmdMatrix34_t*) ZeroToRawPose(false)), (const vr::HmdMatrix34_t&)frame_info.pose);
-
-        auto pose = m_poseHistory->GetBestPoseMatch(t);
+        auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
         if (pose)
         {
-          if (pose->info.FrameIndex < m_poseSubmitIndex)
-          {
-            ZeroToRawPose(true);
-          }
           m_poseSubmitIndex = pose->info.FrameIndex;
         }
 

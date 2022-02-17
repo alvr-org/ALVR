@@ -74,11 +74,7 @@ public:
 
     uint64_t FrameIndex = 0;
 
-    // Oculus guardian
     int m_LastHMDRecenterCount = -1;
-    vector<ovrVector3f> m_GuardianPoints = {};
-    GuardianData m_guardianData = {};
-    ovrTrackingSpace m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
 
     typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
 
@@ -665,7 +661,7 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
 
     vrapi_SetPerfThread(g_ctx.Ovr, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
-    vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
+    vrapi_SetTrackingSpace(g_ctx.Ovr, VRAPI_TRACKING_SPACE_STAGE);
 
     auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
     auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
@@ -736,21 +732,6 @@ void onStreamStartNative() {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
 
-    switch (g_ctx.streamConfig.trackingSpaceType) {
-        case ALVR_TRACKING_SPACE_LOCAL:
-            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
-            break;
-        case ALVR_TRACKING_SPACE_STAGE:
-            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_STAGE;
-            break;
-        default:
-            g_ctx.m_UsedTrackingSpace = VRAPI_TRACKING_SPACE_LOCAL_FLOOR;
-    }
-
-    result = vrapi_SetTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
-    if (result != ovrSuccess) {
-        LOGE("Failed to set tracking space: %d", result);
-    }
     g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
 
     // reset battery and view config to make sure they get sent
@@ -995,43 +976,28 @@ void onBatteryChangedNative(int battery, int plugged) {
 
 GuardianData getGuardianData() {
     int recenterCount = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+    bool shouldSync;
     if (recenterCount != g_ctx.m_LastHMDRecenterCount) {
-        g_ctx.m_guardianData.shouldSync = true;
+        shouldSync = true;
         g_ctx.m_LastHMDRecenterCount = recenterCount;
     } else {
-        g_ctx.m_guardianData.shouldSync = false;
+        shouldSync = false;
     }
 
-    if (g_ctx.m_guardianData.shouldSync) {
-        vrapi_GetBoundaryGeometry(g_ctx.Ovr, 0, &g_ctx.m_guardianData.perimeterPointsCount,
-                                  nullptr);
+    auto data = GuardianData{};
+    data.shouldSync = shouldSync;
 
-        if (g_ctx.m_guardianData.perimeterPointsCount != 0) {
-            // do not reallocate memory if not necessary
-            g_ctx.m_GuardianPoints.clear();
-            g_ctx.m_GuardianPoints.resize(g_ctx.m_guardianData.perimeterPointsCount);
-
-            // We already have the point count, but passing nullptr here makes the function not
-            // actually give us any point data, so we provide it anyway.
-            vrapi_GetBoundaryGeometry(g_ctx.Ovr, g_ctx.m_guardianData.perimeterPointsCount,
-                                      &g_ctx.m_guardianData.perimeterPointsCount,
-                                      &g_ctx.m_GuardianPoints[0]);
-            g_ctx.m_guardianData.perimeterPoints = reinterpret_cast<float (*)[3]>(&g_ctx.m_GuardianPoints[0]);
-        }
-
-        ovrPosef spacePose = vrapi_LocateTrackingSpace(g_ctx.Ovr, g_ctx.m_UsedTrackingSpace);
-        memcpy(&g_ctx.m_guardianData.position, &spacePose.Position, 3 * sizeof(float));
-        memcpy(&g_ctx.m_guardianData.rotation, &spacePose.Orientation, 4 * sizeof(float));
-
+    if (shouldSync) {
+        ovrPosef spacePose;
         ovrVector3f bboxScale;
         // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
         // then this function gives us 0-size bounding box, so it has to be provided.
         vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose, &bboxScale);
-        g_ctx.m_guardianData.areaWidth = 2.0f * bboxScale.x;
-        g_ctx.m_guardianData.areaHeight = 2.0f * bboxScale.z;
+        data.areaWidth = 2.0f * bboxScale.x;
+        data.areaHeight = 2.0f * bboxScale.z;
     }
 
-    return g_ctx.m_guardianData;
+    return data;
 }
 
 void onTrackingNative(bool clientsidePrediction) {

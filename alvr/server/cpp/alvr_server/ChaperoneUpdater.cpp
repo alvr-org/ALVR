@@ -16,29 +16,20 @@ using namespace std;
 static std::array<float, 12> zero_to_raw;
 static std::mutex chaperone_mutex;
 
-void SetChaperone(const float transform[12],
-                  float areaWidth,
-                  float areaHeight,
-                  float (*perimeterPoints)[2],
-                  unsigned int perimeterPointsCount) {
+void SetChaperone(float areaWidth, float areaHeight) {
+    float transform[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+
+    float perimeterPoints[4][2];
+
 #ifndef __APPLE__
-    if (perimeterPointsCount == 0) {
-        areaWidth = 2.0f;
-        areaHeight = 2.0f;
-
-        static float standingPerimeterPointsBuffer[4][2];
-        standingPerimeterPointsBuffer[0][0] = -1.0f;
-        standingPerimeterPointsBuffer[0][1] = -1.0f;
-        standingPerimeterPointsBuffer[1][0] = -1.0f;
-        standingPerimeterPointsBuffer[1][1] = 1.0f;
-        standingPerimeterPointsBuffer[2][0] = 1.0f;
-        standingPerimeterPointsBuffer[2][1] = 1.0f;
-        standingPerimeterPointsBuffer[3][0] = 1.0f;
-        standingPerimeterPointsBuffer[3][1] = -1.0f;
-
-        perimeterPoints = standingPerimeterPointsBuffer;
-        perimeterPointsCount = 4;
-    }
+    perimeterPoints[0][0] = -1.0f * areaWidth;
+    perimeterPoints[0][1] = -1.0f * areaHeight;
+    perimeterPoints[1][0] = -1.0f * areaWidth;
+    perimeterPoints[1][1] = 1.0f * areaHeight;
+    perimeterPoints[2][0] = 1.0f * areaWidth;
+    perimeterPoints[2][1] = 1.0f * areaHeight;
+    perimeterPoints[3][0] = 1.0f * areaWidth;
+    perimeterPoints[3][1] = -1.0f * areaHeight;
 
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -55,7 +46,7 @@ void SetChaperone(const float transform[12],
     std::copy(transform, transform + 12, zero_to_raw.begin());
 
     vr::VRChaperoneSetup()->SetWorkingPerimeter(
-        reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), perimeterPointsCount);
+        reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
     vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(
         reinterpret_cast<vr::HmdMatrix34_t *>(&transform));
     vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(
@@ -69,12 +60,6 @@ void SetChaperone(const float transform[12],
 
     vr::VR_Shutdown();
 #endif
-}
-
-void SetDefaultChaperone() {
-    float transform[12] = {1, 0, 0, 0, 0, 1, 0, 1.5, 0, 0, 1, 0};
-
-    SetChaperone(transform, 0, 0, nullptr, 0);
 }
 
 #ifndef __APPLE__

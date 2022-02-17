@@ -148,11 +148,6 @@ define({
     "_root_headset_controllers_content_rotationOffsetLeft_2.name": "z", // adv
     "_root_headset_controllers_content_hapticsIntensity.name": "Intensità feedback tattile",
     // "_root_headset_controllers_content_hapticsIntensity.description": "",
-    "_root_headset_trackingSpace-choice-.name": "Ancora dello spazio di gioco",
-    "_root_headset_trackingSpace-choice-.description":
-        "Imposta come il visore viene tracciato all'avvio. La modalità room scale va impostata se si vuole giocare a giochi che richiedono camminare nello spazio di gioco o se si vuole usare tracker esterni come i Vive trackers.",
-    "_root_headset_trackingSpace_local-choice-.name": "Mobile",
-    "_root_headset_trackingSpace_stage-choice-.name": "Room scale",
     // Connection tab
     "_root_connection_tab.name": "Connessione",
     // "_root_connection_autoTrustClients.name": "", // adv

@@ -371,7 +371,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 if set_default_chap {
                     // call this when inside a new tokio thread. Calling this on the parent thread will
                     // crash SteamVR
-                    unsafe { SetDefaultChaperone() };
+                    unsafe { SetChaperone(2.0, 2.0) };
                 }
                 tokio::select! {
                     _ = connection::connection_lifecycle_loop() => (),

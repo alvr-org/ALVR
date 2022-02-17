@@ -283,11 +283,6 @@ define({
         "_root_headset_controllers_content_hapticsLowDurationRange.name": "Short haptics range", // adv
         "_root_headset_controllers_content_hapticsLowDurationRange.description":
             "Duration range for haptic pulses where intensity should be increased. \nIncrease the range if slightly longer haptic pulses feel too weak", // adv
-        "_root_headset_trackingSpace-choice-.name": "Tracking Space",
-        "_root_headset_trackingSpace-choice-.description":
-            "Sets what the headset uses as its reference for tracking and how the center of the space is defined. Stage tracking space behaves like a wired headset: the center of the space stays in one place after recentering the headset. This must be set if you want to use Vive trackers.",
-        "_root_headset_trackingSpace_local-choice-.name": "Local (Headset centered)",
-        "_root_headset_trackingSpace_stage-choice-.name": "Stage (Room centered)",
         // Connection tab
         "_root_connection_tab.name": "Connection",
         "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv

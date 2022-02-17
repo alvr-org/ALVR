@@ -163,11 +163,6 @@ define({
     "_root_headset_controllers_content_rotationOffsetLeft_2.description": "Z向旋转", // adv
     "_root_headset_controllers_content_hapticsIntensity.name": "触觉强度",
     "_root_headset_controllers_content_hapticsIntensity.description": "增加触觉反馈的因素",
-    "_root_headset_trackingSpace-choice-.name": "安全区中心",
-    "_root_headset_trackingSpace-choice-.description":
-        "设置头显使用什么作为跟踪的参考，以及如何定义空间中心。",
-    "_root_headset_trackingSpace_local-choice-.name": "头显所在的位置",
-    "_root_headset_trackingSpace_stage-choice-.name": "安全区中心点所在的位置",
     // Connection tab
     "_root_connection_tab.name": "连接",
     // "_root_connection_autoTrustClients.name": "", // adv

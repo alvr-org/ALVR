@@ -188,12 +188,7 @@ extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
-extern "C" void SetChaperone(const float transform[12],
-                             float areaWidth,
-                             float areaHeight,
-                             float (*perimeterPoints)[2],
-                             unsigned int perimeterPointsCount);
-extern "C" void SetDefaultChaperone();
+extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void InputReceive(TrackingInfo data);
 extern "C" void TimeSyncReceive(TimeSync data);
 extern "C" void VideoErrorReportReceive();

@@ -5,7 +5,7 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Mat4, Quat, Vec3},
+    glam::{Mat4, Quat, Vec2, Vec3},
     log,
     prelude::*,
     semver::Version,
@@ -16,8 +16,8 @@ use alvr_session::{
 };
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
-    ControlSocketSender, HeadsetInfoPacket, Input, PeerType, PlayspaceSyncPacket,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
+    ControlSocketSender, HeadsetInfoPacket, Input, PeerType, ProtoControlSocket,
+    ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -907,44 +907,16 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<PlayspaceSyncPacket>();
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
 
     let is_tracking_ref_only = settings.headset.tracking_ref_only;
     if !is_tracking_ref_only {
         // use a separate thread because SetChaperone() is blocking
         thread::spawn(move || {
             while let Ok(packet) = playspace_sync_receiver.recv() {
-                let transform = Mat4::from_rotation_translation(packet.rotation, packet.position);
-                let matrix34_row_major = [
-                    transform.x_axis[0],
-                    transform.y_axis[0],
-                    transform.z_axis[0],
-                    transform.w_axis[0],
-                    transform.x_axis[1],
-                    transform.y_axis[1],
-                    transform.z_axis[1],
-                    transform.w_axis[1],
-                    transform.x_axis[2],
-                    transform.y_axis[2],
-                    transform.z_axis[2],
-                    transform.w_axis[2],
-                ];
-
-                let perimeter_points = if let Some(perimeter_points) = packet.perimeter_points {
-                    perimeter_points.iter().map(|p| [p[0], p[1]]).collect()
-                } else {
-                    vec![]
-                };
-
-                unsafe {
-                    crate::SetChaperone(
-                        matrix34_row_major.as_ptr(),
-                        packet.area_width,
-                        packet.area_height,
-                        perimeter_points.as_ptr() as _,
-                        perimeter_points.len() as _,
-                    )
-                };
+                let width = f32::max(packet.x, 2.0);
+                let height = f32::max(packet.y, 2.0);
+                unsafe { crate::SetChaperone(width, height) };
             }
         });
     }

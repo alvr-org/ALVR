@@ -164,11 +164,6 @@ define({
     "_root_headset_controllers_content_hapticsIntensity.name": "Sila povratnih tresljajov",
     "_root_headset_controllers_content_hapticsIntensity.description":
         "Povečaj ali zmanjšaj tresljaje v krmlinikih.",
-    "_root_headset_trackingSpace-choice-.name": "Način prostora",
-    "_root_headset_trackingSpace-choice-.description":
-        "Nastavi kaj naprava uporabi za osnovo sledenja in kako je sredina določena. Podestno sledenje se obnaša kot naprave z žico: sredina prostora ostane na mestu, po ponastavitvi sredinske točke naprave, za ponastavitev uporabiš SteamVR. Z Okoliškim sledenjem lahko ponastaviš sredino prostora na napravi-tako kot v samostojnem načinu.",
-    "_root_headset_trackingSpace_local-choice-.name": "Okoliško (Osredotočeno na napravo)",
-    "_root_headset_trackingSpace_stage-choice-.name": "Podest (Osredotočeno na sobo/prostor)",
     // Connection tab
     "_root_connection_tab.name": "POVEZAVA",
     "_root_connection_autoTrustClients.name": "Samodejno zaupaj napravam (ni priporočeno)", // adv

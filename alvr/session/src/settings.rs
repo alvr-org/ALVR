@@ -137,14 +137,6 @@ pub enum CodecType {
     HEVC,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase", tag = "type", content = "content")]
-#[repr(u8)]
-pub enum TrackingSpace {
-    Local,
-    Stage,
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoDesc {
@@ -395,8 +387,6 @@ pub struct HeadsetDesc {
     pub enable_vive_tracker_proxy: bool,
 
     pub controllers: Switch<ControllersDesc>,
-
-    pub tracking_space: TrackingSpace,
 
     #[schema(advanced)]
     pub extra_latency_mode: bool,
@@ -676,9 +666,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     haptics_low_duration_range: 0.5,
                     use_headset_tracking_system: false,
                 },
-            },
-            tracking_space: TrackingSpaceDefault {
-                variant: TrackingSpaceDefaultVariant::Local,
             },
             extra_latency_mode: false,
         },

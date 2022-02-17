@@ -13,7 +13,7 @@ use alvr_common::{
     Fov,
 };
 use alvr_graphics::{wgpu::Texture, GraphicsContext};
-use alvr_session::{CodecType, TrackingSpace};
+use alvr_session::CodecType;
 use alvr_sockets::VideoFrameHeaderPacket;
 use connection::VideoStreamingComponents;
 use parking_lot::{Mutex, RwLock};

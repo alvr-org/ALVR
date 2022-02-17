@@ -149,10 +149,6 @@ define({
     // "_root_headset_controllers_content_rotationOffsetLeft_2.name": "", // adv
     "_root_headset_controllers_content_hapticsIntensity.name": "振動の強さ",
     "_root_headset_controllers_content_hapticsIntensity.description": "触覚フィードバックの強度",
-    // "_root_headset_trackingSpace-choice-.name": "",
-    // "_root_headset_trackingSpace-choice-.description": "",
-    // "_root_headset_trackingSpace_local-choice-.name": "",
-    // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "接続",
     // "_root_connection_autoTrustClients.name": "", // adv

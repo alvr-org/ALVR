@@ -51,12 +51,6 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned 
     LatencyCollector::Instance().resetAll();
 }
 
-void sendPacketLossReport(ALVR_LOST_FRAME_TYPE frameType,
-                          uint32_t fromPacketCounter,
-                          uint32_t toPacketCounter) {
-    videoErrorReportSend();
-}
-
 void processVideoSequence(uint32_t sequence) {
     if (g_socket.m_prevVideoSequence != 0 && g_socket.m_prevVideoSequence + 1 != sequence) {
         int32_t lost = sequence - (g_socket.m_prevVideoSequence + 1);
@@ -102,7 +96,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
         }
         if (fecFailure) {
             LatencyCollector::Instance().fecFailure();
-            sendPacketLossReport(ALVR_LOST_FRAME_TYPE_VIDEO, 0, 0);
+            videoErrorReportSend();
         }
     } else if (type == ALVR_PACKET_TYPE_TIME_SYNC) {
         // Time sync packet

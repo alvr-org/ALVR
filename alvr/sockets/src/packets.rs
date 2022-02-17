@@ -73,15 +73,6 @@ pub enum ServerControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct PlayspaceSyncPacket {
-    pub position: Vec3,
-    pub rotation: Quat,
-    pub area_width: f32,
-    pub area_height: f32,
-    pub perimeter_points: Option<Vec<Vec2>>,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewsConfig {
     // Note: the head-to-eye transform is always a translation along the x axis
@@ -98,7 +89,7 @@ pub struct BatteryPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    PlayspaceSync(PlayspaceSyncPacket),
+    PlayspaceSync(Vec2),
     RequestIdr,
     KeepAlive,
     StreamReady,

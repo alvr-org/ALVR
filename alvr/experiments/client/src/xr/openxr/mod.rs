@@ -13,7 +13,6 @@ use alvr_common::{
     Fov, MotionData, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_graphics::{ash::vk::Handle, wgpu::TextureView, GraphicsContext};
-use alvr_session::TrackingSpace;
 use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
 use std::{

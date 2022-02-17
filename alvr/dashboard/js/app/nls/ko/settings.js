@@ -178,11 +178,6 @@ define({
     "_root_headset_controllers_content_rotationOffsetLeft_2.name": "Z", // adv
     "_root_headset_controllers_content_hapticsIntensity.name": "진동 세기",
     "_root_headset_controllers_content_hapticsIntensity.description": "진동 세기를 조절합니다.",
-    "_root_headset_trackingSpace-choice-.name": "트래킹 공간",
-    "_root_headset_trackingSpace-choice-.description":
-        "헤드셋이 추적을 위해 사용하는 항목과 공간 중심이 정의되는 방법을 설정합니다. Stage 추적은 유선 헤드셋과 같이 동작합니다. 헤드셋 recentering 후 공간의 중심이 일정하게 유지됩니다. Vive 추적기를 사용하려면 Stage 설정을 해야 합니다.",
-    "_root_headset_trackingSpace_local-choice-.name": "Local (헤드셋 중심)",
-    "_root_headset_trackingSpace_stage-choice-.name": "Stage (방 중심)",
     // Connection tab
     "_root_connection_tab.name": "연결",
     "_root_connection_autoTrustClients.name": "자동으로 클라이언트 신뢰(권장하지 않음)", // adv

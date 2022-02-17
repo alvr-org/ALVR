@@ -148,12 +148,8 @@ struct OnResumeResult {
 
 struct GuardianData {
     bool shouldSync;
-    float position[3];
-    float rotation[4]; // convention: x, y, z, w
     float areaWidth;
     float areaHeight;
-    float (*perimeterPoints)[3];
-    unsigned int perimeterPointsCount;
 };
 
 struct StreamConfig {
@@ -167,7 +163,6 @@ struct StreamConfig {
     float foveationCenterShiftY;
     float foveationEdgeRatioX;
     float foveationEdgeRatioY;
-    int trackingSpaceType;
     bool extraLatencyMode;
 };
 

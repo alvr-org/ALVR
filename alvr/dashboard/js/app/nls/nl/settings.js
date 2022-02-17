@@ -90,11 +90,6 @@ define({
         "Use Headset Tracking System",
     "_root_headset_controllers_content_useHeadsetTrackingSystem.description":
         "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
-    "_root_headset_trackingSpace-choice-.name": "Tracking ruimte",
-    "_root_headset_trackingSpace-choice-.description":
-        "Stelt in wat de headset gebruikt als referentie voor tracking en hoe het midden van de ruimte wordt gedefinieerd. Stationair-trackingruimte gedraagt ​​zich als een bedrade headset: het midden van de ruimte blijft op één plek nadat de headset opnieuw is geplaatst. Dit moet worden ingesteld als u Vive-trackers wilt gebruiken.",
-    "_root_headset_trackingSpace_local-choice-.name": "Lokaal (Headset gecentreerd)",
-    "_root_headset_trackingSpace_stage-choice-.name": "Stationair (Kamer gecentreerd)",
     // Connection tab
     "_root_connection_tab.name": "Connectie",
     "_root_connection_webServerPort.name": "Web server poort",

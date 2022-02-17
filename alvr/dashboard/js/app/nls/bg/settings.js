@@ -148,10 +148,6 @@ define({
     "_root_headset_controllers_content_hapticsIntensity.name":
         "Интензивност на тактилна обратна връзка",
     // "_root_headset_controllers_content_hapticsIntensity.description": "",
-    // "_root_headset_trackingSpace-choice-.name": "",
-    // "_root_headset_trackingSpace-choice-.description": "",
-    // "_root_headset_trackingSpace_local-choice-.name": "",
-    // "_root_headset_trackingSpace_stage-choice-.name": "",
     // Connection tab
     "_root_connection_tab.name": "Връзка",
     // "_root_connection_autoTrustClients.name": "", // adv

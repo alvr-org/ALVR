@@ -11,10 +11,10 @@ use alvr_common::{
     prelude::*,
     ALVR_NAME, ALVR_VERSION,
 };
-use alvr_session::{CodecType, SessionDesc, TrackingSpace};
+use alvr_session::{CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
-    HeadsetInfoPacket, PeerType, PlayspaceSyncPacket, PrivateIdentity, ProtoControlSocket,
+    HeadsetInfoPacket, PeerType, PrivateIdentity, ProtoControlSocket,
     ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO,
     HAPTICS, INPUT, VIDEO,
 };
@@ -304,7 +304,6 @@ async fn connection_pipeline(
             } else {
                 2_f32
             },
-            trackingSpaceType: matches!(settings.headset.tracking_space, TrackingSpace::Stage) as _,
             extraLatencyMode: settings.headset.extra_latency_mode,
         });
     }
@@ -555,40 +554,13 @@ async fn connection_pipeline(
                 let guardian_data = unsafe { crate::getGuardianData() };
 
                 if guardian_data.shouldSync {
-                    let perimeter_points = if guardian_data.perimeterPointsCount == 0 {
-                        None
-                    } else {
-                        let perimeter_slice = unsafe {
-                            slice::from_raw_parts(
-                                guardian_data.perimeterPoints,
-                                guardian_data.perimeterPointsCount as _,
-                            )
-                        };
-
-                        let perimeter_points = perimeter_slice
-                            .iter()
-                            .map(|p| Vec2::from_slice(&[p[0], p[2]]))
-                            .collect::<Vec<_>>();
-
-                        Some(perimeter_points)
-                    };
-                    let packet = PlayspaceSyncPacket {
-                        position: Vec3::from_slice(&guardian_data.position),
-                        rotation: Quat::from_xyzw(
-                            guardian_data.rotation[0],
-                            guardian_data.rotation[1],
-                            guardian_data.rotation[2],
-                            guardian_data.rotation[3],
-                        ),
-                        area_width: guardian_data.areaWidth,
-                        area_height: guardian_data.areaHeight,
-                        perimeter_points,
-                    };
-
                     control_sender
                         .lock()
                         .await
-                        .send(&ClientControlPacket::PlayspaceSync(packet))
+                        .send(&ClientControlPacket::PlayspaceSync(Vec2::new(
+                            guardian_data.areaWidth,
+                            guardian_data.areaHeight,
+                        )))
                         .await
                         .ok();
                 }

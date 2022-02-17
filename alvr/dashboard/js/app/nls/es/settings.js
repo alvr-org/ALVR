@@ -173,11 +173,6 @@ define({
         "Intensidad de la retroalimentación táctil",
     "_root_headset_controllers_content_hapticsIntensity.description":
         "Factor para reducir o aumentar la intensidad de la vibración de los mandos.",
-    "_root_headset_trackingSpace-choice-.name": "Seguimiento de espacio",
-    "_root_headset_trackingSpace-choice-.description":
-        "Establece lo que el visor utiliza como referencia para el seguimiento y cómo se define el centro del espacio. El seguimiento de escenario se comporta como un visor con cable: el centro del espacio se mantiene en un lugar después de haber actualizado el visor. Esto se debe establecer si se desea utilizar el seguimiento de VIVE.",
-    "_root_headset_trackingSpace_local-choice-.name": "Local (Centrado en el visor)",
-    "_root_headset_trackingSpace_stage-choice-.name": "Escenario (Cnetrado en la habitación)",
     // Connection tab
     "_root_connection_tab.name": "Conexión",
     "_root_connection_autoTrustClients.name":

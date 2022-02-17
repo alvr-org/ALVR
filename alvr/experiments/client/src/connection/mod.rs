@@ -15,7 +15,7 @@ use crate::{
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION};
 use alvr_graphics::GraphicsContext;
-use alvr_session::{AudioDeviceId, CodecType, MediacodecDataType, SessionDesc, TrackingSpace};
+use alvr_session::{AudioDeviceId, CodecType, MediacodecDataType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
     HeadsetInfoPacket, Input, PeerType, ProtoControlSocket, ServerControlPacket,

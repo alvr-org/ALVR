@@ -170,11 +170,6 @@ define({
     "_root_headset_controllers_content_hapticsIntensity.name": "Vibrationsstärke",
     "_root_headset_controllers_content_hapticsIntensity.description":
         "Faktor zum verstärken/schwächen des Haptischen Feedbacks",
-    "_root_headset_trackingSpace-choice-.name": "Trackingzone",
-    "_root_headset_trackingSpace-choice-.description":
-        "Definiert die Zone, die das Headset verwendet um zu tracken und die Mitte des Raumes zu definieren. Bühnen-Tracking verhält sich wie ein verkabeltes Headset, und muss verwendet werden wenn Vive-Tracker verwendet werden",
-    "_root_headset_trackingSpace_local-choice-.name": "Lokal (Zentriert am Headset)",
-    "_root_headset_trackingSpace_stage-choice-.name": "Bühne (Zentriert am Raum)",
     // Connection tab
     "_root_connection_tab.name": "Verbindung",
     "_root_connection_autoTrustClients.name":

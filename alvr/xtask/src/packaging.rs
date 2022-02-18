@@ -102,7 +102,7 @@ fn build_windows_installer(wix_path: &str) {
     .unwrap();
 }
 
-pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool) {
+pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool, gpl: bool) {
     let bundle_ffmpeg = cfg!(target_os = "linux");
     build_server(
         true,
@@ -110,7 +110,7 @@ pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool
         false,
         bundle_ffmpeg,
         false,
-        false,
+        gpl,
         root,
         reproducible,
     );

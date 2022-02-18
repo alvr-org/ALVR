@@ -140,7 +140,7 @@ pub fn build_server(
         let ffmpeg_path = dependencies::extract_ffmpeg_windows();
         let bin_dir = afs::server_build_dir().join("bin").join("win64");
         fs::create_dir_all(bin_dir.clone()).unwrap();
-        for dll in walkdir::WalkDir::new(ffmpeg_path.clone().join("bin"))
+        for dll in walkdir::WalkDir::new(ffmpeg_path.join("bin"))
             .into_iter()
             .filter_map(|maybe_entry| maybe_entry.ok())
             .map(|entry| entry.into_path())
@@ -408,7 +408,7 @@ fn main() {
                 "build-ffmpeg-linux-no-nvidia" => {
                     dependencies::build_ffmpeg_linux(false);
                 }
-                "publish-server" => packaging::publish_server(is_nightly, root, reproducible),
+                "publish-server" => packaging::publish_server(is_nightly, root, reproducible, gpl),
                 "publish-client" => packaging::publish_client(is_nightly),
                 "clean" => remove_build_dir(),
                 "kill-oculus" => kill_oculus_processes(),

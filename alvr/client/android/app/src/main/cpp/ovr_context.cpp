@@ -270,10 +270,6 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
         if (remoteInputState->Touches & ovrTouch_ThumbRest) {
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
-        if (!(remoteInputState->Touches & ovrTouch_ThumbUp) || !(remoteInputState->Touches & ovrTouch_IndexPointing)) {
-            // Assume grip touch based on hand proximity
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_TOUCH);
-        }
     } else {
         // GearVR or Oculus Go Controller
         if (remoteInputState->Buttons & ovrButton_A) {

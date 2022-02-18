@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 [features]
 default = []
 bundled_ffmpeg = []
+gpl = []
 
 [dependencies]
 alvr_audio = { path = "../audio" }
@@ -65,6 +66,7 @@ webbrowser = "0.5" # this is just for opening links in the default browser
 fern = "0.6"
 
 [build-dependencies]
+alvr_filesystem = { path = "../filesystem" }
 bindgen = "0.59"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

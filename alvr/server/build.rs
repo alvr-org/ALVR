@@ -1,3 +1,4 @@
+use alvr_filesystem as afs;
 #[cfg(target_os = "linux")]
 use pkg_config;
 use std::{env, path::PathBuf};
@@ -49,6 +50,24 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
 
         println!("cargo:rustc-link-lib=dl");
     }
+}
+
+#[cfg(all(windows, feature = "gpl"))]
+fn do_ffmpeg_windows_config(build: &mut cc::Build) {
+    let ffmpeg_dir = afs::deps_dir()
+        .join("windows")
+        .join("ffmpeg-n5.0-latest-win64-gpl-shared-5.0");
+
+    build.include(format!("{}/include", ffmpeg_dir.to_string_lossy()));
+
+    println!(
+        "cargo:rustc-link-search=native={}/lib",
+        ffmpeg_dir.to_string_lossy()
+    );
+    println!("cargo:rustc-link-lib=avcodec");
+    println!("cargo:rustc-link-lib=avutil");
+    println!("cargo:rustc-link-lib=avfilter");
+    println!("cargo:rustc-link-lib=swscale");
 }
 
 fn main() {
@@ -110,6 +129,12 @@ fn main() {
 
     #[cfg(all(target_os = "linux", feature = "bundled_ffmpeg"))]
     do_ffmpeg_pkg_config(&mut build);
+
+    #[cfg(all(windows, feature = "gpl"))]
+    {
+        do_ffmpeg_windows_config(&mut build);
+        build.define("ALVR_GPL", None);
+    }
 
     build.compile("bindings");
 

@@ -15,6 +15,9 @@
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
 #include "VideoEncoderVCE.h"
+#ifdef ALVR_GPL
+	#include "VideoEncoderSW.h"
+#endif
 #include "alvr_server/IDRScheduler.h"
 
 

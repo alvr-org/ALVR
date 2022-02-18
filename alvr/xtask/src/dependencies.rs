@@ -92,6 +92,19 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
     ffmpeg_path
 }
 
+pub fn extract_ffmpeg_windows() -> std::path::PathBuf {
+    let download_path = afs::deps_dir().join("windows");
+    let ffmpeg_path = download_path.join("ffmpeg-n5.0-latest-win64-gpl-shared-5.0");
+    if !ffmpeg_path.exists() {
+        download_and_extract_zip(
+            "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n5.0-latest-win64-gpl-shared-5.0.zip",
+            &download_path,
+        );
+    }
+
+    ffmpeg_path
+}
+
 fn get_oculus_openxr_mobile_loader() {
     let temp_sdk_dir = afs::build_dir().join("temp_download");
 

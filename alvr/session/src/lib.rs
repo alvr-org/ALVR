@@ -62,6 +62,7 @@ pub struct OpenvrConfig {
     pub codec: u32,
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,
+    pub sw_thread_count: u32,
     pub encode_bitrate_mbs: u64,
     pub enable_adaptive_bitrate: bool,
     pub bitrate_maximum: u64,

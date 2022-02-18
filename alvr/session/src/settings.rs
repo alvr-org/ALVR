@@ -170,6 +170,9 @@ pub struct VideoDesc {
 
     pub use_10bit_encoder: bool,
 
+    #[schema(advanced)]
+    pub sw_thread_count: u32,
+
     #[schema(min = 1, max = 500)]
     pub encode_bitrate_mbs: u64,
 
@@ -544,6 +547,7 @@ pub fn session_settings_default() -> SettingsDefault {
             // },
             client_request_realtime_decoder: true,
             use_10bit_encoder: false,
+            sw_thread_count: 0,
             encode_bitrate_mbs: 30,
             adaptive_bitrate: SwitchDefault {
                 enabled: true,

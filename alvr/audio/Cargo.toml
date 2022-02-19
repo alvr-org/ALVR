@@ -17,6 +17,12 @@ rodio = "0.15"
 serde = "1"
 tokio = "1"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+cpal = { version = "0.13.5", features = ["jack"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+cpal = "0.13.5"
+
 [target.'cfg(windows)'.dependencies]
 widestring = "0.5"
 winapi = { version = "0.3", features = [

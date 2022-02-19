@@ -168,11 +168,15 @@ async fn client_handshake(
 
     let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
     {
-        let game_audio_device =
-            AudioDevice::new(game_audio_desc.device_id, AudioDeviceType::Output)?;
+        let game_audio_device = AudioDevice::new(
+            settings.audio.linux_backend,
+            game_audio_desc.device_id,
+            AudioDeviceType::Output,
+        )?;
 
         if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
             let microphone_device = AudioDevice::new(
+                settings.audio.linux_backend,
                 microphone_desc.input_device_id,
                 AudioDeviceType::VirtualMicrophoneInput,
             )?;
@@ -618,7 +622,11 @@ async fn connection_pipeline() -> StrResult {
     let _stream_guard = StreamCloseGuard;
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let device = AudioDevice::new(desc.device_id, AudioDeviceType::Output)?;
+        let device = AudioDevice::new(
+            settings.audio.linux_backend,
+            desc.device_id,
+            AudioDeviceType::Output,
+        )?;
         let sample_rate = alvr_audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream(AUDIO).await?;
         let mute_when_streaming = desc.mute_when_streaming;
@@ -642,6 +650,7 @@ async fn connection_pipeline() -> StrResult {
             #[cfg(windows)]
             {
                 let default_device = AudioDevice::new(
+                    settings.audio.linux_backend,
                     alvr_session::AudioDeviceId::Default,
                     AudioDeviceType::Output,
                 )?;
@@ -666,6 +675,7 @@ async fn connection_pipeline() -> StrResult {
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let input_device = AudioDevice::new(
+            settings.audio.linux_backend,
             desc.input_device_id,
             AudioDeviceType::VirtualMicrophoneInput,
         )?;
@@ -674,6 +684,7 @@ async fn connection_pipeline() -> StrResult {
         #[cfg(windows)]
         {
             let microphone_device = AudioDevice::new(
+                settings.audio.linux_backend,
                 desc.output_device_id,
                 AudioDeviceType::VirtualMicrophoneOutput {
                     matching_input_device_name: input_device.name()?,

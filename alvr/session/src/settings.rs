@@ -236,10 +236,21 @@ pub struct MicrophoneDesc {
     pub config: AudioConfig,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum LinuxAudioBackend {
+    Alsa,
+    Jack,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSection {
+    #[schema(advanced)]
+    pub linux_backend: LinuxAudioBackend,
+
     pub game_audio: Switch<GameAudioDesc>,
+
     pub microphone: Switch<MicrophoneDesc>,
 }
 
@@ -591,6 +602,9 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         audio: AudioSectionDefault {
+            linux_backend: LinuxAudioBackendDefault {
+                variant: LinuxAudioBackendDefaultVariant::Alsa,
+            },
             game_audio: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: GameAudioDescDefault {

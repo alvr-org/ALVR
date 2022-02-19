@@ -164,7 +164,14 @@ async fn http_api(
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
-        "/api/audio-devices" => reply_json(&alvr_audio::get_devices_list()?)?,
+        "/api/audio-devices" => reply_json(&alvr_audio::get_devices_list(
+            SESSION_MANAGER
+                .lock()
+                .get()
+                .to_settings()
+                .audio
+                .linux_backend,
+        )?)?,
         "/api/graphics-devices" => reply_json(&graphics_info::get_gpu_names())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();

@@ -1,6 +1,6 @@
 use alvr_common::{lazy_static, prelude::*};
-use alvr_session::{AudioConfig, AudioDeviceId};
-use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
+use alvr_session::{AudioConfig, AudioDeviceId, LinuxAudioBackend};
+use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
@@ -61,7 +61,14 @@ pub struct AudioDevicesList {
     input: Vec<String>,
 }
 
-pub fn get_devices_list() -> StrResult<AudioDevicesList> {
+#[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
+pub fn get_devices_list(linux_backend: LinuxAudioBackend) -> StrResult<AudioDevicesList> {
+    #[cfg(target_os = "linux")]
+    let host = match linux_backend {
+        LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
+        LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
+    };
+    #[cfg(not(target_os = "linux"))]
     let host = cpal::default_host();
 
     let output = trace_err!(host.output_devices())?
@@ -97,8 +104,19 @@ pub struct AudioDevice {
     device_type: AudioDeviceType,
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
 impl AudioDevice {
-    pub fn new(id: AudioDeviceId, device_type: AudioDeviceType) -> StrResult<Self> {
+    pub fn new(
+        linux_backend: LinuxAudioBackend,
+        id: AudioDeviceId,
+        device_type: AudioDeviceType,
+    ) -> StrResult<Self> {
+        #[cfg(target_os = "linux")]
+        let host = match linux_backend {
+            LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
+            LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
+        };
+        #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
         let device = match &id {
@@ -326,11 +344,12 @@ pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
     Ok(config.min_sample_rate().0)
 }
 
+#[cfg_attr(not(windows), allow(unused_variables))]
 pub async fn record_audio_loop(
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
-    #[cfg_attr(not(windows), allow(unused_variables))] mute: bool,
+    mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
     let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();

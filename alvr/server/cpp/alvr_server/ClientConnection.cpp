@@ -132,18 +132,6 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
 	mVideoFrameIndex++;
 }
 
-void ClientConnection::ProcessTrackingInfo(TrackingInfo data) {
-	m_Statistics->CountPacket(sizeof(TrackingInfo));
-
-	uint64_t Current = GetTimestampUs();
-	TimeSync sendBuf = {};
-	sendBuf.type = ALVR_PACKET_TYPE_TIME_SYNC;
-	sendBuf.mode = 3;
-	sendBuf.serverTime = Current - m_TimeDiff;
-	sendBuf.trackingRecvFrameIndex = data.FrameIndex;
-	TimeSyncSend(sendBuf);
-}
-
 void ClientConnection::ProcessTimeSync(TimeSync data) {
 	m_Statistics->CountPacket(sizeof(TrackingInfo));
 

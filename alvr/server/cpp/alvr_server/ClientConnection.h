@@ -19,12 +19,11 @@ public:
 
 	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
-	void ProcessTrackingInfo(TrackingInfo data);
  	void ProcessTimeSync(TimeSync data);
 	float GetPoseTimeOffset();
 	void OnFecFailure();
 	std::shared_ptr<Statistics> GetStatistics();
-private:
+
 	std::shared_ptr<Statistics> m_Statistics;
 
 	uint32_t videoPacketCounter = 0;

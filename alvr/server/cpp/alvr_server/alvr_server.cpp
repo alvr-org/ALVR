@@ -209,7 +209,15 @@ void RequestIDR() {
 
 void InputReceive(TrackingInfo data) {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->ProcessTrackingInfo(data);
+        g_driver_provider.hmd->m_Listener->m_Statistics->CountPacket(sizeof(TrackingInfo));
+
+        uint64_t Current = GetTimestampUs();
+        TimeSync sendBuf = {};
+        sendBuf.mode = 3;
+        sendBuf.serverTime = Current - g_driver_provider.hmd->m_Listener->m_TimeDiff;
+        sendBuf.trackingRecvFrameIndex = data.FrameIndex;
+        TimeSyncSend(sendBuf);
+
         g_driver_provider.hmd->OnPoseUpdated(data);
     }
 }

@@ -963,7 +963,6 @@ async fn connection_pipeline() -> StrResult {
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
                 Ok(ClientControlPacket::TimeSync(data)) => {
                     let time_sync = TimeSync {
-                        type_: 0,
                         mode: data.mode,
                         serverTime: data.server_time,
                         clientTime: data.client_time,

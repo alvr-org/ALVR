@@ -23,7 +23,6 @@ struct TrackingVector2 {
     float y;
 };
 struct TrackingInfo {
-    unsigned long long clientTime;
     unsigned long long FrameIndex;
     double predictedDisplayTime;
     TrackingQuat HeadPose_Pose_Orientation;

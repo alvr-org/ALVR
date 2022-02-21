@@ -137,9 +137,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		if (pose) {
 			// found the frameIndex
 			m_prevSubmitFrameIndex = m_submitFrameIndex;
-			m_prevSubmitClientTime = m_submitClientTime;
 			m_submitFrameIndex = pose->info.FrameIndex;
-			m_submitClientTime = pose->info.clientTime;
 
 			m_prevFramePoseRotation = m_framePoseRotation;
 			m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
@@ -151,7 +149,6 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		}
 		else {
 			m_submitFrameIndex = 0;
-			m_submitClientTime = 0;
 			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
 		}
 	}
@@ -290,7 +287,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
-		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex, m_submitClientTime,"", debugText);
+		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex,"", debugText);
 
 		m_pD3DRender->GetContext()->Flush();
 	}

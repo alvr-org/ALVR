@@ -56,7 +56,5 @@ private:
 	vr::HmdQuaternion_t m_prevFramePoseRotation;
 	vr::HmdQuaternion_t m_framePoseRotation;
 	uint64_t m_submitFrameIndex;
-	uint64_t m_submitClientTime;
 	uint64_t m_prevSubmitFrameIndex;
-	uint64_t m_prevSubmitClientTime;
 };

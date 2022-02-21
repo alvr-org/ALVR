@@ -189,7 +189,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                 right_hand_tracking: None,
                 button_values: HashMap::new(), // unused for now
                 legacy: LegacyInput {
-                    client_time: data.clientTime,
                     frame_index: data.FrameIndex,
                     mounted: data.mounted,
                     controllers: [

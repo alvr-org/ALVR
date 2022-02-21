@@ -810,7 +810,6 @@ async fn connection_pipeline() -> StrResult {
                     .1;
 
                 let tracking_info = TrackingInfo {
-                    clientTime: input.legacy.client_time,
                     FrameIndex: input.legacy.frame_index,
                     predictedDisplayTime: input.target_timestamp.as_secs_f64(),
                     HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),

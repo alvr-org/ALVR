@@ -554,7 +554,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     }
 
     TrackingInfo info = {};
-    info.clientTime = getTimestampUs();
     info.FrameIndex = displayTimeNs;
     info.predictedDisplayTime = (double)displayTimeNs / 1e9;
 

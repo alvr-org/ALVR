@@ -3,8 +3,7 @@
 
 		CEncoder::CEncoder()
 			: m_bExiting(false)
-			, m_frameIndex(0)
-			, m_frameIndex2(0)
+			, m_targetTimestampNs(0)
 		{
 			m_encodeFinished.Set();
 		}
@@ -65,16 +64,13 @@
 		}
 
 		bool CEncoder::CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
-			, uint64_t presentationTime, uint64_t frameIndex, const std::string& message, const std::string& debugText)
+			, uint64_t presentationTime, uint64_t targetTimestampNs, const std::string& message, const std::string& debugText)
 		{
 			m_presentationTime = presentationTime;
-			m_frameIndex = frameIndex;
+			m_targetTimestampNs = targetTimestampNs;
 			m_FrameRender->Startup();
 
-			char buf[200];
-			snprintf(buf, sizeof(buf), "\nindex2: %llu", m_frameIndex2);
-
-			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText + buf);
+			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText);
 			return true;
 		}
 
@@ -93,10 +89,8 @@
 
 				if (m_FrameRender->GetTexture())
 				{
-					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_frameIndex, m_frameIndex2, m_scheduler.CheckIDRInsertion());
+					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_targetTimestampNs, m_scheduler.CheckIDRInsertion());
 				}
-
-				m_frameIndex2++;
 
 				m_encodeFinished.Set();
 			}

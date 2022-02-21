@@ -290,7 +290,7 @@ void VideoEncoderVCE::Shutdown()
 	Debug("Successfully shutdown VideoEncoderVCE.\n");
 }
 
-void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, bool insertIDR)
+void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
@@ -316,11 +316,10 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 
 	amf_pts start_time = amf_high_precision_clock();
 	surface->SetProperty(START_TIME_PROPERTY, start_time);
-	surface->SetProperty(FRAME_INDEX_PROPERTY, frameIndex);
+	surface->SetProperty(FRAME_INDEX_PROPERTY, targetTimestampNs);
 
 	ApplyFrameProperties(surface, insertIDR);
 
-	Debug("Submit surface. frameIndex=%llu\n", frameIndex);
 	m_converter->Submit(surface);
 }
 
@@ -328,14 +327,11 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 {
 	amf_pts current_time = amf_high_precision_clock();
 	amf_pts start_time = 0;
-	uint64_t frameIndex;
+	uint64_t targetTimestampNs;
 	data->GetProperty(START_TIME_PROPERTY, &start_time);
-	data->GetProperty(FRAME_INDEX_PROPERTY, &frameIndex);
+	data->GetProperty(FRAME_INDEX_PROPERTY, &targetTimestampNs);
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
-
-	Debug("VCE encode latency: %.4f ms. Size=%d bytes frameIndex=%llu\n", double(current_time - start_time) / (double)MILLISEC_TIME, (int)buffer->GetSize()
-		, frameIndex);
 
 	if (m_Listener) {
 		m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
@@ -350,7 +346,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 		fpOut.write(p, length);
 	}
 	if (m_Listener) {
-		m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, frameIndex);
+		m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
 	}
 }
 

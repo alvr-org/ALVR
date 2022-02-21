@@ -91,7 +91,7 @@ void VideoEncoderNVENC::Shutdown()
 	}
 }
 
-void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, bool insertIDR)
+void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
 	if (m_Listener) {
 		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
@@ -120,8 +120,6 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	Debug("Encoding delay: %lld us FrameIndex=%llu\n", GetTimestampUs() - presentationTime, frameIndex);
-
 	if (m_Listener) {
 		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
 	}
@@ -133,7 +131,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
 		if (m_Listener) {
-			m_Listener->SendVideo(packet.data(), (int)packet.size(), frameIndex);
+			m_Listener->SendVideo(packet.data(), (int)packet.size(), targetTimestampNs);
 		}
 	}
 }

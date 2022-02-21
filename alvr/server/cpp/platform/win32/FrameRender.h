@@ -76,7 +76,6 @@ private:
 	ComPtr<ID3D11Resource> m_messageBGTexture;
 	ComPtr<ID3D11ShaderResourceView> m_messageBGResourceView;
 
-	uint64_t m_frameIndex2;
 	struct SimpleVertex
 	{
 		DirectX::XMFLOAT3 Pos;

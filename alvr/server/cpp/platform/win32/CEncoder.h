@@ -37,7 +37,7 @@
 		void Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<ClientConnection> listener);
 
 		bool CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
-			, uint64_t presentationTime, uint64_t frameIndex, const std::string& message, const std::string& debugText);
+			, uint64_t presentationTime, uint64_t targetTimestampNs, const std::string& message, const std::string& debugText);
 
 		virtual void Run();
 
@@ -58,9 +58,7 @@
 		std::shared_ptr<VideoEncoder> m_videoEncoder;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
-		uint64_t m_frameIndex;
-
-		uint64_t m_frameIndex2;
+		uint64_t m_targetTimestampNs;
 
 		std::shared_ptr<FrameRender> m_FrameRender;
 

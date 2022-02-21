@@ -143,7 +143,7 @@ void VideoEncoderSW::filter_NAL(const uint8_t *input, size_t input_size, std::ve
 	}
 }
 
-void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, bool insertIDR) {
+void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR) {
 	// Handle bitrate changes
 	if(m_Listener->GetStatistics()->CheckBitrateUpdated()) {
 		//Debug("Bitrate changed");
@@ -233,7 +233,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 		std::vector<uint8_t> encoded_data;
 		filter_NAL(packet->data, packet->size, encoded_data);
 		av_packet_free(&packet);
-		m_Listener->SendVideo(encoded_data.data(), encoded_data.size(), frameIndex);
+		m_Listener->SendVideo(encoded_data.data(), encoded_data.size(), targetTimestampNs);
 		//Debug("Sent encoded packet to client");
 	}
 

@@ -22,7 +22,7 @@ ClientConnection::ClientConnection() : m_LastStatisticsUpdate(0) {
 	m_Statistics->ResetAll();
 }
 
-void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex) {
+void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t targetTimestampNs, uint64_t videoFrameIndex) {
 	int shardPackets = CalculateFECShardPackets(len, m_fecPercentage);
 
 	int blockSize = shardPackets * ALVR_MAX_VIDEO_BUFFER_SIZE;
@@ -63,10 +63,8 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 	uint8_t *payload = packetBuffer + sizeof(VideoFrame);
 	int dataRemain = len;
 
-	Debug("Sending video frame. trackingFrameIndex=%llu videoFrameIndex=%llu size=%d\n", frameIndex, videoFrameIndex, len);
-
 	header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
-	header->trackingFrameIndex = frameIndex;
+	header->trackingFrameIndex = targetTimestampNs;
 	header->videoFrameIndex = videoFrameIndex;
 	header->sentTime = GetTimestampUs();
 	header->frameByteSize = len;
@@ -111,13 +109,13 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint6
 	}
 }
 
-void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t frameIndex) {
+void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs) {
 	if (Settings::Instance().m_enableFec) {
-		FECSend(buf, len, frameIndex, mVideoFrameIndex);
+		FECSend(buf, len, targetTimestampNs, mVideoFrameIndex);
 	} else {
 		VideoFrame header = {};
 		header.packetCounter = this->videoPacketCounter;
-		header.trackingFrameIndex = frameIndex;
+		header.trackingFrameIndex = targetTimestampNs;
 		header.videoFrameIndex = mVideoFrameIndex;
 		header.sentTime = GetTimestampUs();
 		header.frameByteSize = len;

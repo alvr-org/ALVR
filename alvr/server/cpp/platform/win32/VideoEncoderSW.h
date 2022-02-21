@@ -37,7 +37,7 @@ public:
 
 	AVCodecID ToFFMPEGCodec(ALVR_CODEC codec);
 
-	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t frameIndex, uint64_t frameIndex2, bool insertIDR);
+	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR);
 	HRESULT SetupStagingTexture(ID3D11Texture2D *pTexture);
 	HRESULT CopyTexture(ID3D11Texture2D *pTexture);
 private:

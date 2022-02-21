@@ -17,8 +17,8 @@ public:
 
 	ClientConnection();
 
-	void FECSend(uint8_t *buf, int len, uint64_t frameIndex, uint64_t videoFrameIndex);
-	void SendVideo(uint8_t *buf, int len, uint64_t frameIndex);
+	void FECSend(uint8_t *buf, int len, uint64_t targetTimestampNs, uint64_t videoFrameIndex);
+	void SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs);
  	void ProcessTimeSync(TimeSync data);
 	float GetPoseTimeOffset();
 	void OnFecFailure();

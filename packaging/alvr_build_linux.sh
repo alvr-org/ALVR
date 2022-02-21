@@ -105,7 +105,7 @@ HELPME
 maybe_clone() {
     if ! [ -d "${repoDir}" ]; then
         log info "Cloning ${repo} into ${repoDir} ..."
-        git clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git"
+        ! git clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
     fi
 
     # Import distro-specific helper functions once ${repoDir} exists but BEFORE changing branches
@@ -116,7 +116,7 @@ maybe_clone() {
     if [ "${kwArgs['--branch']}" != '' ]; then
         log info "Changing branches to ${kwArgs['--branch']} ..."
         # Change the current repository branch
-        git --work-tree="${repoDir}" checkout "${kwArgs['--branch']}"
+        ! git --work-tree="${repoDir}" checkout "${kwArgs['--branch']}" && exit 1
     fi
 
     # Get the short hash for this commit AFTER all git stuff

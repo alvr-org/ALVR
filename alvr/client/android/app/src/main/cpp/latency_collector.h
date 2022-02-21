@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <vector>
+#include <map>
 
 class LatencyCollector {
 public:
@@ -59,7 +60,7 @@ private:
         uint64_t submit;
     };
     static const int MAX_FRAMES = 1024;
-    std::vector<FrameTimestamp> m_Frames = std::vector<FrameTimestamp>(MAX_FRAMES);
+    std::map<uint64_t, FrameTimestamp> m_Frames = std::map<uint64_t, FrameTimestamp>();
 
     uint64_t m_StatisticsTime;
     uint64_t m_PacketsLostTotal = 0;

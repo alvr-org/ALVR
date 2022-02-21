@@ -49,13 +49,6 @@ const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 360;
 
-struct TrackingFrame {
-    ovrTracking2 tracking;
-    uint64_t frameIndex;
-    uint64_t fetchTime;
-    double displayTime;
-};
-
 class OvrContext {
 public:
     ANativeWindow *window = nullptr;
@@ -72,13 +65,11 @@ public:
 
     vector<float> refreshRatesBuffer;
 
-    uint64_t FrameIndex = 0;
+    uint64_t ovrFrameIndex = 0;
 
     int m_LastHMDRecenterCount = -1;
 
-    typedef std::map<uint64_t, std::shared_ptr<TrackingFrame> > TRACKING_FRAME_MAP;
-
-    TRACKING_FRAME_MAP trackingFrameMap;
+    std::map<uint64_t, ovrTracking2> trackingFrameMap;
     std::mutex trackingFrameMutex;
 
     bool darkMode;
@@ -547,24 +538,16 @@ std::pair<EyeFov, EyeFov> getFov() {
 
 // Called from TrackingThread
 void sendTrackingInfo(bool clientsidePrediction) {
-    std::shared_ptr<TrackingFrame> frame(new TrackingFrame());
-
-    g_ctx.FrameIndex++;
-
-    frame->frameIndex = g_ctx.FrameIndex;
-    frame->fetchTime = getTimestampUs();
-
     // vrapi_GetTimeInSeconds doesn't match getTimestampUs
-    frame->displayTime = vrapi_GetTimeInSeconds() + LatencyCollector::Instance().getTrackingPredictionLatency() * 1e-6;
-    frame->tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, frame->displayTime);
+    uint64_t displayTimeNs = vrapi_GetTimeInSeconds() * 1e9 + LatencyCollector::Instance().getTrackingPredictionLatency() * 1000;
+    auto tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, (double)displayTimeNs / 1e9);
 
     // sort of hacky, SteamVR will predict the position while the orientation is predicted from the client
     ovrTracking2 trackingRaw = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.);
 
     {
-        std::lock_guard<decltype(g_ctx.trackingFrameMutex)> lock(g_ctx.trackingFrameMutex);
-        g_ctx.trackingFrameMap.insert(
-                std::pair<uint64_t, std::shared_ptr<TrackingFrame> >(g_ctx.FrameIndex, frame));
+        std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
+        g_ctx.trackingFrameMap.insert({ displayTimeNs, tracking });
         if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
             g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
         }
@@ -572,20 +555,19 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     TrackingInfo info = {};
     info.clientTime = getTimestampUs();
-    info.FrameIndex = g_ctx.FrameIndex;
-    info.predictedDisplayTime = frame->displayTime;
+    info.FrameIndex = displayTimeNs;
+    info.predictedDisplayTime = (double)displayTimeNs / 1e9;
 
     info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
 
-    memcpy(&info.HeadPose_Pose_Orientation, &frame->tracking.HeadPose.Pose.Orientation,
+    memcpy(&info.HeadPose_Pose_Orientation, &tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
-    memcpy(&info.HeadPose_Pose_Position, &frame->tracking.HeadPose.Pose.Position,
+    memcpy(&info.HeadPose_Pose_Position, &tracking.HeadPose.Pose.Position,
            sizeof(ovrVector3f));
 
-    setControllerInfo(&info, clientsidePrediction ? frame->displayTime : 0.);
-    FrameLog(g_ctx.FrameIndex, "Sending tracking info.");
+    setControllerInfo(&info, clientsidePrediction ? (double)displayTimeNs / 1e9 : 0.);
 
-    LatencyCollector::Instance().tracking(frame->frameIndex);
+    LatencyCollector::Instance().tracking(displayTimeNs);
 
     inputSend(info);
 
@@ -727,7 +709,7 @@ void onPauseNative() {
 void finishHapticsBuffer(ovrDeviceID DeviceID) {
     uint8_t hapticBuffer[1] = {0};
     ovrHapticBuffer buffer;
-    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
     buffer.HapticBuffer = &hapticBuffer[0];
     buffer.NumSamples = 1;
     buffer.Terminated = true;
@@ -798,7 +780,7 @@ void updateHapticsState() {
 
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
-            buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+            buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
             buffer.HapticBuffer = &hapticBuffer[0];
             buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax,
                                          requiredHapticsBuffer);
@@ -825,39 +807,31 @@ void updateHapticsState() {
 }
 
 void renderNative(long long renderedFrameIndex) {
+    g_ctx.ovrFrameIndex++;
+
     LatencyCollector::Instance().rendered1(renderedFrameIndex);
     FrameLog(renderedFrameIndex, "Got frame for render.");
 
     updateHapticsState();
 
-    uint64_t oldestFrame = 0;
-    uint64_t mostRecentFrame = 0;
-    std::shared_ptr<TrackingFrame> frame;
+    ovrTracking2 tracking;
     {
-        std::lock_guard<decltype(g_ctx.trackingFrameMutex)> lock(g_ctx.trackingFrameMutex);
-
-        if (!g_ctx.trackingFrameMap.empty()) {
-            oldestFrame = g_ctx.trackingFrameMap.cbegin()->second->frameIndex;
-            mostRecentFrame = g_ctx.trackingFrameMap.crbegin()->second->frameIndex;
-        }
+        std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
 
         const auto it = g_ctx.trackingFrameMap.find(renderedFrameIndex);
         if (it != g_ctx.trackingFrameMap.end()) {
-            frame = it->second;
+            tracking = it->second;
         } else {
             if (!g_ctx.trackingFrameMap.empty())
-                frame = g_ctx.trackingFrameMap.cbegin()->second;
+                tracking = g_ctx.trackingFrameMap.cbegin()->second;
             else
                 return;
         }
     }
 
-    FrameLog(renderedFrameIndex, "Frame latency is %lu us.",
-             getTimestampUs() - frame->fetchTime);
-
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&g_ctx.Renderer, &frame->tracking, false);
+            ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false);
 
     LatencyCollector::Instance().rendered2(renderedFrameIndex);
 
@@ -869,7 +843,7 @@ void renderNative(long long renderedFrameIndex) {
     ovrSubmitFrameDescription2 frameDesc = {};
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
-    frameDesc.FrameIndex = renderedFrameIndex;
+    frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
     frameDesc.DisplayTime = 0.0;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;
@@ -879,13 +853,6 @@ void renderNative(long long renderedFrameIndex) {
     LatencyCollector::Instance().submit(renderedFrameIndex);
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
-
-    FrameLog(renderedFrameIndex, "vrapi_SubmitFrame2 Orientation=(%f, %f, %f, %f)",
-             frame->tracking.HeadPose.Pose.Orientation.x,
-             frame->tracking.HeadPose.Pose.Orientation.y,
-             frame->tracking.HeadPose.Pose.Orientation.z,
-             frame->tracking.HeadPose.Pose.Orientation.w
-    );
 
     if (g_ctx.suspend) {
         LOG("submit enter suspend");
@@ -900,9 +867,9 @@ void renderLoadingNative() {
     double DisplayTime = GetTimeInSeconds();
 
     // Show a loading icon.
-    g_ctx.FrameIndex++;
+    g_ctx.ovrFrameIndex++;
 
-    double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.FrameIndex);
+    double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
     ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
 
     const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&g_ctx.Renderer, &headTracking,
@@ -917,7 +884,7 @@ void renderLoadingNative() {
     ovrSubmitFrameDescription2 frameDesc = {};
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
-    frameDesc.FrameIndex = g_ctx.FrameIndex;
+    frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
     frameDesc.DisplayTime = DisplayTime;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers;

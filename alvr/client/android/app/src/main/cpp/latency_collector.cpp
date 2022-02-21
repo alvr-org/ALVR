@@ -10,10 +10,10 @@ LatencyCollector::LatencyCollector(){
 }
 
 LatencyCollector::FrameTimestamp &LatencyCollector::getFrame(uint64_t frameIndex) {
-    auto &frame = m_Frames[frameIndex % MAX_FRAMES];
-    if(frame.frameIndex != frameIndex) {
-        memset(&frame, 0, sizeof(FrameTimestamp));
-        frame.frameIndex = frameIndex;
+    auto &frame = m_Frames[frameIndex];
+    frame.frameIndex = frameIndex;
+    if (m_Frames.size() > MAX_FRAMES) {
+        m_Frames.erase(m_Frames.cbegin());
     }
     return frame;
 }

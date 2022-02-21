@@ -24,7 +24,6 @@ struct TrackingVector2 {
 };
 struct TrackingInfo {
     unsigned long long FrameIndex;
-    double predictedDisplayTime;
     TrackingQuat HeadPose_Pose_Orientation;
     TrackingVector3 HeadPose_Pose_Position;
 

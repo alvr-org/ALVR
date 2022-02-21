@@ -312,7 +312,7 @@ vr::DriverPose_t OvrHmd::GetPose() {
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    if (m_TrackingInfo.predictedDisplayTime > 0.0) {
+    if (m_TrackingInfo.FrameIndex > 0) {
         TrackingInfo &info = m_TrackingInfo;
 
         pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,

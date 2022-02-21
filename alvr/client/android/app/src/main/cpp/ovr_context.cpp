@@ -555,7 +555,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
 
     TrackingInfo info = {};
     info.FrameIndex = displayTimeNs;
-    info.predictedDisplayTime = (double)displayTimeNs / 1e9;
 
     info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
 

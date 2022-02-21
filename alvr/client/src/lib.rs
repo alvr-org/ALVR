@@ -131,7 +131,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
 
         if let Some(sender) = &*INPUT_SENDER.lock() {
             let input = Input {
-                target_timestamp: Duration::from_secs_f64(data.predictedDisplayTime),
+                target_timestamp: Duration::from_nanos(data.FrameIndex),
                 device_motions: vec![
                     (
                         *HEAD_ID,

@@ -804,11 +804,11 @@ void updateHapticsState() {
     }
 }
 
-void renderNative(long long renderedFrameIndex) {
+void renderNative(long long targetTimespampNs) {
     g_ctx.ovrFrameIndex++;
 
-    LatencyCollector::Instance().rendered1(renderedFrameIndex);
-    FrameLog(renderedFrameIndex, "Got frame for render.");
+    LatencyCollector::Instance().rendered1(targetTimespampNs);
+    FrameLog(targetTimespampNs, "Got frame for render.");
 
     updateHapticsState();
 
@@ -816,7 +816,7 @@ void renderNative(long long renderedFrameIndex) {
     {
         std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
 
-        const auto it = g_ctx.trackingFrameMap.find(renderedFrameIndex);
+        const auto it = g_ctx.trackingFrameMap.find(targetTimespampNs);
         if (it != g_ctx.trackingFrameMap.end()) {
             tracking = it->second;
         } else {
@@ -831,7 +831,7 @@ void renderNative(long long renderedFrameIndex) {
     const ovrLayerProjection2 worldLayer =
             ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false);
 
-    LatencyCollector::Instance().rendered2(renderedFrameIndex);
+    LatencyCollector::Instance().rendered2(targetTimespampNs);
 
     const ovrLayerHeader2 *layers2[] =
             {
@@ -842,13 +842,13 @@ void renderNative(long long renderedFrameIndex) {
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
     frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
-    frameDesc.DisplayTime = 0.0;
+    frameDesc.DisplayTime = (double)targetTimespampNs / 1e9;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;
 
     vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
 
-    LatencyCollector::Instance().submit(renderedFrameIndex);
+    LatencyCollector::Instance().submit(targetTimespampNs);
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
 
@@ -862,8 +862,6 @@ void renderNative(long long renderedFrameIndex) {
 }
 
 void renderLoadingNative() {
-    double DisplayTime = GetTimeInSeconds();
-
     // Show a loading icon.
     g_ctx.ovrFrameIndex++;
 
@@ -883,7 +881,7 @@ void renderLoadingNative() {
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
     frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
-    frameDesc.DisplayTime = DisplayTime;
+    frameDesc.DisplayTime = displayTime;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers;
 

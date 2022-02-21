@@ -614,88 +614,82 @@ vr::HmdQuaternionf_t QuatMultiply(const vr::HmdQuaternionf_t *q1, const vr::HmdQ
     return result;
 }
 
-bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) {
+bool OvrController::onPoseUpdate(const TrackingInfo::Controller &c) {
 
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
 
-    if (!m_pose.deviceIsConnected) {
-    }
-
-    if (info.controller[controllerIndex].flags &
-        TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
+    if (c.isHand) {
 
         vr::HmdQuaternion_t rootBoneRot =
-            HmdQuaternion_Init(info.controller[controllerIndex].boneRootOrientation.w,
-                               info.controller[controllerIndex].boneRootOrientation.x,
-                               info.controller[controllerIndex].boneRootOrientation.y,
-                               info.controller[controllerIndex].boneRootOrientation.z);
-        vr::HmdQuaternion_t boneFixer = info.controller[controllerIndex].flags &
-                                                TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND
+            HmdQuaternion_Init(c.boneRootOrientation.w,
+                               c.boneRootOrientation.x,
+                               c.boneRootOrientation.y,
+                               c.boneRootOrientation.z);
+        vr::HmdQuaternion_t boneFixer = this->device_path == LEFT_HAND_PATH
                                             ? HmdQuaternion_Init(-0.5, 0.5, 0.5, -0.5)
                                             : HmdQuaternion_Init(0.5, 0.5, 0.5, 0.5);
         m_pose.qRotation = QuatMultiply(&rootBoneRot, &boneFixer);
-        m_pose.vecPosition[0] = info.controller[controllerIndex].boneRootPosition.x;
-        m_pose.vecPosition[1] = info.controller[controllerIndex].boneRootPosition.y;
-        m_pose.vecPosition[2] = info.controller[controllerIndex].boneRootPosition.z;
+        m_pose.vecPosition[0] = c.boneRootPosition.x;
+        m_pose.vecPosition[1] = c.boneRootPosition.y;
+        m_pose.vecPosition[2] = c.boneRootPosition.z;
 
-        if (info.controller[controllerIndex].flags &
-            TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) {
+        if (this->device_path == LEFT_HAND_PATH) {
             double bonePosFixer[3] = {0.0, 0.05, -0.05};
             vr::HmdVector3d_t posFix =
                 vrmath::quaternionRotateVector(m_pose.qRotation, bonePosFixer);
             m_pose.vecPosition[0] =
-                info.controller[controllerIndex].boneRootPosition.x + posFix.v[0];
+                c.boneRootPosition.x + posFix.v[0];
             m_pose.vecPosition[1] =
-                info.controller[controllerIndex].boneRootPosition.y + posFix.v[1];
+                c.boneRootPosition.y + posFix.v[1];
             m_pose.vecPosition[2] =
-                info.controller[controllerIndex].boneRootPosition.z + posFix.v[2];
+                c.boneRootPosition.z + posFix.v[2];
         } else {
             double bonePosFixer[3] = {0.0, 0.05, -0.05};
             vr::HmdVector3d_t posFix =
                 vrmath::quaternionRotateVector(m_pose.qRotation, bonePosFixer);
             m_pose.vecPosition[0] =
-                info.controller[controllerIndex].boneRootPosition.x + posFix.v[0];
+                c.boneRootPosition.x + posFix.v[0];
             m_pose.vecPosition[1] =
-                info.controller[controllerIndex].boneRootPosition.y + posFix.v[1];
+                c.boneRootPosition.y + posFix.v[1];
             m_pose.vecPosition[2] =
-                info.controller[controllerIndex].boneRootPosition.z + posFix.v[2];
+                c.boneRootPosition.z + posFix.v[2];
         }
 
     } else {
 
         m_pose.qRotation = HmdQuaternion_Init(
-            info.controller[controllerIndex].orientation.w,
-            info.controller[controllerIndex].orientation.x,
-            info.controller[controllerIndex].orientation.y,
-            info.controller[controllerIndex].orientation.z); // controllerRotation;
+            c.orientation.w,
+            c.orientation.x,
+            c.orientation.y,
+            c.orientation.z); // controllerRotation;
 
-        m_pose.vecPosition[0] = info.controller[controllerIndex].position.x;
-        m_pose.vecPosition[1] = info.controller[controllerIndex].position.y;
-        m_pose.vecPosition[2] = info.controller[controllerIndex].position.z;
+        m_pose.vecPosition[0] = c.position.x;
+        m_pose.vecPosition[1] = c.position.y;
+        m_pose.vecPosition[2] = c.position.z;
     }
 
     // use cutoffs for velocity to stop jitter when there is not a lot of movement
     float LinearVelocityMultiplier =
-        Shape(Magnitude(info.controller[controllerIndex].linearVelocity),
+        Shape(Magnitude(c.linearVelocity),
               Settings::Instance().m_linearVelocityCutoff);
     float AngularVelocityMultiplier =
-        Shape(Magnitude(info.controller[controllerIndex].angularVelocity),
+        Shape(Magnitude(c.angularVelocity),
               Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
 
     m_pose.vecVelocity[0] =
-        info.controller[controllerIndex].linearVelocity.x * LinearVelocityMultiplier;
+        c.linearVelocity.x * LinearVelocityMultiplier;
     m_pose.vecVelocity[1] =
-        info.controller[controllerIndex].linearVelocity.y * LinearVelocityMultiplier;
+        c.linearVelocity.y * LinearVelocityMultiplier;
     m_pose.vecVelocity[2] =
-        info.controller[controllerIndex].linearVelocity.z * LinearVelocityMultiplier;
+        c.linearVelocity.z * LinearVelocityMultiplier;
     m_pose.vecAngularVelocity[0] =
-        info.controller[controllerIndex].angularVelocity.x * AngularVelocityMultiplier;
+        c.angularVelocity.x * AngularVelocityMultiplier;
     m_pose.vecAngularVelocity[1] =
-        info.controller[controllerIndex].angularVelocity.y * AngularVelocityMultiplier;
+        c.angularVelocity.y * AngularVelocityMultiplier;
     m_pose.vecAngularVelocity[2] =
-        info.controller[controllerIndex].angularVelocity.z * AngularVelocityMultiplier;
+        c.angularVelocity.z * AngularVelocityMultiplier;
 
     // correct direction of velocities
     vr::HmdVector3d_t angVel;
@@ -746,9 +740,7 @@ bool OvrController::onPoseUpdate(int controllerIndex, const TrackingInfo &info) 
 
     m_pose.poseTimeOffset = *m_poseTimeOffset;
 
-    auto &c = info.controller[controllerIndex];
-
-    if (c.flags & TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND) {
+    if (c.isHand) {
         // m_pose.poseTimeOffset = 0.;
         float rotThumb =
             (c.boneRotations[alvrHandBone_Thumb0].z + c.boneRotations[alvrHandBone_Thumb0].y +

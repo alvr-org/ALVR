@@ -10,6 +10,7 @@
 #include "Utils.h"
 #include "VSyncThread.h"
 #include "bindings.h"
+#include <cfloat>
 
 #ifdef _WIN32
 #include "platform/win32/CEncoder.h"
@@ -311,7 +312,7 @@ vr::DriverPose_t OvrHmd::GetPose() {
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    if (m_TrackingInfo.type == ALVR_PACKET_TYPE_TRACKING_INFO) {
+    if (m_TrackingInfo.predictedDisplayTime > 0.0) {
         TrackingInfo &info = m_TrackingInfo;
 
         pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
@@ -437,21 +438,12 @@ void OvrHmd::updateController(const TrackingInfo &info) {
         m_poseTimeOffset = m_Listener->GetPoseTimeOffset();
     else
         m_poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
-    for (int i = 0; i < 2; i++) {
 
-        bool enabled = info.controller[i].flags & TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
-
-        if (enabled) {
-
-            bool leftHand = (info.controller[i].flags &
-                             TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND) != 0;
-
-            if (leftHand) {
-                m_leftController->onPoseUpdate(i, info);
-            } else {
-                m_rightController->onPoseUpdate(i, info);
-            }
-        }
+    if (info.controller[0].enabled) {
+        m_leftController->onPoseUpdate(info.controller[0]);
+    }
+    if (info.controller[1].enabled) {
+        m_rightController->onPoseUpdate(info.controller[1]);
     }
 }
 

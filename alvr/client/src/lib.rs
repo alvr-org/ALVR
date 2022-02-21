@@ -17,8 +17,8 @@ use alvr_common::{
 };
 use alvr_session::Fov;
 use alvr_sockets::{
-    BatteryPacket, HeadsetInfoPacket, Input, LegacyInput, MotionData, PrivateIdentity,
-    TimeSyncPacket, ViewsConfig,
+    BatteryPacket, HeadsetInfoPacket, Input, LegacyController, LegacyInput, MotionData,
+    PrivateIdentity, TimeSyncPacket, ViewsConfig,
 };
 use jni::{
     objects::{JClass, JObject, JString},
@@ -145,20 +145,16 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                     (
                         *LEFT_HAND_ID,
                         MotionData {
-                            orientation: from_tracking_quat(
-                                if data.controller[0].flags & (1 << 5) > 0 {
-                                    data.controller[0].boneRootOrientation
-                                } else {
-                                    data.controller[0].orientation
-                                },
-                            ),
-                            position: from_tracking_vector3(
-                                if data.controller[0].flags & (1 << 5) > 0 {
-                                    data.controller[0].boneRootPosition
-                                } else {
-                                    data.controller[0].position
-                                },
-                            ),
+                            orientation: from_tracking_quat(if data.controller[0].isHand {
+                                data.controller[0].boneRootOrientation
+                            } else {
+                                data.controller[0].orientation
+                            }),
+                            position: from_tracking_vector3(if data.controller[0].isHand {
+                                data.controller[0].boneRootPosition
+                            } else {
+                                data.controller[0].position
+                            }),
                             linear_velocity: Some(from_tracking_vector3(
                                 data.controller[0].linearVelocity,
                             )),
@@ -170,20 +166,16 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                     (
                         *RIGHT_HAND_ID,
                         MotionData {
-                            orientation: from_tracking_quat(
-                                if data.controller[1].flags & (1 << 5) > 0 {
-                                    data.controller[1].boneRootOrientation
-                                } else {
-                                    data.controller[1].orientation
-                                },
-                            ),
-                            position: from_tracking_vector3(
-                                if data.controller[1].flags & (1 << 5) > 0 {
-                                    data.controller[1].boneRootPosition
-                                } else {
-                                    data.controller[1].position
-                                },
-                            ),
+                            orientation: from_tracking_quat(if data.controller[1].isHand {
+                                data.controller[1].boneRootOrientation
+                            } else {
+                                data.controller[1].orientation
+                            }),
+                            position: from_tracking_vector3(if data.controller[1].isHand {
+                                data.controller[1].boneRootPosition
+                            } else {
+                                data.controller[1].position
+                            }),
                             linear_velocity: Some(from_tracking_vector3(
                                 data.controller[1].linearVelocity,
                             )),
@@ -197,86 +189,91 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                 right_hand_tracking: None,
                 button_values: HashMap::new(), // unused for now
                 legacy: LegacyInput {
-                    flags: data.flags,
                     client_time: data.clientTime,
                     frame_index: data.FrameIndex,
                     mounted: data.mounted,
-                    controller_flags: [data.controller[0].flags, data.controller[1].flags],
-                    buttons: [data.controller[0].buttons, data.controller[1].buttons],
-                    trackpad_position: [
-                        Vec2::new(
-                            data.controller[0].trackpadPosition.x,
-                            data.controller[0].trackpadPosition.y,
-                        ),
-                        Vec2::new(
-                            data.controller[1].trackpadPosition.x,
-                            data.controller[1].trackpadPosition.y,
-                        ),
-                    ],
-                    trigger_value: [
-                        data.controller[0].triggerValue,
-                        data.controller[1].triggerValue,
-                    ],
-                    grip_value: [data.controller[0].gripValue, data.controller[1].gripValue],
-                    bone_rotations: [
-                        {
-                            let vec = data.controller[0]
-                                .boneRotations
-                                .iter()
-                                .cloned()
-                                .map(from_tracking_quat)
-                                .collect::<Vec<_>>();
+                    controllers: [
+                        LegacyController {
+                            enabled: data.controller[0].enabled,
+                            is_hand: data.controller[0].isHand,
+                            buttons: data.controller[0].buttons,
+                            trackpad_position: Vec2::new(
+                                data.controller[0].trackpadPosition.x,
+                                data.controller[0].trackpadPosition.y,
+                            ),
+                            trigger_value: data.controller[0].triggerValue,
+                            grip_value: data.controller[0].gripValue,
+                            bone_rotations: {
+                                let vec = data.controller[0]
+                                    .boneRotations
+                                    .iter()
+                                    .cloned()
+                                    .map(from_tracking_quat)
+                                    .collect::<Vec<_>>();
 
-                            let mut array = [Quat::IDENTITY; 19];
-                            array.copy_from_slice(&vec);
+                                let mut array = [Quat::IDENTITY; 19];
+                                array.copy_from_slice(&vec);
 
-                            array
+                                array
+                            },
+                            bone_positions_base: {
+                                let vec = data.controller[0]
+                                    .bonePositionsBase
+                                    .iter()
+                                    .cloned()
+                                    .map(from_tracking_vector3)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [Vec3::ZERO; 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+                            hand_finger_confience: data.controller[0].handFingerConfidences,
                         },
-                        {
-                            let vec = data.controller[1]
-                                .boneRotations
-                                .iter()
-                                .cloned()
-                                .map(from_tracking_quat)
-                                .collect::<Vec<_>>();
+                        LegacyController {
+                            enabled: data.controller[1].enabled,
+                            is_hand: data.controller[1].isHand,
+                            buttons: data.controller[1].buttons,
+                            trackpad_position: Vec2::new(
+                                data.controller[1].trackpadPosition.x,
+                                data.controller[1].trackpadPosition.y,
+                            ),
 
-                            let mut array = [Quat::IDENTITY; 19];
-                            array.copy_from_slice(&vec);
+                            trigger_value: data.controller[1].triggerValue,
 
-                            array
+                            grip_value: data.controller[1].gripValue,
+
+                            bone_rotations: {
+                                let vec = data.controller[1]
+                                    .boneRotations
+                                    .iter()
+                                    .cloned()
+                                    .map(from_tracking_quat)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [Quat::IDENTITY; 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+
+                            bone_positions_base: {
+                                let vec = data.controller[1]
+                                    .bonePositionsBase
+                                    .iter()
+                                    .cloned()
+                                    .map(from_tracking_vector3)
+                                    .collect::<Vec<_>>();
+
+                                let mut array = [Vec3::ZERO; 19];
+                                array.copy_from_slice(&vec);
+
+                                array
+                            },
+
+                            hand_finger_confience: data.controller[1].handFingerConfidences,
                         },
-                    ],
-                    bone_positions_base: [
-                        {
-                            let vec = data.controller[0]
-                                .bonePositionsBase
-                                .iter()
-                                .cloned()
-                                .map(from_tracking_vector3)
-                                .collect::<Vec<_>>();
-
-                            let mut array = [Vec3::ZERO; 19];
-                            array.copy_from_slice(&vec);
-
-                            array
-                        },
-                        {
-                            let vec = data.controller[1]
-                                .bonePositionsBase
-                                .iter()
-                                .cloned()
-                                .map(from_tracking_vector3)
-                                .collect::<Vec<_>>();
-
-                            let mut array = [Vec3::ZERO; 19];
-                            array.copy_from_slice(&vec);
-
-                            array
-                        },
-                    ],
-                    hand_finger_confience: [
-                        data.controller[0].handFingerConfidences,
-                        data.controller[1].handFingerConfidences,
                     ],
                 },
             };

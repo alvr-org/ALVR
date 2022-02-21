@@ -154,19 +154,24 @@ pub struct HandTrackingInput {
 }
 
 #[derive(Serialize, Deserialize, Default)]
+pub struct LegacyController {
+    pub enabled: bool,
+    pub is_hand: bool,
+    pub buttons: u64,
+    pub trackpad_position: Vec2,
+    pub trigger_value: f32,
+    pub grip_value: f32,
+    pub bone_rotations: [Quat; 19],
+    pub bone_positions_base: [Vec3; 19],
+    pub hand_finger_confience: u32,
+}
+
+#[derive(Serialize, Deserialize, Default)]
 pub struct LegacyInput {
-    pub flags: u32,
     pub client_time: u64,
     pub frame_index: u64,
     pub mounted: u8,
-    pub controller_flags: [u32; 2],
-    pub buttons: [u64; 2],
-    pub trackpad_position: [Vec2; 2],
-    pub trigger_value: [f32; 2],
-    pub grip_value: [f32; 2],
-    pub bone_rotations: [[Quat; 19]; 2],
-    pub bone_positions_base: [[Vec3; 19]; 2],
-    pub hand_finger_confience: [u32; 2],
+    pub controllers: [LegacyController; 2],
 }
 
 #[derive(Serialize, Deserialize)]

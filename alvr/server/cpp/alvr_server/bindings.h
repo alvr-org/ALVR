@@ -23,32 +23,18 @@ struct TrackingVector2 {
     float y;
 };
 struct TrackingInfo {
-    unsigned int type; // ALVR_PACKET_TYPE_TRACKING_INFO
-    static const unsigned int FLAG_OTHER_TRACKING_SOURCE =
-        (1 << 0); // Other_Tracking_Source_Position has valid value (For ARCore)
-    unsigned int flags;
-
     unsigned long long clientTime;
     unsigned long long FrameIndex;
     double predictedDisplayTime;
     TrackingQuat HeadPose_Pose_Orientation;
     TrackingVector3 HeadPose_Pose_Position;
 
-    TrackingVector3 Other_Tracking_Source_Position;
-    TrackingQuat Other_Tracking_Source_Orientation;
-
     unsigned char mounted;
 
     static const unsigned int MAX_CONTROLLERS = 2;
     struct Controller {
-        static const unsigned int FLAG_CONTROLLER_ENABLE = (1 << 0);
-        static const unsigned int FLAG_CONTROLLER_LEFTHAND =
-            (1 << 1); // 0: Left hand, 1: Right hand
-        static const unsigned int FLAG_CONTROLLER_GEARVR = (1 << 2);
-        static const unsigned int FLAG_CONTROLLER_OCULUS_GO = (1 << 3);
-        static const unsigned int FLAG_CONTROLLER_OCULUS_QUEST = (1 << 4);
-        static const unsigned int FLAG_CONTROLLER_OCULUS_HAND = (1 << 5);
-        unsigned int flags;
+        bool enabled;
+        bool isHand;
         unsigned long long buttons;
 
         struct {

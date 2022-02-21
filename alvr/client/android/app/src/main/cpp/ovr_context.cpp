@@ -298,14 +298,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
          vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
-            // Oculus Quest Hand Tracking
-            if (controller >= 2) {
-                LOG("Device %d: Ignore.", deviceIndex);
-                continue;
-            }
-
-            auto &c = packet->controller[controller];
-
             ovrInputHandCapabilities handCapabilities;
             ovrInputStateHand inputStateHand;
             handCapabilities.Header = curCaps;
@@ -317,7 +309,9 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             }
 
             if ((handCapabilities.HandCapabilities & ovrHandCaps_LeftHand) != 0) {
-                c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND;
+                controller = 0;
+            } else {
+                controller = 1;
             }
             inputStateHand.Header.ControllerType = handCapabilities.Header.Type;
 
@@ -327,9 +321,10 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 continue;
             }
 
-            c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
+            auto &c = packet->controller[controller];
 
-            c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_HAND;
+            c.enabled = true;
+            c.isHand = true;
 
             memcpy(&c.orientation, &inputStateHand.PointerPose.Orientation,
                    sizeof(inputStateHand.PointerPose.Orientation));
@@ -386,17 +381,8 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                     }
                 }
             }
-            controller++;
         }
         if (curCaps.Type == ovrControllerType_TrackedRemote) {
-            // Gear VR / Oculus Go 3DoF Controller / Oculus Quest Touch Controller
-            if (controller >= 2) {
-                LOG("Device %d: Ignore.", deviceIndex);
-                continue;
-            }
-
-            auto &c = packet->controller[controller];
-
             ovrInputTrackedRemoteCapabilities remoteCapabilities;
             ovrInputStateTrackedRemote remoteInputState;
 
@@ -424,12 +410,10 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 remoteInputState.JoystickNoDeadZone.x, remoteInputState.JoystickNoDeadZone.y,
                 remoteInputState.IndexTrigger, remoteInputState.GripTrigger);
 
-            c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_ENABLE;
-
             uint64_t hand_path;
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
                 hand_path = LEFT_HAND_PATH;
-                c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_LEFTHAND;
+                controller = 0;
 
                 if (remoteInputState.Buttons & ovrButton_Enter) {
                     if (!g_ctx.mMenuLongPressActivated && std::chrono::system_clock::now()
@@ -444,20 +428,12 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 }
             } else {
                 hand_path = RIGHT_HAND_PATH;
+                controller = 1;
             }
 
-            if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelGearVR) !=
-                0) {
-                c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_GEARVR;
-            } else if (
-                    (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo) !=
-                    0) {
-                c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_GO;
-            } else if ((remoteCapabilities.ControllerCapabilities &
-                        ovrControllerCaps_ModelOculusTouch) !=
-                       0) {
-                c.flags |= TrackingInfo::Controller::FLAG_CONTROLLER_OCULUS_QUEST;
-            }
+            auto &c = packet->controller[controller];
+
+            c.enabled = true;
 
             c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
 
@@ -528,7 +504,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                        &tracking.HeadPose.LinearVelocity,
                        sizeof(tracking.HeadPose.LinearVelocity));
             }
-            controller++;
         }
     }
 }
@@ -596,8 +571,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     }
 
     TrackingInfo info = {};
-    info.type = ALVR_PACKET_TYPE_TRACKING_INFO;
-    info.flags = 0;
     info.clientTime = getTimestampUs();
     info.FrameIndex = g_ctx.FrameIndex;
     info.predictedDisplayTime = frame->displayTime;

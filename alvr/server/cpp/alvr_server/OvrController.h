@@ -34,7 +34,7 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
 
     vr::VRInputComponentHandle_t getHapticComponent();
 
-    bool onPoseUpdate(int controllerIndex, const TrackingInfo &info);
+    bool onPoseUpdate(const TrackingInfo::Controller &c);
     std::string GetSerialNumber();
 
     void GetBoneTransform(bool withController,

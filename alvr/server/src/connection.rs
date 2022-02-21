@@ -810,26 +810,23 @@ async fn connection_pipeline() -> StrResult {
                     .1;
 
                 let tracking_info = TrackingInfo {
-                    type_: 6, // ALVR_PACKET_TYPE_TRACKING_INFO
-                    flags: input.legacy.flags,
                     clientTime: input.legacy.client_time,
                     FrameIndex: input.legacy.frame_index,
                     predictedDisplayTime: input.target_timestamp.as_secs_f64(),
                     HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),
                     HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
-                    Other_Tracking_Source_Position: to_tracking_vector3(Vec3::ZERO),
-                    Other_Tracking_Source_Orientation: to_tracking_quat(Quat::IDENTITY),
                     mounted: input.legacy.mounted,
                     controller: [
                         TrackingInfo_Controller {
-                            flags: input.legacy.controller_flags[0],
-                            buttons: input.legacy.buttons[0],
+                            enabled: input.legacy.controllers[0].enabled,
+                            isHand: input.legacy.controllers[0].is_hand,
+                            buttons: input.legacy.controllers[0].buttons,
                             trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
-                                x: input.legacy.trackpad_position[0].x,
-                                y: input.legacy.trackpad_position[0].y,
+                                x: input.legacy.controllers[0].trackpad_position.x,
+                                y: input.legacy.controllers[0].trackpad_position.y,
                             },
-                            triggerValue: input.legacy.trigger_value[0],
-                            gripValue: input.legacy.grip_value[0],
+                            triggerValue: input.legacy.controllers[0].trigger_value,
+                            gripValue: input.legacy.controllers[0].grip_value,
                             orientation: to_tracking_quat(left_hand_motion.orientation),
                             position: to_tracking_vector3(left_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
@@ -839,7 +836,8 @@ async fn connection_pipeline() -> StrResult {
                                 left_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             boneRotations: {
-                                let vec = input.legacy.bone_rotations[0]
+                                let vec = input.legacy.controllers[0]
+                                    .bone_rotations
                                     .iter()
                                     .cloned()
                                     .map(to_tracking_quat)
@@ -851,7 +849,8 @@ async fn connection_pipeline() -> StrResult {
                                 array
                             },
                             bonePositionsBase: {
-                                let vec = input.legacy.bone_positions_base[0]
+                                let vec = input.legacy.controllers[0]
+                                    .bone_positions_base
                                     .iter()
                                     .cloned()
                                     .map(to_tracking_vector3)
@@ -864,17 +863,19 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(left_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(left_hand_motion.position),
-                            handFingerConfidences: input.legacy.hand_finger_confience[0],
+                            handFingerConfidences: input.legacy.controllers[0]
+                                .hand_finger_confience,
                         },
                         TrackingInfo_Controller {
-                            flags: input.legacy.controller_flags[1],
-                            buttons: input.legacy.buttons[1],
+                            enabled: input.legacy.controllers[1].enabled,
+                            isHand: input.legacy.controllers[1].is_hand,
+                            buttons: input.legacy.controllers[1].buttons,
                             trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
-                                x: input.legacy.trackpad_position[1].x,
-                                y: input.legacy.trackpad_position[1].y,
+                                x: input.legacy.controllers[1].trackpad_position.x,
+                                y: input.legacy.controllers[1].trackpad_position.y,
                             },
-                            triggerValue: input.legacy.trigger_value[1],
-                            gripValue: input.legacy.grip_value[1],
+                            triggerValue: input.legacy.controllers[1].trigger_value,
+                            gripValue: input.legacy.controllers[1].grip_value,
                             orientation: to_tracking_quat(right_hand_motion.orientation),
                             position: to_tracking_vector3(right_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
@@ -884,7 +885,8 @@ async fn connection_pipeline() -> StrResult {
                                 right_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
                             ),
                             boneRotations: {
-                                let vec = input.legacy.bone_rotations[1]
+                                let vec = input.legacy.controllers[1]
+                                    .bone_rotations
                                     .iter()
                                     .cloned()
                                     .map(to_tracking_quat)
@@ -896,7 +898,8 @@ async fn connection_pipeline() -> StrResult {
                                 array
                             },
                             bonePositionsBase: {
-                                let vec = input.legacy.bone_positions_base[1]
+                                let vec = input.legacy.controllers[1]
+                                    .bone_positions_base
                                     .iter()
                                     .cloned()
                                     .map(to_tracking_vector3)
@@ -909,7 +912,8 @@ async fn connection_pipeline() -> StrResult {
                             },
                             boneRootOrientation: to_tracking_quat(right_hand_motion.orientation),
                             boneRootPosition: to_tracking_vector3(right_hand_motion.position),
-                            handFingerConfidences: input.legacy.hand_finger_confience[1],
+                            handFingerConfidences: input.legacy.controllers[1]
+                                .hand_finger_confience,
                         },
                     ],
                 };

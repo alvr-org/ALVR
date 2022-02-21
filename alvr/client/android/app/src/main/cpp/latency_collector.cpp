@@ -10,11 +10,12 @@ LatencyCollector::LatencyCollector(){
 }
 
 LatencyCollector::FrameTimestamp &LatencyCollector::getFrame(uint64_t frameIndex) {
-    auto &frame = m_Frames[frameIndex];
-    frame.frameIndex = frameIndex;
+    std::lock_guard<std::mutex> lock(m_framesMutex);
     if (m_Frames.size() > MAX_FRAMES) {
         m_Frames.erase(m_Frames.cbegin());
     }
+    auto &frame = m_Frames[frameIndex];
+    frame.frameIndex = frameIndex;
     return frame;
 }
 

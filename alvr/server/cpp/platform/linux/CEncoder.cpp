@@ -236,7 +236,7 @@ void CEncoder::Run() {
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
         if (pose)
         {
-          m_poseSubmitIndex = pose->info.FrameIndex;
+          m_poseSubmitIndex = pose->info.targetTimestampNs;
         }
 
         encoded_data.clear();

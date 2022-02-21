@@ -215,7 +215,7 @@ void InputReceive(TrackingInfo data) {
         TimeSync sendBuf = {};
         sendBuf.mode = 3;
         sendBuf.serverTime = Current - g_driver_provider.hmd->m_Listener->m_TimeDiff;
-        sendBuf.trackingRecvFrameIndex = data.FrameIndex;
+        sendBuf.trackingRecvFrameIndex = data.targetTimestampNs;
         TimeSyncSend(sendBuf);
 
         g_driver_provider.hmd->OnPoseUpdated(data);

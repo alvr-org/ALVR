@@ -26,7 +26,7 @@ void PoseHistory::OnPoseUpdated(const TrackingInfo &info) {
 		m_poseBuffer.push_back(history);
 	}
 	else {
-		if (m_poseBuffer.back().info.FrameIndex != info.FrameIndex) {
+		if (m_poseBuffer.back().info.targetTimestampNs != info.targetTimestampNs) {
 			// New track info
 			m_poseBuffer.push_back(history);
 		}
@@ -68,7 +68,7 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t
 	std::unique_lock<std::mutex> lock(m_mutex);
 	for (auto it = m_poseBuffer.rbegin(), end = m_poseBuffer.rend() ; it != end ; ++it)
 	{
-		if (it->info.FrameIndex == client_timestamp_ns)
+		if (it->info.targetTimestampNs == client_timestamp_ns)
 			return *it;
 	}
 	return {};

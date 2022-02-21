@@ -136,8 +136,8 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		auto pose = m_poseHistory->GetBestPoseMatch(*pPose);
 		if (pose) {
 			// found the frameIndex
-			m_prevSubmitFrameIndex = m_submitFrameIndex;
-			m_submitFrameIndex = pose->info.FrameIndex;
+			m_prevTargetTimestampNs = m_targetTimestampNs;
+			m_targetTimestampNs = pose->info.targetTimestampNs;
 
 			m_prevFramePoseRotation = m_framePoseRotation;
 			m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
@@ -145,10 +145,10 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 			m_framePoseRotation.z = pose->info.HeadPose_Pose_Orientation.z;
 			m_framePoseRotation.w = pose->info.HeadPose_Pose_Orientation.w;
 
-			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", m_prevSubmitFrameIndex, m_submitFrameIndex);
+			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", m_prevTargetTimestampNs, m_targetTimestampNs);
 		}
 		else {
-			m_submitFrameIndex = 0;
+			m_targetTimestampNs = 0;
 			m_framePoseRotation = HmdQuaternion_Init(0.0, 0.0, 0.0, 0.0);
 		}
 	}
@@ -173,15 +173,15 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
 	bool useMutex = true;
-	Debug("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", syncTexture, useMutex, m_prevSubmitFrameIndex, m_submitFrameIndex);
+	Debug("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", syncTexture, useMutex, m_prevTargetTimestampNs, m_targetTimestampNs);
 
 	IDXGIKeyedMutex *pKeyedMutex = NULL;
 
 	uint32_t layerCount = m_submitLayer;
 	m_submitLayer = 0;
 
-	if (m_prevSubmitFrameIndex == m_submitFrameIndex) {
-		Debug("Discard duplicated frame. FrameIndex=%llu (Ignoring)\n", m_submitFrameIndex);
+	if (m_prevTargetTimestampNs == m_targetTimestampNs) {
+		Debug("Discard duplicated frame. FrameIndex=%llu (Ignoring)\n", m_targetTimestampNs);
 		//return;
 	}
 
@@ -282,9 +282,9 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
 		std::string debugText;
 
-		uint64_t submitFrameIndex = m_submitFrameIndex + Settings::Instance().m_trackingFrameOffset;
+		uint64_t submitFrameIndex = m_targetTimestampNs + Settings::Instance().m_trackingFrameOffset;
 		Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n"
-			, m_submitFrameIndex, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
+			, m_targetTimestampNs, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex,"", debugText);

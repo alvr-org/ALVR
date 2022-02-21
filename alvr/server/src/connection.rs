@@ -810,7 +810,7 @@ async fn connection_pipeline() -> StrResult {
                     .1;
 
                 let tracking_info = TrackingInfo {
-                    FrameIndex: input.legacy.frame_index,
+                    targetTimestampNs: input.target_timestamp.as_nanos() as _,
                     HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),
                     HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
                     mounted: input.legacy.mounted,

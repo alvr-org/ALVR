@@ -539,22 +539,22 @@ std::pair<EyeFov, EyeFov> getFov() {
 // Called from TrackingThread
 void sendTrackingInfo(bool clientsidePrediction) {
     // vrapi_GetTimeInSeconds doesn't match getTimestampUs
-    uint64_t displayTimeNs = vrapi_GetTimeInSeconds() * 1e9 + LatencyCollector::Instance().getTrackingPredictionLatency() * 1000;
-    auto tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, (double)displayTimeNs / 1e9);
+    uint64_t targetTimestampNs = vrapi_GetTimeInSeconds() * 1e9 + LatencyCollector::Instance().getTrackingPredictionLatency() * 1000;
+    auto tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, (double)targetTimestampNs / 1e9);
 
     // sort of hacky, SteamVR will predict the position while the orientation is predicted from the client
     ovrTracking2 trackingRaw = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.);
 
     {
         std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
-        g_ctx.trackingFrameMap.insert({ displayTimeNs, tracking });
+        g_ctx.trackingFrameMap.insert({ targetTimestampNs, tracking });
         if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
             g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
         }
     }
 
     TrackingInfo info = {};
-    info.FrameIndex = displayTimeNs;
+    info.targetTimestampNs = targetTimestampNs;
 
     info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
 
@@ -563,9 +563,9 @@ void sendTrackingInfo(bool clientsidePrediction) {
     memcpy(&info.HeadPose_Pose_Position, &tracking.HeadPose.Pose.Position,
            sizeof(ovrVector3f));
 
-    setControllerInfo(&info, clientsidePrediction ? (double)displayTimeNs / 1e9 : 0.);
+    setControllerInfo(&info, clientsidePrediction ? (double)targetTimestampNs / 1e9 : 0.);
 
-    LatencyCollector::Instance().tracking(displayTimeNs);
+    LatencyCollector::Instance().tracking(targetTimestampNs);
 
     inputSend(info);
 

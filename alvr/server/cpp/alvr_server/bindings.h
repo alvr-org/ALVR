@@ -23,7 +23,7 @@ struct TrackingVector2 {
     float y;
 };
 struct TrackingInfo {
-    unsigned long long FrameIndex;
+    unsigned long long targetTimestampNs;
     TrackingQuat HeadPose_Pose_Orientation;
     TrackingVector3 HeadPose_Pose_Position;
 

@@ -55,6 +55,6 @@ private:
 	SubmitLayerPerEye_t m_submitLayers[MAX_LAYERS][2];
 	vr::HmdQuaternion_t m_prevFramePoseRotation;
 	vr::HmdQuaternion_t m_framePoseRotation;
-	uint64_t m_submitFrameIndex;
-	uint64_t m_prevSubmitFrameIndex;
+	uint64_t m_targetTimestampNs;
+	uint64_t m_prevTargetTimestampNs;
 };

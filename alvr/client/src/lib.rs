@@ -131,7 +131,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
 
         if let Some(sender) = &*INPUT_SENDER.lock() {
             let input = Input {
-                target_timestamp: Duration::from_nanos(data.FrameIndex),
+                target_timestamp: Duration::from_nanos(data.targetTimestampNs),
                 device_motions: vec![
                     (
                         *HEAD_ID,
@@ -189,7 +189,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                 right_hand_tracking: None,
                 button_values: HashMap::new(), // unused for now
                 legacy: LegacyInput {
-                    frame_index: data.FrameIndex,
                     mounted: data.mounted,
                     controllers: [
                         LegacyController {

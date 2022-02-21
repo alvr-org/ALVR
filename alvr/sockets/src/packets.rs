@@ -168,7 +168,6 @@ pub struct LegacyController {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct LegacyInput {
-    pub frame_index: u64,
     pub mounted: u8,
     pub controllers: [LegacyController; 2],
 }

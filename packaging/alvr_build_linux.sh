@@ -26,16 +26,9 @@ controlFile='packaging/deb/control'
 # Android NDK version
 ndkVersion=30
 
-# Grab the repository directory
-repoDir="$(realpath "$(dirname "${0}")")/.."
-if ! [ -d "${repoDir}/.git" ]; then
-    # Get the absolute directory the script is running in, and add the repo name
-    repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
-fi
 
 # Set a temporary working directory
 tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
-buildDir="${repoDir}/build/alvr_server_linux/"
 
 # Import OS info - provides ${ID}
 . /etc/os-release
@@ -103,21 +96,22 @@ HELPME
 }
 
 maybe_clone() {
-    if ! [ -d "${repoDir}" ]; then
-        log info "Cloning ${repo} into ${repoDir} ..."
-        ! git clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
-    fi
-
-    # Import distro-specific helper functions once ${repoDir} exists but BEFORE changing branches
-    for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+    # Import distro-specific helper functions if they exist relative to the script
+    for helper in "$(dirname "${0}")/alvr_build_linux_targets/"*'.sh'; do
         . "${helper}"
     done
 
-    if [ "${kwArgs['--branch']}" != '' ]; then
-        log info "Changing branches to ${kwArgs['--branch']} ..."
-        # Change the current repository branch
-        ! git --work-tree="${repoDir}" checkout "${kwArgs['--branch']}" && exit 1
+    # If the repo doesn't exist, or we need a specific version, we should clone
+    if ! [ -d "${repoDir}" ] || [ "${kwArgs['--branch']}" != '' ]; then
+        log info "Cloning ${repo} into ${repoDir//$(basename "${repo}")} ..."
+        ! git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
+
+        # If we can, import the version-specific helpers after
+        for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+            . "${helper}"
+        done
     fi
+
 
     # Get the short hash for this commit AFTER all git stuff
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
@@ -139,6 +133,17 @@ main() {
 
     # Create temporary directory if it doesn't exist
     ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
+
+    # Grab the repository directory
+    repoDir="$(realpath "$(dirname "${0}")")/.."
+    if [ "${kwArgs['--branch']}" != '' ]; then
+        # Use a temp directory to not screw stuff up in cwd
+        repoDir="${tmpDir}/$(basename "${repo}")"
+    elif ! [ -d "${repoDir}/.git" ]; then
+        # Get the absolute directory the script is running in, and add the repo name
+        repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
+    fi
+    buildDir="${repoDir}/build/alvr_server_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
     ! maybe_clone && log critical 'Unable to clone repository!'

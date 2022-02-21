@@ -16,13 +16,7 @@ SUDOCMDS
 }
 
 prep_debian_server() {
-    log info 'Copying control file ...'
-    cp "${repoDir}/${controlFile}" "${tmpDir}/control"
-
-    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
-        log info 'Removing unused nvidia build dependency ...'
-        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
-    fi
+    transform_control
 
     basePackages=(
         'devscripts'
@@ -49,6 +43,9 @@ build_debian_client() { build_generic_client "${@}"; }
 
 # This needs srs error checking
 build_debian_server() {
+    # Configure the control file if it doesn't exist
+    ! [ -f "${tmpDir}/control" ] && transform_control
+
     # Create debian-specific version
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"
     [ "${buildVer}" != '' ] && debVer+="${buildVer}"
@@ -121,6 +118,17 @@ build_debian_server() {
     else
         log critical 'Unable to create package!' 8
     fi
+}
+
+transform_control() {
+    log info 'Copying control file ...'
+    cp "${repoDir}/${controlFile}" "${tmpDir}/control"
+
+    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
+        log info 'Removing unused nvidia build dependency ...'
+        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
+    fi
+
 }
 
 # Pop!_OS

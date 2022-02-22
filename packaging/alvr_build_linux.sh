@@ -138,7 +138,7 @@ main() {
     buildDir="${repoDir}/build/alvr_server_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
-    ! maybe_clone && log critical 'Unable to clone repository!'
+    ! maybe_clone && log critical 'Unable to clone repository!' 9
 
     case "${1,,}" in
         'client')

@@ -33,10 +33,6 @@ tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
 # Import OS info - provides ${ID}
 . /etc/os-release
 
-# Make sure we're not building as root
-if [ "${USER}" == 'root' ]; then
-    exit 99
-fi
 
 # Basic logger
 # Logs various types of output with details
@@ -81,9 +77,9 @@ Arguments:
         Debian-based        --release --bundle-ffmpeg
         Client              --release
     FLAGS
+        --branch=           Branch to clone
         --build-only        Only build ALVR package(s)
         --prep-only         Only prepare system for ALVR package build
-        --branch=           Branch to clone
         --client-args=      List of ALL cargo xtask client build arguments
         --server-args=      List of ALL cargo xtask server build arguments
         --rustup-src=       Source to install rustup from if not found:
@@ -94,6 +90,9 @@ Arguments:
 Example: $(basename "${0}") server --build-only --server-args='--release --no-nvidia'
 HELPME
 }
+
+# Make sure we're not building as root
+[ "${USER}" == 'root' ] && log critical 'This script cannot be run as root!' 99
 
 maybe_clone() {
     # Import distro-specific helper functions if they exist relative to the script
@@ -106,7 +105,7 @@ maybe_clone() {
         log info "Cloning ${repo} into ${repoDir//$(basename "${repo}")} ..."
         ! git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
 
-        # If we can, import the version-specific helpers after
+        # If we can, import the version-specific helpers after for compatibility
         for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
             . "${helper}"
         done
@@ -154,7 +153,7 @@ main() {
             elif prep_"${ID}"_client; then
                 # Exit successfully if we're only preparing
                 if [ "${kwArgs['--prep-only']}" != '' ]; then
-                    exit 0
+                    log info 'ALVR build environment prepared successfully.'
                 # Clone, build, and check exit codes
                 elif build_generic_client; then
                     log info 'ALVR client built successfully.'
@@ -173,7 +172,7 @@ main() {
                 log critical "Failed to build ${PRETTY_NAME} (${ID}) package!" 4
             elif prep_"${ID}"_server; then
                 if [ "${kwArgs['--prep-only']}" != '' ]; then
-                    exit 0
+                    log info 'ALVR build environment prepared successfully.'
                 elif build_"${ID}"_server; then
                     log info "${PRETTY_NAME} (${ID}) package built successfully."
                 else

@@ -31,7 +31,8 @@ void PoseHistory::OnPoseUpdated(const TrackingInfo &info) {
 			m_poseBuffer.push_back(history);
 		}
 	}
-	if (m_poseBuffer.size() > 36) {
+        // The value should match with the client's MAXIMUM_TRACKING_FRAMES in ovr_context.cpp
+	if (m_poseBuffer.size() > 120 * 3) {
 		m_poseBuffer.pop_front();
 	}
 }

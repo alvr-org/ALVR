@@ -71,8 +71,9 @@ build_debian_server() {
     export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${repoDir}/packaging/deb/cuda.pc"
 
     cd "${repoDir}" > /dev/null || return 4
-    # There's no vulkan-enabled ffmpeg in the ubuntu repos afaik
     log info 'Building ALVR server ...'
+    # Cargo does NOT like quotes
+    # shellcheck disable=SC2086
     if cargo xtask build-server ${kwArgs['--server-args']:---release --bundle-ffmpeg}; then
         cd - > /dev/null || return 4
     else

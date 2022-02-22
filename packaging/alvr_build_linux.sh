@@ -82,10 +82,10 @@ Arguments:
         Client              --release
     FLAGS
         --build-only        Only build ALVR package(s)
+        --prep-only         Only prepare system for ALVR package build
         --branch=           Branch to clone
         --client-args=      List of ALL cargo xtask client build arguments
         --server-args=      List of ALL cargo xtask server build arguments
-        --prep-only         Only prepare system for ALVR package build
         --rustup-src=       Source to install rustup from if not found:
             WARNING: This does NOT affect Fedora server builds
             rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
@@ -111,14 +111,6 @@ maybe_clone() {
             . "${helper}"
         done
     fi
-
-
-    # Get the short hash for this commit AFTER all git stuff
-    shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
-
-    # If the branch is 'v###' exactly, it's probably a release
-    ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
-
 }
 
 main() {

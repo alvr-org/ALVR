@@ -48,7 +48,6 @@ build_debian_server() {
 
     # Create debian-specific version
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"
-    [ "${buildVer}" != '' ] && debVer+="${buildVer}"
 
     debTmpDir="${tmpDir}/alvr_${debVer}"
     newBins=(

@@ -53,7 +53,7 @@ build_generic_client() {
     fi
 
     # Get the version
-    apkVer="-$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')${buildVer}"
+    apkVer="-$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')"
 
     log info 'Starting client build ...'
     # no subshell expansion warnings

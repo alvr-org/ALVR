@@ -43,20 +43,13 @@ build_fedora_server() {
     # Don't care if this fails
     mkdir -p "${HOME}/rpmbuild/SOURCES" > /dev/null 2>&1
 
-    # Configure the specfile if it doesn't exist
+    # Configure the specfile if it doesn't exist (ex: if --build-only is used)
     ! [ -f "${tmpDir}/tmp.spec" ] && transform_spec
 
     log info 'Building tarball ...'
     # The relative path at the end here is a rlly bad idea, but where does it live?!
     if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${tmpDir}/tmp.spec" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
-        log info 'Mangling spec file version and building RPMS ...'
-        [ "${buildVer}" != '' ] && sed -i "s/Release:.*/\0${buildVer}/" "${tmpDir}/tmp.spec"
-
-        # Replace build arguments in specfile if needed
-        if [ "${kwArgs['--server-args']}" != '' ]; then
-            sed -i "s/cargo xtask build-server --release/cargo xtask build-server ${kwArgs['--server-args']}/" "${tmpDir}/tmp.spec"
-        fi
-
+        log info 'Building RPMs ...'
         rpmbuild -ba "${tmpDir}/tmp.spec"
     else
         log critical 'Failed to build tarball!' 5
@@ -67,6 +60,11 @@ transform_spec() {
     log info 'Copying spec file ...'
     cp "${repoDir}/${specFile}" "${tmpDir}/tmp.spec"
 
+    # Replace build arguments in specfile if needed
+    log info 'Mangling spec file version ...'
+    if [ "${kwArgs['--server-args']}" != '' ]; then
+        sed -i "s/cargo xtask build-server --release/cargo xtask build-server ${kwArgs['--server-args']}/" "${tmpDir}/tmp.spec"
+    fi
 # Nvidia + CUDA build deps need to be added to the spec, then stripped here if --no-nvidia is use
 #    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
 #        log info 'Removing unused nvidia build dependency ...'

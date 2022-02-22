@@ -7,7 +7,7 @@ prep_rustup() {
     export PATH="${PATH}:/snap/bin:/var/lib/snapd/snap"
 
     # Install rustup ONLY if it does not exist
-    if ! command -v rustup; then
+    if ! command -v rustup >/dev/null 2>&1; then
         case "${kwArgs['--rustup-src'],,}" in
             'rustup.rs')
                 # Untested

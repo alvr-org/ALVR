@@ -16,13 +16,7 @@ SUDOCMDS
 }
 
 prep_debian_server() {
-    log info 'Copying control file ...'
-    cp "${repoDir}/${controlFile}" "${tmpDir}/control"
-
-    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
-        log info 'Removing unused nvidia build dependency ...'
-        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
-    fi
+    transform_control
 
     basePackages=(
         'devscripts'
@@ -35,6 +29,7 @@ prep_debian_server() {
     sudo -s <<SUDOCMDS
 apt -y install ${basePackages[@]}
 yes | mk-build-deps -ir "${tmpDir}/control"
+rm -f 'alvr-build-deps_'*'_amd64.'{'buildinfo','changes'}
 SUDOCMDS
     # shellcheck disable=SC2181
     if [ $? -eq 0 ]; then
@@ -48,6 +43,9 @@ build_debian_client() { build_generic_client "${@}"; }
 
 # This needs srs error checking
 build_debian_server() {
+    # Configure the control file if it doesn't exist
+    ! [ -f "${tmpDir}/control" ] && transform_control
+
     # Create debian-specific version
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"
     [ "${buildVer}" != '' ] && debVer+="${buildVer}"
@@ -63,7 +61,7 @@ build_debian_server() {
         'DEBIAN'
         'etc/ufw/applications.d'
         'usr/bin'
-        'usr/share/'{'applications','licenses/alvr','selinux/packages'}
+        'usr/share/'{'applications','licenses/alvr'}
         'usr/lib64'
         'usr/lib/firewalld/services'
         'usr/libexec/alvr/'
@@ -98,8 +96,8 @@ build_debian_server() {
     cp -ar "${buildDir}libexec/alvr/" "${debTmpDir}/usr/libexec/"
     cp -ar "${buildDir}share/"* "${debTmpDir}/usr/share/"
     cp "${repoDir}/LICENSE" "${debTmpDir}/usr/share/licenses/alvr/"
-    # Copy source files
-    cp "${repoDir}/packaging/deb/"* "${debTmpDir}/DEBIAN/"
+    # Copy control and changelog files
+    cp "${repoDir}/packaging/deb/changelog" "${tmpDir}/control" "${debTmpDir}/DEBIAN/"
     # Mangle version to version+<short-hash> AFTER it's copied
     sed -i "s/^Ver.*/Version: ${debVer}/" "${debTmpDir}/DEBIAN/control"
     cp "${repoDir}/packaging/freedesktop/alvr.desktop" "${debTmpDir}/usr/share/applications/"
@@ -120,6 +118,17 @@ build_debian_server() {
     else
         log critical 'Unable to create package!' 8
     fi
+}
+
+transform_control() {
+    log info 'Copying control file ...'
+    cp "${repoDir}/${controlFile}" "${tmpDir}/control"
+
+    if [ "${kwArgs['--no-nvidia']}" != '' ]; then
+        log info 'Removing unused nvidia build dependency ...'
+        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
+    fi
+
 }
 
 # Pop!_OS

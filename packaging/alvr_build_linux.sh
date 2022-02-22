@@ -19,8 +19,6 @@
 
 # GitHub repo
 repo='alvr-org/ALVR'
-# Git branch
-branch='master'
 # RPM spec file
 specFile='packaging/rpm/alvr.spec'
 # deb control file
@@ -28,16 +26,9 @@ controlFile='packaging/deb/control'
 # Android NDK version
 ndkVersion=30
 
-# Grab the repository directory
-repoDir="$(realpath "$(dirname "${0}")")/.."
-if ! [ -d "${repoDir}/.git" ]; then
-    # Get the absolute directory the script is running in, and add the repo name
-    repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
-fi
 
 # Set a temporary working directory
 tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
-buildDir="${repoDir}/build/alvr_server_linux/"
 
 # Import OS info - provides ${ID}
 . /etc/os-release
@@ -91,9 +82,10 @@ Arguments:
         Client              --release
     FLAGS
         --build-only        Only build ALVR package(s)
+        --branch=           Branch to clone
         --client-args=      List of ALL cargo xtask client build arguments
-        --prep-only         Only prepare system for ALVR package build
         --server-args=      List of ALL cargo xtask server build arguments
+        --prep-only         Only prepare system for ALVR package build
         --rustup-src=       Source to install rustup from if not found:
             WARNING: This does NOT affect Fedora server builds
             rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
@@ -104,21 +96,29 @@ HELPME
 }
 
 maybe_clone() {
-    if ! [ -e "${repoDir}" ]; then
-        log info "Cloning ${repo} into ${repoDir} ..."
-        git clone -b "${branch}" "https://github.com/${repo}.git"
+    # Import distro-specific helper functions if they exist relative to the script
+    for helper in "$(dirname "${0}")/alvr_build_linux_targets/"*'.sh'; do
+        . "${helper}"
+    done
+
+    # If the repo doesn't exist, or we need a specific version, we should clone
+    if ! [ -d "${repoDir}" ] || [ "${kwArgs['--branch']}" != '' ]; then
+        log info "Cloning ${repo} into ${repoDir//$(basename "${repo}")} ..."
+        ! git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
+
+        # If we can, import the version-specific helpers after
+        for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+            . "${helper}"
+        done
     fi
 
-    # Get the short hash for this commit
+
+    # Get the short hash for this commit AFTER all git stuff
     shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
 
     # If the branch is 'v###' exactly, it's probably a release
     ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
 
-    # Import distro-specific helper functions once ${repoDir} exists
-    for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
-        . "${helper}"
-    done
 }
 
 main() {
@@ -133,6 +133,17 @@ main() {
 
     # Create temporary directory if it doesn't exist
     ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
+
+    # Grab the repository directory
+    repoDir="$(realpath "$(dirname "${0}")")/.."
+    if [ "${kwArgs['--branch']}" != '' ]; then
+        # Use a temp directory to not screw stuff up in cwd
+        repoDir="${tmpDir}/$(basename "${repo}")"
+    elif ! [ -d "${repoDir}/.git" ]; then
+        # Get the absolute directory the script is running in, and add the repo name
+        repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
+    fi
+    buildDir="${repoDir}/build/alvr_server_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
     ! maybe_clone && log critical 'Unable to clone repository!'

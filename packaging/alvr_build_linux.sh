@@ -105,9 +105,11 @@ maybe_clone() {
         git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" || exit 1
 
         # If we can, import the version-specific helpers after for compatibility
-        for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
-            . "${helper}"
-        done
+        if [ -d "${repoDir}/packaging/alvr_build_linux_targets/" ]; then
+            for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+                . "${helper}"
+            done
+        fi
     fi
 }
 

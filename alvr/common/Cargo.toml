@@ -14,5 +14,5 @@ glam = { version = "0.20", features = ["serde"] }
 semver = { version = "1", features = ["serde"] }
 
 [target.'cfg(windows)'.dependencies]
-msgbox = "0.6"
+msgbox = "0.7"
 parking_lot = "0.12"

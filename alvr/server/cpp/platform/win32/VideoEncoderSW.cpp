@@ -68,7 +68,7 @@ void VideoEncoderSW::Initialize() {
 
 	m_codecContext->width = Settings::Instance().m_renderWidth;
 	m_codecContext->height = Settings::Instance().m_renderHeight;
-	m_codecContext->time_base = AVRational{std::chrono::steady_clock::period::num, std::chrono::steady_clock::period::den};
+	m_codecContext->time_base = AVRational{1, (int)(1e9)};
 	m_codecContext->framerate = AVRational{Settings::Instance().m_refreshRate, 1};
 	m_codecContext->sample_aspect_ratio = AVRational{1, 1};
 	m_codecContext->pix_fmt = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10LE : AV_PIX_FMT_YUV420P;
@@ -190,7 +190,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 	m_transferredFrame->data[0] = (uint8_t*)stagingTexMap.pData;
 	m_transferredFrame->linesize[0] = stagingTexMap.RowPitch;
 	m_transferredFrame->format = AV_PIX_FMT_RGBA;
-	m_transferredFrame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
+	m_transferredFrame->pts = targetTimestampNs;
 
 	// Use SWScaler for scaling
 	if(sws_scale(m_scalerContext, m_transferredFrame->data, m_transferredFrame->linesize,
@@ -203,7 +203,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 
 	// Send frame for encoding
 	m_encoderFrame->pict_type = insertIDR ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
-	m_encoderFrame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
+	m_encoderFrame->pts = targetTimestampNs;
 
 	int err;
 	if((err = avcodec_send_frame(m_codecContext, m_encoderFrame)) < 0) {
@@ -233,7 +233,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 		std::vector<uint8_t> encoded_data;
 		filter_NAL(packet->data, packet->size, encoded_data);
 		av_packet_free(&packet);
-		m_Listener->SendVideo(encoded_data.data(), encoded_data.size(), targetTimestampNs);
+		m_Listener->SendVideo(encoded_data.data(), encoded_data.size(), packet->pts);
 		//Debug("Sent encoded packet to client");
 	}
 

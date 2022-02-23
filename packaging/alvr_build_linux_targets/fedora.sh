@@ -46,16 +46,26 @@ build_fedora_server() {
     # Configure the specfile if it doesn't exist (ex: if --build-only is used)
     [ -f "${tmpDir}/tmp.spec" ] || transform_spec
 
+    # Get the version and release as array index 0 and 1
+    fedVer=($(grep -P 'Version|Release' "${tmpDir}/tmp.spec" | sed 's/Version: //; s/Release: //'))
+
+    # Get the tarball name
+    tgzName="$(spectool "${tmpDir}/tmp.spec" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')"
+
     log info 'Building tarball ...'
     # The relative path at the end here is a rlly bad idea, but where does it live?!
-    if tar -czf "${HOME}/rpmbuild/SOURCES/$(spectool "${tmpDir}/tmp.spec" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')" -C "${repoDir}" .; then
+    if tar -czf "${HOME}/rpmbuild/SOURCES/${tgzName}" -C "${repoDir}" .; then
         log info 'Building RPMs ...'
-        rpmbuild -ba "${tmpDir}/tmp.spec"
+        if rpmbuild -ba "${tmpDir}/tmp.spec"; then
+            mv "${HOME}/rpmbuild/RPMS/x86_64/alvr-${fedVer[0]}-${fedVer[1]}.x86_64.rpm" "${repoDir}/build"
+            mv "${HOME}/rpmbuild/SRPMS/alvr-${fedVer[0]}-${fedVer[1]}.src.rpm" "${repoDir}/build"
+            rm -rf "${HOME}/rpmbuild/SOURCES/${tgzName}" "${HOME}/rpmbuild/BUILD"
+        else
+            return 4
+        fi
     else
         log critical 'Failed to build tarball!' 5
     fi
-
-    # Copy and cleanup crap needs to go here
 }
 
 transform_spec() {

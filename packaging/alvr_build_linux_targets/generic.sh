@@ -23,7 +23,7 @@ prep_rustup() {
 
     log info 'Installing rust nightly ...'
     rustup install nightly || return 7
-    
+
     # This doesn't necessarily need to succeed, but ideally it will
     rustup default nightly
 }
@@ -52,7 +52,7 @@ build_generic_client() {
     fi
 
     # Get the version
-    apkVer="-$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')"
+    apkVer="_$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')"
 
     log info 'Starting client build ...'
     # no subshell expansion warnings

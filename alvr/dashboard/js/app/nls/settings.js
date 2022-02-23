@@ -116,7 +116,8 @@ define({
         // Audio tab
         "_root_audio_tab.name": "Audio",
         "_root_audio_linuxBackend-choice-.name": "Linux backend",
-        "_root_audio_linuxBackend-choice-.description": "To use the JACK backend you may need to configure it in Catia or equivalent software",
+        "_root_audio_linuxBackend-choice-.description":
+            "To use the JACK backend you may need to configure it in Catia or equivalent software",
         "_root_audio_gameAudio.name": "Stream game audio",
         // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
         "_root_audio_gameAudio_enabled.description":
@@ -292,7 +293,8 @@ define({
         // Connection tab
         "_root_connection_tab.name": "Connection",
         "_root_connection_clientDiscovery.name": "Client discovery",
-        "_root_connection_clientDiscovery_content_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv
+        "_root_connection_clientDiscovery_content_autoTrustClients.name":
+            "Trust clients automatically (not recommended)", // adv
         "_root_connection_webServerPort.name": "Web server port",
         "_root_connection_streamProtocol-choice-.name": "Streaming protocol",
         "_root_connection_streamProtocol-choice-.description":

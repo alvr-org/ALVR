@@ -1,6 +1,6 @@
 [package]
 name = "alvr_client"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"

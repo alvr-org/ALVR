@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "backtrace",
  "glam 0.20.2",
@@ -173,12 +173,12 @@ dependencies = [
  "log",
  "msgbox",
  "parking_lot 0.12.0",
- "semver 1.0.5",
+ "semver 1.0.6",
 ]
 
 [[package]]
 name = "alvr_filesystem"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -238,7 +238,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.2",
@@ -315,7 +315,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "alvr_filesystem",
  "fs_extra",
@@ -353,9 +353,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.53"
+version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94a45b455c14666b85fc40a019e8ab9eb75e3a124e05494f5397122bc9eb06e0"
+checksum = "159bb86af3a200e19a068f4224eae4c8bb2d0fa054c7e5d1cacd5cef95e684cd"
 
 [[package]]
 name = "approx"
@@ -1811,9 +1811,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
+checksum = "d39cd93900197114fa1fcb7ae84ca742095eed9442088988ae74fa744e930e77"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -2289,7 +2289,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2301,7 +2301,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "bitflags",
  "wasm-timer",
@@ -2310,7 +2310,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "futures",
  "log",
@@ -2321,7 +2321,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "bytemuck",
  "glam 0.10.2",
@@ -2334,7 +2334,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2347,7 +2347,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "iced_core",
 ]
@@ -2355,7 +2355,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2375,7 +2375,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#adce9e04213803bd775538efddf6e7908d1c605e"
+source = "git+https://github.com/iced-rs/iced#9fe50801537e8fbfd2914f5139b5a609929e25db"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2644,9 +2644,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.118"
+version = "0.2.119"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06e509672465a0504304aa87f9f176f2b2b716ed8fb105ebe5c02dc6dce96a94"
+checksum = "1bf2e165bb3457c8e098ea76f3e3bc9db55f87aa90d52d0e6be741470916aaa4"
 
 [[package]]
 name = "libloading"
@@ -4130,9 +4130,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.3"
+version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b323592e3164322f5b193dc4302e4e36cd8d37158a712d664efae1a5c2791700"
+checksum = "4fbfeb8d0ddb84706bc597a5574ab8912817c52a397f819e5b614e2265206921"
 dependencies = [
  "log",
  "ring",
@@ -4227,9 +4227,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0486718e92ec9a68fbed73bb5ef687d71103b142595b406835649bebd33f72c7"
+checksum = "a4a3381e03edd24287172047536f20cabde766e2cd3e65e6b00fb3af51c4f38d"
 dependencies = [
  "serde",
 ]
@@ -4455,9 +4455,9 @@ checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "smartstring"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31aa6a31c0c2b21327ce875f7e8952322acfcfd0c27569a6e18a647281352c9b"
+checksum = "e714dff2b33f2321fdcd475b71cec79781a692d846f37f415fb395a1d2bcd48e"
 dependencies = [
  "static_assertions",
 ]
@@ -5174,7 +5174,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "17.0.0-dev.10"
+version = "18.0.0-dev00"
 dependencies = [
  "exec",
 ]

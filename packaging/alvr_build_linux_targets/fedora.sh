@@ -57,8 +57,8 @@ build_fedora_server() {
     if tar -czf "${HOME}/rpmbuild/SOURCES/${tgzName}" -C "${repoDir}" .; then
         log info 'Building RPMs ...'
         if rpmbuild -ba "${tmpDir}/tmp.spec"; then
-            mv "${HOME}/rpmbuild/RPMS/x86_64/alvr-${fedVer[0]}-${fedVer[1]}.x86_64.rpm" "${repoDir}/build"
-            mv "${HOME}/rpmbuild/SRPMS/alvr-${fedVer[0]}-${fedVer[1]}.src.rpm" "${repoDir}/build"
+            mv "${HOME}/rpmbuild/RPMS/x86_64/alvr-${fedVer[0]}-${fedVer[1]}.x86_64.rpm" "${repoDir}/build/"
+            mv "${HOME}/rpmbuild/SRPMS/alvr-${fedVer[0]}-${fedVer[1]}.src.rpm" "${repoDir}/build/"
             rm -rf "${HOME}/rpmbuild/SOURCES/${tgzName}" "${HOME}/rpmbuild/BUILD"
         else
             return 4

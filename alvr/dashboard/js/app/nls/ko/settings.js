@@ -215,7 +215,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "업데이트 채널",
     "_root_extra_updateChannel_noUpdates-choice-.name": "업데이트 없음",
     "_root_extra_updateChannel_stable-choice-.name": "안정",
-    "_root_extra_updateChannel_beta-choice-.name": "베타",
     "_root_extra_updateChannel_nightly-choice-.name": "나이틀리",
     "_root_extra_logToDisk.name": "로그 저장 (session_log.txt)",
     "_root_extra_notificationLevel-choice-.name": "알림 수준", // adv

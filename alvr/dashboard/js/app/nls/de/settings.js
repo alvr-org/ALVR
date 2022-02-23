@@ -197,7 +197,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "Updatekanal",
     "_root_extra_updateChannel_noUpdates-choice-.name": "Keine Updates",
     "_root_extra_updateChannel_stable-choice-.name": "Stabil",
-    "_root_extra_updateChannel_beta-choice-.name": "Beta",
     "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
     "_root_extra_logToDisk.name": "lokalen Log erstellen (session_log.txt)",
     "_root_extra_notificationLevel-choice-.name": "Benachrichtigungslevel", // adv

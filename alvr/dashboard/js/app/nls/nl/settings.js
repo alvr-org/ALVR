@@ -114,7 +114,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "Update kanaal",
     "_root_extra_updateChannel_noUpdates-choice-.name": "Geen updates",
     "_root_extra_updateChannel_stable-choice-.name": "Stabiel",
-    "_root_extra_updateChannel_beta-choice-.name": "Beta",
     "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
     "_root_extra_logToDisk.name": "Log op schijf (session_log.txt)",
     // Others

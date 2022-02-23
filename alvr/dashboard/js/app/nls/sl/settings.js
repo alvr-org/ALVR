@@ -190,7 +190,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "Posodobitvene različice",
     "_root_extra_updateChannel_noUpdates-choice-.name": "Brez posodobitev",
     "_root_extra_updateChannel_stable-choice-.name": "Trdna",
-    "_root_extra_updateChannel_beta-choice-.name": "Preizkuzna",
     "_root_extra_updateChannel_nightly-choice-.name": "Dnevna-preizkusna",
     "_root_extra_logToDisk.name": "Beleži na pomnilnik (session_log.txt)",
     "_root_extra_notificationLevel-choice-.name": "Raven opozoril", // adv

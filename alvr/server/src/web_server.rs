@@ -156,7 +156,7 @@ async fn http_api(
         "/api/driver/list" => {
             reply_json(&alvr_commands::get_registered_drivers().unwrap_or_default())?
         }
-        uri @ "/firewall-rules/add" | uri @ "/firewall-rules/remove" => {
+        uri @ ("/api/firewall-rules/add" | "/api/firewall-rules/remove") => {
             let add = uri.ends_with("add");
             let maybe_err = alvr_commands::firewall_rules(add).err();
             if let Some(e) = &maybe_err {
@@ -217,6 +217,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
+        "/api/can-update" => Response::new(cfg!(windows).to_string().into()),
         "/api/update" => {
             if let Ok(url) = from_request_body::<String>(request).await {
                 let redirection_response = trace_err!(reqwest::get(&url).await)?;

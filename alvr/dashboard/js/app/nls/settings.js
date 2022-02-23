@@ -115,6 +115,8 @@ define({
             "Limit increasing bitrate if sent rate is below threshold percentage of bitrate. Prevents stutters caused when switching from simple scenes to complex scenes", // adv
         // Audio tab
         "_root_audio_tab.name": "Audio",
+        "_root_audio_linuxBackend-choice-.name": "Linux backend",
+        "_root_audio_linuxBackend-choice-.description": "To use the JACK backend you may need to configure it in Catia or equivalent software",
         "_root_audio_gameAudio.name": "Stream game audio",
         // "_root_audio_gameAudio.description": use "_root_audio_gameAudio_enabled.description"
         "_root_audio_gameAudio_enabled.description":
@@ -289,7 +291,8 @@ define({
             "Duration range for haptic pulses where intensity should be increased. \nIncrease the range if slightly longer haptic pulses feel too weak", // adv
         // Connection tab
         "_root_connection_tab.name": "Connection",
-        "_root_connection_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv
+        "_root_connection_clientDiscovery.name": "Client discovery",
+        "_root_connection_clientDiscovery_content_autoTrustClients.name": "Trust clients automatically (not recommended)", // adv
         "_root_connection_webServerPort.name": "Web server port",
         "_root_connection_streamProtocol-choice-.name": "Streaming protocol",
         "_root_connection_streamProtocol-choice-.description":
@@ -325,7 +328,6 @@ define({
         "_root_extra_updateChannel-choice-.name": "Update channel",
         "_root_extra_updateChannel_noUpdates-choice-.name": "No updates",
         "_root_extra_updateChannel_stable-choice-.name": "Stable",
-        "_root_extra_updateChannel_beta-choice-.name": "Beta",
         "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
         "_root_extra_logToDisk.name": "Log to disk (session_log.txt)",
         "_root_extra_notificationLevel-choice-.name": "Notification level", // adv

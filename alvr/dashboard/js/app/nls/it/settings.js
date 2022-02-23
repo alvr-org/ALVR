@@ -174,7 +174,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "Canale di aggiornamento",
     "_root_extra_updateChannel_noUpdates-choice-.name": "Nessun aggiornamento",
     "_root_extra_updateChannel_stable-choice-.name": "Stabile",
-    "_root_extra_updateChannel_beta-choice-.name": "Beta",
     "_root_extra_updateChannel_nightly-choice-.name": "Nightly",
     "_root_extra_logToDisk.name": "Salva log su disco (session_log.txt)",
     // "_root_extra_notificationLevel-choice-.name": "", // adv

@@ -55,7 +55,7 @@ define([
                 $("#GPUSupportText").text(getAndCheckGPUSupport());
 
                 $("#addFirewall").click(() => {
-                    $.get("firewall-rules/add", undefined, (res) => {
+                    $.get("api/firewall-rules/add", undefined, (res) => {
                         if (res == -1) {
                             Lobibox.notify("error", {
                                 size: "mini",

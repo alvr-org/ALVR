@@ -211,7 +211,6 @@ define({
     "_root_extra_updateChannel-choice-.name": "Canal de actualización",
     "_root_extra_updateChannel_noUpdates-choice-.name": "No hay actualizaciones",
     "_root_extra_updateChannel_stable-choice-.name": "Estable",
-    "_root_extra_updateChannel_beta-choice-.name": "Beta",
     "_root_extra_updateChannel_nightly-choice-.name": "Experimental",
     "_root_extra_logToDisk.name": "Guardar registro en el disco (session_log.txt)",
     "_root_extra_notificationLevel-choice-.name": "Grado de notificaciones", // adv

@@ -467,7 +467,6 @@ pub enum Theme {
 pub enum UpdateChannel {
     NoUpdates,
     Stable,
-    Beta,
     Nightly,
 }
 

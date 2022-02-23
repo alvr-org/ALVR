@@ -13,6 +13,7 @@ define([
     "app/languageSelector",
     "json!../../api/session/load",
     "text!../../api/version",
+    "text!../../api/can-update",
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css",
@@ -31,12 +32,17 @@ define([
     languageSelector,
     session,
     version,
+    canUpdate,
 ) {
     $(function () {
         const compiledTemplate = _.template(mainTemplate);
         const template = compiledTemplate(i18n);
 
         function checkForUpdate(settings, delay) {
+            if (!canUpdate || (version.includes("dev") && !version.includes("nightly"))) {
+                return;
+            }
+
             session = settings.getSession();
             const updateType =
                 session.sessionSettings.extra.updateChannel.variant;
@@ -45,9 +51,6 @@ define([
             if (updateType === "stable") {
                 url =
                     "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
-            } else if (updateType === "beta") {
-                url =
-                    "https://api.github.com/repos/alvr-org/ALVR/releases?per_page=1";
             } else if (updateType === "nightly") {
                 url =
                     "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
@@ -56,10 +59,6 @@ define([
             }
 
             $.get(url, (data) => {
-                if (updateType === "beta") {
-                    data = data[0];
-                }
-
                 if (data.tag_name === "v" + version) {
                     Lobibox.notify("success", {
                         size: "mini",
@@ -263,7 +262,7 @@ define([
             }
 
             $("#bodyContent").fadeIn(function () {
-                if (session.setupWizard) {
+                if (session.setupWizard && !version.includes("dev")) {
                     setTimeout(() => {
                         wizard.showWizard();
                     }, 500);
@@ -275,7 +274,7 @@ define([
             });
 
             $("#addFirewallRules").click(() => {
-                $.get("firewall-rules/add", undefined, (res) => {
+                $.get("api/firewall-rules/add", undefined, (res) => {
                     if (res == 0) {
                         Lobibox.notify("success", {
                             size: "mini",
@@ -289,7 +288,7 @@ define([
             });
 
             $("#removeFirewallRules").click(() => {
-                $.get("firewall-rules/remove", undefined, (res) => {
+                $.get("api/firewall-rules/remove", undefined, (res) => {
                     if (res == 0) {
                         Lobibox.notify("success", {
                             size: "mini",
@@ -308,12 +307,35 @@ define([
 
             $("#version").text("v" + version);
 
+            $("#openReleasePage").click(() => {
+                let repoName = "";
+                if (version.includes("nightly")) {
+                    repoName = "ALVR-nightly";
+                } else {
+                    repoName = "ALVR";
+                }
+                const url = `https://github.com/alvr-org/${repoName}/releases/tag/v${version}`;
+                $.ajax({
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                    },
+                    type: "POST",
+                    url: "/api/open",
+                    // eslint-disable-next-line xss/no-mixed-html
+                    data: JSON.stringify(url),
+                    dataType: "JSON",
+                });
+            });
+
             driverList.fillDriverList("registeredDriversInst");
 
             uploadPreset.addUploadPreset(
                 "settingUploadPreset",
                 settings.getWebClientId(),
             );
+
+            document.title = `ALVR dashboard (server v${version})`;
         });
     });
 });

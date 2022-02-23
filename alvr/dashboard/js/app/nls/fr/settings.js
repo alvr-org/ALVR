@@ -176,7 +176,6 @@ define({
     // "_root_extra_updateChannel-choice-.name": "",
     // "_root_extra_updateChannel_noUpdates-choice-.name": "",
     // "_root_extra_updateChannel_stable-choice-.name": "",
-    // "_root_extra_updateChannel_beta-choice-.name": "",
     // "_root_extra_updateChannel_nightly-choice-.name": "",
     // "_root_extra_logToDisk.name": "",
     // "_root_extra_notificationLevel-choice-.name": "", // adv

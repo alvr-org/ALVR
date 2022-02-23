@@ -41,7 +41,7 @@ build_fedora_client() { build_generic_client "${@}"; }
 
 build_fedora_server() {
     # Don't care if this fails
-    mkdir -p "${HOME}/rpmbuild/SOURCES" > /dev/null 2>&1
+    mkdir -p "${HOME}/rpmbuild/SOURCES" "${repoDir}/build" > /dev/null 2>&1
 
     # Configure the specfile if it doesn't exist (ex: if --build-only is used)
     [ -f "${tmpDir}/tmp.spec" ] || transform_spec

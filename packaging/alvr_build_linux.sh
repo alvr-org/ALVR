@@ -102,7 +102,7 @@ maybe_clone() {
     # If the repo doesn't exist, or we need a specific version, we should clone
     if ! [ -d "${repoDir}" ] || [ "${kwArgs['--branch']}" != '' ]; then
         log info "Cloning ${repo} into ${repoDir//$(basename "${repo}")} ..."
-        ! git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
+        git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" || exit 1
 
         # If we can, import the version-specific helpers after for compatibility
         for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
@@ -122,7 +122,7 @@ main() {
     done
 
     # Create temporary directory if it doesn't exist
-    ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
+    [ -d "${tmpDir}" ] || mkdir "${tmpDir}"
 
     # Grab the repository directory
     repoDir="$(realpath "$(dirname "${0}")")/.."
@@ -136,7 +136,7 @@ main() {
     buildDir="${repoDir}/build/alvr_server_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
-    ! maybe_clone && log critical 'Unable to clone repository!' 9
+    maybe_clone || log critical 'Unable to clone repository!' 9
 
     case "${1,,}" in
         'client')

@@ -14,7 +14,7 @@ prep_rustup() {
                 curl -sSf https://sh.rustup.rs | sh
             ;;
             # If the keyword is the value, there was no keyword specified
-            'snap' | '--rustup-src') ! sudo snap install rustup --classic && exit 7 ;;
+            'snap' | '--rustup-src') sudo snap install rustup --classic || return 7 ;;
             *)
                 log critical "Neither Rustup installation nor Rustup source type found; bad source was: ${kwArgs['--rustup-src']}" 7
             ;;
@@ -22,9 +22,8 @@ prep_rustup() {
     fi
 
     log info 'Installing rust nightly ...'
-    if ! rustup install nightly; then
-        return 7
-    fi
+    rustup install nightly || return 7
+    
     # This doesn't necessarily need to succeed, but ideally it will
     rustup default nightly
 }

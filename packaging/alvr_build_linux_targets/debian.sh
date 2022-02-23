@@ -44,7 +44,7 @@ build_debian_client() { build_generic_client "${@}"; }
 # This needs srs error checking
 build_debian_server() {
     # Configure the control file if it doesn't exist
-    ! [ -f "${tmpDir}/control" ] && transform_control
+    [ -f "${tmpDir}/control" ] || transform_control
 
     # Get version from control so we can use it in the name
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"

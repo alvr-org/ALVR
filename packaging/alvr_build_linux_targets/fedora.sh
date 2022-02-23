@@ -44,7 +44,7 @@ build_fedora_server() {
     mkdir -p "${HOME}/rpmbuild/SOURCES" > /dev/null 2>&1
 
     # Configure the specfile if it doesn't exist (ex: if --build-only is used)
-    ! [ -f "${tmpDir}/tmp.spec" ] && transform_spec
+    [ -f "${tmpDir}/tmp.spec" ] || transform_spec
 
     log info 'Building tarball ...'
     # The relative path at the end here is a rlly bad idea, but where does it live?!

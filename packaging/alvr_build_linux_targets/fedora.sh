@@ -54,6 +54,8 @@ build_fedora_server() {
     else
         log critical 'Failed to build tarball!' 5
     fi
+
+    # Copy and cleanup crap needs to go here
 }
 
 transform_spec() {

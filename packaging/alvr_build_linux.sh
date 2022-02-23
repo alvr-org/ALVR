@@ -26,13 +26,11 @@ controlFile='packaging/deb/control'
 # Android NDK version
 ndkVersion=30
 
-
 # Set a temporary working directory
 tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
 
 # Import OS info - provides ${ID}
 . /etc/os-release
-
 
 # Basic logger
 # Logs various types of output with details
@@ -72,6 +70,7 @@ Arguments:
         all                 Prepare and build ALVR client and server
         client              Prepare and build ALVR client
         server              Prepare and build ALVR server
+        clobber             Clobber (clean) the entire build environment and dependencies
     CARGO BUILD DEFAULTS
         Fedora              --release
         Debian-based        --release --bundle-ffmpeg
@@ -182,15 +181,21 @@ main() {
                 log critical "Failed to prepare ${PRETTY_NAME} (${ID}) for ALVR server build!" 3
             fi
         ;;
+        'clobber')
+            log info 'Clobbering build environment ...'
+            rm -rf "${repoDir}/"{'build','deps','target'}
+        ;;
         'all')
             ${0} server "${@:2}"
             ${0} client "${@:2}"
         ;;
         *)
+            log error "Invalid action: ${1}!" NOKILL
             help_docs
         ;;
     esac
 
+    # If there's a failure this will not run by design so we can debug
     rm -rf "${tmpDir}"
 }
 

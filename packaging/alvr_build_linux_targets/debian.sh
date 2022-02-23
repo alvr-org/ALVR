@@ -46,7 +46,7 @@ build_debian_server() {
     # Configure the control file if it doesn't exist
     ! [ -f "${tmpDir}/control" ] && transform_control
 
-    # Create debian-specific version
+    # Get version from control so we can use it in the name
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"
 
     debTmpDir="${tmpDir}/alvr_${debVer}"
@@ -98,8 +98,6 @@ build_debian_server() {
     cp "${repoDir}/LICENSE" "${debTmpDir}/usr/share/licenses/alvr/"
     # Copy control and changelog files
     cp "${repoDir}/packaging/deb/changelog" "${tmpDir}/control" "${debTmpDir}/DEBIAN/"
-    # Mangle version to version+<short-hash> AFTER it's copied
-    sed -i "s/^Ver.*/Version: ${debVer}/" "${debTmpDir}/DEBIAN/control"
     cp "${repoDir}/packaging/freedesktop/alvr.desktop" "${debTmpDir}/usr/share/applications/"
     cp "${repoDir}/packaging/firewall/alvr-firewalld.xml" "${debTmpDir}/usr/share/alvr/"
     cp "${repoDir}/packaging/firewall/alvr_fw_config.sh" "${debTmpDir}/usr/libexec/alvr/"

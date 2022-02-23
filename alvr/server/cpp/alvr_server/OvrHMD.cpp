@@ -226,8 +226,13 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
     // Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
     // which never applies reprojection
+    // Also Disable async reprojection on vulkan
+    #ifndef _WIN32
     vr::VRSettings()->SetBool(
         vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, true);
+    vr::VRSettings()->SetBool(
+        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool, false);
+    #endif
 
     if (!m_baseComponentsInitialized) {
         m_baseComponentsInitialized = true;

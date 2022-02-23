@@ -24,8 +24,6 @@ class CEncoder : public CThread {
     void GetFds(int client, int (*fds)[6]);
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
-    uint64_t m_poseSubmitIndex = 0;
-    uint32_t m_lastFrame = 0;
     std::atomic_bool m_exiting{false};
     IDRScheduler m_scheduler;
     int m_socket;

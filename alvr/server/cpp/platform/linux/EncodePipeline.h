@@ -16,8 +16,8 @@ class EncodePipeline
 public:
   virtual ~EncodePipeline();
 
-  virtual void PushFrame(uint32_t frame_index, bool idr) = 0;
-  bool GetEncoded(std::vector<uint8_t> & out);
+  virtual void PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) = 0;
+  bool GetEncoded(std::vector<uint8_t> & out, uint64_t *pts);
 
   void SetBitrate(int64_t bitrate);
   static std::unique_ptr<EncodePipeline> Create(std::vector<VkFrame> &input_frames, VkFrameCtx &vk_frame_ctx);

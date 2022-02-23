@@ -71,8 +71,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
     encoder_ctx->pix_fmt = AV_PIX_FMT_BGR0;
     encoder_ctx->width = settings.m_renderWidth;
     encoder_ctx->height = settings.m_renderHeight;
-    encoder_ctx->time_base = {std::chrono::steady_clock::period::num,
-                              std::chrono::steady_clock::period::den};
+    encoder_ctx->time_base = {1, (int)1e9};
     encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
     encoder_ctx->max_b_frames = 0;
@@ -92,7 +91,7 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
     AVUTIL.av_frame_free(&hw_frame);
 }
 
-void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, bool idr) {
+void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) {
     assert(frame_index < vk_frames.size());
 
     int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frames[frame_index].get(), 0);
@@ -101,7 +100,7 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, bool idr) {
     }
 
     hw_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
-    hw_frame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
+    hw_frame->pts = targetTimestampNs;
 
     if ((err = AVCODEC.avcodec_send_frame(encoder_ctx, hw_frame)) < 0) {
         throw alvr::AvException("avcodec_send_frame failed:", err);

@@ -228,24 +228,25 @@ void CEncoder::Run() {
           encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1000000L); // in bits;
         }
 
-        auto encode_start = std::chrono::steady_clock::now();
-        encode_pipeline->PushFrame(frame_info.image, m_scheduler.CheckIDRInsertion());
-
-        static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
-
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
-        if (pose)
+        if (!pose)
         {
-          m_poseSubmitIndex = pose->info.targetTimestampNs;
-        }
-
-        encoded_data.clear();
-        // Encoders can req more then once frame, need to accumulate more data before sending it to the client
-        if (!encode_pipeline->GetEncoded(encoded_data)) {
           continue;
         }
 
-        m_listener->SendVideo(encoded_data.data(), encoded_data.size(), m_poseSubmitIndex + Settings::Instance().m_trackingFrameOffset);
+        auto encode_start = std::chrono::steady_clock::now();
+        encode_pipeline->PushFrame(frame_info.image, pose->info.targetTimestampNs, m_scheduler.CheckIDRInsertion());
+
+        static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
+
+        encoded_data.clear();
+        uint64_t pts;
+        // Encoders can req more then once frame, need to accumulate more data before sending it to the client
+        if (!encode_pipeline->GetEncoded(encoded_data, &pts)) {
+          continue;
+        }
+
+        m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
 
         auto encode_end = std::chrono::steady_clock::now();
 

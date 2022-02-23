@@ -14,7 +14,7 @@ public:
   ~EncodePipelineSW();
   EncodePipelineSW(std::vector<VkFrame> &input_frames, VkFrameCtx& vk_frame_ctx);
 
-  void PushFrame(uint32_t frame_index, bool idr) override;
+  void PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) override;
 
 private:
   std::vector<AVFrame *> vk_frames;

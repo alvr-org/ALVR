@@ -113,6 +113,7 @@ build_debian_server() {
     if dpkg-deb --build --root-owner-group "${debTmpDir}"; then
         # dpkg-deb puts the resulting file in the top level directory
         mv "${tmpDir}/alvr_${debVer}.deb" "${repoDir}/build"
+        rm -rf "${repoDir}/build/alvr_server_linux"
     else
         log critical 'Unable to create package!' 8
     fi

@@ -67,7 +67,7 @@ jobs:
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -150,13 +150,13 @@ jobs:
 
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.
-    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
+    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2022-Readme.md
     runs-on: windows-latest
     needs: [prepare_release, build_android_deps]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-latest runner.
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - name: Checkout code
         uses: actions/checkout@v2

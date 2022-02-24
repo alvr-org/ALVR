@@ -161,6 +161,8 @@ void Settings::Load()
 		m_sharpening = (float)config.get("sharpening").get<double>();
 
 		m_enableFec = config.get("enable_fec").get<bool>();
+
+		m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
 		
 		Debug("Config JSON: %hs\n", json.c_str());
 		Info("Serial Number: %hs\n", mSerialNumber.c_str());

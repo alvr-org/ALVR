@@ -114,6 +114,7 @@ pub struct OpenvrConfig {
     pub gamma: f32,
     pub sharpening: f32,
     pub enable_fec: bool,
+    pub linux_async_reprojection: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -164,6 +165,7 @@ impl Default for SessionDesc {
                 controllers_enabled: false,
                 enable_foveated_rendering: false,
                 enable_color_correction: false,
+                linux_async_reprojection: true,
                 ..<_>::default()
             },
             client_connections: HashMap::new(),

@@ -231,7 +231,7 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRSettings()->SetBool(
         vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, true);
     vr::VRSettings()->SetBool(
-        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool, false);
+        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool, Settings::Instance().m_enableLinuxVulkanAsync);
     #endif
 
     if (!m_baseComponentsInitialized) {

@@ -183,6 +183,9 @@ pub struct VideoDesc {
 
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
+
+    #[schema(advanced)]
+    pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -599,6 +602,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.,
                 },
             },
+            linux_async_reprojection: false,
         },
         audio: AudioSectionDefault {
             linux_backend: LinuxAudioBackendDefault {

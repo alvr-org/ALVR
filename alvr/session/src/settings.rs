@@ -183,6 +183,9 @@ pub struct VideoDesc {
 
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
+
+    #[schema(advanced)]
+    pub enable_linux_vulkan_async: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -599,6 +602,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.,
                 },
             },
+            enable_linux_vulkan_async: true,
         },
         audio: AudioSectionDefault {
             linux_backend: LinuxAudioBackendDefault {

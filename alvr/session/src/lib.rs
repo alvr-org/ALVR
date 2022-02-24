@@ -114,6 +114,7 @@ pub struct OpenvrConfig {
     pub gamma: f32,
     pub sharpening: f32,
     pub enable_fec: bool,
+    pub enable_linux_vulkan_async: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

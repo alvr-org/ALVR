@@ -11,9 +11,9 @@ env:
 
 jobs:
   build_windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     env:
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -86,9 +86,9 @@ jobs:
           args: --all -- --check
 
   clippy:
-    runs-on: windows-latest
+    runs-on: windows-2019
     env:
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin'
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

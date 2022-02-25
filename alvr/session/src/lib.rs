@@ -142,7 +142,7 @@ pub struct SessionDesc {
 impl Default for SessionDesc {
     fn default() -> Self {
         Self {
-            setup_wizard: true,
+            setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
             locale: "system".into(),
             openvr_config: OpenvrConfig {
                 universe_id: 2,

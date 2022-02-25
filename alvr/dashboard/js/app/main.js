@@ -246,7 +246,7 @@ define([
             }
 
             $("#bodyContent").fadeIn(function () {
-                if (session.setupWizard && !version.includes("dev")) {
+                if (session.setupWizard) {
                     setTimeout(() => {
                         wizard.showWizard();
                     }, 500);

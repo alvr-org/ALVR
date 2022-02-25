@@ -1,28 +1,17 @@
 use std::{
-    env,
+    env::{
+        self,
+        consts::{DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX},
+    },
     path::{Path, PathBuf},
 };
 
-#[cfg(not(windows))]
 pub fn exec_fname(name: &str) -> String {
-    name.to_owned()
-}
-#[cfg(windows)]
-pub fn exec_fname(name: &str) -> String {
-    format!("{name}.exe")
+    format!("{name}{EXE_SUFFIX}")
 }
 
-#[cfg(target_os = "linux")]
 pub fn dynlib_fname(name: &str) -> String {
-    format!("lib{name}.so")
-}
-#[cfg(windows)]
-pub fn dynlib_fname(name: &str) -> String {
-    format!("{name}.dll")
-}
-#[cfg(target_os = "macos")]
-pub fn dynlib_fname(name: &str) -> String {
-    format!("lib{name}.dylib")
+    format!("{DLL_PREFIX}{name}{DLL_SUFFIX}")
 }
 
 pub fn target_dir() -> PathBuf {

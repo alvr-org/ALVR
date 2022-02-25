@@ -44,11 +44,10 @@ build_debian_client() { build_generic_client "${@}"; }
 # This needs srs error checking
 build_debian_server() {
     # Configure the control file if it doesn't exist
-    ! [ -f "${tmpDir}/control" ] && transform_control
+    [ -f "${tmpDir}/control" ] || transform_control
 
-    # Create debian-specific version
+    # Get version from control so we can use it in the name
     debVer="$(grep '^Version' "${tmpDir}/control" | awk '{ print $2 }')"
-    [ "${buildVer}" != '' ] && debVer+="${buildVer}"
 
     debTmpDir="${tmpDir}/alvr_${debVer}"
     newBins=(
@@ -71,8 +70,9 @@ build_debian_server() {
     export PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:${repoDir}/packaging/deb/cuda.pc"
 
     cd "${repoDir}" > /dev/null || return 4
-    # There's no vulkan-enabled ffmpeg in the ubuntu repos afaik
     log info 'Building ALVR server ...'
+    # Cargo does NOT like quotes
+    # shellcheck disable=SC2086
     if cargo xtask build-server ${kwArgs['--server-args']:---release --bundle-ffmpeg}; then
         cd - > /dev/null || return 4
     else
@@ -98,8 +98,6 @@ build_debian_server() {
     cp "${repoDir}/LICENSE" "${debTmpDir}/usr/share/licenses/alvr/"
     # Copy control and changelog files
     cp "${repoDir}/packaging/deb/changelog" "${tmpDir}/control" "${debTmpDir}/DEBIAN/"
-    # Mangle version to version+<short-hash> AFTER it's copied
-    sed -i "s/^Ver.*/Version: ${debVer}/" "${debTmpDir}/DEBIAN/control"
     cp "${repoDir}/packaging/freedesktop/alvr.desktop" "${debTmpDir}/usr/share/applications/"
     cp "${repoDir}/packaging/firewall/alvr-firewalld.xml" "${debTmpDir}/usr/share/alvr/"
     cp "${repoDir}/packaging/firewall/alvr_fw_config.sh" "${debTmpDir}/usr/libexec/alvr/"
@@ -115,6 +113,7 @@ build_debian_server() {
     if dpkg-deb --build --root-owner-group "${debTmpDir}"; then
         # dpkg-deb puts the resulting file in the top level directory
         mv "${tmpDir}/alvr_${debVer}.deb" "${repoDir}/build"
+        rm -rf "${repoDir}/build/alvr_server_linux"
     else
         log critical 'Unable to create package!' 8
     fi

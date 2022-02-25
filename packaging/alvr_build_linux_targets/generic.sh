@@ -14,7 +14,7 @@ prep_rustup() {
                 curl -sSf https://sh.rustup.rs | sh
             ;;
             # If the keyword is the value, there was no keyword specified
-            'snap' | '--rustup-src') ! sudo snap install rustup --classic && exit 7 ;;
+            'snap' | '--rustup-src') sudo snap install rustup --classic || return 7 ;;
             *)
                 log critical "Neither Rustup installation nor Rustup source type found; bad source was: ${kwArgs['--rustup-src']}" 7
             ;;
@@ -22,9 +22,8 @@ prep_rustup() {
     fi
 
     log info 'Installing rust nightly ...'
-    if ! rustup install nightly; then
-        return 7
-    fi
+    rustup install nightly || return 7
+
     # This doesn't necessarily need to succeed, but ideally it will
     rustup default nightly
 }
@@ -53,11 +52,13 @@ build_generic_client() {
     fi
 
     # Get the version
-    apkVer="-$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')${buildVer}"
+    apkVer="_$(grep -P '^version' "${repoDir}/alvr/common/Cargo.toml" | sed -E 's/^version = "(.*)"$/\1/')"
 
     log info 'Starting client build ...'
     # no subshell expansion warnings
     cd "${repoDir}" > /dev/null || return 2
+    # Cargo does NOT like quotes
+    # shellcheck disable=SC2086
     if cargo xtask build-android-deps && cargo xtask build-client ${kwArgs['--client-args']:---release}; then
         # Move and rename the files at the top of the build directory
         mv "${repoDir}/build/alvr_client_oculus_go/"* "${repoDir}/build/alvr_client_oculus_go${apkVer}.apk"

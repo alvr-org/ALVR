@@ -26,17 +26,11 @@ controlFile='packaging/deb/control'
 # Android NDK version
 ndkVersion=30
 
-
 # Set a temporary working directory
 tmpDir="/tmp/alvr_$(date '+%Y%m%d-%H%M%S')"
 
 # Import OS info - provides ${ID}
 . /etc/os-release
-
-# Make sure we're not building as root
-if [ "${USER}" == 'root' ]; then
-    exit 99
-fi
 
 # Basic logger
 # Logs various types of output with details
@@ -76,16 +70,17 @@ Arguments:
         all                 Prepare and build ALVR client and server
         client              Prepare and build ALVR client
         server              Prepare and build ALVR server
+        clobber             Clobber (clean) the entire build environment and dependencies
     CARGO BUILD DEFAULTS
         Fedora              --release
         Debian-based        --release --bundle-ffmpeg
         Client              --release
     FLAGS
-        --build-only        Only build ALVR package(s)
         --branch=           Branch to clone
+        --build-only        Only build ALVR package(s)
+        --prep-only         Only prepare system for ALVR package build
         --client-args=      List of ALL cargo xtask client build arguments
         --server-args=      List of ALL cargo xtask server build arguments
-        --prep-only         Only prepare system for ALVR package build
         --rustup-src=       Source to install rustup from if not found:
             WARNING: This does NOT affect Fedora server builds
             rustup.rs       rustup.rs script        [RUNNING UNREVIEWED ONLINE SCRIPTS IS UNRECOMMENDED]
@@ -94,6 +89,9 @@ Arguments:
 Example: $(basename "${0}") server --build-only --server-args='--release --no-nvidia'
 HELPME
 }
+
+# Make sure we're not building as root
+[ "${USER}" == 'root' ] && log critical 'This script cannot be run as root!' 99
 
 maybe_clone() {
     # Import distro-specific helper functions if they exist relative to the script
@@ -104,21 +102,15 @@ maybe_clone() {
     # If the repo doesn't exist, or we need a specific version, we should clone
     if ! [ -d "${repoDir}" ] || [ "${kwArgs['--branch']}" != '' ]; then
         log info "Cloning ${repo} into ${repoDir//$(basename "${repo}")} ..."
-        ! git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" && exit 1
+        git -C "${repoDir//$(basename "${repo}")}" clone -b "${kwArgs['--branch']:-master}" "https://github.com/${repo}.git" || exit 1
 
-        # If we can, import the version-specific helpers after
-        for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
-            . "${helper}"
-        done
+        # If we can, import the version-specific helpers after for compatibility
+        if [ -d "${repoDir}/packaging/alvr_build_linux_targets/" ]; then
+            for helper in "${repoDir}/packaging/alvr_build_linux_targets/"*'.sh'; do
+                . "${helper}"
+            done
+        fi
     fi
-
-
-    # Get the short hash for this commit AFTER all git stuff
-    shortHash=$(git -C "${repoDir}" rev-parse --short HEAD)
-
-    # If the branch is 'v###' exactly, it's probably a release
-    ! [[ "$(git -C "${repoDir}" branch --show-current)" =~ ^v\d+$ ]] && buildVer="+$(date +%s)+${shortHash}"
-
 }
 
 main() {
@@ -132,7 +124,7 @@ main() {
     done
 
     # Create temporary directory if it doesn't exist
-    ! [ -d "${tmpDir}" ] && mkdir "${tmpDir}"
+    [ -d "${tmpDir}" ] || mkdir "${tmpDir}"
 
     # Grab the repository directory
     repoDir="$(realpath "$(dirname "${0}")")/.."
@@ -146,7 +138,7 @@ main() {
     buildDir="${repoDir}/build/alvr_server_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
-    ! maybe_clone && log critical 'Unable to clone repository!'
+    maybe_clone || log critical 'Unable to clone repository!' 9
 
     case "${1,,}" in
         'client')
@@ -162,7 +154,7 @@ main() {
             elif prep_"${ID}"_client; then
                 # Exit successfully if we're only preparing
                 if [ "${kwArgs['--prep-only']}" != '' ]; then
-                    exit 0
+                    log info 'ALVR build environment prepared successfully.'
                 # Clone, build, and check exit codes
                 elif build_generic_client; then
                     log info 'ALVR client built successfully.'
@@ -181,7 +173,7 @@ main() {
                 log critical "Failed to build ${PRETTY_NAME} (${ID}) package!" 4
             elif prep_"${ID}"_server; then
                 if [ "${kwArgs['--prep-only']}" != '' ]; then
-                    exit 0
+                    log info 'ALVR build environment prepared successfully.'
                 elif build_"${ID}"_server; then
                     log info "${PRETTY_NAME} (${ID}) package built successfully."
                 else
@@ -191,15 +183,21 @@ main() {
                 log critical "Failed to prepare ${PRETTY_NAME} (${ID}) for ALVR server build!" 3
             fi
         ;;
+        'clobber')
+            log info 'Clobbering build environment ...'
+            rm -rf "${repoDir}/"{'build','deps','target'}
+        ;;
         'all')
             ${0} server "${@:2}"
             ${0} client "${@:2}"
         ;;
         *)
+            log error "Invalid action: ${1}!" NOKILL
             help_docs
         ;;
     esac
 
+    # If there's a failure this will not run by design so we can debug
     rm -rf "${tmpDir}"
 }
 

@@ -10,7 +10,7 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{fs, io::Write, net::SocketAddr, path::PathBuf};
+use std::{fs, io::Write, net::SocketAddr, path::PathBuf, env::consts::OS};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -217,7 +217,7 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/api/can-update" => Response::new(cfg!(windows).to_string().into()),
+        "/api/server-os" => Response::new(OS.into()),
         "/api/update" => {
             if let Ok(url) = from_request_body::<String>(request).await {
                 let redirection_response = trace_err!(reqwest::get(&url).await)?;

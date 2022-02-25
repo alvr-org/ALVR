@@ -1,3 +1,4 @@
+use alvr_common::ALVR_VERSION;
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
@@ -723,7 +724,13 @@ pub fn session_settings_default() -> SettingsDefault {
             restart_confirm_dialog: true,
             prompt_before_update: true,
             update_channel: UpdateChannelDefault {
-                variant: UpdateChannelDefaultVariant::Stable,
+                variant: if alvr_common::is_stable() && cfg!(windows) {
+                    UpdateChannelDefaultVariant::Stable
+                } else if alvr_common::is_nightly() && cfg!(windows) {
+                    UpdateChannelDefaultVariant::Nightly
+                } else {
+                    UpdateChannelDefaultVariant::NoUpdates
+                },
             },
             log_to_disk: cfg!(debug_assertions),
             notification_level: LogLevelDefault {

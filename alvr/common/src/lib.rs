@@ -42,6 +42,14 @@ pub fn is_version_compatible(other_version: &Version) -> bool {
     }
 }
 
+pub fn is_nightly() -> bool {
+    ALVR_VERSION.build.contains("nightly")
+}
+
+pub fn is_stable() -> bool {
+    ALVR_VERSION.pre == Prerelease::EMPTY && !is_nightly()
+}
+
 // Consistent across architectures, might not be consistent across different compiler versions.
 pub fn hash_string(string: &str) -> u64 {
     let mut hasher = DefaultHasher::new();

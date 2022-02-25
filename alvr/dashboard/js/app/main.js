@@ -13,7 +13,7 @@ define([
     "app/languageSelector",
     "json!../../api/session/load",
     "text!../../api/version",
-    "text!../../api/can-update",
+    "text!../../api/server-os",
     // eslint-disable-next-line requirejs/no-js-extension
     "js/lib/lobibox.min.js",
     "css!js/lib/lobibox.min.css",
@@ -32,28 +32,25 @@ define([
     languageSelector,
     session,
     version,
-    canUpdate,
+    serverOs
 ) {
     $(function () {
         const compiledTemplate = _.template(mainTemplate);
         const template = compiledTemplate(i18n);
 
         function checkForUpdate(settings, delay) {
-            if (!canUpdate || (version.includes("dev") && !version.includes("nightly"))) {
+            if (serverOs != "windows") {
                 return;
             }
 
             session = settings.getSession();
-            const updateType =
-                session.sessionSettings.extra.updateChannel.variant;
+            const updateType = session.sessionSettings.extra.updateChannel.variant;
 
             let url = "";
             if (updateType === "stable") {
-                url =
-                    "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
+                url = "https://api.github.com/repos/alvr-org/ALVR/releases/latest";
             } else if (updateType === "nightly") {
-                url =
-                    "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
+                url = "https://api.github.com/repos/alvr-org/ALVR-nightly/releases/latest";
             } else {
                 return;
             }
@@ -150,9 +147,7 @@ define([
             const elem = document.getElementById("progressBar");
 
             // Create WebSocket connection.
-            const webSocket = new WebSocket(
-                "ws://" + window.location.host + "/api/events",
-            );
+            const webSocket = new WebSocket("ws://" + window.location.host + "/api/events");
 
             $.ajax({
                 type: "POST",
@@ -184,21 +179,10 @@ define([
                         if (dataJSON.id === "UpdateDownloadedBytesCount") {
                             const BtoMB = 1.0 / (1024 * 1024);
                             const sizeMb = size * BtoMB;
-                            const downloadProgress = (
-                                dataJSON.data * BtoMB
-                            ).toFixed(2);
-                            document.getElementById(
-                                "downloadProgress",
-                            ).innerText =
-                                downloadProgress +
-                                "MB" +
-                                " / " +
-                                sizeMb.toFixed(2) +
-                                "MB";
-                            const progress = (
-                                (100.0 * dataJSON.data) /
-                                size
-                            ).toFixed(2);
+                            const downloadProgress = (dataJSON.data * BtoMB).toFixed(2);
+                            document.getElementById("downloadProgress").innerText =
+                                downloadProgress + "MB" + " / " + sizeMb.toFixed(2) + "MB";
+                            const progress = ((100.0 * dataJSON.data) / size).toFixed(2);
                             elem.style.width = progress + "%";
                             elem.innerText = progress + "%";
                         }
@@ -330,10 +314,7 @@ define([
 
             driverList.fillDriverList("registeredDriversInst");
 
-            uploadPreset.addUploadPreset(
-                "settingUploadPreset",
-                settings.getWebClientId(),
-            );
+            uploadPreset.addUploadPreset("settingUploadPreset", settings.getWebClientId());
 
             document.title = `ALVR dashboard (server v${version})`;
         });

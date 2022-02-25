@@ -10,7 +10,7 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::{fs, io::Write, net::SocketAddr, path::PathBuf, env::consts::OS};
+use std::{env::consts::OS, fs, io::Write, net::SocketAddr, path::PathBuf};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};

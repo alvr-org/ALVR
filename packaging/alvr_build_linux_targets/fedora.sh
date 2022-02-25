@@ -47,7 +47,7 @@ build_fedora_server() {
     [ -f "${tmpDir}/tmp.spec" ] || transform_spec
 
     # Get the version and release as array index 0 and 1
-    mapfile -t fedVer < <(grep -P 'Version|Release' "${tmpDir}/tmp.spec" | sed 's/Version: //; s/Release: //'))
+    mapfile -t fedVer < <(grep -P 'Version|Release' "${tmpDir}/tmp.spec" | sed 's/Version: //; s/Release: //')
 
     # Get the tarball name
     tgzName="$(spectool "${tmpDir}/tmp.spec" | grep -oP 'v\d+\.\d+\..*\.tar\.gz')"

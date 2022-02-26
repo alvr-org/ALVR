@@ -115,39 +115,6 @@ jobs:
           asset_name: alvr_server_windows.zip
           asset_content_type: application/zip
 
-  build_android_deps:
-    runs-on: windows-2019
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Set better Android SDK path (workaround for rust-android-gradle)
-        shell: cmd
-        run: mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
-
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        id: deps_cache
-        with:
-          path: deps
-          key: android-deps
-      - uses: actions-rs/toolchain@v1
-        if: steps.deps_cache.outputs.cache-hit != 'true'
-        with:
-          toolchain: stable
-          target: aarch64-linux-android
-          override: true
-      - name: Build dependencies
-        if: steps.deps_cache.outputs.cache-hit != 'true'
-        env:
-          RUST_BACKTRACE: 1
-        run: cargo xtask build-android-deps
-
-      - name: Upload dependencies
-        uses: actions/upload-artifact@v2
-        with:
-          name: android-deps
-          path: deps
-
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
@@ -168,16 +135,19 @@ jobs:
           toolchain: stable
           target: aarch64-linux-android
           override: true
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '11'
 
       - name: Set better Android SDK path (workaround for rust-android-gradle)
         shell: cmd
         run: mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
 
-      - name: Download dependencies
-        uses: actions/download-artifact@v2
-        with:
-          name: android-deps
-          path: deps
+      - name: Build dependencies
+        env:
+          RUST_BACKTRACE: 1
+        run: cargo xtask build-android-deps
 
       - name: Build and package ALVR (.apk)
         id: build

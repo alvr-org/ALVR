@@ -159,10 +159,14 @@ public class OvrActivity extends Activity {
         p.privateKey = prefs.getString("private-key", "");
         p.darkMode = prefs.getBoolean("dark-mode", false);
 
-        if (Objects.equals(p.hostname, "") || Objects.equals(p.certificatePEM, "") || Objects.equals(p.privateKey, "")) {
+        String version = BuildConfig.VERSION_NAME;
+        String oldVersion = prefs.getString("version", "");
+
+        if (!Objects.equals(oldVersion, version)) {
             createIdentity(p);
 
             SharedPreferences.Editor editor = prefs.edit();
+            editor.putString("version", version);
             editor.putString("hostname", p.hostname);
             editor.putString("certificate", p.certificatePEM);
             editor.putString("private-key", p.privateKey);

@@ -232,8 +232,8 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 		// Send encoded frame to client
 		std::vector<uint8_t> encoded_data;
 		filter_NAL(packet->data, packet->size, encoded_data);
-		av_packet_free(&packet);
 		m_Listener->SendVideo(encoded_data.data(), encoded_data.size(), packet->pts);
+		av_packet_free(&packet);
 		//Debug("Sent encoded packet to client");
 	}
 

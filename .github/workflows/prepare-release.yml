@@ -91,7 +91,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo xtask build-windows-deps
-          cargo xtask publish-server
+          cargo xtask publish-server --gpl
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
 

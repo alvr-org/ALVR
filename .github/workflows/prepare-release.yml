@@ -119,7 +119,7 @@ jobs:
     # Windows latest has Rust, Android NDK and LLVM already installed.
     # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
     runs-on: windows-2019
-    needs: [prepare_release, build_android_deps]
+    needs: [prepare_release]
     env:
       # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
       # This is specific to the GitHub windows-2019 runner.

@@ -4,7 +4,7 @@ mod settings;
 pub use events::*;
 pub use settings::*;
 
-use alvr_common::prelude::*;
+use alvr_common::{prelude::*, semver::Version, ALVR_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::SchemaNode;
@@ -128,6 +128,7 @@ pub struct ClientConnectionDesc {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
+    pub server_version: Version,
     pub setup_wizard: bool,
     pub locale: String,
 
@@ -142,6 +143,7 @@ pub struct SessionDesc {
 impl Default for SessionDesc {
     fn default() -> Self {
         Self {
+            server_version: ALVR_VERSION.clone(),
             setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
             locale: "system".into(),
             openvr_config: OpenvrConfig {

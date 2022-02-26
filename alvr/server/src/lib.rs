@@ -16,7 +16,7 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, prelude::*};
+use alvr_common::{lazy_static, log, prelude::*, ALVR_VERSION};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{
     ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
@@ -254,6 +254,13 @@ fn init() {
             .session_settings
             .video
             .linux_async_reprojection = false;
+    }
+
+    if SESSION_MANAGER.lock().get().server_version != *ALVR_VERSION {
+        let mut session_manager = SESSION_MANAGER.lock();
+        let mut session_ref = session_manager.get_mut();
+        session_ref.server_version = ALVR_VERSION.clone();
+        session_ref.client_connections.clear();
     }
 
     unsafe {

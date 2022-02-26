@@ -1,5 +1,27 @@
 use alvr_common::prelude::*;
 
+pub enum GpuVendor {
+    Nvidia,
+    Amd,
+    Other,
+}
+
+pub fn get_gpu_vendor() -> GpuVendor {
+    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+    let vendor_id = instance
+        .enumerate_adapters(wgpu::Backends::PRIMARY)
+        .next()
+        .unwrap()
+        .get_info()
+        .vendor;
+
+    match vendor_id {
+        0x10de => GpuVendor::Nvidia,
+        0x1002 => GpuVendor::Amd,
+        _ => GpuVendor::Other,
+    }
+}
+
 pub fn get_gpu_names() -> Vec<String> {
     let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
     let adapters = instance.enumerate_adapters(wgpu::Backends::PRIMARY);

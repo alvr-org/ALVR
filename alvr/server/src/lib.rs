@@ -22,6 +22,7 @@ use alvr_session::{
     ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
 };
 use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
+use graphics_info::GpuVendor;
 use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
@@ -244,6 +245,15 @@ fn init() {
         });
 
         thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
+    }
+
+    if matches!(graphics_info::get_gpu_vendor(), GpuVendor::Nvidia) {
+        SESSION_MANAGER
+            .lock()
+            .get_mut()
+            .session_settings
+            .video
+            .linux_async_reprojection = false;
     }
 
     unsafe {

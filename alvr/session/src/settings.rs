@@ -185,7 +185,6 @@ pub struct VideoDesc {
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
 
-    #[schema(advanced)]
     pub linux_async_reprojection: bool,
 }
 

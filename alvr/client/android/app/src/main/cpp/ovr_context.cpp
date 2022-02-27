@@ -264,16 +264,19 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
     } else {
         // GearVR or Oculus Go Controller
         if (remoteInputState->Buttons & ovrButton_A) {
+            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK);
         }
         if (remoteInputState->Buttons & ovrButton_Enter) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRACKPAD_CLICK);
+            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
         }
         if (remoteInputState->Buttons & ovrButton_Back) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_BACK_CLICK);
+            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
+            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
         }
         if (remoteInputState->TrackpadStatus) {
             buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRACKPAD_TOUCH);
+            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
         }
     }
     return buttons;
@@ -463,29 +466,23 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                 LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
             } else {
 
-                if (tracking.Status&VRAPI_TRACKING_STATUS_ORIENTATION_TRACKED) {
-                    memcpy(&c.orientation,
-                           &tracking.HeadPose.Pose.Orientation,
-                           sizeof(tracking.HeadPose.Pose.Orientation));
-                    memcpy(&g_ctx.lastTrackingRot[controller],
-                           &tracking,
-                           sizeof(tracking));
-                } else if (g_ctx.lastTrackingRot[controller].Status&VRAPI_TRACKING_STATUS_ORIENTATION_TRACKED)
-                    memcpy(&c.orientation,
-                           &g_ctx.lastTrackingRot[controller].HeadPose.Pose.Orientation,
-                           sizeof(g_ctx.lastTrackingRot[controller].HeadPose.Pose.Orientation));
+                memcpy(&c.orientation,
+                        &tracking.HeadPose.Pose.Orientation,
+                        sizeof(tracking.HeadPose.Pose.Orientation));
 
-                if (tracking.Status&VRAPI_TRACKING_STATUS_POSITION_TRACKED) {
+                if ((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_TRACKED) ||
+                        (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo)) {
                     memcpy(&c.position,
                            &tracking.HeadPose.Pose.Position,
                            sizeof(tracking.HeadPose.Pose.Position));
                     memcpy(&g_ctx.lastTrackingPos[controller],
                            &tracking,
                            sizeof(tracking));
-                } else if (g_ctx.lastTrackingPos[controller].Status&VRAPI_TRACKING_STATUS_POSITION_TRACKED)
+                } else {
                     memcpy(&c.position,
                            &g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position,
                            sizeof(g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position));
+                }
 
                 memcpy(&c.angularVelocity,
                        &tracking.HeadPose.AngularVelocity,

@@ -603,7 +603,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.,
                 },
             },
-            linux_async_reprojection: false,
+            linux_async_reprojection: true,
         },
         audio: AudioSectionDefault {
             linux_backend: LinuxAudioBackendDefault {

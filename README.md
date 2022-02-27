@@ -13,7 +13,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 | :------------: | :----------------------------------------------------: |
 |  Oculus Quest  |                   :heavy_check_mark:                   |
 | Oculus Quest 2 |                   :heavy_check_mark:                   |
-|   Oculus Go    |           :heavy_check_mark: (no controller)           |
+|   Oculus Go    |                   :heavy_check_mark:                   |
 |     GearVR     | :x: (use [this](https://github.com/polygraphene/ALVR)) |
 
 ## Requirements

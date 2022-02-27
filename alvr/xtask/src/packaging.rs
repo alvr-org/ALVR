@@ -142,6 +142,14 @@ pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool
         licenses_dir.join("Valve.txt"),
     )
     .unwrap();
+    fs::copy(
+        afs::workspace_dir()
+            .join("alvr")
+            .join("server")
+            .join("LICENSE-FFmpeg"),
+        licenses_dir.join("FFmpeg.txt"),
+    )
+    .unwrap();
 
     command::zip(&afs::server_build_dir()).unwrap();
 

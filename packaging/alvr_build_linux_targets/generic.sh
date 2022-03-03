@@ -10,8 +10,8 @@ prep_rustup() {
     if ! command -v rustup >/dev/null 2>&1; then
         case "${kwArgs['--rustup-src'],,}" in
             'rustup.rs')
-                # Untested
-                curl -sSf https://sh.rustup.rs | sh
+                # Install from rustup
+                curl -sSf https://sh.rustup.rs | sh || return 7
             ;;
             # If the keyword is the value, there was no keyword specified
             'snap' | '--rustup-src') sudo snap install rustup --classic || return 7 ;;

@@ -13,8 +13,8 @@ prep_rustup() {
                 # Install from rustup
                 curl -sSf https://sh.rustup.rs | sh || return 7
             ;;
-            # If the keyword is the value, there was no keyword specified
-            'snap' | '--rustup-src') sudo snap install rustup --classic || return 7 ;;
+            # snap default
+            '' | 'snap') sudo snap install rustup --classic || return 7 ;;
             *)
                 log critical "Neither Rustup installation nor Rustup source type found; bad source was: ${kwArgs['--rustup-src']}" 7
             ;;

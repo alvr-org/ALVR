@@ -650,7 +650,7 @@ async fn connection_pipeline() -> StrResult {
             #[cfg(windows)]
             {
                 let default_device = AudioDevice::new(
-                    settings.audio.linux_backend,
+                    None,
                     alvr_session::AudioDeviceId::Default,
                     AudioDeviceType::Output,
                 )?;
@@ -684,7 +684,7 @@ async fn connection_pipeline() -> StrResult {
         #[cfg(windows)]
         {
             let microphone_device = AudioDevice::new(
-                settings.audio.linux_backend,
+                None,
                 desc.output_device_id,
                 AudioDeviceType::VirtualMicrophoneOutput {
                     matching_input_device_name: input_device.name()?,

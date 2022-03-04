@@ -258,7 +258,7 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
     auto device_it = g_driver_provider.tracked_devices.find(top_level_path);
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
-        vr::VRProperties()->SetBoolProperty(
+        vr::VRProperties()->SetFloatProperty(
             device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value);
         vr::VRProperties()->SetBoolProperty(
             device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged);

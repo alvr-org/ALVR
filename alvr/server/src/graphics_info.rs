@@ -1,4 +1,15 @@
-use alvr_common::prelude::*;
+use alvr_common::{lazy_static, prelude::*};
+use wgpu::Adapter;
+
+lazy_static! {
+    static ref GPU_ADAPTERS: Vec<Adapter> = {
+        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+
+        instance
+            .enumerate_adapters(wgpu::Backends::PRIMARY)
+            .collect()
+    };
+}
 
 pub enum GpuVendor {
     Nvidia,
@@ -7,15 +18,7 @@ pub enum GpuVendor {
 }
 
 pub fn get_gpu_vendor() -> GpuVendor {
-    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
-    let vendor_id = instance
-        .enumerate_adapters(wgpu::Backends::PRIMARY)
-        .next()
-        .unwrap()
-        .get_info()
-        .vendor;
-
-    match vendor_id {
+    match GPU_ADAPTERS[0].get_info().vendor {
         0x10de => GpuVendor::Nvidia,
         0x1002 => GpuVendor::Amd,
         _ => GpuVendor::Other,
@@ -23,11 +26,8 @@ pub fn get_gpu_vendor() -> GpuVendor {
 }
 
 pub fn get_gpu_names() -> Vec<String> {
-    let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
-    let adapters = instance.enumerate_adapters(wgpu::Backends::PRIMARY);
-
-    adapters
-        .into_iter()
+    GPU_ADAPTERS
+        .iter()
         .map(|a| a.get_info().name)
         .collect::<Vec<_>>()
 }

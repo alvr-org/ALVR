@@ -1,6 +1,6 @@
 [package]
 name = "alvr_launcher"
-version = "18.1.1"
+version = "18.2.0"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"

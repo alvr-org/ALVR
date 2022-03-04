@@ -1,6 +1,6 @@
 [package]
 name = "alvr_filesystem"
-version = "18.1.1"
+version = "18.2.0"
 authors = ["alvr-org", "Patrick Nicolas <patricknicolas@laposte.net>"]
 license = "MIT"
 edition = "2021"

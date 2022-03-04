@@ -12,6 +12,5 @@ alvr_session = { path = "../../session" }
 
 ash = "=0.34"
 bytemuck = "1"
-openxr-sys = { git = "https://github.com/zarik5/openxrs" }
 wgpu = { version = "0.12", features = ["spirv"] }
 wgpu-hal = { version = "0.12", features = ["vulkan"] }

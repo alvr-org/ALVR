@@ -1,5 +1,5 @@
-use alvr_common::{glam::UVec2, Fov};
-use alvr_session::FoveatedRenderingDesc;
+use alvr_common::glam::UVec2;
+use alvr_session::{Fov, FoveatedRenderingDesc};
 use wgpu::{CommandEncoder, TextureView};
 
 pub enum FrDirection {

@@ -10,14 +10,13 @@ use crate::{
     streaming_compositor::StreamingCompositor,
     video_decoder::{self, VideoDecoderDequeuer, VideoDecoderFrameGrabber},
     xr::{XrActionType, XrContext, XrProfileDesc, XrSession},
-    ViewConfig,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{glam::UVec2, prelude::*, Haptics, TrackedDeviceType, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{glam::UVec2, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_graphics::GraphicsContext;
-use alvr_session::{AudioDeviceId, CodecType, MediacodecDataType, SessionDesc};
+use alvr_session::{AudioDeviceId, CodecType, LinuxAudioBackend, MediacodecDataType, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket,
+    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
     HeadsetInfoPacket, Input, PeerType, ProtoControlSocket, ServerControlPacket,
     StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
 };
@@ -389,7 +388,7 @@ async fn connection_pipeline(
 
     let haptics_receive_loop = {
         let mut receiver = stream_socket
-            .subscribe_to_stream::<Haptics<TrackedDeviceType>>(HAPTICS)
+            .subscribe_to_stream::<Haptics>(HAPTICS)
             .await?;
 
         async move {
@@ -405,7 +404,7 @@ async fn connection_pipeline(
         let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
         Box::pin(alvr_audio::play_audio_loop(
-            AudioDevice::new(AudioDeviceId::Default, AudioDeviceType::Output)?,
+            AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Output)?,
             2,
             config_packet.game_audio_sample_rate,
             desc.config,

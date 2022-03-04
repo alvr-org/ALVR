@@ -1,6 +1,5 @@
 use std::{collections::HashMap, time::Duration};
 
-use crate::StreamId;
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     semver::Version,
@@ -8,10 +7,10 @@ use alvr_common::{
 use alvr_session::Fov;
 use serde::{Deserialize, Serialize};
 
-pub const INPUT: StreamId = 0; // tracking and buttons
-pub const HAPTICS: StreamId = 1;
-pub const AUDIO: StreamId = 2;
-pub const VIDEO: StreamId = 3;
+pub const INPUT: u16 = 0; // tracking and buttons
+pub const HAPTICS: u16 = 1;
+pub const AUDIO: u16 = 2;
+pub const VIDEO: u16 = 3;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ClientHandshakePacket {
@@ -139,12 +138,12 @@ pub enum ButtonValue {
     Scalar(f32),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct MotionData {
     pub orientation: Quat,
     pub position: Vec3,
-    pub linear_velocity: Option<Vec3>,
-    pub angular_velocity: Option<Vec3>,
+    pub linear_velocity: Vec3,
+    pub angular_velocity: Vec3,
 }
 
 #[derive(Serialize, Deserialize)]

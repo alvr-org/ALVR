@@ -1,4 +1,3 @@
-use super::StreamId;
 use crate::LOCAL_IP;
 use alvr_common::prelude::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
@@ -155,7 +154,7 @@ pub async fn accept_from_server(
 
 pub async fn receive_loop(
     mut socket: ThrottledUdpStreamReceiveSocket,
-    packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
+    packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
     while let Some(maybe_packet) = socket.next().await {
         let (mut packet_bytes, _) = trace_err!(maybe_packet)?;

@@ -52,6 +52,7 @@ impl CompositingPass {
                     write_mask: ColorWrites::ALL,
                 }],
             }),
+            multiview: None,
         });
 
         let sampler = device.create_sampler(&SamplerDescriptor {

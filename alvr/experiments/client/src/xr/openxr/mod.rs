@@ -2,21 +2,23 @@ mod convert;
 mod graphics_interop;
 mod interaction;
 
+use alvr_session::Fov;
+use alvr_sockets::MotionData;
 pub use graphics_interop::create_graphics_context;
+use xr::HAND_JOINT_COUNT;
 
-use self::interaction::OpenxrInteractionContext;
+use self::interaction::XrInteractionContext;
 use super::{XrActionType, XrActionValue, XrProfileDesc};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
-    lazy_static, log,
+    log,
     prelude::*,
-    Fov, MotionData, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_graphics::{ash::vk::Handle, wgpu::TextureView, GraphicsContext};
 use openxr as xr;
 use parking_lot::{Mutex, MutexGuard};
 use std::{
-    collections::HashMap,
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -90,13 +92,14 @@ impl XrContext {
     }
 }
 
-pub struct ViewConfig {
+#[derive(Clone)]
+pub struct XrViewConfig {
     pub orientation: Quat,
     pub position: Vec3,
     pub fov: Fov,
 }
 
-pub struct OpenxrSwapchain {
+pub struct XrSwapchain {
     handle: Arc<Mutex<xr::Swapchain<xr::Vulkan>>>,
     views: Vec<Arc<TextureView>>,
     size: UVec2,
@@ -110,7 +113,7 @@ pub struct AcquiredXrSwapchain<'a> {
 
 fn create_layer_views<'a>(
     acquired_swapchains: &'a mut [AcquiredXrSwapchain],
-    view_configs: &'a [ViewConfig],
+    view_configs: &'a [XrViewConfig],
 ) -> Vec<xr::CompositionLayerProjectionView<'a, xr::Vulkan>> {
     acquired_swapchains
         .iter_mut()
@@ -119,7 +122,7 @@ fn create_layer_views<'a>(
             let view_config = view_configs
                 .get(index)
                 .cloned()
-                .unwrap_or_else(|| ViewConfig {
+                .unwrap_or_else(|| XrViewConfig {
                     orientation: Quat::IDENTITY,
                     position: Vec3::ZERO,
                     fov: Fov::default(),
@@ -154,14 +157,14 @@ fn create_layer_views<'a>(
 // End frame and submit swapchains once dropped
 pub struct XrPresentationGuard<'a> {
     frame_stream_lock: MutexGuard<'a, xr::FrameStream<xr::Vulkan>>,
-    interaction_context: &'a OpenxrInteractionContext,
+    interaction_context: &'a XrInteractionContext,
     environment_blend_mode: xr::EnvironmentBlendMode,
     pub acquired_scene_swapchains: Vec<AcquiredXrSwapchain<'a>>,
     pub acquired_stream_swapchains: Vec<AcquiredXrSwapchain<'a>>,
     pub predicted_frame_interval: Duration,
-    pub display_timestamp: Duration,          // output/input
-    pub scene_view_configs: Vec<ViewConfig>,  // input
-    pub stream_view_configs: Vec<ViewConfig>, // input
+    pub display_timestamp: Duration,            // output/input
+    pub scene_view_configs: Vec<XrViewConfig>,  // input
+    pub stream_view_configs: Vec<XrViewConfig>, // input
 }
 
 impl<'a> Drop for XrPresentationGuard<'a> {
@@ -200,17 +203,17 @@ pub struct SceneButtons {
 }
 
 pub struct XrSceneInput {
-    pub view_configs: Vec<ViewConfig>,
-    pub left_hand_motion: XrHandPoseInput,
-    pub right_hand_motion: XrHandPoseInput,
+    pub view_configs: Vec<XrViewConfig>,
+    pub left_hand_motion: MotionData,
+    pub right_hand_motion: MotionData,
     pub buttons: SceneButtons,
     pub is_focused: bool,
 }
 
 pub struct XrStreamingInput {
     pub device_motions: Vec<(u64, MotionData)>,
-    pub left_hand_tracking_input: Option<XrHandTrackingInput>,
-    pub right_hand_tracking_input: Option<XrHandTrackingInput>,
+    pub left_hand_tracking_input: Option<[MotionData; HAND_JOINT_COUNT]>,
+    pub right_hand_tracking_input: Option<[MotionData; HAND_JOINT_COUNT]>,
     pub button_values: Vec<(u64, XrActionValue)>,
 }
 
@@ -218,10 +221,10 @@ pub struct XrSession {
     xr_context: Arc<XrContext>,
     inner: xr::Session<xr::Vulkan>,
     recommended_view_sizes: Vec<UVec2>,
-    scene_swapchains: Vec<OpenxrSwapchain>,
-    stream_swapchains: Vec<OpenxrSwapchain>,
+    scene_swapchains: Vec<XrSwapchain>,
+    stream_swapchains: Vec<XrSwapchain>,
     environment_blend_mode: xr::EnvironmentBlendMode,
-    interaction_context: OpenxrInteractionContext,
+    interaction_context: XrInteractionContext,
     running_state: AtomicBool,
     focused_state: AtomicBool,
     frame_stream: Mutex<xr::FrameStream<xr::Vulkan>>,
@@ -294,7 +297,7 @@ impl XrSession {
             })
             .collect();
 
-        let interaction_context = OpenxrInteractionContext::new(
+        let interaction_context = XrInteractionContext::new(
             &xr_context,
             session.clone(),
             stream_action_types,
@@ -321,7 +324,7 @@ impl XrSession {
         &self.recommended_view_sizes
     }
 
-    fn acquire_views(swapchains: &[OpenxrSwapchain]) -> Vec<AcquiredXrSwapchain> {
+    fn acquire_views(swapchains: &[XrSwapchain]) -> Vec<AcquiredXrSwapchain> {
         swapchains
             .iter()
             .map(|swapchain| {
@@ -463,8 +466,8 @@ impl XrSession {
         let head_pose = MotionData {
             orientation: views[0].orientation,
             position: (views[0].position + views[1].position) / 2.0,
-            linear_velocity: None,
-            angular_velocity: None,
+            linear_velocity: Vec3::ZERO,
+            angular_velocity: Vec3::ZERO,
         };
 
         let left_hand_pose = ctx.get_tracker_pose(&ctx.left_hand_tracker_context, display_time)?;
@@ -480,15 +483,15 @@ impl XrSession {
         .collect();
 
         let left_hand_tracking_input =
-            if let Some(tracking_context) = &ctx.left_hand_tracking_context {
-                ctx.get_hand_tracking_input(tracking_context, display_time)?
+            if let Some(tracking_context) = &ctx.left_hand_skeleton_tracker {
+                ctx.get_hand_skeleton(tracking_context, display_time)?
             } else {
                 None
             };
 
         let right_hand_tracking_input =
-            if let Some(tracking_context) = &ctx.right_hand_tracking_context {
-                ctx.get_hand_tracking_input(tracking_context, display_time)?
+            if let Some(tracking_context) = &ctx.right_hand_skeleton_tracker {
+                ctx.get_hand_skeleton(tracking_context, display_time)?
             } else {
                 None
             };

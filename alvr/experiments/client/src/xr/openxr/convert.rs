@@ -1,7 +1,5 @@
-use alvr_common::{
-    glam::{Quat, Vec3},
-    Fov,
-};
+use alvr_common::glam::{Quat, Vec3};
+use alvr_session::Fov;
 use openxr as xr;
 
 pub fn from_xr_orientation(quat: xr::Quaternionf) -> Quat {

@@ -1,9 +1,9 @@
 Name: alvr
 Version: 18.0.0
-Release: 0.0.2dev00
+Release: 0.0.1dev01
 Summary: Stream VR games from your PC to your headset via Wi-Fi
 License: MIT
-Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v18.0.0-dev00.tar.gz
+Source: https://github.com/alvr-org/ALVR/archive/refs/tags/v18.0.0-dev01.tar.gz
 URL: https://github.com/alvr-org/ALVR/
 ExclusiveArch: x86_64
 BuildRequires: alsa-lib-devel cairo-gobject-devel cargo clang-devel ffmpeg-devel gcc gcc-c++ cmake ImageMagick (jack-audio-connection-kit-devel or pipewire-jack-audio-connection-kit-devel) libunwind-devel openssl-devel rpmdevtools rust rust-atk-sys-devel rust-cairo-sys-rs-devel rust-gdk-sys-devel rust-glib-sys-devel rust-pango-sys-devel selinux-policy-devel vulkan-headers vulkan-loader-devel

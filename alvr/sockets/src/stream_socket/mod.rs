@@ -26,9 +26,6 @@ use tokio::net;
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
-// todo: when const_generics reaches stable, convert this to an enum
-pub type StreamId = u16;
-
 #[derive(Clone)]
 enum StreamSendSocket {
     Udp(UdpStreamSendSocket),
@@ -87,7 +84,7 @@ impl<T> SenderBuffer<T> {
 }
 
 pub struct StreamSender<T> {
-    stream_id: StreamId,
+    stream_id: u16,
     socket: StreamSendSocket,
     // if the packet index overflows the worst that happens is a false positive packet loss
     next_packet_index: u32,
@@ -165,7 +162,6 @@ pub struct ReceivedPacket<T> {
 }
 
 pub struct StreamReceiver<T> {
-    stream_id: StreamId,
     receiver: StreamReceiverType,
     next_packet_index: u32,
     _phantom: PhantomData<T>,
@@ -296,11 +292,11 @@ impl StreamSocketBuilder {
 pub struct StreamSocket {
     send_socket: StreamSendSocket,
     receive_socket: Arc<Mutex<Option<StreamReceiveSocket>>>,
-    packet_queues: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
+    packet_queues: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 }
 
 impl StreamSocket {
-    pub async fn request_stream<T>(&self, stream_id: StreamId) -> StrResult<StreamSender<T>> {
+    pub async fn request_stream<T>(&self, stream_id: u16) -> StrResult<StreamSender<T>> {
         Ok(StreamSender {
             stream_id,
             socket: self.send_socket.clone(),
@@ -309,15 +305,11 @@ impl StreamSocket {
         })
     }
 
-    pub async fn subscribe_to_stream<T>(
-        &self,
-        stream_id: StreamId,
-    ) -> StrResult<StreamReceiver<T>> {
+    pub async fn subscribe_to_stream<T>(&self, stream_id: u16) -> StrResult<StreamReceiver<T>> {
         let (enqueuer, dequeuer) = mpsc::unbounded_channel();
         self.packet_queues.lock().await.insert(stream_id, enqueuer);
 
         Ok(StreamReceiver {
-            stream_id,
             receiver: StreamReceiverType::Queue(dequeuer),
             next_packet_index: 0,
             _phantom: PhantomData,

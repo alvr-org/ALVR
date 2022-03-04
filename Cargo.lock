@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "backtrace",
  "glam 0.20.2",
@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -192,7 +192,6 @@ dependencies = [
  "alvr_session",
  "ash",
  "bytemuck",
- "openxr-sys",
  "wgpu",
  "wgpu-hal",
 ]
@@ -221,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -238,7 +237,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -274,7 +273,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -286,7 +285,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -304,7 +303,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.2",
@@ -315,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "alvr_filesystem",
  "fs_extra",
@@ -582,9 +581,9 @@ checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
 name = "bytemuck"
-version = "1.7.3"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439989e6b8c38d1b6570a384ef1e49c8848128f5a97f3914baef02920842712f"
+checksum = "0e851ca7c24871e7336801608a4797d7376545b6928a10d32d75685687141ead"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -817,6 +816,7 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio",
+ "wgpu",
 ]
 
 [[package]]
@@ -2555,7 +2555,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2567,7 +2567,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "bitflags",
  "wasm-timer",
@@ -2576,7 +2576,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "futures",
  "log",
@@ -2587,7 +2587,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "bytemuck",
  "glam 0.10.2",
@@ -2600,7 +2600,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2613,7 +2613,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "iced_core",
 ]
@@ -2621,7 +2621,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2641,7 +2641,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#af7cbf0003496d757696ea6e15ea32f0649cf8f9"
+source = "git+https://github.com/iced-rs/iced#ee6f4cb2ac7f322ef708fe0655835638bac841ea"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -3616,9 +3616,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "openssl"
@@ -3656,12 +3656,24 @@ dependencies = [
 [[package]]
 name = "openxr"
 version = "0.16.0"
-source = "git+https://github.com/zarik5/openxrs#8eaf4a1b48f315674f5be6667ff38d936b6f492b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "679da4d6e5534eb5c9ce356deca1b4aedebb93e4c4322c68f22f53e78e578479"
 dependencies = [
  "libc",
  "libloading 0.7.3",
- "ndk-context",
- "openxr-sys",
+ "ndk-glue 0.6.1",
+ "openxr-sys 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi",
+]
+
+[[package]]
+name = "openxr-sys"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f2705ce9c69c69d73523fd1ca3059526a51f6c336b5605286fad5a71d95ffc2"
+dependencies = [
+ "jni",
+ "libc",
  "winapi",
 ]
 
@@ -4176,9 +4188,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8383f39639269cde97d255a32bdb68c047337295414940c68bdd30c2e13203ff"
+checksum = "8380fe0152551244f0747b1bf41737e0f8a74f97a14ccefd1148187271634f3c"
 dependencies = [
  "bitflags",
 ]
@@ -4230,8 +4242,9 @@ dependencies = [
 
 [[package]]
 name = "rend3"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3367ab51121903c3bddadb8202d5e6558309975bf38da70110e783702d862077"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4242,6 +4255,7 @@ dependencies = [
  "indexmap",
  "list-any",
  "log",
+ "naga",
  "num-traits",
  "parking_lot 0.11.2",
  "profiling",
@@ -4252,13 +4266,16 @@ dependencies = [
  "smartstring",
  "thiserror",
  "wgpu",
+ "wgpu-core",
+ "wgpu-hal",
  "wgpu-profiler",
 ]
 
 [[package]]
 name = "rend3-routine"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "969dd679c4aeefaa9b4783018c1414261d8af96c5cf1728588681c593ce4e880"
 dependencies = [
  "arrayvec 0.7.2",
  "bitflags",
@@ -4277,8 +4294,9 @@ dependencies = [
 
 [[package]]
 name = "rend3-types"
-version = "0.2.0"
-source = "git+https://github.com/BVE-Reborn/rend3?rev=e07b2c921445ec97f59dd3e845478dc71d25c1f6#e07b2c921445ec97f59dd3e845478dc71d25c1f6"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84af7a607a5d31c94e40c05b1b6295fff11fe451e99454a89701ae3d1de12bfe"
 dependencies = [
  "bitflags",
  "glam 0.20.2",
@@ -4625,8 +4643,9 @@ dependencies = [
  "alvr_session",
  "bytemuck",
  "env_logger 0.9.0",
- "openxr-sys",
+ "openxr-sys 0.9.1 (git+https://github.com/zarik5/openxrs)",
  "pollster",
+ "wgpu",
  "winit 0.26.1",
 ]
 
@@ -4977,9 +4996,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.23.4"
+version = "0.23.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70d06c623c041b6aec9830080e9069b4ab6a84de3b4b4d14b4bbb09c629efdc0"
+checksum = "07fa4c84a5305909b0eedfcc8d1f2fafdbede645bb700a45ecaafe681a0ac5d6"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.3",
@@ -5034,9 +5053,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.1.2"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
 dependencies = [
  "winapi-util",
 ]
@@ -5543,7 +5562,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "18.0.0-dev00"
+version = "18.0.0-dev01"
 dependencies = [
  "exec",
 ]

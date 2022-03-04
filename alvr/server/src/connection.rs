@@ -5,8 +5,7 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Mat4, Quat, Vec2, Vec3},
-    log,
+    glam::{Quat, Vec2, Vec3},
     prelude::*,
     semver::Version,
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -169,14 +168,14 @@ async fn client_handshake(
     let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
     {
         let game_audio_device = AudioDevice::new(
-            settings.audio.linux_backend,
+            Some(settings.audio.linux_backend),
             game_audio_desc.device_id,
             AudioDeviceType::Output,
         )?;
 
         if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
             let microphone_device = AudioDevice::new(
-                settings.audio.linux_backend,
+                Some(settings.audio.linux_backend),
                 microphone_desc.input_device_id,
                 AudioDeviceType::VirtualMicrophoneInput,
             )?;
@@ -624,7 +623,7 @@ async fn connection_pipeline() -> StrResult {
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(
-            settings.audio.linux_backend,
+            Some(settings.audio.linux_backend),
             desc.device_id,
             AudioDeviceType::Output,
         )?;
@@ -676,7 +675,7 @@ async fn connection_pipeline() -> StrResult {
 
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let input_device = AudioDevice::new(
-            settings.audio.linux_backend,
+            Some(settings.audio.linux_backend),
             desc.input_device_id,
             AudioDeviceType::VirtualMicrophoneInput,
         )?;
@@ -828,12 +827,8 @@ async fn connection_pipeline() -> StrResult {
                             gripValue: input.legacy.controllers[0].grip_value,
                             orientation: to_tracking_quat(left_hand_motion.orientation),
                             position: to_tracking_vector3(left_hand_motion.position),
-                            angularVelocity: to_tracking_vector3(
-                                left_hand_motion.angular_velocity.unwrap_or(Vec3::ZERO),
-                            ),
-                            linearVelocity: to_tracking_vector3(
-                                left_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
-                            ),
+                            angularVelocity: to_tracking_vector3(left_hand_motion.angular_velocity),
+                            linearVelocity: to_tracking_vector3(left_hand_motion.linear_velocity),
                             boneRotations: {
                                 let vec = input.legacy.controllers[0]
                                     .bone_rotations
@@ -878,11 +873,9 @@ async fn connection_pipeline() -> StrResult {
                             orientation: to_tracking_quat(right_hand_motion.orientation),
                             position: to_tracking_vector3(right_hand_motion.position),
                             angularVelocity: to_tracking_vector3(
-                                right_hand_motion.angular_velocity.unwrap_or(Vec3::ZERO),
+                                right_hand_motion.angular_velocity,
                             ),
-                            linearVelocity: to_tracking_vector3(
-                                right_hand_motion.linear_velocity.unwrap_or(Vec3::ZERO),
-                            ),
+                            linearVelocity: to_tracking_vector3(right_hand_motion.linear_velocity),
                             boneRotations: {
                                 let vec = input.legacy.controllers[1]
                                     .bone_rotations

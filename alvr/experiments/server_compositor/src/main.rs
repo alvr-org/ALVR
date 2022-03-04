@@ -1,14 +1,14 @@
 mod color_correction;
 mod compositing;
 
-use alvr_common::{glam::UVec2, prelude::*, Fov};
+use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
     GraphicsContext, TARGET_FORMAT,
 };
-use alvr_session::{ColorCorrectionDesc, FoveatedRenderingDesc};
+use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use std::sync::Arc;

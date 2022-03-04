@@ -29,7 +29,7 @@ use std::{
     collections::HashMap,
     ffi::CStr,
     os::raw::c_char,
-    ptr, slice,
+    slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -138,8 +138,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                         MotionData {
                             orientation: from_tracking_quat(data.HeadPose_Pose_Orientation),
                             position: from_tracking_vector3(data.HeadPose_Pose_Position),
-                            linear_velocity: None,
-                            angular_velocity: None,
+                            linear_velocity: Vec3::ZERO,
+                            angular_velocity: Vec3::ZERO,
                         },
                     ),
                     (
@@ -155,12 +155,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                             } else {
                                 data.controller[0].position
                             }),
-                            linear_velocity: Some(from_tracking_vector3(
+                            linear_velocity: from_tracking_vector3(
                                 data.controller[0].linearVelocity,
-                            )),
-                            angular_velocity: Some(from_tracking_vector3(
+                            ),
+                            angular_velocity: from_tracking_vector3(
                                 data.controller[0].angularVelocity,
-                            )),
+                            ),
                         },
                     ),
                     (
@@ -176,12 +176,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
                             } else {
                                 data.controller[1].position
                             }),
-                            linear_velocity: Some(from_tracking_vector3(
+                            linear_velocity: from_tracking_vector3(
                                 data.controller[1].linearVelocity,
-                            )),
-                            angular_velocity: Some(from_tracking_vector3(
+                            ),
+                            angular_velocity: from_tracking_vector3(
                                 data.controller[1].angularVelocity,
-                            )),
+                            ),
                         },
                     ),
                 ],

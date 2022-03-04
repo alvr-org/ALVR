@@ -107,14 +107,15 @@ pub struct AudioDevice {
 #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
 impl AudioDevice {
     pub fn new(
-        linux_backend: LinuxAudioBackend,
+        linux_backend: Option<LinuxAudioBackend>,
         id: AudioDeviceId,
         device_type: AudioDeviceType,
     ) -> StrResult<Self> {
         #[cfg(target_os = "linux")]
         let host = match linux_backend {
-            LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
-            LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
+            Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
+            Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
+            None => cpal::default_host(),
         };
         #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();

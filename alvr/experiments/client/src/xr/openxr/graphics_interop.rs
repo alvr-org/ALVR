@@ -1,35 +1,29 @@
-use super::{OpenxrSwapchain, XrContext};
+use super::{XrContext, XrSwapchain};
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
     ash::{
         self,
-        extensions::khr,
         vk::{self, Handle},
     },
     convert::{
         self, GraphicsContextVulkanInitDesc, SwapchainCreateData, SwapchainCreateInfo, TextureType,
         TARGET_VULKAN_VERSION,
     },
-    wgpu::{Device, TextureFormat, TextureViewDescriptor},
+    wgpu::{Device, TextureFormat, TextureUsages, TextureViewDescriptor},
     wgpu_hal as hal, GraphicsContext,
 };
 use openxr as xr;
 use parking_lot::Mutex;
-use std::{
-    ffi::{CStr, CString},
-    mem,
-    sync::Arc,
-};
+use std::{ffi::CStr, mem, sync::Arc};
 
 pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {
     let entry = unsafe { ash::Entry::load().unwrap() };
 
     let raw_instance = unsafe {
-        let extensions_ptrs =
-            convert::get_vulkan_instance_extensions(&entry, TARGET_VULKAN_VERSION)?
-                .iter()
-                .map(|x| x.as_ptr())
-                .collect::<Vec<_>>();
+        let extensions_ptrs = convert::get_vulkan_instance_extensions(&entry)?
+            .iter()
+            .map(|x| x.as_ptr())
+            .collect::<Vec<_>>();
         let layers = vec![CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0").unwrap()];
         let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
 
@@ -120,7 +114,7 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
         let info = vk::DeviceCreateInfo::builder()
             .queue_create_infos(&queue_infos)
             .enabled_extension_names(&extensions_ptrs);
-        let mut info = features.add_to_device_create_builder(info);
+        let info = features.add_to_device_create_builder(info);
 
         let mut ycbcr_conversion_feature =
             vk::PhysicalDeviceSamplerYcbcrConversionFeaturesKHR::builder()
@@ -155,17 +149,17 @@ pub fn create_swapchain(
     device: &Device,
     session: &xr::Session<xr::Vulkan>,
     size: UVec2,
-) -> OpenxrSwapchain {
+) -> XrSwapchain {
     const FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
-    let usage = xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED;
-    // This corresponds to USAGE
+    let usage = TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING;
+    let xr_usage = xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED;
     let hal_usage = hal::TextureUses::COLOR_TARGET | hal::TextureUses::RESOURCE;
 
     let swapchain = session
         .create_swapchain(&xr::SwapchainCreateInfo {
             create_flags: xr::SwapchainCreateFlags::EMPTY,
-            usage_flags: usage,
+            usage_flags: xr_usage,
             format: FORMAT.as_raw() as _,
             sample_count: 1,
             width: size.x,
@@ -200,7 +194,7 @@ pub fn create_swapchain(
         },
     );
 
-    OpenxrSwapchain {
+    XrSwapchain {
         handle: swapchain,
         views: textures
             .iter()

@@ -119,7 +119,9 @@ fn main() {
                 .map_err(|e| e.to_string());
 
             if SESSION_MODIFIED.load(Ordering::Relaxed) {
-                dashboard.report_event(ServerEvent::Session(SESSION.lock().unwrap().clone()))
+                dashboard.report_event(ServerEvent::Session(Box::new(
+                    SESSION.lock().unwrap().clone(),
+                )))
             }
 
             res

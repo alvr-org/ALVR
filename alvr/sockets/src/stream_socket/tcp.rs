@@ -1,4 +1,3 @@
-use super::StreamId;
 use crate::{Ldc, LOCAL_IP};
 use alvr_common::prelude::*;
 use bytes::{Buf, Bytes, BytesMut};
@@ -50,7 +49,7 @@ pub async fn connect_to_client(
 
 pub async fn receive_loop(
     mut socket: TcpStreamReceiveSocket,
-    packet_enqueuers: Arc<Mutex<HashMap<StreamId, mpsc::UnboundedSender<BytesMut>>>>,
+    packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
     while let Some(maybe_packet) = socket.next().await {
         let mut packet = trace_err!(maybe_packet)?;

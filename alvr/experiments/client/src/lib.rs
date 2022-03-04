@@ -10,10 +10,9 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     log,
     prelude::*,
-    Fov,
 };
 use alvr_graphics::{wgpu::Texture, GraphicsContext};
-use alvr_session::CodecType;
+use alvr_session::{CodecType, Fov};
 use alvr_sockets::VideoFrameHeaderPacket;
 use connection::VideoStreamingComponents;
 use parking_lot::{Mutex, RwLock};

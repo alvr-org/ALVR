@@ -38,10 +38,11 @@ futures = "0.3"
 pollster = "0.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
-rend3 = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
-rend3-routine = { git = "https://github.com/BVE-Reborn/rend3", rev = "e07b2c921445ec97f59dd3e845478dc71d25c1f6" }
+rend3 = "0.3"
+rend3-routine = "0.3"
+wgpu = "0.12"
 # Miscellaneous
-openxr = { git = "https://github.com/zarik5/openxrs" }
+openxr = "0.16"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19"

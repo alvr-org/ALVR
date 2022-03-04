@@ -65,7 +65,7 @@ impl Application for Window {
         let mut dashboard = dashboard::Dashboard::new();
 
         dashboard.update(
-            DashboardEvent::ServerEvent(ServerEvent::Session(init_data.session)),
+            DashboardEvent::ServerEvent(ServerEvent::Session(Box::new(init_data.session))),
             &mut init_data.request_handler,
         );
 
@@ -143,6 +143,7 @@ impl Dashboard {
             text_multithreading: false,
             antialiasing: false,
             exit_on_close_request: true,
+            try_opengles_first: false,
         })
         .unwrap();
     }

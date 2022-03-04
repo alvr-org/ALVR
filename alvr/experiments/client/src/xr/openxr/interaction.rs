@@ -1,6 +1,7 @@
-use super::{convert, SceneButtons, ViewConfig, XrContext};
+use super::{convert, SceneButtons, XrContext, XrViewConfig};
 use crate::xr::{XrActionType, XrActionValue, XrProfileDesc};
-use alvr_common::{prelude::*, MotionData};
+use alvr_common::prelude::*;
+use alvr_sockets::MotionData;
 use openxr as xr;
 use std::collections::HashMap;
 
@@ -22,15 +23,6 @@ enum OpenxrButtonAction {
     Scalar(xr::Action<f32>),
 }
 
-struct HandTrackingContext {
-    tracker: xr::HandTracker,
-
-    // Note: target rays are used to have better aim when using HUD menus with hand tracking.
-    // The target ray intersects the shoulder.
-    target_ray_action: xr::Action<xr::Posef>,
-    target_ray_space: xr::Space,
-}
-
 pub struct TrackerContext {
     // Only one pose action per tracker. For controllers, grip action is used
     pose_action: xr::Action<xr::Posef>,
@@ -38,7 +30,7 @@ pub struct TrackerContext {
     vibration_action: xr::Action<xr::Haptic>,
 }
 
-pub struct OpenxrInteractionContext {
+pub struct XrInteractionContext {
     session: xr::Session<xr::Vulkan>,
     action_set: xr::ActionSet,
     scene_select_action: xr::Action<bool>,
@@ -47,18 +39,18 @@ pub struct OpenxrInteractionContext {
     pub reference_space: xr::Space,
     pub left_hand_tracker_context: TrackerContext,
     pub right_hand_tracker_context: TrackerContext,
-    pub left_hand_tracking_context: Option<HandTrackingContext>,
-    pub right_hand_tracking_context: Option<HandTrackingContext>,
+    pub left_hand_skeleton_tracker: Option<xr::HandTracker>,
+    pub right_hand_skeleton_tracker: Option<xr::HandTracker>,
     // todo: vive trackers
 }
 
-impl OpenxrInteractionContext {
+impl XrInteractionContext {
     fn get_hand_interaction(
         xr_context: &XrContext,
         session: xr::Session<xr::Vulkan>,
         action_set: &xr::ActionSet,
         hand: xr::Hand,
-    ) -> StrResult<(TrackerContext, Option<HandTrackingContext>)> {
+    ) -> StrResult<(TrackerContext, Option<xr::HandTracker>)> {
         let hand_str = if hand == xr::Hand::LEFT {
             "alvr_left"
         } else {
@@ -78,25 +70,7 @@ impl OpenxrInteractionContext {
             .instance
             .supports_hand_tracking(xr_context.system))?
         {
-            let tracker = trace_err!(session.create_hand_tracker(hand))?;
-
-            let target_ray_action_name = format!("{hand_str}_aim");
-            let target_ray_action = trace_err!(action_set.create_action(
-                &target_ray_action_name,
-                &target_ray_action_name,
-                &[]
-            ))?;
-            let target_ray_space = trace_err!(target_ray_action.create_space(
-                session,
-                xr::Path::NULL,
-                xr::Posef::IDENTITY
-            ))?;
-
-            Some(HandTrackingContext {
-                tracker,
-                target_ray_action,
-                target_ray_space,
-            })
+            Some(trace_err!(session.create_hand_tracker(hand))?)
         } else {
             None
         };
@@ -108,14 +82,14 @@ impl OpenxrInteractionContext {
             &[]
         ))?;
 
-        Ok(
+        Ok((
             TrackerContext {
                 pose_action,
                 space,
                 vibration_action,
             },
             skeleton_tracking_context,
-        )
+        ))
     }
 
     pub fn new(
@@ -244,14 +218,6 @@ impl OpenxrInteractionContext {
                         .instance
                         .string_to_path("/user/hand/left/input/grip/pose"))?,
                 ));
-                if let Some(hand_tracking_context) = &left_hand_tracking_context {
-                    bindings.push(xr::Binding::new(
-                        &hand_tracking_context.target_ray_action,
-                        trace_err!(xr_context
-                            .instance
-                            .string_to_path("/user/hand/left/input/aim/pose"))?,
-                    ));
-                }
 
                 bindings.push(xr::Binding::new(
                     &right_hand_tracker_context.pose_action,
@@ -259,14 +225,6 @@ impl OpenxrInteractionContext {
                         .instance
                         .string_to_path("/user/hand/right/input/grip/pose"))?,
                 ));
-                if let Some(hand_tracking_context) = &right_hand_tracking_context {
-                    bindings.push(xr::Binding::new(
-                        &hand_tracking_context.target_ray_action,
-                        trace_err!(xr_context
-                            .instance
-                            .string_to_path("/user/hand/right/input/aim/pose"))?,
-                    ));
-                }
             }
 
             if profile.has_haptics {
@@ -332,8 +290,8 @@ impl OpenxrInteractionContext {
             reference_space,
             left_hand_tracker_context,
             right_hand_tracker_context,
-            left_hand_tracking_context,
-            right_hand_tracking_context,
+            left_hand_skeleton_tracker: left_hand_tracking_context,
+            right_hand_skeleton_tracker: right_hand_tracking_context,
         })
     }
 
@@ -345,7 +303,7 @@ impl OpenxrInteractionContext {
         &self,
         view_configuration_type: xr::ViewConfigurationType,
         display_time: xr::Time,
-    ) -> StrResult<Vec<ViewConfig>> {
+    ) -> StrResult<Vec<XrViewConfig>> {
         let (_, views) = trace_err!(self.session.locate_views(
             view_configuration_type,
             display_time,
@@ -354,7 +312,7 @@ impl OpenxrInteractionContext {
 
         Ok(views
             .into_iter()
-            .map(|view| ViewConfig {
+            .map(|view| XrViewConfig {
                 orientation: convert::from_xr_orientation(view.pose.orientation),
                 position: convert::from_xr_vec3(view.pose.position),
                 fov: convert::from_xr_fov(view.fov),
@@ -366,8 +324,8 @@ impl OpenxrInteractionContext {
         MotionData {
             orientation: convert::from_xr_orientation(location.pose.orientation),
             position: convert::from_xr_vec3(location.pose.position),
-            linear_velocity: velocity.linear_velocity.map(convert::from_xr_vec3),
-            angular_velocity: velocity.angular_velocity.map(convert::from_xr_vec3),
+            linear_velocity: convert::from_xr_vec3(velocity.linear_velocity),
+            angular_velocity: convert::from_xr_vec3(velocity.angular_velocity),
         }
     }
 
@@ -381,41 +339,27 @@ impl OpenxrInteractionContext {
         Ok(Self::get_motion(location, velocity))
     }
 
-    pub fn get_hand_tracking_input(
+    pub fn get_hand_skeleton(
         &self,
-        context: &HandTrackingContext,
+        hand_tracker: &xr::HandTracker,
         display_time: xr::Time,
-    ) -> StrResult<Option<XrHandTrackingInput>> {
-        let (target_ray_location, target_ray_velocity) = trace_err!(context
-            .target_ray_space
-            .relate(&self.reference_space, display_time))?;
-        let target_ray_motion = Self::get_motion(target_ray_location, target_ray_velocity);
-
+    ) -> StrResult<Option<[MotionData; 26]>> {
         if let Some((joint_locations, joint_velocities)) = trace_err!(self
             .reference_space
-            .relate_hand_joints(&context.tracker, display_time))?
+            .relate_hand_joints(hand_tracker, display_time))?
         {
             let skeleton_motion = joint_locations
-                .iter()
-                .zip(joint_velocities.iter())
+                .into_iter()
+                .zip(joint_velocities.into_iter())
                 .map(|(joint_location, joint_velocity)| MotionData {
                     orientation: convert::from_xr_orientation(joint_location.pose.orientation),
                     position: convert::from_xr_vec3(joint_location.pose.position),
-                    linear_velocity: joint_velocity
-                        .velocity_flags
-                        .contains(xr::SpaceVelocityFlags::LINEAR_VALID)
-                        .then(|| convert::from_xr_vec3(joint_velocity.linear_velocity)),
-                    angular_velocity: joint_velocity
-                        .velocity_flags
-                        .contains(xr::SpaceVelocityFlags::ANGULAR_VALID)
-                        .then(|| convert::from_xr_vec3(joint_velocity.angular_velocity)),
+                    linear_velocity: convert::from_xr_vec3(joint_velocity.linear_velocity),
+                    angular_velocity: convert::from_xr_vec3(joint_velocity.angular_velocity),
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
-            Ok(Some(XrHandTrackingInput {
-                target_ray_motion,
-                skeleton_motion,
-            }))
+            Ok(Some(skeleton_motion.try_into().unwrap()))
         } else {
             Ok(None)
         }
@@ -433,14 +377,14 @@ impl OpenxrInteractionContext {
         })
     }
 
-    pub fn get_streming_buttons(&self) -> StrResult<HashMap<u64, XrActionValue>> {
+    pub fn get_streming_buttons(&self) -> StrResult<Vec<(u64, XrActionValue)>> {
         let mut values = Vec::new();
 
         for (hash, action) in &self.streaming_button_actions {
             match action {
                 OpenxrButtonAction::Binary(action) => {
                     values.push((
-                        hash,
+                        *hash,
                         XrActionValue::Boolean(
                             trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
                         ),
@@ -448,7 +392,7 @@ impl OpenxrInteractionContext {
                 }
                 OpenxrButtonAction::Scalar(action) => {
                     values.push((
-                        hash,
+                        *hash,
                         XrActionValue::Scalar(
                             trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
                         ),

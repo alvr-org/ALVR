@@ -1,7 +1,6 @@
 use crate::GraphicsContext;
 use alvr_common::{glam::UVec2, prelude::*};
 use ash::vk;
-use openxr_sys::SwapchainUsageFlags;
 use std::{any::Any, ffi::CStr, slice, sync::Arc};
 use wgpu::{
     Device, DeviceDescriptor, Extent3d, Texture, TextureDescriptor, TextureDimension,
@@ -12,10 +11,7 @@ use wgpu_hal as hal;
 pub const TARGET_VULKAN_VERSION: u32 = vk::make_api_version(0, 1, 1, 0);
 
 // Get extensions needed by wgpu. Corresponds to xrGetVulkanInstanceExtensionsKHR
-pub fn get_vulkan_instance_extensions(
-    entry: &ash::Entry,
-    version: u32,
-) -> StrResult<Vec<&'static CStr>> {
+pub fn get_vulkan_instance_extensions(entry: &ash::Entry) -> StrResult<Vec<&'static CStr>> {
     let mut flags = hal::InstanceFlags::empty();
     if cfg!(debug_assertions) {
         flags |= hal::InstanceFlags::VALIDATION;
@@ -30,11 +26,10 @@ pub fn create_vulkan_instance(
     entry: &ash::Entry,
     info: &vk::InstanceCreateInfo,
 ) -> StrResult<ash::Instance> {
-    let mut extensions_ptrs =
-        get_vulkan_instance_extensions(entry, unsafe { (*info.p_application_info).api_version })?
-            .iter()
-            .map(|x| x.as_ptr())
-            .collect::<Vec<_>>();
+    let mut extensions_ptrs = get_vulkan_instance_extensions(entry)?
+        .iter()
+        .map(|x| x.as_ptr())
+        .collect::<Vec<_>>();
 
     extensions_ptrs.extend_from_slice(unsafe {
         slice::from_raw_parts(
@@ -77,7 +72,7 @@ pub fn get_temporary_hal_adapter(
     instance: ash::Instance,
     physical_device: vk::PhysicalDevice,
 ) -> StrResult<hal::ExposedAdapter<hal::api::Vulkan>> {
-    let instance_extensions = get_vulkan_instance_extensions(&entry, version)?;
+    let instance_extensions = get_vulkan_instance_extensions(&entry)?;
 
     let mut flags = hal::InstanceFlags::empty();
     if cfg!(debug_assertions) {
@@ -181,7 +176,7 @@ impl GraphicsContext {
             flags |= hal::InstanceFlags::DEBUG;
         };
 
-        let extensions = get_vulkan_instance_extensions(&desc.entry, desc.version)?;
+        let instance_extensions = get_vulkan_instance_extensions(&desc.entry)?;
 
         let handle_is_owned = desc.drop_guard.is_some();
 
@@ -190,7 +185,7 @@ impl GraphicsContext {
                 desc.entry,
                 desc.raw_instance.clone(),
                 desc.version,
-                extensions,
+                instance_extensions,
                 flags,
                 false,
                 desc.drop_guard,
@@ -337,7 +332,7 @@ pub enum TextureType {
 }
 
 pub struct SwapchainCreateInfo {
-    pub usage: SwapchainUsageFlags,
+    pub usage: TextureUsages,
     pub format: TextureFormat,
     pub sample_count: u32,
     pub size: UVec2,
@@ -350,37 +345,6 @@ pub fn create_texture_set(
     data: SwapchainCreateData,
     info: SwapchainCreateInfo,
 ) -> Vec<Texture> {
-    let wgpu_usage = {
-        let mut wgpu_usage = TextureUsages::empty();
-
-        if info.usage.contains(SwapchainUsageFlags::SAMPLED) {
-            wgpu_usage |= TextureUsages::TEXTURE_BINDING;
-        }
-        if info.usage.contains(SwapchainUsageFlags::COLOR_ATTACHMENT) {
-            wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
-        }
-        if info
-            .usage
-            .contains(SwapchainUsageFlags::DEPTH_STENCIL_ATTACHMENT)
-        {
-            wgpu_usage |= TextureUsages::RENDER_ATTACHMENT;
-        }
-        if info.usage.contains(SwapchainUsageFlags::TRANSFER_SRC) {
-            wgpu_usage |= TextureUsages::COPY_SRC;
-        }
-        if info.usage.contains(SwapchainUsageFlags::TRANSFER_DST) {
-            wgpu_usage |= TextureUsages::COPY_DST;
-        }
-
-        // Unused flags:
-        // * UNORDERED_ACCESS: No-op on vulkan
-        // * MUTABLE_FORMAT: wgpu does not support this, but it should be no-op for the internal
-        //   Vulkan images (todo: check)
-        // * INPUT_ATTACHMENT: Always enabled on wgpu (todo: check)
-
-        wgpu_usage
-    };
-
     let depth_or_array_layers = match info.texture_type {
         TextureType::Flat { array_size } => array_size,
         TextureType::Cubemap => 6,
@@ -399,7 +363,7 @@ pub fn create_texture_set(
         sample_count: info.sample_count,
         dimension: TextureDimension::D2,
         format: info.format,
-        usage: wgpu_usage,
+        usage: info.usage,
     };
 
     match data {

@@ -110,11 +110,11 @@ impl Dashboard {
             DashboardEvent::ServerEvent(event) => match event {
                 ServerEvent::Session(session) => {
                     self.connection_panel.update(
-                        ConnectionEvent::SessionUpdated(session.clone()),
+                        ConnectionEvent::SessionUpdated((*session).clone()),
                         request_handler,
                     );
                     self.settings_panel
-                        .update(SettingsEvent::SessionUpdated(session), request_handler);
+                        .update(SettingsEvent::SessionUpdated(*session), request_handler);
                 }
                 ServerEvent::SessionUpdated => (), // deprecated
                 ServerEvent::SessionSettingsExtrapolationFailed => todo!(),

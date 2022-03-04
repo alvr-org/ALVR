@@ -38,11 +38,11 @@ pub fn create_identity(hostname: Option<String>) -> StrResult<PrivateIdentity> {
         rand::thread_rng().gen_range(0..10),
     ));
 
-    let certificate = trace_err!(rcgen::generate_simple_self_signed([hostname.clone()]))?;
+    let certificate = rcgen::generate_simple_self_signed([hostname.clone()]).map_err(err!())?;
 
     Ok(PrivateIdentity {
         hostname,
-        certificate_pem: trace_err!(certificate.serialize_pem())?,
+        certificate_pem: certificate.serialize_pem().map_err(err!())?,
         key_pem: certificate.serialize_private_key_pem(),
     })
 }
@@ -60,15 +60,14 @@ mod util {
         // is dropped
         let (_cancel_sender, cancel_receiver) = oneshot::channel::<()>();
 
-        trace_err!(
-            task::spawn(async {
-                tokio::select! {
-                    res = future => res,
-                    _ = cancel_receiver => Ok(()),
-                }
-            })
-            .await
-        )?
+        task::spawn(async {
+            tokio::select! {
+                res = future => res,
+                _ = cancel_receiver => Ok(()),
+            }
+        })
+        .await
+        .map_err(err!())?
     }
 }
 pub use util::*;

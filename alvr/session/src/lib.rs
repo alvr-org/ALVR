@@ -21,14 +21,11 @@ use std::{
 pub type SessionSettings = settings::SettingsDefault;
 
 pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
-    trace_err!(json::from_str(&trace_err!(fs::read_to_string(path))?))
+    json::from_str(&fs::read_to_string(path).map_err(err!())?).map_err(err!())
 }
 
 pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
-    trace_err!(fs::write(
-        path,
-        trace_err!(json::to_string_pretty(session_desc))?
-    ))
+    fs::write(path, json::to_string_pretty(session_desc).map_err(err!())?).map_err(err!())
 }
 
 // This structure is used to store the minimum configuration data that ALVR driver needs to
@@ -193,8 +190,8 @@ impl SessionDesc {
             return Ok(());
         }
 
-        let old_session_json = trace_err!(json::to_value(&self))?;
-        let old_session_fields = trace_none!(old_session_json.as_object())?;
+        let old_session_json = json::to_value(&self).map_err(err!())?;
+        let old_session_fields = old_session_json.as_object().ok_or_else(enone!())?;
 
         let maybe_session_settings_json =
             json_value
@@ -222,7 +219,8 @@ impl SessionDesc {
         let mut session_desc_mut =
             json::from_value::<SessionDesc>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SessionSettings>(trace_none!(maybe_session_settings_json)?) {
+        match json::from_value::<SessionSettings>(maybe_session_settings_json.ok_or_else(enone!())?)
+        {
             Ok(session_settings) => {
                 session_desc_mut.session_settings = session_settings;
                 *self = session_desc_mut;

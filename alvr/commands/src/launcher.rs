@@ -2,7 +2,10 @@ use alvr_common::prelude::*;
 use std::{path::Path, process::Command};
 
 fn invoke_launcher(launcher_path: &Path, flag: &str) -> StrResult {
-    trace_err!(Command::new(launcher_path).arg(flag).status())?;
+    Command::new(launcher_path)
+        .arg(flag)
+        .status()
+        .map_err(err!())?;
 
     Ok(())
 }

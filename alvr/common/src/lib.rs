@@ -17,9 +17,7 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const ALVR_NAME: &str = "ALVR";
 
 pub mod prelude {
-    pub use crate::{
-        fmt_e, logging::*, trace_err, trace_err_dbg, trace_none, trace_str, StrResult,
-    };
+    pub use crate::{enone, err, err_dbg, fmt_e, logging::*, StrResult};
     pub use log::{debug, error, info, warn};
 }
 

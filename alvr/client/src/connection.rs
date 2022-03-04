@@ -88,12 +88,21 @@ fn set_loading_message(
     // task to another thread at any time, and env is valid only within a specific thread. For
     // the same reason, other jni objects cannot be made into variables and the arguments must
     // be created inline within the call_method() call
-    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-        activity_ref,
-        "setLoadingMessage",
-        "(Ljava/lang/String;)V",
-        &[trace_err!(trace_err!(java_vm.attach_current_thread())?.new_string(message))?.into()],
-    ))?;
+    java_vm
+        .attach_current_thread()
+        .map_err(err!())?
+        .call_method(
+            activity_ref,
+            "setLoadingMessage",
+            "(Ljava/lang/String;)V",
+            &[java_vm
+                .attach_current_thread()
+                .map_err(err!())?
+                .new_string(message)
+                .map_err(err!())?
+                .into()],
+        )
+        .map_err(err!())?;
 
     Ok(())
 }
@@ -164,8 +173,14 @@ async fn connection_pipeline(
         } => pair
     };
 
-    trace_err!(proto_socket.send(&(headset_info, server_ip)).await)?;
-    let config_packet = trace_err!(proto_socket.recv::<ClientConfigPacket>().await)?;
+    proto_socket
+        .send(&(headset_info, server_ip))
+        .await
+        .map_err(err!())?;
+    let config_packet = proto_socket
+        .recv::<ClientConfigPacket>()
+        .await
+        .map_err(err!())?;
 
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
@@ -199,7 +214,8 @@ async fn connection_pipeline(
 
     let settings = {
         let mut session_desc = SessionDesc::default();
-        session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
+        session_desc
+            .merge_from_json(&json::from_str(&config_packet.session_desc).map_err(err!())?)?;
         session_desc.to_settings()
     };
 
@@ -243,12 +259,16 @@ async fn connection_pipeline(
         is_connected: Arc::clone(&is_connected),
     };
 
-    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-        &*activity_ref,
-        "setDarkMode",
-        "(Z)V",
-        &[settings.extra.client_dark_mode.into()],
-    ))?;
+    java_vm
+        .attach_current_thread()
+        .map_err(err!())?
+        .call_method(
+            &*activity_ref,
+            "setDarkMode",
+            "(Z)V",
+            &[settings.extra.client_dark_mode.into()],
+        )
+        .map_err(err!())?;
 
     // create this before initializing the stream on cpp side
     let (views_config_sender, mut views_config_receiver) = tmpsc::unbounded_channel();
@@ -308,19 +328,26 @@ async fn connection_pipeline(
         });
     }
 
-    trace_err!(trace_err!(java_vm.attach_current_thread())?.call_method(
-        &*activity_ref,
-        "onServerConnected",
-        "(FIZLjava/lang/String;)V",
-        &[
-            config_packet.fps.into(),
-            (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
-            settings.video.client_request_realtime_decoder.into(),
-            trace_err!(trace_err!(java_vm.attach_current_thread())?
-                .new_string(config_packet.dashboard_url))?
-            .into()
-        ],
-    ))?;
+    java_vm
+        .attach_current_thread()
+        .map_err(err!())?
+        .call_method(
+            &*activity_ref,
+            "onServerConnected",
+            "(FIZLjava/lang/String;)V",
+            &[
+                config_packet.fps.into(),
+                (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
+                settings.video.client_request_realtime_decoder.into(),
+                java_vm
+                    .attach_current_thread()
+                    .map_err(err!())?
+                    .new_string(config_packet.dashboard_url)
+                    .map_err(err!())?
+                    .into(),
+            ],
+        )
+        .map_err(err!())?;
 
     let tracking_clientside_prediction = match &settings.headset.controllers {
         Switch::Enabled(controllers) => controllers.clientside_prediction,
@@ -496,7 +523,7 @@ async fn connection_pipeline(
         let codec = settings.video.codec;
         let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
-            let env = trace_err!(java_vm.attach_current_thread())?;
+            let env = java_vm.attach_current_thread().map_err(err!())?;
             let env_ptr = env.get_native_interface() as _;
             let activity_obj = activity_ref.as_obj();
             let nal_class: JClass = nal_class_ref.as_obj().into();
@@ -723,7 +750,7 @@ async fn connection_pipeline(
         res = spawn_cancelable(battery_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
-        res = legacy_stream_socket_loop => trace_err!(res)?,
+        res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,

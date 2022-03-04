@@ -93,8 +93,8 @@ pub async fn connect_to_client(
     ThrottledUdpStreamReceiveSocket,
 )> {
     let client_addr: SocketAddr = (client_ip, port).into();
-    let socket = trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)?;
-    trace_err!(socket.connect(client_addr).await)?;
+    let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
+    socket.connect(client_addr).await.map_err(err!())?;
 
     let rx = Arc::new(socket);
     let tx = Arc::clone(&rx);
@@ -123,7 +123,7 @@ pub async fn connect_to_client(
 }
 
 pub async fn listen_for_server(port: u16) -> StrResult<UdpSocket> {
-    trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)
+    UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())
 }
 
 pub async fn accept_from_server(
@@ -135,7 +135,7 @@ pub async fn accept_from_server(
     ThrottledUdpStreamReceiveSocket,
 )> {
     let server_addr: SocketAddr = (server_ip, port).into();
-    trace_err!(socket.connect(server_addr).await)?;
+    socket.connect(server_addr).await.map_err(err!())?;
 
     let rx = Arc::new(socket);
     let tx = Arc::clone(&rx);
@@ -157,11 +157,11 @@ pub async fn receive_loop(
     packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
     while let Some(maybe_packet) = socket.next().await {
-        let (mut packet_bytes, _) = trace_err!(maybe_packet)?;
+        let (mut packet_bytes, _) = maybe_packet.map_err(err!())?;
 
         let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
-            trace_err!(enqueuer.send(packet_bytes))?;
+            enqueuer.send(packet_bytes).map_err(err!())?;
         }
     }
 

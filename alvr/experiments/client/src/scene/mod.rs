@@ -65,7 +65,7 @@ impl Scene {
         // ))
         // .unwrap();
 
-        let renderer = trace_err!(rend3::Renderer::new(iad, Handedness::Right, None))?;
+        let renderer = rend3::Renderer::new(iad, Handedness::Right, None).map_err(err!())?;
 
         let base_render_graph = BaseRenderGraph::new(&renderer);
 

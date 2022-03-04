@@ -190,7 +190,8 @@ fn get_window_location() -> (f64, f64) {
 }
 
 fn make_window() -> StrResult {
-    let instance_mutex = trace_err!(single_instance::SingleInstance::new("alvr_launcher_mutex"))?;
+    let instance_mutex =
+        single_instance::SingleInstance::new("alvr_launcher_mutex").map_err(err!())?;
     if instance_mutex.is_single() {
         let driver_dir = afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
             .openvr_driver_root_dir;
@@ -205,7 +206,7 @@ fn make_window() -> StrResult {
         }
 
         #[cfg(target_os = "linux")]
-        trace_err!(gtk::init())?;
+        gtk::init().map_err(err!())?;
 
         let window = WindowDesc::new(gui)
             .title("ALVR Launcher")
@@ -239,7 +240,7 @@ fn make_window() -> StrResult {
         let handle = app.get_external_handle();
         thread::spawn(move || launcher_lifecycle(handle, window_id));
 
-        trace_err!(app.launch(state))?;
+        app.launch(state).map_err(err!())?;
     }
     Ok(())
 }

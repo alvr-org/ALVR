@@ -93,10 +93,13 @@ impl ConversionPass {
         );
 
         let input_size = UVec2::new(
-            trace_err!(input_android_image.get_width())? as _,
-            trace_err!(input_android_image.get_height())? as _,
+            input_android_image.get_width().map_err(err!())? as _,
+            input_android_image.get_height().map_err(err!())? as _,
         );
-        let input_buffer_ptr = trace_err!(input_android_image.get_hardware_buffer())?.as_ptr();
+        let input_buffer_ptr = input_android_image
+            .get_hardware_buffer()
+            .map_err(err!())?
+            .as_ptr();
 
         let mut input_format_properties =
             vk::AndroidHardwareBufferFormatPropertiesANDROID::default();
@@ -125,68 +128,86 @@ impl ConversionPass {
 
         // error!("buffer properties: {hardware_buffer_format_properties:?}");
 
-        let ycbcr_conversion = trace_err!(device.create_sampler_ycbcr_conversion(
-            &vk::SamplerYcbcrConversionCreateInfo::builder()
-                .format(input_format_properties.format)
-                .ycbcr_model(input_format_properties.suggested_ycbcr_model)
-                .ycbcr_range(input_format_properties.suggested_ycbcr_range)
-                .components(input_format_properties.sampler_ycbcr_conversion_components)
-                .x_chroma_offset(input_format_properties.suggested_x_chroma_offset)
-                .y_chroma_offset(input_format_properties.suggested_y_chroma_offset)
-                .chroma_filter(vk::Filter::LINEAR)
-                .push_next(
-                    &mut vk::ExternalFormatANDROID::builder()
-                        .external_format(input_format_properties.external_format),
+        let ycbcr_conversion = device
+            .create_sampler_ycbcr_conversion(
+                &vk::SamplerYcbcrConversionCreateInfo::builder()
+                    .format(input_format_properties.format)
+                    .ycbcr_model(input_format_properties.suggested_ycbcr_model)
+                    .ycbcr_range(input_format_properties.suggested_ycbcr_range)
+                    .components(input_format_properties.sampler_ycbcr_conversion_components)
+                    .x_chroma_offset(input_format_properties.suggested_x_chroma_offset)
+                    .y_chroma_offset(input_format_properties.suggested_y_chroma_offset)
+                    .chroma_filter(vk::Filter::LINEAR)
+                    .push_next(
+                        &mut vk::ExternalFormatANDROID::builder()
+                            .external_format(input_format_properties.external_format),
+                    ),
+                None,
+            )
+            .map_err(err!())?;
+
+        let sampler = device
+            .create_sampler(
+                &vk::SamplerCreateInfo::builder()
+                    .mag_filter(vk::Filter::LINEAR)
+                    .min_filter(vk::Filter::LINEAR)
+                    .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+                    .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                    .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                    .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
+                    .min_lod(0.0)
+                    .max_lod(1.0)
+                    .push_next(
+                        &mut vk::SamplerYcbcrConversionInfo::builder().conversion(ycbcr_conversion),
+                    ),
+                None,
+            )
+            .map_err(err!())?;
+
+        let descriptor_set_layout = device
+            .create_descriptor_set_layout(
+                &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[
+                    vk::DescriptorSetLayoutBinding::builder()
+                        .binding(0)
+                        .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
+                        .descriptor_count(1)
+                        .stage_flags(vk::ShaderStageFlags::FRAGMENT)
+                        .immutable_samplers(&[sampler])
+                        .build(),
+                ]),
+                None,
+            )
+            .map_err(err!())?;
+
+        let pipeline_layout = device
+            .create_pipeline_layout(
+                &vk::PipelineLayoutCreateInfo::builder().set_layouts(&[descriptor_set_layout]),
+                None,
+            )
+            .map_err(err!())?;
+
+        let vertex_shader_module = device
+            .create_shader_module(
+                &vk::ShaderModuleCreateInfo::builder().code(
+                    &ash::util::read_spv(&mut Cursor::new(&include_bytes!(
+                        "../../resources/quad.spv"
+                    )))
+                    .map_err(err!())?,
                 ),
-            None
-        ))?;
-
-        let sampler = trace_err!(device.create_sampler(
-            &vk::SamplerCreateInfo::builder()
-                .mag_filter(vk::Filter::LINEAR)
-                .min_filter(vk::Filter::LINEAR)
-                .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
-                .address_mode_u(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .address_mode_v(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .address_mode_w(vk::SamplerAddressMode::CLAMP_TO_EDGE)
-                .min_lod(0.0)
-                .max_lod(1.0)
-                .push_next(
-                    &mut vk::SamplerYcbcrConversionInfo::builder().conversion(ycbcr_conversion)
+                None,
+            )
+            .map_err(err!())?;
+        let fragment_shader_module = device
+            .create_shader_module(
+                &vk::ShaderModuleCreateInfo::builder().code(
+                    &ash::util::read_spv(&mut Cursor::new(&include_bytes!(
+                        "../../resources/ycbcr_conversion.spv"
+                    )))
+                    .map_err(err!())?,
                 ),
-            None,
-        ))?;
-
-        let descriptor_set_layout = trace_err!(device.create_descriptor_set_layout(
-            &vk::DescriptorSetLayoutCreateInfo::builder().bindings(&[
-                vk::DescriptorSetLayoutBinding::builder()
-                    .binding(0)
-                    .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                    .descriptor_count(1)
-                    .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                    .immutable_samplers(&[sampler])
-                    .build(),
-            ]),
-            None,
-        ))?;
-
-        let pipeline_layout = trace_err!(device.create_pipeline_layout(
-            &vk::PipelineLayoutCreateInfo::builder().set_layouts(&[descriptor_set_layout]),
-            None,
-        ))?;
-
-        let vertex_shader_module = trace_err!(device.create_shader_module(
-            &vk::ShaderModuleCreateInfo::builder().code(&trace_err!(ash::util::read_spv(
-                &mut Cursor::new(&include_bytes!("../../resources/quad.spv"))
-            ))?),
-            None
-        ))?;
-        let fragment_shader_module = trace_err!(device.create_shader_module(
-            &vk::ShaderModuleCreateInfo::builder().code(&trace_err!(ash::util::read_spv(
-                &mut Cursor::new(&include_bytes!("../../resources/ycbcr_conversion.spv"))
-            ))?),
-            None
-        ))?;
+                None,
+            )
+            .map_err(err!())?;
 
         let noop_stencil_state = vk::StencilOpState {
             fail_op: vk::StencilOp::KEEP,
@@ -198,28 +219,30 @@ impl ConversionPass {
             reference: 0,
         };
 
-        let render_pass = trace_err!(device.create_render_pass(
-            &vk::RenderPassCreateInfo::builder()
-                .attachments(&[vk::AttachmentDescription {
-                    format: vk::Format::R8G8B8A8_SRGB,
-                    samples: vk::SampleCountFlags::TYPE_1,
-                    load_op: vk::AttachmentLoadOp::CLEAR,
-                    store_op: vk::AttachmentStoreOp::STORE,
-                    initial_layout: vk::ImageLayout::UNDEFINED,
-                    final_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                    ..Default::default()
-                }])
-                .subpasses(&[vk::SubpassDescription::builder()
-                    .color_attachments(&[vk::AttachmentReference {
-                        attachment: 0,
-                        layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+        let render_pass = device
+            .create_render_pass(
+                &vk::RenderPassCreateInfo::builder()
+                    .attachments(&[vk::AttachmentDescription {
+                        format: vk::Format::R8G8B8A8_SRGB,
+                        samples: vk::SampleCountFlags::TYPE_1,
+                        load_op: vk::AttachmentLoadOp::CLEAR,
+                        store_op: vk::AttachmentStoreOp::STORE,
+                        initial_layout: vk::ImageLayout::UNDEFINED,
+                        final_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                        ..Default::default()
                     }])
-                    .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-                    .build()]),
-            None,
-        ))?;
+                    .subpasses(&[vk::SubpassDescription::builder()
+                        .color_attachments(&[vk::AttachmentReference {
+                            attachment: 0,
+                            layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                        }])
+                        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+                        .build()]),
+                None,
+            )
+            .map_err(err!())?;
 
-        let pipelines = trace_err!(device
+        let pipelines = device
             .create_graphics_pipelines(
                 vk::PipelineCache::null(),
                 &[vk::GraphicsPipelineCreateInfo::builder()
@@ -235,12 +258,12 @@ impl ConversionPass {
                             module: fragment_shader_module,
                             p_name: b"main\0".as_ptr() as _,
                             ..Default::default()
-                        }
+                        },
                     ])
                     .vertex_input_state(
                         &vk::PipelineVertexInputStateCreateInfo::builder()
                             .vertex_binding_descriptions(&[])
-                            .vertex_attribute_descriptions(&[])
+                            .vertex_attribute_descriptions(&[]),
                     )
                     .input_assembly_state(
                         &vk::PipelineInputAssemblyStateCreateInfo::builder()
@@ -305,7 +328,8 @@ impl ConversionPass {
                     .build()],
                 None,
             )
-            .map_err(|(_, err)| err))?;
+            .map_err(|(_, err)| err)
+            .map_err(err!())?;
         let pipeline = pipelines[0];
 
         let mut output_image = vk::Image::null();
@@ -313,65 +337,81 @@ impl ConversionPass {
             output_image = tex.unwrap().raw_handle();
         });
 
-        let output_image_view = trace_err!(device.create_image_view(
-            &vk::ImageViewCreateInfo::builder()
-                .image(output_image)
-                .view_type(vk::ImageViewType::TYPE_2D)
-                .format(vk::Format::R8G8B8A8_SRGB)
-                .subresource_range(vk::ImageSubresourceRange {
-                    aspect_mask: vk::ImageAspectFlags::COLOR,
-                    base_mip_level: 0,
-                    level_count: 1,
-                    base_array_layer: slice_index,
-                    layer_count: 1,
-                }),
-            None
-        ))?;
+        let output_image_view = device
+            .create_image_view(
+                &vk::ImageViewCreateInfo::builder()
+                    .image(output_image)
+                    .view_type(vk::ImageViewType::TYPE_2D)
+                    .format(vk::Format::R8G8B8A8_SRGB)
+                    .subresource_range(vk::ImageSubresourceRange {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
+                        base_mip_level: 0,
+                        level_count: 1,
+                        base_array_layer: slice_index,
+                        layer_count: 1,
+                    }),
+                None,
+            )
+            .map_err(err!())?;
 
-        let framebuffer = trace_err!(device.create_framebuffer(
-            &vk::FramebufferCreateInfo::builder()
-                .render_pass(render_pass)
-                .width(output_size.x)
-                .height(output_size.y)
-                .attachments(&[output_image_view])
-                .layers(1),
-            None,
-        ))?;
+        let framebuffer = device
+            .create_framebuffer(
+                &vk::FramebufferCreateInfo::builder()
+                    .render_pass(render_pass)
+                    .width(output_size.x)
+                    .height(output_size.y)
+                    .attachments(&[output_image_view])
+                    .layers(1),
+                None,
+            )
+            .map_err(err!())?;
 
-        let descriptor_pool = trace_err!(device.create_descriptor_pool(
-            &vk::DescriptorPoolCreateInfo::builder()
-                .max_sets(1)
-                .pool_sizes(&[vk::DescriptorPoolSize {
-                    ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
-                    descriptor_count: 1
-                }]),
-            None,
-        ))?;
+        let descriptor_pool = device
+            .create_descriptor_pool(
+                &vk::DescriptorPoolCreateInfo::builder()
+                    .max_sets(1)
+                    .pool_sizes(&[vk::DescriptorPoolSize {
+                        ty: vk::DescriptorType::COMBINED_IMAGE_SAMPLER,
+                        descriptor_count: 1,
+                    }]),
+                None,
+            )
+            .map_err(err!())?;
 
-        let descriptor_sets = trace_err!(device.allocate_descriptor_sets(
-            &vk::DescriptorSetAllocateInfo::builder()
-                .descriptor_pool(descriptor_pool)
-                .set_layouts(&[descriptor_set_layout]),
-        ))?;
+        let descriptor_sets = device
+            .allocate_descriptor_sets(
+                &vk::DescriptorSetAllocateInfo::builder()
+                    .descriptor_pool(descriptor_pool)
+                    .set_layouts(&[descriptor_set_layout]),
+            )
+            .map_err(err!())?;
 
-        let command_pool = trace_err!(device.create_command_pool(
-            &vk::CommandPoolCreateInfo::builder()
-                .flags(vk::CommandPoolCreateFlags::TRANSIENT)
-                .queue_family_index(graphics_context.queue_family_index),
-            None,
-        ))?;
+        let command_pool = device
+            .create_command_pool(
+                &vk::CommandPoolCreateInfo::builder()
+                    .flags(vk::CommandPoolCreateFlags::TRANSIENT)
+                    .queue_family_index(graphics_context.queue_family_index),
+                None,
+            )
+            .map_err(err!())?;
 
-        let fence = trace_err!(device.create_fence(&vk::FenceCreateInfo::default(), None))?;
+        let fence = device
+            .create_fence(&vk::FenceCreateInfo::default(), None)
+            .map_err(err!())?;
 
-        let command_buffers = trace_err!(device.allocate_command_buffers(
-            &vk::CommandBufferAllocateInfo::builder()
-                .command_pool(command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1),
-        ))?;
+        let command_buffers = device
+            .allocate_command_buffers(
+                &vk::CommandBufferAllocateInfo::builder()
+                    .command_pool(command_pool)
+                    .level(vk::CommandBufferLevel::PRIMARY)
+                    .command_buffer_count(1),
+            )
+            .map_err(err!())?;
         let command_buffer = command_buffers[0];
 
-        trace_err!(device.begin_command_buffer(command_buffer, &Default::default()))?;
+        device
+            .begin_command_buffer(command_buffer, &Default::default())
+            .map_err(err!())?;
         device.cmd_pipeline_barrier(
             command_buffer,
             vk::PipelineStageFlags::TOP_OF_PIPE,
@@ -394,15 +434,17 @@ impl ConversionPass {
                 })
                 .build()],
         );
-        trace_err!(device.end_command_buffer(command_buffer))?;
+        device.end_command_buffer(command_buffer).map_err(err!())?;
 
-        trace_err!(device.queue_submit(
-            queue,
-            &[vk::SubmitInfo::builder()
-                .command_buffers(&[command_buffer])
-                .build()],
-            fence,
-        ))?;
+        device
+            .queue_submit(
+                queue,
+                &[vk::SubmitInfo::builder()
+                    .command_buffers(&[command_buffer])
+                    .build()],
+                fence,
+            )
+            .map_err(err!())?;
 
         let pass = Self {
             graphics_context,
@@ -445,7 +487,7 @@ impl ConversionPass {
 
         let device = &self.graphics_context.raw_device;
 
-        trace_err!(device.reset_fences(&[self.fence]))?;
+        device.reset_fences(&[self.fence]).map_err(err!())?;
 
         device.free_command_buffers(self.command_pool, &self.command_buffers);
 
@@ -464,15 +506,19 @@ impl ConversionPass {
             &[],
         );
 
-        self.command_buffers = trace_err!(device.allocate_command_buffers(
-            &vk::CommandBufferAllocateInfo::builder()
-                .command_pool(self.command_pool)
-                .level(vk::CommandBufferLevel::PRIMARY)
-                .command_buffer_count(1),
-        ))?;
+        self.command_buffers = device
+            .allocate_command_buffers(
+                &vk::CommandBufferAllocateInfo::builder()
+                    .command_pool(self.command_pool)
+                    .level(vk::CommandBufferLevel::PRIMARY)
+                    .command_buffer_count(1),
+            )
+            .map_err(err!())?;
         let command_buffer = self.command_buffers[0];
 
-        trace_err!(device.begin_command_buffer(command_buffer, &Default::default()))?;
+        device
+            .begin_command_buffer(command_buffer, &Default::default())
+            .map_err(err!())?;
         device.cmd_pipeline_barrier(
             command_buffer,
             vk::PipelineStageFlags::BOTTOM_OF_PIPE,
@@ -549,15 +595,17 @@ impl ConversionPass {
         );
         device.cmd_draw(command_buffer, 6, 1, 0, 0);
         device.cmd_end_render_pass(command_buffer);
-        trace_err!(device.end_command_buffer(command_buffer))?;
+        device.end_command_buffer(command_buffer).map_err(err!())?;
 
-        trace_err!(device.queue_submit(
-            self.queue,
-            &[vk::SubmitInfo::builder()
-                .command_buffers(&[command_buffer])
-                .build()],
-            self.fence,
-        ))?;
+        device
+            .queue_submit(
+                self.queue,
+                &[vk::SubmitInfo::builder()
+                    .command_buffers(&[command_buffer])
+                    .build()],
+                self.fence,
+            )
+            .map_err(err!())?;
 
         error!("finished conversion pass");
 
@@ -565,87 +613,96 @@ impl ConversionPass {
     }
 
     unsafe fn wait_for_image(&self) -> StrResult {
-        trace_err!(self
-            .graphics_context
+        self.graphics_context
             .raw_device
-            .wait_for_fences(&[self.fence], true, !0))
+            .wait_for_fences(&[self.fence], true, !0)
+            .map_err(err!())
         // NB the fence is not reset yet.
     }
 
     unsafe fn create_acquired_image(&self, android_image: Image) -> StrResult<AcquiredImage> {
         let device = &self.graphics_context.raw_device;
 
-        let buffer_ptr = trace_err!(android_image.get_hardware_buffer())?.as_ptr();
-        let timestamp = Duration::from_nanos(trace_err!(android_image.get_timestamp())? as _);
+        let buffer_ptr = android_image
+            .get_hardware_buffer()
+            .map_err(err!())?
+            .as_ptr();
+        let timestamp = Duration::from_nanos(android_image.get_timestamp().map_err(err!())? as _);
 
-        let image = trace_err!(device.create_image(
-            &vk::ImageCreateInfo::builder()
-                .image_type(vk::ImageType::TYPE_2D)
-                .format(self.input_format_properties.format)
-                .extent(vk::Extent3D {
-                    width: self.input_size.x,
-                    height: self.input_size.y,
-                    depth: 1,
-                })
-                .mip_levels(1)
-                .array_layers(1)
-                .samples(vk::SampleCountFlags::TYPE_1)
-                .tiling(vk::ImageTiling::OPTIMAL)
-                .usage(vk::ImageUsageFlags::SAMPLED)
-                .sharing_mode(vk::SharingMode::EXCLUSIVE)
-                .push_next(
-                    &mut vk::ExternalMemoryImageCreateInfo::builder().handle_types(
-                        vk::ExternalMemoryHandleTypeFlags::ANDROID_HARDWARE_BUFFER_ANDROID
+        let image = device
+            .create_image(
+                &vk::ImageCreateInfo::builder()
+                    .image_type(vk::ImageType::TYPE_2D)
+                    .format(self.input_format_properties.format)
+                    .extent(vk::Extent3D {
+                        width: self.input_size.x,
+                        height: self.input_size.y,
+                        depth: 1,
+                    })
+                    .mip_levels(1)
+                    .array_layers(1)
+                    .samples(vk::SampleCountFlags::TYPE_1)
+                    .tiling(vk::ImageTiling::OPTIMAL)
+                    .usage(vk::ImageUsageFlags::SAMPLED)
+                    .sharing_mode(vk::SharingMode::EXCLUSIVE)
+                    .push_next(
+                        &mut vk::ExternalMemoryImageCreateInfo::builder().handle_types(
+                            vk::ExternalMemoryHandleTypeFlags::ANDROID_HARDWARE_BUFFER_ANDROID,
+                        ),
                     )
-                )
-                .push_next(
-                    &mut vk::ExternalFormatANDROID::builder()
-                        .external_format(self.input_format_properties.external_format),
-                ),
-            None,
-        ))?;
+                    .push_next(
+                        &mut vk::ExternalFormatANDROID::builder()
+                            .external_format(self.input_format_properties.external_format),
+                    ),
+                None,
+            )
+            .map_err(err!())?;
 
         let mut dedicated_allocate_info = vk::MemoryDedicatedAllocateInfo::builder().image(image);
         let mut hardware_buffer_info =
             vk::ImportAndroidHardwareBufferInfoANDROID::builder().buffer(buffer_ptr as _);
-        let memory = trace_err!(device.allocate_memory(
-            &vk::MemoryAllocateInfo::builder()
-                .allocation_size(self.input_allocation_size)
-                .memory_type_index(1)
-                .push_next(&mut dedicated_allocate_info)
-                .push_next(&mut hardware_buffer_info),
-            None,
-        ))?;
+        let memory = device
+            .allocate_memory(
+                &vk::MemoryAllocateInfo::builder()
+                    .allocation_size(self.input_allocation_size)
+                    .memory_type_index(1)
+                    .push_next(&mut dedicated_allocate_info)
+                    .push_next(&mut hardware_buffer_info),
+                None,
+            )
+            .map_err(err!())?;
 
-        trace_err!(
-            device.bind_image_memory2(&[vk::BindImageMemoryInfo::builder()
+        device
+            .bind_image_memory2(&[vk::BindImageMemoryInfo::builder()
                 .image(image)
                 .memory(memory)
                 .build()])
-        )?;
+            .map_err(err!())?;
 
-        let image_view = trace_err!(device.create_image_view(
-            &vk::ImageViewCreateInfo::builder()
-                .image(image)
-                .view_type(vk::ImageViewType::TYPE_2D)
-                .format(self.input_format_properties.format)
-                .components(
-                    self.input_format_properties
-                        .sampler_ycbcr_conversion_components
-                )
-                .subresource_range(vk::ImageSubresourceRange {
-                    aspect_mask: vk::ImageAspectFlags::COLOR,
-                    base_mip_level: 0,
-                    level_count: 1,
-                    base_array_layer: 0,
-                    layer_count: 1,
-                })
-                .push_next(
-                    &mut vk::SamplerYcbcrConversionInfo::builder()
-                        .conversion(self.ycbcr_conversion)
-                ),
-            None
-        ))?;
+        let image_view = device
+            .create_image_view(
+                &vk::ImageViewCreateInfo::builder()
+                    .image(image)
+                    .view_type(vk::ImageViewType::TYPE_2D)
+                    .format(self.input_format_properties.format)
+                    .components(
+                        self.input_format_properties
+                            .sampler_ycbcr_conversion_components,
+                    )
+                    .subresource_range(vk::ImageSubresourceRange {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
+                        base_mip_level: 0,
+                        level_count: 1,
+                        base_array_layer: 0,
+                        layer_count: 1,
+                    })
+                    .push_next(
+                        &mut vk::SamplerYcbcrConversionInfo::builder()
+                            .conversion(self.ycbcr_conversion),
+                    ),
+                None,
+            )
+            .map_err(err!())?;
 
         Ok(AcquiredImage {
             graphics_context: Arc::clone(&self.graphics_context),
@@ -699,19 +756,15 @@ impl VideoDecoderEnqueuer {
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {
-        if let Some(mut buffer) = trace_err!(self.inner.dequeue_input_buffer(timeout))? {
+        if let Some(mut buffer) = self.inner.dequeue_input_buffer(timeout).map_err(err!())? {
             buffer.get_mut()[..data.len()].copy_from_slice(data);
 
             // NB: the function expects the timestamp in micros, but nanos is used to have complete
             // precision, so when converted back to Duration it can compare correctly to other
             // Durations
-            trace_err!(self.inner.queue_input_buffer(
-                buffer,
-                0,
-                data.len(),
-                timestamp.as_nanos() as _,
-                0
-            ))?;
+            self.inner
+                .queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)
+                .map_err(err!())?;
 
             Ok(true)
         } else {
@@ -728,8 +781,10 @@ unsafe impl Send for VideoDecoderDequeuer {}
 
 impl VideoDecoderDequeuer {
     pub fn poll(&self, timeout: Duration) -> StrResult {
-        if let Some(buffer) = trace_err!(self.inner.dequeue_output_buffer(timeout))? {
-            trace_err!(self.inner.release_output_buffer(buffer, true))
+        if let Some(buffer) = self.inner.dequeue_output_buffer(timeout).map_err(err!())? {
+            self.inner
+                .release_output_buffer(buffer, true)
+                .map_err(err!())
         } else {
             Ok(())
         }
@@ -794,13 +849,14 @@ pub fn split(
     VideoDecoderDequeuer,
     VideoDecoderFrameGrabber,
 )> {
-    let mut swapchain = trace_err!(ImageReader::new_with_usage(
+    let mut swapchain = ImageReader::new_with_usage(
         1,
         1,
         ImageFormat::PRIVATE,
         HardwareBufferUsage::GPU_SAMPLED_IMAGE,
         4, // 2 concurrent locks on application side, 1 render surface for Mediacodec, 1 for safety
-    ))?;
+    )
+    .map_err(err!())?;
 
     let conversion_context = Arc::new(Mutex::new(ConversionContext {
         pass: None,
@@ -809,55 +865,57 @@ pub fn split(
     }));
     let image_notifier = Arc::new(Condvar::new());
 
-    trace_err!(swapchain.set_image_listener(Box::new({
-        let conversion_context = Arc::clone(&conversion_context);
-        let image_notifier = Arc::clone(&image_notifier);
-        move |swapchain| {
-            // the used image outlives the lock. This is done so that the render thread can be
-            // unblocked while the used image gets freed.
-            let _used_image = {
-                let context = &mut *conversion_context.lock();
+    swapchain
+        .set_image_listener(Box::new({
+            let conversion_context = Arc::clone(&conversion_context);
+            let image_notifier = Arc::clone(&image_notifier);
+            move |swapchain| {
+                // the used image outlives the lock. This is done so that the render thread can be
+                // unblocked while the used image gets freed.
+                let _used_image = {
+                    let context = &mut *conversion_context.lock();
 
-                error!("Acquire image");
+                    error!("Acquire image");
 
-                if let Some(pass) = &context.pass {
-                    show_err(unsafe { pass.wait_for_image() });
+                    if let Some(pass) = &context.pass {
+                        show_err(unsafe { pass.wait_for_image() });
 
-                    if let Some(image) = swapchain.acquire_latest_image().ok().flatten() {
-                        context.ready_image =
-                            show_err(unsafe { pass.create_acquired_image(image) });
-
-                        image_notifier.notify_one();
-                    }
-
-                    context.used_image.take()
-                } else {
-                    if let Some(image) = swapchain.acquire_latest_image().ok().flatten() {
-                        let maybe_pair = show_err(unsafe {
-                            ConversionPass::new(
-                                Arc::clone(&graphics_context),
-                                image,
-                                &output_texture,
-                                output_size,
-                                slice_index,
-                            )
-                        });
-
-                        if let Some((pass, image)) = maybe_pair {
-                            error!("Conversion pass created");
-
-                            context.pass = Some(pass);
-                            context.ready_image = Some(image);
+                        if let Some(image) = swapchain.acquire_latest_image().ok().flatten() {
+                            context.ready_image =
+                                show_err(unsafe { pass.create_acquired_image(image) });
 
                             image_notifier.notify_one();
                         }
-                    }
 
-                    None
-                }
-            };
-        }
-    })))?;
+                        context.used_image.take()
+                    } else {
+                        if let Some(image) = swapchain.acquire_latest_image().ok().flatten() {
+                            let maybe_pair = show_err(unsafe {
+                                ConversionPass::new(
+                                    Arc::clone(&graphics_context),
+                                    image,
+                                    &output_texture,
+                                    output_size,
+                                    slice_index,
+                                )
+                            });
+
+                            if let Some((pass, image)) = maybe_pair {
+                                error!("Conversion pass created");
+
+                                context.pass = Some(pass);
+                                context.ready_image = Some(image);
+
+                                image_notifier.notify_one();
+                            }
+                        }
+
+                        None
+                    }
+                };
+            }
+        }))
+        .map_err(err!())?;
 
     let mime = match codec_type {
         CodecType::H264 => "video/avc",
@@ -879,13 +937,15 @@ pub fn split(
         }
     }
 
-    let decoder = Arc::new(trace_none!(MediaCodec::from_decoder_type(mime))?);
-    trace_err!(decoder.configure(
-        &format,
-        &trace_err!(swapchain.get_window())?,
-        MediaCodecDirection::Decoder,
-    ))?;
-    trace_err!(decoder.start())?;
+    let decoder = Arc::new(MediaCodec::from_decoder_type(mime).ok_or_else(enone!())?);
+    decoder
+        .configure(
+            &format,
+            &swapchain.get_window().map_err(err!())?,
+            MediaCodecDirection::Decoder,
+        )
+        .map_err(err!())?;
+    decoder.start().map_err(err!())?;
 
     Ok((
         VideoDecoderEnqueuer {

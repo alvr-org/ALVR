@@ -71,14 +71,20 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
     alvr_common::show_err(|| -> StrResult {
         let identity = alvr_sockets::create_identity(None)?;
 
-        let jhostname = trace_err!(env.new_string(identity.hostname))?.into();
-        trace_err!(env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname))?;
+        let jhostname = env.new_string(identity.hostname).map_err(err!())?.into();
+        env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname)
+            .map_err(err!())?;
 
-        let jcert_pem = trace_err!(env.new_string(identity.certificate_pem))?.into();
-        trace_err!(env.set_field(jidentity, "certificatePEM", "Ljava/lang/String;", jcert_pem))?;
+        let jcert_pem = env
+            .new_string(identity.certificate_pem)
+            .map_err(err!())?
+            .into();
+        env.set_field(jidentity, "certificatePEM", "Ljava/lang/String;", jcert_pem)
+            .map_err(err!())?;
 
-        let jkey_pem = trace_err!(env.new_string(identity.key_pem))?.into();
-        trace_err!(env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem))
+        let jkey_pem = env.new_string(identity.key_pem).map_err(err!())?.into();
+        env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem)
+            .map_err(err!())
     }());
 }
 
@@ -361,18 +367,20 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
             *asset_manager as _,
         );
 
-        trace_err!(env.set_field(
+        env.set_field(
             jout_result,
             "streamSurfaceHandle",
             "I",
-            result.streamSurfaceHandle.into()
-        ))?;
-        trace_err!(env.set_field(
+            result.streamSurfaceHandle.into(),
+        )
+        .map_err(err!())?;
+        env.set_field(
             jout_result,
             "loadingSurfaceHandle",
             "I",
-            result.loadingSurfaceHandle.into()
-        ))?;
+            result.loadingSurfaceHandle.into(),
+        )
+        .map_err(err!())?;
 
         Ok(())
     }());
@@ -415,9 +423,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     dark_mode: u8,
 ) {
     alvr_common::show_err(|| -> StrResult {
-        let java_vm = trace_err!(env.get_java_vm())?;
-        let activity_ref = trace_err!(env.new_global_ref(jactivity))?;
-        let nal_class_ref = trace_err!(env.new_global_ref(nal_class))?;
+        let java_vm = env.get_java_vm().map_err(err!())?;
+        let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
+        let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
 
         let result = onResumeNative(*jscreen_surface as _, dark_mode == 1);
 
@@ -444,12 +452,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         };
 
         let private_identity = PrivateIdentity {
-            hostname: trace_err!(env.get_string(jhostname))?.into(),
-            certificate_pem: trace_err!(env.get_string(jcertificate_pem))?.into(),
-            key_pem: trace_err!(env.get_string(jprivate_key))?.into(),
+            hostname: env.get_string(jhostname).map_err(err!())?.into(),
+            certificate_pem: env.get_string(jcertificate_pem).map_err(err!())?.into(),
+            key_pem: env.get_string(jprivate_key).map_err(err!())?.into(),
         };
 
-        let runtime = trace_err!(Runtime::new())?;
+        let runtime = Runtime::new().map_err(err!())?;
 
         runtime.spawn(async move {
             let connection_loop = connection::connection_lifecycle_loop(

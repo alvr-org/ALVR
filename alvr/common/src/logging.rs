@@ -117,30 +117,23 @@ macro_rules! fmt_e {
 }
 
 #[macro_export]
-macro_rules! trace_str {
+macro_rules! err {
     () => {
-        format!("At {}:{}", file!(), line!())
-    };
-}
-
-#[macro_export]
-macro_rules! trace_err {
-    ($res:expr) => {
-        $res.map_err(|e| format!("{}: {e}", trace_str!()))
+        |e| format!("At {}:{}: {e}", file!(), line!())
     };
 }
 
 // trace_err variant for errors that do not implement fmt::Display
 #[macro_export]
-macro_rules! trace_err_dbg {
-    ($res:expr) => {
-        $res.map_err(|e| format!("{}: {e:?}", trace_str!()))
+macro_rules! err_dbg {
+    () => {
+        |e| format!("At {}:{}: {e:?}", file!(), line!())
     };
 }
 
 #[macro_export]
-macro_rules! trace_none {
-    ($res:expr) => {
-        $res.ok_or_else(|| trace_str!())
+macro_rules! enone {
+    () => {
+        || format!("At {}:{}", file!(), line!())
     };
 }

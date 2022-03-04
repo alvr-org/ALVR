@@ -12,7 +12,9 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
     client_found_cb: impl Fn(ClientHandshakePacket) -> F,
 ) -> StrResult<(IpAddr, ClientHandshakePacket)> {
     // use naked UdpSocket + [u8] packet buffer to have more control over datagram data
-    let handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
+    let handshake_socket = UdpSocket::bind((LOCAL_IP, CONTROL_PORT))
+        .await
+        .map_err(err!())?;
 
     let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
@@ -50,9 +52,10 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         }
 
         if !alvr_common::is_version_compatible(&handshake_packet.version) {
-            let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
-                ServerHandshakePacket::IncompatibleVersions
-            )))?;
+            let response_bytes = bincode::serialize(&HandshakePacket::Server(
+                ServerHandshakePacket::IncompatibleVersions,
+            ))
+            .map_err(err!())?;
             handshake_socket
                 .send_to(&response_bytes, client_address)
                 .await
@@ -65,9 +68,10 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         }
 
         if !client_found_cb(handshake_packet.clone()).await {
-            let response_bytes = trace_err!(bincode::serialize(&HandshakePacket::Server(
-                ServerHandshakePacket::ClientUntrusted
-            )))?;
+            let response_bytes = bincode::serialize(&HandshakePacket::Server(
+                ServerHandshakePacket::ClientUntrusted,
+            ))
+            .map_err(err!())?;
 
             handshake_socket
                 .send_to(&response_bytes, client_address)

@@ -58,29 +58,27 @@ impl XrInteractionContext {
         };
 
         let pose_action_name = format!("{hand_str}_grip");
-        let pose_action =
-            trace_err!(action_set.create_action(&pose_action_name, &pose_action_name, &[]))?;
-        let space = trace_err!(pose_action.create_space(
-            session.clone(),
-            xr::Path::NULL,
-            xr::Posef::IDENTITY
-        ))?;
+        let pose_action = action_set
+            .create_action(&pose_action_name, &pose_action_name, &[])
+            .map_err(err!())?;
+        let space = pose_action
+            .create_space(session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .map_err(err!())?;
 
-        let skeleton_tracking_context = if trace_err!(xr_context
+        let skeleton_tracking_context = if xr_context
             .instance
-            .supports_hand_tracking(xr_context.system))?
+            .supports_hand_tracking(xr_context.system)
+            .map_err(err!())?
         {
-            Some(trace_err!(session.create_hand_tracker(hand))?)
+            Some(session.create_hand_tracker(hand).map_err(err!())?)
         } else {
             None
         };
 
         let vibration_action_name = format!("{hand_str}_haptics");
-        let vibration_action = trace_err!(action_set.create_action(
-            &vibration_action_name,
-            &vibration_action_name,
-            &[]
-        ))?;
+        let vibration_action = action_set
+            .create_action(&vibration_action_name, &vibration_action_name, &[])
+            .map_err(err!())?;
 
         Ok((
             TrackerContext {
@@ -98,46 +96,42 @@ impl XrInteractionContext {
         stream_action_types: &[(String, XrActionType)],
         stream_profile_descs: Vec<XrProfileDesc>,
     ) -> StrResult<Self> {
-        let action_set =
-            trace_err!(xr_context
-                .instance
-                .create_action_set("alvr_bindings", "ALVR bindings", 0))?;
+        let action_set = xr_context
+            .instance
+            .create_action_set("alvr_bindings", "ALVR bindings", 0)
+            .map_err(err!())?;
 
         let mut button_actions = HashMap::new();
         button_actions.insert(
             SELECT_ACTION_NAME.to_owned(),
-            OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
-                SELECT_ACTION_NAME,
-                SELECT_ACTION_NAME,
-                &[]
-            ))?),
+            OpenxrButtonAction::Binary(
+                action_set
+                    .create_action(SELECT_ACTION_NAME, SELECT_ACTION_NAME, &[])
+                    .map_err(err!())?,
+            ),
         );
         button_actions.insert(
             MENU_ACTION_NAME.to_owned(),
-            OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
-                MENU_ACTION_NAME,
-                MENU_ACTION_NAME,
-                &[]
-            ))?),
+            OpenxrButtonAction::Binary(
+                action_set
+                    .create_action(MENU_ACTION_NAME, MENU_ACTION_NAME, &[])
+                    .map_err(err!())?,
+            ),
         );
 
         for (name, action_type) in stream_action_types {
             match action_type {
                 XrActionType::Binary => button_actions.insert(
                     name.clone(),
-                    OpenxrButtonAction::Binary(trace_err!(action_set.create_action(
-                        name,
-                        name,
-                        &[]
-                    ))?),
+                    OpenxrButtonAction::Binary(
+                        action_set.create_action(name, name, &[]).map_err(err!())?,
+                    ),
                 ),
                 XrActionType::Scalar => button_actions.insert(
                     name.clone(),
-                    OpenxrButtonAction::Scalar(trace_err!(action_set.create_action(
-                        name,
-                        name,
-                        &[]
-                    ))?),
+                    OpenxrButtonAction::Scalar(
+                        action_set.create_action(name, name, &[]).map_err(err!())?,
+                    ),
                 ),
             };
         }
@@ -189,7 +183,10 @@ impl XrInteractionContext {
         }
 
         for profile in profile_descs {
-            let profile_path = trace_err!(xr_context.instance.string_to_path(&profile.profile))?;
+            let profile_path = xr_context
+                .instance
+                .string_to_path(&profile.profile)
+                .map_err(err!())?;
 
             let mut bindings = vec![];
 
@@ -199,7 +196,10 @@ impl XrInteractionContext {
                 } else {
                     return fmt_e!("Action {action_name} not defined");
                 };
-                let path = trace_err!(xr_context.instance.string_to_path(path_string))?;
+                let path = xr_context
+                    .instance
+                    .string_to_path(path_string)
+                    .map_err(err!())?;
 
                 match action {
                     OpenxrButtonAction::Binary(action) => {
@@ -214,31 +214,35 @@ impl XrInteractionContext {
             if profile.tracked {
                 bindings.push(xr::Binding::new(
                     &left_hand_tracker_context.pose_action,
-                    trace_err!(xr_context
+                    xr_context
                         .instance
-                        .string_to_path("/user/hand/left/input/grip/pose"))?,
+                        .string_to_path("/user/hand/left/input/grip/pose")
+                        .map_err(err!())?,
                 ));
 
                 bindings.push(xr::Binding::new(
                     &right_hand_tracker_context.pose_action,
-                    trace_err!(xr_context
+                    xr_context
                         .instance
-                        .string_to_path("/user/hand/right/input/grip/pose"))?,
+                        .string_to_path("/user/hand/right/input/grip/pose")
+                        .map_err(err!())?,
                 ));
             }
 
             if profile.has_haptics {
                 bindings.push(xr::Binding::new(
                     &left_hand_tracker_context.vibration_action,
-                    trace_err!(xr_context
+                    xr_context
                         .instance
-                        .string_to_path("/user/hand/left/output/haptic"))?,
+                        .string_to_path("/user/hand/left/output/haptic")
+                        .map_err(err!())?,
                 ));
                 bindings.push(xr::Binding::new(
                     &right_hand_tracker_context.vibration_action,
-                    trace_err!(xr_context
+                    xr_context
                         .instance
-                        .string_to_path("/user/hand/right/output/haptic"))?,
+                        .string_to_path("/user/hand/right/output/haptic")
+                        .map_err(err!())?,
                 ));
             }
 
@@ -249,9 +253,9 @@ impl XrInteractionContext {
                 .ok();
         }
 
-        trace_err!(session.attach_action_sets(&[&action_set]))?;
+        session.attach_action_sets(&[&action_set]).map_err(err!())?;
 
-        let reference_space = trace_err!(session
+        let reference_space = session
             .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
             .or_else(|_| {
                 session.create_reference_space(
@@ -265,7 +269,8 @@ impl XrInteractionContext {
                         },
                     },
                 )
-            }))?;
+            })
+            .map_err(err!())?;
 
         let scene_select_action = match button_actions.remove(SELECT_ACTION_NAME).unwrap() {
             OpenxrButtonAction::Binary(action) => action,
@@ -296,7 +301,9 @@ impl XrInteractionContext {
     }
 
     pub fn sync_input(&self) -> StrResult {
-        trace_err!(self.session.sync_actions(&[(&self.action_set).into()]))
+        self.session
+            .sync_actions(&[(&self.action_set).into()])
+            .map_err(err!())
     }
 
     pub fn get_views(
@@ -304,11 +311,10 @@ impl XrInteractionContext {
         view_configuration_type: xr::ViewConfigurationType,
         display_time: xr::Time,
     ) -> StrResult<Vec<XrViewConfig>> {
-        let (_, views) = trace_err!(self.session.locate_views(
-            view_configuration_type,
-            display_time,
-            &self.reference_space
-        ))?;
+        let (_, views) = self
+            .session
+            .locate_views(view_configuration_type, display_time, &self.reference_space)
+            .map_err(err!())?;
 
         Ok(views
             .into_iter()
@@ -334,8 +340,10 @@ impl XrInteractionContext {
         context: &TrackerContext,
         display_time: xr::Time,
     ) -> StrResult<MotionData> {
-        let (location, velocity) =
-            trace_err!(context.space.relate(&self.reference_space, display_time))?;
+        let (location, velocity) = context
+            .space
+            .relate(&self.reference_space, display_time)
+            .map_err(err!())?;
         Ok(Self::get_motion(location, velocity))
     }
 
@@ -344,9 +352,10 @@ impl XrInteractionContext {
         hand_tracker: &xr::HandTracker,
         display_time: xr::Time,
     ) -> StrResult<Option<[MotionData; 26]>> {
-        if let Some((joint_locations, joint_velocities)) = trace_err!(self
+        if let Some((joint_locations, joint_velocities)) = self
             .reference_space
-            .relate_hand_joints(hand_tracker, display_time))?
+            .relate_hand_joints(hand_tracker, display_time)
+            .map_err(err!())?
         {
             let skeleton_motion = joint_locations
                 .into_iter()
@@ -366,10 +375,14 @@ impl XrInteractionContext {
     }
 
     pub fn get_scene_buttons(&self) -> StrResult<SceneButtons> {
-        let select_state = trace_err!(self
+        let select_state = self
             .scene_select_action
-            .state(&self.session, xr::Path::NULL))?;
-        let menu_state = trace_err!(self.scene_menu_action.state(&self.session, xr::Path::NULL))?;
+            .state(&self.session, xr::Path::NULL)
+            .map_err(err!())?;
+        let menu_state = self
+            .scene_menu_action
+            .state(&self.session, xr::Path::NULL)
+            .map_err(err!())?;
 
         Ok(SceneButtons {
             select: select_state.current_state,
@@ -386,7 +399,10 @@ impl XrInteractionContext {
                     values.push((
                         *hash,
                         XrActionValue::Boolean(
-                            trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
+                            action
+                                .state(&self.session, xr::Path::NULL)
+                                .map_err(err!())?
+                                .current_state,
                         ),
                     ));
                 }
@@ -394,7 +410,10 @@ impl XrInteractionContext {
                     values.push((
                         *hash,
                         XrActionValue::Scalar(
-                            trace_err!(action.state(&self.session, xr::Path::NULL))?.current_state,
+                            action
+                                .state(&self.session, xr::Path::NULL)
+                                .map_err(err!())?
+                                .current_state,
                         ),
                     ));
                 }

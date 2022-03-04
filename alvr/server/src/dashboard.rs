@@ -18,21 +18,22 @@ pub fn ui_thread() -> StrResult {
             (0, 0)
         };
 
-    let temp_dir = trace_err!(tempfile::TempDir::new())?;
+    let temp_dir = tempfile::TempDir::new().map_err(err!())?;
     let user_data_dir = temp_dir.path();
-    trace_err!(fs::File::create(
-        temp_dir.path().join("FirstLaunchAfterInstallation")
-    ))?;
+    fs::File::create(temp_dir.path().join("FirstLaunchAfterInstallation")).map_err(err!())?;
 
-    let window = Arc::new(trace_err!(alcro::UIBuilder::new()
-        .content(alcro::Content::Url("http://127.0.0.1:8082"))
-        .user_data_dir(user_data_dir)
-        .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
-        .custom_args(&[
-            "--disk-cache-size=1",
-            &format!("--window-position={pos_left},{pos_top}")
-        ])
-        .run())?);
+    let window = Arc::new(
+        alcro::UIBuilder::new()
+            .content(alcro::Content::Url("http://127.0.0.1:8082"))
+            .user_data_dir(user_data_dir)
+            .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
+            .custom_args(&[
+                "--disk-cache-size=1",
+                &format!("--window-position={pos_left},{pos_top}"),
+            ])
+            .run()
+            .map_err(err!())?,
+    );
 
     *MAYBE_WINDOW.lock() = Some(Arc::clone(&window));
 

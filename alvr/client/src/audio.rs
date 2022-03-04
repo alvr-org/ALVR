@@ -44,7 +44,7 @@ pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<()>) -
     let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
 
     thread::spawn(move || -> StrResult {
-        let mut stream = trace_err!(AudioStreamBuilder::default()
+        let mut stream = AudioStreamBuilder::default()
             .set_shared()
             .set_performance_mode(PerformanceMode::LowLatency)
             .set_sample_rate(sample_rate as _)
@@ -55,11 +55,12 @@ pub async fn record_audio_loop(sample_rate: u32, mut sender: StreamSender<()>) -
             .set_usage(Usage::VoiceCommunication)
             .set_input_preset(InputPreset::VoiceCommunication)
             .set_callback(RecorderCallback {
-                sender: data_sender
+                sender: data_sender,
             })
-            .open_stream())?;
+            .open_stream()
+            .map_err(err!())?;
 
-        trace_err!(stream.start())?;
+        stream.start().map_err(err!())?;
 
         shutdown_receiver.recv().ok();
 
@@ -120,7 +121,7 @@ pub async fn play_audio_loop(
     thread::spawn({
         let sample_buffer = Arc::clone(&sample_buffer);
         move || -> StrResult {
-            let mut stream = trace_err!(AudioStreamBuilder::default()
+            let mut stream = AudioStreamBuilder::default()
                 .set_shared()
                 .set_performance_mode(PerformanceMode::LowLatency)
                 .set_sample_rate(sample_rate as _)
@@ -134,9 +135,10 @@ pub async fn play_audio_loop(
                     sample_buffer,
                     batch_frames_count,
                 })
-                .open_stream())?;
+                .open_stream()
+                .map_err(err!())?;
 
-            trace_err!(stream.start())?;
+            stream.start().map_err(err!())?;
 
             shutdown_receiver.recv().ok();
 

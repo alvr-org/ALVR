@@ -70,7 +70,7 @@ fn run() -> StrResult {
     let standby_status = Arc::new(AtomicBool::new(true));
     let idr_request_notifier = Arc::new(Notify::new());
 
-    let runtime = trace_err!(Runtime::new())?;
+    let runtime = Runtime::new().map_err(err!())?;
     runtime.spawn(connection::connection_lifecycle_loop(
         xr_context,
         graphics_context,

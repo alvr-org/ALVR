@@ -99,19 +99,21 @@ impl<T> StreamSender<T> {
         self.next_packet_index += 1;
 
         match &self.socket {
-            StreamSendSocket::Udp(socket) => trace_err!(
-                socket
-                    .inner
-                    .lock()
-                    .await
-                    .send((buffer.inner.freeze(), socket.peer_addr))
-                    .await
-            ),
-            StreamSendSocket::Tcp(socket) => {
-                trace_err!(socket.lock().await.send(buffer.inner.freeze()).await)
-            }
+            StreamSendSocket::Udp(socket) => socket
+                .inner
+                .lock()
+                .await
+                .send((buffer.inner.freeze(), socket.peer_addr))
+                .await
+                .map_err(err!()),
+            StreamSendSocket::Tcp(socket) => socket
+                .lock()
+                .await
+                .send(buffer.inner.freeze())
+                .await
+                .map_err(err!()),
             StreamSendSocket::ThrottledUdp(socket) => {
-                trace_err!(socket.send(buffer.inner.freeze()).await)
+                socket.send(buffer.inner.freeze()).await.map_err(err!())
             }
         }
     }
@@ -123,7 +125,7 @@ impl<T: Serialize> StreamSender<T> {
         header: &T,
         preferred_max_buffer_size: usize,
     ) -> StrResult<SenderBuffer<T>> {
-        let header_size = trace_err!(bincode::serialized_size(header))?;
+        let header_size = bincode::serialized_size(header).map_err(err!())?;
         // the first two bytes are for the stream ID
         let offset = 2 + 4 + header_size as usize;
 
@@ -135,7 +137,7 @@ impl<T: Serialize> StreamSender<T> {
         buffer.put_u32(0);
 
         let mut buffer_writer = buffer.writer();
-        trace_err!(bincode::serialize_into(&mut buffer_writer, header))?;
+        bincode::serialize_into(&mut buffer_writer, header).map_err(err!())?;
         let buffer = buffer_writer.into_inner();
 
         Ok(SenderBuffer {
@@ -170,7 +172,7 @@ pub struct StreamReceiver<T> {
 impl<T: DeserializeOwned> StreamReceiver<T> {
     pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
         let mut bytes = match &mut self.receiver {
-            StreamReceiverType::Queue(receiver) => trace_none!(receiver.recv().await)?,
+            StreamReceiverType::Queue(receiver) => receiver.recv().await.ok_or_else(enone!())?,
         };
 
         let packet_index = bytes.get_u32();
@@ -178,7 +180,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         self.next_packet_index = packet_index + 1;
 
         let mut bytes_reader = bytes.reader();
-        let header = trace_err!(bincode::deserialize_from(&mut bytes_reader))?;
+        let header = bincode::deserialize_from(&mut bytes_reader).map_err(err!())?;
         let buffer = bytes_reader.into_inner();
 
         // At this point, "buffer" does not include the header anymore

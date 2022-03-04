@@ -16,12 +16,13 @@ pub enum ConnectionError {
 pub async fn announce_client_loop(
     handshake_packet: ClientHandshakePacket,
 ) -> StrResult<ConnectionError> {
-    let mut handshake_socket = trace_err!(UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).await)?;
-    trace_err!(handshake_socket.set_broadcast(true))?;
+    let mut handshake_socket = UdpSocket::bind((LOCAL_IP, CONTROL_PORT))
+        .await
+        .map_err(err!())?;
+    handshake_socket.set_broadcast(true).map_err(err!())?;
 
-    let client_handshake_packet = trace_err!(bincode::serialize(&HandshakePacket::Client(
-        handshake_packet
-    )))?;
+    let client_handshake_packet =
+        bincode::serialize(&HandshakePacket::Client(handshake_packet)).map_err(err!())?;
 
     loop {
         let broadcast_result = handshake_socket
@@ -40,11 +41,10 @@ pub async fn announce_client_loop(
                 let mut server_response_buffer = [0; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
                 loop {
                     // this call will receive also the broadcasted client packet that must be ignored
-                    let (packet_size, _) = trace_err!(
-                        handshake_socket
-                            .recv_from(&mut server_response_buffer)
-                            .await
-                    )?;
+                    let (packet_size, _) = handshake_socket
+                        .recv_from(&mut server_response_buffer)
+                        .await
+                        .map_err(err!())?;
 
                     if let Ok(HandshakePacket::Server(handshake_packet)) =
                         bincode::deserialize(&server_response_buffer[..packet_size])

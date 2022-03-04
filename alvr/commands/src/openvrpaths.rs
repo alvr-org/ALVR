@@ -8,11 +8,12 @@ use std::{
 };
 
 pub fn openvr_source_file_path() -> StrResult<PathBuf> {
-    let path = trace_none!(if cfg!(windows) {
+    let path = if cfg!(windows) {
         dirs::cache_dir()
     } else {
         dirs::config_dir()
-    })?
+    }
+    .ok_or_else(enone!())?
     .join("openvr/openvrpaths.vrpath");
 
     if path.exists() {
@@ -23,18 +24,20 @@ pub fn openvr_source_file_path() -> StrResult<PathBuf> {
 }
 
 pub(crate) fn load_openvr_paths_json() -> StrResult<json::Value> {
-    let file = trace_err!(File::open(openvr_source_file_path()?))?;
+    let file = File::open(openvr_source_file_path()?).map_err(err!())?;
 
     let mut file_content_decoded = String::new();
-    trace_err!(DecodeReaderBytes::new(&file).read_to_string(&mut file_content_decoded))?;
+    DecodeReaderBytes::new(&file)
+        .read_to_string(&mut file_content_decoded)
+        .map_err(err!())?;
 
-    trace_err!(json::from_str(&file_content_decoded))
+    json::from_str(&file_content_decoded).map_err(err!())
 }
 
 pub(crate) fn save_openvr_paths_json(openvr_paths: &json::Value) -> StrResult {
-    let file_content = trace_err!(json::to_string_pretty(openvr_paths))?;
+    let file_content = json::to_string_pretty(openvr_paths).map_err(err!())?;
 
-    trace_err!(fs::write(openvr_source_file_path()?, file_content))
+    fs::write(openvr_source_file_path()?, file_content).map_err(err!())
 }
 
 pub(crate) fn from_openvr_paths(paths: &json::Value) -> Vec<std::path::PathBuf> {
@@ -62,8 +65,11 @@ pub(crate) fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
 
 fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
     let openvr_paths_json = load_openvr_paths_json()?;
-    let paths_json = trace_none!(openvr_paths_json.get(path_type))?;
-    trace_none!(from_openvr_paths(paths_json).get(0).cloned())
+    let paths_json = openvr_paths_json.get(path_type).ok_or_else(enone!())?;
+    from_openvr_paths(paths_json)
+        .get(0)
+        .cloned()
+        .ok_or_else(enone!())
 }
 
 pub fn steamvr_root_dir() -> StrResult<PathBuf> {

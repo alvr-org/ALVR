@@ -18,7 +18,7 @@ pub fn get_vulkan_instance_extensions(entry: &ash::Entry) -> StrResult<Vec<&'sta
         flags |= hal::InstanceFlags::DEBUG;
     }
 
-    trace_err!(<hal::api::Vulkan as hal::Api>::Instance::required_extensions(entry, flags))
+    <hal::api::Vulkan as hal::Api>::Instance::required_extensions(entry, flags).map_err(err!())
 }
 
 // Create wgpu-compatible Vulkan instance. Corresponds to xrCreateVulkanInstanceKHR
@@ -42,16 +42,18 @@ pub fn create_vulkan_instance(
     let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
 
     unsafe {
-        trace_err!(entry.create_instance(
-            &vk::InstanceCreateInfo {
-                enabled_extension_count: extensions_ptrs.len() as _,
-                pp_enabled_extension_names: extensions_ptrs.as_ptr(),
-                enabled_layer_count: layers_ptrs.len() as _,
-                pp_enabled_layer_names: layers_ptrs.as_ptr(),
-                ..*info
-            },
-            None,
-        ))
+        entry
+            .create_instance(
+                &vk::InstanceCreateInfo {
+                    enabled_extension_count: extensions_ptrs.len() as _,
+                    pp_enabled_extension_names: extensions_ptrs.as_ptr(),
+                    enabled_layer_count: layers_ptrs.len() as _,
+                    pp_enabled_layer_names: layers_ptrs.as_ptr(),
+                    ..*info
+                },
+                None,
+            )
+            .map_err(err!())
     }
 }
 
@@ -60,7 +62,7 @@ pub fn get_vulkan_graphics_device(
     instance: &ash::Instance,
     adapter_index: Option<usize>,
 ) -> StrResult<vk::PhysicalDevice> {
-    let mut physical_devices = unsafe { trace_err!(instance.enumerate_physical_devices())? };
+    let mut physical_devices = unsafe { instance.enumerate_physical_devices().map_err(err!())? };
 
     Ok(physical_devices.remove(adapter_index.unwrap_or(0)))
 }
@@ -81,7 +83,7 @@ pub fn get_temporary_hal_adapter(
     };
 
     let hal_instance = unsafe {
-        trace_err!(<hal::api::Vulkan as hal::Api>::Instance::from_raw(
+        <hal::api::Vulkan as hal::Api>::Instance::from_raw(
             entry,
             instance,
             version,
@@ -89,10 +91,13 @@ pub fn get_temporary_hal_adapter(
             flags,
             false,
             None, // <-- the instance is not destroyed on drop
-        ))?
+        )
+        .map_err(err!())?
     };
 
-    trace_none!(hal_instance.expose_adapter(physical_device))
+    hal_instance
+        .expose_adapter(physical_device)
+        .ok_or_else(enone!())
 }
 
 // Create wgpu-compatible Vulkan device. Corresponds to xrCreateVulkanDeviceKHR
@@ -141,16 +146,18 @@ pub fn create_vulkan_device(
     features.sample_rate_shading = true as _;
 
     unsafe {
-        trace_err!(instance.create_device(
-            physical_device,
-            &vk::DeviceCreateInfo {
-                enabled_extension_count: extensions_ptrs.len() as _,
-                pp_enabled_extension_names: extensions_ptrs.as_ptr(),
-                p_enabled_features: &features as *const _,
-                ..*create_info
-            },
-            None
-        ))
+        instance
+            .create_device(
+                physical_device,
+                &vk::DeviceCreateInfo {
+                    enabled_extension_count: extensions_ptrs.len() as _,
+                    pp_enabled_extension_names: extensions_ptrs.as_ptr(),
+                    p_enabled_features: &features as *const _,
+                    ..*create_info
+                },
+                None,
+            )
+            .map_err(err!())
     }
 }
 
@@ -181,7 +188,7 @@ impl GraphicsContext {
         let handle_is_owned = desc.drop_guard.is_some();
 
         let instance = unsafe {
-            trace_err!(<hal::api::Vulkan as hal::Api>::Instance::from_raw(
+            <hal::api::Vulkan as hal::Api>::Instance::from_raw(
                 desc.entry,
                 desc.raw_instance.clone(),
                 desc.version,
@@ -189,24 +196,30 @@ impl GraphicsContext {
                 flags,
                 false,
                 desc.drop_guard,
-            ))?
+            )
+            .map_err(err!())?
         };
 
-        let exposed_adapter = trace_none!(instance.expose_adapter(desc.raw_physical_device))?;
+        let exposed_adapter = instance
+            .expose_adapter(desc.raw_physical_device)
+            .ok_or_else(enone!())?;
         let device_extensions = exposed_adapter
             .adapter
             .required_device_extensions(exposed_adapter.features);
 
         let open_device = unsafe {
-            trace_err!(exposed_adapter.adapter.device_from_raw(
-                desc.raw_device.clone(),
-                handle_is_owned,
-                &device_extensions,
-                exposed_adapter.features,
-                hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
-                desc.queue_family_index,
-                desc.queue_index,
-            ))?
+            exposed_adapter
+                .adapter
+                .device_from_raw(
+                    desc.raw_device.clone(),
+                    handle_is_owned,
+                    &device_extensions,
+                    exposed_adapter.features,
+                    hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
+                    desc.queue_family_index,
+                    desc.queue_index,
+                )
+                .map_err(err!())?
         };
 
         #[cfg(not(target_os = "macos"))]
@@ -214,15 +227,17 @@ impl GraphicsContext {
             let instance = unsafe { wgpu::Instance::from_hal::<hal::api::Vulkan>(instance) };
             let adapter = unsafe { instance.create_adapter_from_hal(exposed_adapter) };
             let (device, queue) = unsafe {
-                trace_err!(adapter.create_device_from_hal(
-                    open_device,
-                    &DeviceDescriptor {
-                        label: None,
-                        features: adapter.features(),
-                        limits: adapter.limits(),
-                    },
-                    None,
-                ))?
+                adapter
+                    .create_device_from_hal(
+                        open_device,
+                        &DeviceDescriptor {
+                            label: None,
+                            features: adapter.features(),
+                            limits: adapter.limits(),
+                        },
+                        None,
+                    )
+                    .map_err(err!())?
             };
 
             Ok(Self {
@@ -244,16 +259,17 @@ impl GraphicsContext {
 
     // This constructor is used for the Windows OpenVR driver
     pub fn new(adapter_index: Option<usize>) -> StrResult<Self> {
-        let entry = unsafe { trace_err!(ash::Entry::load())? };
+        let entry = unsafe { ash::Entry::load().map_err(err!())? };
 
-        let raw_instance = trace_err!(create_vulkan_instance(
+        let raw_instance = create_vulkan_instance(
             &entry,
             &vk::InstanceCreateInfo::builder()
                 .application_info(
-                    &vk::ApplicationInfo::builder().api_version(TARGET_VULKAN_VERSION)
+                    &vk::ApplicationInfo::builder().api_version(TARGET_VULKAN_VERSION),
                 )
-                .build()
-        ))?;
+                .build(),
+        )
+        .map_err(err!())?;
 
         let raw_physical_device = get_vulkan_graphics_device(&raw_instance, adapter_index)?;
 
@@ -273,7 +289,7 @@ impl GraphicsContext {
         };
         let queue_index = 0;
 
-        let raw_device = trace_err!(create_vulkan_device(
+        let raw_device = create_vulkan_device(
             entry.clone(),
             TARGET_VULKAN_VERSION,
             &raw_instance,
@@ -282,9 +298,10 @@ impl GraphicsContext {
                 vk::DeviceQueueCreateInfo::builder()
                     .queue_family_index(queue_family_index)
                     .queue_priorities(&[1.0])
-                    .build()
-            ])
-        ))?;
+                    .build(),
+            ]),
+        )
+        .map_err(err!())?;
 
         Self::from_vulkan(GraphicsContextVulkanInitDesc {
             entry,

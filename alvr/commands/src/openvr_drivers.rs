@@ -9,14 +9,18 @@ use std::{
 const DRIVER_PATHS_BACKUP_FNAME: &str = "alvr_drivers_paths_backup.txt";
 
 pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
-    Ok(crate::from_openvr_paths(trace_none!(
-        crate::load_openvr_paths_json()?.get_mut("external_drivers")
-    )?))
+    Ok(crate::from_openvr_paths(
+        crate::load_openvr_paths_json()?
+            .get_mut("external_drivers")
+            .ok_or_else(enone!())?,
+    ))
 }
 
 pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResult {
     let mut openvr_paths_json = crate::load_openvr_paths_json()?;
-    let paths_json_ref = trace_none!(openvr_paths_json.get_mut("external_drivers"))?;
+    let paths_json_ref = openvr_paths_json
+        .get_mut("external_drivers")
+        .ok_or_else(enone!())?;
 
     let mut paths: HashSet<_> = crate::from_openvr_paths(paths_json_ref)
         .into_iter()
@@ -40,12 +44,11 @@ pub fn get_driver_dir_from_registered() -> StrResult<PathBuf> {
     for dir in get_registered_drivers()? {
         let maybe_driver_name = || -> StrResult<_> {
             let manifest_string =
-                trace_err!(fs::read_to_string(dir.join("driver.vrdrivermanifest")))?;
-            let mut manifest_map = trace_err!(json::from_str::<HashMap<String, json::Value>>(
-                &manifest_string
-            ))?;
+                fs::read_to_string(dir.join("driver.vrdrivermanifest")).map_err(err!())?;
+            let mut manifest_map =
+                json::from_str::<HashMap<String, json::Value>>(&manifest_string).map_err(err!())?;
 
-            trace_none!(manifest_map.remove("name"))
+            manifest_map.remove("name").ok_or_else(enone!())
         }();
 
         if maybe_driver_name == Ok(json::Value::String("alvr_server".to_owned())) {
@@ -67,10 +70,10 @@ fn driver_paths_backup_present() -> bool {
 pub fn apply_driver_paths_backup(driver_dir: PathBuf) -> StrResult {
     if driver_paths_backup_present() {
         let backup_path = env::temp_dir().join(DRIVER_PATHS_BACKUP_FNAME);
-        let driver_paths = trace_err!(json::from_str::<Vec<_>>(&trace_err!(fs::read_to_string(
-            &backup_path
-        ))?))?;
-        trace_err!(fs::remove_file(backup_path))?;
+        let driver_paths =
+            json::from_str::<Vec<_>>(&fs::read_to_string(&backup_path).map_err(err!())?)
+                .map_err(err!())?;
+        fs::remove_file(backup_path).map_err(err!())?;
 
         driver_registration(&[driver_dir], false)?;
 
@@ -82,10 +85,11 @@ pub fn apply_driver_paths_backup(driver_dir: PathBuf) -> StrResult {
 
 pub fn maybe_save_driver_paths_backup(paths_backup: &[PathBuf]) -> StrResult {
     if !driver_paths_backup_present() {
-        trace_err!(fs::write(
+        fs::write(
             env::temp_dir().join(DRIVER_PATHS_BACKUP_FNAME),
-            trace_err!(json::to_string_pretty(paths_backup))?,
-        ))?;
+            json::to_string_pretty(paths_backup).map_err(err!())?,
+        )
+        .map_err(err!())?;
     }
 
     Ok(())

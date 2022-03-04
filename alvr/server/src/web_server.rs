@@ -18,19 +18,27 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 pub const WS_BROADCAST_CAPACITY: usize = 256;
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
-    trace_err!(Response::builder().status(code).body(Body::empty()))
+    Response::builder()
+        .status(code)
+        .body(Body::empty())
+        .map_err(err!())
 }
 
 fn reply_json<T: Serialize>(obj: &T) -> StrResult<Response<Body>> {
-    trace_err!(Response::builder()
+    Response::builder()
         .header(header::CONTENT_TYPE, "application/json")
-        .body(trace_err!(json::to_string(obj))?.into()))
+        .body(json::to_string(obj).map_err(err!())?.into())
+        .map_err(err!())
 }
 
 async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrResult<T> {
-    trace_err!(json::from_reader(
-        trace_err!(hyper::body::aggregate(request).await)?.reader()
-    ))
+    json::from_reader(
+        hyper::body::aggregate(request)
+            .await
+            .map_err(err!())?
+            .reader(),
+    )
+    .map_err(err!())
 }
 
 async fn text_websocket(
@@ -68,9 +76,10 @@ async fn text_websocket(
             }
         });
 
-        let mut response = trace_err!(Response::builder()
+        let mut response = Response::builder()
             .status(StatusCode::SWITCHING_PROTOCOLS)
-            .body(Body::empty()))?;
+            .body(Body::empty())
+            .map_err(err!())?;
 
         let h = response.headers_mut();
         h.typed_insert(headers::Upgrade::websocket());
@@ -102,7 +111,7 @@ async fn http_api(
                 if let Err(e) = res {
                     warn!("{e}");
                     // HTTP Code: WARNING
-                    reply(trace_err!(StatusCode::from_u16(199))?)?
+                    reply(StatusCode::from_u16(199).map_err(err!())?)?
                 } else {
                     reply(StatusCode::OK)?
                 }
@@ -117,7 +126,7 @@ async fn http_api(
                     if let Err(e) = res {
                         warn!("{e}");
                         // HTTP Code: WARNING
-                        reply(trace_err!(StatusCode::from_u16(199))?)?
+                        reply(StatusCode::from_u16(199).map_err(err!())?)?
                     } else {
                         reply(StatusCode::OK)?
                     }
@@ -220,18 +229,20 @@ async fn http_api(
         "/api/server-os" => Response::new(OS.into()),
         "/api/update" => {
             if let Ok(url) = from_request_body::<String>(request).await {
-                let redirection_response = trace_err!(reqwest::get(&url).await)?;
-                let mut resource_response =
-                    trace_err!(reqwest::get(redirection_response.url().clone()).await)?;
+                let redirection_response = reqwest::get(&url).await.map_err(err!())?;
+                let mut resource_response = reqwest::get(redirection_response.url().clone())
+                    .await
+                    .map_err(err!())?;
 
-                let mut file = trace_err!(fs::File::create(alvr_filesystem::installer_path()))?;
+                let mut file =
+                    fs::File::create(alvr_filesystem::installer_path()).map_err(err!())?;
 
                 let mut downloaded_bytes_count = 0;
                 loop {
                     match resource_response.chunk().await {
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
-                            trace_err!(file.write_all(&chunk))?;
+                            file.write_all(&chunk).map_err(err!())?;
                             alvr_session::log_event(ServerEvent::UpdateDownloadedBytesCount(
                                 downloaded_bytes_count,
                             ));
@@ -270,9 +281,10 @@ async fn http_api(
                     if other_uri.ends_with(".wasm") {
                         builder = builder.header(CONTENT_TYPE, "application/wasm");
                     }
-                    trace_err!(
-                        builder.body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
-                    )?
+
+                    builder
+                        .body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
+                        .map_err(err!())?
                 } else {
                     reply(StatusCode::NOT_FOUND)?
                 }
@@ -282,7 +294,7 @@ async fn http_api(
 
     response.headers_mut().insert(
         CACHE_CONTROL,
-        trace_err!(HeaderValue::from_str("no-cache, no-store, must-revalidate"))?,
+        HeaderValue::from_str("no-cache, no-store, must-revalidate").map_err(err!())?,
     );
     response
         .headers_mut()
@@ -321,12 +333,11 @@ pub async fn web_server(
         }
     });
 
-    trace_err!(
-        hyper::Server::bind(&SocketAddr::new(
-            "0.0.0.0".parse().unwrap(),
-            web_server_port
-        ))
-        .serve(service)
-        .await
-    )
+    hyper::Server::bind(&SocketAddr::new(
+        "0.0.0.0".parse().unwrap(),
+        web_server_port,
+    ))
+    .serve(service)
+    .await
+    .map_err(err!())
 }

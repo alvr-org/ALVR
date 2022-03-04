@@ -38,7 +38,7 @@ pub fn load_config() -> StrResult<Config> {
 }
 
 pub fn store_config(config: &Config) -> StrResult {
-    store_config_string(trace_err!(serde_json::to_string(config))?);
+    store_config_string(serde_json::to_string(config).map_err(err!())?);
 
     Ok(())
 }

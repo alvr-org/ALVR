@@ -31,7 +31,7 @@ pub struct UdpStreamReceiveSocket {
 }
 
 pub async fn bind(port: u16) -> StrResult<UdpSocket> {
-    trace_err!(UdpSocket::bind((LOCAL_IP, port)).await)
+    UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())
 }
 
 pub async fn connect(
@@ -60,7 +60,7 @@ pub async fn receive_loop(
     packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
     while let Some(maybe_packet) = socket.inner.next().await {
-        let (mut packet_bytes, address) = trace_err!(maybe_packet)?;
+        let (mut packet_bytes, address) = maybe_packet.map_err(err!())?;
 
         if address != socket.peer_addr {
             continue;
@@ -68,7 +68,7 @@ pub async fn receive_loop(
 
         let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
-            trace_err!(enqueuer.send(packet_bytes))?;
+            enqueuer.send(packet_bytes).map_err(err!())?;
         }
     }
 

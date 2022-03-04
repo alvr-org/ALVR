@@ -27,8 +27,9 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
         let layers = vec![CStr::from_bytes_with_nul(b"VK_LAYER_KHRONOS_validation\0").unwrap()];
         let layers_ptrs = layers.iter().map(|x| x.as_ptr()).collect::<Vec<_>>();
 
-        let raw_instance_ptr =
-            trace_err!(trace_err!(xr_context.instance.create_vulkan_instance(
+        let raw_instance_ptr = xr_context
+            .instance
+            .create_vulkan_instance(
                 xr_context.system,
                 mem::transmute(entry.static_fn().get_instance_proc_addr),
                 &vk::InstanceCreateInfo::builder()
@@ -37,17 +38,21 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
                     )
                     .enabled_extension_names(&extensions_ptrs)
                     .enabled_layer_names(&layers_ptrs) as *const _ as *const _,
-            ))?)?;
+            )
+            .map_err(err!())?
+            .map_err(err!())?;
         ash::Instance::load(
             entry.static_fn(),
             vk::Instance::from_raw(raw_instance_ptr as _),
         )
     };
 
-    let raw_physical_device = vk::PhysicalDevice::from_raw(trace_err!(xr_context
-        .instance
-        .vulkan_graphics_device(xr_context.system, raw_instance.handle().as_raw() as _))?
-        as _);
+    let raw_physical_device = vk::PhysicalDevice::from_raw(
+        xr_context
+            .instance
+            .vulkan_graphics_device(xr_context.system, raw_instance.handle().as_raw() as _)
+            .map_err(err!())? as _,
+    );
 
     // unsafe {
     //     let device_exts = raw_instance
@@ -121,12 +126,16 @@ pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsCont
                 .sampler_ycbcr_conversion(true);
         let info = info.push_next(&mut ycbcr_conversion_feature);
 
-        let raw_device_ptr = trace_err!(trace_err!(xr_context.instance.create_vulkan_device(
-            xr_context.system,
-            mem::transmute(entry.static_fn().get_instance_proc_addr),
-            raw_physical_device.as_raw() as _,
-            &info as *const _ as *const _,
-        ))?)?;
+        let raw_device_ptr = xr_context
+            .instance
+            .create_vulkan_device(
+                xr_context.system,
+                mem::transmute(entry.static_fn().get_instance_proc_addr),
+                raw_physical_device.as_raw() as _,
+                &info as *const _ as *const _,
+            )
+            .map_err(err!())?
+            .map_err(err!())?;
         ash::Device::load(
             raw_instance.fp_v1_0(),
             vk::Device::from_raw(raw_device_ptr as _),

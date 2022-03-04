@@ -248,17 +248,20 @@ impl XrSession {
         environment_blend_mode: xr::EnvironmentBlendMode,
     ) -> StrResult<Self> {
         let (session, frame_waiter, frame_stream) = unsafe {
-            trace_err!(xr_context.instance.create_session_with_guard::<xr::Vulkan>(
-                xr_context.system,
-                &xr::vulkan::SessionCreateInfo {
-                    instance: graphics_context.raw_instance.handle().as_raw() as _,
-                    physical_device: graphics_context.raw_physical_device.as_raw() as _,
-                    device: graphics_context.raw_device.handle().as_raw() as _,
-                    queue_family_index: graphics_context.queue_family_index,
-                    queue_index: graphics_context.queue_index,
-                },
-                Box::new(Arc::clone(&graphics_context.device)),
-            ))?
+            xr_context
+                .instance
+                .create_session_with_guard::<xr::Vulkan>(
+                    xr_context.system,
+                    &xr::vulkan::SessionCreateInfo {
+                        instance: graphics_context.raw_instance.handle().as_raw() as _,
+                        physical_device: graphics_context.raw_physical_device.as_raw() as _,
+                        device: graphics_context.raw_device.handle().as_raw() as _,
+                        queue_family_index: graphics_context.queue_family_index,
+                        queue_index: graphics_context.queue_index,
+                    },
+                    Box::new(Arc::clone(&graphics_context.device)),
+                )
+                .map_err(err!())?
         };
 
         let view_configs = xr_context
@@ -361,9 +364,9 @@ impl XrSession {
                     match event.state() {
                         xr::SessionState::UNKNOWN | xr::SessionState::IDLE => (),
                         xr::SessionState::READY => {
-                            trace_err!(self
-                                .inner
-                                .begin(xr::ViewConfigurationType::PRIMARY_STEREO))?;
+                            self.inner
+                                .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
+                                .map_err(err!())?;
                             self.running_state.store(true, Ordering::Relaxed);
                         }
                         xr::SessionState::SYNCHRONIZED => (),
@@ -375,7 +378,7 @@ impl XrSession {
                         }
                         xr::SessionState::STOPPING => {
                             self.running_state.store(false, Ordering::Relaxed);
-                            trace_err!(self.inner.end())?;
+                            self.inner.end().map_err(err!())?;
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
                             return Ok(XrEvent::Shutdown)
@@ -399,18 +402,20 @@ impl XrSession {
         }
 
         // This is the blocking call that performs Phase Sync
-        let frame_state = trace_err!(self.frame_waiter.lock().wait())?;
+        let frame_state = self.frame_waiter.lock().wait().map_err(err!())?;
 
         let mut frame_stream_lock = self.frame_stream.lock();
 
-        trace_err!(frame_stream_lock.begin())?;
+        frame_stream_lock.begin().map_err(err!())?;
 
         if !frame_state.should_render {
-            trace_err!(frame_stream_lock.end(
-                frame_state.predicted_display_time,
-                self.environment_blend_mode,
-                &[],
-            ))?;
+            frame_stream_lock
+                .end(
+                    frame_state.predicted_display_time,
+                    self.environment_blend_mode,
+                    &[],
+                )
+                .map_err(err!())?;
 
             return Ok(XrEvent::Idle);
         }

@@ -71,10 +71,14 @@ pub fn get_devices_list(linux_backend: LinuxAudioBackend) -> StrResult<AudioDevi
     #[cfg(not(target_os = "linux"))]
     let host = cpal::default_host();
 
-    let output = trace_err!(host.output_devices())?
+    let output = host
+        .output_devices()
+        .map_err(err!())?
         .filter_map(|d| d.name().ok())
         .collect::<Vec<_>>();
-    let input = trace_err!(host.input_devices())?
+    let input = host
+        .input_devices()
+        .map_err(err!())?
         .filter_map(|d| d.name().ok())
         .collect::<Vec<_>>();
 
@@ -128,7 +132,9 @@ impl AudioDevice {
                 AudioDeviceType::Input => host
                     .default_input_device()
                     .ok_or_else(|| "No input audio device found".to_owned())?,
-                AudioDeviceType::VirtualMicrophoneInput => trace_err!(host.output_devices())?
+                AudioDeviceType::VirtualMicrophoneInput => host
+                    .output_devices()
+                    .map_err(err!())?
                     .find(|d| {
                         if let Ok(name) = d.name() {
                             VIRTUAL_MICROPHONE_PAIRS
@@ -150,7 +156,8 @@ impl AudioDevice {
                         .find(|(input_name, _)| matching_input_device_name.contains(input_name))
                         .map(|(_, output_name)| output_name);
                     if let Some(output_name) = maybe_output_name {
-                        trace_err!(host.input_devices())?
+                        host.input_devices()
+                            .map_err(err!())?
                             .find(|d| {
                                 if let Ok(name) = d.name() {
                                     name.contains(output_name)
@@ -170,7 +177,9 @@ impl AudioDevice {
                     }
                 }
             },
-            AudioDeviceId::Name(name_substring) => trace_err!(host.devices())?
+            AudioDeviceId::Name(name_substring) => host
+                .devices()
+                .map_err(err!())?
                 .find(|d| {
                     if let Ok(name) = d.name() {
                         name.to_lowercase().contains(&name_substring.to_lowercase())
@@ -181,7 +190,9 @@ impl AudioDevice {
                 .ok_or_else(|| {
                     format!("Cannot find audio device which name contains \"{name_substring}\"")
                 })?,
-            AudioDeviceId::Index(index) => trace_err!(host.devices())?
+            AudioDeviceId::Index(index) => host
+                .devices()
+                .map_err(err!())?
                 .nth(*index as usize - 1)
                 .ok_or_else(|| format!("Cannot find audio device at index {index}"))?,
         };
@@ -195,7 +206,7 @@ impl AudioDevice {
     }
 
     pub fn name(&self) -> StrResult<String> {
-        trace_err!(self.inner.name())
+        self.inner.name().map_err(err!())
     }
 }
 
@@ -209,7 +220,7 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
 
 #[cfg(windows)]
 fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
-    let device_name = trace_err!(device.inner.name())?;
+    let device_name = device.inner.name().map_err(err!())?;
 
     unsafe {
         CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
@@ -279,7 +290,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<ComPtr<IMMDevice>> {
                 return fmt_e!("PropVariantClear failed: hr = 0x{hr:08x}");
             }
 
-            let mm_device_name = trace_err!(utf16_name.to_string())?;
+            let mm_device_name = utf16_name.to_string().map_err(err!())?;
             if mm_device_name == device_name {
                 return Ok(mm_device);
             }
@@ -296,7 +307,9 @@ pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
 
         let mut id_str_ptr = ptr::null_mut();
         mm_device.GetId(&mut id_str_ptr);
-        let id_str = trace_err!(U16CStr::from_ptr_str(id_str_ptr).to_string())?;
+        let id_str = U16CStr::from_ptr_str(id_str_ptr)
+            .to_string()
+            .map_err(err!())?;
         CoTaskMemFree(id_str_ptr as _);
 
         Ok(id_str)
@@ -333,11 +346,20 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
 }
 
 pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
-    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let maybe_config_range = device
+        .inner
+        .supported_output_configs()
+        .map_err(err!())?
+        .next();
     let config = if let Some(config) = maybe_config_range {
         config
     } else {
-        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+        device
+            .inner
+            .supported_input_configs()
+            .map_err(err!())?
+            .next()
+            .ok_or_else(enone!())?
     };
 
     // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
@@ -353,11 +375,20 @@ pub async fn record_audio_loop(
     mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let maybe_config_range = trace_err!(device.inner.supported_output_configs())?.next();
+    let maybe_config_range = device
+        .inner
+        .supported_output_configs()
+        .map_err(err!())?
+        .next();
     let config = if let Some(config) = maybe_config_range {
         config
     } else {
-        trace_none!(trace_err!(device.inner.supported_input_configs())?.next())?
+        device
+            .inner
+            .supported_input_configs()
+            .map_err(err!())?
+            .next()
+            .ok_or_else(enone!())?
     };
 
     if sample_rate != config.min_sample_rate().0 {
@@ -389,52 +420,55 @@ pub async fn record_audio_loop(
                 set_mute_windows_device(&device, true).ok();
             }
 
-            let stream = trace_err!(device.inner.build_input_stream_raw(
-                &stream_config,
-                config.sample_format(),
-                {
-                    let data_sender = data_sender.clone();
-                    move |data, _| {
-                        let data = if config.sample_format() == SampleFormat::F32 {
-                            data.bytes()
-                                .chunks_exact(4)
-                                .flat_map(|b| {
-                                    f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                        .to_i16()
-                                        .to_ne_bytes()
-                                        .to_vec()
-                                })
-                                .collect()
-                        } else {
-                            data.bytes().to_vec()
-                        };
+            let stream = device
+                .inner
+                .build_input_stream_raw(
+                    &stream_config,
+                    config.sample_format(),
+                    {
+                        let data_sender = data_sender.clone();
+                        move |data, _| {
+                            let data = if config.sample_format() == SampleFormat::F32 {
+                                data.bytes()
+                                    .chunks_exact(4)
+                                    .flat_map(|b| {
+                                        f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                            .to_i16()
+                                            .to_ne_bytes()
+                                            .to_vec()
+                                    })
+                                    .collect()
+                            } else {
+                                data.bytes().to_vec()
+                            };
 
-                        let data = if config.channels() == 1 && channels_count == 2 {
-                            data.chunks_exact(2)
-                                .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-                                .collect()
-                        } else if config.channels() == 2 && channels_count == 1 {
-                            data.chunks_exact(4)
-                                .flat_map(|c| vec![c[0], c[1]])
-                                .collect()
-                        } else {
-                            data
-                        };
+                            let data = if config.channels() == 1 && channels_count == 2 {
+                                data.chunks_exact(2)
+                                    .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                                    .collect()
+                            } else if config.channels() == 2 && channels_count == 1 {
+                                data.chunks_exact(4)
+                                    .flat_map(|c| vec![c[0], c[1]])
+                                    .collect()
+                            } else {
+                                data
+                            };
 
-                        data_sender.send(Ok(data)).ok();
-                    }
-                },
-                {
-                    let data_sender = data_sender.clone();
-                    move |e| {
-                        data_sender
-                            .send(fmt_e!("Error while recording audio: {e}"))
-                            .ok();
-                    }
-                }
-            ))?;
+                            data_sender.send(Ok(data)).ok();
+                        }
+                    },
+                    {
+                        let data_sender = data_sender.clone();
+                        move |e| {
+                            data_sender
+                                .send(fmt_e!("Error while recording audio: {e}"))
+                                .ok();
+                        }
+                    },
+                )
+                .map_err(err!())?;
 
-            trace_err!(stream.play())?;
+            stream.play().map_err(err!())?;
 
             shutdown_receiver.recv().ok();
 
@@ -663,7 +697,7 @@ pub async fn play_audio_loop(
     thread::spawn({
         let sample_buffer = Arc::clone(&sample_buffer);
         move || -> StrResult {
-            let (_stream, handle) = trace_err!(OutputStream::try_from_device(&device.inner))?;
+            let (_stream, handle) = OutputStream::try_from_device(&device.inner).map_err(err!())?;
 
             let source = StreamingSource {
                 sample_buffer,
@@ -673,7 +707,7 @@ pub async fn play_audio_loop(
                 sample_rate,
                 batch_frames_count,
             };
-            trace_err!(handle.play_raw(source))?;
+            handle.play_raw(source).map_err(err!())?;
 
             shutdown_receiver.recv().ok();
             Ok(())

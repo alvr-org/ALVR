@@ -115,8 +115,10 @@ async fn client_handshake(
         time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
     };
 
-    let (headset_info, server_ip) =
-        trace_err!(proto_socket.recv::<(HeadsetInfoPacket, IpAddr)>().await)?;
+    let (headset_info, server_ip) = proto_socket
+        .recv::<(HeadsetInfoPacket, IpAddr)>()
+        .await
+        .map_err(err!())?;
 
     let settings = SESSION_MANAGER.lock().get().to_settings();
 
@@ -184,7 +186,7 @@ async fn client_handshake(
             }
         }
 
-        trace_err!(alvr_audio::get_sample_rate(&game_audio_device))?
+        alvr_audio::get_sample_rate(&game_audio_device).map_err(err!())?
     } else {
         0
     };
@@ -198,7 +200,7 @@ async fn client_handshake(
                 session.session_settings.video.foveated_rendering.enabled = false;
             }
 
-            trace_err!(serde_json::to_string(&session))?
+            serde_json::to_string(&session).map_err(err!())?
         },
         dashboard_url,
         eye_resolution_width: video_eye_width,

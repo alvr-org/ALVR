@@ -98,16 +98,16 @@ pub fn check_steamvr_installation() -> bool {
 pub fn unblock_alvr_addon() -> StrResult {
     let config_path = alvr_commands::steam_config_dir()?.join("steamvr.vrsettings");
 
-    let mut fields_ref: json::Map<String, json::Value> = trace_err!(json::from_str(&trace_err!(
-        fs::read_to_string(&config_path)
-    )?))?;
+    let mut fields_ref: json::Map<String, json::Value> =
+        json::from_str(&fs::read_to_string(&config_path).map_err(err!())?).map_err(err!())?;
 
     fields_ref.remove("driver_alvr_server");
 
-    trace_err!(fs::write(
+    fs::write(
         config_path,
-        trace_err!(json::to_string_pretty(&fields_ref))?
-    ))?;
+        json::to_string_pretty(&fields_ref).map_err(err!())?,
+    )
+    .map_err(err!())?;
 
     Ok(())
 }
@@ -160,17 +160,18 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
         Err(_) => match fs::metadata(&launcher_path) {
             Err(_) => (), //file does not exist, do nothing
             Ok(_) => {
-                trace_err!(fs::rename(&launcher_path, &real_launcher_path))?;
+                fs::rename(&launcher_path, &real_launcher_path).map_err(err!())?;
             }
         },
-        Ok(_) => trace_err!(fs::remove_file(&launcher_path))?, // recreate the link
+        Ok(_) => fs::remove_file(&launcher_path).map_err(err!())?, // recreate the link
     };
 
-    trace_err!(std::os::unix::fs::symlink(
+    std::os::unix::fs::symlink(
         afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
             .vrcompositor_wrapper(),
-        &launcher_path
-    ))?;
+        &launcher_path,
+    )
+    .map_err(err!())?;
 
     Ok(())
 }

@@ -119,8 +119,14 @@ async fn connection_pipeline(
         reserved: "".into(),
     };
 
-    trace_err!(proto_socket.send(&(headset_info, server_ip)).await)?;
-    let config_packet = trace_err!(proto_socket.recv::<ClientConfigPacket>().await)?;
+    proto_socket
+        .send(&(headset_info, server_ip))
+        .await
+        .map_err(err!())?;
+    let config_packet = proto_socket
+        .recv::<ClientConfigPacket>()
+        .await
+        .map_err(err!())?;
 
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
@@ -145,7 +151,8 @@ async fn connection_pipeline(
 
     let settings = {
         let mut session_desc = SessionDesc::default();
-        session_desc.merge_from_json(&trace_err!(json::from_str(&config_packet.session_desc))?)?;
+        session_desc
+            .merge_from_json(&json::from_str(&config_packet.session_desc).map_err(err!())?)?;
         session_desc.to_settings()
     };
 
@@ -354,10 +361,11 @@ async fn connection_pipeline(
                                         let timestamp =
                                             Duration::from_nanos(packet.header.packet_counter as _); // fixme: this is nonsensical
 
-                                        trace_err!(frame_metadata_sender
+                                        frame_metadata_sender
                                             .as_ref()
                                             .unwrap()
-                                            .send(packet.header.clone()))?;
+                                            .send(packet.header.clone())
+                                            .map_err(err!())?;
                                         let success = decoder_enqueuer.push_frame_nals(
                                             timestamp,
                                             &buffer,
@@ -478,7 +486,7 @@ async fn connection_pipeline(
         // res = spawn_cancelable(video_error_report_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
-        // res = legacy_stream_socket_loop => trace_err!(res)?,
+        // res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,

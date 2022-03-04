@@ -17,8 +17,8 @@ pub struct ControlSocketSender<T> {
 
 impl<S: Serialize> ControlSocketSender<S> {
     pub async fn send(&mut self, packet: &S) -> StrResult {
-        let packet_bytes = trace_err!(bincode::serialize(packet))?;
-        trace_err!(self.inner.send(packet_bytes.into()).await)
+        let packet_bytes = bincode::serialize(packet).map_err(err!())?;
+        self.inner.send(packet_bytes.into()).await.map_err(err!())
     }
 }
 
@@ -29,8 +29,13 @@ pub struct ControlSocketReceiver<T> {
 
 impl<R: DeserializeOwned> ControlSocketReceiver<R> {
     pub async fn recv(&mut self) -> StrResult<R> {
-        let packet_bytes = trace_err!(trace_none!(self.inner.next().await)?)?;
-        trace_err!(bincode::deserialize(&packet_bytes))
+        let packet_bytes = self
+            .inner
+            .next()
+            .await
+            .ok_or_else(enone!())?
+            .map_err(err!())?;
+        bincode::deserialize(&packet_bytes).map_err(err!())
     }
 }
 
@@ -53,30 +58,39 @@ impl ProtoControlSocket {
                     .iter()
                     .map(|&ip| (ip, CONTROL_PORT).into())
                     .collect::<Vec<_>>();
-                trace_err!(TcpStream::connect(client_addresses.as_slice()).await)?
+                TcpStream::connect(client_addresses.as_slice())
+                    .await
+                    .map_err(err!())?
             }
             PeerType::Server => {
-                let listener = trace_err!(TcpListener::bind((LOCAL_IP, CONTROL_PORT)).await)?;
-                let (socket, _) = trace_err!(listener.accept().await)?;
+                let listener = TcpListener::bind((LOCAL_IP, CONTROL_PORT))
+                    .await
+                    .map_err(err!())?;
+                let (socket, _) = listener.accept().await.map_err(err!())?;
                 socket
             }
         };
 
-        trace_err!(socket.set_nodelay(true))?;
-        let peer_ip = trace_err!(socket.peer_addr())?.ip();
+        socket.set_nodelay(true).map_err(err!())?;
+        let peer_ip = socket.peer_addr().map_err(err!())?.ip();
         let socket = Framed::new(socket, Ldc::new());
 
         Ok((Self { inner: socket }, peer_ip))
     }
 
     pub async fn send<S: Serialize>(&mut self, packet: &S) -> StrResult {
-        let packet_bytes = trace_err!(bincode::serialize(packet))?;
-        trace_err!(self.inner.send(packet_bytes.into()).await)
+        let packet_bytes = bincode::serialize(packet).map_err(err!())?;
+        self.inner.send(packet_bytes.into()).await.map_err(err!())
     }
 
     pub async fn recv<R: DeserializeOwned>(&mut self) -> StrResult<R> {
-        let packet_bytes = trace_err!(trace_none!(self.inner.next().await)?)?;
-        trace_err!(bincode::deserialize(&packet_bytes))
+        let packet_bytes = self
+            .inner
+            .next()
+            .await
+            .ok_or_else(enone!())?
+            .map_err(err!())?;
+        bincode::deserialize(&packet_bytes).map_err(err!())
     }
 
     pub fn split<S: Serialize, R: DeserializeOwned>(

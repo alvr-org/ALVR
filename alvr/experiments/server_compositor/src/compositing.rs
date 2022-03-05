@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
+use alvr_common::glam::UVec2;
 use alvr_graphics::TARGET_FORMAT;
+use std::sync::Arc;
 use wgpu::{
     AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, BlendState,
     Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState,
@@ -11,7 +11,8 @@ use wgpu::{
 
 pub struct Layer<'a> {
     pub bind_group: &'a BindGroup,
-    pub rect: openxr_sys::Rect2Di,
+    pub rect_offset: UVec2,
+    pub rect_size: UVec2,
 }
 
 // Crop and render layers on top of each other, in the specified order
@@ -122,10 +123,10 @@ impl CompositingPass {
             pass.set_bind_group(0, layer.bind_group, &[]);
 
             let rect_f32 = [
-                layer.rect.offset.x as f32,
-                layer.rect.offset.y as f32,
-                layer.rect.extent.width as f32,
-                layer.rect.extent.height as f32,
+                layer.rect_offset.x as f32,
+                layer.rect_offset.y as f32,
+                layer.rect_size.x as f32,
+                layer.rect_size.y as f32,
             ];
             pass.set_push_constants(ShaderStages::FRAGMENT, 0, bytemuck::cast_slice(&rect_f32));
 

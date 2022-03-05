@@ -43,7 +43,8 @@ impl Swapchain {
 
 pub struct CompositionLayerView<'a> {
     pub swapchain: &'a Swapchain,
-    pub image_rect: openxr_sys::Rect2Di,
+    pub image_rect_offset: UVec2,
+    pub image_rect_size: UVec2,
     pub image_array_index: usize,
     pub fov: Fov,
 }
@@ -208,7 +209,8 @@ impl Compositor {
                 Layer {
                     bind_group: &swapchain.bind_groups[swapchain.current_index]
                         [view.image_array_index],
-                    rect: view.image_rect,
+                    rect_offset: view.image_rect_offset,
+                    rect_size: view.image_rect_size,
                 }
             });
 

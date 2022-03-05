@@ -3657,7 +3657,7 @@ dependencies = [
  "libc",
  "libloading 0.7.3",
  "ndk-glue 0.6.1",
- "openxr-sys 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openxr-sys",
  "winapi",
 ]
 
@@ -3666,16 +3666,6 @@ name = "openxr-sys"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f2705ce9c69c69d73523fd1ca3059526a51f6c336b5605286fad5a71d95ffc2"
-dependencies = [
- "jni",
- "libc",
- "winapi",
-]
-
-[[package]]
-name = "openxr-sys"
-version = "0.9.1"
-source = "git+https://github.com/zarik5/openxrs#8eaf4a1b48f315674f5be6667ff38d936b6f492b"
 dependencies = [
  "jni",
  "libc",
@@ -4638,7 +4628,6 @@ dependencies = [
  "alvr_session",
  "bytemuck",
  "env_logger 0.9.0",
- "openxr-sys 0.9.1 (git+https://github.com/zarik5/openxrs)",
  "pollster",
  "wgpu",
  "winit 0.26.1",

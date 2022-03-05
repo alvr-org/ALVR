@@ -13,7 +13,6 @@ alvr_graphics = { path = "../graphics" }
 
 bytemuck = "1"
 env_logger = "0.9"
-openxr-sys = { git = "https://github.com/zarik5/openxrs" }
 pollster = "0.2"
 wgpu = "0.12"
 winit = "0.26"

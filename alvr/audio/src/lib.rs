@@ -1,11 +1,10 @@
-use alvr_common::{lazy_static, prelude::*};
+use alvr_common::{lazy_static, parking_lot::Mutex, prelude::*};
 use alvr_session::{AudioConfig, AudioDeviceId, LinuxAudioBackend};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
-use parking_lot::Mutex;
 use rodio::{OutputStream, Source};
 use serde::Serialize;
 use std::{

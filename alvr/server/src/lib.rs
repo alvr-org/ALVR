@@ -16,14 +16,13 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, prelude::*, ALVR_VERSION};
+use alvr_common::{lazy_static, log, parking_lot::Mutex, prelude::*, ALVR_VERSION};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_session::{
     ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
 };
 use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use graphics_info::GpuVendor;
-use parking_lot::Mutex;
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},

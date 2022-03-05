@@ -27,7 +27,6 @@ settings-schema = { path = "../settings-schema", features = [
 
 # Basic utilities
 chrono = "0.4"
-parking_lot = "0.12"
 # Serialization
 bincode = "1"
 serde = "1"

@@ -12,7 +12,7 @@ use crate::{
     xr::{XrActionType, XrContext, XrProfileDesc, XrSession},
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{glam::UVec2, prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{glam::UVec2, parking_lot::RwLock, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_graphics::GraphicsContext;
 use alvr_session::{AudioDeviceId, CodecType, LinuxAudioBackend, MediacodecDataType, SessionDesc};
 use alvr_sockets::{
@@ -21,7 +21,6 @@ use alvr_sockets::{
     StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::{future::BoxFuture, AsyncReadExt};
-use parking_lot::RwLock;
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
@@ -65,7 +64,9 @@ async fn connection_pipeline(
     xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
     xr_session: Arc<RwLock<Option<XrSession>>>,
-    video_streaming_components: Arc<parking_lot::Mutex<Option<VideoStreamingComponents>>>,
+    video_streaming_components: Arc<
+        alvr_common::parking_lot::Mutex<Option<VideoStreamingComponents>>,
+    >,
     standby_status: Arc<AtomicBool>,
     idr_request_notifier: Arc<Notify>,
 ) -> StrResult {
@@ -499,7 +500,9 @@ pub async fn connection_lifecycle_loop(
     xr_context: Arc<XrContext>,
     graphics_context: Arc<GraphicsContext>,
     xr_session: Arc<RwLock<Option<XrSession>>>,
-    video_streaming_components: Arc<parking_lot::Mutex<Option<VideoStreamingComponents>>>,
+    video_streaming_components: Arc<
+        alvr_common::parking_lot::Mutex<Option<VideoStreamingComponents>>,
+    >,
     standby_status: Arc<AtomicBool>,
     idr_request_notifier: Arc<Notify>,
 ) {

@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_session::AudioConfig;
 use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
 use oboe::{
@@ -6,7 +6,6 @@ use oboe::{
     AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,
     SampleRateConversionQuality, Stereo, Usage,
 };
-use parking_lot::Mutex;
 use std::{
     collections::VecDeque,
     mem,

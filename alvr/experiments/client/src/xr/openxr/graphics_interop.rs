@@ -1,5 +1,5 @@
 use super::{XrContext, XrSwapchain};
-use alvr_common::{glam::UVec2, prelude::*};
+use alvr_common::{glam::UVec2, parking_lot::Mutex, prelude::*};
 use alvr_graphics::{
     ash::{
         self,
@@ -13,7 +13,6 @@ use alvr_graphics::{
     wgpu_hal as hal, GraphicsContext,
 };
 use openxr as xr;
-use parking_lot::Mutex;
 use std::{ffi::CStr, mem, sync::Arc};
 
 pub fn create_graphics_context(xr_context: &XrContext) -> StrResult<GraphicsContext> {

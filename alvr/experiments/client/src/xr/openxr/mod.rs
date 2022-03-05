@@ -2,22 +2,21 @@ mod convert;
 mod graphics_interop;
 mod interaction;
 
-use alvr_session::Fov;
-use alvr_sockets::MotionData;
 pub use graphics_interop::create_graphics_context;
-use xr::HAND_JOINT_COUNT;
 
 use self::interaction::XrInteractionContext;
 use super::{XrActionType, XrActionValue, XrProfileDesc};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     log,
+    parking_lot::{Mutex, MutexGuard},
     prelude::*,
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_graphics::{ash::vk::Handle, wgpu::TextureView, GraphicsContext};
+use alvr_session::Fov;
+use alvr_sockets::MotionData;
 use openxr as xr;
-use parking_lot::{Mutex, MutexGuard};
 use std::{
     path::Path,
     sync::{
@@ -212,8 +211,8 @@ pub struct XrSceneInput {
 
 pub struct XrStreamingInput {
     pub device_motions: Vec<(u64, MotionData)>,
-    pub left_hand_tracking_input: Option<[MotionData; HAND_JOINT_COUNT]>,
-    pub right_hand_tracking_input: Option<[MotionData; HAND_JOINT_COUNT]>,
+    pub left_hand_tracking_input: Option<[MotionData; xr::HAND_JOINT_COUNT]>,
+    pub right_hand_tracking_input: Option<[MotionData; xr::HAND_JOINT_COUNT]>,
     pub button_values: Vec<(u64, XrActionValue)>,
 }
 

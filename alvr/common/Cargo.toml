@@ -8,11 +8,11 @@ rust-version = "1.58"
 
 [dependencies]
 backtrace = "0.3"
+glam = { version = "0.20", features = ["serde"] }
 lazy_static = "1"
 log = "0.4"
-glam = { version = "0.20", features = ["serde"] }
+parking_lot = "0.12"
 semver = { version = "1", features = ["serde"] }
 
 [target.'cfg(windows)'.dependencies]
 msgbox = "0.7"
-parking_lot = "0.12"

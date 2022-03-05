@@ -12,6 +12,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     lazy_static,
+    parking_lot::Mutex,
     prelude::*,
     ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
@@ -24,7 +25,6 @@ use jni::{
     objects::{JClass, JObject, JString},
     JNIEnv,
 };
-use parking_lot::Mutex;
 use std::{
     collections::HashMap,
     ffi::CStr,

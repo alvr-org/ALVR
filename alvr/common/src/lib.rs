@@ -10,6 +10,7 @@ pub use glam;
 pub use lazy_static::lazy_static;
 pub use log;
 pub use logging::*;
+pub use parking_lot;
 pub use semver;
 
 pub type StrResult<T = ()> = Result<T, String>;

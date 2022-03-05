@@ -6,16 +6,16 @@ use alvr_graphics::{
     convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
+    wgpu::{
+        BindGroup, CommandEncoderDescriptor, Extent3d, Texture, TextureDescriptor,
+        TextureDimension, TextureUsages, TextureView,
+    },
     GraphicsContext, TARGET_FORMAT,
 };
 use alvr_session::{ColorCorrectionDesc, Fov, FoveatedRenderingDesc};
 use color_correction::ColorCorrectionPass;
 use compositing::{CompositingPass, Layer};
 use std::sync::Arc;
-use wgpu::{
-    BindGroup, CommandEncoderDescriptor, Extent3d, Texture, TextureDescriptor, TextureDimension,
-    TextureUsages, TextureView,
-};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},

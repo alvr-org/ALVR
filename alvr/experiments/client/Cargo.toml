@@ -39,7 +39,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Graphics
 rend3 = "0.3"
 rend3-routine = "0.3"
-wgpu = "0.12"
 # Miscellaneous
 openxr = "0.16"
 

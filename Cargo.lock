@@ -811,7 +811,6 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio",
- "wgpu",
 ]
 
 [[package]]
@@ -4629,7 +4628,6 @@ dependencies = [
  "bytemuck",
  "env_logger 0.9.0",
  "pollster",
- "wgpu",
  "winit 0.26.1",
 ]
 

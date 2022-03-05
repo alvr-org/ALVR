@@ -1,11 +1,13 @@
 use alvr_common::glam::UVec2;
-use alvr_graphics::{BindingDesc, TARGET_FORMAT};
-use alvr_session::ColorCorrectionDesc;
-use wgpu::{
-    BindGroup, BindingResource, BindingType, CommandEncoder, Device, Extent3d, RenderPipeline,
-    TextureDescriptor, TextureDimension, TextureSampleType, TextureUsages, TextureView,
-    TextureViewDimension,
+use alvr_graphics::{
+    wgpu::{
+        BindGroup, BindingResource, BindingType, CommandEncoder, Device, Extent3d, RenderPipeline,
+        TextureDescriptor, TextureDimension, TextureSampleType, TextureUsages, TextureView,
+        TextureViewDimension,
+    },
+    BindingDesc, TARGET_FORMAT,
 };
+use alvr_session::ColorCorrectionDesc;
 
 pub struct ColorCorrectionPass {
     input: TextureView,

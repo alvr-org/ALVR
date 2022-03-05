@@ -1,13 +1,16 @@
 use alvr_common::glam::UVec2;
-use alvr_graphics::TARGET_FORMAT;
-use std::sync::Arc;
-use wgpu::{
-    AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, BlendState,
-    Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState,
-    LoadOp, MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor, ShaderModuleDescriptor,
-    ShaderSource, ShaderStages, Texture, TextureView, TextureViewDescriptor, VertexState,
+use alvr_graphics::{
+    wgpu::{
+        AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindingResource, BlendState,
+        Color, ColorTargetState, ColorWrites, CommandEncoder, Device, FilterMode, FragmentState,
+        LoadOp, MultisampleState, Operations, RenderPassColorAttachment, RenderPassDescriptor,
+        RenderPipeline, RenderPipelineDescriptor, Sampler, SamplerDescriptor,
+        ShaderModuleDescriptor, ShaderSource, ShaderStages, Texture, TextureView,
+        TextureViewDescriptor, VertexState,
+    },
+    TARGET_FORMAT,
 };
+use std::sync::Arc;
 
 pub struct Layer<'a> {
     pub bind_group: &'a BindGroup,

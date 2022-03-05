@@ -1,8 +1,7 @@
 use alvr_common::{glam::UVec2, prelude::*};
-use alvr_graphics::GraphicsContext;
+use alvr_graphics::{wgpu::Texture, GraphicsContext};
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{sync::Arc, time::Duration};
-use wgpu::Texture;
 
 pub struct VideoDecoderEnqueuer {}
 impl VideoDecoderEnqueuer {

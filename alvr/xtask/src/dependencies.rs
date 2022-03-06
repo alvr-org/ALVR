@@ -86,6 +86,19 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
                 "Start-Process",
                 "choco",
                 "-ArgumentList",
+                "\"install wixtoolset -y\"",
+                "-Verb",
+                "runAs",
+            ],
+        )
+        .unwrap();
+
+        command::run_without_shell(
+            "powershell",
+            &[
+                "Start-Process",
+                "choco",
+                "-ArgumentList",
                 "\"install vulkan-sdk -y\"",
                 "-Verb",
                 "runAs",

@@ -1,9 +1,9 @@
 use crate::{build, command, version};
 use alvr_filesystem as afs;
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
-fn build_windows_installer(wix_path: &str) {
-    let wix_path = PathBuf::from(wix_path).join("bin");
+fn build_windows_installer() {
+    let wix_path = PathBuf::from(r"C:\Program Files (x86)\WiX Toolset v3.11\bin");
     let heat_cmd = wix_path.join("heat.exe");
     let candle_cmd = wix_path.join("candle.exe");
     let light_cmd = wix_path.join("light.exe");
@@ -21,7 +21,7 @@ fn build_windows_installer(wix_path: &str) {
         &heat_cmd.to_string_lossy(),
         &[
             "dir",
-            "build\\alvr_server_windows",
+            r"build\alvr_server_windows",
             "-ag",
             "-sreg",
             "-srd",
@@ -32,7 +32,7 @@ fn build_windows_installer(wix_path: &str) {
             "-var",
             "var.BuildRoot",
             "-o",
-            "target\\wix\\harvested.wxs",
+            r"target\wix\harvested.wxs",
         ],
     )
     .unwrap();
@@ -42,14 +42,14 @@ fn build_windows_installer(wix_path: &str) {
         &[
             "-arch",
             "x64",
-            "-dBuildRoot=build\\alvr_server_windows",
+            r"-dBuildRoot=build\alvr_server_windows",
             "-ext",
             "WixUtilExtension",
             &format!("-dVersion={version}"),
-            "alvr\\xtask\\wix\\main.wxs",
-            "target\\wix\\harvested.wxs",
+            r"alvr\xtask\wix\main.wxs",
+            r"target\wix\harvested.wxs",
             "-o",
-            "target\\wix\\",
+            r"target\wix\",
         ],
     )
     .unwrap();
@@ -57,14 +57,14 @@ fn build_windows_installer(wix_path: &str) {
     command::run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
-            "target\\wix\\main.wixobj",
-            "target\\wix\\harvested.wixobj",
+            r"target\wix\main.wixobj",
+            r"target\wix\harvested.wixobj",
             "-ext",
             "WixUIExtension",
             "-ext",
             "WixUtilExtension",
             "-o",
-            "target\\wix\\alvr.msi",
+            r"target\wix\alvr.msi",
         ],
     )
     .unwrap();
@@ -75,14 +75,14 @@ fn build_windows_installer(wix_path: &str) {
         &[
             "-arch",
             "x64",
-            "-dBuildRoot=build\\alvr_server_windows",
+            r"-dBuildRoot=build\alvr_server_windows",
             "-ext",
             "WixUtilExtension",
             "-ext",
             "WixBalExtension",
-            "alvr\\xtask\\wix\\bundle.wxs",
+            r"alvr\xtask\wix\bundle.wxs",
             "-o",
-            "target\\wix\\",
+            r"target\wix\",
         ],
     )
     .unwrap();
@@ -90,13 +90,13 @@ fn build_windows_installer(wix_path: &str) {
     command::run_without_shell(
         &light_cmd.to_string_lossy(),
         &[
-            "target\\wix\\bundle.wixobj",
+            r"target\wix\bundle.wixobj",
             "-ext",
             "WixUtilExtension",
             "-ext",
             "WixBalExtension",
             "-o",
-            &format!("build\\ALVR_Installer_v{version}.exe"),
+            &format!(r"build\ALVR_Installer_v{version}.exe"),
         ],
     )
     .unwrap();
@@ -144,12 +144,6 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         )
         .unwrap();
 
-        if let Some(wix_evar) = env::vars().find(|v| v.0 == "WIX") {
-            println!("Found WiX, will build installer.");
-
-            build_windows_installer(&wix_evar.1);
-        } else {
-            println!("No WiX toolset installation found, skipping installer.");
-        }
+        build_windows_installer();
     }
 }

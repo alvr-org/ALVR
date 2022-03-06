@@ -119,7 +119,7 @@ fn main() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
                             "linux" => dependencies::build_ffmpeg_linux(!no_nvidia),
                             "android" | "oculus_quest" | "oculus_go" => {
-                                dependencies::build_android_deps()
+                                dependencies::build_android_deps(for_ci)
                             }
                             _ => panic!("Unrecognized platform."),
                         }
@@ -130,7 +130,7 @@ fn main() {
                             dependencies::build_ffmpeg_linux(!no_nvidia);
                         }
 
-                        dependencies::build_android_deps();
+                        dependencies::build_android_deps(for_ci);
                     }
                 }
                 "build-server" => build::build_server(is_release, gpl, None, false, experiments),

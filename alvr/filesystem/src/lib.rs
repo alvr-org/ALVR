@@ -6,6 +6,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub fn canonicalize_no_prefix(path: &Path) -> PathBuf {
+    path.canonicalize()
+        .unwrap()
+        .to_string_lossy()
+        .replace(r"\\?\", "")
+        .into()
+}
+
 pub fn exec_fname(name: &str) -> String {
     format!("{name}{EXE_SUFFIX}")
 }
@@ -15,11 +23,11 @@ pub fn dynlib_fname(name: &str) -> String {
 }
 
 pub fn target_dir() -> PathBuf {
-    Path::new(env!("OUT_DIR")).join("../../../..")
+    canonicalize_no_prefix(&Path::new(env!("OUT_DIR")).join("../../../.."))
 }
 
 pub fn workspace_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    canonicalize_no_prefix(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
 }
 
 pub fn deps_dir() -> PathBuf {

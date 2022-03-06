@@ -10,7 +10,7 @@ use std::{env, path::PathBuf};
 fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     let ffmpeg_path = env::var("CARGO_MANIFEST_DIR").unwrap() + "/../../deps/linux/FFmpeg-n4.4/";
 
-    #[cfg(feature = "bundled_ffmpeg")]
+    #[cfg(feature = "gpl")]
     {
         for lib in vec!["libavutil", "libavfilter", "libavcodec", "libswscale"] {
             let path = ffmpeg_path.clone() + lib;
@@ -22,14 +22,14 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     }
 
     let pkg = pkg_config::Config::new()
-        .cargo_metadata(cfg!(not(feature = "bundled_ffmpeg")))
+        .cargo_metadata(cfg!(not(feature = "gpl")))
         .to_owned();
     let avutil = pkg.probe("libavutil").unwrap();
     let avfilter = pkg.probe("libavfilter").unwrap();
     let avcodec = pkg.probe("libavcodec").unwrap();
     let swscale = pkg.probe("libswscale").unwrap();
 
-    if cfg!(feature = "bundled_ffmpeg") {
+    if cfg!(feature = "gpl") {
         build
             .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
             .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
@@ -54,9 +54,7 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
 
 #[cfg(all(windows, feature = "gpl"))]
 fn do_ffmpeg_windows_config(build: &mut cc::Build) {
-    let ffmpeg_dir = afs::deps_dir()
-        .join("windows")
-        .join("ffmpeg-n5.0-latest-win64-gpl-shared-5.0");
+    let ffmpeg_dir = afs::deps_dir().join("windows/ffmpeg");
 
     build.include(format!("{}/include", ffmpeg_dir.to_string_lossy()));
 
@@ -127,7 +125,7 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(all(target_os = "linux", feature = "bundled_ffmpeg"))]
+    #[cfg(all(target_os = "linux", feature = "gpl"))]
     do_ffmpeg_pkg_config(&mut build);
 
     #[cfg(all(windows, feature = "gpl"))]
@@ -138,7 +136,7 @@ fn main() {
 
     build.compile("bindings");
 
-    #[cfg(all(target_os = "linux", not(feature = "bundled_ffmpeg")))]
+    #[cfg(all(target_os = "linux", not(feature = "gpl")))]
     do_ffmpeg_pkg_config(&mut build);
 
     bindgen::builder()

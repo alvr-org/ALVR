@@ -1,10 +1,10 @@
+mod build;
 mod command;
 mod dependencies;
 mod packaging;
 mod version;
 
-use alvr_filesystem::{self as afs, Layout};
-use fs_extra::{self as fsx, dir as dirx};
+use alvr_filesystem as afs;
 use pico_args::Arguments;
 use std::{env, fs, time::Instant};
 
@@ -16,321 +16,39 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    build-windows-deps  Download and compile external dependencies for Windows
-    build-android-deps  Download and compile external dependencies for Android
+    prepare-deps        Download and compile server and client external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
-    build-ffmpeg-linux  Build FFmpeg with VAAPI, NvEnc and Vulkan support. Only for CI
-    publish-server      Build server in release mode, make portable version and installer
-    publish-client      Build client for all headsets
-    clean               Removes build folder
-    kill-oculus         Kill all Oculus processes
-    bump-versions       Bump server and client package versions
+    package-server      Build server in release mode, make portable version and installer
+    clean               Removes all build artifacts and dependencies.
+    bump                Bump server and client package versions
     clippy              Show warnings for selected clippy lints
     prettier            Format JS and CSS files with prettier; Requires Node.js and NPM.
+    kill-oculus         Kill all Oculus processes
 
 FLAGS:
-    --reproducible      Force cargo to build reproducibly. Used only for build subcommands
-    --fetch             Update crates with "cargo update". Used only for build subcommands
-    --release           Optimized build without debug info. Used only for build subcommands
-    --experiments       Build unfinished features
-    --nightly           Bump versions to nightly and build. Used only for publish subcommand
-    --oculus-quest      Oculus Quest build. Used only for build-client subcommand
-    --oculus-go         Oculus Go build. Used only for build-client subcommand
-    --bundle-ffmpeg     Bundle ffmpeg libraries. Only used for build-server subcommand on Linux
-    --no-nvidia         Additional flag to use with `build-server`. Disables nVidia support.
-    --gpl               Enables usage of GPL libs like ffmpeg on Windows, allowing software encoding.
     --help              Print this text
+    --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
+    --release           Optimized build without debug info. For build subcommands
+    --gpl               Bundle GPL libraries. For build subcommands
+    --experiments       Build unfinished features. For build subcommands
+    --nightly           Append nightly tag to versions. For bump subcommand
+    --ci                Do some CI related tweaks. Depends on the other flags and subcommand
 
 ARGS:
+    --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
     --version <VERSION> Specify version to set with the bump-versions subcommand
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux.
 "#;
 
-pub fn remove_build_dir() {
-    let build_dir = afs::build_dir();
-    fs::remove_dir_all(&build_dir).ok();
-}
-
-pub fn build_server(
-    is_release: bool,
-    experiments: bool,
-    fetch_crates: bool,
-    bundle_ffmpeg: bool,
-    no_nvidia: bool,
-    gpl: bool,
-    root: Option<String>,
-    reproducible: bool,
-) {
-    // Always use CustomRoot for contructing the build directory. The actual runtime layout is respected
-    let layout = Layout::new(&afs::server_build_dir());
-
-    let build_type = if is_release { "release" } else { "debug" };
-
-    let build_flags = format!(
-        "{} {}",
-        if is_release { "--release" } else { "" },
-        if reproducible {
-            "--offline --locked"
-        } else {
-            ""
-        }
-    );
-
-    let mut server_features: Vec<&str> = vec![];
-    let mut launcher_features: Vec<&str> = vec![];
-
-    if bundle_ffmpeg {
-        server_features.push("bundled_ffmpeg");
+pub fn clean() {
+    fs::remove_dir_all(afs::build_dir()).ok();
+    fs::remove_dir_all(afs::deps_dir()).ok();
+    if afs::target_dir() == afs::workspace_dir().join("target") {
+        // Detete target folder only if in the local wokspace!
+        fs::remove_dir_all(afs::target_dir()).ok();
     }
-
-    if gpl {
-        server_features.push("gpl");
-    }
-
-    if server_features.is_empty() {
-        server_features.push("default")
-    }
-    if launcher_features.is_empty() {
-        launcher_features.push("default")
-    }
-
-    if let Some(root) = root {
-        env::set_var("ALVR_ROOT_DIR", root);
-    }
-
-    let target_dir = afs::target_dir();
-    let artifacts_dir = target_dir.join(build_type);
-
-    if fetch_crates {
-        command::run("cargo update").unwrap();
-    }
-
-    fs::remove_dir_all(&afs::server_build_dir()).ok();
-    fs::create_dir_all(&afs::server_build_dir()).unwrap();
-    fs::create_dir_all(&layout.openvr_driver_lib().parent().unwrap()).unwrap();
-    fs::create_dir_all(&layout.launcher_exe().parent().unwrap()).unwrap();
-
-    let mut copy_options = dirx::CopyOptions::new();
-    copy_options.copy_inside = true;
-    fsx::copy_items(
-        &[afs::workspace_dir().join("alvr/xtask/resources/presets")],
-        layout.presets_dir(),
-        &copy_options,
-    )
-    .unwrap();
-
-    if bundle_ffmpeg {
-        let nvenc_flag = !no_nvidia;
-        let ffmpeg_path = dependencies::build_ffmpeg_linux(nvenc_flag);
-        let lib_dir = afs::server_build_dir().join("lib64").join("alvr");
-        fs::create_dir_all(lib_dir.clone()).unwrap();
-        for lib in walkdir::WalkDir::new(ffmpeg_path)
-            .into_iter()
-            .filter_map(|maybe_entry| maybe_entry.ok())
-            .map(|entry| entry.into_path())
-            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
-        {
-            fs::copy(lib.clone(), lib_dir.join(lib.file_name().unwrap())).unwrap();
-        }
-    }
-
-    if gpl && cfg!(windows) {
-        let ffmpeg_path = dependencies::extract_ffmpeg_windows();
-        let bin_dir = afs::server_build_dir().join("bin").join("win64");
-        fs::create_dir_all(bin_dir.clone()).unwrap();
-        for dll in walkdir::WalkDir::new(ffmpeg_path.join("bin"))
-            .into_iter()
-            .filter_map(|maybe_entry| maybe_entry.ok())
-            .map(|entry| entry.into_path())
-            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".dll"))
-        {
-            fs::copy(dll.clone(), bin_dir.join(dll.file_name().unwrap())).unwrap();
-        }
-    }
-
-    if cfg!(target_os = "linux") {
-        command::run_in(
-            &afs::workspace_dir().join("alvr/vrcompositor-wrapper"),
-            &format!("cargo build {build_flags}"),
-        )
-        .unwrap();
-        fs::create_dir_all(&layout.vrcompositor_wrapper_dir).unwrap();
-        fs::copy(
-            artifacts_dir.join("vrcompositor-wrapper"),
-            layout.vrcompositor_wrapper(),
-        )
-        .unwrap();
-    }
-
-    command::run_in(
-        &afs::workspace_dir().join("alvr/server"),
-        &format!(
-            "cargo build {build_flags} --no-default-features --features {}",
-            server_features.join(",")
-        ),
-    )
-    .unwrap();
-    fs::copy(
-        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
-        layout.openvr_driver_lib(),
-    )
-    .unwrap();
-
-    command::run_in(
-        &afs::workspace_dir().join("alvr/launcher"),
-        &format!(
-            "cargo build {build_flags} --no-default-features --features {}",
-            launcher_features.join(",")
-        ),
-    )
-    .unwrap();
-    fs::copy(
-        artifacts_dir.join(afs::exec_fname("alvr_launcher")),
-        layout.launcher_exe(),
-    )
-    .unwrap();
-
-    if experiments {
-        let dir_content = dirx::get_dir_content2(
-            "alvr/experiments/gui/resources/languages",
-            &dirx::DirOptions { depth: 1 },
-        )
-        .unwrap();
-        let items: Vec<&String> = dir_content.directories[1..]
-            .iter()
-            .chain(dir_content.files.iter())
-            .collect();
-
-        let destination = afs::server_build_dir().join("languages");
-        fs::create_dir_all(&destination).unwrap();
-        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-    }
-
-    fs::copy(
-        afs::workspace_dir().join("alvr/xtask/resources/driver.vrdrivermanifest"),
-        layout.openvr_driver_manifest(),
-    )
-    .unwrap();
-
-    if cfg!(windows) {
-        let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
-        fsx::copy_items(
-            &dir_content.files,
-            layout.openvr_driver_lib().parent().unwrap(),
-            &dirx::CopyOptions::new(),
-        )
-        .unwrap();
-    }
-
-    // let dir_content =
-    //     dirx::get_dir_content2("alvr/resources", &dirx::DirOptions { depth: 1 }).unwrap();
-    // let items: Vec<&String> = dir_content.directories[1..]
-    //     .iter()
-    //     .chain(dir_content.files.iter())
-    //     .collect();
-    // fs::create_dir_all(&layout.resources_dir()).unwrap();
-    // fsx::copy_items(&items, layout.resources_dir(), &dirx::CopyOptions::new()).unwrap();
-
-    let dir_content = dirx::get_dir_content2(
-        afs::workspace_dir().join("alvr/dashboard"),
-        &dirx::DirOptions { depth: 1 },
-    )
-    .unwrap();
-    let items: Vec<&String> = dir_content.directories[1..]
-        .iter()
-        .chain(dir_content.files.iter())
-        .collect();
-
-    fs::create_dir_all(&layout.dashboard_dir()).unwrap();
-    fsx::copy_items(&items, layout.dashboard_dir(), &dirx::CopyOptions::new()).unwrap();
-
-    if cfg!(target_os = "linux") {
-        command::run_in(
-            &afs::workspace_dir().join("alvr/vulkan-layer"),
-            &format!("cargo build {build_flags}"),
-        )
-        .unwrap();
-
-        let lib_dir = afs::server_build_dir().join("lib64");
-        let manifest_dir = afs::server_build_dir().join("share/vulkan/explicit_layer.d");
-
-        fs::create_dir_all(&manifest_dir).unwrap();
-        fs::create_dir_all(&lib_dir).unwrap();
-        fs::copy(
-            afs::workspace_dir().join("alvr/vulkan-layer/layer/alvr_x86_64.json"),
-            manifest_dir.join("alvr_x86_64.json"),
-        )
-        .unwrap();
-        fs::copy(
-            artifacts_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
-            lib_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
-        )
-        .unwrap();
-    }
-}
-
-pub fn build_client(is_release: bool, is_nightly: bool, for_oculus_go: bool) {
-    let headset_name = if for_oculus_go {
-        "oculus_go"
-    } else {
-        "oculus_quest"
-    };
-
-    let headset_type = if for_oculus_go {
-        "OculusGo"
-    } else {
-        "OculusQuest"
-    };
-    let package_type = if is_nightly { "Nightly" } else { "Stable" };
-    let build_type = if is_release { "release" } else { "debug" };
-
-    let build_task = format!("assemble{headset_type}{package_type}{build_type}");
-
-    let client_dir = afs::workspace_dir().join("alvr/client/android");
-    let command_name = if cfg!(not(windows)) {
-        "./gradlew"
-    } else {
-        "gradlew.bat"
-    };
-
-    let artifact_name = format!("alvr_client_{headset_name}");
-    fs::create_dir_all(&afs::build_dir().join(&artifact_name)).unwrap();
-
-    env::set_current_dir(&client_dir).unwrap();
-    command::run(&format!("{command_name} {build_task}")).unwrap();
-    env::set_current_dir(afs::workspace_dir()).unwrap();
-
-    fs::copy(
-        client_dir
-            .join("app/build/outputs/apk")
-            .join(format!("{headset_type}{package_type}"))
-            .join(build_type)
-            .join(format!(
-                "app-{headset_type}-{package_type}-{build_type}.apk",
-            )),
-        afs::build_dir()
-            .join(&artifact_name)
-            .join(format!("{artifact_name}.apk")),
-    )
-    .unwrap();
-}
-
-// Avoid Oculus link popups when debugging the client
-pub fn kill_oculus_processes() {
-    command::run_without_shell(
-        "powershell",
-        &[
-            "Start-Process",
-            "taskkill",
-            "-ArgumentList",
-            "\"/F /IM OVR* /T\"",
-            "-Verb",
-            "runAs",
-        ],
-    )
-    .unwrap();
 }
 
 fn clippy() {
@@ -356,6 +74,22 @@ fn prettier() {
     command::run("npx -p prettier@2.2.1 prettier --config alvr/xtask/.prettierrc --write '**/*[!.min].{css,js}'").unwrap();
 }
 
+// Avoid Oculus link popups when debugging the client
+pub fn kill_oculus_processes() {
+    command::run_without_shell(
+        "powershell",
+        &[
+            "Start-Process",
+            "taskkill",
+            "-ArgumentList",
+            "\"/F /IM OVR* /T\"",
+            "-Verb",
+            "runAs",
+        ],
+    )
+    .unwrap();
+}
+
 fn main() {
     let begin_time = Instant::now();
 
@@ -366,55 +100,62 @@ fn main() {
     if args.contains(["-h", "--help"]) {
         println!("{HELP_STR}");
     } else if let Ok(Some(subcommand)) = args.subcommand() {
-        let fetch = args.contains("--fetch");
-        let is_release = args.contains("--release");
-        let experiments = args.contains("--experiments");
-        let version: Option<String> = args.opt_value_from_str("--version").unwrap();
-        let is_nightly = args.contains("--nightly");
-        let for_oculus_quest = args.contains("--oculus-quest");
-        let for_oculus_go = args.contains("--oculus-go");
-        let bundle_ffmpeg = args.contains("--bundle-ffmpeg");
         let no_nvidia = args.contains("--no-nvidia");
+        let is_release = args.contains("--release");
         let gpl = args.contains("--gpl");
-        let reproducible = args.contains("--reproducible");
+        let experiments = args.contains("--experiments");
+        let is_nightly = args.contains("--nightly");
+        let for_ci = args.contains("--ci");
+
+        let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
+        let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
 
         if args.finish().is_empty() {
             match subcommand.as_str() {
-                "build-windows-deps" => dependencies::build_deps("windows"),
-                "build-android-deps" => dependencies::build_deps("android"),
-                "build-server" => build_server(
-                    is_release,
-                    experiments,
-                    fetch,
-                    bundle_ffmpeg,
-                    no_nvidia,
-                    gpl,
-                    root,
-                    reproducible,
-                ),
-                "build-client" => {
-                    if (for_oculus_quest && for_oculus_go) || (!for_oculus_quest && !for_oculus_go)
-                    {
-                        build_client(is_release, false, false);
-                        build_client(is_release, false, true);
+                "prepare-deps" => {
+                    if let Some(platform) = platform {
+                        match platform.as_str() {
+                            "windows" => dependencies::prepare_windows_deps(for_ci),
+                            "linux" => dependencies::build_ffmpeg_linux(!no_nvidia),
+                            "android" | "oculus_quest" | "oculus_go" => {
+                                dependencies::build_android_deps()
+                            }
+                            _ => panic!("Unrecognized platform."),
+                        }
                     } else {
-                        build_client(is_release, false, for_oculus_go);
+                        if cfg!(windows) {
+                            dependencies::prepare_windows_deps(for_ci);
+                        } else if cfg!(target_os = "linux") {
+                            dependencies::build_ffmpeg_linux(!no_nvidia);
+                        }
+
+                        dependencies::build_android_deps();
                     }
                 }
-                "build-ffmpeg-linux" => {
-                    dependencies::build_ffmpeg_linux(true);
+                "build-server" => build::build_server(is_release, gpl, None, false, experiments),
+                "build-client" => {
+                    if let Some(platform) = platform {
+                        build::build_client(is_release, &platform);
+                    } else {
+                        build::build_client(is_release, "oculus_quest");
+                        build::build_client(is_release, "oculus_go");
+                    }
                 }
-                "build-ffmpeg-linux-no-nvidia" => {
-                    dependencies::build_ffmpeg_linux(false);
+                "package-server" => packaging::package_server(root, gpl),
+                "package-client" => {
+                    if let Some(platform) = platform {
+                        build::build_client(true, &platform);
+                    } else {
+                        build::build_client(true, "oculus_quest");
+                        build::build_client(true, "oculus_go");
+                    }
                 }
-                "publish-server" => packaging::publish_server(is_nightly, root, reproducible, gpl),
-                "publish-client" => packaging::publish_client(is_nightly),
-                "clean" => remove_build_dir(),
-                "kill-oculus" => kill_oculus_processes(),
-                "bump-versions" => version::bump_version(version, is_nightly),
+                "clean" => clean(),
+                "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),
                 "prettier" => prettier(),
+                "kill-oculus" => kill_oculus_processes(),
                 _ => {
                     println!("\nUnrecognized subcommand.");
                     println!("{HELP_STR}");
@@ -433,7 +174,6 @@ fn main() {
     }
 
     let elapsed_time = Instant::now() - begin_time;
-
     println!(
         "\nDone [{}m {}s]\n",
         elapsed_time.as_secs() / 60,

@@ -1,4 +1,3 @@
-use alvr_common::ALVR_VERSION;
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};

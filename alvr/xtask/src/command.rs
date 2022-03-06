@@ -1,7 +1,9 @@
+use alvr_filesystem as afs;
 use std::{
     env,
     error::Error,
-    fmt::Display,
+    fmt::{self, Display},
+    fs,
     path::Path,
     process::{Command, Stdio},
 };
@@ -10,7 +12,7 @@ use std::{
 struct StringError(String);
 
 impl Display for StringError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)
     }
 }
@@ -23,7 +25,10 @@ pub fn run_as_shell_in(
     shell_flag: &str,
     cmd: &str,
 ) -> Result<(), Box<dyn Error>> {
-    println!("\n> {cmd}");
+    println!(
+        "\n[xtask - {}] > {cmd}",
+        workdir.file_name().unwrap().to_string_lossy()
+    );
 
     let output = Command::new(shell)
         .args(&[shell_flag, cmd])
@@ -60,7 +65,7 @@ pub fn run_as_bash_in(workdir: &Path, cmd: &str) -> Result<(), Box<dyn Error>> {
 
 pub fn run_without_shell(cmd: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
     println!(
-        "\n> {}",
+        "\n[xtask] > {}",
         args.iter().fold(String::from(cmd), |s, arg| s + " " + arg)
     );
     let output = Command::new(cmd)
@@ -128,6 +133,20 @@ pub fn download(url: &str, destination: &Path) -> Result<(), Box<dyn Error>> {
         "curl",
         &["-L", "-o", &destination.to_string_lossy(), "--url", url],
     )
+}
+
+pub fn download_and_extract_zip(url: &str, destination: &Path) {
+    let zip_file = afs::build_dir().join("temp_download.zip");
+
+    fs::remove_file(&zip_file).ok();
+    fs::create_dir_all(afs::build_dir()).unwrap();
+    download(url, &zip_file).unwrap();
+
+    fs::remove_dir_all(&destination).ok();
+    fs::create_dir_all(&destination).unwrap();
+    unzip(&zip_file, destination).unwrap();
+
+    fs::remove_file(zip_file).unwrap();
 }
 
 pub fn date_utc_yyyymmdd() -> String {

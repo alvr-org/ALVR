@@ -1,4 +1,4 @@
-use crate::{build_client, build_server, command, version};
+use crate::{build, command, version};
 use alvr_filesystem as afs;
 use std::{env, fs, path::PathBuf};
 
@@ -102,18 +102,8 @@ fn build_windows_installer(wix_path: &str) {
     .unwrap();
 }
 
-pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool, gpl: bool) {
-    let bundle_ffmpeg = cfg!(target_os = "linux");
-    build_server(
-        true,
-        false,
-        false,
-        bundle_ffmpeg,
-        false,
-        gpl,
-        root,
-        reproducible,
-    );
+pub fn package_server(root: Option<String>, gpl: bool) {
+    build::build_server(true, gpl, root, true, false);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -127,40 +117,32 @@ pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool
     command::run(&format!(
         "cargo about generate {} > {}",
         afs::workspace_dir()
-            .join("alvr")
-            .join("xtask")
-            .join("licenses_template.hbs")
+            .join("alvr/xtask/licenses_template.hbs")
             .to_string_lossy(),
         licenses_dir.join("dependencies.html").to_string_lossy()
     ))
     .unwrap();
     fs::copy(
-        afs::workspace_dir()
-            .join("alvr")
-            .join("server")
-            .join("LICENSE-Valve"),
+        afs::workspace_dir().join("alvr/server/LICENSE-Valve"),
         licenses_dir.join("Valve.txt"),
     )
     .unwrap();
-    fs::copy(
-        afs::workspace_dir()
-            .join("alvr")
-            .join("server")
-            .join("LICENSE-FFmpeg"),
-        licenses_dir.join("FFmpeg.txt"),
-    )
-    .unwrap();
+    if gpl {
+        fs::copy(
+            afs::workspace_dir().join("deps/windows/ffmpeg/LICENSE.txt"),
+            licenses_dir.join("FFmpeg.txt"),
+        )
+        .ok();
+    }
 
     command::zip(&afs::server_build_dir()).unwrap();
 
     if cfg!(windows) {
-        if is_nightly {
-            fs::copy(
-                afs::target_dir().join("release").join("alvr_server.pdb"),
-                afs::build_dir().join("alvr_server.pdb"),
-            )
-            .unwrap();
-        }
+        fs::copy(
+            afs::target_dir().join("release").join("alvr_server.pdb"),
+            afs::build_dir().join("alvr_server.pdb"),
+        )
+        .unwrap();
 
         if let Some(wix_evar) = env::vars().find(|v| v.0 == "WIX") {
             println!("Found WiX, will build installer.");
@@ -170,9 +152,4 @@ pub fn publish_server(is_nightly: bool, root: Option<String>, reproducible: bool
             println!("No WiX toolset installation found, skipping installer.");
         }
     }
-}
-
-pub fn publish_client(is_nightly: bool) {
-    build_client(!is_nightly, is_nightly, false);
-    build_client(!is_nightly, is_nightly, true);
 }

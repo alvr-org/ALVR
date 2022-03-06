@@ -10,8 +10,6 @@ rust-version = "1.58"
 crate-type = ["cdylib"]
 
 [features]
-default = []
-bundled_ffmpeg = []
 gpl = []
 
 [dependencies]

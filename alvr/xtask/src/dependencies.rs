@@ -1,37 +1,117 @@
-use crate::command::{self, run_as_bash_in as bash_in};
+use crate::command;
 use alvr_filesystem as afs;
-use std::{fs, path::Path};
+use std::fs;
 
-fn download_and_extract_zip(url: &str, destination: &Path) {
-    let zip_file = afs::deps_dir().join("temp_download.zip");
+pub fn prepare_x264_windows(skip_admin_priv: bool) {
+    const VERSION: &str = "0.164";
+    const REVISION: usize = 3086;
 
-    fs::remove_file(&zip_file).ok();
-    fs::create_dir_all(afs::deps_dir()).unwrap();
-    command::download(url, &zip_file).unwrap();
-
-    fs::remove_dir_all(&destination).ok();
-    fs::create_dir_all(&destination).unwrap();
-    command::unzip(&zip_file, destination).unwrap();
-
-    fs::remove_file(zip_file).unwrap();
-}
-
-pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
-    /* dependencies: build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev
-                     libx264-dev libx265-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
-    */
-
-    let download_path = afs::deps_dir().join("linux");
-    let ffmpeg_path = download_path.join("FFmpeg-n4.4");
-    if !ffmpeg_path.exists() {
-        download_and_extract_zip(
-            "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
-            &download_path,
-        );
+    if !skip_admin_priv {
+        command::run_without_shell(
+            "powershell",
+            &[
+                "Start-Process",
+                "choco",
+                "-ArgumentList",
+                "\"install pkgconfiglite -y\"",
+                "-Verb",
+                "runAs",
+            ],
+        )
+        .unwrap();
     }
 
-    bash_in(
-        &ffmpeg_path,
+    command::download_and_extract_zip(
+        &format!(
+            "{}/{VERSION}.r{REVISION}/libx264_{VERSION}.r{REVISION}_msvc16.zip",
+            "https://github.com/ShiftMediaProject/x264/releases/download",
+        ),
+        &afs::deps_dir().join("windows/x264"),
+    );
+
+    fs::write(
+        afs::deps_dir().join("x264.pc"),
+        format!(
+            r#"
+prefix={}
+exec_prefix=${{prefix}}/bin/x64
+libdir=${{prefix}}/lib/x64
+includedir=${{prefix}}/include
+
+Name: x264
+Description: x264 library
+Version: {VERSION}
+Libs: -L${{libdir}} -lx264
+Cflags: -I${{includedir}}
+"#,
+            afs::deps_dir()
+                .join("windows/x264")
+                .to_string_lossy()
+                .replace('\\', "/")
+        ),
+    )
+    .unwrap();
+
+    command::run_without_shell(
+        "setx",
+        &["PKG_CONFIG_PATH", &afs::deps_dir().to_string_lossy()],
+    )
+    .unwrap();
+}
+
+pub fn prepare_ffmpeg_windows() {
+    let download_path = afs::deps_dir().join("windows");
+    command::download_and_extract_zip(
+        &format!(
+            "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
+            "ffmpeg-n5.0-latest-win64-gpl-shared-5.0.zip"
+        ),
+        &download_path,
+    );
+
+    let final_path = download_path.join("ffmpeg");
+
+    fs::rename(
+        download_path.join("ffmpeg-n5.0-latest-win64-gpl-shared-5.0"),
+        final_path,
+    )
+    .unwrap();
+}
+
+pub fn prepare_windows_deps(skip_admin_priv: bool) {
+    if !skip_admin_priv {
+        command::run_without_shell(
+            "powershell",
+            &[
+                "Start-Process",
+                "choco",
+                "-ArgumentList",
+                "\"install vulkan-sdk -y\"",
+                "-Verb",
+                "runAs",
+            ],
+        )
+        .unwrap();
+    }
+
+    prepare_x264_windows(skip_admin_priv);
+
+    prepare_ffmpeg_windows();
+}
+
+pub fn build_ffmpeg_linux(nvenc_flag: bool) {
+    let download_path = afs::deps_dir().join("linux");
+    command::download_and_extract_zip(
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
+        &download_path,
+    );
+
+    let final_path = download_path.join("ffmpeg");
+
+    fs::rename(download_path.join("FFmpeg-n4.4"), &final_path).unwrap();
+
+    command::run_as_bash_in(
+        &final_path,
         &format!(
             "./configure {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}",
             "--enable-gpl --enable-version3",
@@ -87,29 +167,14 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
         ),
     )
     .unwrap();
-    bash_in(&ffmpeg_path, "make -j$(nproc)").unwrap();
-
-    ffmpeg_path
-}
-
-pub fn extract_ffmpeg_windows() -> std::path::PathBuf {
-    let download_path = afs::deps_dir().join("windows");
-    let ffmpeg_path = download_path.join("ffmpeg-n5.0-latest-win64-gpl-shared-5.0");
-    if !ffmpeg_path.exists() {
-        download_and_extract_zip(
-            "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n5.0-latest-win64-gpl-shared-5.0.zip",
-            &download_path,
-        );
-    }
-
-    ffmpeg_path
+    command::run_as_bash_in(&final_path, "make -j$(nproc)").unwrap();
 }
 
 fn get_oculus_openxr_mobile_loader() {
     let temp_sdk_dir = afs::build_dir().join("temp_download");
 
     // OpenXR SDK v1.0.18. todo: upgrade when new version is available
-    download_and_extract_zip(
+    command::download_and_extract_zip(
         "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
         &temp_sdk_dir,
     );
@@ -126,13 +191,9 @@ fn get_oculus_openxr_mobile_loader() {
     fs::remove_dir_all(temp_sdk_dir).ok();
 }
 
-pub fn build_deps(target_os: &str) {
-    if target_os == "android" {
-        command::run("rustup target add aarch64-linux-android").unwrap();
-        command::run("cargo install cargo-apk").unwrap();
+pub fn build_android_deps() {
+    command::run("rustup target add aarch64-linux-android").unwrap();
+    command::run("cargo install cargo-apk").unwrap();
 
-        get_oculus_openxr_mobile_loader();
-    } else {
-        println!("Nothing to do for {target_os}!")
-    }
+    get_oculus_openxr_mobile_loader();
 }

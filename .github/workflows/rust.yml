@@ -22,6 +22,10 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v1
 
+      - uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install vulkan-sdk
+
       - name: Build crates
         uses: actions-rs/cargo@v1
         with:

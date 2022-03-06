@@ -48,7 +48,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev
-          cargo xtask prepare-deps --linux --no-nvidia
+          cargo xtask prepare-deps --platform linux --no-nvidia
           cd deps/linux/ffmpeg && sudo make install && cd ../../..
 
       - name: Build crates

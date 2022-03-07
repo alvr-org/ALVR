@@ -551,10 +551,6 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         break;
     }
 
-    // Force connected
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, m_pose, sizeof(vr::DriverPose_t));
-
     return vr::VRInitError_None;
 }
 

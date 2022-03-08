@@ -1,4 +1,4 @@
-use crate::{graphics_info, MAYBE_WINDOW};
+use crate::{graphics_info, MAYBE_WINDOW, SESSION_MANAGER};
 use alvr_common::prelude::*;
 use std::{fs, sync::Arc};
 
@@ -30,7 +30,19 @@ pub fn ui_thread() -> StrResult {
         .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
         .custom_args(&[
             "--disk-cache-size=1",
-            &format!("--window-position={pos_left},{pos_top}")
+            &format!("--window-position={pos_left},{pos_top}"),
+            if SESSION_MANAGER
+                .lock()
+                .get()
+                .session_settings
+                .extra
+                .patches
+                .remove_sync_popup
+            {
+                "--enable-automation"
+            } else {
+                ""
+            },
         ])
         .run())?);
 

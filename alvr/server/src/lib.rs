@@ -252,7 +252,8 @@ fn init() {
             .lock()
             .get_mut()
             .session_settings
-            .video
+            .extra
+            .patches
             .linux_async_reprojection = false;
     }
 

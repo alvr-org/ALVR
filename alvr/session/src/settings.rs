@@ -183,9 +183,6 @@ pub struct VideoDesc {
 
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub color_correction: Switch<ColorCorrectionDesc>,
-
-    #[schema(advanced)]
-    pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -357,6 +354,13 @@ pub struct ControllersDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct Patches {
+    pub remove_sync_popup: bool,
+    pub linux_async_reprojection: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
     #[schema(advanced)]
     pub mode_idx: u64,
@@ -497,6 +501,8 @@ pub struct ExtraDesc {
     pub notification_level: LogLevel,
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
+
+    patches: Patches,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
@@ -602,7 +608,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     sharpening: 0.,
                 },
             },
-            linux_async_reprojection: true,
         },
         audio: AudioSectionDefault {
             linux_backend: LinuxAudioBackendDefault {
@@ -740,6 +745,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
+            patches: PatchesDefault {
+                remove_sync_popup: false,
+                linux_async_reprojection: true,
+            },
         },
     }
 }

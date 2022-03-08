@@ -113,9 +113,6 @@ define({
             "Bitrate light load threshold", // adv
         "_root_video_adaptiveBitrate_content_bitrateLightLoadThreshold.description":
             "Limit increasing bitrate if sent rate is below threshold percentage of bitrate. Prevents stutters caused when switching from simple scenes to complex scenes", // adv
-        "_root_video_linuxAsyncReprojection.name": "Linux async reprojection",
-        "_root_video_linuxAsyncReprojection.description":
-            "This is the cause of jitter on Linux. It should always be disabled on Nvidia GPUs. AMD users should keep it on.",
         // Audio tab
         "_root_audio_tab.name": "Audio",
         "_root_audio_linuxBackend-choice-.name": "Linux backend",
@@ -346,6 +343,10 @@ define({
             "Exclude notifications without identification", // adv
         "_root_extra_excludeNotificationsWithoutId.description":
             "Do not show notifications that do not contain the identification structure.", // adv
+        "_root_extra_patches_removeSyncPopup.name": "Remove sync popup on MS Edge",
+        "_root_extra_patches_linuxAsyncReprojection.name": "Linux async reprojection",
+        "_root_extra_patches_linuxAsyncReprojection.description":
+            "This is the cause of jitter on Linux. It should always be disabled on Nvidia GPUs. AMD users should keep it on.",
         // Others
         steamVRRestartSuccess: "SteamVR successfully restarted",
         audioDeviceError: "No audio devices found. Cannot stream audio or microphone",

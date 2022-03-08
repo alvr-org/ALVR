@@ -116,14 +116,14 @@ impl ConversionPass {
                             .get_device_proc_addr(device.handle(), name.as_ptr()),
                     )
                 });
-            let res = ext_fns.get_android_hardware_buffer_properties_android(
-                device.handle(),
-                input_buffer_ptr as _,
-                &mut hardware_buffer_properties as _,
-            );
-            if res != vk::Result::SUCCESS {
-                return fmt_e!("{res}");
-            }
+            ext_fns
+                .get_android_hardware_buffer_properties_android(
+                    device.handle(),
+                    input_buffer_ptr as _,
+                    &mut hardware_buffer_properties as _,
+                )
+                .result()
+                .map_err(err!())?
         }
 
         // error!("buffer properties: {hardware_buffer_format_properties:?}");

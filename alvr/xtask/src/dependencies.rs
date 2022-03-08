@@ -1,6 +1,6 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::{env, error::Error, fs};
+use std::{error::Error, fs};
 
 pub fn choco_install(package: &str) -> Result<(), Box<dyn Error>> {
     command::run_without_shell(
@@ -16,7 +16,7 @@ pub fn choco_install(package: &str) -> Result<(), Box<dyn Error>> {
     )
 }
 
-pub fn prepare_x264_windows(skip_admin_priv: bool) {
+pub fn prepare_x264_windows() {
     const VERSION: &str = "0.164";
     const REVISION: usize = 3086;
 
@@ -80,8 +80,7 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
         choco_install("llvm vulkan-sdk wixtoolset pkgconfiglite").unwrap();
     }
 
-    prepare_x264_windows(skip_admin_priv);
-
+    prepare_x264_windows();
     prepare_ffmpeg_windows();
 }
 

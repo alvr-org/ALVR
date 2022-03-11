@@ -11,6 +11,7 @@ alvr_common = { path = "../../common" }
 alvr_session = { path = "../../session" }
 
 ash = "=0.34"
+bitflags = "1"
 bytemuck = "1"
 wgpu = { version = "0.12", features = ["spirv"] }
 wgpu-hal = { version = "0.12", features = ["vulkan"] }

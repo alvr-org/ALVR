@@ -137,6 +137,51 @@ pub enum CodecType {
     HEVC,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[serde(tag = "type", content = "content")]
+pub enum AccelerationType {
+    Hardware,
+    Software,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum BitDepth {
+    Bit8,
+    Bit10,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VulkanH264EncoderConfig {}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VulkanH265EncoderConfig {}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VulkanEncoderConfig {
+    pub luma_bits: BitDepth,
+    pub h264: VulkanH264EncoderConfig,
+    pub h265: VulkanH265EncoderConfig,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct X264Config {
+    pub extra_parameters: Vec<(String, String)>,
+    pub profile: String,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoEncoderConfig {
+    preferred_acceleration: AccelerationType,
+    vulkan: VulkanEncoderConfig,
+    x264: X264Config,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoDesc {

@@ -1,0 +1,20 @@
+[package]
+name = "encoder"
+version = "0.1.0"
+authors = ["alvr-org"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.58"
+
+[features]
+default = ["gpl"]
+gpl = ["x264"]
+
+[dependencies]
+alvr_common = { path = "../../common" }
+alvr_session = { path = "../../session" }
+alvr_sockets = { path = "../../sockets" }
+alvr_graphics = { path = "../graphics" }
+
+# Note: this library is not on crates.io. The support is experiemntal
+x264 = { git = "https://github.com/rust-av/x264-rs", optional = true }

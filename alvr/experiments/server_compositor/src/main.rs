@@ -1,9 +1,11 @@
 mod color_correction;
 mod compositing;
+mod convert;
 
 use alvr_common::{glam::UVec2, prelude::*};
 use alvr_graphics::{
-    convert::{self, SwapchainCreateData, SwapchainCreateInfo, TextureType},
+    ash::vk,
+    convert::{SwapchainCreateData, SwapchainCreateInfo, TextureType},
     foveated_rendering::{FoveatedRenderingPass, FrDirection},
     slicing::{AlignmentDirection, SlicingPass},
     wgpu::{
@@ -156,7 +158,7 @@ impl Compositor {
             TextureType::Cubemap => 1,
         };
 
-        let textures = convert::create_texture_set(&self.context.device, data, info);
+        let textures = alvr_graphics::convert::create_texture_set(&self.context.device, data, info);
 
         let bind_groups = textures
             .iter()
@@ -187,14 +189,20 @@ impl Compositor {
     }
 
     // The function is blocking but it should finish quite fast. Corresponds to xrEndFrame
+    // Note: wgpu does not support external semaphores, but the trick is to submit empty command
+    // buffers that only interact with the semaphores. the semaphore signaling and render work is
+    // executed in the right order because it's in the same queue.
     pub fn end_frame(
         &self,
         layers: &[&[CompositionLayerView]],
         color_correction: Option<ColorCorrectionDesc>,
+        encoder_semaphores: &[vk::Semaphore],
     ) {
         for views in &*layers {
             assert_eq!(views.len(), 2);
         }
+
+        // todo: wait semaphores here for even value
 
         let mut encoder = self
             .context
@@ -253,6 +261,8 @@ impl Compositor {
         // For the best performance, all compositing work is submitted at once.
         self.context.queue.submit(Some(encoder.finish()));
 
+        // todo: signal semaphores here for odd value
+
         pollster::block_on(self.context.queue.on_submitted_work_done());
     }
 }
@@ -261,11 +271,11 @@ fn run() -> StrResult {
     let event_loop = EventLoop::new();
     let window = Window::new(&event_loop).unwrap();
 
-    let context = Arc::new(GraphicsContext::new(None)?);
+    let context = Arc::new(convert::create_windows_graphics_context(None)?);
 
     let compositor = Compositor::new(context.clone(), UVec2::new(400, 300), None, 1);
 
-    compositor.end_frame(&[], None);
+    compositor.end_frame(&[], None, &[]);
 
     let surface = unsafe { context.instance.create_surface(&window) };
 

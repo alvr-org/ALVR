@@ -21,16 +21,33 @@ use wgpu::{
 pub const TARGET_FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 pub const QUAD_SHADER_WGSL: &str = include_str!("../resources/quad.wgsl");
 
+pub struct VideoQueueFamilyInfo {
+    pub index: u32,
+    pub queues_count: usize,
+}
+
+pub struct QueuesFamilyInfo {
+    pub rendering_index: u32,
+    pub h264_encoding_queue_family_info: Vec<VideoQueueFamilyInfo>,
+    pub h265_encoding_queue_family_info: Vec<VideoQueueFamilyInfo>,
+    pub h264_decoding_queue_family_info: Vec<VideoQueueFamilyInfo>,
+    pub h265_decoding_queue_family_info: Vec<VideoQueueFamilyInfo>,
+}
+
+pub struct RawGraphicsHandles {
+    pub instance: ash::Instance,
+    pub physical_device: vk::PhysicalDevice,
+    pub device: ash::Device,
+    pub queues_family_info: QueuesFamilyInfo,
+    pub rendering_queue_index: u32,
+}
+
 pub struct GraphicsContext {
     pub instance: Arc<Instance>,
     pub adapter: Arc<Adapter>,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
-    pub raw_instance: ash::Instance,
-    pub raw_physical_device: vk::PhysicalDevice,
-    pub raw_device: ash::Device,
-    pub queue_family_index: u32,
-    pub queue_index: u32,
+    pub raw: RawGraphicsHandles,
 }
 
 pub fn quad_shader(device: &Device) -> ShaderModule {

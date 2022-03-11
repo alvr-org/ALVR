@@ -1,4 +1,4 @@
-use crate::GraphicsContext;
+use crate::{GraphicsContext, QueuesFamilyInfo, RawGraphicsHandles, VideoQueueFamilyInfo};
 use alvr_common::{glam::UVec2, prelude::*};
 use ash::vk;
 use std::{any::Any, ffi::CStr, slice, sync::Arc};
@@ -100,6 +100,93 @@ pub fn get_temporary_hal_adapter(
         .ok_or_else(enone!())
 }
 
+pub fn get_vulkan_queue_families_info(
+    instance: &ash::Instance,
+    physical_device: vk::PhysicalDevice,
+) -> QueuesFamilyInfo {
+    let size =
+        unsafe { instance.get_physical_device_queue_family_properties2_len(physical_device) };
+
+    let mut queue_family_properties = vec![
+        vk::QueueFamilyProperties2::builder()
+            .push_next(&mut vk::VideoQueueFamilyProperties2KHR::default())
+            .build();
+        size
+    ];
+    unsafe {
+        instance.get_physical_device_queue_family_properties2(
+            physical_device,
+            &mut queue_family_properties,
+        )
+    };
+
+    fn get_queue_family_info(
+        props: &[vk::QueueFamilyProperties2],
+        queue_type: vk::QueueFlags,
+        codec_op: vk::VideoCodecOperationFlagsKHR,
+    ) -> Vec<VideoQueueFamilyInfo> {
+        props
+            .iter()
+            .enumerate()
+            .filter_map(|(index, info)| unsafe {
+                if info
+                    .queue_family_properties
+                    .queue_flags
+                    .contains(queue_type)
+                    && (*(info.p_next as *mut vk::VideoQueueFamilyProperties2KHR))
+                        .video_codec_operations
+                        .contains(codec_op)
+                {
+                    Some(VideoQueueFamilyInfo {
+                        index: index as _,
+                        queues_count: info.queue_family_properties.queue_count as _,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    let rendering_index = get_queue_family_info(
+        &queue_family_properties,
+        vk::QueueFlags::GRAPHICS,
+        vk::VideoCodecOperationFlagsKHR::INVALID,
+    )[0]
+    .index;
+
+    // NB: we don't care if this overlaps with the rendering queue family index, since the rendering
+    // and encode operations never overlap because of resource management
+    let h264_encoding_queue_family_info = get_queue_family_info(
+        &queue_family_properties,
+        vk::QueueFlags::VIDEO_ENCODE_KHR,
+        vk::VideoCodecOperationFlagsKHR::ENCODE_H264_EXT,
+    );
+    let h265_encoding_queue_family_info = get_queue_family_info(
+        &queue_family_properties,
+        vk::QueueFlags::VIDEO_ENCODE_KHR,
+        vk::VideoCodecOperationFlagsKHR::ENCODE_H265_EXT,
+    );
+    let h264_decoding_queue_family_info = get_queue_family_info(
+        &queue_family_properties,
+        vk::QueueFlags::VIDEO_ENCODE_KHR,
+        vk::VideoCodecOperationFlagsKHR::DECODE_H264_EXT,
+    );
+    let h265_decoding_queue_family_info = get_queue_family_info(
+        &queue_family_properties,
+        vk::QueueFlags::VIDEO_ENCODE_KHR,
+        vk::VideoCodecOperationFlagsKHR::DECODE_H265_EXT,
+    );
+
+    QueuesFamilyInfo {
+        rendering_index,
+        h264_encoding_queue_family_info,
+        h265_encoding_queue_family_info,
+        h264_decoding_queue_family_info,
+        h265_decoding_queue_family_info,
+    }
+}
+
 // Create wgpu-compatible Vulkan device. Corresponds to xrCreateVulkanDeviceKHR
 pub fn create_vulkan_device(
     entry: ash::Entry,
@@ -164,11 +251,7 @@ pub fn create_vulkan_device(
 pub struct GraphicsContextVulkanInitDesc {
     pub entry: ash::Entry,
     pub version: u32,
-    pub raw_instance: ash::Instance,
-    pub raw_physical_device: vk::PhysicalDevice,
-    pub raw_device: ash::Device,
-    pub queue_family_index: u32,
-    pub queue_index: u32,
+    pub raw: RawGraphicsHandles,
     pub drop_guard: Option<Box<dyn Any + Send + Sync>>,
 }
 
@@ -190,7 +273,7 @@ impl GraphicsContext {
         let instance = unsafe {
             <hal::api::Vulkan as hal::Api>::Instance::from_raw(
                 desc.entry,
-                desc.raw_instance.clone(),
+                desc.raw.instance.clone(),
                 desc.version,
                 instance_extensions,
                 flags,
@@ -201,7 +284,7 @@ impl GraphicsContext {
         };
 
         let exposed_adapter = instance
-            .expose_adapter(desc.raw_physical_device)
+            .expose_adapter(desc.raw.physical_device)
             .ok_or_else(enone!())?;
         let device_extensions = exposed_adapter
             .adapter
@@ -211,13 +294,13 @@ impl GraphicsContext {
             exposed_adapter
                 .adapter
                 .device_from_raw(
-                    desc.raw_device.clone(),
+                    desc.raw.device.clone(),
                     handle_is_owned,
                     &device_extensions,
                     exposed_adapter.features,
                     hal::UpdateAfterBindTypes::empty(), // todo: proper initialization
-                    desc.queue_family_index,
-                    desc.queue_index,
+                    desc.raw.queues_family_info.rendering_index,
+                    desc.raw.rendering_queue_index,
                 )
                 .map_err(err!())?
         };
@@ -255,64 +338,6 @@ impl GraphicsContext {
 
         #[cfg(target_os = "macos")]
         unimplemented!()
-    }
-
-    // This constructor is used for the Windows OpenVR driver
-    pub fn new(adapter_index: Option<usize>) -> StrResult<Self> {
-        let entry = unsafe { ash::Entry::load().map_err(err!())? };
-
-        let raw_instance = create_vulkan_instance(
-            &entry,
-            &vk::InstanceCreateInfo::builder()
-                .application_info(
-                    &vk::ApplicationInfo::builder().api_version(TARGET_VULKAN_VERSION),
-                )
-                .build(),
-        )
-        .map_err(err!())?;
-
-        let raw_physical_device = get_vulkan_graphics_device(&raw_instance, adapter_index)?;
-
-        let queue_family_index = unsafe {
-            raw_instance
-                .get_physical_device_queue_family_properties(raw_physical_device)
-                .into_iter()
-                .enumerate()
-                .find_map(|(queue_family_index, info)| {
-                    if info.queue_flags.contains(vk::QueueFlags::GRAPHICS) {
-                        Some(queue_family_index as u32)
-                    } else {
-                        None
-                    }
-                })
-                .unwrap()
-        };
-        let queue_index = 0;
-
-        let raw_device = create_vulkan_device(
-            entry.clone(),
-            TARGET_VULKAN_VERSION,
-            &raw_instance,
-            raw_physical_device,
-            &vk::DeviceCreateInfo::builder().queue_create_infos(&[
-                vk::DeviceQueueCreateInfo::builder()
-                    .queue_family_index(queue_family_index)
-                    .queue_priorities(&[1.0])
-                    .build(),
-            ]),
-        )
-        .map_err(err!())?;
-
-        Self::from_vulkan(GraphicsContextVulkanInitDesc {
-            entry,
-            version: TARGET_VULKAN_VERSION,
-            raw_instance,
-            raw_physical_device,
-            raw_device,
-            queue_family_index,
-            queue_index,
-            drop_guard: Some(Box::new(())),
-        })
     }
 }
 

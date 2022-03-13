@@ -185,7 +185,7 @@ impl ServerDataManager {
             LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa),
             LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack),
         }
-        .map_err(err!());
+        .map_err(err!())?;
         #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 

@@ -91,7 +91,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo xtask prepare-deps --platform windows
-          cargo xtask publish-server --gpl
+          cargo xtask package-server --gpl
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
 
@@ -234,7 +234,7 @@ jobs:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
           RUST_BACKTRACE: 1
-        run: cargo xtask publish-client
+        run: cargo xtask package-client
 
       - name: Sign Oculus Quest APK
         uses: r0adkll/sign-android-release@v1

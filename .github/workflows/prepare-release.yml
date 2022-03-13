@@ -90,7 +90,7 @@ jobs:
           WIX: "wix314-binaries"
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask build-windows-deps
+          cargo xtask prepare-deps --platform windows
           cargo xtask publish-server --gpl
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
@@ -135,8 +135,7 @@ jobs:
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
           cp packaging/deb/cuda.pc /usr/share/pkgconfig
-          cargo xtask build-ffmpeg-linux
-          cd deps/linux/FFmpeg-n4.4 && sudo make install && cd ../../..
+          cargo xtask prepare-deps --platform linux
 
       - name: Build and package ALVR (.tar.gz)
         id: build
@@ -175,8 +174,7 @@ jobs:
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
           cp packaging/deb/cuda.pc /usr/share/pkgconfig
-          cargo xtask build-ffmpeg-linux
-          cd deps/linux/FFmpeg-n4.4 && sudo make install && cd ../../..
+          cargo xtask prepare-deps --platform linux
 
       - name: Build and package ALVR (.tar.gz)
         id: build
@@ -228,7 +226,7 @@ jobs:
       - name: Build dependencies
         env:
           RUST_BACKTRACE: 1
-        run: cargo xtask build-android-deps
+        run: cargo xtask prepare-deps --platform android
 
       - name: Build and package ALVR (.apk)
         id: build

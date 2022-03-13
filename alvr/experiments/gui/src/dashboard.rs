@@ -1,8 +1,9 @@
-use super::{
+use super::theme::{ContainerStyle, ACCENT, ELEMENT_BACKGROUND, FOREGROUND};
+use crate::{
     tabs::{ConnectionEvent, ConnectionPanel, SettingsEvent, SettingsPanel},
-    theme::{ContainerStyle, ACCENT, ELEMENT_BACKGROUND, FOREGROUND},
+    theme::ContainerSecondaryStyle,
+    DashboardDataInterfce,
 };
-use crate::dashboard::{pretty::theme::ContainerSecondaryStyle, RequestHandler};
 use alvr_session::ServerEvent;
 use iced::{
     alignment::Horizontal, button, Alignment, Button, Column, Container, Element, Length, Row,
@@ -105,16 +106,16 @@ impl Dashboard {
         }
     }
 
-    pub fn update(&mut self, event: DashboardEvent, request_handler: &mut RequestHandler) {
+    pub fn update(&mut self, event: DashboardEvent, data_interface: &mut DashboardDataInterfce) {
         match event {
             DashboardEvent::ServerEvent(event) => match event {
                 ServerEvent::Session(session) => {
                     self.connection_panel.update(
-                        ConnectionEvent::SessionUpdated((*session).clone()),
-                        request_handler,
+                        ConnectionEvent::SessionUpdated(session.clone()),
+                        data_interface,
                     );
                     self.settings_panel
-                        .update(SettingsEvent::SessionUpdated(*session), request_handler);
+                        .update(SettingsEvent::SessionUpdated(session), data_interface);
                 }
                 ServerEvent::SessionUpdated => (), // deprecated
                 ServerEvent::SessionSettingsExtrapolationFailed => todo!(),
@@ -133,10 +134,10 @@ impl Dashboard {
             DashboardEvent::TabClick(tab) => self.selected_tab = tab,
             DashboardEvent::LanguageClick => (),
             DashboardEvent::ConnectionEvent(event) => {
-                self.connection_panel.update(event, request_handler)
+                self.connection_panel.update(event, data_interface)
             }
             DashboardEvent::SettingsEvent(event) => {
-                self.settings_panel.update(event, request_handler)
+                self.settings_panel.update(event, data_interface)
             }
         }
     }

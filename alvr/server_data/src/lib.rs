@@ -1,6 +1,6 @@
 use alvr_common::prelude::*;
-use alvr_session::{ServerEvent, SessionDesc};
-use alvr_sockets::{AudioDevicesList, GpuVendor};
+use alvr_session::{ServerEvent, SessionDesc, LinuxAudioBackend};
+use alvr_sockets::{AudioDevicesList, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -53,6 +53,7 @@ impl Drop for SessionLock<'_> {
 pub struct ServerDataManager {
     session: SessionDesc,
     session_path: PathBuf,
+    script_engine: rhai::Engine,
     gpu_adapters: Vec<Adapter>,
 }
 
@@ -100,9 +101,12 @@ impl ServerDataManager {
                 .collect()
         };
 
+        let script_engine = rhai::Engine::new();
+
         Self {
             session: session_desc,
             session_path: session_path.to_owned(),
+            script_engine,
             gpu_adapters,
         }
     }
@@ -116,6 +120,43 @@ impl ServerDataManager {
             session_desc: &mut self.session,
             session_path: &self.session_path,
         }
+    }
+
+    // Note: "value" can be any session subtree, in json format.
+    pub fn set_single_value(&mut self, path: Vec<PathSegment>, value: &str) -> StrResult {
+        let mut session_json = serde_json::to_value(self.session.clone()).map_err(err!())?;
+
+        let mut session_ref = &mut session_json;
+        for segment in path {
+            session_ref = match segment {
+                PathSegment::Name(name) => session_ref.get_mut(name).ok_or_else(enone!())?,
+                PathSegment::Index(index) => session_ref.get_mut(index).ok_or_else(enone!())?,
+            };
+        }
+
+        *session_ref = serde_json::from_str(value).map_err(err!())?;
+
+        // session_json has been updated
+        self.session = serde_json::from_value(session_json).map_err(err!())?;
+
+        save_session(&self.session, &self.session_path).unwrap();
+        alvr_session::log_event(ServerEvent::Session(Box::new(self.session.clone())));
+
+        Ok(())
+    }
+
+    pub fn execute_script(&self, code: &str) -> StrResult<String> {
+        // Note: the scope is recreated every time to avoid cross-invocation interference
+        let mut scope = rhai::Scope::new();
+        scope.push_constant_dynamic(
+            "session",
+            rhai::serde::to_dynamic(self.session.clone()).unwrap(),
+        );
+
+        self.script_engine
+            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
+            .map(|d| d.to_string())
+            .map_err(|e| e.to_string())
     }
 
     pub fn get_gpu_vendor(&self) -> GpuVendor {

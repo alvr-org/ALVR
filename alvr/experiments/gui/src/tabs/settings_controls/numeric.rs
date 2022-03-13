@@ -2,7 +2,7 @@ use super::{
     reset, DrawingResult, InitData, SettingControlEvent, SettingControlEventType, UpdatingData,
     ROW_HEIGHT,
 };
-use crate::dashboard::pretty::theme::{TextInputStyle, TooltipStyle};
+use crate::theme::{TextInputStyle, TooltipStyle};
 use iced::{
     slider, text_input, tooltip::Position, Alignment, Length, Row, Slider, Space, Text, TextInput,
     Tooltip,
@@ -11,7 +11,7 @@ use num::FromPrimitive;
 use serde::de::DeserializeOwned;
 use serde_json as json;
 use settings_schema::NumericGuiType;
-use std::{any, fmt::Display, ops::RangeInclusive, str::FromStr};
+use std::{fmt::Display, ops::RangeInclusive, str::FromStr};
 
 struct SliderState<T> {
     state: slider::State,
@@ -103,23 +103,8 @@ where
                     self.default
                 };
 
-                let mut value_string = value.to_string();
-
-                if (any::type_name::<T>() == "f32" || any::type_name::<T>() == "f64")
-                    && !value_string.contains('.')
-                {
-                    value_string.push_str(".0");
-                }
-
-                (data.request_handler)(format!(
-                    r#"
-                        let session = load_session();
-                        {} = {value_string};
-                        store_session(session);
-                    "#,
-                    data.string_path,
-                ))
-                .unwrap();
+                data.data_interface
+                    .set_single_value(data.segment_path, &value.to_string());
             }
         }
     }

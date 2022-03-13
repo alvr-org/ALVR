@@ -200,3 +200,9 @@ pub enum GpuVendor {
     Amd,
     Other,
 }
+
+#[derive(Clone, Debug)]
+pub enum PathSegment {
+    Name(String),
+    Index(usize),
+}

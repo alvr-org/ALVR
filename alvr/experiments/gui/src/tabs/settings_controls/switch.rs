@@ -1,3 +1,5 @@
+use crate::PathSegment;
+
 use super::{
     reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
     SettingControlEventType, UpdatingData, ROW_HEIGHT,
@@ -42,29 +44,22 @@ impl Control {
                 event: SettingControlEventType::SessionUpdated(session_switch.content),
                 ..data
             });
-        } else if data.path.pop().is_some() {
+        } else if data.index_path.pop().is_some() {
+            data.segment_path.push(PathSegment::Name("content".into()));
             self.inner_control.update(UpdatingData {
-                string_path: format!("{}.content", data.string_path),
+                segment_path: data.segment_path,
                 ..data
             })
         } else {
-            let enabled = if data.event == SettingControlEventType::Toggle {
+            self.enabled = if data.event == SettingControlEventType::Toggle {
                 !self.enabled
             } else {
                 self.default_enabled
             };
 
-            (data.request_handler)(format!(
-                r#"
-                    let session = load_session();
-                    {}.enabled = {enabled};
-                    store_session(session);
-                "#,
-                data.string_path,
-            ))
-            .unwrap();
-
-            self.enabled = enabled;
+            data.segment_path.push(PathSegment::Name("enabled".into()));
+            data.data_interface
+                .set_single_value(data.segment_path, &self.enabled.to_string());
         }
     }
 
@@ -81,7 +76,7 @@ impl Control {
             .into();
 
         let (left, right) = if self.enabled && (data.advanced || !self.content_advanced) {
-            super::draw_result(self.inner_control.view(data))
+            super::draw_result(self.inner_control.view(data), 0)
         } else {
             (
                 Space::with_height(0.into()).into(),

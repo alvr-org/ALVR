@@ -1,0 +1,26 @@
+[package]
+name = "launcher"
+version = "18.0.0-dev01"
+authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.58"
+
+[dependencies]
+alvr_commands = { path = "../../commands" }
+alvr_common = { path = "../../common" }
+alvr_filesystem = { path = "../../filesystem" }
+alvr_gui = { path = "../gui" }
+alvr_server_data = { path = "../../server_data" }
+alvr_session = { path = "../../session" }
+alvr_sockets = { path = "../../sockets" }
+
+iced = { git = "https://github.com/iced-rs/iced", features = ["image"] }
+iced_native = { git = "https://github.com/iced-rs/iced" }
+pollster = "0.2"
+serde_json = "1"
+single-instance = "0.3"
+sysinfo = "0.23"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

@@ -1,3 +1,5 @@
+use crate::PathSegment;
+
 use super::{
     higher_order, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
     SettingControlEventType, ShowMode, UpdatingData, INDENTATION, ROW_HEIGHT,
@@ -80,16 +82,18 @@ impl Control {
                     .cloned()
                     .unwrap_or(json::Value::Null); // in case of HOS or custom controls
                 entry.control.update(UpdatingData {
-                    path: vec![],
+                    index_path: vec![],
+                    segment_path: vec![],
                     event: SettingControlEventType::SessionUpdated(session),
-                    request_handler: data.request_handler,
-                    string_path: String::new(),
+                    data_interface: data.data_interface,
                 })
             }
         } else {
-            let entry = &mut self.entries[data.path.pop().unwrap()];
+            let entry = &mut self.entries[data.index_path.pop().unwrap()];
+            data.segment_path
+                .push(PathSegment::Name(entry.name.clone()));
             entry.control.update(UpdatingData {
-                string_path: format!("{}.{}", data.string_path, entry.name),
+                segment_path: data.segment_path,
                 ..data
             })
         }

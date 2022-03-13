@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
-use crate::dashboard::{
-    pretty::{
-        tabs::InitData,
-        theme::{ButtonStyle, ScrollableStyle},
-    },
-    RequestHandler,
+use crate::{
+    tabs::InitData,
+    theme::{ButtonStyle, ScrollableStyle},
+    DashboardDataInterfce, PathSegment,
 };
 
 use super::{
@@ -18,7 +16,7 @@ use settings_schema::SchemaNode;
 
 #[derive(Clone, Debug)]
 pub enum SettingsEvent {
-    SessionUpdated(SessionDesc),
+    SessionUpdated(Box<SessionDesc>),
     TabClick(usize),
     AdvancedClick,
     FromControl(SettingControlEvent),
@@ -90,7 +88,7 @@ impl SettingsPanel {
         }
     }
 
-    pub fn update(&mut self, event: SettingsEvent, request_handler: &mut RequestHandler) {
+    pub fn update(&mut self, event: SettingsEvent, data_interface: &mut DashboardDataInterfce) {
         match event {
             SettingsEvent::SessionUpdated(session) => {
                 // NB: the SessionUpdated event cannot be just broadcated to every control. Since
@@ -105,34 +103,34 @@ impl SettingsPanel {
                 .unwrap();
                 for tab in &mut self.tabs_content {
                     tab.control.update(UpdatingData {
-                        path: vec![],
+                        index_path: vec![],
+                        segment_path: vec![],
                         event: SettingControlEventType::SessionUpdated(
                             session_tabs[&tab.name].clone(),
                         ),
-                        request_handler,
-                        string_path: String::new(),
+                        data_interface,
                     });
                 }
             }
             SettingsEvent::TabClick(tab_index) => self.selected_tab = tab_index,
             SettingsEvent::AdvancedClick => {
-                request_handler(format!(
-                    r#"
-                        let session = load_session();
-                        session.advanced = {};
-                        store_session(session);
-                    "#,
-                    !self.advanced
-                ));
+                self.advanced = !self.advanced;
+                data_interface.set_single_value(
+                    vec![PathSegment::Name("advanced".into())],
+                    &self.advanced.to_string(),
+                );
             }
             SettingsEvent::FromControl(event) => {
                 let tab = &mut self.tabs_content[self.selected_tab];
 
                 tab.control.update(UpdatingData {
-                    path: event.path,
+                    index_path: event.path,
+                    segment_path: vec![
+                        PathSegment::Name("sessionSettings".into()),
+                        PathSegment::Name(tab.name.clone()),
+                    ],
                     event: event.event_type,
-                    request_handler,
-                    string_path: format!("session.sessionSettings.{}", tab.name),
+                    data_interface,
                 })
             }
         }

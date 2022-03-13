@@ -1,5 +1,5 @@
 use super::{SettingControlEvent, SettingControlEventType};
-use crate::dashboard::pretty::theme::ButtonStyle;
+use crate::theme::ButtonStyle;
 use iced::{button, Button, Element, Text};
 
 pub struct Control {

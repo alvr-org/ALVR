@@ -2,7 +2,7 @@ use super::{
     reset, DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
     SettingControlEventType, UpdatingData, ROW_HEIGHT,
 };
-use crate::dashboard::pretty::theme::ButtonStyle;
+use crate::{theme::ButtonStyle, PathSegment};
 use iced::{button, Alignment, Button, Length, Row, Space, Text};
 use serde_json as json;
 use settings_schema::EntryData;
@@ -88,36 +88,33 @@ impl Control {
             for content in self.content_controls.iter_mut().flatten() {
                 let session_content = session_variants.remove(&content.name).unwrap();
                 content.control.update(UpdatingData {
-                    path: vec![],
+                    index_path: vec![],
+                    segment_path: vec![],
                     event: SettingControlEventType::SessionUpdated(session_content),
-                    request_handler: data.request_handler,
-                    string_path: String::new(),
+                    data_interface: data.data_interface,
                 })
             }
-        } else if data.path.pop().is_some() {
+        } else if data.index_path.pop().is_some() {
             let selected_content = self.content_controls[self.selection].as_mut().unwrap();
+            data.segment_path
+                .push(PathSegment::Name(selected_content.name.clone()));
             selected_content.control.update(UpdatingData {
-                string_path: format!("{}.{}", data.string_path, selected_content.name),
+                segment_path: data.segment_path,
                 ..data
             })
         } else {
             let variant = if let SettingControlEventType::VariantClick(index) = data.event {
-                &self.variant_buttons[index].name
+                self.variant_buttons[index].name.clone()
             } else {
-                &self.default
+                self.default.clone()
             };
 
-            (data.request_handler)(format!(
-                r#"
-                    let session = load_session();
-                    {}.variant = "{variant}";
-                    store_session(session);
-                "#,
-                data.string_path,
-            ))
-            .unwrap();
+            self.selection = self.variant_indices[&variant];
 
-            self.selection = self.variant_indices[variant];
+            data.segment_path.push(PathSegment::Name("variant".into()));
+
+            data.data_interface
+                .set_single_value(data.segment_path, &format!("\"{}\"", variant));
         }
     }
 
@@ -150,7 +147,7 @@ impl Control {
 
         let maybe_block = if let Some(variant) = &mut self.content_controls[self.selection] {
             (data.advanced || !variant.advanced)
-                .then(|| super::draw_result(variant.control.view(data)))
+                .then(|| super::draw_result(variant.control.view(data), 0))
         } else {
             None
         };

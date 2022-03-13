@@ -2,7 +2,7 @@ use super::{
     reset, DrawingData, DrawingResult, InitData, SettingControlEvent, SettingControlEventType,
     UpdatingData, ROW_HEIGHT,
 };
-use crate::dashboard::pretty::theme::{TextInputStyle, TooltipStyle};
+use crate::theme::{TextInputStyle, TooltipStyle};
 use iced::{text_input, tooltip::Position, Alignment, Length, Row, Space, TextInput, Tooltip};
 use serde_json as json;
 
@@ -37,15 +37,8 @@ impl Control {
                     self.default.clone()
                 };
 
-                (data.request_handler)(format!(
-                    r#"
-                        let session = load_session();
-                        {} = "{value}";
-                        store_session(session);
-                    "#,
-                    data.string_path,
-                ))
-                .unwrap();
+                data.data_interface
+                    .set_single_value(data.segment_path, &format!("\"{}\"", value));
             }
         }
     }

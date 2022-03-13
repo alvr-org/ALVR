@@ -120,6 +120,19 @@ pub fn build_server(
         let destination = afs::server_build_dir().join("languages");
         fs::create_dir_all(&destination).unwrap();
         fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
+
+        command::run_in(
+            &afs::workspace_dir().join("alvr/experiments/launcher"),
+            &format!("cargo build {release_flag}"),
+        )
+        .unwrap();
+        fs::copy(
+            artifacts_dir.join(afs::exec_fname("launcher")),
+            build_layout
+                .executables_dir
+                .join(afs::exec_fname("experimental_launcher")),
+        )
+        .unwrap();
     }
 
     fs::copy(

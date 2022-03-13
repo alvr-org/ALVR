@@ -1,6 +1,7 @@
+use crate::PathSegment;
+
 use super::{
-    DrawingData, DrawingResult, InitData, SettingControl, SettingControlEvent,
-    SettingControlEventType, UpdatingData,
+    DrawingData, DrawingResult, InitData, SettingControl, SettingControlEventType, UpdatingData,
 };
 use iced::Column;
 use serde_json as json;
@@ -28,17 +29,19 @@ impl Control {
             for (index, entry) in self.entries.iter_mut().enumerate() {
                 let session = session_entries[index].clone();
                 entry.update(UpdatingData {
-                    path: vec![],
+                    index_path: vec![],
+                    segment_path: vec![],
                     event: SettingControlEventType::SessionUpdated(session),
-                    request_handler: data.request_handler,
-                    string_path: String::new(),
+                    data_interface: data.data_interface,
                 })
             }
         } else {
-            let index = data.path.pop().unwrap();
+            let index = data.index_path.pop().unwrap();
+            data.segment_path.push(PathSegment::Index(index));
+
             let entry = &mut self.entries[index];
             entry.update(UpdatingData {
-                string_path: format!("{}[{index}]", data.string_path),
+                segment_path: data.segment_path,
                 ..data
             })
         }
@@ -49,19 +52,7 @@ impl Control {
             .entries
             .iter_mut()
             .enumerate()
-            .map(|(index, entry)| {
-                let (left, right) = super::draw_result(entry.view(data));
-                (
-                    left.map(move |mut e: SettingControlEvent| {
-                        e.path.push(index);
-                        e
-                    }),
-                    right.map(move |mut e: SettingControlEvent| {
-                        e.path.push(index);
-                        e
-                    }),
-                )
-            })
+            .map(|(index, entry)| super::draw_result(entry.view(data), index))
             .unzip();
 
         DrawingResult {

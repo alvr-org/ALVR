@@ -12,10 +12,11 @@ pub mod switch;
 pub mod text;
 pub mod vector;
 
-use crate::dashboard::RequestHandler;
 use iced::{Column, Element, Length, Row, Space};
 use serde_json as json;
 use settings_schema::SchemaNode;
+
+use crate::{DashboardDataInterfce, PathSegment};
 
 const ROW_HEIGHT_UNITS: u16 = 30;
 const ROW_HEIGHT: Length = Length::Units(ROW_HEIGHT_UNITS);
@@ -48,8 +49,7 @@ pub enum SettingControlEventType {
 #[derive(Clone, Debug)]
 pub struct SettingControlEvent {
     // Path of the control constructed during event bubbling in the drawing fuctions. The order of
-    // the segments is reversed. Most controls add 0, except Section, Array, Vector and Dictionary,
-    // which add the index of the child.
+    // the segments is reversed.
     pub path: Vec<usize>,
 
     pub event_type: SettingControlEventType,
@@ -61,14 +61,12 @@ pub struct InitData<S> {
 }
 
 pub struct UpdatingData<'a> {
-    pub path: Vec<usize>, // For SessionUpdated, the construction of the path is skipped
+    // For SessionUpdated, the construction of the path is skipped
+    pub index_path: Vec<usize>,
+    pub segment_path: Vec<PathSegment>,
 
     pub event: SettingControlEventType,
-    pub request_handler: &'a mut RequestHandler,
-
-    // Path used to construct a command submitted with request_handler. For SessionUpdated, the
-    // construction of the path is skipped
-    pub string_path: String,
+    pub data_interface: &'a mut DashboardDataInterfce,
 }
 
 pub struct DrawingData {
@@ -221,6 +219,7 @@ impl SettingControl {
 // For all containers except Section (which needs to handle the labels and notices)
 fn draw_result(
     result: DrawingResult,
+    child_index: usize,
 ) -> (Element<SettingControlEvent>, Element<SettingControlEvent>) {
     let mut left_control = Column::new();
     let mut right_control = Column::new();
@@ -240,12 +239,12 @@ fn draw_result(
     let right_control: Element<_> = right_control.push(result.right).into();
 
     (
-        left_control.map(|mut e: SettingControlEvent| {
-            e.path.push(0);
+        left_control.map(move |mut e: SettingControlEvent| {
+            e.path.push(child_index);
             e
         }),
-        right_control.map(|mut e: SettingControlEvent| {
-            e.path.push(0);
+        right_control.map(move |mut e: SettingControlEvent| {
+            e.path.push(child_index);
             e
         }),
     )

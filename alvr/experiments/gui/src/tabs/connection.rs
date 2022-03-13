@@ -6,14 +6,14 @@ use iced::{
     Length, Row, Scrollable, Space, Text,
 };
 
-use crate::dashboard::{
-    pretty::theme::{ButtonStyle, ScrollableStyle, ELEMENT_BACKGROUND},
-    RequestHandler,
+use crate::{
+    theme::{ButtonStyle, ScrollableStyle, ELEMENT_BACKGROUND},
+    DashboardDataInterfce,
 };
 
 #[derive(Clone, Debug)]
 pub enum ConnectionEvent {
-    SessionUpdated(SessionDesc),
+    SessionUpdated(Box<SessionDesc>),
     AddClient(String, IpAddr),
     TrustClient(String),
     RemoveClient(String),
@@ -40,7 +40,7 @@ impl ConnectionPanel {
         }
     }
 
-    pub fn update(&mut self, event: ConnectionEvent, request_handler: &mut RequestHandler) {
+    pub fn update(&mut self, event: ConnectionEvent, data_interface: &mut DashboardDataInterfce) {
         match event {
             ConnectionEvent::SessionUpdated(session) => {
                 self.new_clients = session
@@ -67,13 +67,13 @@ impl ConnectionPanel {
                     .collect::<Vec<_>>();
             }
             ConnectionEvent::AddClient(hostname, ip_address) => {
-                request_handler(format!(r#"add_client("{hostname}", "{ip_address}")"#)).unwrap();
+                // session_setter(format!(r#"add_client("{hostname}", "{ip_address}")"#)).unwrap();
             }
             ConnectionEvent::TrustClient(hostname) => {
-                request_handler(format!(r#"trust_client("{hostname}")"#)).unwrap();
+                // session_setter(format!(r#"trust_client("{hostname}")"#)).unwrap();
             }
             ConnectionEvent::RemoveClient(hostname) => {
-                request_handler(format!(r#"remove_client("{hostname}")"#)).unwrap();
+                // session_setter(format!(r#"remove_client("{hostname}")"#)).unwrap();
             }
         }
     }

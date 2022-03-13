@@ -25,23 +25,14 @@ impl Control {
             self.value = json::from_value(session).unwrap();
             self.reset_control.update(self.value != self.default);
         } else {
-            let value = if data.event == SettingControlEventType::Toggle {
-                !self.value
-            } else {
-                self.default
-            };
+            if data.event == SettingControlEventType::Toggle {
+                self.value = !self.value;
+            } else if data.event == SettingControlEventType::ResetClick {
+                self.value = self.default;
+            }
 
-            (data.request_handler)(format!(
-                r#"
-                    let session = load_session();
-                    {} = {value};
-                    store_session(session);
-                "#,
-                data.string_path,
-            ))
-            .unwrap();
-
-            self.value = value;
+            data.data_interface
+                .set_single_value(data.segment_path, &self.value.to_string());
         }
     }
 

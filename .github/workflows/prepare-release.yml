@@ -35,7 +35,7 @@ jobs:
         run: |
           $versionarg = "${{ github.event.inputs.version }}"
           $versionarg = If ($versionarg.Length -gt 0) { "--version $versionarg" } else { "" }
-          $out = cargo xtask bump-versions $versionarg.split()
+          $out = cargo xtask bump $versionarg.split()
           echo $out
           cargo update -p alvr_common
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"

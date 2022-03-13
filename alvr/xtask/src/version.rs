@@ -132,6 +132,7 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
         "filesystem",
         "launcher",
         "server",
+        "server_data",
         "session",
         "sockets",
         "vrcompositor-wrapper",

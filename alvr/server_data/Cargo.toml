@@ -1,0 +1,16 @@
+[package]
+name = "alvr_server_data"
+version = "18.0.0-dev01"
+authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.58"
+
+[dependencies]
+alvr_common = { path = "../common" }
+alvr_session = { path = "../session" }
+alvr_sockets = { path = "../sockets" }
+
+cpal = "0.13"
+serde_json = "1"
+wgpu = "0.12"

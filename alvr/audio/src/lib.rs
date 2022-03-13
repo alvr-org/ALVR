@@ -54,36 +54,6 @@ lazy_static! {
     ];
 }
 
-#[derive(Serialize)]
-pub struct AudioDevicesList {
-    output: Vec<String>,
-    input: Vec<String>,
-}
-
-#[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
-pub fn get_devices_list(linux_backend: LinuxAudioBackend) -> StrResult<AudioDevicesList> {
-    #[cfg(target_os = "linux")]
-    let host = match linux_backend {
-        LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
-        LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
-    };
-    #[cfg(not(target_os = "linux"))]
-    let host = cpal::default_host();
-
-    let output = host
-        .output_devices()
-        .map_err(err!())?
-        .filter_map(|d| d.name().ok())
-        .collect::<Vec<_>>();
-    let input = host
-        .input_devices()
-        .map_err(err!())?
-        .filter_map(|d| d.name().ok())
-        .collect::<Vec<_>>();
-
-    Ok(AudioDevicesList { output, input })
-}
-
 pub enum AudioDeviceType {
     Output,
     Input,

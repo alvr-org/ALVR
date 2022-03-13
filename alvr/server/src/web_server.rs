@@ -1,4 +1,4 @@
-use crate::{graphics_info, ClientListAction, FILESYSTEM_LAYOUT, SESSION_MANAGER};
+use crate::{ClientListAction, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_session::ServerEvent;
 use bytes::Buf;
@@ -101,12 +101,12 @@ async fn http_api(
         "/api/settings-schema" => reply_json(&alvr_session::settings_schema(
             alvr_session::session_settings_default(),
         ))?,
-        "/api/session/load" => reply_json(SESSION_MANAGER.lock().get())?,
+        "/api/session/load" => reply_json(SERVER_DATA_MANAGER.lock().session())?,
         "/api/session/store-settings" => {
             if let Ok(session_settings) = from_request_body::<json::Value>(request).await {
-                let res = SESSION_MANAGER
+                let res = SERVER_DATA_MANAGER
                     .lock()
-                    .get_mut()
+                    .session_mut()
                     .merge_from_json(&json::json!({ "session_settings": session_settings }));
                 if let Err(e) = res {
                     warn!("{e}");
@@ -122,7 +122,10 @@ async fn http_api(
         "/api/session/store" => {
             if let Ok(data) = from_request_body::<json::Value>(request).await {
                 if let Some(value) = data.get("session") {
-                    let res = SESSION_MANAGER.lock().get_mut().merge_from_json(value);
+                    let res = SERVER_DATA_MANAGER
+                        .lock()
+                        .session_mut()
+                        .merge_from_json(value);
                     if let Err(e) = res {
                         warn!("{e}");
                         // HTTP Code: WARNING
@@ -173,15 +176,8 @@ async fn http_api(
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
-        "/api/audio-devices" => reply_json(&alvr_audio::get_devices_list(
-            SESSION_MANAGER
-                .lock()
-                .get()
-                .to_settings()
-                .audio
-                .linux_backend,
-        )?)?,
-        "/api/graphics-devices" => reply_json(&graphics_info::get_gpu_names())?,
+        "/api/audio-devices" => reply_json(&SERVER_DATA_MANAGER.lock().get_audio_devices_list()?)?,
+        "/api/graphics-devices" => reply_json(&SERVER_DATA_MANAGER.lock().get_gpu_names())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?
@@ -307,9 +303,9 @@ pub async fn web_server(
     log_sender: broadcast::Sender<String>,
     events_sender: broadcast::Sender<String>,
 ) -> StrResult {
-    let web_server_port = SESSION_MANAGER
+    let web_server_port = SERVER_DATA_MANAGER
         .lock()
-        .get()
+        .session()
         .to_settings()
         .connection
         .web_server_port;

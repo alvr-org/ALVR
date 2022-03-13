@@ -188,3 +188,15 @@ pub struct Haptics {
     pub frequency: f32,
     pub amplitude: f32,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct AudioDevicesList {
+    pub output: Vec<String>,
+    pub input: Vec<String>,
+}
+
+pub enum GpuVendor {
+    Nvidia,
+    Amd,
+    Other,
+}

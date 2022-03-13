@@ -1,7 +1,6 @@
 mod connection;
 mod connection_utils;
 mod dashboard;
-mod graphics_info;
 mod logging_backend;
 mod web_server;
 
@@ -14,15 +13,13 @@ mod web_server;
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+use alvr_server_data::ServerDataManager;
 use bindings::*;
 
 use alvr_common::{lazy_static, log, parking_lot::Mutex, prelude::*, ALVR_VERSION};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_session::{
-    ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent, SessionManager,
-};
-use alvr_sockets::{Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
-use graphics_info::GpuVendor;
+use alvr_session::{ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent};
+use alvr_sockets::{GpuVendor, Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use std::{
     collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
@@ -45,8 +42,8 @@ lazy_static! {
     // Since ALVR_DIR is needed to initialize logging, if error then just panic
     static ref FILESYSTEM_LAYOUT: Layout =
         afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap());
-    static ref SESSION_MANAGER: Mutex<SessionManager> =
-        Mutex::new(SessionManager::new(&FILESYSTEM_LAYOUT.session()));
+    static ref SERVER_DATA_MANAGER: Mutex<ServerDataManager> =
+        Mutex::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session()));
     static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
     static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
 
@@ -164,7 +161,11 @@ pub enum ClientListAction {
 }
 
 pub fn update_client_list(hostname: String, action: ClientListAction) {
-    let mut client_connections = SESSION_MANAGER.lock().get().client_connections.clone();
+    let mut client_connections = SERVER_DATA_MANAGER
+        .lock()
+        .session()
+        .client_connections
+        .clone();
 
     let maybe_client_entry = client_connections.entry(hostname);
 
@@ -208,7 +209,7 @@ pub fn update_client_list(hostname: String, action: ClientListAction) {
     }
 
     if updated {
-        SESSION_MANAGER.lock().get_mut().client_connections = client_connections;
+        SERVER_DATA_MANAGER.lock().session_mut().client_connections = client_connections;
 
         CLIENTS_UPDATED_NOTIFIER.notify_waiters();
     }
@@ -220,12 +221,16 @@ fn init() {
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
     if let Some(runtime) = RUNTIME.lock().as_mut() {
-        // Acquire and drop the session_manager lock to create session.json if not present
+        // Acquire and drop the data manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
-        SESSION_MANAGER.lock().get_mut();
+        SERVER_DATA_MANAGER.lock().session_mut();
 
         runtime.spawn(async move {
-            let connections = SESSION_MANAGER.lock().get().client_connections.clone();
+            let connections = SERVER_DATA_MANAGER
+                .lock()
+                .session()
+                .client_connections
+                .clone();
             for (hostname, connection) in connections {
                 if !connection.trusted {
                     update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None));
@@ -246,21 +251,22 @@ fn init() {
         thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
 
-    if matches!(graphics_info::get_gpu_vendor(), GpuVendor::Nvidia) {
-        SESSION_MANAGER
-            .lock()
-            .get_mut()
-            .session_settings
-            .extra
-            .patches
-            .linux_async_reprojection = false;
-    }
+    {
+        let mut data_manager = SERVER_DATA_MANAGER.lock();
+        if matches!(data_manager.get_gpu_vendor(), GpuVendor::Nvidia) {
+            data_manager
+                .session_mut()
+                .session_settings
+                .extra
+                .patches
+                .linux_async_reprojection = false;
+        }
 
-    if SESSION_MANAGER.lock().get().server_version != *ALVR_VERSION {
-        let mut session_manager = SESSION_MANAGER.lock();
-        let mut session_ref = session_manager.get_mut();
-        session_ref.server_version = ALVR_VERSION.clone();
-        session_ref.client_connections.clear();
+        if data_manager.session().server_version != *ALVR_VERSION {
+            let mut session_ref = data_manager.session_mut();
+            session_ref.server_version = ALVR_VERSION.clone();
+            session_ref.client_connections.clear();
+        }
     }
 
     unsafe {

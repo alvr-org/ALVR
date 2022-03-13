@@ -1,4 +1,4 @@
-use crate::{FILESYSTEM_LAYOUT, SESSION_MANAGER};
+use crate::{FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::log::{self, LevelFilter};
 use alvr_session::{EventSeverity, Raw, ServerEvent};
 use fern::Dispatch;
@@ -44,7 +44,13 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
         log_dispatch = log_dispatch.level(LevelFilter::Info);
     }
 
-    if SESSION_MANAGER.lock().get().to_settings().extra.log_to_disk {
+    if SERVER_DATA_MANAGER
+        .lock()
+        .session()
+        .to_settings()
+        .extra
+        .log_to_disk
+    {
         log_dispatch = log_dispatch.chain(
             fs::OpenOptions::new()
                 .write(true)

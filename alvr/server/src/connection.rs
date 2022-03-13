@@ -1,7 +1,7 @@
 use crate::{
     connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
     TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
-    HAPTICS_SENDER, RESTART_NOTIFIER, SESSION_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
+    HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -63,9 +63,9 @@ async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
                 },
             );
 
-            if let Some(connection_desc) = SESSION_MANAGER
+            if let Some(connection_desc) = SERVER_DATA_MANAGER
                 .lock()
-                .get()
+                .session()
                 .client_connections
                 .get(&handshake_packet.hostname)
             {
@@ -95,13 +95,15 @@ async fn client_handshake(
     let client_ips = if let Some(id) = trusted_discovered_client_id {
         vec![id.ip]
     } else {
-        SESSION_MANAGER.lock().get().client_connections.iter().fold(
-            Vec::new(),
-            |mut clients_info, (_, client)| {
+        SERVER_DATA_MANAGER
+            .lock()
+            .session()
+            .client_connections
+            .iter()
+            .fold(Vec::new(), |mut clients_info, (_, client)| {
                 clients_info.extend(client.manual_ips.clone());
                 clients_info
-            },
-        )
+            })
     };
 
     let (mut proto_socket, client_ip) = loop {
@@ -120,7 +122,7 @@ async fn client_handshake(
         .await
         .map_err(err!())?;
 
-    let settings = SESSION_MANAGER.lock().get().to_settings();
+    let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
 
     let (eye_width, eye_height) = match settings.video.render_resolution {
         FrameSize::Scale(scale) => (
@@ -195,7 +197,7 @@ async fn client_handshake(
 
     let client_config = ClientConfigPacket {
         session_desc: {
-            let mut session = SESSION_MANAGER.lock().get().clone();
+            let mut session = SERVER_DATA_MANAGER.lock().session().clone();
             if cfg!(target_os = "linux") {
                 session.session_settings.video.foveated_rendering.enabled = false;
             }
@@ -214,7 +216,11 @@ async fn client_handshake(
 
     let (mut control_sender, control_receiver) = proto_socket.split();
 
-    let session_settings = SESSION_MANAGER.lock().get().session_settings.clone();
+    let session_settings = SERVER_DATA_MANAGER
+        .lock()
+        .session()
+        .session_settings
+        .clone();
 
     let controller_pose_offset = match settings.headset.controllers {
         Switch::Enabled(content) => {
@@ -463,8 +469,8 @@ async fn client_handshake(
         linux_async_reprojection: session_settings.extra.patches.linux_async_reprojection,
     };
 
-    if SESSION_MANAGER.lock().get().openvr_config != new_openvr_config {
-        SESSION_MANAGER.lock().get_mut().openvr_config = new_openvr_config;
+    if SERVER_DATA_MANAGER.lock().session().openvr_config != new_openvr_config {
+        SERVER_DATA_MANAGER.lock().session_mut().openvr_config = new_openvr_config;
 
         control_sender
             .send(&ServerControlPacket::Restarting)
@@ -492,7 +498,7 @@ impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
         unsafe { crate::DeinitializeStreaming() };
 
-        let settings = SESSION_MANAGER.lock().get().to_settings();
+        let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
 
         let on_disconnect_script = settings.connection.on_disconnect_script;
         if !on_disconnect_script.is_empty() {
@@ -510,9 +516,9 @@ impl Drop for StreamCloseGuard {
 async fn connection_pipeline() -> StrResult {
     let mut trusted_discovered_client_id = None;
     let connection_info = loop {
-        let client_discovery_config = SESSION_MANAGER
+        let client_discovery_config = SERVER_DATA_MANAGER
             .lock()
-            .get()
+            .session()
             .to_settings()
             .connection
             .client_discovery;
@@ -589,7 +595,7 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    let settings = SESSION_MANAGER.lock().get().to_settings();
+    let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
 
     let stream_socket = tokio::select! {
         res = StreamSocketBuilder::connect_to_client(

@@ -10,6 +10,7 @@ members = [
     "alvr/sockets",
     "alvr/audio",
     "alvr/client",
+    "alvr/server_data",
     "alvr/server",
     "alvr/launcher",
     "alvr/vrcompositor-wrapper",

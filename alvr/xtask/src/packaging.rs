@@ -135,9 +135,9 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         .ok();
     }
 
-    command::zip(&afs::server_build_dir()).unwrap();
-
     if cfg!(windows) {
+        command::zip(&afs::server_build_dir()).unwrap();
+
         fs::copy(
             afs::target_dir().join("release").join("alvr_server.pdb"),
             afs::build_dir().join("alvr_server.pdb"),
@@ -145,5 +145,7 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         .unwrap();
 
         build_windows_installer();
+    } else {
+        command::targz(&afs::server_build_dir()).unwrap();
     }
 }

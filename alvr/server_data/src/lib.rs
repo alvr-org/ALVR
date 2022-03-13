@@ -1,5 +1,5 @@
 use alvr_common::prelude::*;
-use alvr_session::{ServerEvent, SessionDesc, LinuxAudioBackend};
+use alvr_session::{LinuxAudioBackend, ServerEvent, SessionDesc};
 use alvr_sockets::{AudioDevicesList, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
@@ -181,7 +181,7 @@ impl ServerDataManager {
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
     pub fn get_audio_devices_list(&self) -> StrResult<AudioDevicesList> {
         #[cfg(target_os = "linux")]
-        let host = match self.session.session_settings.audio.linux_backend {
+        let host = match self.session.to_settings().audio.linux_backend {
             LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa),
             LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack),
         }

@@ -18,12 +18,10 @@ use bindings::*;
 
 use alvr_common::{lazy_static, log, parking_lot::Mutex, prelude::*, ALVR_VERSION};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_session::{ClientConnectionDesc, OpenvrPropValue, OpenvrPropertyKey, ServerEvent};
-use alvr_sockets::{GpuVendor, Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
+use alvr_session::{OpenvrPropValue, OpenvrPropertyKey, ServerEvent};
+use alvr_sockets::{ClientListAction, GpuVendor, Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use std::{
-    collections::{hash_map::Entry, HashSet},
     ffi::{c_void, CStr, CString},
-    net::IpAddr,
     os::raw::c_char,
     ptr,
     sync::{
@@ -154,67 +152,6 @@ pub fn notify_application_update() {
     alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
 }
 
-pub enum ClientListAction {
-    AddIfMissing { display_name: String },
-    TrustAndMaybeAddIp(Option<IpAddr>),
-    RemoveIpOrEntry(Option<IpAddr>),
-}
-
-pub fn update_client_list(hostname: String, action: ClientListAction) {
-    let mut client_connections = SERVER_DATA_MANAGER
-        .lock()
-        .session()
-        .client_connections
-        .clone();
-
-    let maybe_client_entry = client_connections.entry(hostname);
-
-    let mut updated = false;
-    match action {
-        ClientListAction::AddIfMissing { display_name } => {
-            if let Entry::Vacant(new_entry) = maybe_client_entry {
-                let client_connection_desc = ClientConnectionDesc {
-                    trusted: false,
-                    manual_ips: HashSet::new(),
-                    display_name,
-                };
-                new_entry.insert(client_connection_desc);
-
-                updated = true;
-            }
-        }
-        ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
-            if let Entry::Occupied(mut entry) = maybe_client_entry {
-                let client_connection_ref = entry.get_mut();
-                client_connection_ref.trusted = true;
-                if let Some(ip) = maybe_ip {
-                    client_connection_ref.manual_ips.insert(ip);
-                }
-
-                updated = true;
-            }
-            // else: never happens. The function must be called with AddIfMissing{} first
-        }
-        ClientListAction::RemoveIpOrEntry(maybe_ip) => {
-            if let Entry::Occupied(mut entry) = maybe_client_entry {
-                if let Some(ip) = maybe_ip {
-                    entry.get_mut().manual_ips.remove(&ip);
-                } else {
-                    entry.remove_entry();
-                }
-
-                updated = true;
-            }
-        }
-    }
-
-    if updated {
-        SERVER_DATA_MANAGER.lock().session_mut().client_connections = client_connections;
-
-        CLIENTS_UPDATED_NOTIFIER.notify_waiters();
-    }
-}
-
 fn init() {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
@@ -233,7 +170,11 @@ fn init() {
                 .clone();
             for (hostname, connection) in connections {
                 if !connection.trusted {
-                    update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None));
+                    SERVER_DATA_MANAGER.lock().update_client_list(
+                        hostname,
+                        ClientListAction::RemoveIpOrEntry(None),
+                        Some(&CLIENTS_UPDATED_NOTIFIER),
+                    );
                 }
             }
 

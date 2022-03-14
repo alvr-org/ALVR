@@ -1,20 +1,18 @@
 use alvr_common::prelude::*;
-use alvr_session::{LinuxAudioBackend, ServerEvent, SessionDesc};
-use alvr_sockets::{AudioDevicesList, GpuVendor, PathSegment};
+use alvr_session::{ClientConnectionDesc, LinuxAudioBackend, ServerEvent, SessionDesc};
+use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
+    collections::{hash_map::Entry, HashSet},
     fs,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
+use tokio::sync::Notify;
 use wgpu::Adapter;
 
-pub fn load_session(path: &Path) -> StrResult<SessionDesc> {
-    json::from_str(&fs::read_to_string(path).map_err(err!())?).map_err(err!())
-}
-
-pub fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
+fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
     fs::write(path, json::to_string_pretty(session_desc).map_err(err!())?).map_err(err!())
 }
 
@@ -171,11 +169,11 @@ impl ServerDataManager {
         }
     }
 
-    pub fn get_gpu_names(&self) -> Vec<String> {
+    pub fn get_gpu_name(&self) -> String {
         self.gpu_adapters
-            .iter()
+            .get(0)
             .map(|a| a.get_info().name)
-            .collect::<Vec<_>>()
+            .unwrap_or_else(|| "".into())
     }
 
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
@@ -201,5 +199,67 @@ impl ServerDataManager {
             .collect::<Vec<_>>();
 
         Ok(AudioDevicesList { output, input })
+    }
+
+    pub fn update_client_list(
+        &mut self,
+        hostname: String,
+        action: ClientListAction,
+        update_notifier: Option<&Notify>,
+    ) {
+        let mut client_connections = self.session.client_connections.clone();
+
+        let maybe_client_entry = client_connections.entry(hostname);
+
+        let mut updated = false;
+        match action {
+            ClientListAction::AddIfMissing { display_name } => {
+                if let Entry::Vacant(new_entry) = maybe_client_entry {
+                    let client_connection_desc = ClientConnectionDesc {
+                        trusted: false,
+                        manual_ips: HashSet::new(),
+                        display_name,
+                    };
+                    new_entry.insert(client_connection_desc);
+
+                    updated = true;
+                }
+            }
+            ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    let client_connection_ref = entry.get_mut();
+                    client_connection_ref.trusted = true;
+                    if let Some(ip) = maybe_ip {
+                        client_connection_ref.manual_ips.insert(ip);
+                    }
+
+                    updated = true;
+                }
+                // else: never happens. The function must be called with AddIfMissing{} first
+            }
+            ClientListAction::RemoveIpOrEntry(maybe_ip) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    if let Some(ip) = maybe_ip {
+                        entry.get_mut().manual_ips.remove(&ip);
+                    } else {
+                        entry.remove_entry();
+                    }
+
+                    updated = true;
+                }
+            }
+        }
+
+        if updated {
+            self.session.client_connections = client_connections;
+
+            save_session(&self.session, &self.session_path).unwrap();
+            alvr_session::log_event(ServerEvent::SessionUpdated); // deprecated
+            alvr_session::log_event(ServerEvent::Session(Box::new(self.session.clone())));
+
+            if let Some(notifier) = update_notifier {
+                notifier.notify_waiters();
+            }
+        }
     }
 }

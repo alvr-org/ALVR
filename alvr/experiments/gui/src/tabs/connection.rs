@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use alvr_session::SessionDesc;
+use alvr_sockets::ClientListAction;
 use iced::{
     alignment::Horizontal, button, container, scrollable, Alignment, Button, Container, Element,
     Length, Row, Scrollable, Space, Text,
@@ -14,9 +15,13 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum ConnectionEvent {
     SessionUpdated(Box<SessionDesc>),
-    AddClient(String, IpAddr),
     TrustClient(String),
     RemoveClient(String),
+    AddClientManually {
+        hostname: String,
+        ip_address: IpAddr,
+        display_name: String,
+    },
 }
 
 struct ClientEntry {
@@ -66,14 +71,27 @@ impl ConnectionPanel {
                     })
                     .collect::<Vec<_>>();
             }
-            ConnectionEvent::AddClient(hostname, ip_address) => {
-                // session_setter(format!(r#"add_client("{hostname}", "{ip_address}")"#)).unwrap();
-            }
             ConnectionEvent::TrustClient(hostname) => {
-                // session_setter(format!(r#"trust_client("{hostname}")"#)).unwrap();
+                data_interface
+                    .update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(None));
             }
             ConnectionEvent::RemoveClient(hostname) => {
-                // session_setter(format!(r#"remove_client("{hostname}")"#)).unwrap();
+                data_interface
+                    .update_client_list(hostname, ClientListAction::RemoveIpOrEntry(None));
+            }
+            ConnectionEvent::AddClientManually {
+                hostname,
+                ip_address,
+                display_name,
+            } => {
+                data_interface.update_client_list(
+                    hostname.clone(),
+                    ClientListAction::AddIfMissing { display_name },
+                );
+                data_interface.update_client_list(
+                    hostname,
+                    ClientListAction::TrustAndMaybeAddIp(Some(ip_address)),
+                )
             }
         }
     }

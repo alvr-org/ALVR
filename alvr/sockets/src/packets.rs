@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, net::IpAddr, time::Duration};
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
@@ -205,4 +205,10 @@ pub enum GpuVendor {
 pub enum PathSegment {
     Name(String),
     Index(usize),
+}
+
+pub enum ClientListAction {
+    AddIfMissing { display_name: String },
+    TrustAndMaybeAddIp(Option<IpAddr>),
+    RemoveIpOrEntry(Option<IpAddr>),
 }

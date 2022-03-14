@@ -1,6 +1,7 @@
-use crate::{ClientListAction, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
+use crate::{CLIENTS_UPDATED_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_session::ServerEvent;
+use alvr_sockets::ClientListAction;
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -177,7 +178,7 @@ async fn http_api(
             reply_json(&maybe_err.unwrap_or(0))?
         }
         "/api/audio-devices" => reply_json(&SERVER_DATA_MANAGER.lock().get_audio_devices_list()?)?,
-        "/api/graphics-devices" => reply_json(&SERVER_DATA_MANAGER.lock().get_gpu_names())?,
+        "/api/graphics-devices" => reply_json(&[SERVER_DATA_MANAGER.lock().get_gpu_name()])?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?
@@ -186,11 +187,16 @@ async fn http_api(
             if let Ok((display_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
-                crate::update_client_list(
+                SERVER_DATA_MANAGER.lock().update_client_list(
                     hostname.clone(),
                     ClientListAction::AddIfMissing { display_name },
+                    Some(&CLIENTS_UPDATED_NOTIFIER),
                 );
-                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(Some(ip)));
+                SERVER_DATA_MANAGER.lock().update_client_list(
+                    hostname,
+                    ClientListAction::TrustAndMaybeAddIp(Some(ip)),
+                    Some(&CLIENTS_UPDATED_NOTIFIER),
+                );
 
                 reply(StatusCode::OK)?
             } else {
@@ -199,7 +205,11 @@ async fn http_api(
         }
         "/api/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                crate::update_client_list(hostname, ClientListAction::TrustAndMaybeAddIp(maybe_ip));
+                SERVER_DATA_MANAGER.lock().update_client_list(
+                    hostname,
+                    ClientListAction::TrustAndMaybeAddIp(maybe_ip),
+                    Some(&CLIENTS_UPDATED_NOTIFIER),
+                );
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -207,7 +217,11 @@ async fn http_api(
         }
         "/api/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                crate::update_client_list(hostname, ClientListAction::RemoveIpOrEntry(maybe_ip));
+                SERVER_DATA_MANAGER.lock().update_client_list(
+                    hostname,
+                    ClientListAction::RemoveIpOrEntry(maybe_ip),
+                    Some(&CLIENTS_UPDATED_NOTIFIER),
+                );
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?

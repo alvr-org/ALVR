@@ -1,5 +1,5 @@
 use crate::{
-    connection_utils, ClientListAction, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
+    connection_utils, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
     TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
     HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
 };
@@ -14,9 +14,9 @@ use alvr_session::{
     CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey, ServerEvent,
 };
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ControlSocketReceiver,
-    ControlSocketSender, HeadsetInfoPacket, Input, PeerType, ProtoControlSocket,
-    ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
+    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction,
+    ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, Input, PeerType,
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -56,11 +56,12 @@ struct ClientId {
 async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
     let (ip, handshake_packet) =
         connection_utils::search_client_loop(|handshake_packet| async move {
-            crate::update_client_list(
+            SERVER_DATA_MANAGER.lock().update_client_list(
                 handshake_packet.hostname.clone(),
                 ClientListAction::AddIfMissing {
                     display_name: handshake_packet.device_name,
                 },
+                Some(&CLIENTS_UPDATED_NOTIFIER),
             );
 
             if let Some(connection_desc) = SERVER_DATA_MANAGER

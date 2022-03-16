@@ -35,7 +35,7 @@ jobs:
         run: |
           $versionarg = "${{ github.event.inputs.version }}"
           $versionarg = If ($versionarg.Length -gt 0) { "--version $versionarg" } else { "" }
-          $out = cargo xtask bump-versions $versionarg.split()
+          $out = cargo xtask bump $versionarg.split()
           echo $out
           cargo update -p alvr_common
           echo "::set-output name=version_tag::$(echo $out | sls -CaseSensitive -Pattern '^v.*$')"
@@ -90,8 +90,8 @@ jobs:
           WIX: "wix314-binaries"
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask build-windows-deps
-          cargo xtask publish-server --gpl
+          cargo xtask prepare-deps --platform windows
+          cargo xtask package-server --gpl
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
 
@@ -115,47 +115,6 @@ jobs:
           asset_name: alvr_server_windows.zip
           asset_content_type: application/zip
 
-  build_linux_server_portable:
-    runs-on: ubuntu-latest
-    needs: [prepare_release]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ needs.prepare_release.outputs.release_ref }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-
-      - name: Build and install dependencies
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
-          cp packaging/deb/cuda.pc /usr/share/pkgconfig
-          cargo xtask build-ffmpeg-linux
-          cd deps/linux/FFmpeg-n4.4 && sudo make install && cd ../../..
-
-      - name: Build and package ALVR (.tar.gz)
-        id: build
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cargo xtask build-server --release --bundle-ffmpeg
-          tar -czvf ./build/alvr_server_linux_portable.tar.gz -C ./build/alvr_server_linux .
-
-      - name: Upload portable server for Linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_linux_portable.tar.gz
-          asset_name: alvr_server_linux_portable.tar.gz
-          asset_content_type: application/gzip
-
   build_linux_server:
     runs-on: ubuntu-latest
     needs: [prepare_release]
@@ -173,21 +132,20 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
+          sudo apt-get update
+          sudo apt-get install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
           cp packaging/deb/cuda.pc /usr/share/pkgconfig
-          cargo xtask build-ffmpeg-linux
-          cd deps/linux/FFmpeg-n4.4 && sudo make install && cd ../../..
+          cargo xtask prepare-deps --platform linux
+          cd deps/linux/ffmpeg && sudo make install && cd ../../..
 
       - name: Build and package ALVR (.tar.gz)
         id: build
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask build-server --release
-          tar -czvf ./build/alvr_server_linux.tar.gz -C ./build/alvr_server_linux .
+          cargo xtask package-server
 
-      - name: Upload portable server for Linux
+      - name: Upload server for Linux
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -196,6 +154,23 @@ jobs:
           asset_path: ./build/alvr_server_linux.tar.gz
           asset_name: alvr_server_linux.tar.gz
           asset_content_type: application/gzip
+
+      - name: Build and package ALVR portable (.tar.gz)
+        id: build_portable
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo xtask package-server --gpl
+
+      - name: Upload portable server for Linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server_linux.tar.gz
+          asset_name: alvr_server_linux_portable.tar.gz
+          asset_content_type: application/gzip          
 
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.
@@ -230,7 +205,7 @@ jobs:
       - name: Build dependencies
         env:
           RUST_BACKTRACE: 1
-        run: cargo xtask build-android-deps
+        run: cargo xtask prepare-deps --platform android
 
       - name: Build and package ALVR (.apk)
         id: build
@@ -238,7 +213,7 @@ jobs:
           ANDROID_HOME: '${{ github.workspace }}\android-sdk'
           ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
           RUST_BACKTRACE: 1
-        run: cargo xtask publish-client
+        run: cargo xtask package-client
 
       - name: Sign Oculus Quest APK
         uses: r0adkll/sign-android-release@v1

@@ -128,6 +128,24 @@ pub fn unzip(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
     }
 }
 
+pub fn targz(source: &Path) -> Result<(), Box<dyn Error>> {
+    println!("{:?}", source);
+    if cfg!(windows) {
+        Ok(())
+    } else {
+        run_without_shell(
+            "tar",
+            &[
+                "-czvf",
+                &format!("{}.tar.gz", source.to_string_lossy()),
+                "-C",
+                &source.join("..").to_string_lossy(),
+                source.file_name().unwrap().to_str().unwrap(),
+            ],
+        )
+    }
+}
+
 pub fn download(url: &str, destination: &Path) -> Result<(), Box<dyn Error>> {
     run_without_shell(
         "curl",

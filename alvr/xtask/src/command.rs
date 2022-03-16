@@ -140,7 +140,7 @@ pub fn targz(source: &Path) -> Result<(), Box<dyn Error>> {
                 &format!("{}.tar.gz", source.to_string_lossy()),
                 "-C",
                 &source.join("..").to_string_lossy(),
-                source.file_name().unwrap().to_str().unwrap()
+                source.file_name().unwrap().to_str().unwrap(),
             ],
         )
     }

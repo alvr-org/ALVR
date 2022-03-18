@@ -44,13 +44,13 @@ openxr = "0.16"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19"
-ndk = { git = "https://github.com/zarik5/android-ndk-rs", features = [
+ndk = { git = "https://github.com/rust-windowing/android-ndk-rs", features = [
     "media",
     "hardware_buffer",
     "api-level-24",
-], rev = "0a547b5ab2d698d80bde1b8ebb6dfe06d550baff" }
+] }
 ndk-glue = "0.6"
-ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "0a547b5ab2d698d80bde1b8ebb6dfe06d550baff" }
+ndk-sys = { git = "https://github.com/rust-windowing/android-ndk-rs" }
 
 [package.metadata.android]
 build_targets = ["aarch64-linux-android"]

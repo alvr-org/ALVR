@@ -135,8 +135,8 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
         "server_data",
         "session",
         "sockets",
-        "vrcompositor-wrapper",
-        "vulkan-layer",
+        "vrcompositor_wrapper",
+        "vulkan_layer",
         "xtask",
     ] {
         bump_cargo_version(dir_name, &version);

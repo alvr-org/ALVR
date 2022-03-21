@@ -72,13 +72,13 @@ pub fn build_server(
 
     if cfg!(target_os = "linux") {
         command::run_in(
-            &afs::workspace_dir().join("alvr/vrcompositor-wrapper"),
+            &afs::workspace_dir().join("alvr/vrcompositor_wrapper"),
             &format!("cargo build {release_flag} {reproducible_flag}"),
         )
         .unwrap();
         fs::create_dir_all(&build_layout.vrcompositor_wrapper_dir).unwrap();
         fs::copy(
-            artifacts_dir.join("vrcompositor-wrapper"),
+            artifacts_dir.join("alvr_vrcompositor_wrapper"),
             build_layout.vrcompositor_wrapper(),
         )
         .unwrap();
@@ -171,7 +171,7 @@ pub fn build_server(
 
     if cfg!(target_os = "linux") {
         command::run_in(
-            &afs::workspace_dir().join("alvr/vulkan-layer"),
+            &afs::workspace_dir().join("alvr/vulkan_layer"),
             &format!("cargo build {release_flag} {reproducible_flag}"),
         )
         .unwrap();
@@ -179,7 +179,7 @@ pub fn build_server(
         fs::create_dir_all(&build_layout.vulkan_layer_manifest_dir).unwrap();
         fs::create_dir_all(&build_layout.libraries_dir).unwrap();
         fs::copy(
-            afs::workspace_dir().join("alvr/vulkan-layer/layer/alvr_x86_64.json"),
+            afs::workspace_dir().join("alvr/vulkan_layer/layer/alvr_x86_64.json"),
             build_layout
                 .vulkan_layer_manifest_dir
                 .join("alvr_x86_64.json"),

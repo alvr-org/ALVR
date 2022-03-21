@@ -1,5 +1,5 @@
 [package]
-name = "vrcompositor-wrapper"
+name = "alvr_vrcompositor_wrapper"
 version = "18.0.0-dev01"
 authors = ["alvr-org", "Patrick Nicolas <patricknicolas@laposte.net>"]
 license = "MIT"

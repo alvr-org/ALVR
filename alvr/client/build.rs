@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 fn main() {
     let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let base_cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("android");
+    let base_cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../../android");
 
     let common_cpp_dir = base_cpp_dir.join("ALVR-common");
     let include_cpp_dir = base_cpp_dir.join("app/include");

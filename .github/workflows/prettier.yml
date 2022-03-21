@@ -14,4 +14,4 @@ jobs:
       - uses: actionsx/prettier@v2
         with:
           # prettier CLI arguments: https://prettier.io/docs/en/cli.html
-          args: '--config alvr/dashboard/.prettierrc --check "**/*[!.min].{js,css}"'
+          args: '--config dashboard/.prettierrc --check "**/*[!.min].{js,css}"'

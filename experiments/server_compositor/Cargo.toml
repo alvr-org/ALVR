@@ -7,8 +7,8 @@ edition = "2021"
 rust-version = "1.58"
 
 [dependencies]
-alvr_common = { path = "../../common" }
-alvr_session = { path = "../../session" }
+alvr_common = { path = "../../alvr/common" }
+alvr_session = { path = "../../alvr/session" }
 alvr_graphics = { path = "../graphics" }
 
 bytemuck = "1"

@@ -14,14 +14,11 @@ default = [] # ["oculus"]
 oculus = []
 
 [dependencies]
-alvr_audio = { path = "../../audio" }
-alvr_common = { path = "../../common" }
-alvr_session = { path = "../../session" }
-alvr_sockets = { path = "../../sockets" }
+alvr_audio = { path = "../../alvr/audio" }
+alvr_common = { path = "../../alvr/common" }
+alvr_session = { path = "../../alvr/session" }
+alvr_sockets = { path = "../../alvr/sockets" }
 alvr_graphics = { path = "../graphics" }
-settings-schema = { path = "../../settings-schema", features = [
-    "rename_camel_case",
-] }
 
 # Basic utilities
 crossbeam-channel = "0.5"
@@ -41,6 +38,7 @@ rend3 = "0.3"
 rend3-routine = "0.3"
 # Miscellaneous
 openxr = "0.16"
+settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.19"

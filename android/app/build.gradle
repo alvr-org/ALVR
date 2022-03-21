@@ -79,10 +79,10 @@ dependencies {
 build.dependsOn(':extractNdk')
 
 cargo {
-    module = "../.."
+    module = "../../alvr/client"
     libname = "alvr_client"
     targets = ["arm64"]
-    targetDirectory = "../../../../target"
+    targetDirectory = "../../target"
 }
 tasks.whenTaskAdded { task ->
     if (task.name.startsWith('javaPreCompile')) {

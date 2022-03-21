@@ -7,13 +7,13 @@ edition = "2021"
 rust-version = "1.58"
 
 [dependencies]
-alvr_commands = { path = "../../commands" }
-alvr_common = { path = "../../common" }
-alvr_filesystem = { path = "../../filesystem" }
+alvr_commands = { path = "../../alvr/commands" }
+alvr_common = { path = "../../alvr/common" }
+alvr_filesystem = { path = "../../alvr/filesystem" }
 alvr_gui = { path = "../gui" }
-alvr_server_data = { path = "../../server_data" }
-alvr_session = { path = "../../session" }
-alvr_sockets = { path = "../../sockets" }
+alvr_server_data = { path = "../../alvr/server_data" }
+alvr_session = { path = "../../alvr/session" }
+alvr_sockets = { path = "../../alvr/sockets" }
 
 iced = { git = "https://github.com/iced-rs/iced", features = ["image"] }
 iced_native = { git = "https://github.com/iced-rs/iced" }

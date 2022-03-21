@@ -152,7 +152,7 @@ pub fn build_server(
     }
 
     let dir_content = dirx::get_dir_content2(
-        afs::workspace_dir().join("alvr/dashboard"),
+        afs::workspace_dir().join("dashboard"),
         &dirx::DirOptions { depth: 1 },
     )
     .unwrap();
@@ -211,7 +211,7 @@ pub fn build_client(is_release: bool, headset_name: &str) {
 
     let build_task = format!("assemble{headset_type}{package_type}{build_type}");
 
-    let client_dir = afs::workspace_dir().join("alvr/client/android");
+    let client_dir = afs::workspace_dir().join("android");
     let command_name = if cfg!(not(windows)) {
         "./gradlew"
     } else {

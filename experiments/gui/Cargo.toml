@@ -7,12 +7,9 @@ edition = "2021"
 rust-version = "1.58"
 
 [dependencies]
-alvr_common = { path = "../../common" }
-alvr_session = { path = "../../session" }
-alvr_sockets = { path = "../../sockets" }
-settings-schema = { path = "../../settings-schema", features = [
-    "rename_camel_case",
-] }
+alvr_common = { path = "../../alvr/common" }
+alvr_session = { path = "../../alvr/session" }
+alvr_sockets = { path = "../../alvr/sockets" }
 
 # Basic utilities
 num = "0.4"
@@ -22,6 +19,7 @@ serde_json = "1"
 # todo: use iced stable. blocked by conflict on wasm-bindgen for wgpu
 iced = { git = "https://github.com/iced-rs/iced", features = ["image"] }
 # plotters-iced   todo: wait for upgrade
+settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 
 # fluent = "0.16"
 # fluent-syntax = "0.11"

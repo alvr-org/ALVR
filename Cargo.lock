@@ -4548,7 +4548,9 @@ dependencies = [
 
 [[package]]
 name = "settings-schema"
-version = "0.3.1"
+version = "0.0.1+alvr"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e267a118cd91161119fc9ca412eae774e11c7bb2dcaa3919859cd3b9128a67e0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4557,7 +4559,9 @@ dependencies = [
 
 [[package]]
 name = "settings-schema-derive"
-version = "0.3.0"
+version = "0.0.1+alvr"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c080ef3d9fdfb970e57e24c7f288e19be81b010dc7153e913819e5bf6498a7c"
 dependencies = [
  "heck 0.3.3",
  "proc-macro2",

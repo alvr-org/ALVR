@@ -1,7 +1,6 @@
 use crate::{command, version};
 use alvr_filesystem::{self as afs, Layout};
-use fs_extra::{self as fsx, dir as dirx};
-use std::{env, fs};
+use xshell::{cmd, Shell};
 
 pub fn build_server(
     is_release: bool,
@@ -10,123 +9,167 @@ pub fn build_server(
     reproducible: bool,
     experiments: bool,
 ) {
+    let sh = Shell::new().unwrap();
+
     let build_layout = Layout::new(&afs::server_build_dir());
 
     let build_type = if is_release { "release" } else { "debug" };
 
-    let release_flag = if is_release { "--release" } else { "" };
-    let reproducible_flag = if reproducible { "--locked" } else { "" };
-    let gpl_flag = if gpl { "--features gpl" } else { "" };
+    let mut common_flags = vec![];
+    if is_release {
+        common_flags.push("--release");
+    }
+    if reproducible {
+        common_flags.push("--locked");
+    }
+    let common_flags_ref = &common_flags;
+
+    let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
+
+    let artifacts_dir = afs::target_dir().join(build_type);
+
+    sh.remove_path(&afs::server_build_dir()).unwrap();
+    sh.create_dir(&afs::server_build_dir()).unwrap();
+    sh.create_dir(&build_layout.openvr_driver_lib_dir())
+        .unwrap();
+    sh.create_dir(&build_layout.executables_dir).unwrap();
 
     if let Some(root) = root {
-        env::set_var("ALVR_ROOT_DIR", root);
+        sh.set_var("ALVR_ROOT_DIR", root);
     }
 
-    let target_dir = afs::target_dir();
-    let artifacts_dir = target_dir.join(build_type);
-
-    fs::remove_dir_all(&afs::server_build_dir()).ok();
-    fs::create_dir_all(&afs::server_build_dir()).unwrap();
-    fs::create_dir_all(&build_layout.openvr_driver_lib().parent().unwrap()).unwrap();
-    fs::create_dir_all(&build_layout.launcher_exe().parent().unwrap()).unwrap();
-
-    let mut copy_options = dirx::CopyOptions::new();
-    copy_options.copy_inside = true;
-    fsx::copy_items(
-        &[afs::workspace_dir().join("alvr/xtask/resources/presets")],
-        build_layout.presets_dir(),
-        &copy_options,
-    )
-    .unwrap();
-
-    if gpl && cfg!(target_os = "linux") {
-        fs::create_dir_all(&build_layout.openvr_driver_root_dir).unwrap();
-        for lib in walkdir::WalkDir::new(afs::deps_dir().join("linux/ffmpeg"))
-            .into_iter()
-            .filter_map(|maybe_entry| maybe_entry.ok())
-            .map(|entry| entry.into_path())
-            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
-        {
-            fs::copy(
-                lib.clone(),
-                build_layout
-                    .openvr_driver_root_dir
-                    .join(lib.file_name().unwrap()),
-            )
+    // build server
+    {
+        let _push_guard = sh.push_dir(afs::crate_dir("server"));
+        cmd!(sh, "cargo build {common_flags_ref...} {gpl_flag...}")
+            .run()
             .unwrap();
-        }
-    }
 
-    if gpl && cfg!(windows) {
-        let bin_dir = &build_layout.openvr_driver_lib_dir();
-        fs::create_dir_all(bin_dir).unwrap();
-        for dll in walkdir::WalkDir::new(afs::deps_dir().join("windows/ffmpeg/bin"))
-            .into_iter()
-            .filter_map(|maybe_entry| maybe_entry.ok())
-            .map(|entry| entry.into_path())
-            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".dll"))
-        {
-            fs::copy(dll.clone(), bin_dir.join(dll.file_name().unwrap())).unwrap();
-        }
-    }
-
-    if cfg!(target_os = "linux") {
-        command::run_in(
-            &afs::workspace_dir().join("alvr/vrcompositor_wrapper"),
-            &format!("cargo build {release_flag} {reproducible_flag}"),
+        sh.copy_file(
+            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+            build_layout.openvr_driver_lib(),
         )
         .unwrap();
-        fs::create_dir_all(&build_layout.vrcompositor_wrapper_dir).unwrap();
-        fs::copy(
-            artifacts_dir.join("alvr_vrcompositor_wrapper"),
+    }
+
+    // build launcher
+    {
+        let _push_guard = sh.push_dir(afs::crate_dir("launcher"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+
+        sh.copy_file(
+            artifacts_dir.join(afs::exec_fname("alvr_launcher")),
+            build_layout.launcher_exe(),
+        )
+        .unwrap();
+    }
+
+    // copy dependencies
+    if cfg!(windows) {
+        command::copy_recursive(
+            &sh,
+            &afs::crate_dir("server").join("cpp/bin/windows"),
+            &build_layout.openvr_driver_lib_dir(),
+        )
+        .unwrap();
+
+        // copy ffmpeg binaries
+        if gpl {
+            let bin_dir = &build_layout.openvr_driver_lib_dir();
+            sh.create_dir(&bin_dir).unwrap();
+            for lib_path in sh
+                .read_dir(afs::deps_dir().join("windows/ffmpeg/bin"))
+                .unwrap()
+                .into_iter()
+                .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".dll"))
+            {
+                sh.copy_file(lib_path.clone(), bin_dir).unwrap();
+            }
+        }
+    } else if cfg!(target_os = "linux") {
+        // build compositor wrapper
+        let _push_guard = sh.push_dir(afs::crate_dir("vrcompositor_wrapper"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+        sh.create_dir(&build_layout.vrcompositor_wrapper_dir)
+            .unwrap();
+        sh.copy_file(
+            artifacts_dir.join("vrcompositor_wrapper"),
             build_layout.vrcompositor_wrapper(),
         )
         .unwrap();
+
+        // build vulkan layer
+        let _push_guard = sh.push_dir(afs::crate_dir("vulkan_layer"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+        sh.create_dir(&build_layout.libraries_dir).unwrap();
+        sh.copy_file(
+            artifacts_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
+            build_layout.vulkan_layer(),
+        )
+        .unwrap();
+
+        // copy vulkan layer manifest
+        sh.create_dir(&build_layout.vulkan_layer_manifest_dir)
+            .unwrap();
+        sh.copy_file(
+            afs::crate_dir("vulkan_layer").join("layer/alvr_x86_64.json"),
+            build_layout.vulkan_layer_manifest(),
+        )
+        .unwrap();
+
+        // copy ffmpeg binaries
+        if gpl {
+            sh.create_dir(&build_layout.openvr_driver_root_dir).unwrap();
+            for lib_path in sh
+                .read_dir(afs::deps_dir().join("linux/ffmpeg"))
+                .unwrap()
+                .into_iter()
+                .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
+            {
+                sh.copy_file(lib_path.clone(), &build_layout.openvr_driver_root_dir)
+                    .unwrap();
+            }
+        }
     }
 
-    command::run_in(
-        &afs::workspace_dir().join("alvr/server"),
-        &format!("cargo build {release_flag} {reproducible_flag} {gpl_flag}"),
-    )
-    .unwrap();
-    fs::copy(
-        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
-        build_layout.openvr_driver_lib(),
-    )
-    .unwrap();
+    // copy static resources
+    {
+        // copy dashboard
+        command::copy_recursive(
+            &sh,
+            &afs::workspace_dir().join("dashboard"),
+            &build_layout.dashboard_dir(),
+        )
+        .unwrap();
 
-    command::run_in(
-        &afs::workspace_dir().join("alvr/launcher"),
-        &format!("cargo build {release_flag} {reproducible_flag}"),
-    )
-    .unwrap();
-    fs::copy(
-        artifacts_dir.join(afs::exec_fname("alvr_launcher")),
-        build_layout.launcher_exe(),
-    )
-    .unwrap();
+        // copy presets
+        command::copy_recursive(
+            &sh,
+            &afs::crate_dir("xtask").join("resources/presets"),
+            &build_layout.presets_dir(),
+        )
+        .unwrap();
 
+        // copy driver manifest
+        sh.copy_file(
+            afs::crate_dir("xtask").join("resources/driver.vrdrivermanifest"),
+            &build_layout.openvr_driver_manifest(),
+        )
+        .unwrap();
+    }
+
+    // build experiments
     if experiments {
-        let dir_content = dirx::get_dir_content2(
-            "alvr/experiments/gui/resources/languages",
-            &dirx::DirOptions { depth: 1 },
+        command::copy_recursive(
+            &sh,
+            &afs::workspace_dir().join("experiments/gui/resources/languages"),
+            &build_layout.static_resources_dir.join("languages"),
         )
         .unwrap();
-        let items: Vec<&String> = dir_content.directories[1..]
-            .iter()
-            .chain(dir_content.files.iter())
-            .collect();
 
-        let destination = afs::server_build_dir().join("languages");
-        fs::create_dir_all(&destination).unwrap();
-        fsx::copy_items(&items, destination, &dirx::CopyOptions::new()).unwrap();
-
-        command::run_in(
-            &afs::workspace_dir().join("alvr/experiments/launcher"),
-            &format!("cargo build {release_flag}"),
-        )
-        .unwrap();
-        fs::copy(
+        let _push_guard = sh.push_dir(afs::workspace_dir().join("experiments/launcher"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+        sh.copy_file(
             artifacts_dir.join(afs::exec_fname("launcher")),
             build_layout
                 .executables_dir
@@ -134,68 +177,11 @@ pub fn build_server(
         )
         .unwrap();
     }
-
-    fs::copy(
-        afs::workspace_dir().join("alvr/xtask/resources/driver.vrdrivermanifest"),
-        build_layout.openvr_driver_manifest(),
-    )
-    .unwrap();
-
-    if cfg!(windows) {
-        let dir_content = dirx::get_dir_content("alvr/server/cpp/bin/windows").unwrap();
-        fsx::copy_items(
-            &dir_content.files,
-            build_layout.openvr_driver_lib().parent().unwrap(),
-            &dirx::CopyOptions::new(),
-        )
-        .unwrap();
-    }
-
-    let dir_content = dirx::get_dir_content2(
-        afs::workspace_dir().join("dashboard"),
-        &dirx::DirOptions { depth: 1 },
-    )
-    .unwrap();
-    let items: Vec<&String> = dir_content.directories[1..]
-        .iter()
-        .chain(dir_content.files.iter())
-        .collect();
-
-    fs::create_dir_all(&build_layout.dashboard_dir()).unwrap();
-    fsx::copy_items(
-        &items,
-        build_layout.dashboard_dir(),
-        &dirx::CopyOptions::new(),
-    )
-    .unwrap();
-
-    if cfg!(target_os = "linux") {
-        command::run_in(
-            &afs::workspace_dir().join("alvr/vulkan_layer"),
-            &format!("cargo build {release_flag} {reproducible_flag}"),
-        )
-        .unwrap();
-
-        fs::create_dir_all(&build_layout.vulkan_layer_manifest_dir).unwrap();
-        fs::create_dir_all(&build_layout.libraries_dir).unwrap();
-        fs::copy(
-            afs::workspace_dir().join("alvr/vulkan_layer/layer/alvr_x86_64.json"),
-            build_layout
-                .vulkan_layer_manifest_dir
-                .join("alvr_x86_64.json"),
-        )
-        .unwrap();
-        fs::copy(
-            artifacts_dir.join(afs::dynlib_fname("alvr_vulkan_layer")),
-            build_layout
-                .libraries_dir
-                .join(afs::dynlib_fname("alvr_vulkan_layer")),
-        )
-        .unwrap();
-    }
 }
 
 pub fn build_client(is_release: bool, headset_name: &str) {
+    let sh = Shell::new().unwrap();
+
     let is_nightly = version::version().contains("nightly");
     let is_release = if is_nightly { false } else { is_release };
 
@@ -219,13 +205,13 @@ pub fn build_client(is_release: bool, headset_name: &str) {
     };
 
     let artifact_name = format!("alvr_client_{headset_name}");
-    fs::create_dir_all(&afs::build_dir().join(&artifact_name)).unwrap();
 
-    env::set_current_dir(&client_dir).unwrap();
-    command::run(&format!("{command_name} {build_task}")).unwrap();
-    env::set_current_dir(afs::workspace_dir()).unwrap();
+    let _push_guard = sh.push_dir(&client_dir);
+    cmd!(sh, "{command_name} {build_task}").run().unwrap();
 
-    fs::copy(
+    sh.create_dir(&afs::build_dir().join(&artifact_name))
+        .unwrap();
+    sh.copy_file(
         client_dir
             .join("app/build/outputs/apk")
             .join(format!("{headset_type}{package_type}"))

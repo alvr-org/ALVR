@@ -1,8 +1,11 @@
 use crate::{build, command, version};
 use alvr_filesystem as afs;
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
+use xshell::{cmd, Shell};
 
 fn build_windows_installer() {
+    let sh = Shell::new().unwrap();
+
     let wix_path = PathBuf::from(r"C:\Program Files (x86)\WiX Toolset v3.11\bin");
     let heat_cmd = wix_path.join("heat.exe");
     let candle_cmd = wix_path.join("candle.exe");
@@ -17,128 +20,70 @@ fn build_windows_installer() {
         version = version[..idx].to_owned();
     }
 
-    command::run_without_shell(
-        &heat_cmd.to_string_lossy(),
-        &[
-            "dir",
-            r"build\alvr_server_windows",
-            "-ag",
-            "-sreg",
-            "-srd",
-            "-dr",
-            "APPLICATIONFOLDER",
-            "-cg",
-            "BuildFiles",
-            "-var",
-            "var.BuildRoot",
-            "-o",
-            r"target\wix\harvested.wxs",
-        ],
-    )
-    .unwrap();
+    let server_build_dir = afs::server_build_dir();
+    let wix_source_dir = afs::crate_dir("xtask").join("wix");
+    let wix_target_dir = afs::target_dir().join("wix");
+    let main_source = wix_source_dir.join("main.wxs");
+    let main_object = wix_target_dir.join("main.wixobj");
+    let harvested_source = wix_target_dir.join("harvested.wxs");
+    let harvested_object = wix_target_dir.join("harvested.wixobj");
+    let alvr_msi = wix_target_dir.join("alvr.msi");
+    let bundle_source = wix_source_dir.join("bundle.wxs");
+    let bundle_object = wix_target_dir.join("bundle.wixobj");
+    let installer = afs::build_dir().join(format!("ALVR_Installer_v{version}.exe"));
 
-    command::run_without_shell(
-        &candle_cmd.to_string_lossy(),
-        &[
-            "-arch",
-            "x64",
-            r"-dBuildRoot=build\alvr_server_windows",
-            "-ext",
-            "WixUtilExtension",
-            &format!("-dVersion={version}"),
-            r"alvr\xtask\wix\main.wxs",
-            r"target\wix\harvested.wxs",
-            "-o",
-            r"target\wix\",
-        ],
+    cmd!(sh, "{heat_cmd} dir {server_build_dir} -ag -sreg -srd -dr APPLICATIONFOLDER -cg BuildFiles -var var.BuildRoot -o {harvested_source}").run().unwrap();
+    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={server_build_dir} -ext WixUtilExtension -dVersion={version} {main_source} {harvested_source} -o {wix_target_dir}\\").run().unwrap();
+    cmd!(sh, "{light_cmd} {main_object} {harvested_object} -ext WixUIExtension -ext WixUtilExtension -o {alvr_msi}").run().unwrap();
+    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={server_build_dir} -ext WixUtilExtension -ext WixBalExtension {bundle_source} -o {wix_target_dir}\\").run().unwrap();
+    cmd!(
+        sh,
+        "{light_cmd} {bundle_object} -ext WixUtilException -ext WixBalExtension -o {installer}"
     )
-    .unwrap();
-
-    command::run_without_shell(
-        &light_cmd.to_string_lossy(),
-        &[
-            r"target\wix\main.wixobj",
-            r"target\wix\harvested.wixobj",
-            "-ext",
-            "WixUIExtension",
-            "-ext",
-            "WixUtilExtension",
-            "-o",
-            r"target\wix\alvr.msi",
-        ],
-    )
-    .unwrap();
-
-    // Build the bundle including ALVR and vc_redist.
-    command::run_without_shell(
-        &candle_cmd.to_string_lossy(),
-        &[
-            "-arch",
-            "x64",
-            r"-dBuildRoot=build\alvr_server_windows",
-            "-ext",
-            "WixUtilExtension",
-            "-ext",
-            "WixBalExtension",
-            r"alvr\xtask\wix\bundle.wxs",
-            "-o",
-            r"target\wix\",
-        ],
-    )
-    .unwrap();
-
-    command::run_without_shell(
-        &light_cmd.to_string_lossy(),
-        &[
-            r"target\wix\bundle.wixobj",
-            "-ext",
-            "WixUtilExtension",
-            "-ext",
-            "WixBalExtension",
-            "-o",
-            &format!(r"build\ALVR_Installer_v{version}.exe"),
-        ],
-    )
+    .run()
     .unwrap();
 }
 
 pub fn package_server(root: Option<String>, gpl: bool) {
+    let sh = Shell::new().unwrap();
+
     build::build_server(true, gpl, root, true, false);
 
     // Add licenses
+    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
     let licenses_dir = afs::server_build_dir().join("licenses");
-    fs::create_dir_all(&licenses_dir).unwrap();
-    fs::copy(
+    let dependency_licenses = licenses_dir.join("dependencies.html");
+    sh.create_dir(&licenses_dir).unwrap();
+    sh.copy_file(
         afs::workspace_dir().join("LICENSE"),
         licenses_dir.join("ALVR.txt"),
     )
     .unwrap();
-    command::run("cargo install cargo-about").unwrap();
-    command::run(&format!(
-        "cargo about generate {} > {}",
-        afs::workspace_dir()
-            .join("alvr/xtask/licenses_template.hbs")
-            .to_string_lossy(),
-        licenses_dir.join("dependencies.html").to_string_lossy()
-    ))
+    cmd!(sh, "cargo install cargo-about").run().unwrap();
+    cmd!(
+        sh,
+        "cargo about generate {licenses_template} > {dependency_licenses}"
+    )
+    .run()
     .unwrap();
-    fs::copy(
-        afs::workspace_dir().join("alvr/server/LICENSE-Valve"),
+    sh.copy_file(
+        afs::crate_dir("server").join("LICENSE-Valve"),
         licenses_dir.join("Valve.txt"),
     )
     .unwrap();
     if gpl {
-        fs::copy(
-            afs::workspace_dir().join("deps/windows/ffmpeg/LICENSE.txt"),
+        sh.copy_file(
+            afs::deps_dir().join("windows/ffmpeg/LICENSE.txt"),
             licenses_dir.join("FFmpeg.txt"),
         )
         .ok();
     }
 
+    // Finally package everything
     if cfg!(windows) {
         command::zip(&afs::server_build_dir()).unwrap();
 
-        fs::copy(
+        sh.copy_file(
             afs::target_dir().join("release").join("alvr_server.pdb"),
             afs::build_dir().join("alvr_server.pdb"),
         )

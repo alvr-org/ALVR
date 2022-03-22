@@ -1,16 +1,6 @@
-use crate::command::date_utc_yyyymmdd;
+use crate::command;
 use alvr_filesystem as afs;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
-
-fn packages_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .into()
-}
+use std::fs;
 
 pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, String, String) {
     let start_idx = source.find(start_pattern).unwrap() + start_pattern.len();
@@ -24,7 +14,7 @@ pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, St
 }
 
 pub fn version() -> String {
-    let manifest_path = packages_dir().join("common").join("Cargo.toml");
+    let manifest_path = afs::crate_dir("common").join("Cargo.toml");
     println!("cargo:rerun-if-changed={}", manifest_path.to_string_lossy());
 
     let manifest = fs::read_to_string(manifest_path).unwrap();
@@ -57,7 +47,7 @@ fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
 }
 
 fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
-    let manifest_path = packages_dir().join(crate_dir_name).join("Cargo.toml");
+    let manifest_path = afs::crate_dir(crate_dir_name).join("Cargo.toml");
 
     let manifest = fs::read_to_string(&manifest_path).unwrap();
 
@@ -119,25 +109,11 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        version = format!("{version}+nightly.{}", date_utc_yyyymmdd());
+        version = format!("{version}+nightly.{}", command::date_utc_yyyymmdd());
     }
 
-    for dir_name in [
-        "audio",
-        "client",
-        "commands",
-        "common",
-        "filesystem",
-        "launcher",
-        "server",
-        "server_data",
-        "session",
-        "sockets",
-        "vrcompositor_wrapper",
-        "vulkan_layer",
-        "xtask",
-    ] {
-        bump_cargo_version(dir_name, &version);
+    for dir_name in crate::crate_dir_names() {
+        bump_cargo_version(&dir_name, &version);
     }
     bump_client_gradle_version(&version, is_nightly);
     bump_rpm_spec_version(&version, is_nightly);

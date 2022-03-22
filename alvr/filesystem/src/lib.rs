@@ -6,14 +6,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub fn canonicalize_no_prefix(path: &Path) -> PathBuf {
-    path.canonicalize()
-        .unwrap()
-        .to_string_lossy()
-        .replace(r"\\?\", "")
-        .into()
-}
-
 pub fn exec_fname(name: &str) -> String {
     format!("{name}{EXE_SUFFIX}")
 }
@@ -23,11 +15,33 @@ pub fn dynlib_fname(name: &str) -> String {
 }
 
 pub fn target_dir() -> PathBuf {
-    canonicalize_no_prefix(&Path::new(env!("OUT_DIR")).join("../../../.."))
+    // use `.parent().unwrap()` instead of `../` to maintain canonicalized form
+    Path::new(env!("OUT_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_owned()
 }
 
 pub fn workspace_dir() -> PathBuf {
-    canonicalize_no_prefix(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_owned()
+}
+
+pub fn crate_dir(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join(name)
 }
 
 pub fn deps_dir() -> PathBuf {

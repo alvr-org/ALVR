@@ -6,7 +6,8 @@ mod version;
 
 use alvr_filesystem as afs;
 use pico_args::Arguments;
-use std::{env, fs, time::Instant};
+use std::{fs, time::Instant};
+use xshell::{cmd, Shell};
 
 const HELP_STR: &str = r#"
 cargo xtask
@@ -23,7 +24,6 @@ SUBCOMMANDS:
     clean               Removes all build artifacts and dependencies.
     bump                Bump server and client package versions
     clippy              Show warnings for selected clippy lints
-    prettier            Format JS and CSS files with prettier; Requires Node.js and NPM.
     kill-oculus         Kill all Oculus processes
 
 FLAGS:
@@ -42,6 +42,23 @@ ARGS:
                         relative paths, which requires conforming to FHS on Linux.
 "#;
 
+// Crates at "alvr/" level that are prefixed with "alvr_"
+pub fn crate_dir_names() -> Vec<String> {
+    let sh = Shell::new().unwrap();
+
+    sh.read_dir(afs::workspace_dir().join("alvr"))
+        .unwrap()
+        .into_iter()
+        .map(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .as_ref()
+                .to_owned()
+        })
+        .collect()
+}
+
 pub fn clean() {
     fs::remove_dir_all(afs::build_dir()).ok();
     fs::remove_dir_all(afs::deps_dir()).ok();
@@ -52,48 +69,75 @@ pub fn clean() {
 }
 
 fn clippy() {
-    command::run(&format!(
-        "cargo clippy {} -- {} {} {} {} {} {} {} {} {} {} {}",
-        "-p alvr_xtask -p alvr_common -p alvr_launcher -p alvr_dashboard", // todo: add more crates when they compile correctly
-        "-W clippy::clone_on_ref_ptr -W clippy::create_dir -W clippy::dbg_macro",
-        "-W clippy::decimal_literal_representation -W clippy::else_if_without_else",
-        "-W clippy::exit -W clippy::expect_used -W clippy::filetype_is_file",
-        "-W clippy::float_cmp_const -W clippy::get_unwrap -W clippy::let_underscore_must_use",
-        "-W clippy::lossy_float_literal -W clippy::map_err_ignore -W clippy::mem_forget",
-        "-W clippy::multiple_inherent_impl -W clippy::print_stderr -W clippy::print_stderr",
-        "-W clippy::rc_buffer -W clippy::rest_pat_in_fully_bound_structs -W clippy::str_to_string",
-        "-W clippy::string_to_string -W clippy::todo -W clippy::unimplemented",
-        "-W clippy::unneeded_field_pattern -W clippy::unwrap_in_result",
-        "-W clippy::verbose_file_reads -W clippy::wildcard_enum_match_arm",
-        "-W clippy::wrong_pub_self_convention"
-    ))
-    .unwrap();
-}
+    let crate_flags = crate_dir_names()
+        .into_iter()
+        .filter(|name| name != "client" && name != "vulkan_layer")
+        .flat_map(|name| ["-p".into(), format!("alvr_{name}")]);
 
-fn prettier() {
-    command::run("npx -p prettier@2.2.1 prettier --config alvr/xtask/.prettierrc --write '**/*[!.min].{css,js}'").unwrap();
+    // lints updated for Rust 1.59
+    let restriction_lints = [
+        // "allow_attributes_without_reason", // Rust 1.61
+        "clone_on_ref_ptr",
+        "create_dir",
+        "decimal_literal_representation",
+        "else_if_without_else",
+        "expect_used",
+        "float_cmp_const",
+        "fn_to_numeric_cast_any",
+        "get_unwrap",
+        "if_then_some_else_none",
+        "let_underscore_must_use",
+        "lossy_float_literal",
+        "mem_forget",
+        "multiple_inherent_impl",
+        "rest_pat_in_fully_bound_structs",
+        "self_named_module_files",
+        "str_to_string",
+        "string_slice",
+        "string_to_string",
+        "try_err",
+        "unnecessary_self_imports",
+        "unneeded_field_pattern",
+        "unseparated_literal_suffix",
+        "verbose_file_reads",
+        "wildcard_enum_match_arm",
+    ];
+    let pedantic_lints = [
+        // "borrow_as_ptr", // Rust 1.60
+        "enum_glob_use",
+        "explicit_deref_methods",
+        "explicit_into_iter_loop",
+        "explicit_iter_loop",
+        "filter_map_next",
+        "flat_map_option",
+        "float_cmp",
+        // todo: add more lints
+    ];
+
+    let flags = restriction_lints
+        .into_iter()
+        .chain(pedantic_lints)
+        .flat_map(|name| ["-W".to_owned(), format!("clippy::{name}")]);
+
+    let sh = Shell::new().unwrap();
+    cmd!(sh, "cargo clippy {crate_flags...} -- {flags...}")
+        .run()
+        .unwrap();
 }
 
 // Avoid Oculus link popups when debugging the client
 pub fn kill_oculus_processes() {
-    command::run_without_shell(
-        "powershell",
-        &[
-            "Start-Process",
-            "taskkill",
-            "-ArgumentList",
-            "\"/F /IM OVR* /T\"",
-            "-Verb",
-            "runAs",
-        ],
+    let sh = Shell::new().unwrap();
+    cmd!(
+        sh,
+        "powershell Start-Process taskkill -ArgumentList \"/F /IM OVR* /T\" -Verb runas"
     )
+    .run()
     .unwrap();
 }
 
 fn main() {
     let begin_time = Instant::now();
-
-    env::set_var("RUST_BACKTRACE", "1");
 
     let mut args = Arguments::from_env();
 
@@ -154,7 +198,6 @@ fn main() {
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),
-                "prettier" => prettier(),
                 "kill-oculus" => kill_oculus_processes(),
                 _ => {
                     println!("\nUnrecognized subcommand.");

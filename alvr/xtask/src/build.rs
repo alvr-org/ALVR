@@ -198,16 +198,15 @@ pub fn build_client(is_release: bool, headset_name: &str) {
     let build_task = format!("assemble{headset_type}{package_type}{build_type}");
 
     let client_dir = afs::workspace_dir().join("android");
-    let command_name = if cfg!(not(windows)) {
-        "./gradlew"
-    } else {
-        "gradlew.bat"
-    };
 
     let artifact_name = format!("alvr_client_{headset_name}");
 
     let _push_guard = sh.push_dir(&client_dir);
-    cmd!(sh, "{command_name} {build_task}").run().unwrap();
+    if cfg!(windows) {
+        cmd!(sh, "cmd /C gradlew.bat {build_task}").run().unwrap();
+    } else {
+        cmd!(sh, "./gradlew {build_task}").run().unwrap();
+    };
 
     sh.create_dir(&afs::build_dir().join(&artifact_name))
         .unwrap();

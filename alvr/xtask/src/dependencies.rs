@@ -186,7 +186,8 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let nvenc_flags = Vec::<String>::new();
 
     let _push_guard = sh.push_dir(final_path);
-    cmd!(sh, "./configure {flags...} {nvenc_flags...}")
+    cmd!(sh, "./configure {flags...}")
+        .args(nvenc_flags) // nvenc flags have problems getting parsed correctly by the macro
         .run()
         .unwrap();
     let nproc = cmd!(sh, "nproc").read().unwrap();

@@ -1,6 +1,7 @@
 use crate::command;
 use alvr_filesystem as afs;
 use std::fs;
+use xshell::Shell;
 
 pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, String, String) {
     let start_idx = source.find(start_pattern).unwrap() + start_pattern.len();
@@ -106,12 +107,14 @@ fn bump_deb_control_version(new_version: &str) {
 }
 
 pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
+    let sh = Shell::new().unwrap();
+
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
         version = format!(
             "{version}+nightly.{}",
-            command::date_utc_yyyymmdd().unwrap()
+            command::date_utc_yyyymmdd(&sh).unwrap()
         );
     }
 

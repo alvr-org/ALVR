@@ -3,9 +3,7 @@ use alvr_filesystem as afs;
 use std::fs;
 use xshell::{cmd, Shell};
 
-pub fn choco_install(packages: &[&str]) -> Result<(), xshell::Error> {
-    let sh = Shell::new()?;
-
+pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
     cmd!(
         sh,
         "powershell Start-Process choco -ArgumentList \"install {packages...} -y\" -Verb runAs"
@@ -14,12 +12,15 @@ pub fn choco_install(packages: &[&str]) -> Result<(), xshell::Error> {
 }
 
 pub fn prepare_x264_windows() {
+    let sh = Shell::new().unwrap();
+
     const VERSION: &str = "0.164";
     const REVISION: usize = 3086;
 
     let deps_dir = afs::deps_dir();
 
     command::download_and_extract_zip(
+        &sh,
         &format!(
             "{}/{VERSION}.r{REVISION}/libx264_{VERSION}.r{REVISION}_msvc16.zip",
             "https://github.com/ShiftMediaProject/x264/releases/download",
@@ -51,13 +52,15 @@ Cflags: -I${{includedir}}
     )
     .unwrap();
 
-    let sh = Shell::new().unwrap();
     cmd!(sh, "setx PKG_CONFIG_PATH {deps_dir}").run().unwrap();
 }
 
 pub fn prepare_ffmpeg_windows() {
+    let sh = Shell::new().unwrap();
+
     let download_path = afs::deps_dir().join("windows");
     command::download_and_extract_zip(
+        &sh,
         &format!(
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
             "ffmpeg-n5.0-latest-win64-gpl-shared-5.0.zip"
@@ -74,8 +77,21 @@ pub fn prepare_ffmpeg_windows() {
 }
 
 pub fn prepare_windows_deps(skip_admin_priv: bool) {
+    let sh = Shell::new().unwrap();
+
     if !skip_admin_priv {
-        choco_install(&["llvm", "vulkan-sdk", "wixtoolset", "pkgconfiglite"]).unwrap();
+        choco_install(
+            &sh,
+            &[
+                "zip",
+                "unzip",
+                "llvm",
+                "vulkan-sdk",
+                "wixtoolset",
+                "pkgconfiglite",
+            ],
+        )
+        .unwrap();
     }
 
     prepare_x264_windows();
@@ -87,6 +103,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
 
     let download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
+        &sh,
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
         &download_path,
     )
@@ -177,10 +194,13 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
 }
 
 fn get_oculus_openxr_mobile_loader() {
+    let sh = Shell::new().unwrap();
+
     let temp_sdk_dir = afs::build_dir().join("temp_download");
 
     // OpenXR SDK v1.0.18. todo: upgrade when new version is available
     command::download_and_extract_zip(
+        &sh,
         "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
         &temp_sdk_dir,
     )
@@ -202,7 +222,7 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
 
     if cfg!(windows) && !skip_admin_priv {
-        choco_install(&["llvm"]).unwrap();
+        choco_install(&sh, &["unzip", "llvm"]).unwrap();
     }
 
     cmd!(sh, "rustup target add aarch64-linux-android")

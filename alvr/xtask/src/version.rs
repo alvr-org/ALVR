@@ -109,7 +109,10 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     let mut version = maybe_version.unwrap_or_else(version);
 
     if is_nightly {
-        version = format!("{version}+nightly.{}", command::date_utc_yyyymmdd());
+        version = format!(
+            "{version}+nightly.{}",
+            command::date_utc_yyyymmdd().unwrap()
+        );
     }
 
     for dir_name in crate::crate_dir_names() {

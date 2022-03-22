@@ -49,23 +49,18 @@ pub fn download_and_extract_zip(url: &str, destination: &Path) -> Result<(), xsh
     unzip(&zip_file, destination)
 }
 
-pub fn date_utc_yyyymmdd() -> String {
-    let sh = Shell::new().unwrap();
+pub fn date_utc_yyyymmdd() -> Result<String, xshell::Error> {
+    let sh = Shell::new()?;
 
-    let cmd = if cfg!(windows) {
+    if cfg!(windows) {
         cmd!(
             sh,
             "powershell (Get-Date).ToUniversalTime().ToString(\"yyyy.MM.dd\")"
         )
+        .read()
     } else {
-        cmd!(sh, "date -u +%Y.%m.%d")
-    };
-
-    String::from_utf8_lossy(&cmd.output().unwrap().stdout)
-        .as_ref()
-        .to_owned()
-        .replace('\r', "")
-        .replace('\n', "")
+        cmd!(sh, "date -u +%Y.%m.%d").read()
+    }
 }
 
 pub fn copy_recursive(sh: &Shell, source_dir: &Path, dest_dir: &Path) -> Result<(), xshell::Error> {

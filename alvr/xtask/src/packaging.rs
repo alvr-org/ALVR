@@ -38,7 +38,7 @@ fn build_windows_installer() {
     cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={server_build_dir} -ext WixUtilExtension -ext WixBalExtension {bundle_source} -o {wix_target_dir}\\").run().unwrap();
     cmd!(
         sh,
-        "{light_cmd} {bundle_object} -ext WixUtilException -ext WixBalExtension -o {installer}"
+        "{light_cmd} {bundle_object} -ext WixUtilExtension -ext WixBalExtension -o {installer}"
     )
     .run()
     .unwrap();
@@ -50,21 +50,12 @@ pub fn package_server(root: Option<String>, gpl: bool) {
     build::build_server(true, gpl, root, true, false);
 
     // Add licenses
-    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
     let licenses_dir = afs::server_build_dir().join("licenses");
-    let dependency_licenses = licenses_dir.join("dependencies.html");
     sh.create_dir(&licenses_dir).unwrap();
     sh.copy_file(
         afs::workspace_dir().join("LICENSE"),
         licenses_dir.join("ALVR.txt"),
     )
-    .unwrap();
-    cmd!(sh, "cargo install cargo-about").run().unwrap();
-    cmd!(
-        sh,
-        "cargo about generate {licenses_template} > {dependency_licenses}"
-    )
-    .run()
     .unwrap();
     sh.copy_file(
         afs::crate_dir("server").join("LICENSE-Valve"),
@@ -79,13 +70,22 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         .ok();
     }
 
+    // Gather licenses with cargo about
+    cmd!(sh, "cargo install cargo-about").run().unwrap();
+    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
+    let licenses_content = cmd!(sh, "cargo about generate {licenses_template}")
+        .read()
+        .unwrap();
+    sh.write_file(licenses_dir.join("dependencies.html"), licenses_content)
+        .unwrap();
+
     // Finally package everything
     if cfg!(windows) {
         command::zip(&afs::server_build_dir()).unwrap();
 
         sh.copy_file(
             afs::target_dir().join("release").join("alvr_server.pdb"),
-            afs::build_dir().join("alvr_server.pdb"),
+            afs::build_dir(),
         )
         .unwrap();
 

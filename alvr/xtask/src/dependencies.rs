@@ -172,7 +172,8 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     cmd!(sh, "./configure {flags...} {nvenc_flags...}")
         .run()
         .unwrap();
-    cmd!(sh, "bash -c \"make -j$(nproc)\"").run().unwrap();
+    let nproc = cmd!(sh, "nproc").read().unwrap();
+    cmd!(sh, "make -j{nproc}").run().unwrap();
 }
 
 fn get_oculus_openxr_mobile_loader() {

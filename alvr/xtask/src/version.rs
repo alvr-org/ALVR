@@ -34,9 +34,7 @@ pub fn version() -> String {
 }
 
 fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
-    let gradle_file_path = afs::workspace_dir()
-        .join("alvr/client/android/app")
-        .join("build.gradle");
+    let gradle_file_path = afs::workspace_dir().join("android/app/build.gradle");
     let file_content = fs::read_to_string(&gradle_file_path).unwrap();
 
     // Replace versionName

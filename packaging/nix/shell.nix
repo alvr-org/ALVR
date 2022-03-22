@@ -39,6 +39,6 @@ mkShell {
   LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
   RUST_ANDROID_GRADLE_PYTHON_COMMAND = "${pkgs.python3Minimal}/bin/python3";
   shellHook = ''
-    export PATH=$(pwd)/alvr/client/android:$PATH
+    export PATH=$(pwd)/android:$PATH
   '';
 }

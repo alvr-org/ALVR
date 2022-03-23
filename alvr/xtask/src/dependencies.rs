@@ -142,54 +142,50 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--enable-libdrm",
     ];
 
-    /*
-       Describing Nvidia specific options --nvccflags:
-       nvcc from CUDA toolkit version 11.0 or higher does not support compiling for 'compute_30' (default in ffmpeg)
-       52 is the minimum required for the current CUDA 11 version (Quadro M6000 , GeForce 900, GTX-970, GTX-980, GTX Titan X)
-       https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-       Anyway below 50 arch card don't support nvenc encoding hevc https://developer.nvidia.com/nvidia-video-codec-sdk (Supported devices)
-       Nvidia docs:
-       https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/#commonly-faced-issues-and-tips-to-resolve-them
-    */
-    #[cfg(target_os = "linux")]
-    let nvenc_flags = if nvenc_flag {
-        let cuda = pkg_config::Config::new().probe("cuda").unwrap();
-        let include_flags = cuda
-            .include_paths
-            .iter()
-            .map(|path| format!("-I{}", path.to_string_lossy()))
-            .reduce(|a, b| format!("{a} {b}"))
-            .expect("pkg-config cuda entry to have include-paths");
-        let link_flags = cuda
-            .link_paths
-            .iter()
-            .map(|path| format!("-L{}", path.to_string_lossy()))
-            .reduce(|a, b| format!("{a} {b}"))
-            .expect("pkg-config cuda entry to have link-paths");
-
-        vec![
-            "--enable-encoder=h264_nvenc".into(),
-            "--enable-encoder=hevc_nvenc".into(),
-            "--enable-nonfree".into(),
-            "--enable-cuda-nvcc".into(),
-            "--enable-libnpp".into(),
-            "--nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\"".into(),
-            format!("--extra-cflags=\"{include_flags}\""),
-            format!("--extra-ldflags=\"{link_flags}\""),
-            "--enable-hwaccel=h264_nvenc".into(),
-            "--enable-hwaccel=hevc_nvenc".into(),
-        ]
-    } else {
-        vec![]
-    };
-    #[cfg(not(target_os = "linux"))]
-    let nvenc_flags = Vec::<String>::new();
-
     let _push_guard = sh.push_dir(final_path);
-    cmd!(sh, "./configure {flags...}")
-        .args(nvenc_flags) // nvenc flags have problems getting parsed correctly by the macro
-        .run()
-        .unwrap();
+
+    if nvenc_flag {
+        /*
+           Describing Nvidia specific options --nvccflags:
+           nvcc from CUDA toolkit version 11.0 or higher does not support compiling for 'compute_30' (default in ffmpeg)
+           52 is the minimum required for the current CUDA 11 version (Quadro M6000 , GeForce 900, GTX-970, GTX-980, GTX Titan X)
+           https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+           Anyway below 50 arch card don't support nvenc encoding hevc https://developer.nvidia.com/nvidia-video-codec-sdk (Supported devices)
+           Nvidia docs:
+           https://docs.nvidia.com/video-technologies/video-codec-sdk/ffmpeg-with-nvidia-gpu/#commonly-faced-issues-and-tips-to-resolve-them
+        */
+        #[cfg(target_os = "linux")]
+        {
+            let cuda = pkg_config::Config::new().probe("cuda").unwrap();
+            let include_flags = cuda
+                .include_paths
+                .iter()
+                .map(|path| format!("-I{}", path.to_string_lossy()))
+                .reduce(|a, b| format!("{a} {b}"))
+                .expect("pkg-config cuda entry to have include-paths");
+            let link_flags = cuda
+                .link_paths
+                .iter()
+                .map(|path| format!("-L{}", path.to_string_lossy()))
+                .reduce(|a, b| format!("{a} {b}"))
+                .expect("pkg-config cuda entry to have link-paths");
+
+            let nvenc_flags = vec![
+                "--enable-encoder=h264_nvenc",
+                "--enable-encoder=hevc_nvenc",
+                "--enable-nonfree",
+                "--enable-cuda-nvcc",
+                "--enable-libnpp",
+                "--enable-hwaccel=h264_nvenc",
+                "--enable-hwaccel=hevc_nvenc",
+            ];
+
+            cmd!(sh, "./configure {flags...} {nvenc_flags...} --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=\"{include_flags}\" --extra-ldflags=\"{link_flags}\"");
+        }
+    } else {
+        cmd!(sh, "./configure {flags...}").run().unwrap();
+    }
+
     let nproc = cmd!(sh, "nproc").read().unwrap();
     cmd!(sh, "make -j{nproc}").run().unwrap();
 }

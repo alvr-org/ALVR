@@ -180,7 +180,9 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 "--enable-hwaccel=hevc_nvenc",
             ];
 
-            cmd!(sh, "./configure {flags...} {nvenc_flags...} --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=\"{include_flags}\" --extra-ldflags=\"{link_flags}\"");
+            cmd!(sh, "./configure {flags...} {nvenc_flags...} --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=\"{include_flags}\" --extra-ldflags=\"{link_flags}\"")
+                .run()
+                .unwrap();
         }
     } else {
         cmd!(sh, "./configure {flags...}").run().unwrap();

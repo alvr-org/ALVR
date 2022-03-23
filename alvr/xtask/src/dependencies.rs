@@ -157,14 +157,14 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         let include_flags = cuda
             .include_paths
             .iter()
-            .map(|path| format!("-I{path:?}"))
-            .reduce(|a, b| format!("{a}{b}"))
+            .map(|path| format!("-I{}", path.to_string_lossy()))
+            .reduce(|a, b| format!("{a} {b}"))
             .expect("pkg-config cuda entry to have include-paths");
         let link_flags = cuda
             .link_paths
             .iter()
-            .map(|path| format!("-L{path:?}"))
-            .reduce(|a, b| format!("{a}{b}"))
+            .map(|path| format!("-L{}", path.to_string_lossy()))
+            .reduce(|a, b| format!("{a} {b}"))
             .expect("pkg-config cuda entry to have link-paths");
 
         vec![

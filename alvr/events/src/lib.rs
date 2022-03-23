@@ -1,7 +1,5 @@
-// fixme: this module is misplaced. Find a way to resolve the mutual dependency with alvr_session
-
-use crate::SessionDesc;
-use alvr_common::log;
+use alvr_common::prelude::*;
+use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -36,7 +34,7 @@ pub struct Statistics {
 
 // This struct is temporary, until we switch to the new event system
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Raw {
+pub struct LogEvent {
     pub timestamp: String,
     pub severity: EventSeverity,
     pub content: String,
@@ -46,10 +44,9 @@ pub struct Raw {
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
-pub enum ServerEvent {
+pub enum EventType {
     Session(Box<SessionDesc>),
     SessionUpdated, // deprecated
-    SessionSettingsExtrapolationFailed,
     ClientFoundOk,
     ClientFoundInvalid,
     ClientFoundWrongVersion(String),
@@ -59,10 +56,15 @@ pub enum ServerEvent {
     UpdateDownloadError,
     Statistics(Statistics),
     ServerQuitting,
-    Raw(Raw),
-    EchoQuery(String),
+    Log(LogEvent),
 }
 
-pub fn log_event(id: ServerEvent) {
-    log::info!("#{}#", serde_json::to_string(&id).unwrap());
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Event {
+    pub timestamp: String,
+    pub event_type: EventType,
+}
+
+pub fn send_event(event_type: EventType) {
+    info!("#{}#", serde_json::to_string(&event_type).unwrap());
 }

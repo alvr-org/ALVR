@@ -1,6 +1,6 @@
 use crate::{FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::log::{self, LevelFilter};
-use alvr_session::{EventSeverity, Raw, ServerEvent};
+use alvr_events::{EventSeverity, EventType, LogEvent};
 use fern::Dispatch;
 use std::fs;
 use tokio::sync::broadcast::Sender;
@@ -19,7 +19,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
                 log::Level::Debug | log::Level::Trace => EventSeverity::Debug,
             };
 
-            let event = ServerEvent::Raw(Raw {
+            let event = EventType::Log(LogEvent {
                 timestamp: chrono::Local::now().format("%H:%M:%S.%f").to_string(),
                 severity,
                 content: message.to_string(),

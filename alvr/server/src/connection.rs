@@ -10,9 +10,8 @@ use alvr_common::{
     semver::Version,
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_session::{
-    CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey, ServerEvent,
-};
+use alvr_events::EventType;
+use alvr_session::{CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction,
     ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, Input, PeerType,
@@ -611,7 +610,7 @@ async fn connection_pipeline() -> StrResult {
     };
     let stream_socket = Arc::new(stream_socket);
 
-    alvr_session::log_event(ServerEvent::ClientConnected);
+    alvr_events::send_event(EventType::ClientConnected);
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -948,7 +947,7 @@ async fn connection_pipeline() -> StrResult {
                     .send(&ServerControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    alvr_session::log_event(ServerEvent::ClientDisconnected);
+                    alvr_events::send_event(EventType::ClientDisconnected);
                     info!("Client disconnected. Cause: {e}");
                     break Ok(());
                 }
@@ -1016,7 +1015,7 @@ async fn connection_pipeline() -> StrResult {
                 },
                 Ok(_) => (),
                 Err(e) => {
-                    alvr_session::log_event(ServerEvent::ClientDisconnected);
+                    alvr_events::send_event(EventType::ClientDisconnected);
                     info!("Client disconnected. Cause: {e}");
                     break;
                 }
@@ -1031,7 +1030,7 @@ async fn connection_pipeline() -> StrResult {
     tokio::select! {
         // Spawn new tasks and let the runtime manage threading
         res = spawn_cancelable(receive_loop) => {
-            alvr_session::log_event(ServerEvent::ClientDisconnected);
+            alvr_events::send_event(EventType::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {e}" );
             }

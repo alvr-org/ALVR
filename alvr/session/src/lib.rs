@@ -1,7 +1,5 @@
-mod events;
 mod settings;
 
-pub use events::*;
 pub use settings::*;
 
 use alvr_common::{prelude::*, semver::Version, ALVR_VERSION};
@@ -218,7 +216,6 @@ impl SessionDesc {
             Err(e) => {
                 *self = session_desc_mut;
 
-                log_event(ServerEvent::SessionSettingsExtrapolationFailed);
                 fmt_e!("Error while deserializing extrapolated session settings: {e}")
             }
         }

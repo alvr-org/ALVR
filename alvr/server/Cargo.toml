@@ -16,6 +16,7 @@ gpl = []
 alvr_audio = { path = "../audio" }
 alvr_commands = { path = "../commands" }
 alvr_common = { path = "../common" }
+alvr_events = { path = "../events" }
 alvr_filesystem = { path = "../filesystem" }
 alvr_server_data = { path = "../server_data" }
 alvr_session = { path = "../session" }

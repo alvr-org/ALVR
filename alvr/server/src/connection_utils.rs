@@ -1,5 +1,5 @@
 use alvr_common::{prelude::*, ALVR_NAME};
-use alvr_session::ServerEvent;
+use alvr_events::EventType;
 use alvr_sockets::{
     ClientHandshakePacket, HandshakePacket, ServerHandshakePacket, CONTROL_PORT, LOCAL_IP,
     MAX_HANDSHAKE_PACKET_SIZE_BYTES,
@@ -32,12 +32,10 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         {
             packet
         } else if &packet_buffer[..5] == b"\x01ALVR" {
-            alvr_session::log_event(ServerEvent::ClientFoundWrongVersion(
-                "v11 or previous".into(),
-            ));
+            alvr_events::send_event(EventType::ClientFoundWrongVersion("v11 or previous".into()));
             return fmt_e!("ALVR client version is too old!");
         } else if &packet_buffer[..4] == b"ALVR" {
-            alvr_session::log_event(ServerEvent::ClientFoundWrongVersion(
+            alvr_events::send_event(EventType::ClientFoundWrongVersion(
                 "v12.x.x - v13.x.x".into(),
             ));
             return fmt_e!("ALVR client version is too old!");
@@ -47,7 +45,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         };
 
         if handshake_packet.alvr_name != ALVR_NAME {
-            alvr_session::log_event(ServerEvent::ClientFoundInvalid);
+            alvr_events::send_event(EventType::ClientFoundInvalid);
             return fmt_e!("Error while identifying client");
         }
 
@@ -61,7 +59,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
                 .await
                 .ok();
 
-            alvr_session::log_event(ServerEvent::ClientFoundWrongVersion(
+            alvr_events::send_event(EventType::ClientFoundWrongVersion(
                 handshake_packet.version.to_string(),
             ));
             return fmt_e!("Found ALVR client with incompatible version");

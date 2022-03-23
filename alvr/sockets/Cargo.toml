@@ -8,6 +8,7 @@ rust-version = "1.58"
 
 [dependencies]
 alvr_common = { path = "../common" }
+alvr_events = { path = "../events" }
 alvr_session = { path = "../session" }
 
 # Serialization

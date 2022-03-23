@@ -1,5 +1,6 @@
 use alvr_common::prelude::*;
-use alvr_session::{ClientConnectionDesc, LinuxAudioBackend, ServerEvent, SessionDesc};
+use alvr_events::EventType;
+use alvr_session::{ClientConnectionDesc, LinuxAudioBackend, SessionDesc};
 use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
@@ -12,8 +13,8 @@ use std::{
 use tokio::sync::Notify;
 use wgpu::Adapter;
 
-fn save_session(session_desc: &SessionDesc, path: &Path) -> StrResult {
-    fs::write(path, json::to_string_pretty(session_desc).map_err(err!())?).map_err(err!())
+fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
+    fs::write(path, json::to_string_pretty(session).map_err(err!())?).map_err(err!())
 }
 
 // SessionDesc wrapper that saves settings.json and session.json on destruction.
@@ -38,8 +39,8 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, self.session_path).unwrap();
-        alvr_session::log_event(ServerEvent::SessionUpdated); // deprecated
-        alvr_session::log_event(ServerEvent::Session(Box::new(self.session_desc.clone())));
+        alvr_events::send_event(EventType::SessionUpdated); // deprecated
+        alvr_events::send_event(EventType::Session(Box::new(self.session_desc.clone())));
     }
 }
 
@@ -138,7 +139,7 @@ impl ServerDataManager {
         self.session = serde_json::from_value(session_json).map_err(err!())?;
 
         save_session(&self.session, &self.session_path).unwrap();
-        alvr_session::log_event(ServerEvent::Session(Box::new(self.session.clone())));
+        alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
 
         Ok(())
     }
@@ -254,8 +255,8 @@ impl ServerDataManager {
             self.session.client_connections = client_connections;
 
             save_session(&self.session, &self.session_path).unwrap();
-            alvr_session::log_event(ServerEvent::SessionUpdated); // deprecated
-            alvr_session::log_event(ServerEvent::Session(Box::new(self.session.clone())));
+            alvr_events::send_event(EventType::SessionUpdated); // deprecated
+            alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
 
             if let Some(notifier) = update_notifier {
                 notifier.notify_waiters();

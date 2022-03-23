@@ -1,6 +1,6 @@
 use crate::{CLIENTS_UPDATED_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::{prelude::*, ALVR_VERSION};
-use alvr_session::ServerEvent;
+use alvr_events::EventType;
 use alvr_sockets::ClientListAction;
 use bytes::Buf;
 use futures::SinkExt;
@@ -253,13 +253,13 @@ async fn http_api(
                         Ok(Some(chunk)) => {
                             downloaded_bytes_count += chunk.len();
                             file.write_all(&chunk).map_err(err!())?;
-                            alvr_session::log_event(ServerEvent::UpdateDownloadedBytesCount(
+                            alvr_events::send_event(EventType::UpdateDownloadedBytesCount(
                                 downloaded_bytes_count,
                             ));
                         }
                         Ok(None) => break,
                         Err(e) => {
-                            alvr_session::log_event(ServerEvent::UpdateDownloadError);
+                            alvr_events::send_event(EventType::UpdateDownloadError);
                             error!("Download update failed: {e}");
                             return reply(StatusCode::BAD_GATEWAY);
                         }

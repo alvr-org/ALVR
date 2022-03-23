@@ -13,12 +13,13 @@ mod web_server;
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
-use alvr_server_data::ServerDataManager;
 use bindings::*;
 
 use alvr_common::{lazy_static, log, parking_lot::Mutex, prelude::*, ALVR_VERSION};
+use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
-use alvr_session::{OpenvrPropValue, OpenvrPropertyKey, ServerEvent};
+use alvr_server_data::ServerDataManager;
+use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
 use std::{
     ffi::{c_void, CStr, CString},
@@ -110,7 +111,7 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
 }
 
 pub fn shutdown_runtime() {
-    alvr_session::log_event(ServerEvent::ServerQuitting);
+    alvr_events::send_event(EventType::ServerQuitting);
 
     if let Some(window) = MAYBE_WINDOW.lock().take() {
         window.close();

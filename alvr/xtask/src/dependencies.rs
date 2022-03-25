@@ -170,7 +170,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 .reduce(|a, b| format!("{a} {b}"))
                 .expect("pkg-config cuda entry to have link-paths");
 
-            let nvenc_flags = vec![
+            let nvenc_flags = &[
                 "--enable-encoder=h264_nvenc",
                 "--enable-encoder=hevc_nvenc",
                 "--enable-nonfree",
@@ -178,11 +178,17 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 "--enable-libnpp",
                 "--enable-hwaccel=h264_nvenc",
                 "--enable-hwaccel=hevc_nvenc",
+                "--nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\"",
+                &format!("--extra-cflags=\"{include_flags}\""),
+                &format!("--extra-ldflags=\"{link_flags}\""),
             ];
 
-            cmd!(sh, "./configure {flags...} {nvenc_flags...} --nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\" --extra-cflags=\"{include_flags}\" --extra-ldflags=\"{link_flags}\"")
-                .run()
-                .unwrap();
+            let flags_combined = flags.join(" ");
+            let nvenc_flags_combined = nvenc_flags.join(" ");
+
+            let command = format!("./configure {flags_combined} {nvenc_flags_combined}");
+
+            cmd!(sh, "bash -c {command}").run().unwrap();
         }
     } else {
         cmd!(sh, "./configure {flags...}").run().unwrap();

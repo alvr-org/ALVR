@@ -93,7 +93,7 @@ pub fn build_server(
         sh.create_dir(&build_layout.vrcompositor_wrapper_dir)
             .unwrap();
         sh.copy_file(
-            artifacts_dir.join("vrcompositor_wrapper"),
+            artifacts_dir.join("alvr_vrcompositor_wrapper"),
             build_layout.vrcompositor_wrapper(),
         )
         .unwrap();

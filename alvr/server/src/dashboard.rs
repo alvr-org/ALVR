@@ -1,4 +1,4 @@
-use crate::{MAYBE_WINDOW, SERVER_DATA_MANAGER};
+use crate::{SERVER_DATA_MANAGER, WINDOW};
 use alvr_common::prelude::*;
 use std::{fs, sync::Arc};
 
@@ -73,12 +73,12 @@ pub fn ui_thread() -> StrResult {
             .map_err(err!())?,
     );
 
-    *MAYBE_WINDOW.lock() = Some(Arc::clone(&window));
+    *WINDOW.lock() = Some(Arc::clone(&window));
 
     window.wait_finish();
 
     // prevent panic on window.close()
-    *MAYBE_WINDOW.lock() = None;
+    *WINDOW.lock() = None;
     crate::shutdown_runtime();
 
     unsafe { crate::ShutdownSteamvr() };

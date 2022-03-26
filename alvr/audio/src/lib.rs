@@ -1,4 +1,4 @@
-use alvr_common::{lazy_static, parking_lot::Mutex, prelude::*};
+use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
 use alvr_session::{AudioConfig, AudioDeviceId, LinuxAudioBackend};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
@@ -6,7 +6,6 @@ use cpal::{
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
 use rodio::{OutputStream, Source};
-use serde::Serialize;
 use std::{
     collections::VecDeque,
     sync::{mpsc as smpsc, Arc},
@@ -39,20 +38,20 @@ use winapi::{
 #[cfg(windows)]
 use wio::com::ComPtr;
 
-lazy_static! {
-    static ref VIRTUAL_MICROPHONE_PAIRS: Vec<(String, String)> = vec![
+static VIRTUAL_MICROPHONE_PAIRS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
+    vec![
         ("CABLE Input".into(), "CABLE Output".into()),
         ("VoiceMeeter Input".into(), "VoiceMeeter Output".into()),
         (
             "VoiceMeeter Aux Input".into(),
-            "VoiceMeeter Aux Output".into()
+            "VoiceMeeter Aux Output".into(),
         ),
         (
             "VoiceMeeter VAIO3 Input".into(),
-            "VoiceMeeter VAIO3 Output".into()
+            "VoiceMeeter VAIO3 Output".into(),
         ),
-    ];
-}
+    ]
+});
 
 pub enum AudioDeviceType {
     Output,

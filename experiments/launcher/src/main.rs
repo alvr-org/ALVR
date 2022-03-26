@@ -1,4 +1,4 @@
-use alvr_common::{lazy_static, parking_lot::Mutex, prelude::*};
+use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_filesystem as afs;
 use alvr_gui::{Dashboard, DashboardDataInterfce, DashboardEvent};
 use alvr_server_data::ServerDataManager;

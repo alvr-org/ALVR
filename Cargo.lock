@@ -166,9 +166,9 @@ version = "18.0.0-dev01"
 dependencies = [
  "backtrace",
  "glam 0.20.2",
- "lazy_static",
  "log",
  "msgbox",
+ "once_cell",
  "parking_lot 0.12.0",
  "semver 1.0.6",
 ]
@@ -188,7 +188,7 @@ name = "alvr_filesystem"
 version = "18.0.0-dev01"
 dependencies = [
  "dirs",
- "lazy_static",
+ "once_cell",
 ]
 
 [[package]]
@@ -2465,9 +2465,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.17"
+version = "0.14.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043f0e083e9901b6cc658a77d1eb86f4fc650bbb977a4337dd63192826aa85dd"
+checksum = "b26ae0a80afebe130861d90abf98e3814a4f28a4c6ffeb5ab8ebb2be311e0ef2"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2503,10 +2503,12 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "iced_core",
  "iced_futures",
+ "iced_graphics",
+ "iced_native",
  "iced_wgpu",
  "iced_winit",
  "thiserror",
@@ -2515,7 +2517,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "bitflags",
  "wasm-timer",
@@ -2524,7 +2526,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "futures",
  "log",
@@ -2535,7 +2537,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "bytemuck",
  "glam 0.10.2",
@@ -2548,7 +2550,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2561,7 +2563,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "iced_core",
 ]
@@ -2569,7 +2571,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2589,7 +2591,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#4aece6b77617f4a37af8208d8ddb1618bf9052d3"
+source = "git+https://github.com/iced-rs/iced#e66a79fb9c8148d5f6f971ce9bca751634122534"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2925,9 +2927,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.15"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c4dcd960cc540667f619483fc99102f88d6118b87730e24e8fbe8054b7445e4"
+checksum = "6389c490849ff5bc16be905ae24bc913a9c8892e19b2341dbc175e14c341c2b8"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -3163,7 +3165,7 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.6.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#78e9bef497327cf7793220a4150a661a33b1d9a0"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#6e0189aa4b8def1d71ca09654a1c691e236f397a"
 dependencies = [
  "bitflags",
  "jni-sys",
@@ -3239,7 +3241,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.3.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#78e9bef497327cf7793220a4150a661a33b1d9a0"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#6e0189aa4b8def1d71ca09654a1c691e236f397a"
 dependencies = [
  "jni-sys",
 ]
@@ -4013,9 +4015,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4af2ec4714533fcdf07e886f17025ace8b997b9ce51204ee69b6da831c3da57"
+checksum = "632d02bff7f874a36f33ea8bb416cd484b90cc66c1194b1a1110d067a7013f58"
 dependencies = [
  "proc-macro2",
 ]
@@ -4108,15 +4110,15 @@ checksum = "d7fa2d386df8533b02184941c76ae2e0d0c1d053f5d43339169d80f21275fc5e"
 dependencies = [
  "pem",
  "ring",
- "time 0.3.7",
+ "time 0.3.9",
  "yasna",
 ]
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8380fe0152551244f0747b1bf41737e0f8a74f97a14ccefd1148187271634f3c"
+checksum = "8ae183fc1b06c149f0c1793e1eb447c8b04bfe46d48e9e48bfb8d2d7ed64ecf0"
 dependencies = [
  "bitflags",
 ]
@@ -5009,9 +5011,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.7"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
+checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
 dependencies = [
  "libc",
  "num_threads",
@@ -6076,5 +6078,5 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "346d34a236c9d3e5f3b9b74563f238f955bbd05fa0b8b4efa53c130c43982f4c"
 dependencies = [
- "time 0.3.7",
+ "time 0.3.9",
 ]

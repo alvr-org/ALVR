@@ -1,5 +1,6 @@
 mod logging;
 
+use once_cell::sync::Lazy;
 use semver::{Prerelease, Version};
 use std::{
     collections::hash_map::DefaultHasher,
@@ -7,9 +8,9 @@ use std::{
 };
 
 pub use glam;
-pub use lazy_static::lazy_static;
 pub use log;
 pub use logging::*;
+pub use once_cell;
 pub use parking_lot;
 pub use semver;
 
@@ -22,9 +23,8 @@ pub mod prelude {
     pub use log::{debug, error, info, warn};
 }
 
-lazy_static! {
-    pub static ref ALVR_VERSION: Version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-}
+pub static ALVR_VERSION: Lazy<Version> =
+    Lazy::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
 
 // accept semver-compatible versions
 // Note: by not having to set the requirement manually, the major version is constrained to be
@@ -62,10 +62,10 @@ pub const RIGHT_HAND_PATH: &str = "/user/hand/right";
 pub const LEFT_CONTROLLER_HAPTIC_PATH: &str = "/user/hand/left/output/haptic";
 pub const RIGHT_CONTROLLER_HAPTIC_PATH: &str = "/user/hand/right/output/haptic";
 
-lazy_static! {
-    pub static ref HEAD_ID: u64 = hash_string(HEAD_PATH);
-    pub static ref LEFT_HAND_ID: u64 = hash_string(LEFT_HAND_PATH);
-    pub static ref RIGHT_HAND_ID: u64 = hash_string(RIGHT_HAND_PATH);
-    pub static ref LEFT_CONTROLLER_HAPTIC_ID: u64 = hash_string(LEFT_CONTROLLER_HAPTIC_PATH);
-    pub static ref RIGHT_CONTROLLER_HAPTIC_ID: u64 = hash_string(RIGHT_CONTROLLER_HAPTIC_PATH);
-}
+pub static HEAD_ID: Lazy<u64> = Lazy::new(|| hash_string(HEAD_PATH));
+pub static LEFT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_HAND_PATH));
+pub static RIGHT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_HAND_PATH));
+pub static LEFT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(LEFT_CONTROLLER_HAPTIC_PATH));
+pub static RIGHT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(RIGHT_CONTROLLER_HAPTIC_PATH));

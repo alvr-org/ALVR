@@ -5,12 +5,7 @@ use crate::{
     TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
-use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
-    log,
-    prelude::*,
-    ALVR_NAME, ALVR_VERSION,
-};
+use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,

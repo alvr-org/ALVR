@@ -51,11 +51,10 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
     {
         // Store the last error shown in a message box. Do not open a new message box if the content
         // of the error has not changed
+        use once_cell::sync::Lazy;
         use parking_lot::Mutex;
 
-        lazy_static::lazy_static! {
-            static ref LAST_MESSAGEBOX_ERROR: Mutex<String> = Mutex::new("".into());
-        }
+        static LAST_MESSAGEBOX_ERROR: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 
         let err_string = e.to_string();
         let last_messagebox_error_ref = &mut *LAST_MESSAGEBOX_ERROR.lock();

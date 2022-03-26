@@ -15,7 +15,13 @@ mod bindings {
 }
 use bindings::*;
 
-use alvr_common::{lazy_static, log, parking_lot::Mutex, prelude::*, ALVR_VERSION};
+use alvr_common::{
+    log,
+    once_cell::sync::{Lazy, OnceCell},
+    parking_lot::Mutex,
+    prelude::*,
+    ALVR_VERSION,
+};
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
@@ -37,37 +43,36 @@ use tokio::{
     sync::{broadcast, mpsc, Notify},
 };
 
-lazy_static! {
-    // Since ALVR_DIR is needed to initialize logging, if error then just panic
-    static ref FILESYSTEM_LAYOUT: Layout =
-        afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap());
-    static ref SERVER_DATA_MANAGER: Mutex<ServerDataManager> =
-        Mutex::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session()));
-    static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(Runtime::new().ok());
-    static ref MAYBE_WINDOW: Mutex<Option<Arc<alcro::UI>>> = Mutex::new(None);
+static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
+    afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap())
+});
+static SERVER_DATA_MANAGER: Lazy<Mutex<ServerDataManager>> =
+    Lazy::new(|| Mutex::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
+static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
+static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
 
-    static ref VIDEO_SENDER: Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>> =
-        Mutex::new(None);
-    static ref HAPTICS_SENDER: Mutex<Option<mpsc::UnboundedSender<Haptics>>> =
-        Mutex::new(None);
-    static ref TIME_SYNC_SENDER: Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>> =
-        Mutex::new(None);
+static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
+    Lazy::new(|| Mutex::new(None));
+static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
+    Lazy::new(|| Mutex::new(None));
+static TIME_SYNC_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
 
-    static ref CLIENTS_UPDATED_NOTIFIER: Notify = Notify::new();
-    static ref RESTART_NOTIFIER: Notify = Notify::new();
-    static ref SHUTDOWN_NOTIFIER: Notify = Notify::new();
+static CLIENTS_UPDATED_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-    static ref FRAME_RENDER_VS_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec();
-    static ref FRAME_RENDER_PS_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec();
-    static ref QUAD_SHADER_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec();
-    static ref COMPRESS_AXIS_ALIGNED_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec();
-    static ref COLOR_CORRECTION_CSO: Vec<u8> =
-        include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec();
-}
+static FRAME_RENDER_VS_CSO: Lazy<Vec<u8>> =
+    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec());
+static FRAME_RENDER_PS_CSO: Lazy<Vec<u8>> =
+    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec());
+static QUAD_SHADER_CSO: Lazy<Vec<u8>> =
+    Lazy::new(|| include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec());
+static COMPRESS_AXIS_ALIGNED_CSO: Lazy<Vec<u8>> = Lazy::new(|| {
+    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec()
+});
+static COLOR_CORRECTION_CSO: Lazy<Vec<u8>> =
+    Lazy::new(|| include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec());
 
 pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
     let type_ = match value {
@@ -113,7 +118,7 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
 pub fn shutdown_runtime() {
     alvr_events::send_event(EventType::ServerQuitting);
 
-    if let Some(window) = MAYBE_WINDOW.lock().take() {
+    if let Some(window) = WINDOW.lock().take() {
         window.close();
     }
 
@@ -369,15 +374,16 @@ pub unsafe extern "C" fn HmdDriverFactory(
     let interface_name_usize = interface_name as usize;
     let return_code_usize = return_code as usize;
 
-    lazy_static! {
-        static ref MAYBE_PTR_USIZE: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
-        static ref NUM_TRIALS: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
-    }
+    static PTR_USIZE: OnceCell<AtomicUsize> = OnceCell::new();
+    static NUM_TRIALS: OnceCell<AtomicUsize> = OnceCell::new();
+
+    PTR_USIZE.set(AtomicUsize::new(0)).ok();
+    NUM_TRIALS.set(AtomicUsize::new(0)).ok();
 
     thread::spawn(move || {
-        NUM_TRIALS.fetch_add(1, Ordering::Relaxed);
-        if NUM_TRIALS.load(Ordering::Relaxed) <= 1 {
-            MAYBE_PTR_USIZE.store(
+        NUM_TRIALS.get().unwrap().fetch_add(1, Ordering::Relaxed);
+        if NUM_TRIALS.get().unwrap().load(Ordering::Relaxed) <= 1 {
+            PTR_USIZE.get().unwrap().store(
                 CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
                 Ordering::Relaxed,
             );
@@ -386,5 +392,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
     .join()
     .ok();
 
-    MAYBE_PTR_USIZE.load(Ordering::Relaxed) as _
+    PTR_USIZE.get().unwrap().load(Ordering::Relaxed) as _
 }

@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use std::{
     env::{
         self,
@@ -249,16 +250,13 @@ impl Layout {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref LAYOUT: Option<Layout> = (!env!("root").is_empty()).then(|| {
-        Layout::new(Path::new(env!("root")))
-    });
-}
+static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
+    Lazy::new(|| (!env!("root").is_empty()).then(|| Layout::new(Path::new(env!("root")))));
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
-    LAYOUT.clone().unwrap_or_else(|| {
+    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
         let root = if cfg!(any(windows, target_os = "macos")) {
             path.parent().unwrap().to_owned()
         } else if cfg!(target_os = "linux") {
@@ -274,7 +272,7 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
 
 // The dir argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
-    LAYOUT.clone().unwrap_or_else(|| {
+    LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
         let root = if cfg!(any(windows, target_os = "macos")) {
             dir.to_owned()
         } else if cfg!(target_os = "linux") {
@@ -288,9 +286,11 @@ pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
     })
 }
 
-// Use this when there is no way of determining the current path. The reulting Layout paths will
-// be invalid, expect for the ones that disregard the relative path (for example the config dir) and
+// Use this when there is no way of determining the current path. The resulting Layout paths will
+// be invalid, except for the ones that disregard the relative path (for example the config dir) and
 // the ones that have been overridden.
-pub fn filesystem_layout_from_invalid() -> Layout {
-    LAYOUT.clone().unwrap_or_else(|| Layout::new(Path::new("")))
+pub fn filesystem_layout_invalid() -> Layout {
+    LAYOUT_FROM_ENV
+        .clone()
+        .unwrap_or_else(|| Layout::new(Path::new("")))
 }

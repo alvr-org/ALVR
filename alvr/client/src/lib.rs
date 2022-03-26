@@ -11,7 +11,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
-    lazy_static,
+    once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
     ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -38,21 +38,20 @@ use std::{
 };
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
-lazy_static! {
-    static ref RUNTIME: Mutex<Option<Runtime>> = Mutex::new(None);
-    static ref IDR_PARSED: AtomicBool = AtomicBool::new(false);
-    static ref INPUT_SENDER: Mutex<Option<mpsc::UnboundedSender<Input>>> = Mutex::new(None);
-    static ref TIME_SYNC_SENDER: Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>> =
-        Mutex::new(None);
-    static ref VIDEO_ERROR_REPORT_SENDER: Mutex<Option<mpsc::UnboundedSender<()>>> =
-        Mutex::new(None);
-    static ref VIEWS_CONFIG_SENDER: Mutex<Option<mpsc::UnboundedSender<ViewsConfig>>> =
-        Mutex::new(None);
-    static ref BATTERY_SENDER: Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>> =
-        Mutex::new(None);
-    static ref IDR_REQUEST_NOTIFIER: Notify = Notify::new();
-    static ref ON_PAUSE_NOTIFIER: Notify = Notify::new();
-}
+static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
+static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+static INPUT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Input>>>> =
+    Lazy::new(|| Mutex::new(None));
+static TIME_SYNC_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
+static VIDEO_ERROR_REPORT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<()>>>> =
+    Lazy::new(|| Mutex::new(None));
+static VIEWS_CONFIG_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ViewsConfig>>>> =
+    Lazy::new(|| Mutex::new(None));
+static BATTERY_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
+static IDR_REQUEST_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initNativeLogging(

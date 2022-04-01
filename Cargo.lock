@@ -3165,7 +3165,7 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.6.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#6e0189aa4b8def1d71ca09654a1c691e236f397a"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#22a11ae45c6b497fabcda19a7a49bd192ef536ec"
 dependencies = [
  "bitflags",
  "jni-sys",
@@ -3241,7 +3241,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.3.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#6e0189aa4b8def1d71ca09654a1c691e236f397a"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#22a11ae45c6b497fabcda19a7a49bd192ef536ec"
 dependencies = [
  "jni-sys",
 ]

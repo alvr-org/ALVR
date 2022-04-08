@@ -6,7 +6,7 @@ use xshell::{cmd, Shell};
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
     cmd!(
         sh,
-        "powershell Start-Process choco -ArgumentList \"install {packages...} -y\" -Verb runAs"
+        "powershell Start-Process choco -ArgumentList \"install {packages...} -y\" -Verb runAs -Wait"
     )
     .run()
 }

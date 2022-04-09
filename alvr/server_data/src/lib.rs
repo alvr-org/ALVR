@@ -93,10 +93,10 @@ impl ServerDataManager {
         };
 
         let gpu_adapters = {
-            let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
+            let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
 
             instance
-                .enumerate_adapters(wgpu::Backends::PRIMARY)
+                .enumerate_adapters(wgpu::Backends::VULKAN)
                 .collect()
         };
 

@@ -220,7 +220,6 @@ void CEncoder::Run() {
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
       std::vector<uint8_t> encoded_data;
-      double avg_real_encode_time_ms = 0;
       while (not m_exiting) {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 

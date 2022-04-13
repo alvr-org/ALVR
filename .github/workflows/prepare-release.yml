@@ -138,23 +138,22 @@ jobs:
           cargo xtask build-ffmpeg-linux
           cd deps/linux/FFmpeg-n4.4 && sudo make install && cd ../../..
 
-      - name: Build and package ALVR (.tar.gz)
+      - name: Build and package ALVR (.zip)
         id: build
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask build-server --release --bundle-ffmpeg
-          tar -czvf ./build/alvr_server_linux_portable.tar.gz -C ./build/alvr_server_linux .
-
+          cargo xtask publish-server --gpl
+          
       - name: Upload portable server for Linux
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_linux_portable.tar.gz
-          asset_name: alvr_server_linux_portable.tar.gz
-          asset_content_type: application/gzip
+          asset_path: ./build/alvr_server_linux.zip
+          asset_name: alvr_server_linux_portable.zip
+          asset_content_type: application/zip
 
   build_linux_server:
     runs-on: ubuntu-latest

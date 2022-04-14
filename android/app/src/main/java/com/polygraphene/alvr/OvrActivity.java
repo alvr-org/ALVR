@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
@@ -394,12 +393,5 @@ public class OvrActivity extends Activity {
         if (mDecoderThread != null) {
             mDecoderThread.pushNAL(nal);
         }
-    }
-
-    @SuppressWarnings("unused")
-    void setDarkMode(boolean mode) {
-        SharedPreferences.Editor editor = this.getSharedPreferences("pref", Context.MODE_PRIVATE).edit();
-        editor.putBoolean("dark-mode", mode);
-        editor.apply();
     }
 }

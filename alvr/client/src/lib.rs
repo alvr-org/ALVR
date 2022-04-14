@@ -509,9 +509,10 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
 pub fn initialize() {
     logging_backend::init_logging();
 
+    // Make sure to reset config in case of version compat mismatch.
     if storage::load_config().protocol_id != alvr_common::protocol_id() {
-        let config = storage::Config::default();
-        storage::store_config(&config);
+        // NB: Config::default() sets the current protocol ID
+        storage::store_config(&storage::Config::default());
     }
 }
 

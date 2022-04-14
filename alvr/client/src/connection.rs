@@ -2,7 +2,7 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
-    TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
+    storage, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -251,16 +251,11 @@ async fn connection_pipeline(
         is_connected: Arc::clone(&is_connected),
     };
 
-    java_vm
-        .attach_current_thread()
-        .map_err(err!())?
-        .call_method(
-            &*activity_ref,
-            "setDarkMode",
-            "(Z)V",
-            &[settings.extra.client_dark_mode.into()],
-        )
-        .map_err(err!())?;
+    {
+        let mut config = storage::load_config();
+        config.dark_mode = settings.extra.client_dark_mode;
+        storage::store_config(&config);
+    }
 
     // create this before initializing the stream on cpp side
     let (views_config_sender, mut views_config_receiver) = tmpsc::unbounded_channel();

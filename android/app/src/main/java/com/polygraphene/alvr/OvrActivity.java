@@ -45,13 +45,6 @@ public class OvrActivity extends Activity {
     //This will be used in handling callback
     final int MY_PERMISSIONS_RECORD_AUDIO = 1;
 
-    static class Preferences {
-        String hostname;
-        String certificatePEM;
-        String privateKey;
-        boolean darkMode;
-    }
-
     public static class OnCreateResult {
         public int streamSurfaceHandle;
         public int loadingSurfaceHandle;
@@ -107,7 +100,7 @@ public class OvrActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        initNativeLogging();
+        initializeNative();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -149,34 +142,6 @@ public class OvrActivity extends Activity {
         mEGLContext = EGL14.eglGetCurrentContext();
     }
 
-    Preferences getPreferences() {
-        Preferences p = new Preferences();
-
-        SharedPreferences prefs = this.getSharedPreferences("pref", Context.MODE_PRIVATE);
-
-        p.hostname = prefs.getString("hostname", "");
-        p.certificatePEM = prefs.getString("certificate", "");
-        p.privateKey = prefs.getString("private-key", "");
-        p.darkMode = prefs.getBoolean("dark-mode", false);
-
-        String version = BuildConfig.VERSION_NAME;
-        String oldVersion = prefs.getString("version", "");
-
-        if (!Objects.equals(oldVersion, version)) {
-            createIdentity(p);
-
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("version", version);
-            editor.putString("hostname", p.hostname);
-            editor.putString("certificate", p.certificatePEM);
-            editor.putString("private-key", p.privateKey);
-
-            editor.apply();
-        }
-
-        return p;
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -201,8 +166,7 @@ public class OvrActivity extends Activity {
                     Utils.loge(TAG, e::toString);
                 }
 
-                Preferences p = this.getPreferences();
-                onResumeNative(NAL.class, p.hostname, p.certificatePEM, p.privateKey, mScreenSurface, p.darkMode);
+                onResumeNative(NAL.class, mScreenSurface);
 
                 onVrModeChanged(true);
             });
@@ -357,16 +321,14 @@ public class OvrActivity extends Activity {
         }
     };
 
-    static native void initNativeLogging();
-
-    static native void createIdentity(Preferences p); // id fields are reset
+    native void initializeNative();
 
     native void onCreateNative(AssetManager assetManager, OnCreateResult outResult);
 
     native void destroyNative();
 
     // nal_class is needed to access NAL objects fields in native code without access to a Java thread
-    native void onResumeNative(Class<?> nal_class, String hostname, String certificatePEM, String privateKey, Surface screenSurface, boolean darkMode);
+    native void onResumeNative(Class<?> nal_class, Surface screenSurface);
 
     native void onPauseNative();
 

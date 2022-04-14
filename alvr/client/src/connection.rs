@@ -9,9 +9,8 @@ use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
-    HeadsetInfoPacket, PeerType, PrivateIdentity, ProtoControlSocket, ServerControlPacket,
-    ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT,
-    VIDEO,
+    HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, ServerHandshakePacket,
+    StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
 use jni::{
@@ -105,18 +104,16 @@ fn set_loading_message(
 async fn connection_pipeline(
     headset_info: &HeadsetInfoPacket,
     device_name: String,
-    private_identity: &PrivateIdentity,
+    hostname: &str,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
-    let hostname = &private_identity.hostname;
-
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
         version: ALVR_VERSION.clone(),
         device_name,
-        hostname: hostname.clone(),
+        hostname: hostname.to_owned(),
         reserved1: "".into(),
         reserved2: "".into(),
     };
@@ -148,7 +145,7 @@ async fn connection_pipeline(
                     set_loading_message(
                         &*java_vm,
                         &*activity_ref,
-                        &private_identity.hostname,
+                        hostname,
                         INITIAL_MESSAGE,
                     )
                     .ok();
@@ -757,18 +754,12 @@ async fn connection_pipeline(
 pub async fn connection_lifecycle_loop(
     headset_info: HeadsetInfoPacket,
     device_name: &str,
-    private_identity: PrivateIdentity,
+    hostname: &str,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    set_loading_message(
-        &*java_vm,
-        &*activity_ref,
-        &private_identity.hostname,
-        INITIAL_MESSAGE,
-    )
-    .ok();
+    set_loading_message(&*java_vm, &*activity_ref, &hostname, INITIAL_MESSAGE).ok();
 
     loop {
         tokio::join!(
@@ -776,7 +767,7 @@ pub async fn connection_lifecycle_loop(
                 let maybe_error = connection_pipeline(
                     &headset_info,
                     device_name.to_owned(),
-                    &private_identity,
+                    hostname,
                     Arc::clone(&java_vm),
                     Arc::clone(&activity_ref),
                     Arc::clone(&nal_class_ref),
@@ -786,13 +777,7 @@ pub async fn connection_lifecycle_loop(
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
-                    set_loading_message(
-                        &*java_vm,
-                        &*activity_ref,
-                        &private_identity.hostname,
-                        &message,
-                    )
-                    .ok();
+                    set_loading_message(&*java_vm, &*activity_ref, &hostname, &message).ok();
                 }
 
                 // let any running task or socket shutdown

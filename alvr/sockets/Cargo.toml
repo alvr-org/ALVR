@@ -21,6 +21,3 @@ governor = "0.3"
 nonzero_ext = "0.3"
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.7", features = ["codec", "net"] }
-# Miscellaneous
-rand = "0.8"
-rcgen = "0.9"

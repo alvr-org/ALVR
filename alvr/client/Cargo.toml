@@ -20,15 +20,17 @@ bytes = "1"
 cpal = "0.13.5"
 futures = "0.3"
 rand = "0.8"
+serde = "1"
 serde_json = "1"
 settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
-# todo: move to target_os = "android"
+# Android
+android_logger = "0.11"
 jni = "0.19"
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "0.10"
+ndk = "0.6"
+ndk-context = "0.1"
+ndk-sys = "0.3"
 # todo: use CPAL when moving the entry point to Rust
 oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info
 

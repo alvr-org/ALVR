@@ -3,6 +3,7 @@
 mod connection;
 mod connection_utils;
 mod logging_backend;
+mod storage;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -11,7 +12,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
-    once_cell::sync::Lazy,
+    once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
     prelude::*,
     ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -19,11 +20,11 @@ use alvr_common::{
 use alvr_session::Fov;
 use alvr_sockets::{
     BatteryPacket, HeadsetInfoPacket, Input, LegacyController, LegacyInput, MotionData,
-    PrivateIdentity, TimeSyncPacket, ViewsConfig,
+    TimeSyncPacket, ViewsConfig,
 };
 use jni::{
-    objects::{JClass, JObject, JString},
-    JNIEnv,
+    objects::{GlobalRef, JClass, JObject, JString},
+    JNIEnv, JavaVM,
 };
 use std::{
     collections::HashMap,
@@ -37,6 +38,10 @@ use std::{
     time::Duration,
 };
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
+
+// This is the actual storage for the context pointer set in ndk-context. usually stored in
+// ndk-glue instead
+static GLOBAL_CONTEXT: OnceCell<GlobalRef> = OnceCell::new();
 
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
 static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
@@ -54,37 +59,16 @@ static IDR_REQUEST_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 #[no_mangle]
-pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initNativeLogging(
-    _: JNIEnv,
-    _: JClass,
-) {
-    logging_backend::init_logging();
-}
-
-#[no_mangle]
-pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_createIdentity(
+pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
-    _: JClass,
-    jidentity: JObject,
+    context: JObject,
 ) {
-    alvr_common::show_err(|| -> StrResult {
-        let identity = alvr_sockets::create_identity(None)?;
+    GLOBAL_CONTEXT.set(env.new_global_ref(context).unwrap());
 
-        let jhostname = env.new_string(identity.hostname).map_err(err!())?.into();
-        env.set_field(jidentity, "hostname", "Ljava/lang/String;", jhostname)
-            .map_err(err!())?;
-
-        let jcert_pem = env
-            .new_string(identity.certificate_pem)
-            .map_err(err!())?
-            .into();
-        env.set_field(jidentity, "certificatePEM", "Ljava/lang/String;", jcert_pem)
-            .map_err(err!())?;
-
-        let jkey_pem = env.new_string(identity.key_pem).map_err(err!())?.into();
-        env.set_field(jidentity, "privateKey", "Ljava/lang/String;", jkey_pem)
-            .map_err(err!())
-    }());
+    alvr_initialize(
+        env.get_java_vm().unwrap(),
+        GLOBAL_CONTEXT.get().unwrap().as_obj(),
+    );
 }
 
 #[no_mangle]
@@ -415,18 +399,16 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     env: JNIEnv,
     jactivity: JObject,
     nal_class: JClass,
-    jhostname: JString,
-    jcertificate_pem: JString,
-    jprivate_key: JString,
     jscreen_surface: JObject,
-    dark_mode: u8,
 ) {
     alvr_common::show_err(|| -> StrResult {
         let java_vm = env.get_java_vm().map_err(err!())?;
         let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
         let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
 
-        let result = onResumeNative(*jscreen_surface as _, dark_mode == 1);
+        let config = storage::load_config();
+
+        let result = onResumeNative(*jscreen_surface as _, config.dark_mode);
 
         let device_name = if result.deviceType == DeviceType_OCULUS_GO {
             "Oculus Go"
@@ -450,19 +432,13 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
             reserved: format!("{}", *ALVR_VERSION),
         };
 
-        let private_identity = PrivateIdentity {
-            hostname: env.get_string(jhostname).map_err(err!())?.into(),
-            certificate_pem: env.get_string(jcertificate_pem).map_err(err!())?.into(),
-            key_pem: env.get_string(jprivate_key).map_err(err!())?.into(),
-        };
-
         let runtime = Runtime::new().map_err(err!())?;
 
         runtime.spawn(async move {
             let connection_loop = connection::connection_lifecycle_loop(
                 headset_info,
                 device_name,
-                private_identity,
+                &config.hostname,
                 Arc::new(java_vm),
                 Arc::new(activity_ref),
                 Arc::new(nal_class_ref),
@@ -525,4 +501,28 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
     _: JObject,
 ) {
     IDR_REQUEST_NOTIFIER.notify_waiters();
+}
+
+// Rust Interface:
+
+// Note: Java VM and Android Context must be initialized with ndk-glue
+pub fn initialize() {
+    logging_backend::init_logging();
+
+    if storage::load_config().protocol_id != alvr_common::protocol_id() {
+        let config = storage::Config::default();
+        storage::store_config(&config);
+    }
+}
+
+// C interface:
+
+// NB: context must be thread safe.
+#[no_mangle]
+pub extern "C" fn alvr_initialize(vm: JavaVM, context: JObject) {
+    unsafe {
+        ndk_context::initialize_android_context(vm.get_java_vm_pointer().cast(), context.cast())
+    };
+
+    initialize();
 }

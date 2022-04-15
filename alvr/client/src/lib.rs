@@ -6,6 +6,9 @@ mod logging_backend;
 mod storage;
 
 #[cfg(target_os = "android")]
+mod permission;
+
+#[cfg(target_os = "android")]
 mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -514,6 +517,8 @@ pub fn initialize() {
         // NB: Config::default() sets the current protocol ID
         storage::store_config(&storage::Config::default());
     }
+
+    permission::try_get_microphone_permission();
 }
 
 // C interface:

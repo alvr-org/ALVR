@@ -40,10 +40,6 @@ public class OvrActivity extends Activity {
 
     final static String TAG = "OvrActivity";
 
-    //Create placeholder for user's consent to record_audio permission.
-    //This will be used in handling callback
-    final int MY_PERMISSIONS_RECORD_AUDIO = 1;
-
     public static class OnCreateResult {
         public int streamSurfaceHandle;
         public int loadingSurfaceHandle;
@@ -87,7 +83,6 @@ public class OvrActivity extends Activity {
     final LoadingTexture mLoadingTexture = new LoadingTexture();
     DecoderThread mDecoderThread = null;
     EGLContext mEGLContext;
-    boolean mVrMode = false;
     float mRefreshRate = 60f;
     String mDashboardURL = null;
     String mLoadingMessage = "";
@@ -116,7 +111,6 @@ public class OvrActivity extends Activity {
         SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new RenderingCallbacks());
 
-        requestAudioPermissions();
         this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
@@ -167,7 +161,8 @@ public class OvrActivity extends Activity {
 
                 onResumeNative(NAL.class, mScreenSurface);
 
-                onVrModeChanged(true);
+                // bootstrap the rendering loop
+                mRenderingHandler.post(mRenderRunnable);
             });
         }
     }
@@ -190,8 +185,6 @@ public class OvrActivity extends Activity {
                 if (mDecoderThread != null) {
                     mDecoderThread.stopAndWait();
                 }
-
-                onVrModeChanged(false);
 
                 onPauseNative();
             });
@@ -224,60 +217,6 @@ public class OvrActivity extends Activity {
         }
     }
 
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        //Utils.log(TAG, () ->  "dispatchKeyEvent: " + event.getKeyCode());
-        if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP) {
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
-                adjustVolume(1);
-                return true;
-            }
-            if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                adjustVolume(-1);
-                return true;
-            }
-
-            return true;
-        } else {
-            return super.dispatchKeyEvent(event);
-        }
-    }
-
-    private void adjustVolume(int direction) {
-        AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0);
-    }
-
-    private void requestAudioPermissions() {
-        if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-
-            //When permission is not granted by user, show them message why this permission is needed.
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.RECORD_AUDIO)) {
-                Toast.makeText(this, "Please grant permissions to use microphone", Toast.LENGTH_LONG).show();
-            }
-
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.RECORD_AUDIO},
-                    MY_PERMISSIONS_RECORD_AUDIO);
-        } else {
-            ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.RECORD_AUDIO);//Go ahead with recording audio now
-        }
-    }
-
-    //Handling callback
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == MY_PERMISSIONS_RECORD_AUDIO) {
-            if (grantResults.length <= 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permissions Denied to record audio", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
     private void render() {
         if (mResumed && mScreenSurface != null) {
             if (isConnectedNative()) {
@@ -296,13 +235,6 @@ public class OvrActivity extends Activity {
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
                 mRenderingHandler.postDelayed(mRenderRunnable, (long) (1f / mRefreshRate));
             }
-        }
-    }
-
-    public void onVrModeChanged(boolean enter) {
-        mVrMode = enter;
-        if (mVrMode) {
-            mRenderingHandler.post(mRenderRunnable);
         }
     }
 

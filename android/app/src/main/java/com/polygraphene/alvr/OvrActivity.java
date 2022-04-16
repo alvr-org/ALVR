@@ -94,8 +94,6 @@ public class OvrActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        initializeNative();
-
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -118,7 +116,7 @@ public class OvrActivity extends Activity {
     // handler, so successive rendering calls don't fail.
     public void startup() {
         deviceDescriptor = new OnCreateResult();
-        onCreateNative(this.getAssets(), deviceDescriptor);
+        initializeNative(this.getAssets(), deviceDescriptor);
 
         mStreamSurfaceTexture = new SurfaceTexture(deviceDescriptor.streamSurfaceHandle);
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
@@ -252,9 +250,7 @@ public class OvrActivity extends Activity {
         }
     };
 
-    native void initializeNative();
-
-    native void onCreateNative(AssetManager assetManager, OnCreateResult outResult);
+    native void initializeNative(AssetManager assetManager, OnCreateResult outResult);
 
     native void destroyNative();
 

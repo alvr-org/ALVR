@@ -65,6 +65,8 @@ static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
     context: JObject,
+    asset_manager: JObject,
+    jout_result: JObject,
 ) {
     GLOBAL_CONTEXT.set(env.new_global_ref(context).unwrap());
 
@@ -72,6 +74,34 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
         env.get_java_vm().unwrap(),
         GLOBAL_CONTEXT.get().unwrap().as_obj(),
     );
+
+    // todo: manage loading and stream textures on lib side
+    alvr_common::show_err(|| -> StrResult {
+        let result = unsafe {
+            onCreate(
+                env.get_native_interface() as _,
+                *context as _,
+                *asset_manager as _,
+            )
+        };
+
+        env.set_field(
+            jout_result,
+            "streamSurfaceHandle",
+            "I",
+            result.streamSurfaceHandle.into(),
+        )
+        .map_err(err!())?;
+        env.set_field(
+            jout_result,
+            "loadingSurfaceHandle",
+            "I",
+            result.loadingSurfaceHandle.into(),
+        )
+        .map_err(err!())?;
+
+        Ok(())
+    }());
 }
 
 #[no_mangle]
@@ -102,12 +132,145 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitin
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_destroyNative(
     env: JNIEnv,
-    activity: JObject,
-    asset_manager: JObject,
-    jout_result: JObject,
+    _: JObject,
 ) {
+    destroyNative(env.get_native_interface() as _)
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNative(
+    _: JNIEnv,
+    _: JObject,
+    rendered_frame_index: i64,
+) {
+    renderNative(rendered_frame_index)
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadingNative(
+    _: JNIEnv,
+    _: JObject,
+) {
+    renderLoadingNative()
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
+    env: JNIEnv,
+    jactivity: JObject,
+    nal_class: JClass,
+    jscreen_surface: JObject,
+) {
+    alvr_common::show_err(|| -> StrResult {
+        let java_vm = env.get_java_vm().map_err(err!())?;
+        let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
+        let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
+
+        let config = storage::load_config();
+
+        let result = onResumeNative(*jscreen_surface as _, config.dark_mode);
+
+        let device_name = if result.deviceType == DeviceType_OCULUS_GO {
+            "Oculus Go"
+        } else if result.deviceType == DeviceType_OCULUS_QUEST {
+            "Oculus Quest"
+        } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
+            "Oculus Quest 2"
+        } else {
+            "Unknown device"
+        };
+
+        let available_refresh_rates =
+            slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
+        let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
+
+        let headset_info = HeadsetInfoPacket {
+            recommended_eye_width: result.recommendedEyeWidth as _,
+            recommended_eye_height: result.recommendedEyeHeight as _,
+            available_refresh_rates,
+            preferred_refresh_rate,
+            reserved: format!("{}", *ALVR_VERSION),
+        };
+
+        let runtime = Runtime::new().map_err(err!())?;
+
+        runtime.spawn(async move {
+            let connection_loop = connection::connection_lifecycle_loop(
+                headset_info,
+                device_name,
+                &config.hostname,
+                Arc::new(java_vm),
+                Arc::new(activity_ref),
+                Arc::new(nal_class_ref),
+            );
+
+            tokio::select! {
+                _ = connection_loop => (),
+                _ = ON_PAUSE_NOTIFIER.notified() => ()
+            };
+        });
+
+        *RUNTIME.lock() = Some(runtime);
+
+        Ok(())
+    }());
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
+    _: JNIEnv,
+    _: JObject,
+) {
+    onStreamStartNative()
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNative(
+    _: JNIEnv,
+    _: JObject,
+) {
+    ON_PAUSE_NOTIFIER.notify_waiters();
+
+    // shutdown and wait for tasks to finish
+    drop(RUNTIME.lock().take());
+
+    onPauseNative();
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
+    _: JNIEnv,
+    _: JObject,
+    battery: i32,
+    plugged: i32,
+) {
+    onBatteryChangedNative(battery, plugged)
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnectedNative(
+    _: JNIEnv,
+    _: JObject,
+) -> u8 {
+    isConnectedNative()
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
+    _: JNIEnv,
+    _: JObject,
+) {
+    IDR_REQUEST_NOTIFIER.notify_waiters();
+}
+
+// Rust Interface:
+
+// Note: Java VM and Android Context must be initialized with ndk-glue
+pub fn initialize() {
+    logging_backend::init_logging();
+
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
         alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
     }
@@ -339,178 +502,14 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onCreateNat
         }
     }
 
-    pathStringToHash = Some(path_string_to_hash);
-    inputSend = Some(input_send);
-    timeSyncSend = Some(time_sync_send);
-    videoErrorReportSend = Some(video_error_report_send);
-    viewsConfigSend = Some(views_config_send);
-    batterySend = Some(battery_send);
-
-    alvr_common::show_err(|| -> StrResult {
-        let result = onCreate(
-            env.get_native_interface() as _,
-            *activity as _,
-            *asset_manager as _,
-        );
-
-        env.set_field(
-            jout_result,
-            "streamSurfaceHandle",
-            "I",
-            result.streamSurfaceHandle.into(),
-        )
-        .map_err(err!())?;
-        env.set_field(
-            jout_result,
-            "loadingSurfaceHandle",
-            "I",
-            result.loadingSurfaceHandle.into(),
-        )
-        .map_err(err!())?;
-
-        Ok(())
-    }());
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_destroyNative(
-    env: JNIEnv,
-    _: JObject,
-) {
-    destroyNative(env.get_native_interface() as _)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNative(
-    _: JNIEnv,
-    _: JObject,
-    rendered_frame_index: i64,
-) {
-    renderNative(rendered_frame_index)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadingNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    renderLoadingNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
-    env: JNIEnv,
-    jactivity: JObject,
-    nal_class: JClass,
-    jscreen_surface: JObject,
-) {
-    alvr_common::show_err(|| -> StrResult {
-        let java_vm = env.get_java_vm().map_err(err!())?;
-        let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
-        let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
-
-        let config = storage::load_config();
-
-        let result = onResumeNative(*jscreen_surface as _, config.dark_mode);
-
-        let device_name = if result.deviceType == DeviceType_OCULUS_GO {
-            "Oculus Go"
-        } else if result.deviceType == DeviceType_OCULUS_QUEST {
-            "Oculus Quest"
-        } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
-            "Oculus Quest 2"
-        } else {
-            "Unknown device"
-        };
-
-        let available_refresh_rates =
-            slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
-        let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
-
-        let headset_info = HeadsetInfoPacket {
-            recommended_eye_width: result.recommendedEyeWidth as _,
-            recommended_eye_height: result.recommendedEyeHeight as _,
-            available_refresh_rates,
-            preferred_refresh_rate,
-            reserved: format!("{}", *ALVR_VERSION),
-        };
-
-        let runtime = Runtime::new().map_err(err!())?;
-
-        runtime.spawn(async move {
-            let connection_loop = connection::connection_lifecycle_loop(
-                headset_info,
-                device_name,
-                &config.hostname,
-                Arc::new(java_vm),
-                Arc::new(activity_ref),
-                Arc::new(nal_class_ref),
-            );
-
-            tokio::select! {
-                _ = connection_loop => (),
-                _ = ON_PAUSE_NOTIFIER.notified() => ()
-            };
-        });
-
-        *RUNTIME.lock() = Some(runtime);
-
-        Ok(())
-    }());
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    onStreamStartNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNative(
-    _: JNIEnv,
-    _: JObject,
-) {
-    ON_PAUSE_NOTIFIER.notify_waiters();
-
-    // shutdown and wait for tasks to finish
-    drop(RUNTIME.lock().take());
-
-    onPauseNative();
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
-    _: JNIEnv,
-    _: JObject,
-    battery: i32,
-    plugged: i32,
-) {
-    onBatteryChangedNative(battery, plugged)
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnectedNative(
-    _: JNIEnv,
-    _: JObject,
-) -> u8 {
-    isConnectedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
-    _: JNIEnv,
-    _: JObject,
-) {
-    IDR_REQUEST_NOTIFIER.notify_waiters();
-}
-
-// Rust Interface:
-
-// Note: Java VM and Android Context must be initialized with ndk-glue
-pub fn initialize() {
-    logging_backend::init_logging();
+    unsafe {
+        pathStringToHash = Some(path_string_to_hash);
+        inputSend = Some(input_send);
+        timeSyncSend = Some(time_sync_send);
+        videoErrorReportSend = Some(video_error_report_send);
+        viewsConfigSend = Some(views_config_send);
+        batterySend = Some(battery_send);
+    }
 
     // Make sure to reset config in case of version compat mismatch.
     if storage::load_config().protocol_id != alvr_common::protocol_id() {

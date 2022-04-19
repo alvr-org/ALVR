@@ -869,7 +869,6 @@ void renderLoadingNative() {
     {
         std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
         for (auto &pair : g_ctx.loadingTextureEditQueue) {
-            LOGE("set rect");
             glBindTexture(GL_TEXTURE_2D, g_ctx.loadingTexture->GetGLTexture());
             glTexSubImage2D(GL_TEXTURE_2D, 0, pair.first.x, pair.first.y, pair.first.width,
                           pair.first.height, GL_RGBA, GL_UNSIGNED_BYTE, &pair.second[0]);

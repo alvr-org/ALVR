@@ -69,12 +69,7 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-fn set_loading_message(
-    java_vm: &JavaVM,
-    activity_ref: &GlobalRef,
-    hostname: &str,
-    message: &str,
-) -> StrResult {
+fn set_loading_message(hostname: &str, message: &str) -> StrResult {
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
         *ALVR_VERSION,
@@ -142,14 +137,12 @@ async fn connection_pipeline(
                         ServerHandshakePacket::IncompatibleVersions =>
                             INCOMPATIBLE_VERSIONS_MESSAGE,
                     };
-                    set_loading_message(&*java_vm, &*activity_ref, hostname, message_str)?;
+                    set_loading_message(hostname, message_str)?;
                     return Ok(());
                 }
                 ConnectionError::NetworkUnreachable => {
                     info!("Network unreachable");
                     set_loading_message(
-                        &*java_vm,
-                        &*activity_ref,
                         hostname,
                         NETWORK_UNREACHABLE_MESSAGE,
                     )?;
@@ -157,8 +150,6 @@ async fn connection_pipeline(
                     time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
                     set_loading_message(
-                        &*java_vm,
-                        &*activity_ref,
                         hostname,
                         INITIAL_MESSAGE,
                     )
@@ -194,26 +185,21 @@ async fn connection_pipeline(
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(&*java_vm, &*activity_ref, hostname, STREAM_STARTING_MESSAGE)?;
+            set_loading_message(hostname, STREAM_STARTING_MESSAGE)?;
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(&*java_vm, &*activity_ref, hostname, SERVER_RESTART_MESSAGE)?;
+            set_loading_message(hostname, SERVER_RESTART_MESSAGE)?;
             return Ok(());
         }
         Err(e) => {
             info!("Server disconnected. Cause: {e}");
-            set_loading_message(
-                &*java_vm,
-                &*activity_ref,
-                hostname,
-                SERVER_DISCONNECTED_MESSAGE,
-            )?;
+            set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message(&*java_vm, &*activity_ref, hostname, "Unexpected packet")?;
+            set_loading_message(hostname, "Unexpected packet")?;
             return Ok(());
         }
     }
@@ -238,12 +224,7 @@ async fn connection_pipeline(
         .await
     {
         info!("Server disconnected. Cause: {e}");
-        set_loading_message(
-            &*java_vm,
-            &*activity_ref,
-            hostname,
-            SERVER_DISCONNECTED_MESSAGE,
-        )?;
+        set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
         return Ok(());
     }
 
@@ -631,8 +612,6 @@ async fn connection_pipeline(
 
     let keepalive_sender_loop = {
         let control_sender = Arc::clone(&control_sender);
-        let java_vm = Arc::clone(&java_vm);
-        let activity_ref = Arc::clone(&activity_ref);
         async move {
             loop {
                 let res = control_sender
@@ -642,12 +621,7 @@ async fn connection_pipeline(
                     .await;
                 if let Err(e) = res {
                     info!("Server disconnected. Cause: {e}");
-                    set_loading_message(
-                        &*java_vm,
-                        &*activity_ref,
-                        hostname,
-                        SERVER_DISCONNECTED_MESSAGE,
-                    )?;
+                    set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
                     break Ok(());
                 }
 
@@ -656,69 +630,61 @@ async fn connection_pipeline(
         }
     };
 
-    let control_loop = {
-        let java_vm = Arc::clone(&java_vm);
-        let activity_ref = Arc::clone(&activity_ref);
-        async move {
-            loop {
-                tokio::select! {
-                    _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
-                        control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
-                    }
-                    control_packet = control_receiver.recv() =>
-                        match control_packet {
-                            Ok(ServerControlPacket::Restarting) => {
-                                info!("Server restarting");
-                                set_loading_message(
-                                    &*java_vm,
-                                    &*activity_ref,
-                                    hostname,
-                                    SERVER_RESTART_MESSAGE
-                                )?;
-                                break Ok(());
-                            }
-                            Ok(ServerControlPacket::TimeSync(data)) => {
-                                let time_sync = TimeSync {
-                                    type_: 7, // ALVR_PACKET_TYPE_TIME_SYNC
-                                    mode: data.mode,
-                                    serverTime: data.server_time,
-                                    clientTime: data.client_time,
-                                    sequence: 0,
-                                    packetsLostTotal: data.packets_lost_total,
-                                    packetsLostInSecond: data.packets_lost_in_second,
-                                    averageTotalLatency: 0,
-                                    averageSendLatency: data.average_send_latency,
-                                    averageTransportLatency: data.average_transport_latency,
-                                    averageDecodeLatency: data.average_decode_latency,
-                                    idleTime: data.idle_time,
-                                    fecFailure: data.fec_failure,
-                                    fecFailureInSecond: data.fec_failure_in_second,
-                                    fecFailureTotal: data.fec_failure_total,
-                                    fps: data.fps,
-                                    serverTotalLatency: data.server_total_latency,
-                                    trackingRecvFrameIndex: data.tracking_recv_frame_index,
-                                };
-
-                                let mut buffer = vec![0_u8; mem::size_of::<TimeSync>()];
-                                buffer.copy_from_slice(unsafe {
-                                    &mem::transmute::<_, [u8; mem::size_of::<TimeSync>()]>(time_sync)
-                                });
-
-                                legacy_receive_data_sender.lock().await.send(buffer).ok();
-                            },
-                            Ok(_) => (),
-                            Err(e) => {
-                                info!("Server disconnected. Cause: {e}");
-                                set_loading_message(
-                                    &*java_vm,
-                                    &*activity_ref,
-                                    hostname,
-                                    SERVER_DISCONNECTED_MESSAGE
-                                )?;
-                                break Ok(());
-                            }
-                        }
+    let control_loop = async move {
+        loop {
+            tokio::select! {
+                _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
+                    control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
                 }
+                control_packet = control_receiver.recv() =>
+                    match control_packet {
+                        Ok(ServerControlPacket::Restarting) => {
+                            info!("Server restarting");
+                            set_loading_message(
+                                hostname,
+                                SERVER_RESTART_MESSAGE
+                            )?;
+                            break Ok(());
+                        }
+                        Ok(ServerControlPacket::TimeSync(data)) => {
+                            let time_sync = TimeSync {
+                                type_: 7, // ALVR_PACKET_TYPE_TIME_SYNC
+                                mode: data.mode,
+                                serverTime: data.server_time,
+                                clientTime: data.client_time,
+                                sequence: 0,
+                                packetsLostTotal: data.packets_lost_total,
+                                packetsLostInSecond: data.packets_lost_in_second,
+                                averageTotalLatency: 0,
+                                averageSendLatency: data.average_send_latency,
+                                averageTransportLatency: data.average_transport_latency,
+                                averageDecodeLatency: data.average_decode_latency,
+                                idleTime: data.idle_time,
+                                fecFailure: data.fec_failure,
+                                fecFailureInSecond: data.fec_failure_in_second,
+                                fecFailureTotal: data.fec_failure_total,
+                                fps: data.fps,
+                                serverTotalLatency: data.server_total_latency,
+                                trackingRecvFrameIndex: data.tracking_recv_frame_index,
+                            };
+
+                            let mut buffer = vec![0_u8; mem::size_of::<TimeSync>()];
+                            buffer.copy_from_slice(unsafe {
+                                &mem::transmute::<_, [u8; mem::size_of::<TimeSync>()]>(time_sync)
+                            });
+
+                            legacy_receive_data_sender.lock().await.send(buffer).ok();
+                        },
+                        Ok(_) => (),
+                        Err(e) => {
+                            info!("Server disconnected. Cause: {e}");
+                            set_loading_message(
+                                hostname,
+                                SERVER_DISCONNECTED_MESSAGE
+                            )?;
+                            break Ok(());
+                        }
+                    }
             }
         }
     };
@@ -732,8 +698,6 @@ async fn connection_pipeline(
                 info!("Server disconnected. Cause: {e}");
             }
             set_loading_message(
-                &*java_vm,
-                &*activity_ref,
                 hostname,
                 SERVER_DISCONNECTED_MESSAGE
             )?;
@@ -768,7 +732,7 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    set_loading_message(&*java_vm, &*activity_ref, &hostname, INITIAL_MESSAGE).ok();
+    set_loading_message(&hostname, INITIAL_MESSAGE).ok();
 
     loop {
         tokio::join!(
@@ -786,7 +750,7 @@ pub async fn connection_lifecycle_loop(
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
-                    set_loading_message(&*java_vm, &*activity_ref, &hostname, &message).ok();
+                    set_loading_message(&hostname, &message).ok();
                 }
 
                 // let any running task or socket shutdown

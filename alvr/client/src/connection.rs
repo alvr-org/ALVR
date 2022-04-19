@@ -13,6 +13,9 @@ use alvr_sockets::{
     StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
+use glyph_brush::{
+    ab_glyph::FontArc, GlyphBrushBuilder, HorizontalAlign, Layout, Section, Text, VerticalAlign,
+};
 use jni::{
     objects::{GlobalRef, JClass},
     JavaVM,
@@ -77,26 +80,37 @@ fn set_loading_message(
         *ALVR_VERSION,
     );
 
-    // Note: env = java_vm.attach_current_thread() cannot be saved into a variable because it is
-    // not Send (compile error). This makes sense since tokio could move the execution of this
-    // task to another thread at any time, and env is valid only within a specific thread. For
-    // the same reason, other jni objects cannot be made into variables and the arguments must
-    // be created inline within the call_method() call
-    java_vm
-        .attach_current_thread()
-        .map_err(err!())?
-        .call_method(
-            activity_ref,
-            "setLoadingMessage",
-            "(Ljava/lang/String;)V",
-            &[java_vm
-                .attach_current_thread()
-                .map_err(err!())?
-                .new_string(message)
-                .map_err(err!())?
-                .into()],
+    let ubuntu_font =
+        FontArc::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
+
+    let mut brush = GlyphBrushBuilder::using_font(ubuntu_font).build();
+
+    brush.queue(
+        Section::new()
+            .add_text(Text::new(&message).with_scale(50_f32))
+            .with_bounds((1280_f32, 720_f32))
+            .with_layout(
+                Layout::default()
+                    .h_align(HorizontalAlign::Center)
+                    .v_align(VerticalAlign::Center),
+            ),
+    );
+
+    // todo: handle "TextureTooSmall" error
+    brush
+        .process_queued(
+            |rect, data| unsafe {
+                crate::updateLoadingTexuture(
+                    rect.min[0],
+                    rect.min[1],
+                    rect.max[0] - rect.min[0],
+                    rect.max[1] - rect.min[1],
+                    data.as_ptr(),
+                );
+            },
+            |vertex| (),
         )
-        .map_err(err!())?;
+        .ok();
 
     Ok(())
 }

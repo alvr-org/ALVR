@@ -49,6 +49,10 @@ const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 360;
 
+struct Rect {
+    unsigned int x, y, width, height;
+};
+
 class OvrContext {
 public:
     ANativeWindow *window = nullptr;
@@ -57,8 +61,9 @@ public:
     JNIEnv *env{};
 
     unique_ptr<Texture> streamTexture;
-    GLuint loadingTexture = 0;
-    int suspend = 0;
+    unique_ptr<Texture> loadingTexture;
+    std::vector<std::pair<Rect, std::vector<uint8_t>>> loadingTextureEditQueue;
+    std::mutex loadingTextureMutex;
     std::function<void()> openDashboard;
 
     StreamConfig streamConfig{};
@@ -157,19 +162,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     g_ctx.streamTexture = make_unique<Texture>(true);
 
-    glGenTextures(1, &g_ctx.loadingTexture);
-
-    glBindTexture(GL_TEXTURE_2D, g_ctx.loadingTexture);
-
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                    GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
-                    GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-                    GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
-                    GL_CLAMP_TO_EDGE);
-
+    g_ctx.loadingTexture = make_unique<Texture>(
+            false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
 
     memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
 
@@ -179,7 +173,8 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     //req = ovr_User_GetLoggedInUser();
     //LOGI("Logged in user is %" PRIu64 "\n", req);
 
-    return {(int) g_ctx.streamTexture.get()->GetGLTexture(), (int) g_ctx.loadingTexture};
+    return {(int) g_ctx.streamTexture.get()->GetGLTexture(),
+            (int) g_ctx.loadingTexture.get()->GetGLTexture()};
 }
 
 void destroyNative(void *v_env) {
@@ -187,7 +182,8 @@ void destroyNative(void *v_env) {
 
     LOG("Destroying EGL.");
 
-    glDeleteTextures(1, &g_ctx.loadingTexture);
+    g_ctx.streamTexture.reset();
+    g_ctx.loadingTexture.reset();
 
     eglDestroy();
 
@@ -615,7 +611,7 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"
     ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture, {false});
+                       g_ctx.loadingTexture->GetGLTexture(), {false});
 #pragma clang diagnostic pop
 
     ovrRenderer_CreateScene(&g_ctx.Renderer, darkMode);
@@ -655,7 +651,7 @@ void setStreamConfig(StreamConfig config) {
 void onStreamStartNative() {
     ovrRenderer_Destroy(&g_ctx.Renderer);
     ovrRenderer_Create(&g_ctx.Renderer, g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
-                       g_ctx.streamTexture.get(), g_ctx.loadingTexture,
+                       g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(),
                        {g_ctx.streamConfig.enableFoveation,
                         g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
                         g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
@@ -848,17 +844,39 @@ void renderNative(long long targetTimespampNs) {
     LatencyCollector::Instance().submit(targetTimespampNs);
     // TimeSync here might be an issue but it seems to work fine
     sendTimeSync();
+}
 
-    if (g_ctx.suspend) {
-        LOG("submit enter suspend");
-        while (g_ctx.suspend) {
-            usleep(1000 * 10);
-        }
-        LOG("submit leave suspend");
+void updateLoadingTexuture(unsigned int offsetX, unsigned int offsetY, unsigned int width,
+                            unsigned int height, const unsigned char *alphaData) {
+    std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
+
+    const uint8_t COLOR[3] = { 0x00, 0x00, 0x00 };
+
+    auto buffer = std::vector<uint8_t>(width * height * 4);
+    for (int i = 0; i < width * height; i++) {
+        buffer[i * 4] = COLOR[0];
+        buffer[i * 4 + 1] = COLOR[1];
+        buffer[i * 4 + 2] = COLOR[2];
+        buffer[i * 4 + 3] = alphaData[i];
     }
+
+    auto pair = std::make_pair(Rect { offsetX, offsetY, width, height }, buffer);
+    g_ctx.loadingTextureEditQueue.push_back(pair);
 }
 
 void renderLoadingNative() {
+    // update text image
+    {
+        std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
+        for (auto &pair : g_ctx.loadingTextureEditQueue) {
+            LOGE("set rect");
+            glBindTexture(GL_TEXTURE_2D, g_ctx.loadingTexture->GetGLTexture());
+            glTexSubImage2D(GL_TEXTURE_2D, 0, pair.first.x, pair.first.y, pair.first.width,
+                          pair.first.height, GL_RGBA, GL_UNSIGNED_BYTE, &pair.second[0]);
+        }
+        g_ctx.loadingTextureEditQueue.clear();
+    }
+
     // Show a loading icon.
     g_ctx.ovrFrameIndex++;
 

@@ -138,6 +138,7 @@ dependencies = [
  "cc",
  "cpal",
  "futures",
+ "glyph_brush",
  "jni",
  "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndk-context",
@@ -484,15 +485,15 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "backtrace"
-version = "0.3.64"
+version = "0.3.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e121dee8023ce33ab248d9ce1493df03c3b38a659b240096fcbd7048ff9c31f"
+checksum = "11a17d453482a265fd5f8479f2a3f405566e6ca627837aaddb85af8b1ab8ef61"
 dependencies = [
  "addr2line",
  "cc",
  "cfg-if 1.0.0",
  "libc",
- "miniz_oxide 0.4.4",
+ "miniz_oxide 0.5.1",
  "object",
  "rustc-demangle",
 ]
@@ -821,7 +822,7 @@ dependencies = [
  "futures",
  "jni",
  "ndk 0.6.0 (git+https://github.com/rust-windowing/android-ndk-rs)",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "ndk-sys 0.3.0 (git+https://github.com/rust-windowing/android-ndk-rs)",
  "openxr",
  "pollster",
@@ -1083,7 +1084,7 @@ dependencies = [
  "libc",
  "mach",
  "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "nix 0.23.1",
  "oboe",
  "parking_lot 0.11.2",
@@ -1495,9 +1496,9 @@ dependencies = [
 
 [[package]]
 name = "fern"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c9a4820f0ccc8a7afd67c39a0f1a0f4b07ca1725164271a64939d7aeb9af065"
+checksum = "3bdd7b0849075e79ee9a1836df22c717d1eba30451796fdc631b04565dd11e2a"
 dependencies = [
  "log",
 ]
@@ -1570,7 +1571,7 @@ dependencies = [
  "futures-sink",
  "nanorand",
  "pin-project",
- "spin 0.9.2",
+ "spin 0.9.3",
 ]
 
 [[package]]
@@ -2495,7 +2496,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2509,7 +2510,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "bitflags",
  "wasm-timer",
@@ -2518,7 +2519,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "futures",
  "log",
@@ -2529,7 +2530,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.2.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "bytemuck",
  "glam 0.10.2",
@@ -2542,7 +2543,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2555,7 +2556,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "iced_core",
 ]
@@ -2563,7 +2564,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.4.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -2583,7 +2584,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.3.0"
-source = "git+https://github.com/iced-rs/iced#3042fa2cb63c651ebed2abe6f4054e61f70b0331"
+source = "git+https://github.com/iced-rs/iced#a33e320521fa0f08704bcea541ca337d0f45449e"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -2699,9 +2700,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35e70ee094dc02fd9c13fdad4940090f22dbd6ac7c9e7094a46cf0232a50bc7c"
+checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
 name = "itertools"
@@ -2872,9 +2873,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.123"
+version = "0.2.124"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb691a747a7ab48abc15c5b42066eaafde10dc427e3b6ee2a1cf43db04c763bd"
+checksum = "21a41fed9d98f27ab1c6d161da622a4fa35e8a54a8adc24bbf3ddd0ef70b0e50"
 
 [[package]]
 name = "libloading"
@@ -3032,16 +3033,6 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a92518e98c078586bc6c934028adcca4c92a53d6a958196de835170a01d84e4b"
-dependencies = [
- "adler",
- "autocfg",
-]
-
-[[package]]
-name = "miniz_oxide"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2b29bd4bc3f33391105ebee3589c19197c4271e3e5a9ec9bfe8127eeff8f082"
@@ -3167,7 +3158,7 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.6.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#22a11ae45c6b497fabcda19a7a49bd192ef536ec"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#7116fd0913876d7be2cbd99493e0d401553659bd"
 dependencies = [
  "bitflags",
  "jni-sys",
@@ -3178,15 +3169,15 @@ dependencies = [
 
 [[package]]
 name = "ndk-context"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e3c5cc68637e21fe8f077f6a1c9e0b9ca495bb74895226b476310f613325884"
+checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
 name = "ndk-glue"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1c68f70683c5fc9a747a383744206cd371741b2f0b31781ab6770487ec572e2"
+checksum = "c71bee8ea72d685477e28bd004cfe1bf99c754d688cd78cad139eae4089484d4"
 dependencies = [
  "lazy_static",
  "libc",
@@ -3199,9 +3190,9 @@ dependencies = [
 
 [[package]]
 name = "ndk-glue"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9ffb7443daba48349d545028777ca98853b018b4c16624aa01223bc29e078da"
+checksum = "0d0c4a7b83860226e6b4183edac21851f05d5a51756e97a1144b7f5a6b63e65f"
 dependencies = [
  "lazy_static",
  "libc",
@@ -3243,7 +3234,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.3.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#22a11ae45c6b497fabcda19a7a49bd192ef536ec"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#7116fd0913876d7be2cbd99493e0d401553659bd"
 dependencies = [
  "jni-sys",
 ]
@@ -3506,9 +3497,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.27.1"
+version = "0.28.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
+checksum = "40bec70ba014595f99f7aa110b84331ffe1ee9aece7fe6f387cc7e3ecda4d456"
 dependencies = [
  "memchr",
 ]
@@ -3521,7 +3512,7 @@ checksum = "2463c8f2e19b4e0d0710a21f8e4011501ff28db1c95d7a5482a553b2100502d2"
 dependencies = [
  "jni",
  "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "num-derive",
  "num-traits",
  "oboe-sys",
@@ -3592,7 +3583,7 @@ checksum = "679da4d6e5534eb5c9ce356deca1b4aedebb93e4c4322c68f22f53e78e578479"
 dependencies = [
  "libc",
  "libloading 0.7.3",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "openxr-sys",
  "winapi",
 ]
@@ -4726,9 +4717,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spin"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "511254be0c5bcf062b019a6c89c01a664aa359ded62f78aa72c6fc137c0590e5"
+checksum = "c530c2b0d0bf8b69304b39fe2001993e267461948b890cd037d8ad4293fa1a0d"
 dependencies = [
  "lock_api",
 ]
@@ -5114,9 +5105,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.8"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
+checksum = "8d82e1a7758622a465f8cee077614c73484dac5b836c02ff6a40d5d1010324d7"
 dependencies = [
  "serde",
 ]
@@ -5129,9 +5120,9 @@ checksum = "360dfd1d6d30e05fda32ace2c8c70e9c0a9da713275777f5a4dbb8a1893930c6"
 
 [[package]]
 name = "tracing"
-version = "0.1.33"
+version = "0.1.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80b9fa4360528139bc96100c160b7ae879f5567f49f1782b0b02035b0358ebf3"
+checksum = "5d0ecdcb44a79f0fe9844f0c4f33a342cbcbb5117de8001e6ba0dc2351327d09"
 dependencies = [
  "cfg-if 1.0.0",
  "pin-project-lite",
@@ -5152,9 +5143,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.25"
+version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dfce9f3241b150f36e8e54bb561a742d5daa1a47b5dd9a5ce369fd4a4db2210"
+checksum = "f54c8ca710e81886d498c2fd3331b56c93aa248d49de2222ad2742247c60072f"
 dependencies = [
  "lazy_static",
 ]
@@ -5611,7 +5602,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9c28b6b6a78440b02647358625e3febc90724126480b9da6a967b5f674b3554"
 dependencies = [
  "jni",
- "ndk-glue 0.6.1",
+ "ndk-glue 0.6.2",
  "url",
  "web-sys",
  "widestring 0.5.1",
@@ -5903,7 +5894,7 @@ dependencies = [
  "log",
  "mio",
  "ndk 0.5.0",
- "ndk-glue 0.5.1",
+ "ndk-glue 0.5.2",
  "ndk-sys 0.2.2",
  "objc",
  "parking_lot 0.11.2",
@@ -5936,7 +5927,7 @@ dependencies = [
  "log",
  "mio",
  "ndk 0.5.0",
- "ndk-glue 0.5.1",
+ "ndk-glue 0.5.2",
  "ndk-sys 0.2.2",
  "objc",
  "parking_lot 0.11.2",

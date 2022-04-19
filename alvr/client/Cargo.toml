@@ -19,6 +19,7 @@ bincode = "1"
 bytes = "1"
 cpal = "0.13.5"
 futures = "0.3"
+glyph_brush = "0.7" # todo: use wgpu_glyph
 rand = "0.8"
 serde = "1"
 serde_json = "1"

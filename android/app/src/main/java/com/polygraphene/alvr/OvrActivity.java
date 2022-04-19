@@ -1,15 +1,12 @@
 package com.polygraphene.alvr;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
-import android.media.AudioManager;
 import android.net.Uri;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
@@ -18,19 +15,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
-import java.util.Objects;
 import java.util.concurrent.Semaphore;
 
 public class OvrActivity extends Activity {
@@ -80,12 +72,10 @@ public class OvrActivity extends Activity {
     Surface mScreenSurface;
     SurfaceTexture mStreamSurfaceTexture;
     Surface mStreamSurface;
-    final LoadingTexture mLoadingTexture = new LoadingTexture();
     DecoderThread mDecoderThread = null;
     EGLContext mEGLContext;
     float mRefreshRate = 60f;
     String mDashboardURL = null;
-    String mLoadingMessage = "";
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -127,8 +117,6 @@ public class OvrActivity extends Activity {
             mRenderingHandler.post(mRenderRunnable);
         }, new Handler(Looper.getMainLooper()));
         mStreamSurface = new Surface(mStreamSurfaceTexture);
-
-        mLoadingTexture.initializeMessageCanvas(deviceDescriptor.loadingSurfaceHandle);
 
         mEGLContext = EGL14.eglGetCurrentContext();
     }
@@ -199,7 +187,6 @@ public class OvrActivity extends Activity {
             e.printStackTrace();
         }
         mRenderingHandler.post(() -> {
-            mLoadingTexture.destroyTexture();
             Utils.logi(TAG, () -> "Destroying vrapi state.");
             destroyNative();
             sem.release();
@@ -227,8 +214,6 @@ public class OvrActivity extends Activity {
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
                 mRenderingHandler.postDelayed(mRenderRunnable, 1);
             } else {
-                mLoadingTexture.drawMessage(mLoadingMessage);
-
                 renderLoadingNative();
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
                 mRenderingHandler.postDelayed(mRenderRunnable, (long) (1f / mRefreshRate));
@@ -279,11 +264,6 @@ public class OvrActivity extends Activity {
             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(mDashboardURL));
             startActivity(browserIntent);
         }
-    }
-
-    @SuppressWarnings("unused")
-    public void setLoadingMessage(String message) {
-        mLoadingMessage = message;
     }
 
     @SuppressWarnings("unused")

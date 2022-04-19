@@ -156,6 +156,8 @@ extern "C" void decoderOutput(long long frameIndex);
 extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
+extern "C" void updateLoadingTexuture(unsigned int offsetX, unsigned int offsetY,
+    unsigned int width, unsigned int height, const unsigned char *alphaData);
 extern "C" void renderLoadingNative();
 extern "C" void onTrackingNative(bool clientsidePrediction);
 extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);

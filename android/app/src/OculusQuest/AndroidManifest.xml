@@ -21,10 +21,14 @@
         <meta-data
             android:name="com.oculus.vr.focusaware"
             android:value="true" />
-
+        
+        <meta-data android:name="com.oculus.handtracking.version" 
+            android:value="V2.0"/> 
+        
         <meta-data
             android:name="com.oculus.handtracking.frequency"
             android:value="HIGH" />
+        
 
         <activity android:name="com.polygraphene.alvr.OvrActivity">
             <intent-filter>

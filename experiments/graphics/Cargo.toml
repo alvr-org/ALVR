@@ -10,7 +10,7 @@ rust-version = "1.58"
 alvr_common = { path = "../../alvr/common" }
 alvr_session = { path = "../../alvr/session" }
 
-ash = "=0.34"
+ash = "=0.37"
 bytemuck = "1"
 wgpu = { version = "0.12", features = ["spirv"] }
 wgpu-hal = { version = "0.12", features = ["vulkan"] }

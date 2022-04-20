@@ -133,12 +133,12 @@ dependencies = [
  "alvr_sockets",
  "android_logger",
  "bincode",
- "bindgen 0.59.2",
+ "bindgen",
  "bytes",
  "cc",
  "cpal",
  "futures",
- "glyph_brush",
+ "glyph_brush_layout",
  "jni",
  "ndk 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndk-context",
@@ -252,7 +252,7 @@ dependencies = [
  "alvr_session",
  "alvr_sockets",
  "bincode",
- "bindgen 0.59.2",
+ "bindgen",
  "bytes",
  "cc",
  "chrono",
@@ -331,7 +331,7 @@ name = "alvr_vulkan_layer"
 version = "18.0.0-dev01"
 dependencies = [
  "alvr_filesystem",
- "bindgen 0.59.2",
+ "bindgen",
  "cc",
  "pkg-config",
  "walkdir",
@@ -521,31 +521,12 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.56.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2da379dbebc0b76ef63ca68d8fc6e71c0f13e59432e0987e508c1820e6ab5239"
-dependencies = [
- "bitflags",
- "cexpr 0.4.0",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "peeking_take_while",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex 0.1.1",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.59.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bd2a9a458e8f4304c52c43ebb0cfbd520289f8379a52e329a38afda99bf8eb8"
 dependencies = [
  "bitflags",
- "cexpr 0.6.0",
+ "cexpr",
  "clang-sys",
  "clap",
  "env_logger",
@@ -557,7 +538,7 @@ dependencies = [
  "quote",
  "regex",
  "rustc-hash",
- "shlex 1.1.0",
+ "shlex",
  "which 4.2.5",
 ]
 
@@ -712,20 +693,11 @@ checksum = "6d43a04d8753f35258c91f8ec639f792891f748a1edbd759cf1dcea3382ad83c"
 
 [[package]]
 name = "cexpr"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4aedb84272dbe89af497cf81375129abda4fc0a9e7c5d317498c15cc30c0d27"
-dependencies = [
- "nom 5.1.2",
-]
-
-[[package]]
-name = "cexpr"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
 dependencies = [
- "nom 7.1.1",
+ "nom",
 ]
 
 [[package]]
@@ -1061,11 +1033,11 @@ dependencies = [
 
 [[package]]
 name = "coreaudio-sys"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca4679a59dbd8c15f064c012dfe8c1163b9453224238b59bb9328c142b8b248b"
+checksum = "3dff444d80630d7073077d38d40b4501fd518bd2b922c2a55edcc8b0f7be57e6"
 dependencies = [
- "bindgen 0.56.0",
+ "bindgen",
 ]
 
 [[package]]
@@ -3158,7 +3130,7 @@ dependencies = [
 [[package]]
 name = "ndk"
 version = "0.6.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#7116fd0913876d7be2cbd99493e0d401553659bd"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#f24606cc840af2f97f0daebe1e2e7cd3aca52287"
 dependencies = [
  "bitflags",
  "jni-sys",
@@ -3234,7 +3206,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.3.0"
-source = "git+https://github.com/rust-windowing/android-ndk-rs#7116fd0913876d7be2cbd99493e0d401553659bd"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#f24606cc840af2f97f0daebe1e2e7cd3aca52287"
 dependencies = [
  "jni-sys",
 ]
@@ -3284,16 +3256,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b93853da6d84c2e3c7d730d6473e8817692dd89be387eb01b94d7f108ecb5b8c"
 dependencies = [
  "hashbrown 0.8.2",
-]
-
-[[package]]
-name = "nom"
-version = "5.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffb4262d26ed83a1c0a33a38fe2bb15797329c85770da05e6b828ddb782627af"
-dependencies = [
- "memchr",
- "version_check",
 ]
 
 [[package]]
@@ -4575,12 +4537,6 @@ checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
 
 [[package]]
 name = "shlex"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
-
-[[package]]
-name = "shlex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
@@ -5680,9 +5636,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.12.4"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93b1a9400e8d7f32dd4dd909bb9a391015d70633d639775ddd3f14d1104bc970"
+checksum = "d684ea6a34974a2fc19f1dfd183d11a62e22d75c4f187a574bb1224df8e056c2"
 dependencies = [
  "arrayvec 0.7.2",
  "ash",
@@ -5998,7 +5954,7 @@ version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "463705a63313cd4301184381c5e8042f0a7e9b4bb63653f216311d4ae74690b7"
 dependencies = [
- "nom 7.1.1",
+ "nom",
 ]
 
 [[package]]

@@ -49,6 +49,9 @@ const chrono::duration<float> MENU_BUTTON_LONG_PRESS_DURATION = 5s;
 const uint32_t ovrButton_Unknown1 = 0x01000000;
 const int MAXIMUM_TRACKING_FRAMES = 360;
 
+const int LOADING_TEXTURE_WIDTH = 1280;
+const int LOADING_TEXTURE_HEIGHT = 720;
+
 struct Rect {
     unsigned int x, y, width, height;
 };
@@ -62,7 +65,7 @@ public:
 
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> loadingTexture;
-    std::vector<std::pair<Rect, std::vector<uint8_t>>> loadingTextureEditQueue;
+    std::vector<uint8_t> loadingTextureBitmap;
     std::mutex loadingTextureMutex;
     std::function<void()> openDashboard;
 
@@ -846,34 +849,26 @@ void renderNative(long long targetTimespampNs) {
     sendTimeSync();
 }
 
-void updateLoadingTexuture(unsigned int offsetX, unsigned int offsetY, unsigned int width,
-                            unsigned int height, const unsigned char *alphaData) {
+void updateLoadingTexuture(const unsigned char *data) {
     std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
 
-    const uint8_t COLOR[3] = { 0x00, 0x00, 0x00 };
+    g_ctx.loadingTextureBitmap.resize(LOADING_TEXTURE_WIDTH * LOADING_TEXTURE_HEIGHT * 4);
 
-    auto buffer = std::vector<uint8_t>(width * height * 4);
-    for (int i = 0; i < width * height; i++) {
-        buffer[i * 4] = COLOR[0];
-        buffer[i * 4 + 1] = COLOR[1];
-        buffer[i * 4 + 2] = COLOR[2];
-        buffer[i * 4 + 3] = alphaData[i];
-    }
-
-    auto pair = std::make_pair(Rect { offsetX, offsetY, width, height }, buffer);
-    g_ctx.loadingTextureEditQueue.push_back(pair);
+    memcpy(&g_ctx.loadingTextureBitmap[0], data,
+            LOADING_TEXTURE_WIDTH * LOADING_TEXTURE_HEIGHT * 4);
 }
 
 void renderLoadingNative() {
     // update text image
     {
         std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
-        for (auto &pair : g_ctx.loadingTextureEditQueue) {
+
+        if (!g_ctx.loadingTextureBitmap.empty()) {
             glBindTexture(GL_TEXTURE_2D, g_ctx.loadingTexture->GetGLTexture());
-            glTexSubImage2D(GL_TEXTURE_2D, 0, pair.first.x, pair.first.y, pair.first.width,
-                          pair.first.height, GL_RGBA, GL_UNSIGNED_BYTE, &pair.second[0]);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, LOADING_TEXTURE_WIDTH, LOADING_TEXTURE_HEIGHT,
+                            GL_RGBA, GL_UNSIGNED_BYTE, &g_ctx.loadingTextureBitmap[0]);
         }
-        g_ctx.loadingTextureEditQueue.clear();
+        g_ctx.loadingTextureBitmap.clear();
     }
 
     // Show a loading icon.

@@ -13,8 +13,9 @@ use alvr_sockets::{
     StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
 };
 use futures::future::BoxFuture;
-use glyph_brush::{
-    ab_glyph::FontArc, GlyphBrushBuilder, HorizontalAlign, Layout, Section, Text, VerticalAlign,
+use glyph_brush_layout::{
+    ab_glyph::{Font, FontArc, FontRef, ScaleFont},
+    FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
 use jni::{
     objects::{GlobalRef, JClass},
@@ -58,6 +59,10 @@ const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
+const LOADING_TEXTURE_WIDTH: usize = 1280;
+const LOADING_TEXTURE_HEIGHT: usize = 720;
+const FONT_SIZE: f32 = 50_f32;
+
 // close stream on Drop (manual disconnection or execution canceling)
 struct StreamCloseGuard {
     is_connected: Arc<AtomicBool>,
@@ -69,45 +74,50 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-fn set_loading_message(hostname: &str, message: &str) -> StrResult {
+fn set_loading_message(hostname: &str, message: &str) {
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
         *ALVR_VERSION,
     );
 
     let ubuntu_font =
-        FontArc::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
+        FontRef::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
 
-    let mut brush = GlyphBrushBuilder::using_font(ubuntu_font).build();
-
-    brush.queue(
-        Section::new()
-            .add_text(Text::new(&message).with_scale(50_f32))
-            .with_bounds((1280_f32, 720_f32))
-            .with_layout(
-                Layout::default()
-                    .h_align(HorizontalAlign::Center)
-                    .v_align(VerticalAlign::Center),
-            ),
-    );
-
-    // todo: handle "TextureTooSmall" error
-    brush
-        .process_queued(
-            |rect, data| unsafe {
-                crate::updateLoadingTexuture(
-                    rect.min[0],
-                    rect.min[1],
-                    rect.max[0] - rect.min[0],
-                    rect.max[1] - rect.min[1],
-                    data.as_ptr(),
-                );
+    let section_glyphs = Layout::default()
+        .h_align(HorizontalAlign::Center)
+        .v_align(VerticalAlign::Center)
+        .calculate_glyphs(
+            &[&ubuntu_font],
+            &SectionGeometry {
+                screen_position: (
+                    LOADING_TEXTURE_WIDTH as f32 / 2_f32,
+                    LOADING_TEXTURE_HEIGHT as f32 / 2_f32,
+                ),
+                ..Default::default()
             },
-            |vertex| (),
-        )
-        .ok();
+            &[SectionText {
+                text: &message,
+                scale: FONT_SIZE.into(),
+                font_id: FontId(0),
+            }],
+        );
 
-    Ok(())
+    let scaled_font = ubuntu_font.as_scaled(FONT_SIZE);
+
+    let mut buffer = vec![0_u8; LOADING_TEXTURE_WIDTH * LOADING_TEXTURE_HEIGHT * 4];
+
+    for section_glyph in section_glyphs {
+        if let Some(outlined) = scaled_font.outline_glyph(section_glyph.glyph) {
+            let bounds = outlined.px_bounds();
+            outlined.draw(|x, y, alpha| {
+                let x = x as usize + bounds.min.x as usize;
+                let y = y as usize + bounds.min.y as usize;
+                buffer[(y * LOADING_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
+            });
+        }
+    }
+
+    unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
 }
 
 async fn connection_pipeline(
@@ -137,7 +147,7 @@ async fn connection_pipeline(
                         ServerHandshakePacket::IncompatibleVersions =>
                             INCOMPATIBLE_VERSIONS_MESSAGE,
                     };
-                    set_loading_message(hostname, message_str)?;
+                    set_loading_message(hostname, message_str);
                     return Ok(());
                 }
                 ConnectionError::NetworkUnreachable => {
@@ -145,15 +155,14 @@ async fn connection_pipeline(
                     set_loading_message(
                         hostname,
                         NETWORK_UNREACHABLE_MESSAGE,
-                    )?;
+                    );
 
                     time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
                     set_loading_message(
                         hostname,
                         INITIAL_MESSAGE,
-                    )
-                    .ok();
+                    );
 
                     return Ok(());
                 }
@@ -185,21 +194,21 @@ async fn connection_pipeline(
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(hostname, STREAM_STARTING_MESSAGE)?;
+            set_loading_message(hostname, STREAM_STARTING_MESSAGE);
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(hostname, SERVER_RESTART_MESSAGE)?;
+            set_loading_message(hostname, SERVER_RESTART_MESSAGE);
             return Ok(());
         }
         Err(e) => {
             info!("Server disconnected. Cause: {e}");
-            set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
+            set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message(hostname, "Unexpected packet")?;
+            set_loading_message(hostname, "Unexpected packet");
             return Ok(());
         }
     }
@@ -224,7 +233,7 @@ async fn connection_pipeline(
         .await
     {
         info!("Server disconnected. Cause: {e}");
-        set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
+        set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
 
@@ -621,7 +630,7 @@ async fn connection_pipeline(
                     .await;
                 if let Err(e) = res {
                     info!("Server disconnected. Cause: {e}");
-                    set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE)?;
+                    set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
 
@@ -643,7 +652,7 @@ async fn connection_pipeline(
                             set_loading_message(
                                 hostname,
                                 SERVER_RESTART_MESSAGE
-                            )?;
+                            );
                             break Ok(());
                         }
                         Ok(ServerControlPacket::TimeSync(data)) => {
@@ -681,7 +690,7 @@ async fn connection_pipeline(
                             set_loading_message(
                                 hostname,
                                 SERVER_DISCONNECTED_MESSAGE
-                            )?;
+                            );
                             break Ok(());
                         }
                     }
@@ -700,7 +709,7 @@ async fn connection_pipeline(
             set_loading_message(
                 hostname,
                 SERVER_DISCONNECTED_MESSAGE
-            )?;
+            );
 
             Ok(())
         },
@@ -732,7 +741,7 @@ pub async fn connection_lifecycle_loop(
     activity_ref: Arc<GlobalRef>,
     nal_class_ref: Arc<GlobalRef>,
 ) {
-    set_loading_message(&hostname, INITIAL_MESSAGE).ok();
+    set_loading_message(&hostname, INITIAL_MESSAGE);
 
     loop {
         tokio::join!(
@@ -750,7 +759,7 @@ pub async fn connection_lifecycle_loop(
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
-                    set_loading_message(&hostname, &message).ok();
+                    set_loading_message(&hostname, &message);
                 }
 
                 // let any running task or socket shutdown

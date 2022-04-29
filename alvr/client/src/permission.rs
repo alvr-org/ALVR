@@ -33,7 +33,8 @@ pub fn try_get_microphone_permission() {
             "requestPermissions",
             "([Ljava/lang/String;I)V",
             &[perm_array.into(), 0.into()],
-        );
+        )
+        .unwrap();
 
         // todo: handle case where permission is rejected
     }

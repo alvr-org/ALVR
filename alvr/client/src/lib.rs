@@ -26,14 +26,15 @@ use alvr_sockets::{
     TimeSyncPacket, ViewsConfig,
 };
 use jni::{
-    objects::{GlobalRef, JClass, JObject, JString},
+    objects::{GlobalRef, JClass, JObject, JString, ReleaseMode},
+    sys::jobject,
     JNIEnv, JavaVM,
 };
 use std::{
     collections::HashMap,
-    ffi::CStr,
+    ffi::{c_void, CStr},
     os::raw::c_char,
-    slice,
+    ptr, slice,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -45,6 +46,7 @@ use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 // This is the actual storage for the context pointer set in ndk-context. usually stored in
 // ndk-glue instead
 static GLOBAL_CONTEXT: OnceCell<GlobalRef> = OnceCell::new();
+static DECODER_REF: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
 static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
@@ -68,7 +70,10 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     asset_manager: JObject,
     jout_result: JObject,
 ) {
-    GLOBAL_CONTEXT.set(env.new_global_ref(context).unwrap());
+    GLOBAL_CONTEXT
+        .set(env.new_global_ref(context).unwrap())
+        .map_err(|_| ())
+        .unwrap();
 
     alvr_initialize(
         env.get_java_vm().unwrap(),
@@ -162,11 +167,14 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     jactivity: JObject,
     nal_class: JClass,
     jscreen_surface: JObject,
+    decoder: JObject,
 ) {
     alvr_common::show_err(|| -> StrResult {
         let java_vm = env.get_java_vm().map_err(err!())?;
         let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
         let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
+
+        *DECODER_REF.lock() = Some(env.new_global_ref(decoder).map_err(err!())?);
 
         let config = storage::load_config();
 
@@ -228,7 +236,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNative(
-    _: JNIEnv,
+    env: JNIEnv,
     _: JObject,
 ) {
     ON_PAUSE_NOTIFIER.notify_waiters();
@@ -237,6 +245,11 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
     drop(RUNTIME.lock().take());
 
     onPauseNative();
+
+    if let Some(decoder) = DECODER_REF.lock().take() {
+        env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
+            .unwrap();
+    }
 }
 
 #[no_mangle]
@@ -272,7 +285,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_restartRe
 ) {
     let context = ndk_context::android_context().context();
 
-    env.call_method(context.cast(), "restartRenderCycle", "()V", &[]).unwrap();
+    env.call_method(context.cast(), "restartRenderCycle", "()V", &[])
+        .unwrap();
 }
 
 // Rust Interface:
@@ -512,6 +526,59 @@ pub fn initialize() {
         }
     }
 
+    extern "C" fn push_nal(buffer: *const c_char, length: i32, frame_index: u64) {
+        let vm = unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+        let env = vm.get_env().unwrap();
+
+        let decoder_lock = DECODER_REF.lock();
+
+        let nal = if let Some(decoder) = &*decoder_lock {
+            env.call_method(
+                decoder,
+                "obtainNAL",
+                "(I)Lcom/polygraphene/alvr/NAL;",
+                &[length.into()],
+            )
+            .unwrap()
+            .l()
+            .unwrap()
+        } else {
+            let nal_class = env.find_class("com/polygraphene/alvr/NAL").unwrap();
+            env.new_object(
+                nal_class,
+                "(I)Lcom/polygraphene/alvr/NAL;",
+                &[length.into()],
+            )
+            .unwrap()
+        };
+
+        if nal.is_null() {
+            return;
+        }
+
+        env.set_field(nal, "length", "I", length.into()).unwrap();
+        env.set_field(nal, "frameIndex", "J", (frame_index as i64).into())
+            .unwrap();
+        {
+            let jarray = env.get_field(nal, "buf", "[B").unwrap().l().unwrap();
+            let jbuffer = env
+                .get_byte_array_elements(*jarray, ReleaseMode::CopyBack)
+                .unwrap();
+            unsafe { ptr::copy_nonoverlapping(buffer as _, jbuffer.as_ptr(), length as usize) };
+            jbuffer.commit().unwrap();
+        }
+
+        if let Some(decoder) = &*decoder_lock {
+            env.call_method(
+                decoder,
+                "pushNAL",
+                "(Lcom/polygraphene/alvr/NAL;)V",
+                &[nal.into()],
+            )
+            .unwrap();
+        }
+    }
+
     unsafe {
         pathStringToHash = Some(path_string_to_hash);
         inputSend = Some(input_send);
@@ -519,6 +586,7 @@ pub fn initialize() {
         videoErrorReportSend = Some(video_error_report_send);
         viewsConfigSend = Some(views_config_send);
         batterySend = Some(battery_send);
+        pushNal = Some(push_nal);
     }
 
     // Make sure to reset config in case of version compat mismatch.

@@ -122,7 +122,7 @@ public class OvrActivity extends Activity {
             mRenderingHandler.post(() -> {
                 mDecoderThread = new DecoderThread(mStreamSurfaceHandle);
 
-                onResumeNative(NAL.class, mScreenSurface);
+                onResumeNative(NAL.class, mScreenSurface, mDecoderThread);
 
                 // bootstrap the rendering loop
                 mRenderingHandler.post(mRenderRunnable);
@@ -144,11 +144,6 @@ public class OvrActivity extends Activity {
         if (mResumed && mScreenSurface != null) {
             // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
             mRenderingHandler.post(() -> {
-                // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
-                if (mDecoderThread != null) {
-                    mDecoderThread.stopAndWait();
-                }
-
                 onPauseNative();
             });
         }
@@ -203,7 +198,7 @@ public class OvrActivity extends Activity {
     native void destroyNative();
 
     // nal_class is needed to access NAL objects fields in native code without access to a Java thread
-    native void onResumeNative(Class<?> nal_class, Surface screenSurface);
+    native void onResumeNative(Class<?> nal_class, Surface screenSurface, DecoderThread decoder);
 
     native void onPauseNative();
 
@@ -244,25 +239,6 @@ public class OvrActivity extends Activity {
         Utils.logi(TAG, () -> "onDisconnected is called.");
         if (mDecoderThread != null) {
             mDecoderThread.onDisconnect();
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public NAL obtainNAL(int length) {
-        if (mDecoderThread != null) {
-            return mDecoderThread.obtainNAL(length);
-        } else {
-            NAL nal = new NAL();
-            nal.length = length;
-            nal.buf = new byte[length];
-            return nal;
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public void pushNAL(NAL nal) {
-        if (mDecoderThread != null) {
-            mDecoderThread.pushNAL(nal);
         }
     }
 

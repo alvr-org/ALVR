@@ -10,8 +10,7 @@ public class NalQueue {
 
     NalQueue() {
         for (int i = 0; i < SIZE; i++) {
-            NAL nal = new NAL();
-            nal.buf = new byte[DEFAULT_BUFFER_SIZE];
+            NAL nal = new NAL(DEFAULT_BUFFER_SIZE);
             mUnusedList.add(nal);
         }
     }

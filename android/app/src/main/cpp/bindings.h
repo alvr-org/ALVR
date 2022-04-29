@@ -183,3 +183,5 @@ extern "C" void (*videoErrorReportSend)();
 extern "C" void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
 extern "C" void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);
 extern "C" unsigned long long (*pathStringToHash)(const char *path);
+
+extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

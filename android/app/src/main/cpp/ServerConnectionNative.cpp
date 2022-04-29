@@ -45,7 +45,7 @@ void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned 
     g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
     env->DeleteLocalRef(clazz);
 
-    g_socket.m_nalParser = std::make_shared<NALParser>(env, instance, nalClass, enableFEC);
+    g_socket.m_nalParser = std::make_shared<NALParser>(enableFEC);
     g_socket.m_nalParser->setCodec(codec);
 
     LatencyCollector::Instance().resetAll();

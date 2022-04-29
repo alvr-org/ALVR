@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.AssetManager;
-import android.graphics.SurfaceTexture;
 import android.net.Uri;
 import android.opengl.EGL14;
 import android.opengl.EGLContext;
@@ -70,12 +69,11 @@ public class OvrActivity extends Activity {
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
     Surface mScreenSurface;
-    SurfaceTexture mStreamSurfaceTexture;
     Surface mStreamSurface;
     DecoderThread mDecoderThread = null;
-    EGLContext mEGLContext;
     float mRefreshRate = 60f;
     String mDashboardURL = null;
+    int mStreamSurfaceHandle;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -108,17 +106,7 @@ public class OvrActivity extends Activity {
         deviceDescriptor = new OnCreateResult();
         initializeNative(this.getAssets(), deviceDescriptor);
 
-        mStreamSurfaceTexture = new SurfaceTexture(deviceDescriptor.streamSurfaceHandle);
-        mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
-            if (mDecoderThread != null) {
-                mDecoderThread.onFrameAvailable();
-            }
-            mRenderingHandler.removeCallbacks(mRenderRunnable);
-            mRenderingHandler.post(mRenderRunnable);
-        }, new Handler(Looper.getMainLooper()));
-        mStreamSurface = new Surface(mStreamSurfaceTexture);
-
-        mEGLContext = EGL14.eglGetCurrentContext();
+        mStreamSurfaceHandle = deviceDescriptor.streamSurfaceHandle;
     }
 
     @Override
@@ -132,18 +120,7 @@ public class OvrActivity extends Activity {
     void maybeResume() {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
-                // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
-                // and onFrameAvailable won't be called after next output.
-                // To avoid deadlock caused by it, we need to flush last output.
-                mStreamSurfaceTexture.updateTexImage();
-
-                mDecoderThread = new DecoderThread(mStreamSurface, mDecoderCallback);
-
-                try {
-                    mDecoderThread.start();
-                } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
-                    Utils.loge(TAG, e::toString);
-                }
+                mDecoderThread = new DecoderThread(mStreamSurfaceHandle);
 
                 onResumeNative(NAL.class, mScreenSurface);
 
@@ -205,7 +182,7 @@ public class OvrActivity extends Activity {
     private void render() {
         if (mResumed && mScreenSurface != null) {
             if (isConnectedNative()) {
-                long renderedFrameIndex = mDecoderThread.clearAvailable(mStreamSurfaceTexture);
+                long renderedFrameIndex = mDecoderThread.clearAvailable();
 
                 if (renderedFrameIndex != -1) {
                     renderNative(renderedFrameIndex);
@@ -220,20 +197,6 @@ public class OvrActivity extends Activity {
             }
         }
     }
-
-    private final DecoderThread.DecoderCallback mDecoderCallback = new DecoderThread.DecoderCallback() {
-        @Override
-        public void onPrepared() {
-            requestIDR();
-        }
-
-        @Override
-        public void onFrameDecoded() {
-            if (mDecoderThread != null) {
-                mDecoderThread.releaseBuffer();
-            }
-        }
-    };
 
     native void initializeNative(AssetManager assetManager, OnCreateResult outResult);
 
@@ -301,5 +264,11 @@ public class OvrActivity extends Activity {
         if (mDecoderThread != null) {
             mDecoderThread.pushNAL(nal);
         }
+    }
+
+    @SuppressWarnings("unused")
+    public void restartRenderCycle() {
+        mRenderingHandler.removeCallbacks(mRenderRunnable);
+        mRenderingHandler.post(mRenderRunnable);
     }
 }

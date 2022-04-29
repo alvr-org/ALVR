@@ -11,7 +11,7 @@ pub fn try_get_microphone_permission() {
 
     let mic_perm_jstring = env.new_string(MICROPHONE_PERMISSION).unwrap();
 
-    let has_permission = env
+    let permission_status = env
         .call_method(
             context,
             "checkSelfPermission",
@@ -20,10 +20,9 @@ pub fn try_get_microphone_permission() {
         )
         .unwrap()
         .i()
-        .unwrap()
-        == 0;
+        .unwrap();
 
-    if !has_permission {
+    if permission_status != 0 {
         let string_class = env.find_class("java/lang/String").unwrap();
         let perm_array = env
             .new_object_array(1, string_class, mic_perm_jstring)

@@ -258,11 +258,21 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnected
 }
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_requestIDR(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_requestIDR(
     _: JNIEnv,
     _: JObject,
 ) {
     IDR_REQUEST_NOTIFIER.notify_waiters();
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_restartRenderCycle(
+    env: JNIEnv,
+    _: JObject,
+) {
+    let context = ndk_context::android_context().context();
+
+    env.call_method(context.cast(), "restartRenderCycle", "()V", &[]).unwrap();
 }
 
 // Rust Interface:

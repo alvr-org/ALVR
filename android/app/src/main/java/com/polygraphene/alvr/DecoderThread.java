@@ -46,8 +46,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         void onFrameDecoded();
     }
 
-    private final DecoderCallback mDecoderCallback;
-
     private static final int NAL_TYPE_SPS = 7;
     private static final int NAL_TYPE_IDR = 5;
     private static final int NAL_TYPE_P = 1;
@@ -57,14 +55,24 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     private final Queue<Integer> mAvailableInputs = new LinkedList<>();
 
-    public DecoderThread(Surface surface, DecoderCallback callback) {
-        mSurface = surface;
-        mQueue = new OutputFrameQueue();
-        mDecoderCallback = callback;
-    }
+    private SurfaceTexture mStreamSurfaceTexture;
 
-    public void start() {
-        super.startBase();
+    public DecoderThread(int streamSurfaceHandle) {
+        mQueue = new OutputFrameQueue();
+
+        mStreamSurfaceTexture = new SurfaceTexture(streamSurfaceHandle);
+        mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
+            mQueue.onFrameAvailable();
+            restartRenderCycle();
+        }, new Handler(Looper.getMainLooper()));
+
+        mSurface = new Surface(mStreamSurfaceTexture);
+
+        try {
+            super.startBase();
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {
+            Utils.loge(TAG, e::toString);
+        }
     }
 
     public void interrupt() {
@@ -112,7 +120,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
                     Utils.logi(TAG, () -> "Codec created. Type=" + mFormat + " Name=" + mDecoder.getCodecInfo().getName());
 
-                    mDecoderCallback.onPrepared();
+                    requestIDR();
                   } catch (IOException e) {
                     e.printStackTrace();
                     mNalQueue.recycle(nal);
@@ -134,7 +142,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
                 MediaCodec.BufferInfo info = (MediaCodec.BufferInfo) msg.obj;
 
                 mQueue.pushOutputBuffer(index2, info);
-                mDecoderCallback.onFrameDecoded();
+                mQueue.render();
                 return true;
         }
         return false;
@@ -257,10 +265,10 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
                 mFormat = VIDEO_FORMAT_H265;
             }
             mQueue.reset();
-            start();
+            this.startBase();
         } else {
             Utils.logi(TAG, () -> "notifyCodecChange: Codec was not changed. Codec=" + codec);
-            mDecoderCallback.onPrepared();
+            requestIDR();
             //mWaitNextIDR = true;
         }
     }
@@ -351,19 +359,13 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         mHandler.sendMessage(message);
     }
 
-    public void releaseBuffer() {
-        mQueue.render();
-    }
-
-    public void onFrameAvailable() {
-        mQueue.onFrameAvailable();
-    }
-
-    public long clearAvailable(SurfaceTexture surfaceTexture) {
-        return mQueue.clearAvailable(surfaceTexture);
+    public long clearAvailable() {
+        return mQueue.clearAvailable(mStreamSurfaceTexture);
     }
 
     public static native void DecoderInput(long frameIndex);
     public static native void DecoderOutput(long frameIndex);
     public static native void setWaitingNextIDR(boolean waiting);
+    public static native void requestIDR();
+    public static native void restartRenderCycle(); // Actually called every frame to sync the loop
 }

@@ -19,31 +19,15 @@ public:
 
     uint32_t m_prevVideoSequence = 0;
     std::shared_ptr<NALParser> m_nalParser;
-
-    JNIEnv *m_env;
-    jobject m_instance;
-    jmethodID mOnDisconnectedMethodID;
 };
 
 namespace {
     ServerConnectionNative g_socket;
 }
 
-void initializeSocket(void *v_env, void *v_instance, void *v_nalClass, unsigned int codec,
-                      bool enableFEC) {
-    auto *env = (JNIEnv *) v_env;
-    auto *instance = (jobject) v_instance;
-    auto *nalClass = (jclass) v_nalClass;
-
-    g_socket.m_env = env;
-    g_socket.m_instance = env->NewGlobalRef(instance);
-
+void initializeSocket(unsigned int codec, bool enableFEC) {
     g_socket.m_prevVideoSequence = 0;
     g_socket.m_timeDiff = 0;
-
-    jclass clazz = env->GetObjectClass(instance);
-    g_socket.mOnDisconnectedMethodID = env->GetMethodID(clazz, "onDisconnected", "()V");
-    env->DeleteLocalRef(clazz);
 
     g_socket.m_nalParser = std::make_shared<NALParser>(enableFEC);
     g_socket.m_nalParser->setCodec(codec);
@@ -158,13 +142,8 @@ unsigned char isConnectedNative() {
     return g_socket.m_connected;
 }
 
-void closeSocket(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
+void closeSocket() {
     g_socket.m_connected = false;
-
-    env->CallVoidMethod(g_socket.m_instance, g_socket.mOnDisconnectedMethodID);
-    env->DeleteGlobalRef(g_socket.m_instance);
 
     g_socket.m_nalParser.reset();
 }

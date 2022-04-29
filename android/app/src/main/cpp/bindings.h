@@ -170,12 +170,11 @@ extern "C" void onHapticsFeedbackNative(unsigned long long path,
 extern "C" void onBatteryChangedNative(int battery, int plugged);
 extern "C" GuardianData getGuardianData();
 
-extern "C" void
-initializeSocket(void *env, void *instance, void *nalClass, unsigned int codec, bool enableFEC);
+extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
 extern "C" void sendTimeSync();
 extern "C" unsigned char isConnectedNative();
-extern "C" void closeSocket(void *env);
+extern "C" void closeSocket();
 
 extern "C" void (*inputSend)(TrackingInfo data);
 extern "C" void (*timeSyncSend)(TimeSync data);

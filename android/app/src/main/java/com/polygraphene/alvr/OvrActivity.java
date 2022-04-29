@@ -235,14 +235,6 @@ public class OvrActivity extends Activity {
     }
 
     @SuppressWarnings("unused")
-    public void onDisconnected() {
-        Utils.logi(TAG, () -> "onDisconnected is called.");
-        if (mDecoderThread != null) {
-            mDecoderThread.onDisconnect();
-        }
-    }
-
-    @SuppressWarnings("unused")
     public void restartRenderCycle() {
         mRenderingHandler.removeCallbacks(mRenderRunnable);
         mRenderingHandler.post(mRenderRunnable);

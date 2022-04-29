@@ -172,7 +172,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     alvr_common::show_err(|| -> StrResult {
         let java_vm = env.get_java_vm().map_err(err!())?;
         let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
-        let nal_class_ref = env.new_global_ref(nal_class).map_err(err!())?;
 
         *DECODER_REF.lock() = Some(env.new_global_ref(decoder).map_err(err!())?);
 
@@ -211,7 +210,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
                 &config.hostname,
                 Arc::new(java_vm),
                 Arc::new(activity_ref),
-                Arc::new(nal_class_ref),
             );
 
             tokio::select! {

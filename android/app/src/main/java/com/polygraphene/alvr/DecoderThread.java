@@ -350,10 +350,12 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         }
     }
 
+    @SuppressWarnings("unused")
     public NAL obtainNAL(int length) {
         return mNalQueue.obtain(length);
     }
 
+    @SuppressWarnings("unused")
     public void pushNAL(NAL nal) {
         Message message = mHandler.obtainMessage(MESSAGE_PUSH_NAL, nal);
         mHandler.sendMessage(message);

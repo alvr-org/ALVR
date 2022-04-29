@@ -2,7 +2,7 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
-    storage, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
+    storage, TimeSync, VideoFrame, BATTERY_SENDER, DECODER_REF, INPUT_SENDER, TIME_SYNC_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -126,7 +126,6 @@ async fn connection_pipeline(
     hostname: &str,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
-    nal_class_ref: Arc<GlobalRef>,
 ) -> StrResult {
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -508,25 +507,11 @@ async fn connection_pipeline(
     // many times per second. If using a future I'm forced to attach and detach the env continuously.
     // When the parent function exits or gets canceled, this loop will run to finish.
     let legacy_stream_socket_loop = task::spawn_blocking({
-        let java_vm = Arc::clone(&java_vm);
-        let activity_ref = Arc::clone(&activity_ref);
-        let nal_class_ref = Arc::clone(&nal_class_ref);
         let codec = settings.video.codec;
         let enable_fec = settings.connection.enable_fec;
         move || -> StrResult {
-            let env = java_vm.attach_current_thread().map_err(err!())?;
-            let env_ptr = env.get_native_interface() as _;
-            let activity_obj = activity_ref.as_obj();
-            let nal_class: JClass = nal_class_ref.as_obj().into();
-
             unsafe {
-                crate::initializeSocket(
-                    env_ptr,
-                    *activity_obj as _,
-                    **nal_class as _,
-                    matches!(codec, CodecType::HEVC) as _,
-                    enable_fec,
-                );
+                crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);
 
                 let mut idr_request_deadline = None;
 
@@ -547,7 +532,17 @@ async fn connection_pipeline(
                     crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
                 }
 
-                crate::closeSocket(env_ptr);
+                crate::closeSocket();
+
+                let vm = unsafe {
+                    JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap()
+                };
+                let env = vm.get_env().unwrap();
+
+                if let Some(decoder) = &*DECODER_REF.lock() {
+                    env.call_method(decoder.as_obj(), "onDisconnect", "()V", &[])
+                        .unwrap();
+                }
             }
 
             Ok(())
@@ -739,7 +734,6 @@ pub async fn connection_lifecycle_loop(
     hostname: &str,
     java_vm: Arc<JavaVM>,
     activity_ref: Arc<GlobalRef>,
-    nal_class_ref: Arc<GlobalRef>,
 ) {
     set_loading_message(&hostname, INITIAL_MESSAGE);
 
@@ -752,7 +746,6 @@ pub async fn connection_lifecycle_loop(
                     hostname,
                     Arc::clone(&java_vm),
                     Arc::clone(&activity_ref),
-                    Arc::clone(&nal_class_ref),
                 )
                 .await;
 

@@ -120,12 +120,32 @@ fn set_loading_message(hostname: &str, message: &str) {
     unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
 }
 
+fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool, dashboard_url: &str) {
+    let vm = unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let env = vm.attach_current_thread().unwrap();
+
+    let activity = ndk_context::android_context().context().cast();
+
+    let jdashboard_url = env.new_string(dashboard_url).unwrap();
+
+    env.call_method(
+        activity,
+        "onServerConnected",
+        "(FIZLjava/lang/String;)V",
+        &[
+            fps.into(),
+            (matches!(codec, CodecType::HEVC) as i32).into(),
+            realtime_decoder.into(),
+            jdashboard_url.into(),
+        ],
+    )
+    .unwrap();
+}
+
 async fn connection_pipeline(
     headset_info: &HeadsetInfoPacket,
     device_name: String,
     hostname: &str,
-    java_vm: Arc<JavaVM>,
-    activity_ref: Arc<GlobalRef>,
 ) -> StrResult {
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -318,26 +338,12 @@ async fn connection_pipeline(
         });
     }
 
-    java_vm
-        .attach_current_thread()
-        .map_err(err!())?
-        .call_method(
-            &*activity_ref,
-            "onServerConnected",
-            "(FIZLjava/lang/String;)V",
-            &[
-                config_packet.fps.into(),
-                (matches!(settings.video.codec, CodecType::HEVC) as i32).into(),
-                settings.video.client_request_realtime_decoder.into(),
-                java_vm
-                    .attach_current_thread()
-                    .map_err(err!())?
-                    .new_string(config_packet.dashboard_url)
-                    .map_err(err!())?
-                    .into(),
-            ],
-        )
-        .map_err(err!())?;
+    on_server_connected(
+        config_packet.fps,
+        settings.video.codec,
+        settings.video.client_request_realtime_decoder,
+        &config_packet.dashboard_url,
+    );
 
     let tracking_clientside_prediction = match &settings.headset.controllers {
         Switch::Enabled(controllers) => controllers.clientside_prediction,
@@ -732,22 +738,14 @@ pub async fn connection_lifecycle_loop(
     headset_info: HeadsetInfoPacket,
     device_name: &str,
     hostname: &str,
-    java_vm: Arc<JavaVM>,
-    activity_ref: Arc<GlobalRef>,
 ) {
     set_loading_message(&hostname, INITIAL_MESSAGE);
 
     loop {
         tokio::join!(
             async {
-                let maybe_error = connection_pipeline(
-                    &headset_info,
-                    device_name.to_owned(),
-                    hostname,
-                    Arc::clone(&java_vm),
-                    Arc::clone(&activity_ref),
-                )
-                .await;
+                let maybe_error =
+                    connection_pipeline(&headset_info, device_name.to_owned(), hostname).await;
 
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");

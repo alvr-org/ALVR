@@ -73,7 +73,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         // To avoid deadlock caused by it, we need to flush last output.
         // mStreamSurfaceTexture.updateTexImage();
 
-
         try {
             super.startBase();
         } catch (IllegalArgumentException | IllegalStateException | SecurityException e) {

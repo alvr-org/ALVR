@@ -164,15 +164,22 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
-    env: JNIEnv,
-    jactivity: JObject,
+    _: JNIEnv,
+    _: JObject,
     jscreen_surface: JObject,
     decoder: JObject,
 ) {
     alvr_common::show_err(|| -> StrResult {
-        let java_vm = env.get_java_vm().map_err(err!())?;
-        let activity_ref = env.new_global_ref(jactivity).map_err(err!())?;
+        let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+        let env = vm.get_env().unwrap();
 
+        // let decoder_class = env
+        //     .find_class("com/polygraphene/alvr/DecoderThread")
+        //     .unwrap();
+        // let handle = *STREAM_TEAXTURE_HANDLE.lock();
+        // let decoder = env
+        //     .new_object(decoder_class, "(I)V", &[handle.into()])
+        //     .unwrap();
         *DECODER_REF.lock() = Some(env.new_global_ref(decoder).map_err(err!())?);
 
         let config = storage::load_config();
@@ -204,13 +211,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         let runtime = Runtime::new().map_err(err!())?;
 
         runtime.spawn(async move {
-            let connection_loop = connection::connection_lifecycle_loop(
-                headset_info,
-                device_name,
-                &config.hostname,
-                Arc::new(java_vm),
-                Arc::new(activity_ref),
-            );
+            let connection_loop =
+                connection::connection_lifecycle_loop(headset_info, device_name, &config.hostname);
 
             tokio::select! {
                 _ = connection_loop => (),

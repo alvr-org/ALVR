@@ -131,7 +131,6 @@ public class OvrActivity extends Activity {
         // the check (mResumed && mScreenSurface != null) is intended: either mResumed or
         // mScreenSurface != null will be false after this method returns.
         if (mResumed && mScreenSurface != null) {
-            // DecoderThread must be stopped before ReceiverThread and setting mResumed=false.
             mRenderingHandler.post(() -> {
                 onPauseNative();
             });
@@ -190,8 +189,6 @@ public class OvrActivity extends Activity {
     native void renderNative();
 
     native void renderLoadingNative();
-
-    native boolean isVrModeNative();
 
     native void onStreamStartNative(int codec, boolean realtimeDecoder);
 

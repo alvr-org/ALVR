@@ -513,9 +513,7 @@ async fn connection_pipeline(
             unsafe {
                 // Note: legacyReceive() requires the java context to be attached to the current thread
                 // todo: investigate why
-                let vm = unsafe {
-                    JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap()
-                };
+                let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
                 let env = vm.attach_current_thread().unwrap();
 
                 crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);

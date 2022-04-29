@@ -31,11 +31,6 @@ public class OvrActivity extends Activity {
 
     final static String TAG = "OvrActivity";
 
-    public static class OnCreateResult {
-        public int streamSurfaceHandle;
-        public int loadingSurfaceHandle;
-    }
-
     class RenderingCallbacks implements SurfaceHolder.Callback {
         @Override
         public void surfaceCreated(@NonNull final SurfaceHolder holder) {
@@ -64,12 +59,10 @@ public class OvrActivity extends Activity {
         }
     };
 
-    OnCreateResult deviceDescriptor = null;
     boolean mResumed = false;
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
     Surface mScreenSurface;
-    Surface mStreamSurface;
     DecoderThread mDecoderThread = null;
     float mRefreshRate = 60f;
     String mDashboardURL = null;
@@ -103,10 +96,7 @@ public class OvrActivity extends Activity {
     // This method initializes a GL context, and must be called within the scope of the rendering
     // handler, so successive rendering calls don't fail.
     public void startup() {
-        deviceDescriptor = new OnCreateResult();
-        initializeNative(this.getAssets(), deviceDescriptor);
-
-        mStreamSurfaceHandle = deviceDescriptor.streamSurfaceHandle;
+        initializeNative(this.getAssets());
     }
 
     @Override
@@ -120,9 +110,8 @@ public class OvrActivity extends Activity {
     void maybeResume() {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
-                mDecoderThread = new DecoderThread(mStreamSurfaceHandle);
-
-                onResumeNative(NAL.class, mScreenSurface, mDecoderThread);
+                mDecoderThread = new DecoderThread();
+                onResumeNative(mScreenSurface, mDecoderThread);
 
                 // bootstrap the rendering loop
                 mRenderingHandler.post(mRenderRunnable);
@@ -177,11 +166,7 @@ public class OvrActivity extends Activity {
     private void render() {
         if (mResumed && mScreenSurface != null) {
             if (isConnectedNative()) {
-                long renderedFrameIndex = mDecoderThread.clearAvailable();
-
-                if (renderedFrameIndex != -1) {
-                    renderNative(renderedFrameIndex);
-                }
+                renderNative();
 
                 mRenderingHandler.removeCallbacks(mRenderRunnable);
                 mRenderingHandler.postDelayed(mRenderRunnable, 1);
@@ -193,22 +178,22 @@ public class OvrActivity extends Activity {
         }
     }
 
-    native void initializeNative(AssetManager assetManager, OnCreateResult outResult);
+    native void initializeNative(AssetManager assetManager);
 
     native void destroyNative();
 
     // nal_class is needed to access NAL objects fields in native code without access to a Java thread
-    native void onResumeNative(Class<?> nal_class, Surface screenSurface, DecoderThread decoder);
+    native void onResumeNative(Surface screenSurface, DecoderThread decoder);
 
     native void onPauseNative();
 
-    native void renderNative(long renderedFrameIndex);
+    native void renderNative();
 
     native void renderLoadingNative();
 
     native boolean isVrModeNative();
 
-    native void onStreamStartNative();
+    native void onStreamStartNative(int codec, boolean realtimeDecoder);
 
     native void onBatteryChangedNative(int battery, int plugged);
 
@@ -229,8 +214,7 @@ public class OvrActivity extends Activity {
         mRefreshRate = fps;
         mDashboardURL = dashboardURL;
         mRenderingHandler.post(() -> {
-            onStreamStartNative();
-            mDecoderThread.onConnect(codec, realtimeDecoder);
+            onStreamStartNative(codec, realtimeDecoder);
         });
     }
 

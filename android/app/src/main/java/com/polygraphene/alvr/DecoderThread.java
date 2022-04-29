@@ -57,16 +57,22 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
 
     private SurfaceTexture mStreamSurfaceTexture;
 
-    public DecoderThread(int streamSurfaceHandle) {
+    public DecoderThread() {
         mQueue = new OutputFrameQueue();
 
-        mStreamSurfaceTexture = new SurfaceTexture(streamSurfaceHandle);
+        mStreamSurfaceTexture = new SurfaceTexture(getStreamTextureHandle());
         mStreamSurfaceTexture.setOnFrameAvailableListener(surfaceTexture -> {
             mQueue.onFrameAvailable();
             restartRenderCycle();
         }, new Handler(Looper.getMainLooper()));
 
         mSurface = new Surface(mStreamSurfaceTexture);
+
+        // Sometimes previous decoder output remains not updated (when previous call of waitFrame() didn't call updateTexImage())
+        // and onFrameAvailable won't be called after next output.
+        // To avoid deadlock caused by it, we need to flush last output.
+        // mStreamSurfaceTexture.updateTexImage();
+
 
         try {
             super.startBase();
@@ -370,4 +376,5 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
     public static native void setWaitingNextIDR(boolean waiting);
     public static native void requestIDR();
     public static native void restartRenderCycle(); // Actually called every frame to sync the loop
+    public static native int getStreamTextureHandle();
 }

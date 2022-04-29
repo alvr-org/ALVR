@@ -27,7 +27,7 @@ use alvr_sockets::{
 };
 use jni::{
     objects::{GlobalRef, JClass, JObject, JString, ReleaseMode},
-    sys::jobject,
+    sys::{jboolean, jobject},
     JNIEnv, JavaVM,
 };
 use std::{
@@ -63,12 +63,13 @@ static BATTERY_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>>>
 static IDR_REQUEST_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
+static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
+
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
     context: JObject,
     asset_manager: JObject,
-    jout_result: JObject,
 ) {
     GLOBAL_CONTEXT
         .set(env.new_global_ref(context).unwrap())
@@ -90,20 +91,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
             )
         };
 
-        env.set_field(
-            jout_result,
-            "streamSurfaceHandle",
-            "I",
-            result.streamSurfaceHandle.into(),
-        )
-        .map_err(err!())?;
-        env.set_field(
-            jout_result,
-            "loadingSurfaceHandle",
-            "I",
-            result.loadingSurfaceHandle.into(),
-        )
-        .map_err(err!())?;
+        *STREAM_TEAXTURE_HANDLE.lock() = result.streamSurfaceHandle;
 
         Ok(())
     }());
@@ -148,9 +136,22 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_destroyNati
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNative(
     _: JNIEnv,
     _: JObject,
-    rendered_frame_index: i64,
 ) {
-    renderNative(rendered_frame_index)
+    let rendered_frame_index = if let Some(decoder) = &*DECODER_REF.lock() {
+        let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+        let env = vm.get_env().unwrap();
+
+        env.call_method(decoder.as_obj(), "clearAvailable", "()J", &[])
+            .unwrap()
+            .j()
+            .unwrap()
+    } else {
+        -1
+    };
+
+    if rendered_frame_index != -1 {
+        renderNative(rendered_frame_index);
+    }
 }
 
 #[no_mangle]
@@ -165,7 +166,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderLoadi
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
     env: JNIEnv,
     jactivity: JObject,
-    nal_class: JClass,
     jscreen_surface: JObject,
     decoder: JObject,
 ) {
@@ -228,8 +228,23 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(
     _: JNIEnv,
     _: JObject,
+    codec: i32,
+    real_time: jboolean,
 ) {
-    onStreamStartNative()
+    onStreamStartNative();
+
+    let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+    let env = vm.get_env().unwrap();
+
+    if let Some(decoder) = &*DECODER_REF.lock() {
+        env.call_method(
+            decoder.as_obj(),
+            "onConnect",
+            "(IZ)V",
+            &[codec.into(), real_time.into()],
+        )
+        .unwrap();
+    }
 }
 
 #[no_mangle]
@@ -285,6 +300,14 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_restartRe
 
     env.call_method(context.cast(), "restartRenderCycle", "()V", &[])
         .unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_getStreamTextureHandle(
+    env: JNIEnv,
+    _: JObject,
+) -> i32 {
+    *STREAM_TEAXTURE_HANDLE.lock()
 }
 
 // Rust Interface:

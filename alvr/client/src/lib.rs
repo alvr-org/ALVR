@@ -69,7 +69,6 @@ static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
     context: JObject,
-    asset_manager: JObject,
 ) {
     GLOBAL_CONTEXT
         .set(env.new_global_ref(context).unwrap())
@@ -83,6 +82,22 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
 
     // todo: manage loading and stream textures on lib side
     alvr_common::show_err(|| -> StrResult {
+        let android_context = ndk_context::android_context();
+
+        let vm = unsafe { jni::JavaVM::from_raw(android_context.vm().cast()).unwrap() };
+        let env = vm.attach_current_thread().unwrap();
+
+        let asset_manager = env
+            .call_method(
+                android_context.context().cast(),
+                "getAssets",
+                "()Landroid/content/res/AssetManager;",
+                &[],
+            )
+            .unwrap()
+            .l()
+            .unwrap();
+
         let result = unsafe {
             onCreate(
                 env.get_native_interface() as _,

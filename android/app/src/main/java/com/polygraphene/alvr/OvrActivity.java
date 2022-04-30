@@ -85,18 +85,12 @@ public class OvrActivity extends Activity {
         mRenderingHandlerThread = new HandlerThread("Rendering thread");
         mRenderingHandlerThread.start();
         mRenderingHandler = new Handler(mRenderingHandlerThread.getLooper());
-        mRenderingHandler.post(this::startup);
+        mRenderingHandler.post(this::initializeNative);
 
         SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new RenderingCallbacks());
 
         this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-    }
-
-    // This method initializes a GL context, and must be called within the scope of the rendering
-    // handler, so successive rendering calls don't fail.
-    public void startup() {
-        initializeNative(this.getAssets());
     }
 
     @Override
@@ -177,7 +171,7 @@ public class OvrActivity extends Activity {
         }
     }
 
-    native void initializeNative(AssetManager assetManager);
+    native void initializeNative();
 
     native void destroyNative();
 

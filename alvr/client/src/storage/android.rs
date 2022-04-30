@@ -20,7 +20,7 @@ pub fn load_asset(fname: &str) -> Vec<u8> {
             .call_method(
                 android_context.context().cast(),
                 "getAssets",
-                "()Landroid/content/res.AssetManager;",
+                "()Landroid/content/res/AssetManager;",
                 &[],
             )
             .unwrap()

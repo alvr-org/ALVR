@@ -67,7 +67,6 @@ public:
     unique_ptr<Texture> loadingTexture;
     std::vector<uint8_t> loadingTextureBitmap;
     std::mutex loadingTextureMutex;
-    std::function<void()> openDashboard;
 
     StreamConfig streamConfig{};
 
@@ -133,22 +132,6 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
     g_ctx.java.Env = env;
     env->GetJavaVM(&g_ctx.java.Vm);
     g_ctx.java.ActivityObject = env->NewGlobalRef(activity);
-
-    jclass clazz = env->FindClass("com/polygraphene/alvr/OvrActivity");
-    auto jDashboardCallback = env->GetMethodID(clazz, "openDashboard",
-                                               "()V");
-    env->DeleteLocalRef(clazz);
-
-    g_ctx.openDashboard = [jDashboardCallback]() {
-        JNIEnv *env;
-        jint res = g_ctx.java.Vm->AttachCurrentThread(&env, nullptr);
-        if (res == JNI_OK) {
-            env->CallVoidMethod(g_ctx.java.ActivityObject, jDashboardCallback);
-            g_ctx.java.Vm->DetachCurrentThread();
-        } else {
-            LOGE("Failed to get JNI environment for dashboard");
-        }
-    };
 
     eglInit();
 
@@ -407,18 +390,6 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
                 hand_path = LEFT_HAND_PATH;
                 controller = 0;
-
-                if (remoteInputState.Buttons & ovrButton_Enter) {
-                    if (!g_ctx.mMenuLongPressActivated && std::chrono::system_clock::now()
-                                                          - g_ctx.mMenuNotPressedLastInstant >
-                                                          MENU_BUTTON_LONG_PRESS_DURATION) {
-                        g_ctx.mMenuLongPressActivated = true;
-                        g_ctx.openDashboard();
-                    }
-                } else {
-                    g_ctx.mMenuNotPressedLastInstant = std::chrono::system_clock::now();
-                    g_ctx.mMenuLongPressActivated = false;
-                }
             } else {
                 hand_path = RIGHT_HAND_PATH;
                 controller = 1;

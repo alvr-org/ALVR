@@ -5,15 +5,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.AssetManager;
-import android.net.Uri;
-import android.opengl.EGL14;
-import android.opengl.EGLContext;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -65,8 +60,6 @@ public class OvrActivity extends Activity {
     Surface mScreenSurface;
     DecoderThread mDecoderThread = null;
     float mRefreshRate = 60f;
-    String mDashboardURL = null;
-    int mStreamSurfaceHandle;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -125,9 +118,7 @@ public class OvrActivity extends Activity {
         // the check (mResumed && mScreenSurface != null) is intended: either mResumed or
         // mScreenSurface != null will be false after this method returns.
         if (mResumed && mScreenSurface != null) {
-            mRenderingHandler.post(() -> {
-                onPauseNative();
-            });
+            mRenderingHandler.post(this::onPauseNative);
         }
     }
 
@@ -193,17 +184,8 @@ public class OvrActivity extends Activity {
     native void requestIDR();
 
     @SuppressWarnings("unused")
-    public void openDashboard() {
-        if (mDashboardURL != null) {
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(mDashboardURL));
-            startActivity(browserIntent);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public void onServerConnected(float fps, int codec, boolean realtimeDecoder, String dashboardURL) {
+    public void onServerConnected(float fps, int codec, boolean realtimeDecoder) {
         mRefreshRate = fps;
-        mDashboardURL = dashboardURL;
         mRenderingHandler.post(() -> {
             onStreamStartNative(codec, realtimeDecoder);
         });

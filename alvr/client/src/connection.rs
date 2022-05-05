@@ -120,23 +120,20 @@ fn set_loading_message(hostname: &str, message: &str) {
     unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
 }
 
-fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool, dashboard_url: &str) {
+fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool) {
     let vm = unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
     let env = vm.attach_current_thread().unwrap();
 
     let activity = ndk_context::android_context().context().cast();
 
-    let jdashboard_url = env.new_string(dashboard_url).unwrap();
-
     env.call_method(
         activity,
         "onServerConnected",
-        "(FIZLjava/lang/String;)V",
+        "(FIZ)V",
         &[
             fps.into(),
             (matches!(codec, CodecType::HEVC) as i32).into(),
             realtime_decoder.into(),
-            jdashboard_url.into(),
         ],
     )
     .unwrap();
@@ -342,7 +339,6 @@ async fn connection_pipeline(
         config_packet.fps,
         settings.video.codec,
         settings.video.client_request_realtime_decoder,
-        &config_packet.dashboard_url,
     );
 
     let tracking_clientside_prediction = match &settings.headset.controllers {

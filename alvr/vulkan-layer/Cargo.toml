@@ -1,6 +1,6 @@
 [package]
 name = "alvr_vulkan-layer"
-version = "18.2.1"
+version = "18.2.2"
 authors = ["alvr-org", "ARM", "Patrick Nicolas <patricknicolas@laposte.net>"]
 license = "MIT"
 edition = "2021"

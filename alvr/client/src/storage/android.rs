@@ -1,8 +1,4 @@
-use alvr_common::prelude::*;
-use jni::{
-    objects::{JObject, JString, JValue},
-    AttachGuard, JNIEnv,
-};
+use jni::{objects::JObject, JNIEnv};
 use ndk_sys as sys;
 use std::{ffi::CString, ptr::NonNull};
 

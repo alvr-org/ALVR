@@ -2,7 +2,8 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
-    storage, TimeSync, VideoFrame, BATTERY_SENDER, DECODER_REF, INPUT_SENDER, TIME_SYNC_SENDER,
+    decoder::{DECODER_REF, IDR_PARSED, IDR_REQUEST_NOTIFIER},
+    storage, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -14,17 +15,14 @@ use alvr_sockets::{
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
-    ab_glyph::{Font, FontArc, FontRef, ScaleFont},
+    ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
-use jni::{
-    objects::{GlobalRef, JClass},
-    JavaVM,
-};
+use jni::JavaVM;
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
-    future, mem, ptr, slice,
+    future, mem,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc as smpsc, Arc,
@@ -525,10 +523,10 @@ async fn connection_pipeline(
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
                     // Send again IDR packet every 2s in case it is missed
                     // (due to dropped burst of packets at the start of the stream or otherwise).
-                    if !crate::IDR_PARSED.load(Ordering::Relaxed) {
+                    if !IDR_PARSED.load(Ordering::Relaxed) {
                         if let Some(deadline) = idr_request_deadline {
                             if deadline < Instant::now() {
-                                crate::IDR_REQUEST_NOTIFIER.notify_waiters();
+                                IDR_REQUEST_NOTIFIER.notify_waiters();
                                 idr_request_deadline = None;
                             }
                         } else {
@@ -639,7 +637,7 @@ async fn connection_pipeline(
     let control_loop = async move {
         loop {
             tokio::select! {
-                _ = crate::IDR_REQUEST_NOTIFIER.notified() => {
+                _ = IDR_REQUEST_NOTIFIER.notified() => {
                     control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
                 }
                 control_packet = control_receiver.recv() =>

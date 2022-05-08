@@ -509,9 +509,6 @@ void sendTrackingInfo(bool clientsidePrediction) {
     uint64_t targetTimestampNs = vrapi_GetTimeInSeconds() * 1e9 + LatencyCollector::Instance().getTrackingPredictionLatency() * 1000;
     auto tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, (double)targetTimestampNs / 1e9);
 
-    // sort of hacky, SteamVR will predict the position while the orientation is predicted from the client
-    ovrTracking2 trackingRaw = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.);
-
     {
         std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
         g_ctx.trackingFrameMap.insert({ targetTimestampNs, tracking });

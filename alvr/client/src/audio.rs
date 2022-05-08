@@ -1,6 +1,6 @@
 use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_session::AudioConfig;
-use alvr_sockets::{StreamReceiver, StreamSender, AUDIO};
+use alvr_sockets::{StreamReceiver, StreamSender};
 use oboe::{
     AudioInputCallback, AudioInputStreamSafe, AudioOutputCallback, AudioOutputStreamSafe,
     AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,

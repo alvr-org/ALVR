@@ -2,6 +2,7 @@
 
 mod connection;
 mod connection_utils;
+mod decoder;
 mod logging_backend;
 mod storage;
 
@@ -25,31 +26,20 @@ use alvr_sockets::{
     BatteryPacket, HeadsetInfoPacket, Input, LegacyController, LegacyInput, MotionData,
     TimeSyncPacket, ViewsConfig,
 };
+use decoder::{DECODER_REF, STREAM_TEAXTURE_HANDLE};
 use jni::{
-    objects::{GlobalRef, JClass, JObject, JString, ReleaseMode},
-    sys::{jboolean, jobject},
+    objects::{GlobalRef, JObject, ReleaseMode},
+    sys::jboolean,
     JNIEnv, JavaVM,
 };
-use std::{
-    collections::HashMap,
-    ffi::{c_void, CStr},
-    os::raw::c_char,
-    ptr, slice,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Duration,
-};
+use std::{collections::HashMap, ffi::CStr, os::raw::c_char, ptr, slice, time::Duration};
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 // This is the actual storage for the context pointer set in ndk-context. usually stored in
 // ndk-glue instead
 static GLOBAL_CONTEXT: OnceCell<GlobalRef> = OnceCell::new();
-static DECODER_REF: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
-static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 static INPUT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Input>>>> =
     Lazy::new(|| Mutex::new(None));
 static TIME_SYNC_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>>> =
@@ -60,10 +50,7 @@ static VIEWS_CONFIG_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ViewsConfig>
     Lazy::new(|| Mutex::new(None));
 static BATTERY_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static IDR_REQUEST_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-
-static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
 
 #[no_mangle]
 pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
@@ -110,33 +97,6 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
 
         Ok(())
     }());
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderInput(
-    _: JNIEnv,
-    _: JObject,
-    frame_index: i64,
-) {
-    decoderInput(frame_index);
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOutput(
-    _: JNIEnv,
-    _: JObject,
-    frame_index: i64,
-) {
-    decoderOutput(frame_index);
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
-    _: JNIEnv,
-    _: JObject,
-    waiting: bool,
-) {
-    IDR_PARSED.store(!waiting, Ordering::Relaxed);
 }
 
 #[no_mangle]
@@ -298,33 +258,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnected
     _: JObject,
 ) -> u8 {
     isConnectedNative()
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_requestIDR(
-    _: JNIEnv,
-    _: JObject,
-) {
-    IDR_REQUEST_NOTIFIER.notify_waiters();
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_restartRenderCycle(
-    env: JNIEnv,
-    _: JObject,
-) {
-    let context = ndk_context::android_context().context();
-
-    env.call_method(context.cast(), "restartRenderCycle", "()V", &[])
-        .unwrap();
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_getStreamTextureHandle(
-    env: JNIEnv,
-    _: JObject,
-) -> i32 {
-    *STREAM_TEAXTURE_HANDLE.lock()
 }
 
 // Rust Interface:

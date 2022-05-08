@@ -99,3 +99,34 @@ pub fn store_config_string(config: String) {
 
     env.call_method(editor, "apply", "()V", &[]).unwrap();
 }
+
+pub fn device_name() -> String {
+    let vm = unsafe { jni::JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let env = vm.attach_current_thread().unwrap();
+
+    let jbrand_name = env
+        .get_static_field("android/os/Build", "BRAND", "Ljava/lang/String;")
+        .unwrap()
+        .l()
+        .unwrap();
+    let brand_name_raw = env.get_string(jbrand_name.into()).unwrap();
+    let brand_name = brand_name_raw.to_string_lossy().as_ref().to_owned();
+    // Capitalize first letter
+    let mut brand_name_it = brand_name.chars();
+    let brand_name = brand_name_it
+        .next()
+        .unwrap()
+        .to_uppercase()
+        .chain(brand_name_it)
+        .collect::<String>();
+
+    let jdevice_name = env
+        .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
+        .unwrap()
+        .l()
+        .unwrap();
+    let device_name_raw = env.get_string(jdevice_name.into()).unwrap();
+    let device_name = device_name_raw.to_string_lossy().as_ref().to_owned();
+
+    format!("{brand_name} {device_name}")
+}

@@ -72,7 +72,9 @@ impl Drop for StreamCloseGuard {
     }
 }
 
-fn set_loading_message(hostname: &str, message: &str) {
+fn set_loading_message(message: &str) {
+    let hostname = storage::load_config().hostname;
+
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
         *ALVR_VERSION,
@@ -137,16 +139,15 @@ fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool) {
     .unwrap();
 }
 
-async fn connection_pipeline(
-    headset_info: &HeadsetInfoPacket,
-    device_name: String,
-    hostname: &str,
-) -> StrResult {
+async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
+    let device_name = storage::device_name();
+    let hostname = storage::load_config().hostname;
+
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
         version: ALVR_VERSION.clone(),
         device_name,
-        hostname: hostname.to_owned(),
+        hostname,
         reserved1: "".into(),
         reserved2: "".into(),
     };
@@ -161,20 +162,18 @@ async fn connection_pipeline(
                         ServerHandshakePacket::IncompatibleVersions =>
                             INCOMPATIBLE_VERSIONS_MESSAGE,
                     };
-                    set_loading_message(hostname, message_str);
+                    set_loading_message(message_str);
                     return Ok(());
                 }
                 ConnectionError::NetworkUnreachable => {
                     info!("Network unreachable");
                     set_loading_message(
-                        hostname,
                         NETWORK_UNREACHABLE_MESSAGE,
                     );
 
                     time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
                     set_loading_message(
-                        hostname,
                         INITIAL_MESSAGE,
                     );
 
@@ -208,21 +207,21 @@ async fn connection_pipeline(
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(hostname, STREAM_STARTING_MESSAGE);
+            set_loading_message(STREAM_STARTING_MESSAGE);
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(hostname, SERVER_RESTART_MESSAGE);
+            set_loading_message(SERVER_RESTART_MESSAGE);
             return Ok(());
         }
         Err(e) => {
             info!("Server disconnected. Cause: {e}");
-            set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
+            set_loading_message(SERVER_DISCONNECTED_MESSAGE);
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message(hostname, "Unexpected packet");
+            set_loading_message("Unexpected packet");
             return Ok(());
         }
     }
@@ -247,7 +246,7 @@ async fn connection_pipeline(
         .await
     {
         info!("Server disconnected. Cause: {e}");
-        set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
+        set_loading_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
 
@@ -625,7 +624,7 @@ async fn connection_pipeline(
                     .await;
                 if let Err(e) = res {
                     info!("Server disconnected. Cause: {e}");
-                    set_loading_message(hostname, SERVER_DISCONNECTED_MESSAGE);
+                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
 
@@ -645,7 +644,6 @@ async fn connection_pipeline(
                         Ok(ServerControlPacket::Restarting) => {
                             info!("Server restarting");
                             set_loading_message(
-                                hostname,
                                 SERVER_RESTART_MESSAGE
                             );
                             break Ok(());
@@ -683,7 +681,6 @@ async fn connection_pipeline(
                         Err(e) => {
                             info!("Server disconnected. Cause: {e}");
                             set_loading_message(
-                                hostname,
                                 SERVER_DISCONNECTED_MESSAGE
                             );
                             break Ok(());
@@ -702,7 +699,6 @@ async fn connection_pipeline(
                 info!("Server disconnected. Cause: {e}");
             }
             set_loading_message(
-                hostname,
                 SERVER_DISCONNECTED_MESSAGE
             );
 
@@ -728,23 +724,18 @@ async fn connection_pipeline(
     }
 }
 
-pub async fn connection_lifecycle_loop(
-    headset_info: HeadsetInfoPacket,
-    device_name: &str,
-    hostname: &str,
-) {
-    set_loading_message(&hostname, INITIAL_MESSAGE);
+pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
+    set_loading_message(INITIAL_MESSAGE);
 
     loop {
         tokio::join!(
             async {
-                let maybe_error =
-                    connection_pipeline(&headset_info, device_name.to_owned(), hostname).await;
+                let maybe_error = connection_pipeline(&headset_info).await;
 
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
-                    set_loading_message(&hostname, &message);
+                    set_loading_message(&message);
                 }
 
                 // let any running task or socket shutdown

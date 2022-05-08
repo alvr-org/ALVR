@@ -591,17 +591,6 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
 
     auto result = OnResumeResult();
 
-    auto ovrDeviceType = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DEVICE_TYPE);
-    if (ovrDeviceType == VRAPI_DEVICE_TYPE_OCULUSGO) {
-        result.deviceType = DeviceType::OCULUS_GO;
-    } else if (ovrDeviceType == VRAPI_DEVICE_TYPE_OCULUSQUEST) {
-        result.deviceType = DeviceType::OCULUS_QUEST;
-    } else if (ovrDeviceType == 320 /*VRAPI_DEVICE_TYPE_OCULUSQUEST2*/) {
-        result.deviceType = DeviceType::OCULUS_QUEST_2;
-    } else {
-        result.deviceType = DeviceType::UNKNOWN;
-    }
-
     result.recommendedEyeWidth = eyeWidth;
     result.recommendedEyeHeight = eyeHeight;
 

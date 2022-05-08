@@ -115,15 +115,7 @@ struct OnCreateResult {
     int loadingSurfaceHandle;
 };
 
-enum class DeviceType {
-    OCULUS_GO,
-    OCULUS_QUEST,
-    OCULUS_QUEST_2,
-    UNKNOWN,
-};
-
 struct OnResumeResult {
-    DeviceType deviceType;
     int recommendedEyeWidth;
     int recommendedEyeHeight;
     float *refreshRates;

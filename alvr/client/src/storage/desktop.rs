@@ -13,3 +13,7 @@ pub fn load_config_string() -> String {
 pub fn store_config_string(config: String) {
     // todo
 }
+
+pub fn device_name() -> String {
+    "Unknown"
+}

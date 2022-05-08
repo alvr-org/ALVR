@@ -161,16 +161,6 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 
         let result = onResumeNative(*jscreen_surface as _, config.dark_mode);
 
-        let device_name = if result.deviceType == DeviceType_OCULUS_GO {
-            "Oculus Go"
-        } else if result.deviceType == DeviceType_OCULUS_QUEST {
-            "Oculus Quest"
-        } else if result.deviceType == DeviceType_OCULUS_QUEST_2 {
-            "Oculus Quest 2"
-        } else {
-            "Unknown device"
-        };
-
         let available_refresh_rates =
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
         let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
@@ -186,8 +176,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         let runtime = Runtime::new().map_err(err!())?;
 
         runtime.spawn(async move {
-            let connection_loop =
-                connection::connection_lifecycle_loop(headset_info, device_name, &config.hostname);
+            let connection_loop = connection::connection_lifecycle_loop(headset_info);
 
             tokio::select! {
                 _ = connection_loop => (),

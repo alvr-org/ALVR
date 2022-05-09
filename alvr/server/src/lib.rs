@@ -2,6 +2,7 @@ mod connection;
 mod connection_utils;
 mod dashboard;
 mod logging_backend;
+mod statistics;
 mod web_server;
 
 #[allow(
@@ -22,11 +23,12 @@ use alvr_common::{
     prelude::*,
     ALVR_VERSION,
 };
-use alvr_events::EventType;
+use alvr_events::{EventType, Statistics};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{ClientListAction, GpuVendor, Haptics, TimeSyncPacket, VideoFrameHeaderPacket};
+use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
+use statistics::StatisticsManager;
 use std::{
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
@@ -50,12 +52,11 @@ static SERVER_DATA_MANAGER: Lazy<Mutex<ServerDataManager>> =
     Lazy::new(|| Mutex::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
+static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
-    Lazy::new(|| Mutex::new(None));
-static TIME_SYNC_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 
 static CLIENTS_UPDATED_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
@@ -291,6 +292,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
             }
 
             sender.send((header, vec_buffer)).ok();
+
+            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                stats.report_video_packet(len as _);
+            }
         }
     }
 
@@ -304,30 +309,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
             };
 
             sender.send(haptics).ok();
-        }
-    }
-
-    extern "C" fn time_sync_send(data: TimeSync) {
-        if let Some(sender) = &*TIME_SYNC_SENDER.lock() {
-            let time_sync = TimeSyncPacket {
-                mode: data.mode,
-                server_time: data.serverTime,
-                client_time: data.clientTime,
-                packets_lost_total: data.packetsLostTotal,
-                packets_lost_in_second: data.packetsLostInSecond,
-                average_send_latency: data.averageSendLatency,
-                average_transport_latency: data.averageTransportLatency,
-                average_decode_latency: data.averageDecodeLatency,
-                idle_time: data.idleTime,
-                fec_failure: data.fecFailure,
-                fec_failure_in_second: data.fecFailureInSecond,
-                fec_failure_total: data.fecFailureTotal,
-                fps: data.fps,
-                server_total_latency: data.serverTotalLatency,
-                tracking_recv_frame_index: data.trackingRecvFrameIndex,
-            };
-
-            sender.send(time_sync).ok();
         }
     }
 
@@ -359,6 +340,38 @@ pub unsafe extern "C" fn HmdDriverFactory(
         alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
     }
 
+    extern "C" fn report_present(timestamp_ns: u64) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_present(Duration::from_nanos(timestamp_ns));
+        }
+    }
+
+    extern "C" fn report_composed(timestamp_ns: u64) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_composed(Duration::from_nanos(timestamp_ns));
+        }
+    }
+
+    extern "C" fn report_encoded(timestamp_ns: u64) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_encoded(Duration::from_nanos(timestamp_ns));
+        }
+    }
+
+    extern "C" fn report_fec_failure(percentage: i32) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_fec_failure(percentage as u32);
+        }
+    }
+
+    extern "C" fn get_total_latency_s() -> f32 {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.average_total_latency().as_secs_f32()
+        } else {
+            0.
+        }
+    }
+
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
@@ -366,9 +379,13 @@ pub unsafe extern "C" fn HmdDriverFactory(
     DriverReadyIdle = Some(driver_ready_idle);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);
-    TimeSyncSend = Some(time_sync_send);
     ShutdownRuntime = Some(_shutdown_runtime);
     PathStringToHash = Some(path_string_to_hash);
+    ReportPresent = Some(report_present);
+    ReportComposed = Some(report_composed);
+    ReportEncoded = Some(report_encoded);
+    ReportFecFailure = Some(report_fec_failure);
+    GetTotalLatencyS = Some(get_total_latency_s);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

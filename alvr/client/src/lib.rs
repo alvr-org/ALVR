@@ -4,6 +4,7 @@ mod connection;
 mod connection_utils;
 mod decoder;
 mod logging_backend;
+mod statistics;
 mod storage;
 
 #[cfg(target_os = "android")]
@@ -23,8 +24,8 @@ use alvr_common::{
 };
 use alvr_session::Fov;
 use alvr_sockets::{
-    BatteryPacket, HeadsetInfoPacket, Input, LegacyController, LegacyInput, MotionData,
-    TimeSyncPacket, ViewsConfig,
+    BatteryPacket, ClientStatistics, HeadsetInfoPacket, Input, LegacyController, LegacyInput,
+    MotionData, ViewsConfig,
 };
 use decoder::{DECODER_REF, STREAM_TEAXTURE_HANDLE};
 use jni::{
@@ -32,6 +33,7 @@ use jni::{
     sys::jboolean,
     JNIEnv, JavaVM,
 };
+use statistics::StatisticsManager;
 use std::{collections::HashMap, ffi::CStr, os::raw::c_char, ptr, slice, time::Duration};
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
@@ -39,10 +41,12 @@ use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 // ndk-glue instead
 static GLOBAL_CONTEXT: OnceCell<GlobalRef> = OnceCell::new();
 
+static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
+
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
 static INPUT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Input>>>> =
     Lazy::new(|| Mutex::new(None));
-static TIME_SYNC_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<TimeSyncPacket>>>> =
+static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_ERROR_REPORT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<()>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -125,6 +129,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNativ
     };
 
     if rendered_frame_index != -1 {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_decoded(Duration::from_nanos(rendered_frame_index as _));
+        }
         renderNative(rendered_frame_index);
     }
 }
@@ -419,27 +426,26 @@ pub fn initialize() {
         }
     }
 
-    extern "C" fn time_sync_send(data: TimeSync) {
-        if let Some(sender) = &*TIME_SYNC_SENDER.lock() {
-            let time_sync = TimeSyncPacket {
-                mode: data.mode,
-                server_time: data.serverTime,
-                client_time: data.clientTime,
-                packets_lost_total: data.packetsLostTotal,
-                packets_lost_in_second: data.packetsLostInSecond,
-                average_send_latency: data.averageSendLatency,
-                average_transport_latency: data.averageTransportLatency,
-                average_decode_latency: data.averageDecodeLatency,
-                idle_time: data.idleTime,
-                fec_failure: data.fecFailure,
-                fec_failure_in_second: data.fecFailureInSecond,
-                fec_failure_total: data.fecFailureTotal,
-                fps: data.fps,
-                server_total_latency: data.serverTotalLatency,
-                tracking_recv_frame_index: data.trackingRecvFrameIndex,
-            };
+    extern "C" fn report_submit(target_timestamp_ns: u64, vsync_queue_ns: u64) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            let timestamp = Duration::from_nanos(target_timestamp_ns);
+            stats.report_submit(timestamp, Duration::from_nanos(vsync_queue_ns));
 
-            sender.send(time_sync).ok();
+            if let Some(sender) = &*STATISTICS_SENDER.lock() {
+                if let Some(stats) = stats.summary(timestamp) {
+                    sender.send(stats).ok();
+                } else {
+                    error!("Statistics summary not ready!");
+                }
+            }
+        }
+    }
+
+    extern "C" fn get_prediction_offset_ns() -> u64 {
+        if let Some(stats) = &*STATISTICS_MANAGER.lock() {
+            stats.average_total_pipeline_latency().as_nanos() as _
+        } else {
+            0
         }
     }
 
@@ -542,7 +548,8 @@ pub fn initialize() {
     unsafe {
         pathStringToHash = Some(path_string_to_hash);
         inputSend = Some(input_send);
-        timeSyncSend = Some(time_sync_send);
+        reportSubmit = Some(report_submit);
+        getPredictionOffsetNs = Some(get_prediction_offset_ns);
         videoErrorReportSend = Some(video_error_report_send);
         viewsConfigSend = Some(views_config_send);
         batterySend = Some(battery_send);

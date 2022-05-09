@@ -60,42 +60,29 @@
                             <table id="statisticsTable">
                                 <tr>
                                     <td><%= totalPackets%>:</td>
-                                    <td><div id="statistic_totalPackets">0</div> <%= packets%></td>
-                                    <td><div id="statistic_packetRate">0</div> <%= packetss%></td>
-                                </tr>
-                                <tr>
-                                    <td><%= packetsLostTotal%>:</td>
-                                    <td><div id="statistic_packetsLostTotal">0</div> <%= packets%></td>
-                                    <td><div id="statistic_packetsLostPerSecond">0</div> <%= packetss%></td>
+                                    <td><div id="statistic_videoPacketsTotal">0</div> <%= packets%></td>
+                                    <td><div id="statistic_videoPacketsPerSec">0</div> <%= packetss%></td>
                                 </tr>
                                 <tr>
                                     <td><%= totalSent%>:</td>
-                                    <td><div id="statistic_totalSent">0</div> MB</td>
-                                    <td><div id="statistic_sentRate">0</div> Mbps</td>
-                                </tr>
-                                <tr>
-                                    <td><%= bitrate%>:</td>
-                                    <td><div id="statistic_bitrate">0</div> Mbps</td>
-                                </tr>
-                                <tr>
-                                    <td><%= ping%>:</td>
-                                    <td><div id="statistic_ping">0</div> ms</td>
+                                    <td><div id="statistic_videoMbytesTotal">0</div> MB</td>
+                                    <td><div id="statistic_videoMbitsPerSec">0</div> Mbps</td>
                                 </tr>
                                 <tr>
                                     <td><%= totalLatency%>:</td>
-                                    <td><div id="statistic_totalLatency">0</div> ms</td>
+                                    <td><div id="statistic_totalLatencyMs">0</div> ms</td>
                                 </tr>
                                 <tr>
                                     <td><%= encodeLatency%>:</td>
-                                    <td><div id="statistic_encodeLatency">0</div> ms</td>
+                                    <td><div id="statistic_encodeLatencyMs">0</div> ms</td>
                                 </tr>
                                 <tr>
                                     <td><%= transportLatency%>:</td>
-                                    <td><div id="statistic_sendLatency">0</div> ms</td>
+                                    <td><div id="statistic_networkLatencyMs">0</div> ms</td>
                                 </tr>
                                 <tr>
                                     <td><%= decodeLatency%>:</td>
-                                    <td><div id="statistic_decodeLatency">0</div> ms</td>
+                                    <td><div id="statistic_decodeLatencyMs">0</div> ms</td>
                                 </tr>
                                 <tr>
                                     <td><%= fecPercentage%>:</td>
@@ -103,16 +90,16 @@
                                 </tr>
                                 <tr>
                                     <td><%= fecFailureTotal%>:</td>
-                                    <td><div id="statistic_fecFailureTotal">0</div> <%= packets%></td>
-                                    <td><div id="statistic_fecFailureInSecond">0</div> <%= packetss%></td>
+                                    <td><div id="statistic_fecErrorsTotal">0</div> <%= packets%></td>
+                                    <td><div id="statistic_fecErrorsPerSec">0</div> <%= packetss%></td>
                                 </tr>
                                 <tr>
                                     <td><%= clientFPS%>:</td>
-                                    <td><div id="statistic_clientFPS">0</div> fps</td>
+                                    <td><div id="statistic_clientFps">0</div> fps</td>
                                 </tr>
                                 <tr>
                                     <td><%= serverFPS%>:</td>
-                                    <td><div id="statistic_serverFPS">0</div> fps</td>
+                                    <td><div id="statistic_serverFps">0</div> fps</td>
                                 </tr>
                             </table>
                         </div>
@@ -122,7 +109,7 @@
                             <table id="statisticsTable">
                                 <tr>
                                     <td style="width: auto;"><%= batteries%>:</td>
-                                    <td><%= headset%> <div id="statistic_batteryHMD">0</div> %</td>
+                                    <td><%= headset%> <div id="statistic_batteryHmd">0</div> %</td>
                                     <td><%= left%> <div id="statistic_batteryLeft">0</div> %</td>
                                     <td><%= right%> <div id="statistic_batteryRight">0</div> %</td>
                                 </tr>

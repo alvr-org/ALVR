@@ -12,24 +12,6 @@ pub static IDR_REQUEST_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 pub static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
 
 #[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderInput(
-    _: JNIEnv,
-    _: JObject,
-    frame_index: i64,
-) {
-    crate::decoderInput(frame_index);
-}
-
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_DecoderOutput(
-    _: JNIEnv,
-    _: JObject,
-    frame_index: i64,
-) {
-    crate::decoderOutput(frame_index);
-}
-
-#[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
     _: JNIEnv,
     _: JObject,

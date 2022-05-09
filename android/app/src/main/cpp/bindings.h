@@ -58,43 +58,6 @@ struct TrackingInfo {
         unsigned int handFingerConfidences;
     } controller[2];
 };
-// Client >----(mode 0)----> Server
-// Client <----(mode 1)----< Server
-// Client >----(mode 2)----> Server
-// Client <----(mode 3)----< Server
-struct TimeSync {
-    unsigned int type; // ALVR_PACKET_TYPE_TIME_SYNC
-    unsigned int mode; // 0,1,2,3
-    unsigned long long sequence;
-    unsigned long long serverTime;
-    unsigned long long clientTime;
-
-    // Following value are filled by client only when mode=0.
-    unsigned long long packetsLostTotal;
-    unsigned long long packetsLostInSecond;
-
-    unsigned int averageTotalLatency;
-
-    unsigned int averageSendLatency;
-
-    unsigned int averageTransportLatency;
-
-    unsigned long long averageDecodeLatency;
-
-    unsigned int idleTime;
-
-    unsigned int fecFailure;
-    unsigned long long fecFailureInSecond;
-    unsigned long long fecFailureTotal;
-
-    float fps;
-
-    // Following value are filled by server only when mode=1.
-    unsigned int serverTotalLatency;
-
-    // Following value are filled by server only when mode=3.
-    unsigned long long trackingRecvFrameIndex;
-};
 struct VideoFrame {
     unsigned int type; // ALVR_PACKET_TYPE_VIDEO_FRAME
     unsigned int packetCounter;
@@ -142,9 +105,6 @@ struct StreamConfig {
     bool extraLatencyMode;
 };
 
-extern "C" void decoderInput(long long frameIndex);
-extern "C" void decoderOutput(long long frameIndex);
-
 extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
 extern "C" void destroyNative(void *env);
 extern "C" void renderNative(long long renderedFrameIndex);
@@ -164,12 +124,12 @@ extern "C" GuardianData getGuardianData();
 
 extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
-extern "C" void sendTimeSync();
 extern "C" unsigned char isConnectedNative();
 extern "C" void closeSocket();
 
 extern "C" void (*inputSend)(TrackingInfo data);
-extern "C" void (*timeSyncSend)(TimeSync data);
+extern "C" void (*reportSubmit)(unsigned long long targetTimestampNs, unsigned long long vsyncQueueNs);
+extern "C" unsigned long long (*getPredictionOffsetNs)();
 extern "C" void (*videoErrorReportSend)();
 extern "C" void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
 extern "C" void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);

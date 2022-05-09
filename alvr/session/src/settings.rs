@@ -459,6 +459,9 @@ pub struct ConnectionDesc {
 
     #[schema(advanced)]
     pub enable_fec: bool,
+
+    #[schema(advanced)]
+    pub statistics_history_size: u64,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -718,6 +721,7 @@ pub fn session_settings_default() -> SettingsDefault {
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),
             enable_fec: true,
+            statistics_history_size: 1024,
         },
         extra: ExtraDescDefault {
             theme: ThemeDefault {

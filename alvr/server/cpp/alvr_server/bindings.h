@@ -58,41 +58,13 @@ struct TrackingInfo {
         unsigned int handFingerConfidences;
     } controller[2];
 };
-// Client >----(mode 0)----> Server
-// Client <----(mode 1)----< Server
-// Client >----(mode 2)----> Server
-// Client <----(mode 3)----< Server
-struct TimeSync {
-    unsigned int mode; // 0,1,2,3
-    unsigned long long sequence;
-    unsigned long long serverTime;
-    unsigned long long clientTime;
 
-    // Following value are filled by client only when mode=0.
-    unsigned long long packetsLostTotal;
-    unsigned long long packetsLostInSecond;
-
-    unsigned int averageTotalLatency;
-
-    unsigned int averageSendLatency;
-
-    unsigned int averageTransportLatency;
-
-    unsigned long long averageDecodeLatency;
-
-    unsigned int idleTime;
-
-    unsigned int fecFailure;
-    unsigned long long fecFailureInSecond;
-    unsigned long long fecFailureTotal;
-
-    float fps;
-
-    // Following value are filled by server only when mode=1.
-    unsigned int serverTotalLatency;
-
-    // Following value are filled by server only when mode=3.
-    unsigned long long trackingRecvFrameIndex;
+struct ClientStats {
+    unsigned long long targetTimestampNs;
+    unsigned long long videoDecodeNs;
+    unsigned long long renderingNs;
+    unsigned long long vsyncQueueNs;
+    unsigned long long totalPipelineLatencyNs;
 };
 struct VideoFrame {
     unsigned int type; // ALVR_PACKET_TYPE_VIDEO_FRAME
@@ -163,9 +135,13 @@ extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,
                                float frequency,
                                float amplitude);
-extern "C" void (*TimeSyncSend)(TimeSync packet);
 extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);
+extern "C" void (*ReportPresent)(unsigned long long timestamp);
+extern "C" void (*ReportComposed)(unsigned long long timestamp);
+extern "C" void (*ReportEncoded)(unsigned long long timestamp);
+extern "C" void (*ReportFecFailure)(int percentage);
+extern "C" float (*GetTotalLatencyS)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
@@ -173,7 +149,7 @@ extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void InputReceive(TrackingInfo data);
-extern "C" void TimeSyncReceive(TimeSync data);
+extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 

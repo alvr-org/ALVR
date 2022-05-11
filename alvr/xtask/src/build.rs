@@ -134,6 +134,8 @@ pub fn build_server(
                     let so_file = lib_dir.join(src_so_file.file_name().unwrap());
                     assert!(so_file.exists());
                     let so_file_symlink = lib_dir.join(lib_path.file_name().unwrap());
+                    // std::fs::soft_link is deprecated...
+                    #[cfg(target_os = "linux")]
                     std::os::unix::fs::symlink(so_file, so_file_symlink).unwrap();
                 }
             }

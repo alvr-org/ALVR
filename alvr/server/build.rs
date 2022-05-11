@@ -8,17 +8,21 @@ use std::{env, path::PathBuf};
 // but AFTER the build in other cases because linker flags must appear after.
 #[cfg(target_os = "linux")]
 fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
-    let ffmpeg_path = env::var("CARGO_MANIFEST_DIR").unwrap() + "/../../deps/linux/FFmpeg-n4.4/";
+    let ffmpeg_path = afs::deps_dir().join("linux/ffmpeg");
+    let alvr_build = if cfg!(feature = "gpl") { "alvr_build" } else { "" };
+    let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
 
     #[cfg(feature = "gpl")]
     {
-        for lib in vec!["libavutil", "libavfilter", "libavcodec", "libswscale"] {
-            let path = ffmpeg_path.clone() + lib;
-            env::set_var(
-                "PKG_CONFIG_PATH",
-                env::var("PKG_CONFIG_PATH").map_or(path.clone(), |old| format!("{path}:{old}")),
-            );
-        }
+        assert!(ffmpeg_path.exists());
+        let ffmpeg_pkg_path = ffmpeg_build_dir.join("lib/pkgconfig/");
+        assert!(ffmpeg_pkg_path.exists());
+        
+        let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
+        env::set_var(
+            "PKG_CONFIG_PATH",
+            env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| format!("{ffmpeg_pkg_path}:{old}")),
+        );
     }
 
     let pkg = pkg_config::Config::new()
@@ -39,7 +43,8 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
             )
             .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
 
-        build.include(ffmpeg_path);
+        assert!(ffmpeg_build_dir.join("include").exists());
+        build.include(ffmpeg_build_dir.join("include"));
 
         // activate dlopen for libav libraries
         build

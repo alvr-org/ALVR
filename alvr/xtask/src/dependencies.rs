@@ -141,6 +141,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--enable-vulkan",
         "--enable-libdrm",
     ];
+    let install_prefix = "--prefix=alvr_build";
 
     let _push_guard = sh.push_dir(final_path);
 
@@ -186,16 +187,20 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
             let flags_combined = flags.join(" ");
             let nvenc_flags_combined = nvenc_flags.join(" ");
 
-            let command = format!("./configure {flags_combined} {nvenc_flags_combined}");
+            let command =
+                format!("./configure {install_prefix} {flags_combined} {nvenc_flags_combined}");
 
             cmd!(sh, "bash -c {command}").run().unwrap();
         }
     } else {
-        cmd!(sh, "./configure {flags...}").run().unwrap();
+        cmd!(sh, "./configure {install_prefix} {flags...}")
+            .run()
+            .unwrap();
     }
 
     let nproc = cmd!(sh, "nproc").read().unwrap();
     cmd!(sh, "make -j{nproc}").run().unwrap();
+    cmd!(sh, "make install").run().unwrap();
 }
 
 fn get_oculus_openxr_mobile_loader() {

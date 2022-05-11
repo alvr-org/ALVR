@@ -1,6 +1,6 @@
 use crate::command::{self, run_as_bash_in as bash_in};
 use alvr_filesystem as afs;
-use std::{fs, path::Path};
+use std::{fs, io::BufRead, path::Path};
 
 fn download_and_extract_zip(url: &str, destination: &Path) {
     let zip_file = afs::deps_dir().join("temp_download.zip");
@@ -33,7 +33,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
     bash_in(
         &ffmpeg_path,
         &format!(
-            "./configure {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}",
+            // The reason for 4x$ in LDSOFLAGS var refer to https://stackoverflow.com/a/71429999
+            // all varients of --extra-ldsoflags='-Wl,-rpath,$ORIGIN' do not work! don't waste your time trying!
+            //
+            r#"LDSOFLAGS=-Wl,-rpath,\''$$$$ORIGIN'\' ./configure {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}"#,
             "--enable-gpl --enable-version3",
             "--disable-static --enable-shared",
             "--disable-programs",
@@ -83,7 +86,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) -> std::path::PathBuf {
             "--enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi",
             "--enable-filter=scale --enable-filter=scale_vaapi",
             "--enable-libx264 --enable-libx265 --enable-vulkan",
-            "--enable-libdrm",
+            "--enable-libdrm --enable-pic --enable-rpath"
         ),
     )
     .unwrap();
@@ -135,4 +138,30 @@ pub fn build_deps(target_os: &str) {
     } else {
         println!("Nothing to do for {target_os}!")
     }
+}
+
+pub fn find_resolved_so_paths(
+    bin_or_so: &std::path::Path,
+    depends_so: &str,
+) -> Vec<std::path::PathBuf> {
+    let cmdline = format!(
+        "ldd {} | cut -d '>' -f 2 | awk \'{{print $1}}\' | grep {}",
+        bin_or_so.display(),
+        depends_so
+    );
+    std::process::Command::new("sh")
+        .args(&["-c", &cmdline])
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .map_or(vec![], |mut child| {
+            let mut result = std::io::BufReader::new(child.stdout.take().unwrap())
+                .lines()
+                .filter(|line| line.is_ok())
+                .map(|line| std::path::PathBuf::from(line.unwrap()).canonicalize()) // canonicalize resolves symlinks
+                .filter(|result| result.is_ok())
+                .map(|pp| pp.unwrap())
+                .collect::<Vec<_>>();
+            result.dedup();
+            result
+        })
 }

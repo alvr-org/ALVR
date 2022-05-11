@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -104,7 +104,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -129,7 +129,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -143,7 +143,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "backtrace",
  "glam",
@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "dirs",
  "lazy_static",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -229,7 +229,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -247,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_vulkan-layer"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.59.2",
@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "alvr_filesystem",
  "fs_extra",
@@ -4520,7 +4520,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vrcompositor-wrapper"
-version = "18.2.2"
+version = "18.2.3"
 dependencies = [
  "exec",
 ]

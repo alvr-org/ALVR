@@ -1,6 +1,6 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::fs;
+use std::{fs, io::BufRead};
 use xshell::{cmd, Shell};
 
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
@@ -140,10 +140,17 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--enable-libx265",
         "--enable-vulkan",
         "--enable-libdrm",
+        "--enable-pic",
+        "--enable-rpath",
     ];
     let install_prefix = "--prefix=alvr_build";
+    // The reason for 4x$ in LDSOFLAGS var refer to https://stackoverflow.com/a/71429999
+    // all varients of --extra-ldsoflags='-Wl,-rpath,$ORIGIN' do not work! don't waste your time trying!
+    //
+    let config_vars = r#"-Wl,-rpath,'$$$$ORIGIN'"#;
 
     let _push_guard = sh.push_dir(final_path);
+    let _env_vars = sh.push_env("LDSOFLAGS", config_vars);
 
     if nvenc_flag {
         /*
@@ -241,4 +248,30 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "cargo install cargo-apk").run().unwrap();
 
     get_oculus_openxr_mobile_loader();
+}
+
+pub fn find_resolved_so_paths(
+    bin_or_so: &std::path::Path,
+    depends_so: &str,
+) -> Vec<std::path::PathBuf> {
+    let cmdline = format!(
+        "ldd {} | cut -d '>' -f 2 | awk \'{{print $1}}\' | grep {}",
+        bin_or_so.display(),
+        depends_so
+    );
+    std::process::Command::new("sh")
+        .args(&["-c", &cmdline])
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .map_or(vec![], |mut child| {
+            let mut result = std::io::BufReader::new(child.stdout.take().unwrap())
+                .lines()
+                .filter(|line| line.is_ok())
+                .map(|line| std::path::PathBuf::from(line.unwrap()).canonicalize()) // canonicalize resolves symlinks
+                .filter(|result| result.is_ok())
+                .map(|pp| pp.unwrap())
+                .collect::<Vec<_>>();
+            result.dedup();
+            result
+        })
 }

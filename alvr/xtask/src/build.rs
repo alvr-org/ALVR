@@ -1,4 +1,4 @@
-use crate::{command, version};
+use crate::{command, dependencies, version};
 use alvr_filesystem::{self as afs, Layout};
 use xshell::{cmd, Shell};
 
@@ -120,6 +120,7 @@ pub fn build_server(
         // copy ffmpeg binaries
         if gpl {
             let lib_dir = &build_layout.openvr_driver_root_dir;
+            let mut libavcodec_so = std::path::PathBuf::new();
             sh.create_dir(&lib_dir).unwrap();
             let _push_guard = sh.push_dir(&lib_dir);
             for lib_path in sh
@@ -136,6 +137,18 @@ pub fn build_server(
                     let so_file = std::path::Path::new(src_so_file.file_name().unwrap());
                     let so_file_symlink = std::path::Path::new(lib_path.file_name().unwrap());
                     command::make_symlink(&sh, so_file, so_file_symlink).unwrap();
+                }
+                let lib_filename = src_so_file.file_name().unwrap();
+                if lib_filename.to_string_lossy().starts_with("libavcodec.so") {
+                    libavcodec_so = src_so_file;
+                }
+            }
+            // copy ffmpeg shared lib dependencies.
+            for solib in ["libx264.so", "libx265.so"] {
+                let src_libs = dependencies::find_resolved_so_paths(&libavcodec_so, solib);
+                if !src_libs.is_empty() {
+                    let src_lib = src_libs.first().unwrap();
+                    sh.copy_file(&src_lib, ".").unwrap();
                 }
             }
         }

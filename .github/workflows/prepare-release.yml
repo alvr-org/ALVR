@@ -136,7 +136,6 @@ jobs:
           sudo apt-get install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
           cp packaging/deb/cuda.pc /usr/share/pkgconfig
           cargo xtask prepare-deps --platform linux
-          cd deps/linux/ffmpeg && sudo make install && cd ../../..
 
       - name: Build and package ALVR (.tar.gz)
         id: build

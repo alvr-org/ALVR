@@ -121,6 +121,7 @@ pub fn build_server(
         if gpl {
             let lib_dir = &build_layout.openvr_driver_root_dir;
             sh.create_dir(&lib_dir).unwrap();
+            let _push_guard = sh.push_dir(&lib_dir);
             for lib_path in sh
                 .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
                 .unwrap()
@@ -128,15 +129,13 @@ pub fn build_server(
                 .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
             {
                 let src_so_file = lib_path.canonicalize().unwrap(); // canonicalize resolves symlinks.
-                sh.copy_file(&src_so_file, &lib_dir).unwrap();
+                sh.copy_file(&src_so_file, ".").unwrap();
                 // Shell::copy_file does not handle symlinks so we must recreate them.
                 if lib_path.is_symlink() {
-                    let so_file = lib_dir.join(src_so_file.file_name().unwrap());
-                    assert!(so_file.exists());
-                    let so_file_symlink = lib_dir.join(lib_path.file_name().unwrap());
-                    // std::fs::soft_link is deprecated...
-                    #[cfg(target_os = "linux")]
-                    std::os::unix::fs::symlink(so_file, so_file_symlink).unwrap();
+                    assert!(lib_dir.join(src_so_file.file_name().unwrap()).exists());
+                    let so_file = std::path::Path::new(src_so_file.file_name().unwrap());
+                    let so_file_symlink = std::path::Path::new(lib_path.file_name().unwrap());
+                    command::make_symlink(&sh, so_file, so_file_symlink).unwrap();
                 }
             }
         }

@@ -21,6 +21,10 @@ pub fn download(sh: &Shell, url: &str, destination: &Path) -> Result<(), xshell:
     cmd!(sh, "curl -L -o {destination} --url {url}").run()
 }
 
+pub fn make_symlink(sh: &Shell, file: &Path, symlink_file: &Path) -> Result<(), xshell::Error> {
+    cmd!(sh, "ln -sr {file} {symlink_file}").run()
+}
+
 pub fn download_and_extract_zip(
     sh: &Shell,
     url: &str,

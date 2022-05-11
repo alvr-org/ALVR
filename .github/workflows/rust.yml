@@ -54,7 +54,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -p alvr_xtask -p alvr_launcher -p alvr_server -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper --verbose
+          args: -p alvr_xtask -p alvr_launcher -p alvr_server --features gpl -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper --verbose
 
   tests:
     runs-on: ubuntu-latest

@@ -341,7 +341,7 @@ vr::DriverPose_t OvrHmd::GetPose() {
               pose.vecPosition[1],
               pose.vecPosition[2]);
 
-        pose.poseTimeOffset = m_Listener->GetPoseTimeOffset();
+        pose.poseTimeOffset = -GetTotalLatencyS();
     }
 
     return pose;
@@ -440,7 +440,7 @@ void OvrHmd::updateController(const TrackingInfo &info) {
     // Update controller
 
     if (Settings::Instance().m_serversidePrediction)
-        m_poseTimeOffset = m_Listener->GetPoseTimeOffset();
+        m_poseTimeOffset = -GetTotalLatencyS();
     else
         m_poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
 

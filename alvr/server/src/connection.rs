@@ -1,7 +1,8 @@
 use crate::{
-    connection_utils, EyeFov, TimeSync, TrackingInfo, TrackingInfo_Controller,
-    TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
-    HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, TIME_SYNC_SENDER, VIDEO_SENDER,
+    connection_utils, statistics::StatisticsManager, ClientStats, EyeFov, TrackingInfo,
+    TrackingInfo_Controller, TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3,
+    CLIENTS_UPDATED_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -13,9 +14,10 @@ use alvr_common::{
 use alvr_events::EventType;
 use alvr_session::{CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction,
+    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction, ClientStatistics,
     ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, Input, PeerType,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT, VIDEO,
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT,
+    STATISTICS, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -610,6 +612,10 @@ async fn connection_pipeline() -> StrResult {
     };
     let stream_socket = Arc::new(stream_socket);
 
+    *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
+        settings.connection.statistics_history_size as _,
+    ));
+
     alvr_events::send_event(EventType::ClientConnected);
 
     {
@@ -737,25 +743,6 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    let time_sync_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *TIME_SYNC_SENDER.lock() = Some(data_sender);
-
-            while let Some(time_sync) = data_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ServerControlPacket::TimeSync(time_sync))
-                    .await
-                    .ok();
-            }
-
-            Ok(())
-        }
-    };
-
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
         async move {
@@ -795,6 +782,10 @@ async fn connection_pipeline() -> StrResult {
         async move {
             loop {
                 let input = receiver.recv().await?.header;
+
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    stats.report_tracking_received(input.target_timestamp);
+                }
 
                 let head_motion = &input
                     .device_motions
@@ -923,6 +914,22 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
+    let statistics_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<ClientStatistics>(STATISTICS)
+            .await?;
+        async move {
+            loop {
+                let client_stats = receiver.recv().await?.header;
+
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    let network_latency = stats.report_statistics(client_stats);
+                    unsafe { crate::ReportNetworkLatency(network_latency.as_micros() as _) };
+                }
+            }
+        }
+    };
+
     let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
 
     let is_tracking_ref_only = settings.headset.tracking_ref_only;
@@ -965,29 +972,6 @@ async fn connection_pipeline() -> StrResult {
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
-                Ok(ClientControlPacket::TimeSync(data)) => {
-                    let time_sync = TimeSync {
-                        mode: data.mode,
-                        serverTime: data.server_time,
-                        clientTime: data.client_time,
-                        sequence: 0,
-                        packetsLostTotal: data.packets_lost_total,
-                        packetsLostInSecond: data.packets_lost_in_second,
-                        averageTotalLatency: 0,
-                        averageSendLatency: data.average_send_latency,
-                        averageTransportLatency: data.average_transport_latency,
-                        averageDecodeLatency: data.average_decode_latency,
-                        idleTime: data.idle_time,
-                        fecFailure: data.fec_failure,
-                        fecFailureInSecond: data.fec_failure_in_second,
-                        fecFailureTotal: data.fec_failure_total,
-                        fps: data.fps,
-                        serverTotalLatency: data.server_total_latency,
-                        trackingRecvFrameIndex: data.tracking_recv_frame_index,
-                    };
-
-                    unsafe { crate::TimeSyncReceive(time_sync) };
-                }
                 Ok(ClientControlPacket::VideoErrorReport) => unsafe {
                     crate::VideoErrorReportReceive()
                 },
@@ -1012,6 +996,10 @@ async fn connection_pipeline() -> StrResult {
                 },
                 Ok(ClientControlPacket::Battery(packet)) => unsafe {
                     crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
+
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_battery(packet.device_id, packet.gauge_value);
+                    }
                 },
                 Ok(_) => (),
                 Err(e) => {
@@ -1040,7 +1028,7 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(video_send_loop) => res,
-        res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(statistics_receive_loop) => res,
         res = spawn_cancelable(haptics_send_loop) => res,
         res = spawn_cancelable(input_receive_loop) => res,
 

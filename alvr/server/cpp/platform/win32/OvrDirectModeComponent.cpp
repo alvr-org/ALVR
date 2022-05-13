@@ -172,6 +172,8 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
+	ReportPresent(m_targetTimestampNs);
+
 	bool useMutex = true;
 	Debug("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", syncTexture, useMutex, m_prevTargetTimestampNs, m_targetTimestampNs);
 
@@ -222,6 +224,8 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		}
 		Debug("[VDispDvr] Mutex Released.\n");
 	}
+
+	ReportComposed(m_targetTimestampNs);
 
 	if (m_pEncoder) {
 		m_pEncoder->NewFrameReady();

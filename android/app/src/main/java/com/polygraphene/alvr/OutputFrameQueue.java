@@ -77,7 +77,6 @@ public class OutputFrameQueue {
         elem.frameIndex = foundFrameIndex;
         mQueue.add(elem);
 
-        DecoderThread.DecoderOutput(foundFrameIndex);
         Utils.frameLog(foundFrameIndex, () -> "Current queue state=" + mQueue.size() + "/" + mQueueSize + " pushed index=" + index);
 
         render();

@@ -307,12 +307,9 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
             Utils.frameLog(nal.frameIndex, () -> "Feed IDR-Frame. Size=" + nal.length + " PresentationTime=" + presentationTime);
             setWaitingNextIDR(false);
 
-            DecoderInput(nal.frameIndex);
-
             consumed = pushInputBuffer(nal, presentationTime, 0);
         } else {
             // PFrame
-            DecoderInput(nal.frameIndex);
 
             if (mWaitNextIDR) {
                 // Ignore P-Frame until next I-Frame
@@ -370,8 +367,6 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         return mQueue.clearAvailable(mStreamSurfaceTexture);
     }
 
-    public static native void DecoderInput(long frameIndex);
-    public static native void DecoderOutput(long frameIndex);
     public static native void setWaitingNextIDR(boolean waiting);
     public static native void requestIDR();
     public static native void restartRenderCycle(); // Actually called every frame to sync the loop

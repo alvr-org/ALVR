@@ -167,9 +167,13 @@ void (*LogDebug)(const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
-void (*TimeSyncSend)(TimeSync packet);
 void (*ShutdownRuntime)();
 unsigned long long (*PathStringToHash)(const char *path);
+void (*ReportPresent)(unsigned long long timestamp);
+void (*ReportComposed)(unsigned long long timestamp);
+void (*ReportEncoded)(unsigned long long timestamp);
+void (*ReportFecFailure)(int percentage);
+float (*GetTotalLatencyS)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants
@@ -211,19 +215,12 @@ void InputReceive(TrackingInfo data) {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
         g_driver_provider.hmd->m_Listener->m_Statistics->CountPacket(sizeof(TrackingInfo));
 
-        uint64_t Current = GetTimestampUs();
-        TimeSync sendBuf = {};
-        sendBuf.mode = 3;
-        sendBuf.serverTime = Current - g_driver_provider.hmd->m_Listener->m_TimeDiff;
-        sendBuf.trackingRecvFrameIndex = data.targetTimestampNs;
-        TimeSyncSend(sendBuf);
-
         g_driver_provider.hmd->OnPoseUpdated(data);
     }
 }
-void TimeSyncReceive(TimeSync data) {
+void ReportNetworkLatency(unsigned long long latencyUs) {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->ProcessTimeSync(data);
+        g_driver_provider.hmd->m_Listener->ReportNetworkLatency(latencyUs);
     }
 }
 void VideoErrorReportReceive() {
@@ -262,18 +259,5 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
             device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value);
         vr::VRProperties()->SetBoolProperty(
             device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged);
-    }
-
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        auto stats = g_driver_provider.hmd->m_Listener->GetStatistics();
-
-        if (top_level_path == HEAD_PATH) {
-            stats->m_hmdBattery = gauge_value;
-            stats->m_hmdPlugged = is_plugged;
-        } else if (top_level_path == LEFT_HAND_PATH) {
-            stats->m_leftControllerBattery = gauge_value;
-        } else if (top_level_path == RIGHT_HAND_PATH) {
-            stats->m_rightControllerBattery = gauge_value;
-        }
     }
 }

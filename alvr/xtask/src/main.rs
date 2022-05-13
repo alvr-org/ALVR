@@ -46,9 +46,11 @@ ARGS:
 pub fn crate_dir_names() -> Vec<String> {
     let sh = Shell::new().unwrap();
 
+    // NB: macOS might create a .DS_Store file. Filter to only directories
     sh.read_dir(afs::workspace_dir().join("alvr"))
         .unwrap()
         .into_iter()
+        .filter(|path| path.is_dir())
         .map(|path| {
             path.file_name()
                 .unwrap()

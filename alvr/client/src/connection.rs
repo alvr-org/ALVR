@@ -3,7 +3,8 @@
 use crate::{
     connection_utils::{self, ConnectionError},
     decoder::{DECODER_REF, IDR_PARSED, IDR_REQUEST_NOTIFIER},
-    storage, TimeSync, VideoFrame, BATTERY_SENDER, INPUT_SENDER, TIME_SYNC_SENDER,
+    statistics::StatisticsManager,
+    storage, VideoFrame, BATTERY_SENDER, INPUT_SENDER, STATISTICS_MANAGER, STATISTICS_SENDER,
     VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
 };
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -11,7 +12,7 @@ use alvr_session::{CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
     HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, ServerHandshakePacket,
-    StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, VIDEO,
+    StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, STATISTICS, VIDEO,
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
@@ -233,6 +234,10 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         session_desc.to_settings()
     };
 
+    *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
+        settings.connection.statistics_history_size as _,
+    ));
+
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         settings.connection.stream_port,
         settings.connection.stream_protocol,
@@ -372,23 +377,29 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                     .send_buffer(socket_sender.new_buffer(&input, 0)?)
                     .await
                     .ok();
+
+                // Note: this is not the best place to report the acquired input. Instead it should
+                // be done as soon as possible (or even just before polling the input). Instead this
+                // is reported late to partially compensate for lack of network latency measurement,
+                // so the server can just use total_pipeline_latency as the postTimeoffset.
+                // This hack will be removed once poseTimeOffset can be calculated more accurately.
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    stats.report_input_acquired(input.target_timestamp);
+                }
             }
 
             Ok(())
         }
     };
 
-    let time_sync_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
+    let statistics_send_loop = {
+        let mut socket_sender = stream_socket.request_stream(STATISTICS).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *TIME_SYNC_SENDER.lock() = Some(data_sender);
-
-            while let Some(time_sync) = data_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::TimeSync(time_sync))
+            *STATISTICS_SENDER.lock() = Some(data_sender);
+            while let Some(stats) = data_receiver.recv().await {
+                socket_sender
+                    .send_buffer(socket_sender.new_buffer(&stats, 0)?)
                     .await
                     .ok();
             }
@@ -476,6 +487,12 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                     &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
                 });
                 buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
+
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    stats.report_video_packet_received(Duration::from_nanos(
+                        packet.header.tracking_frame_index,
+                    ));
+                }
 
                 legacy_receive_data_sender.lock().await.send(buffer).ok();
             }
@@ -648,35 +665,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                             );
                             break Ok(());
                         }
-                        Ok(ServerControlPacket::TimeSync(data)) => {
-                            let time_sync = TimeSync {
-                                type_: 7, // ALVR_PACKET_TYPE_TIME_SYNC
-                                mode: data.mode,
-                                serverTime: data.server_time,
-                                clientTime: data.client_time,
-                                sequence: 0,
-                                packetsLostTotal: data.packets_lost_total,
-                                packetsLostInSecond: data.packets_lost_in_second,
-                                averageTotalLatency: 0,
-                                averageSendLatency: data.average_send_latency,
-                                averageTransportLatency: data.average_transport_latency,
-                                averageDecodeLatency: data.average_decode_latency,
-                                idleTime: data.idle_time,
-                                fecFailure: data.fec_failure,
-                                fecFailureInSecond: data.fec_failure_in_second,
-                                fecFailureTotal: data.fec_failure_total,
-                                fps: data.fps,
-                                serverTotalLatency: data.server_total_latency,
-                                trackingRecvFrameIndex: data.tracking_recv_frame_index,
-                            };
-
-                            let mut buffer = vec![0_u8; mem::size_of::<TimeSync>()];
-                            buffer.copy_from_slice(unsafe {
-                                &mem::transmute::<_, [u8; mem::size_of::<TimeSync>()]>(time_sync)
-                            });
-
-                            legacy_receive_data_sender.lock().await.send(buffer).ok();
-                        },
                         Ok(_) => (),
                         Err(e) => {
                             info!("Server disconnected. Cause: {e}");
@@ -709,7 +697,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(input_send_loop) => res,
-        res = spawn_cancelable(time_sync_send_loop) => res,
+        res = spawn_cancelable(statistics_send_loop) => res,
         res = spawn_cancelable(video_error_report_send_loop) => res,
         res = spawn_cancelable(views_config_send_loop) => res,
         res = spawn_cancelable(battery_send_loop) => res,

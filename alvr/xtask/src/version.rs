@@ -50,6 +50,8 @@ fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
 fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
     let manifest_path = afs::crate_dir(crate_dir_name).join("Cargo.toml");
 
+    dbg!(&manifest_path);
+
     let manifest = fs::read_to_string(&manifest_path).unwrap();
 
     let (file_start, _, file_end) = split_string(&manifest, "version = \"", '\"');

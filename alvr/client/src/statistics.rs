@@ -91,8 +91,9 @@ impl StatisticsManager {
             frame.intervals.vsync_queue = vsync_queue;
             frame.intervals.total_pipeline_latency = now - frame.input_acquired + vsync_queue;
 
-            frame.intervals.frame_interval = now - self.prev_vsync;
-            self.prev_vsync = now;
+            let vsync = now + vsync_queue;
+            frame.intervals.frame_interval = vsync - self.prev_vsync;
+            self.prev_vsync = vsync;
         }
     }
 

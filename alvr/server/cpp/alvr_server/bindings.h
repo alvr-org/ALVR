@@ -137,9 +137,9 @@ extern "C" void (*HapticsSend)(unsigned long long path,
                                float amplitude);
 extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);
-extern "C" void (*ReportPresent)(unsigned long long timestamp);
-extern "C" void (*ReportComposed)(unsigned long long timestamp);
-extern "C" void (*ReportEncoded)(unsigned long long timestamp);
+extern "C" void (*ReportPresent)(unsigned long long timestamp_ns);
+extern "C" void (*ReportComposed)(unsigned long long timestamp_ns);
+extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
 extern "C" void (*ReportFecFailure)(int percentage);
 extern "C" float (*GetTotalLatencyS)();
 
@@ -150,6 +150,7 @@ extern "C" void RequestIDR();
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void InputReceive(TrackingInfo data);
 extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
+extern "C" unsigned long long GetGameFrameIntervalNs();
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 

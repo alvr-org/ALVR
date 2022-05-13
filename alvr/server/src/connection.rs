@@ -923,7 +923,10 @@ async fn connection_pipeline() -> StrResult {
                 let client_stats = receiver.recv().await?.header;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    let network_latency = stats.report_statistics(client_stats);
+                    let game_frame_interval =
+                        Duration::from_nanos(unsafe { crate::GetGameFrameIntervalNs() });
+                    let network_latency =
+                        stats.report_statistics(client_stats, game_frame_interval);
                     unsafe { crate::ReportNetworkLatency(network_latency.as_micros() as _) };
                 }
             }

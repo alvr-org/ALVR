@@ -24,16 +24,10 @@ cpal = "0.13.5"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "0.5"
-winapi = { version = "0.3", features = [
-    "impl-default",
-    "combaseapi",
-    "coml2api",
-    "endpointvolume",
-    "functiondiscoverykeys_devpkey",
-    "mmdeviceapi",
-    "objbase",
-    "propidl",
-    "propsys",
-    "wtypes",
+windows = { version = "0.36", features = [
+    "Win32_Devices_FunctionDiscovery",
+    "Win32_Foundation",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_UI_Shell_PropertiesSystem",
 ] }
-wio = "0.2"

@@ -1,5 +1,6 @@
 use alvr_sockets::ClientStatistics;
 use std::{
+    cmp,
     collections::VecDeque,
     time::{Duration, Instant},
 };
@@ -18,18 +19,9 @@ pub struct StatisticsManager {
 
 impl StatisticsManager {
     pub fn new(history_size: usize) -> Self {
-        // Add a single non-zero total latency to avoid division by zero later
         Self {
             max_history_size: history_size,
-            history_buffer: [HistoryFrame {
-                input_acquired: Instant::now(),
-                video_packet_received: Instant::now(),
-                intervals: ClientStatistics {
-                    total_pipeline_latency: Duration::from_millis(1),
-                    ..Default::default()
-                },
-            }]
-            .into(),
+            history_buffer: VecDeque::new(),
             prev_vsync: Instant::now(),
         }
     }
@@ -87,7 +79,7 @@ impl StatisticsManager {
             .find(|frame| frame.intervals.target_timestamp == target_timestamp)
         {
             frame.intervals.rendering =
-                now - frame.video_packet_received - frame.intervals.video_decode;
+                (now - frame.video_packet_received).saturating_sub(frame.intervals.video_decode);
             frame.intervals.vsync_queue = vsync_queue;
             frame.intervals.total_pipeline_latency = now - frame.input_acquired + vsync_queue;
 
@@ -115,6 +107,6 @@ impl StatisticsManager {
             }
         }
 
-        sum / frames_count
+        sum / cmp::max(frames_count, 1)
     }
 }

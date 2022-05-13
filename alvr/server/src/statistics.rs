@@ -1,7 +1,8 @@
-use alvr_common::{prelude::error, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
+use alvr_common::{HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_events::{EventType, GraphStatistics, Statistics};
 use alvr_sockets::ClientStatistics;
 use std::{
+    cmp,
     collections::{HashMap, VecDeque},
     time::{Duration, Instant},
 };
@@ -48,13 +49,8 @@ pub struct StatisticsManager {
 impl StatisticsManager {
     // history size used to calculate average total pipeline latency
     pub fn new(history_size: usize) -> Self {
-        // Add a single non-zero total latency to avoid division by zero later
         Self {
-            history_buffer: [HistoryFrame {
-                total_pipeline_latency: Duration::from_millis(1),
-                ..Default::default()
-            }]
-            .into(),
+            history_buffer: VecDeque::new(),
             max_history_size: history_size,
             last_full_report_instant: Instant::now(),
             video_packets_total: 0,
@@ -238,6 +234,6 @@ impl StatisticsManager {
             }
         }
 
-        sum / frames_count
+        sum / cmp::max(frames_count, 1)
     }
 }

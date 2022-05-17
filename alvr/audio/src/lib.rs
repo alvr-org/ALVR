@@ -3,7 +3,7 @@ use alvr_session::{AudioConfig, AudioDeviceId, LinuxAudioBackend};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, Device, Sample, SampleFormat, StreamConfig,
+    BufferSize, Device, Sample, SampleFormat, SampleRate, StreamConfig,
 };
 use rodio::{OutputStream, Source};
 use std::{
@@ -286,9 +286,18 @@ pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
             .ok_or_else(enone!())?
     };
 
-    // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
-    // format and channel count
-    Ok(config.min_sample_rate().0)
+    // In theory we should check all configs for a 48000 sample rate.
+    // In practice it seems like most stuff we care about supports one sample rate
+    // or arbitrary ones, and this is enough to unbreak the common Linux desktop
+    // audio setups. Could be revisited later if this ever turns out to matter.
+
+    if config.min_sample_rate().0 <= 48000 && config.max_sample_rate().0 >= 48000 {
+        Ok(48000)
+    } else {
+        // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
+        // format and channel count
+        Ok(config.min_sample_rate().0)
+    }
 }
 
 #[cfg_attr(not(windows), allow(unused_variables))]
@@ -315,7 +324,7 @@ pub async fn record_audio_loop(
             .ok_or_else(enone!())?
     };
 
-    if sample_rate != config.min_sample_rate().0 {
+    if sample_rate < config.min_sample_rate().0 || sample_rate > config.max_sample_rate().0 {
         return fmt_e!("Sample rate not supported");
     }
 
@@ -328,7 +337,7 @@ pub async fn record_audio_loop(
 
     let stream_config = StreamConfig {
         channels: config.channels(),
-        sample_rate: config.min_sample_rate(),
+        sample_rate: SampleRate(sample_rate),
         buffer_size: BufferSize::Default,
     };
 

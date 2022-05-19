@@ -112,9 +112,19 @@ namespace gl_render_utils {
     }
 
     RenderPipeline::~RenderPipeline() {
-        GL(glDeleteBuffers(1, &mBlockBuffer));
-        GL(glDeleteShader(mVertexShader));
-        GL(glDeleteShader(mFragmentShader));
-        GL(glDeleteProgram(mProgram));
+        if (GL_TRUE == glIsBuffer(mBlockBuffer)) {
+            GL(glDeleteBuffers(1, &mBlockBuffer));
+        }
+        if (GL_TRUE == glIsShader(mVertexShader)) {
+            GL(glDetachShader(mProgram, mVertexShader));
+            GL(glDeleteShader(mVertexShader));
+        }
+        if (GL_TRUE == glIsShader(mFragmentShader)) {
+            GL(glDetachShader(mProgram, mFragmentShader));
+            GL(glDeleteShader(mFragmentShader));
+        }
+        if (GL_TRUE == glIsProgram(mProgram)) {
+            GL(glDeleteProgram(mProgram));
+        }
     }
 }

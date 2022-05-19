@@ -91,6 +91,8 @@ impl AudioOutputCallback for PlayerCallback {
         _: &mut dyn AudioOutputStreamSafe,
         out_frames: &mut [(f32, f32)],
     ) -> DataCallbackResult {
+        assert!(self.batch_frames_count == out_frames.len());
+
         let samples = alvr_audio::get_next_frame_batch(
             &mut *self.sample_buffer.lock(),
             2,
@@ -109,6 +111,12 @@ pub async fn play_audio_loop(
     config: AudioConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
+    // the client sends invalid sample rates sometimes, and we crash if we try and use one
+    // (batch_frames_count ends up zero and the audio callback gets confused)
+    if sample_rate < 8000 {
+        return fmt_e!("Invalid audio sample rate");
+    }
+
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
     let average_buffer_frames_count =
         sample_rate as usize * config.average_buffering_ms as usize / 1000;

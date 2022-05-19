@@ -328,8 +328,6 @@ void eglDestroy() {
     }
 }
 
-#ifdef OVR_SDK
-
 bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
                            const int height) {
     const int PREFERRED_SWAPCHAIN_SIZE = 3;
@@ -382,8 +380,6 @@ void ovrFramebuffer_Advance(ovrFramebuffer *frameBuffer) {
     frameBuffer->TextureSwapChainIndex =
             (frameBuffer->TextureSwapChainIndex + 1) % frameBuffer->TextureSwapChainLength;
 }
-
-#endif
 
 //
 // ovrGeometry
@@ -662,12 +658,10 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
         renderer->ffr->Initialize(ffrData);
     }
 
-#ifdef OVR_SDK
     // Create the frame buffers.
     for (int eye = 0; eye < renderer->NumBuffers; eye++) {
         ovrFramebuffer_Create(&renderer->FrameBuffer[eye], GL_RGBA8, width, height);
     }
-#endif
 
     renderer->streamTexture = streamTexture;
     renderer->LoadingTexture = LoadingTexture;
@@ -697,24 +691,17 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode) {
 }
 
 void ovrRenderer_Destroy(ovrRenderer *renderer) {
-    // On Gvr, ovrFence_Destroy produces error because we cannot call it on GL render thread.
-#if !defined(GVR_SDK)
     if (renderer->SceneCreated) {
         ovrProgram_Destroy(&renderer->Program);
         ovrProgram_Destroy(&renderer->ProgramLoading);
         ovrGeometry_DestroyVAO(&renderer->Panel);
         ovrGeometry_Destroy(&renderer->Panel);
     }
-#endif
 
-#ifdef OVR_SDK
     for (int eye = 0; eye < renderer->NumBuffers; eye++) {
         ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
     }
-#endif
 }
-
-#ifdef OVR_SDK
 
 ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
                                             bool loading) {
@@ -771,8 +758,6 @@ ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTrac
 
     return layer;
 }
-
-#endif
 
 void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
                bool loading) {

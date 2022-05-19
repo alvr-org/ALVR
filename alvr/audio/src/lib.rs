@@ -257,9 +257,7 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
                 &mut res_ptr,
             )
             .map_err(err!())?;
-
-        let endpoint_volume =
-            mem::transmute::<_, IAudioEndpointVolume>(NonNull::new(res_ptr).unwrap());
+        let endpoint_volume: IAudioEndpointVolume = mem::transmute(NonNull::new(res_ptr).unwrap());
 
         endpoint_volume
             .SetMute(mute, ptr::null_mut())

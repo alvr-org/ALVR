@@ -30,16 +30,23 @@ use alvr_sockets::{
 use decoder::{DECODER_REF, STREAM_TEAXTURE_HANDLE};
 use jni::{
     objects::{GlobalRef, JObject, ReleaseMode},
-    sys::jboolean,
+    sys::{jboolean, jobject},
     JNIEnv, JavaVM,
 };
 use statistics::StatisticsManager;
-use std::{collections::HashMap, ffi::CStr, os::raw::c_char, ptr, slice, time::Duration};
+use std::{
+    collections::HashMap,
+    ffi::CStr,
+    os::raw::{c_char, c_uchar},
+    ptr, slice,
+    time::Duration,
+};
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 // This is the actual storage for the context pointer set in ndk-context. usually stored in
 // ndk-glue instead
 static GLOBAL_CONTEXT: OnceCell<GlobalRef> = OnceCell::new();
+static GLOBAL_ASSET_MANAGER: OnceCell<GlobalRef> = OnceCell::new();
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
@@ -57,7 +64,7 @@ static BATTERY_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>>>
 static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 #[no_mangle]
-pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
+pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
     env: JNIEnv,
     context: JObject,
 ) {
@@ -71,36 +78,7 @@ pub extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
         GLOBAL_CONTEXT.get().unwrap().as_obj(),
     );
 
-    // todo: manage loading and stream textures on lib side
-    alvr_common::show_err(|| -> StrResult {
-        let android_context = ndk_context::android_context();
-
-        let vm = unsafe { jni::JavaVM::from_raw(android_context.vm().cast()).unwrap() };
-        let env = vm.attach_current_thread().unwrap();
-
-        let asset_manager = env
-            .call_method(
-                android_context.context().cast(),
-                "getAssets",
-                "()Landroid/content/res/AssetManager;",
-                &[],
-            )
-            .unwrap()
-            .l()
-            .unwrap();
-
-        let result = unsafe {
-            onCreate(
-                env.get_native_interface() as _,
-                *context as _,
-                *asset_manager as _,
-            )
-        };
-
-        *STREAM_TEAXTURE_HANDLE.lock() = result.streamSurfaceHandle;
-
-        Ok(())
-    }());
+    initVR();
 }
 
 #[no_mangle]
@@ -108,7 +86,9 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_destroyNati
     env: JNIEnv,
     _: JObject,
 ) {
-    destroyNative(env.get_native_interface() as _)
+    destroyVR();
+
+    alvr_destroy();
 }
 
 #[no_mangle]
@@ -166,7 +146,12 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
 
         let config = storage::load_config();
 
-        let result = onResumeNative(*jscreen_surface as _, config.dark_mode);
+        let result = resumeVR(*jscreen_surface as _);
+        prepareLoadingRoom(
+            result.recommendedEyeWidth,
+            result.recommendedEyeHeight,
+            config.dark_mode,
+        );
 
         let available_refresh_rates =
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
@@ -204,7 +189,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
     codec: i32,
     real_time: jboolean,
 ) {
-    onStreamStartNative();
+    streamStartNative();
+    streamStartVR();
 
     let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
     let env = vm.get_env().unwrap();
@@ -230,7 +216,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onPauseNati
     // shutdown and wait for tasks to finish
     drop(RUNTIME.lock().take());
 
-    onPauseNative();
+    destroyRenderers();
+    pauseVR();
 
     if let Some(decoder) = DECODER_REF.lock().take() {
         env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
@@ -245,7 +232,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onBatteryCh
     battery: i32,
     plugged: i32,
 ) {
-    onBatteryChangedNative(battery, plugged)
+    batteryChangedNative(battery, plugged)
 }
 
 #[no_mangle]
@@ -253,7 +240,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_isConnected
     _: JNIEnv,
     _: JObject,
 ) -> u8 {
-    isConnectedNative()
+    isConnectedNative() as _
 }
 
 // Rust Interface:
@@ -563,6 +550,36 @@ pub fn initialize() {
     }
 
     permission::try_get_microphone_permission();
+
+    let vm = unsafe { jni::JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let env = vm.attach_current_thread().unwrap();
+
+    let asset_manager = env
+        .call_method(
+            ndk_context::android_context().context().cast(),
+            "getAssets",
+            "()Landroid/content/res/AssetManager;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    let asset_manager = env.new_global_ref(asset_manager).unwrap();
+
+    let result = unsafe {
+        initNative(
+            ndk_context::android_context().vm(),
+            ndk_context::android_context().context(),
+            *asset_manager.as_obj() as _,
+        )
+    };
+    *STREAM_TEAXTURE_HANDLE.lock() = result.streamSurfaceHandle;
+
+    GLOBAL_ASSET_MANAGER.set(asset_manager);
+}
+
+pub fn destroy() {
+    unsafe { destroyNative() };
 }
 
 // C interface:
@@ -575,4 +592,9 @@ pub extern "C" fn alvr_initialize(vm: JavaVM, context: JObject) {
     };
 
     initialize();
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_destroy() {
+    destroy();
 }

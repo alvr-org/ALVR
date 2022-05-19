@@ -60,7 +60,7 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
     }
 }
 
-unsigned char isConnectedNative() {
+bool isConnectedNative() {
     return g_socket.m_connected;
 }
 

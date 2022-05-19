@@ -13,9 +13,9 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 #[cfg(target_os = "android")]
-pub use android::device_name;
+pub use android::{device_name, load_asset};
 #[cfg(not(target_os = "android"))]
-pub use desktop::device_name;
+pub use desktop::{device_name, load_asset};
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {

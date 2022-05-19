@@ -29,9 +29,6 @@ add_library( # Sets the name of the library.
              src/main/cpp/gl_render_utils/texture.cpp
              src/main/cpp/gl_render_utils/render_pipeline.cpp
              src/main/cpp/gl_render_utils/textured_quad.cpp
-             src/main/cpp/interactive_panel.cpp
-             src/main/cpp/animation_curve.cpp
-             src/main/cpp/vr_gui.cpp
              src/main/cpp/ServerConnectionNative.cpp
              src/main/cpp/nal.cpp
              src/main/cpp/render.cpp
@@ -44,7 +41,6 @@ add_library( # Sets the name of the library.
              ../ALVR-common/reedsolomon/rs.c
              ../ALVR-common/common-utils.cpp
              ../ALVR-common/exception.cpp
-             ../ALVR-common/lodepng/lodepng.cpp
              )
 
 # Searches for a specified prebuilt library and stores the path as a

@@ -85,12 +85,6 @@ struct OnResumeResult {
     int refreshRatesCount;
 };
 
-struct GuardianData {
-    bool shouldSync;
-    float areaWidth;
-    float areaHeight;
-};
-
 struct StreamConfig {
     unsigned int eyeWidth;
     unsigned int eyeHeight;
@@ -105,26 +99,32 @@ struct StreamConfig {
     bool extraLatencyMode;
 };
 
-extern "C" OnCreateResult onCreate(void *env, void *activity, void *assetManager);
-extern "C" void destroyNative(void *env);
-extern "C" void renderNative(long long renderedFrameIndex);
+extern "C" OnCreateResult initNative(void *g_vm, void *g_context, void *assetManager);
+extern "C" void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode);
+extern "C" void renderNative(long long targetTimespampNs);
 extern "C" void updateLoadingTexuture(const unsigned char *data);
 extern "C" void renderLoadingNative();
-extern "C" void onTrackingNative(bool clientsidePrediction);
-extern "C" OnResumeResult onResumeNative(void *surface, bool darkMode);
+extern "C" void streamStartNative();
+extern "C" void trackingNative(bool clientsidePrediction);
 extern "C" void setStreamConfig(StreamConfig config);
-extern "C" void onStreamStartNative();
-extern "C" void onPauseNative();
-extern "C" void onHapticsFeedbackNative(unsigned long long path,
+extern "C" void destroyRenderers();
+extern "C" void hapticsFeedbackNative(unsigned long long path,
                                         float duration_s,
                                         float frequency,
                                         float amplitude);
-extern "C" void onBatteryChangedNative(int battery, int plugged);
-extern "C" GuardianData getGuardianData();
+extern "C" void batteryChangedNative(int battery, int plugged);
+extern "C" bool getGuardianArea(float *width, float *height);
+extern "C" void destroyNative();
+
+extern "C" void initVR();
+extern "C" OnResumeResult resumeVR(void *surface);
+extern "C" void streamStartVR();
+extern "C" void pauseVR();
+extern "C" void destroyVR();
 
 extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
-extern "C" unsigned char isConnectedNative();
+extern "C" bool isConnectedNative();
 extern "C" void closeSocket();
 
 extern "C" void (*inputSend)(TrackingInfo data);

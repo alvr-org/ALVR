@@ -508,7 +508,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                 let packet = receiver.recv().await?.header;
 
                 unsafe {
-                    crate::onHapticsFeedbackNative(
+                    crate::hapticsFeedbackNative(
                         packet.path,
                         packet.duration.as_secs_f32(),
                         packet.frequency,
@@ -569,26 +569,24 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     let tracking_loop = async move {
         let mut deadline = Instant::now();
         loop {
-            unsafe { crate::onTrackingNative(tracking_clientside_prediction) };
+            unsafe { crate::trackingNative(tracking_clientside_prediction) };
             deadline += tracking_interval;
             time::sleep_until(deadline).await;
         }
     };
 
-    unsafe impl Send for crate::GuardianData {}
     let playspace_sync_loop = {
         let control_sender = Arc::clone(&control_sender);
         async move {
             loop {
-                let guardian_data = unsafe { crate::getGuardianData() };
-
-                if guardian_data.shouldSync {
+                let mut width = 0_f32;
+                let mut height = 0_f32;
+                if unsafe { crate::getGuardianArea(&mut width, &mut height) } {
                     control_sender
                         .lock()
                         .await
                         .send(&ClientControlPacket::PlayspaceSync(Vec2::new(
-                            guardian_data.areaWidth,
-                            guardian_data.areaHeight,
+                            width, height,
                         )))
                         .await
                         .ok();

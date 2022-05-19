@@ -12,7 +12,6 @@
 #include "gltf_model.h"
 #include "utils.h"
 #include "ffr.h"
-#include "vr_gui.h"
 
 
 // Must use EGLSyncKHR because the VrApi still supports OpenGL ES 2.0

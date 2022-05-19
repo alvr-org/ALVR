@@ -58,10 +58,10 @@ struct Rect {
 
 class OvrContext {
 public:
+    JavaVM *vm;
+    jobject context;
     ANativeWindow *window = nullptr;
-    ovrMobile *Ovr{};
-    ovrJava java{};
-    JNIEnv *env{};
+    ovrMobile *ovrContext{};
 
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> loadingTexture;
@@ -74,13 +74,13 @@ public:
 
     uint64_t ovrFrameIndex = 0;
 
-    int m_LastHMDRecenterCount = -1;
+    int lastHmdRecenterCount = -1;
 
     std::map<uint64_t, ovrTracking2> trackingFrameMap;
     std::mutex trackingFrameMutex;
 
-    bool darkMode;
-    ovrRenderer Renderer;
+    std::unique_ptr<ovrRenderer> loadingRenderer;
+    std::unique_ptr<ovrRenderer> streamRenderer;
 
     uint8_t lastLeftControllerBattery = 0;
     uint8_t lastRightControllerBattery = 0;
@@ -100,23 +100,35 @@ public:
         bool fresh;
         bool buffered;
     };
-    // mHapticsState[0]: right hand state
-    // mHapticsState[1]: left hand state
-    HapticsState mHapticsState[2]{};
-
-
-    std::chrono::system_clock::time_point mMenuNotPressedLastInstant;
-    bool mMenuLongPressActivated = false;
+    // hapticsState[0]: right hand state
+    // hapticsState[1]: left hand state
+    HapticsState hapticsState[2]{};
 };
 
 namespace {
     OvrContext g_ctx;
 }
 
-OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
-    auto *env = (JNIEnv *) v_env;
-    auto activity = (jobject) v_activity;
-    auto assetManager = (jobject) v_assetManager;
+ovrJava getOvrJava() {
+    JNIEnv *env;
+    g_ctx.vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+
+    ovrJava java{};
+    java.Vm = g_ctx.vm;
+    java.Env = env;
+    java.ActivityObject = g_ctx.context;
+
+    return java;
+}
+
+OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
+    g_ctx.vm = (JavaVM *)v_vm;
+    g_ctx.context = (jobject)v_context;
+
+    // note: afterwards env can be retrieved with just vm->GetEnv()
+    JNIEnv *env;
+    JavaVMAttachArgs args = { JNI_VERSION_1_6 };
+    g_ctx.vm->AttachCurrentThread(&env, &args);
 
     HEAD_PATH = pathStringToHash("/user/head");
     LEFT_HAND_PATH = pathStringToHash("/user/hand/left");
@@ -126,56 +138,43 @@ OnCreateResult onCreate(void *v_env, void *v_activity, void *v_assetManager) {
 
     LOG("Initializing EGL.");
 
-    setAssetManager(env, assetManager);
+    auto java = getOvrJava();
+    setAssetManager(java.Env, (jobject) v_assetManager);
 
-    g_ctx.env = env;
-    g_ctx.java.Env = env;
-    env->GetJavaVM(&g_ctx.java.Vm);
-    g_ctx.java.ActivityObject = env->NewGlobalRef(activity);
+    memset(g_ctx.hapticsState, 0, sizeof(g_ctx.hapticsState));
 
     eglInit();
 
-    const ovrInitParms initParms = vrapi_DefaultInitParms(&g_ctx.java);
+    g_ctx.streamTexture = make_unique<Texture>(true);
+    g_ctx.loadingTexture = make_unique<Texture>(
+            false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+
+    return {(int) g_ctx.streamTexture->GetGLTexture(),
+            (int) g_ctx.loadingTexture->GetGLTexture()};
+}
+
+void initVR() {
+    auto java = getOvrJava();
+
+    const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
     int32_t initResult = vrapi_Initialize(&initParms);
     if (initResult != VRAPI_INITIALIZE_SUCCESS) {
         // If initialization failed, vrapi_* function calls will not be available.
         LOGE("vrapi_Initialize failed");
     }
-
-    //
-    // Generate texture for SurfaceTexture which is output of MediaCodec.
-    //
-
-    g_ctx.streamTexture = make_unique<Texture>(true);
-
-    g_ctx.loadingTexture = make_unique<Texture>(
-            false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
-
-    memset(g_ctx.mHapticsState, 0, sizeof(g_ctx.mHapticsState));
-
-    //ovrPlatformInitializeResult res = ovr_PlatformInitializeAndroid("", activity, env);
-    //LOGI("ovrPlatformInitializeResult %s", ovrPlatformInitializeResult_ToString(res));
-    //ovrRequest req;
-    //req = ovr_User_GetLoggedInUser();
-    //LOGI("Logged in user is %" PRIu64 "\n", req);
-
-    return {(int) g_ctx.streamTexture.get()->GetGLTexture(),
-            (int) g_ctx.loadingTexture.get()->GetGLTexture()};
 }
 
-void destroyNative(void *v_env) {
-    auto *env = (JNIEnv *) v_env;
-
+void destroyNative() {
     LOG("Destroying EGL.");
 
     g_ctx.streamTexture.reset();
     g_ctx.loadingTexture.reset();
 
     eglDestroy();
+}
 
+void destroyVR() {
     vrapi_Shutdown();
-
-    env->DeleteGlobalRef(g_ctx.java.ActivityObject);
 }
 
 uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
@@ -271,14 +270,14 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
     int controller = 0;
 
     for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
+         vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
         if (curCaps.Type == ovrControllerType_Hand) {  //A3
             ovrInputHandCapabilities handCapabilities;
             ovrInputStateHand inputStateHand;
             handCapabilities.Header = curCaps;
 
-            result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &handCapabilities.Header);
+            result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &handCapabilities.Header);
 
             if (result != ovrSuccess) {
                 continue;
@@ -291,7 +290,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             }
             inputStateHand.Header.ControllerType = handCapabilities.Header.Type;
 
-            result = vrapi_GetCurrentInputState(g_ctx.Ovr, handCapabilities.Header.DeviceID,
+            result = vrapi_GetCurrentInputState(g_ctx.ovrContext, handCapabilities.Header.DeviceID,
                                                 &inputStateHand.Header);
             if (result != ovrSuccess) {
                 continue;
@@ -312,7 +311,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
                                                                              : VRAPI_HAND_RIGHT;
             ovrHandSkeleton handSkeleton;
             handSkeleton.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandSkeleton(g_ctx.Ovr, handedness, &handSkeleton.Header) != ovrSuccess) {
+            if (vrapi_GetHandSkeleton(g_ctx.ovrContext, handedness, &handSkeleton.Header) != ovrSuccess) {
                 LOG("VrHands - failed to get hand skeleton");
             } else {
                 for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
@@ -323,7 +322,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 
             ovrHandPose handPose;
             handPose.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandPose(g_ctx.Ovr, handCapabilities.Header.DeviceID, displayTime,
+            if (vrapi_GetHandPose(g_ctx.ovrContext, handCapabilities.Header.DeviceID, displayTime,
                                   &handPose.Header) !=
                 ovrSuccess) {
                 LOG("VrHands - failed to get hand pose");
@@ -363,13 +362,13 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             ovrInputStateTrackedRemote remoteInputState;
 
             remoteCapabilities.Header = curCaps;
-            result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &remoteCapabilities.Header);
+            result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
             if (result != ovrSuccess) {
                 continue;
             }
             remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
 
-            result = vrapi_GetCurrentInputState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
+            result = vrapi_GetCurrentInputState(g_ctx.ovrContext, remoteCapabilities.Header.DeviceID,
                                                 &remoteInputState.Header);
             if (result != ovrSuccess) {
                 continue;
@@ -431,7 +430,7 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
             }
 
             ovrTracking tracking;
-            if (vrapi_GetInputTrackingState(g_ctx.Ovr, remoteCapabilities.Header.DeviceID,
+            if (vrapi_GetInputTrackingState(g_ctx.ovrContext, remoteCapabilities.Header.DeviceID,
                                             displayTime, &tracking) != ovrSuccess) {
                 LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
             } else {
@@ -467,14 +466,14 @@ void setControllerInfo(TrackingInfo *packet, double displayTime) {
 }
 
 float getIPD() {
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.0);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, 0.0);
     float ipd = vrapi_GetInterpupillaryDistance(&tracking);
     return ipd;
 }
 
 // return fov in OpenXR convention
 std::pair<EyeFov, EyeFov> getFov() {
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, 0.0);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, 0.0);
 
     EyeFov fov[2];
 
@@ -504,10 +503,16 @@ std::pair<EyeFov, EyeFov> getFov() {
 }
 
 // Called from TrackingThread
-void sendTrackingInfo(bool clientsidePrediction) {
+void trackingNative(bool clientsidePrediction) {
+    auto java = getOvrJava();
+
+    if (g_ctx.ovrContext == nullptr) {
+        return;
+    }
+
     // vrapi_GetTimeInSeconds doesn't match getTimestampUs
     uint64_t targetTimestampNs = vrapi_GetTimeInSeconds() * 1e9 + getPredictionOffsetNs();
-    auto tracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, (double)targetTimestampNs / 1e9);
+    auto tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, (double)targetTimestampNs / 1e9);
 
     {
         std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
@@ -520,7 +525,7 @@ void sendTrackingInfo(bool clientsidePrediction) {
     TrackingInfo info = {};
     info.targetTimestampNs = targetTimestampNs;
 
-    info.mounted = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_MOUNTED);
+    info.mounted = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_MOUNTED);
 
     memcpy(&info.HeadPose_Pose_Orientation, &tracking.HeadPose.Pose.Orientation,
            sizeof(ovrQuatf));
@@ -541,14 +546,14 @@ void sendTrackingInfo(bool clientsidePrediction) {
     }
 }
 
-OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
-    auto surface = (jobject) v_surface;
+OnResumeResult resumeVR(void *v_surface) {
+    auto java = getOvrJava();
 
-    g_ctx.window = ANativeWindow_fromSurface(g_ctx.env, surface);
+    g_ctx.window = ANativeWindow_fromSurface(java.Env, (jobject) v_surface);
 
     LOGI("Entering VR mode.");
 
-    ovrModeParms parms = vrapi_DefaultModeParms(&g_ctx.java);
+    ovrModeParms parms = vrapi_DefaultModeParms(&java);
 
     parms.Flags |= VRAPI_MODE_FLAG_RESET_WINDOW_FULLSCREEN;
 
@@ -557,66 +562,48 @@ OnResumeResult onResumeNative(void *v_surface, bool darkMode) {
     parms.WindowSurface = (size_t) g_ctx.window;
     parms.ShareContext = (size_t) egl.Context;
 
-    g_ctx.Ovr = vrapi_EnterVrMode(&parms);
+    g_ctx.ovrContext = vrapi_EnterVrMode(&parms);
 
-    if (g_ctx.Ovr == nullptr) {
+    if (g_ctx.ovrContext == nullptr) {
         LOGE("Invalid ANativeWindow");
     }
 
-    {
-        // set Color Space
-        ovrHmdColorDesc colorDesc{};
-        colorDesc.ColorSpace = VRAPI_COLORSPACE_RIFT_S;
-        vrapi_SetClientColorDesc(g_ctx.Ovr, &colorDesc);
-    }
+    // set Color Space
+    ovrHmdColorDesc colorDesc{};
+    colorDesc.ColorSpace = VRAPI_COLORSPACE_RIFT_S;
+    vrapi_SetClientColorDesc(g_ctx.ovrContext, &colorDesc);
 
-    vrapi_SetPerfThread(g_ctx.Ovr, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
+    vrapi_SetPerfThread(g_ctx.ovrContext, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
-    vrapi_SetTrackingSpace(g_ctx.Ovr, VRAPI_TRACKING_SPACE_STAGE);
-
-    auto eyeWidth = vrapi_GetSystemPropertyInt(&g_ctx.java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    auto eyeHeight = vrapi_GetSystemPropertyInt(&g_ctx.java,
-                                                VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-    ovrRenderer_Create(&g_ctx.Renderer, eyeWidth, eyeHeight, g_ctx.streamTexture.get(),
-                       g_ctx.loadingTexture->GetGLTexture(), {false});
-#pragma clang diagnostic pop
-
-    ovrRenderer_CreateScene(&g_ctx.Renderer, darkMode);
-
-    g_ctx.darkMode = darkMode;
+    vrapi_SetTrackingSpace(g_ctx.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
 
     auto result = OnResumeResult();
 
-    result.recommendedEyeWidth = eyeWidth;
-    result.recommendedEyeHeight = eyeHeight;
+    result.recommendedEyeWidth = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    result.recommendedEyeHeight = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
-    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&g_ctx.java,
+    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&java,
                                                           VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
     g_ctx.refreshRatesBuffer = vector<float>(result.refreshRatesCount);
-    vrapi_GetSystemPropertyFloatArray(&g_ctx.java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
+    vrapi_GetSystemPropertyFloatArray(&java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
                                       &g_ctx.refreshRatesBuffer[0], result.refreshRatesCount);
     result.refreshRates = &g_ctx.refreshRatesBuffer[0];
 
     return result;
 }
 
+void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode) {
+    g_ctx.loadingRenderer = std::make_unique<ovrRenderer>();
+    ovrRenderer_Create(g_ctx.loadingRenderer.get(), eyeWidth, eyeHeight, nullptr,
+                       g_ctx.loadingTexture->GetGLTexture(), {false});
+    ovrRenderer_CreateScene(g_ctx.loadingRenderer.get(), darkMode);
+}
+
 void setStreamConfig(StreamConfig config) {
     g_ctx.streamConfig = config;
 }
 
-void onStreamStartNative() {
-    ovrRenderer_Destroy(&g_ctx.Renderer);
-    ovrRenderer_Create(&g_ctx.Renderer, g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
-                       g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(),
-                       {g_ctx.streamConfig.enableFoveation,
-                        g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
-                        g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
-                        g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
-                        g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
-    ovrRenderer_CreateScene(&g_ctx.Renderer, g_ctx.darkMode);
-
+void streamStartVR() {
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
     // Which introduces stutter animation.
     // I think the number of discarded frames is shown as Stale in Logcat like following:
@@ -624,15 +611,31 @@ void onStreamStartNative() {
     // After enabling ExtraLatencyMode:
     //    I/VrApi: FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
     // We need to set ExtraLatencyMode On to workaround for this issue.
-    vrapi_SetExtraLatencyMode(g_ctx.Ovr,
+    vrapi_SetExtraLatencyMode(g_ctx.ovrContext,
                               (ovrExtraLatencyMode) g_ctx.streamConfig.extraLatencyMode);
 
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.Ovr, g_ctx.streamConfig.refreshRate);
+    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, g_ctx.streamConfig.refreshRate);
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
+}
 
-    g_ctx.m_LastHMDRecenterCount = -1; // make sure we send guardian data
+void streamStartNative() {
+    if (g_ctx.streamRenderer) {
+        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
+        g_ctx.streamRenderer.release();
+    }
+    g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
+    ovrRenderer_Create(g_ctx.streamRenderer.get(), g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
+                       g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(),
+                       {g_ctx.streamConfig.enableFoveation,
+                        g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
+                        g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
+                        g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
+                        g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
+     ovrRenderer_CreateScene(g_ctx.streamRenderer.get(), false);
+
+    g_ctx.lastHmdRecenterCount = -1; // make sure we send guardian data
 
     // reset battery and view config to make sure they get sent
     g_ctx.lastIpd = 0;
@@ -640,14 +643,12 @@ void onStreamStartNative() {
     g_ctx.lastRightControllerBattery = 0;
 }
 
-void onPauseNative() {
-    ovrRenderer_Destroy(&g_ctx.Renderer);
-
+void pauseVR() {
     LOGI("Leaving VR mode.");
 
-    vrapi_LeaveVrMode(g_ctx.Ovr);
+    vrapi_LeaveVrMode(g_ctx.ovrContext);
 
-    g_ctx.Ovr = nullptr;
+    g_ctx.ovrContext = nullptr;
 
     if (g_ctx.window != nullptr) {
         ANativeWindow_release(g_ctx.window);
@@ -655,15 +656,26 @@ void onPauseNative() {
     g_ctx.window = nullptr;
 }
 
+void destroyRenderers() {
+    if (g_ctx.streamRenderer) {
+        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
+        g_ctx.streamRenderer.release();
+    }
+    if (g_ctx.loadingRenderer) {
+        ovrRenderer_Destroy(g_ctx.loadingRenderer.get());
+        g_ctx.loadingRenderer.release();
+    }
+}
+
 void finishHapticsBuffer(ovrDeviceID DeviceID) {
     uint8_t hapticBuffer[1] = {0};
     ovrHapticBuffer buffer;
-    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
+    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
     buffer.HapticBuffer = &hapticBuffer[0];
     buffer.NumSamples = 1;
     buffer.Terminated = true;
 
-    auto result = vrapi_SetHapticVibrationBuffer(g_ctx.Ovr, DeviceID, &buffer);
+    auto result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, DeviceID, &buffer);
     if (result != ovrSuccess) {
         LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
     }
@@ -674,19 +686,19 @@ void updateHapticsState() {
     ovrResult result;
 
     for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(g_ctx.Ovr, deviceIndex, &curCaps) >= 0; deviceIndex++) {
+         vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &curCaps) >= 0; deviceIndex++) {
         if (curCaps.Type == ovrControllerType_Gamepad) continue;
         ovrInputTrackedRemoteCapabilities remoteCapabilities;
 
         remoteCapabilities.Header = curCaps;
-        result = vrapi_GetInputDeviceCapabilities(g_ctx.Ovr, &remoteCapabilities.Header);
+        result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
         if (result != ovrSuccess) {
             continue;
         }
 
         int curHandIndex = (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand)
                            ? 1 : 0;
-        auto &s = g_ctx.mHapticsState[curHandIndex];
+        auto &s = g_ctx.hapticsState[curHandIndex];
 
         uint64_t currentUs = getTimestampUs();
 
@@ -729,7 +741,7 @@ void updateHapticsState() {
 
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
-            buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
+            buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
             buffer.HapticBuffer = &hapticBuffer[0];
             buffer.NumSamples = std::min(remoteCapabilities.HapticSamplesMax,
                                          requiredHapticsBuffer);
@@ -742,7 +754,7 @@ void updateHapticsState() {
                     hapticBuffer[i] = static_cast<uint8_t>(255 * s.amplitude);
             }
 
-            result = vrapi_SetHapticVibrationBuffer(g_ctx.Ovr, curCaps.DeviceID, &buffer);
+            result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, curCaps.DeviceID, &buffer);
             if (result != ovrSuccess) {
                 LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
             }
@@ -750,7 +762,7 @@ void updateHapticsState() {
         } else if (remoteCapabilities.ControllerCapabilities &
                    ovrControllerCaps_HasSimpleHapticVibration) {
             LOG("Send simple haptic. amplitude=%f", s.amplitude);
-            vrapi_SetHapticVibrationSimple(g_ctx.Ovr, curCaps.DeviceID, s.amplitude);
+            vrapi_SetHapticVibrationSimple(g_ctx.ovrContext, curCaps.DeviceID, s.amplitude);
         }
     }
 }
@@ -779,9 +791,9 @@ void renderNative(long long targetTimespampNs) {
 
 // Render eye images and setup the primary layer using ovrTracking2.
     const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(&g_ctx.Renderer, &tracking, false);
+            ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), &tracking, false);
 
-    double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex) - vrapi_GetTimeInSeconds();
+    double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) - vrapi_GetTimeInSeconds();
     reportSubmit(targetTimespampNs, vsyncQueueS * 1e9);
 
     const ovrLayerHeader2 *layers2[] =
@@ -797,7 +809,7 @@ void renderNative(long long targetTimespampNs) {
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers2;
 
-    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+    vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
 }
 
 void updateLoadingTexuture(const unsigned char *data) {
@@ -825,10 +837,10 @@ void renderLoadingNative() {
     // Show a loading icon.
     g_ctx.ovrFrameIndex++;
 
-    double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.Ovr, g_ctx.ovrFrameIndex);
-    ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.Ovr, displayTime);
+    double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
+    ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
 
-    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(&g_ctx.Renderer, &headTracking,
+    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(g_ctx.loadingRenderer.get(), &headTracking,
                                                                    true);
 
     const ovrLayerHeader2 *layers[] =
@@ -845,15 +857,15 @@ void renderLoadingNative() {
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers;
 
-    vrapi_SubmitFrame2(g_ctx.Ovr, &frameDesc);
+    vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
 }
 
-void onHapticsFeedbackNative(unsigned long long path,
+void hapticsFeedbackNative(unsigned long long path,
                             float duration_s,
                             float frequency,
                             float amplitude) {
     int curHandIndex = (path == RIGHT_CONTROLLER_HAPTICS_PATH ? 0 : 1);
-    auto &s = g_ctx.mHapticsState[curHandIndex];
+    auto &s = g_ctx.hapticsState[curHandIndex];
     s.startUs = 0;
     s.endUs = (uint64_t)(duration_s * 1000'000);
     s.amplitude = amplitude;
@@ -862,38 +874,31 @@ void onHapticsFeedbackNative(unsigned long long path,
     s.buffered = false;
 }
 
-void onBatteryChangedNative(int battery, int plugged) {
+void batteryChangedNative(int battery, int plugged) {
     batterySend(HEAD_PATH, (float)battery / 100.0, (bool)plugged);
 }
 
-GuardianData getGuardianData() {
-    int recenterCount = vrapi_GetSystemStatusInt(&g_ctx.java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+bool getGuardianArea(float *width, float *height) {
+    auto java = getOvrJava();
+
+    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
     bool shouldSync;
-    if (recenterCount != g_ctx.m_LastHMDRecenterCount) {
+    if (recenterCount != g_ctx.lastHmdRecenterCount) {
         shouldSync = true;
-        g_ctx.m_LastHMDRecenterCount = recenterCount;
+        g_ctx.lastHmdRecenterCount = recenterCount;
     } else {
         shouldSync = false;
     }
-
-    auto data = GuardianData{};
-    data.shouldSync = shouldSync;
 
     if (shouldSync) {
         ovrPosef spacePose;
         ovrVector3f bboxScale;
         // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
         // then this function gives us 0-size bounding box, so it has to be provided.
-        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.Ovr, &spacePose, &bboxScale);
-        data.areaWidth = 2.0f * bboxScale.x;
-        data.areaHeight = 2.0f * bboxScale.z;
+        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.ovrContext, &spacePose, &bboxScale);
+        *width = 2.0f * bboxScale.x;
+        *height = 2.0f * bboxScale.z;
     }
 
-    return data;
-}
-
-void onTrackingNative(bool clientsidePrediction) {
-    if (g_ctx.Ovr != nullptr) {
-        sendTrackingInfo(clientsidePrediction);
-    }
+    return shouldSync;
 }

@@ -435,8 +435,12 @@ define([
         function setAudioDeviceList() {
             setupAudioDropdown("gameAudio", "deviceDropdown", "deviceId", "output");
             setupAudioDropdown("microphone", "inputDeviceDropdown", "inputDeviceId", "output");
-            
-            if (alvrSettings.getSession().sessionSettings.audio["microphone"].content["outputDeviceId"]) {
+
+            if (
+                alvrSettings.getSession().sessionSettings.audio["microphone"].content[
+                    "outputDeviceId"
+                ]
+            ) {
                 setupAudioDropdown("microphone", "outputDeviceDropdown", "outputDeviceId", "input");
             }
         }

@@ -185,6 +185,7 @@ async fn client_handshake(
                 microphone_desc.input_device_id,
                 AudioDeviceType::VirtualMicrophoneInput,
             )?;
+            #[cfg(not(target_os = "linux"))]
             if alvr_audio::is_same_device(&game_audio_device, &microphone_device) {
                 return fmt_e!("Game audio and microphone cannot point to the same device!");
             }

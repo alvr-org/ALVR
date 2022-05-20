@@ -227,6 +227,7 @@ pub struct MicrophoneDesc {
 
     #[schema(placeholder = "output_device_dropdown")]
     //
+    #[cfg(not(target_os = "linux"))]
     #[schema(advanced)]
     pub output_device_id: AudioDeviceId,
 
@@ -639,6 +640,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         Name: "".into(),
                         Index: 1,
                     },
+                    #[cfg(not(target_os = "linux"))]
                     output_device_id: AudioDeviceIdDefault {
                         variant: AudioDeviceIdDefaultVariant::Default,
                         Name: "".into(),

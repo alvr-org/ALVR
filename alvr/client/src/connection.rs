@@ -2,10 +2,10 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
-    decoder::{DECODER_REF, IDR_PARSED, IDR_REQUEST_NOTIFIER},
+    decoder::{DECODER_REF, IDR_PARSED},
     statistics::StatisticsManager,
-    storage, VideoFrame, BATTERY_SENDER, INPUT_SENDER, STATISTICS_MANAGER, STATISTICS_SENDER,
-    VIDEO_ERROR_REPORT_SENDER, VIEWS_CONFIG_SENDER,
+    storage, VideoFrame, CONTROL_CHANNEL_SENDER, INPUT_SENDER, STATISTICS_MANAGER,
+    STATISTICS_SENDER,
 };
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{CodecType, SessionDesc};
@@ -54,7 +54,6 @@ const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
 const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
-const PLAYSPACE_SYNC_INTERVAL: Duration = Duration::from_millis(500);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
@@ -280,13 +279,11 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     }
 
     // create this before initializing the stream on cpp side
-    let (views_config_sender, mut views_config_receiver) = tmpsc::unbounded_channel();
-    *VIEWS_CONFIG_SENDER.lock() = Some(views_config_sender);
-    let (battery_sender, mut battery_receiver) = tmpsc::unbounded_channel();
-    *BATTERY_SENDER.lock() = Some(battery_sender);
+    let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
+    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
     unsafe {
-        crate::setStreamConfig(crate::StreamConfig {
+        crate::setStreamConfig(crate::StreamConfigInput {
             eyeWidth: config_packet.eye_resolution_width,
             eyeHeight: config_packet.eye_resolution_height,
             refreshRate: config_packet.fps,
@@ -408,57 +405,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         }
     };
 
-    let video_error_report_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *VIDEO_ERROR_REPORT_SENDER.lock() = Some(data_sender);
-
-            while let Some(()) = data_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::VideoErrorReport)
-                    .await
-                    .ok();
-            }
-
-            Ok(())
-        }
-    };
-
-    let views_config_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            while let Some(config) = views_config_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::ViewsConfig(config))
-                    .await
-                    .ok();
-            }
-
-            Ok(())
-        }
-    };
-
-    let battery_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            while let Some(packet) = battery_receiver.recv().await {
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::Battery(packet))
-                    .await
-                    .ok();
-            }
-
-            Ok(())
-        }
-    };
-
     let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
     let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
 
@@ -542,7 +488,9 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                     if !IDR_PARSED.load(Ordering::Relaxed) {
                         if let Some(deadline) = idr_request_deadline {
                             if deadline < Instant::now() {
-                                IDR_REQUEST_NOTIFIER.notify_waiters();
+                                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                                    sender.send(ClientControlPacket::RequestIdr).ok();
+                                }
                                 idr_request_deadline = None;
                             }
                         } else {
@@ -572,28 +520,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             unsafe { crate::trackingNative(tracking_clientside_prediction) };
             deadline += tracking_interval;
             time::sleep_until(deadline).await;
-        }
-    };
-
-    let playspace_sync_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            loop {
-                let mut width = 0_f32;
-                let mut height = 0_f32;
-                if unsafe { crate::getGuardianArea(&mut width, &mut height) } {
-                    control_sender
-                        .lock()
-                        .await
-                        .send(&ClientControlPacket::PlayspaceSync(Vec2::new(
-                            width, height,
-                        )))
-                        .await
-                        .ok();
-                }
-
-                time::sleep(PLAYSPACE_SYNC_INTERVAL).await;
-            }
         }
     };
 
@@ -648,30 +574,28 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         }
     };
 
-    let control_loop = async move {
+    let control_send_loop = async move {
+        while let Some(packet) = control_channel_receiver.recv().await {
+            control_sender.lock().await.send(&packet).await.ok();
+        }
+
+        Ok(())
+    };
+
+    let control_receive_loop = async move {
         loop {
-            tokio::select! {
-                _ = IDR_REQUEST_NOTIFIER.notified() => {
-                    control_sender.lock().await.send(&ClientControlPacket::RequestIdr).await?;
+            match control_receiver.recv().await {
+                Ok(ServerControlPacket::Restarting) => {
+                    info!("{SERVER_RESTART_MESSAGE}");
+                    set_loading_message(SERVER_RESTART_MESSAGE);
+                    break Ok(());
                 }
-                control_packet = control_receiver.recv() =>
-                    match control_packet {
-                        Ok(ServerControlPacket::Restarting) => {
-                            info!("Server restarting");
-                            set_loading_message(
-                                SERVER_RESTART_MESSAGE
-                            );
-                            break Ok(());
-                        }
-                        Ok(_) => (),
-                        Err(e) => {
-                            info!("Server disconnected. Cause: {e}");
-                            set_loading_message(
-                                SERVER_DISCONNECTED_MESSAGE
-                            );
-                            break Ok(());
-                        }
-                    }
+                Ok(_) => (),
+                Err(e) => {
+                    info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
+                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+                    break Ok(());
+                }
             }
         }
     };
@@ -693,19 +617,16 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(tracking_loop) => res,
-        res = spawn_cancelable(playspace_sync_loop) => res,
         res = spawn_cancelable(input_send_loop) => res,
         res = spawn_cancelable(statistics_send_loop) => res,
-        res = spawn_cancelable(video_error_report_send_loop) => res,
-        res = spawn_cancelable(views_config_send_loop) => res,
-        res = spawn_cancelable(battery_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
+        res = spawn_cancelable(control_send_loop) => res,
         res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
-        res = control_loop => res,
+        res = control_receive_loop => res,
         // res = debug_loop => res,
     }
 }

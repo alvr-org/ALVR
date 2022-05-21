@@ -27,16 +27,21 @@
 #include <inttypes.h>
 #include <glm/gtx/euler_angles.hpp>
 #include <mutex>
+#include <thread>
 
 using namespace std;
 using namespace gl_render_utils;
+
+// thread callbacks
+void eventsThread();
 
 void (*inputSend)(TrackingInfo data);
 void (*reportSubmit)(unsigned long long targetTimestampNs, unsigned long long vsyncQueueNs);
 unsigned long long (*getPredictionOffsetNs)();
 void (*videoErrorReportSend)();
-void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
+void (*viewsConfigSend)(const EyeFov fov[2], float ipd_m);
 void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);
+void (*playspaceSend)(float width, float height);
 unsigned long long (*pathStringToHash)(const char *path);
 
 uint64_t HEAD_PATH;
@@ -66,19 +71,21 @@ public:
     jobject context;
     ANativeWindow *window = nullptr;
     ovrMobile *ovrContext{};
+    bool running = false;
+
+    std::thread eventsThread;
+    std::thread trackingThread;
 
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> loadingTexture;
     std::vector<uint8_t> loadingTextureBitmap;
     std::mutex loadingTextureMutex;
 
-    StreamConfig streamConfig{};
+    StreamConfigInput streamConfig{};
 
     vector<float> refreshRatesBuffer;
 
     uint64_t ovrFrameIndex = 0;
-
-    int lastHmdRecenterCount = -1;
 
     std::map<uint64_t, ovrTracking2> trackingFrameMap;
     std::mutex trackingFrameMutex;
@@ -88,6 +95,8 @@ public:
     Swapchain streamSwapchains[2] = {};
     std::unique_ptr<ovrRenderer> streamRenderer;
 
+    uint8_t hmdBattery = 0;
+    bool hmdPlugged = false;
     uint8_t lastLeftControllerBattery = 0;
     uint8_t lastRightControllerBattery = 0;
 
@@ -113,9 +122,14 @@ namespace {
     OvrContext g_ctx;
 }
 
-ovrJava getOvrJava() {
+ovrJava getOvrJava(bool initThread = false) {
     JNIEnv *env;
-    g_ctx.vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+    if (initThread) {
+        JavaVMAttachArgs args = { JNI_VERSION_1_6 };
+        g_ctx.vm->AttachCurrentThread(&env, &args);
+    } else {
+        g_ctx.vm->GetEnv((void **)&env, JNI_VERSION_1_6);
+    }
 
     ovrJava java{};
     java.Vm = g_ctx.vm;
@@ -129,10 +143,7 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
     g_ctx.vm = (JavaVM *)v_vm;
     g_ctx.context = (jobject)v_context;
 
-    // note: afterwards env can be retrieved with just vm->GetEnv()
-    JNIEnv *env;
-    JavaVMAttachArgs args = { JNI_VERSION_1_6 };
-    g_ctx.vm->AttachCurrentThread(&env, &args);
+    auto java = getOvrJava(true);
 
     HEAD_PATH = pathStringToHash("/user/head");
     LEFT_HAND_PATH = pathStringToHash("/user/hand/left");
@@ -142,7 +153,6 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
 
     LOG("Initializing EGL.");
 
-    auto java = getOvrJava();
     setAssetManager(java.Env, (jobject) v_assetManager);
 
     memset(g_ctx.hapticsState, 0, sizeof(g_ctx.hapticsState));
@@ -587,6 +597,9 @@ OnResumeResult resumeVR(void *v_surface) {
         g_ctx.loadingSwapchains[eye].index = 0;
     }
 
+    g_ctx.running = true;
+    g_ctx.eventsThread = std::thread(eventsThread);
+
     auto result = OnResumeResult();
 
     result.recommendedEyeWidth = width;
@@ -611,11 +624,46 @@ void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode) {
     ovrRenderer_CreateScene(g_ctx.loadingRenderer.get(), darkMode);
 }
 
-void setStreamConfig(StreamConfig config) {
+void setStreamConfig(StreamConfigInput config) {
     g_ctx.streamConfig = config;
 }
 
-void streamStartVR() {
+void getPlayspaceArea(float *width, float *height) {
+    ovrPosef spacePose;
+    ovrVector3f bboxScale;
+    // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
+    // then this function gives us 0-size bounding box, so it has to be provided.
+    vrapi_GetBoundaryOrientedBoundingBox(g_ctx.ovrContext, &spacePose, &bboxScale);
+    *width = 2.0f * bboxScale.x;
+    *height = 2.0f * bboxScale.z;
+}
+
+uint8_t getControllerBattery(int index) {
+    ovrInputCapabilityHeader curCaps;
+    auto result = vrapi_EnumerateInputDevices(g_ctx.ovrContext, index, &curCaps);
+    if (result < 0 || curCaps.Type != ovrControllerType_TrackedRemote) {
+        return 0;
+    }
+
+    ovrInputTrackedRemoteCapabilities remoteCapabilities;
+    remoteCapabilities.Header = curCaps;
+    result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
+    if (result != ovrSuccess) {
+        return 0;
+    }
+
+    ovrInputStateTrackedRemote remoteInputState;
+    remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
+    result = vrapi_GetCurrentInputState(g_ctx.ovrContext, remoteCapabilities.Header.DeviceID,
+                                        &remoteInputState.Header);
+    if (result != ovrSuccess) {
+        return 0;
+    }
+
+    return remoteInputState.BatteryPercentRemaining;
+}
+
+StreamConfigOutput streamStartVR() {
     if (g_ctx.streamSwapchains[0].inner != nullptr) {
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
@@ -651,6 +699,24 @@ void streamStartVR() {
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
+
+    auto fov = getFov();
+
+    float areaWidth, areaHeight;
+    getPlayspaceArea(&areaWidth, &areaHeight);
+
+    StreamConfigOutput config = {};
+    config.fov[0] = fov.first;
+    config.fov[1] = fov.second;
+    config.ipd_m = getIPD();
+    config.hmdBattery = g_ctx.hmdBattery;
+    config.hmdPlugged = g_ctx.hmdPlugged;
+    config.leftControllerBattery = getControllerBattery(0) / 100.f;
+    config.rightControllerBattery = getControllerBattery(1) / 100.f;
+    config.areaWidth = areaWidth;
+    config.areaHeight = areaHeight;
+
+    return config;
 }
 
 void streamStartNative() {
@@ -670,17 +736,13 @@ void streamStartNative() {
                         g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
                         g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
     ovrRenderer_CreateScene(g_ctx.streamRenderer.get(), false);
-
-    g_ctx.lastHmdRecenterCount = -1; // make sure we send guardian data
-
-    // reset battery and view config to make sure they get sent
-    g_ctx.lastIpd = 0;
-    g_ctx.lastLeftControllerBattery = 0;
-    g_ctx.lastRightControllerBattery = 0;
 }
 
 void pauseVR() {
     LOGI("Leaving VR mode.");
+
+    g_ctx.running = false;
+    g_ctx.eventsThread.join();
 
     if (g_ctx.streamSwapchains[0].inner != nullptr) {
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
@@ -971,29 +1033,31 @@ void hapticsFeedbackNative(unsigned long long path,
 
 void batteryChangedNative(int battery, int plugged) {
     batterySend(HEAD_PATH, (float)battery / 100.0, (bool)plugged);
+    g_ctx.hmdBattery = battery;
+    g_ctx.hmdPlugged = plugged;
 }
 
-bool getGuardianArea(float *width, float *height) {
-    auto java = getOvrJava();
+// low frequency events.
+// This thread gets created after the creation of ovrContext and before its destruction
+void eventsThread() {
+    auto java = getOvrJava(true);
 
-    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
-    bool shouldSync;
-    if (recenterCount != g_ctx.lastHmdRecenterCount) {
-        shouldSync = true;
-        g_ctx.lastHmdRecenterCount = recenterCount;
-    } else {
-        shouldSync = false;
+    int recenterCount = 0;
+
+    while (g_ctx.running) {
+        // there is no useful event in the oculus API, ignore
+        ovrEventHeader _eventHeader;
+        auto _res = vrapi_PollEvent(&_eventHeader);
+
+        int newRecenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+        if (recenterCount != newRecenterCount) {
+            float width, height;
+            getPlayspaceArea(&width, &height);
+            playspaceSend(width, height);
+
+            recenterCount = newRecenterCount;
+        }
+
+        usleep(50'000);
     }
-
-    if (shouldSync) {
-        ovrPosef spacePose;
-        ovrVector3f bboxScale;
-        // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
-        // then this function gives us 0-size bounding box, so it has to be provided.
-        vrapi_GetBoundaryOrientedBoundingBox(g_ctx.ovrContext, &spacePose, &bboxScale);
-        *width = 2.0f * bboxScale.x;
-        *height = 2.0f * bboxScale.z;
-    }
-
-    return shouldSync;
 }

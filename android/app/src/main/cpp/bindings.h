@@ -89,7 +89,7 @@ struct OnResumeResult {
     int refreshRatesCount;
 };
 
-struct StreamConfig {
+struct StreamConfigInput {
     unsigned int eyeWidth;
     unsigned int eyeHeight;
     float refreshRate;
@@ -103,6 +103,17 @@ struct StreamConfig {
     bool extraLatencyMode;
 };
 
+struct StreamConfigOutput {
+    EyeFov fov[2];
+    float ipd_m;
+    float hmdBattery;
+    bool hmdPlugged;
+    float leftControllerBattery;
+    float rightControllerBattery;
+    float areaWidth;
+    float areaHeight;
+};
+
 extern "C" OnCreateResult initNative(void *g_vm, void *g_context, void *assetManager);
 extern "C" void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode);
 extern "C" void renderNative(long long targetTimespampNs);
@@ -110,19 +121,18 @@ extern "C" void updateLoadingTexuture(const unsigned char *data);
 extern "C" void renderLoadingNative();
 extern "C" void streamStartNative();
 extern "C" void trackingNative(bool clientsidePrediction);
-extern "C" void setStreamConfig(StreamConfig config);
+extern "C" void setStreamConfig(StreamConfigInput config);
 extern "C" void destroyRenderers();
 extern "C" void hapticsFeedbackNative(unsigned long long path,
                                         float duration_s,
                                         float frequency,
                                         float amplitude);
 extern "C" void batteryChangedNative(int battery, int plugged);
-extern "C" bool getGuardianArea(float *width, float *height);
 extern "C" void destroyNative();
 
 extern "C" void initVR();
 extern "C" OnResumeResult resumeVR(void *surface);
-extern "C" void streamStartVR();
+extern "C" StreamConfigOutput streamStartVR();
 extern "C" void pauseVR();
 extern "C" void destroyVR();
 
@@ -135,8 +145,9 @@ extern "C" void (*inputSend)(TrackingInfo data);
 extern "C" void (*reportSubmit)(unsigned long long targetTimestampNs, unsigned long long vsyncQueueNs);
 extern "C" unsigned long long (*getPredictionOffsetNs)();
 extern "C" void (*videoErrorReportSend)();
-extern "C" void (*viewsConfigSend)(EyeFov fov[2], float ipd_m);
+extern "C" void (*viewsConfigSend)(const EyeFov fov[2], float ipd_m);
 extern "C" void (*batterySend)(unsigned long long device_path, float gauge_value, bool is_plugged);
+extern "C" void (*playspaceSend)(float width, float height);
 extern "C" unsigned long long (*pathStringToHash)(const char *path);
 
 extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

@@ -24,8 +24,8 @@ use alvr_common::{
 };
 use alvr_session::Fov;
 use alvr_sockets::{
-    BatteryPacket, ClientStatistics, HeadsetInfoPacket, Input, LegacyController, LegacyInput,
-    MotionData, ViewsConfig,
+    BatteryPacket, ClientControlPacket, ClientStatistics, HeadsetInfoPacket, Input,
+    LegacyController, LegacyInput, MotionData, ViewsConfig,
 };
 use decoder::{DECODER_REF, STREAM_TEAXTURE_HANDLE};
 use jni::{
@@ -55,13 +55,54 @@ static INPUT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Input>>>> =
     Lazy::new(|| Mutex::new(None));
 static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
     Lazy::new(|| Mutex::new(None));
-static VIDEO_ERROR_REPORT_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<()>>>> =
-    Lazy::new(|| Mutex::new(None));
-static VIEWS_CONFIG_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ViewsConfig>>>> =
-    Lazy::new(|| Mutex::new(None));
-static BATTERY_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<BatteryPacket>>>> =
+static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+
+extern "C" fn views_config_send(fov: *const EyeFov, ipd_m: f32) {
+    let fov = unsafe { slice::from_raw_parts(fov, 2) };
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender
+            .send(ClientControlPacket::ViewsConfig(ViewsConfig {
+                fov: [
+                    Fov {
+                        left: fov[0].left,
+                        right: fov[0].right,
+                        top: fov[0].top,
+                        bottom: fov[0].bottom,
+                    },
+                    Fov {
+                        left: fov[1].left,
+                        right: fov[1].right,
+                        top: fov[1].top,
+                        bottom: fov[1].bottom,
+                    },
+                ],
+                ipd_m,
+            }))
+            .ok();
+    }
+}
+
+extern "C" fn battery_send(device_id: u64, gauge_value: f32, is_plugged: bool) {
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender
+            .send(ClientControlPacket::Battery(BatteryPacket {
+                device_id,
+                gauge_value,
+                is_plugged,
+            }))
+            .ok();
+    }
+}
+
+extern "C" fn playspace_send(width: f32, height: f32) {
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender
+            .send(ClientControlPacket::PlayspaceSync(Vec2::new(width, height)))
+            .ok();
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_initializeNative(
@@ -189,7 +230,13 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
     codec: i32,
     real_time: jboolean,
 ) {
-    streamStartVR();
+    let config = streamStartVR();
+    views_config_send(config.fov.as_ptr(), config.ipd_m);
+    battery_send(*HEAD_ID, config.hmdBattery, config.hmdPlugged);
+    battery_send(*LEFT_HAND_ID, config.leftControllerBattery, false);
+    battery_send(*RIGHT_HAND_ID, config.rightControllerBattery, false);
+    playspace_send(config.areaWidth, config.areaHeight);
+
     streamStartNative();
 
     let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
@@ -437,45 +484,8 @@ pub fn initialize() {
     }
 
     extern "C" fn video_error_report_send() {
-        if let Some(sender) = &*VIDEO_ERROR_REPORT_SENDER.lock() {
-            sender.send(()).ok();
-        }
-    }
-
-    extern "C" fn views_config_send(fov: *mut EyeFov, ipd_m: f32) {
-        let fov = unsafe { slice::from_raw_parts(fov, 2) };
-        if let Some(sender) = &*VIEWS_CONFIG_SENDER.lock() {
-            sender
-                .send(ViewsConfig {
-                    fov: [
-                        Fov {
-                            left: fov[0].left,
-                            right: fov[0].right,
-                            top: fov[0].top,
-                            bottom: fov[0].bottom,
-                        },
-                        Fov {
-                            left: fov[1].left,
-                            right: fov[1].right,
-                            top: fov[1].top,
-                            bottom: fov[1].bottom,
-                        },
-                    ],
-                    ipd_m,
-                })
-                .ok();
-        }
-    }
-
-    extern "C" fn battery_send(device_id: u64, gauge_value: f32, is_plugged: bool) {
-        if let Some(sender) = &*BATTERY_SENDER.lock() {
-            sender
-                .send(BatteryPacket {
-                    device_id,
-                    gauge_value,
-                    is_plugged,
-                })
-                .ok();
+        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+            sender.send(ClientControlPacket::VideoErrorReport).ok();
         }
     }
 
@@ -540,6 +550,7 @@ pub fn initialize() {
         videoErrorReportSend = Some(video_error_report_send);
         viewsConfigSend = Some(views_config_send);
         batterySend = Some(battery_send);
+        playspaceSend = Some(playspace_send);
         pushNal = Some(push_nal);
     }
 

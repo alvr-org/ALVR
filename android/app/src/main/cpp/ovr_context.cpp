@@ -34,6 +34,7 @@ using namespace gl_render_utils;
 
 // thread callbacks
 void eventsThread();
+void trackingThread();
 
 void (*inputSend)(TrackingInfo data);
 void (*reportSubmit)(unsigned long long targetTimestampNs, unsigned long long vsyncQueueNs);
@@ -72,6 +73,7 @@ public:
     ANativeWindow *window = nullptr;
     ovrMobile *ovrContext{};
     bool running = false;
+    bool streaming = false;
 
     std::thread eventsThread;
     std::thread trackingThread;
@@ -505,13 +507,8 @@ std::pair<EyeFov, EyeFov> getFov() {
     return {fov[0], fov[1]};
 }
 
-// Called from TrackingThread
-void trackingNative(bool clientsidePrediction) {
+TrackingInfo getInput() {
     auto java = getOvrJava();
-
-    if (g_ctx.ovrContext == nullptr) {
-        return;
-    }
 
     // vrapi_GetTimeInSeconds doesn't match getTimestampUs
     uint64_t targetTimestampNs = vrapi_GetTimeInSeconds() * 1e9 + getPredictionOffsetNs();
@@ -535,18 +532,10 @@ void trackingNative(bool clientsidePrediction) {
     memcpy(&info.HeadPose_Pose_Position, &tracking.HeadPose.Pose.Position,
            sizeof(ovrVector3f));
 
-    setControllerInfo(&info, clientsidePrediction ? (double)targetTimestampNs / 1e9 : 0.);
+    setControllerInfo(
+        &info, g_ctx.streamConfig.clientsidePrediction ? (double)targetTimestampNs / 1e9 : 0.);
 
-    inputSend(info);
-
-    float new_ipd = getIPD();
-    auto new_fov = getFov();
-    if (abs(new_ipd - g_ctx.lastIpd) > 0.001 || abs(new_fov.first.left - g_ctx.lastFov.left) > 0.001) {
-        EyeFov fov[2] = { new_fov.first, new_fov.second };
-        viewsConfigSend(fov, new_ipd);
-        g_ctx.lastIpd = new_ipd;
-        g_ctx.lastFov = new_fov.first;
-    }
+    return info;
 }
 
 OnResumeResult resumeVR(void *v_surface) {
@@ -700,6 +689,13 @@ StreamConfigOutput streamStartVR() {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
 
+    if (g_ctx.streaming) {
+        g_ctx.streaming = false;
+        g_ctx.trackingThread.join();
+    }
+    g_ctx.streaming = true;
+    g_ctx.trackingThread = std::thread(trackingThread);
+
     auto fov = getFov();
 
     float areaWidth, areaHeight;
@@ -741,8 +737,14 @@ void streamStartNative() {
 void pauseVR() {
     LOGI("Leaving VR mode.");
 
-    g_ctx.running = false;
-    g_ctx.eventsThread.join();
+    if (g_ctx.streaming) {
+        g_ctx.streaming = false;
+        g_ctx.trackingThread.join();
+    }
+    if (g_ctx.running) {
+        g_ctx.running = false;
+        g_ctx.eventsThread.join();
+    }
 
     if (g_ctx.streamSwapchains[0].inner != nullptr) {
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
@@ -1058,6 +1060,32 @@ void eventsThread() {
             recenterCount = newRecenterCount;
         }
 
+        float new_ipd = getIPD();
+        auto new_fov = getFov();
+        if (abs(new_ipd - g_ctx.lastIpd) > 0.001 || abs(new_fov.first.left - g_ctx.lastFov.left) > 0.001) {
+            EyeFov fov[2] = { new_fov.first, new_fov.second };
+            viewsConfigSend(fov, new_ipd);
+            g_ctx.lastIpd = new_ipd;
+            g_ctx.lastFov = new_fov.first;
+        }
+
         usleep(50'000);
+    }
+}
+
+// note: until some timing optimization algorithms are in place, we poll sensor data 3 times per
+// frame to minimize latency
+void trackingThread() {
+    getOvrJava(true);
+
+    auto deadline = std::chrono::steady_clock::now();
+    auto interval = std::chrono::nanoseconds((uint64_t)(1e9 / g_ctx.streamConfig.refreshRate / 3));
+
+    while (g_ctx.streaming) {
+        auto input = getInput();
+        inputSend(input);
+
+        deadline += interval;
+        std::this_thread::sleep_until(deadline);
     }
 }

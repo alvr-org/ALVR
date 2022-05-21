@@ -331,6 +331,12 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                 2_f32
             },
             extraLatencyMode: settings.headset.extra_latency_mode,
+            clientsidePrediction: settings
+                .headset
+                .controllers
+                .into_option()
+                .map(|c| c.clientside_prediction)
+                .unwrap_or(false),
         });
     }
 
@@ -339,11 +345,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         settings.video.codec,
         settings.video.client_request_realtime_decoder,
     );
-
-    let tracking_clientside_prediction = match &settings.headset.controllers {
-        Switch::Enabled(controllers) => controllers.clientside_prediction,
-        Switch::Disabled => false,
-    };
 
     // setup stream loops
 
@@ -513,16 +514,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         }
     });
 
-    let tracking_interval = Duration::from_secs_f32(1_f32 / 360_f32);
-    let tracking_loop = async move {
-        let mut deadline = Instant::now();
-        loop {
-            unsafe { crate::trackingNative(tracking_clientside_prediction) };
-            deadline += tracking_interval;
-            time::sleep_until(deadline).await;
-        }
-    };
-
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         #[cfg(target_os = "android")]
         {
@@ -616,7 +607,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         },
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
-        res = spawn_cancelable(tracking_loop) => res,
         res = spawn_cancelable(input_send_loop) => res,
         res = spawn_cancelable(statistics_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,

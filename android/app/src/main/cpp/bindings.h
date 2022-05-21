@@ -101,6 +101,7 @@ struct StreamConfigInput {
     float foveationEdgeRatioX;
     float foveationEdgeRatioY;
     bool extraLatencyMode;
+    bool clientsidePrediction;
 };
 
 struct StreamConfigOutput {
@@ -120,7 +121,6 @@ extern "C" void renderNative(long long targetTimespampNs);
 extern "C" void updateLoadingTexuture(const unsigned char *data);
 extern "C" void renderLoadingNative();
 extern "C" void streamStartNative();
-extern "C" void trackingNative(bool clientsidePrediction);
 extern "C" void setStreamConfig(StreamConfigInput config);
 extern "C" void destroyRenderers();
 extern "C" void hapticsFeedbackNative(unsigned long long path,

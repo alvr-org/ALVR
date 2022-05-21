@@ -28,7 +28,6 @@ add_library( # Sets the name of the library.
              # Provides a relative path to your source file(s).
              src/main/cpp/gl_render_utils/texture.cpp
              src/main/cpp/gl_render_utils/render_pipeline.cpp
-             src/main/cpp/gl_render_utils/textured_quad.cpp
              src/main/cpp/ServerConnectionNative.cpp
              src/main/cpp/nal.cpp
              src/main/cpp/render.cpp

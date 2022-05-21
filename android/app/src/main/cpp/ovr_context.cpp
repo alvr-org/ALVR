@@ -52,8 +52,12 @@ const int MAXIMUM_TRACKING_FRAMES = 360;
 const int LOADING_TEXTURE_WIDTH = 1280;
 const int LOADING_TEXTURE_HEIGHT = 720;
 
-struct Rect {
-    unsigned int x, y, width, height;
+const GLenum SWAPCHAIN_FORMAT = GL_RGBA8;
+
+struct Swapchain {
+    ovrTextureSwapChain *inner;
+    std::vector<GLuint> textures;
+    int index;
 };
 
 class OvrContext {
@@ -79,7 +83,9 @@ public:
     std::map<uint64_t, ovrTracking2> trackingFrameMap;
     std::mutex trackingFrameMutex;
 
+    Swapchain loadingSwapchains[2] = {};
     std::unique_ptr<ovrRenderer> loadingRenderer;
+    Swapchain streamSwapchains[2] = {};
     std::unique_ptr<ovrRenderer> streamRenderer;
 
     uint8_t lastLeftControllerBattery = 0;
@@ -100,8 +106,6 @@ public:
         bool fresh;
         bool buffered;
     };
-    // hapticsState[0]: right hand state
-    // hapticsState[1]: left hand state
     HapticsState hapticsState[2]{};
 };
 
@@ -262,7 +266,6 @@ uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
     }
     return buttons;
 }
-
 
 void setControllerInfo(TrackingInfo *packet, double displayTime) {
     ovrInputCapabilityHeader curCaps;
@@ -483,21 +486,11 @@ std::pair<EyeFov, EyeFov> getFov() {
         double b = projection.M[1][1];
         double c = projection.M[0][2];
         double d = projection.M[1][2];
-        double n = -projection.M[2][3];
-        double w1 = 2.0 * n / a;
-        double h1 = 2.0 * n / b;
-        double w2 = c * w1;
-        double h2 = d * h1;
 
-        double maxX = (w1 + w2) / 2.0;
-        double minX = w2 - maxX;
-        double maxY = (h1 + h2) / 2.0;
-        double minY = h2 - maxY;
-
-        fov[eye].left = (float)atan(minX / n);
-        fov[eye].right = (float)atan(maxX / n);
-        fov[eye].top = -(float)atan(minY / n);
-        fov[eye].bottom = -(float)atan(maxY / n);
+        fov[eye].left = (float)atan((c - 1) / a);
+        fov[eye].right = (float)atan((c + 1) / a);
+        fov[eye].top = -(float)atan((d - 1) / b);
+        fov[eye].bottom = -(float)atan((d + 1) / b);
     }
     return {fov[0], fov[1]};
 }
@@ -577,13 +570,30 @@ OnResumeResult resumeVR(void *v_surface) {
 
     vrapi_SetTrackingSpace(g_ctx.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
 
+    auto width = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    auto height = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+
+    for (int eye = 0; eye < 2; eye++) {
+        g_ctx.loadingSwapchains[eye].inner = vrapi_CreateTextureSwapChain3(
+            VRAPI_TEXTURE_TYPE_2D, SWAPCHAIN_FORMAT, width, height, 1, 3);
+        auto size = vrapi_GetTextureSwapChainLength(g_ctx.loadingSwapchains[eye].inner);
+
+        g_ctx.loadingSwapchains[eye].textures = std::vector<GLuint>();
+        for (int index = 0; index < size; index++) {
+            auto handle = vrapi_GetTextureSwapChainHandle(g_ctx.loadingSwapchains[eye].inner, index);
+            g_ctx.loadingSwapchains[eye].textures.push_back(handle);
+        }
+
+        g_ctx.loadingSwapchains[eye].index = 0;
+    }
+
     auto result = OnResumeResult();
 
-    result.recommendedEyeWidth = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    result.recommendedEyeHeight = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+    result.recommendedEyeWidth = width;
+    result.recommendedEyeHeight = height;
 
-    result.refreshRatesCount = vrapi_GetSystemPropertyInt(&java,
-                                                          VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+    result.refreshRatesCount = vrapi_GetSystemPropertyInt(
+        &java, VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
     g_ctx.refreshRatesBuffer = vector<float>(result.refreshRatesCount);
     vrapi_GetSystemPropertyFloatArray(&java, VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
                                       &g_ctx.refreshRatesBuffer[0], result.refreshRatesCount);
@@ -593,9 +603,11 @@ OnResumeResult resumeVR(void *v_surface) {
 }
 
 void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode) {
+    std::vector<GLuint> textures[2] =
+            { g_ctx.loadingSwapchains[0].textures, g_ctx.loadingSwapchains[1].textures };
     g_ctx.loadingRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.loadingRenderer.get(), eyeWidth, eyeHeight, nullptr,
-                       g_ctx.loadingTexture->GetGLTexture(), {false});
+                       g_ctx.loadingTexture->GetGLTexture(), textures, {false});
     ovrRenderer_CreateScene(g_ctx.loadingRenderer.get(), darkMode);
 }
 
@@ -604,6 +616,27 @@ void setStreamConfig(StreamConfig config) {
 }
 
 void streamStartVR() {
+    if (g_ctx.streamSwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
+        g_ctx.streamSwapchains[0].inner = nullptr;
+        g_ctx.streamSwapchains[1].inner = nullptr;
+    }
+    for (int eye = 0; eye < 2; eye++) {
+        g_ctx.streamSwapchains[eye].inner = vrapi_CreateTextureSwapChain3(
+            VRAPI_TEXTURE_TYPE_2D, SWAPCHAIN_FORMAT, g_ctx.streamConfig.eyeWidth,
+            g_ctx.streamConfig.eyeHeight, 1, 3);
+        auto size = vrapi_GetTextureSwapChainLength(g_ctx.streamSwapchains[eye].inner);
+
+        g_ctx.streamSwapchains[eye].textures = std::vector<GLuint>();
+        for (int index = 0; index < size; index++) {
+            auto handle = vrapi_GetTextureSwapChainHandle(g_ctx.streamSwapchains[eye].inner, index);
+            g_ctx.streamSwapchains[eye].textures.push_back(handle);
+        }
+
+        g_ctx.streamSwapchains[eye].index = 0;
+    }
+
     // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes discarded from VrAPI(?).
     // Which introduces stutter animation.
     // I think the number of discarded frames is shown as Stale in Logcat like following:
@@ -625,15 +658,18 @@ void streamStartNative() {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.release();
     }
+
+    std::vector<GLuint> textures[2] =
+            { g_ctx.streamSwapchains[0].textures, g_ctx.streamSwapchains[1].textures };
     g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.streamRenderer.get(), g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
-                       g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(),
+                       g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(), textures,
                        {g_ctx.streamConfig.enableFoveation,
                         g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
                         g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
                         g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
                         g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
-     ovrRenderer_CreateScene(g_ctx.streamRenderer.get(), false);
+    ovrRenderer_CreateScene(g_ctx.streamRenderer.get(), false);
 
     g_ctx.lastHmdRecenterCount = -1; // make sure we send guardian data
 
@@ -645,6 +681,19 @@ void streamStartNative() {
 
 void pauseVR() {
     LOGI("Leaving VR mode.");
+
+    if (g_ctx.streamSwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
+        g_ctx.streamSwapchains[0].inner = nullptr;
+        g_ctx.streamSwapchains[1].inner = nullptr;
+    }
+    if (g_ctx.loadingSwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(g_ctx.loadingSwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(g_ctx.loadingSwapchains[1].inner);
+        g_ctx.loadingSwapchains[0].inner = nullptr;
+        g_ctx.loadingSwapchains[1].inner = nullptr;
+    }
 
     vrapi_LeaveVrMode(g_ctx.ovrContext);
 
@@ -767,6 +816,32 @@ void updateHapticsState() {
     }
 }
 
+EyeInput trackingToEyeInput(ovrTracking2 *tracking, int eye) {
+    auto q = tracking->HeadPose.Pose.Orientation;
+
+    auto v = glm::mat4();
+    for (int x = 0; x < 4; x++) {
+        for (int y = 0; y < 4; y++) {
+            v[x][y] = tracking->Eye[eye].ViewMatrix.M[y][x];
+        }
+    }
+    v = glm::inverse(v);
+
+    EyeFov fov;
+    if (eye == 0) {
+        fov = getFov().first;
+    } else {
+        fov = getFov().second;
+    }
+    
+    auto input = EyeInput {};
+    input.orientation = glm::quat(q.w, q.x, q.y, q.z);
+    input.position = glm::vec3(v[3][0], v[3][1], v[3][2]);
+    input.fov = fov;
+
+    return input;
+}
+
 void renderNative(long long targetTimespampNs) {
     g_ctx.ovrFrameIndex++;
 
@@ -789,17 +864,24 @@ void renderNative(long long targetTimespampNs) {
         }
     }
 
-// Render eye images and setup the primary layer using ovrTracking2.
-    const ovrLayerProjection2 worldLayer =
-            ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), &tracking, false);
+    EyeInput eyeInputs[2] = { trackingToEyeInput(&tracking, 0), trackingToEyeInput(&tracking, 1) };
+    int swapchainIndices[2] = { g_ctx.streamSwapchains[0].index, g_ctx.streamSwapchains[1].index };
+    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
 
     double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) - vrapi_GetTimeInSeconds();
     reportSubmit(targetTimespampNs, vsyncQueueS * 1e9);
 
-    const ovrLayerHeader2 *layers2[] =
-            {
-                    &worldLayer.Header
-            };
+    ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
+    worldLayer.HeadPose = tracking.HeadPose;
+    for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+        worldLayer.Textures[eye].ColorSwapChain = g_ctx.streamSwapchains[eye].inner;
+        worldLayer.Textures[eye].SwapChainIndex = g_ctx.streamSwapchains[eye].index;
+        worldLayer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_TanAngleMatrixFromProjection(
+                &tracking.Eye[eye].ProjectionMatrix);
+    }
+    worldLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
+
+    const ovrLayerHeader2 *layers2[] = { &worldLayer.Header };
 
     ovrSubmitFrameDescription2 frameDesc = {};
     frameDesc.Flags = 0;
@@ -810,6 +892,9 @@ void renderNative(long long targetTimespampNs) {
     frameDesc.Layers = layers2;
 
     vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
+
+    g_ctx.streamSwapchains[0].index = (g_ctx.streamSwapchains[0].index + 1) % 3;
+    g_ctx.streamSwapchains[1].index = (g_ctx.streamSwapchains[1].index + 1) % 3;
 }
 
 void updateLoadingTexuture(const unsigned char *data) {
@@ -838,16 +923,23 @@ void renderLoadingNative() {
     g_ctx.ovrFrameIndex++;
 
     double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
-    ovrTracking2 headTracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
 
-    const ovrLayerProjection2 worldLayer = ovrRenderer_RenderFrame(g_ctx.loadingRenderer.get(), &headTracking,
-                                                                   true);
+    EyeInput eyeInputs[2] = { trackingToEyeInput(&tracking, 0), trackingToEyeInput(&tracking, 1) };
+    int swapchainIndices[2] = { g_ctx.loadingSwapchains[0].index, g_ctx.loadingSwapchains[1].index };
+    ovrRenderer_RenderFrame(g_ctx.loadingRenderer.get(), eyeInputs, swapchainIndices, true);
 
-    const ovrLayerHeader2 *layers[] =
-            {
-                    &worldLayer.Header
-            };
+    ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
+    worldLayer.HeadPose = tracking.HeadPose;
+    for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+        worldLayer.Textures[eye].ColorSwapChain = g_ctx.loadingSwapchains[eye].inner;
+        worldLayer.Textures[eye].SwapChainIndex = g_ctx.loadingSwapchains[eye].index;
+        worldLayer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_TanAngleMatrixFromProjection(
+                &tracking.Eye[eye].ProjectionMatrix);
+    }
+    worldLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
 
+    const ovrLayerHeader2 *layers[] = { &worldLayer.Header };
 
     ovrSubmitFrameDescription2 frameDesc = {};
     frameDesc.Flags = 0;
@@ -858,6 +950,9 @@ void renderLoadingNative() {
     frameDesc.Layers = layers;
 
     vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
+
+    g_ctx.loadingSwapchains[0].index = (g_ctx.loadingSwapchains[0].index + 1) % 3;
+    g_ctx.loadingSwapchains[1].index = (g_ctx.loadingSwapchains[1].index + 1) % 3;
 }
 
 void hapticsFeedbackNative(unsigned long long path,

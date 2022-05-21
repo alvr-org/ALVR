@@ -6,10 +6,21 @@
 #include "utils.h"
 #include "gltf_model.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/mat4x4.hpp>
 
 using namespace gl_render_utils;
 
+const float NEAR = 0.1;
+
 Render_EGL egl;
+
+enum VertexAttributeLocation {
+    VERTEX_ATTRIBUTE_LOCATION_POSITION,
+    VERTEX_ATTRIBUTE_LOCATION_COLOR,
+    VERTEX_ATTRIBUTE_LOCATION_UV,
+    VERTEX_ATTRIBUTE_LOCATION_TRANSFORM,
+    VERTEX_ATTRIBUTE_LOCATION_NORMAL
+};
 
 /*
 ================================================================================
@@ -328,38 +339,24 @@ void eglDestroy() {
     }
 }
 
-bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
+void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, std::vector<GLuint> textures, const int width,
                            const int height) {
-    const int PREFERRED_SWAPCHAIN_SIZE = 3;
-    frameBuffer->ColorTextureSwapChain = vrapi_CreateTextureSwapChain3(
-            VRAPI_TEXTURE_TYPE_2D, colorFormat, width, height, 1, PREFERRED_SWAPCHAIN_SIZE);
-    frameBuffer->TextureSwapChainLength = vrapi_GetTextureSwapChainLength(
-            frameBuffer->ColorTextureSwapChain);
-
-    for (int i = 0; i < frameBuffer->TextureSwapChainLength; i++) {
-        const GLuint glRenderTarget = vrapi_GetTextureSwapChainHandle(
-                frameBuffer->ColorTextureSwapChain, i);
+    for (int i = 0; i < textures.size(); i++) {
+        auto glRenderTarget = textures[i];
         frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
                 glRenderTarget, false, width, height));
         frameBuffer->renderStates.push_back(std::make_unique<gl_render_utils::RenderState>(
                 frameBuffer->renderTargets[i].get()));
     }
-
-    return true;
 }
 
 void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer) {
     frameBuffer->renderStates.clear();
     frameBuffer->renderTargets.clear();
-    frameBuffer->TextureSwapChainLength = 0;
-    frameBuffer->TextureSwapChainIndex = 0;
-    frameBuffer->ColorTextureSwapChain = nullptr;
-    vrapi_DestroyTextureSwapChain(frameBuffer->ColorTextureSwapChain);
 }
 
-void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer) {
-    GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                         frameBuffer->renderStates[frameBuffer->TextureSwapChainIndex]->GetFrameBuffer()));
+void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer, int index) {
+    GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->renderStates[index]->GetFrameBuffer()));
 }
 
 void ovrFramebuffer_SetNone() {
@@ -373,12 +370,6 @@ void ovrFramebuffer_Resolve() {
 
     // Flush this frame worth of commands.
     glFlush();
-}
-
-void ovrFramebuffer_Advance(ovrFramebuffer *frameBuffer) {
-    // Advance to the next texture from the set.
-    frameBuffer->TextureSwapChainIndex =
-            (frameBuffer->TextureSwapChainIndex + 1) % frameBuffer->TextureSwapChainLength;
 }
 
 //
@@ -648,7 +639,7 @@ void ovrProgram_Destroy(ovrProgram *program) {
 //
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
-                        int LoadingTexture, FFRData ffrData) {
+                        int LoadingTexture, std::vector<GLuint> textures[2], FFRData ffrData) {
     renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
 
     renderer->enableFFR = ffrData.enabled;
@@ -660,7 +651,7 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
 
     // Create the frame buffers.
     for (int eye = 0; eye < renderer->NumBuffers; eye++) {
-        ovrFramebuffer_Create(&renderer->FrameBuffer[eye], GL_RGBA8, width, height);
+        ovrFramebuffer_Create(&renderer->FrameBuffer[eye], textures[eye], width, height);
     }
 
     renderer->streamTexture = streamTexture;
@@ -703,63 +694,7 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
     }
 }
 
-ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                            bool loading) {
-    if (renderer->enableFFR) {
-        renderer->ffr->Render();
-    }
-
-    const ovrTracking2 &updatedTracking = *tracking;
-
-    ovrLayerProjection2 layer = vrapi_DefaultLayerProjection2();
-    layer.HeadPose = updatedTracking.HeadPose;
-    for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-        ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[renderer->NumBuffers == 1 ? 0 : eye];
-        layer.Textures[eye].ColorSwapChain = frameBuffer->ColorTextureSwapChain;
-        layer.Textures[eye].SwapChainIndex = frameBuffer->TextureSwapChainIndex;
-        layer.Textures[eye].TexCoordsFromTanAngles = ovrMatrix4f_TanAngleMatrixFromProjection(
-                &updatedTracking.Eye[eye].ProjectionMatrix);
-    }
-    layer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
-
-
-    ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[0];
-    ovrFramebuffer_SetCurrent(frameBuffer);
-
-    // Render the eye images.
-    for (int eye = 0; eye < renderer->NumBuffers; eye++) {
-        // NOTE: In the non-mv case, latency can be further reduced by updating the sensor prediction
-        // for each eye (updates orientation, not position)
-        ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
-        ovrFramebuffer_SetCurrent(frameBuffer);
-
-        ovrMatrix4f mvpMatrix[2];
-        mvpMatrix[1] = mvpMatrix[0] = ovrMatrix4f_CreateTranslation(0, 0, 0);
-
-        mvpMatrix[0] = ovrMatrix4f_Multiply(&tracking->Eye[0].ViewMatrix,
-                                            &mvpMatrix[0]);
-        mvpMatrix[1] = ovrMatrix4f_Multiply(&tracking->Eye[1].ViewMatrix,
-                                            &mvpMatrix[1]);
-        mvpMatrix[0] = ovrMatrix4f_Multiply(&tracking->Eye[0].ProjectionMatrix,
-                                            &mvpMatrix[0]);
-        mvpMatrix[1] = ovrMatrix4f_Multiply(&tracking->Eye[1].ProjectionMatrix,
-                                            &mvpMatrix[1]);
-
-        Recti viewport = {0, 0, (int) frameBuffer->renderTargets[0]->GetWidth(),
-                          (int) frameBuffer->renderTargets[0]->GetHeight()};
-
-        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
-
-        ovrFramebuffer_Resolve();
-        ovrFramebuffer_Advance(frameBuffer);
-    }
-
-    ovrFramebuffer_SetNone();
-
-    return layer;
-}
-
-void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
+void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
                bool loading) {
     if (loading) {
         GL(glUseProgram(renderer->ProgramLoading.Program));
@@ -811,9 +746,9 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
     } else {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
 
-        ovrMatrix4f mvpMatrix[2];
-        mvpMatrix[0] = ovrMatrix4f_CreateIdentity();
-        mvpMatrix[1] = ovrMatrix4f_CreateIdentity();
+        glm::mat4 mvpMatrix[2];
+        mvpMatrix[0] = glm::mat4(1.0);
+        mvpMatrix[1] = glm::mat4(1.0);
 
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 
@@ -842,3 +777,46 @@ void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *
     GL(glUseProgram(0));
 }
 
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, EyeInput input[2], int swapchainIndex[2], bool loading) {
+    if (renderer->enableFFR) {
+        renderer->ffr->Render();
+    }
+
+    glm::mat4 mvpMatrix[2];
+    for (int eye = 0; eye < 2; eye++) {
+        auto trans = glm::translate(glm::mat4(1.0), input[eye].position);
+        auto rot = glm::mat4_cast(input[eye].orientation);
+        auto viewInv = glm::inverse(trans * rot);
+
+        auto tanl = tan(input[eye].fov.left);
+        auto tanr = tan(input[eye].fov.right);
+        auto tant = tan(-input[eye].fov.top);
+        auto tanb = tan(-input[eye].fov.bottom);
+        auto a = 2 / (tanr - tanl);
+        auto b = 2 / (tanb - tant);
+        auto c = (tanr + tanl) / (tanr - tanl);
+        auto d = (tanb + tant) / (tanb - tant);
+        auto proj = glm::mat4(a, 0.f, c,    0.f,
+                            0.f, b,   d,    0.f,
+                            0.f, 0.f, -1.f, -2 * NEAR,
+                            0.f, 0.f, -1.f, 0.f);
+        proj = glm::transpose(proj);
+
+        mvpMatrix[eye] = glm::transpose(proj * viewInv);
+    }
+
+    // Render the eye images.
+    for (int eye = 0; eye < renderer->NumBuffers; eye++) {
+        ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
+        ovrFramebuffer_SetCurrent(frameBuffer, swapchainIndex[eye]);
+
+        Recti viewport = {0, 0, (int) frameBuffer->renderTargets[0]->GetWidth(),
+                          (int) frameBuffer->renderTargets[0]->GetHeight()};
+
+        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
+
+        ovrFramebuffer_Resolve();
+    }
+
+    ovrFramebuffer_SetNone();
+}

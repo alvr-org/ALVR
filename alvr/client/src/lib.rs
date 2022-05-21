@@ -189,8 +189,8 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
     codec: i32,
     real_time: jboolean,
 ) {
-    streamStartNative();
     streamStartVR();
+    streamStartNative();
 
     let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
     let env = vm.get_env().unwrap();

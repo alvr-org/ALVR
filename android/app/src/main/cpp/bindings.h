@@ -13,15 +13,18 @@ struct TrackingQuat {
     float z;
     float w;
 };
+
 struct TrackingVector3 {
     float x;
     float y;
     float z;
 };
+
 struct TrackingVector2 {
     float x;
     float y;
 };
+
 struct TrackingInfo {
     unsigned long long targetTimestampNs;
     TrackingQuat HeadPose_Pose_Orientation;
@@ -58,6 +61,7 @@ struct TrackingInfo {
         unsigned int handFingerConfidences;
     } controller[2];
 };
+
 struct VideoFrame {
     unsigned int type; // ALVR_PACKET_TYPE_VIDEO_FRAME
     unsigned int packetCounter;

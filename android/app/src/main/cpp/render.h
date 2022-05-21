@@ -1,18 +1,15 @@
 #ifndef ALVRCLIENT_RENDER_H
 #define ALVRCLIENT_RENDER_H
 
-#include <VrApi.h>
-#include <VrApi_Types.h>
-#include <VrApi_Helpers.h>
-#include <VrApi_SystemUtils.h>
-#include <VrApi_Input.h>
 #include <GLES3/gl3.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include "gltf_model.h"
 #include "utils.h"
 #include "ffr.h"
-
+#include "bindings.h"
 
 // Must use EGLSyncKHR because the VrApi still supports OpenGL ES 2.0
 #define EGL_SYNC
@@ -27,33 +24,22 @@ struct Render_EGL {
 extern Render_EGL egl;
 
 void eglInit();
-
 void eglDestroy();
+
+struct EyeInput {
+    glm::quat orientation;
+    glm::vec3 position;
+    EyeFov fov;
+};
 
 //
 // ovrFramebuffer
 //
 
 typedef struct {
-    int TextureSwapChainLength;
-    int TextureSwapChainIndex;
-    ovrTextureSwapChain *ColorTextureSwapChain;
     std::vector<std::unique_ptr<gl_render_utils::Texture>> renderTargets;
     std::vector<std::unique_ptr<gl_render_utils::RenderState>> renderStates;
 } ovrFramebuffer;
-
-bool ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, const GLenum colorFormat, const int width,
-                           const int height);
-
-void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer);
-
-void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer);
-
-void ovrFramebuffer_SetNone();
-
-void ovrFramebuffer_Resolve();
-
-void ovrFramebuffer_Advance(ovrFramebuffer *frameBuffer);
 
 //
 // ovrGeometry
@@ -80,24 +66,6 @@ typedef struct {
     ovrVertexAttribPointer VertexAttribs[MAX_VERTEX_ATTRIB_POINTERS];
 } ovrGeometry;
 
-enum VertexAttributeLocation {
-    VERTEX_ATTRIBUTE_LOCATION_POSITION,
-    VERTEX_ATTRIBUTE_LOCATION_COLOR,
-    VERTEX_ATTRIBUTE_LOCATION_UV,
-    VERTEX_ATTRIBUTE_LOCATION_TRANSFORM,
-    VERTEX_ATTRIBUTE_LOCATION_NORMAL
-};
-
-void ovrGeometry_Clear(ovrGeometry *geometry);
-
-void ovrGeometry_CreatePanel(ovrGeometry *geometry);
-
-void ovrGeometry_Destroy(ovrGeometry *geometry);
-
-void ovrGeometry_CreateVAO(ovrGeometry *geometry);
-
-void ovrGeometry_DestroyVAO(ovrGeometry *geometry);
-
 //
 // ovrProgram
 //
@@ -115,16 +83,9 @@ typedef struct {
     GLint Textures[MAX_PROGRAM_TEXTURES];            // Texture%i
 } ovrProgram;
 
-
-bool
-ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource);
-
-void ovrProgram_Destroy(ovrProgram *program);
-
 //
 // ovrRenderer
 //
-
 
 typedef struct {
     ovrFramebuffer FrameBuffer[VRAPI_FRAME_LAYER_EYE_MAX];
@@ -142,19 +103,9 @@ typedef struct {
 } ovrRenderer;
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
-                        gl_render_utils::Texture *streamTexture, int LoadingTexture,
-                        FFRData ffrData);
-
+                        gl_render_utils::Texture *streamTexture, int LoadingTexture, std::vector<GLuint> textures[2], FFRData ffrData);
 void ovrRenderer_Destroy(ovrRenderer *renderer);
-
 void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode);
-
-// Set up an OVR frame, render it, and submit it.
-ovrLayerProjection2 ovrRenderer_RenderFrame(ovrRenderer *renderer, const ovrTracking2 *tracking,
-                                            bool loading);
-
-// Render the contents of the frame in an SDK-neutral manner.
-void renderEye(int eye, ovrMatrix4f mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading);
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, EyeInput input[2], int swapchainIndex[2], bool loading);
 
 #endif //ALVRCLIENT_RENDER_H

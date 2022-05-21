@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <GLES3/gl3.h>
+#include <VrApi_Helpers.h>
 #include <VrApi_Types.h>
 
 #define TINYGLTF_NO_STB_IMAGE_WRITE

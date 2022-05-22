@@ -4,6 +4,7 @@ mod dependencies;
 mod packaging;
 mod version;
 
+use afs::Layout;
 use alvr_filesystem as afs;
 use pico_args::Arguments;
 use std::{fs, time::Instant};
@@ -20,6 +21,7 @@ SUBCOMMANDS:
     prepare-deps        Download and compile server and client external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
+    run-server          Build server and then open the launcher
     package-server      Build server in release mode, make portable version and installer
     clean               Removes all build artifacts and dependencies.
     bump                Bump server and client package versions
@@ -59,6 +61,14 @@ pub fn crate_dir_names() -> Vec<String> {
                 .to_owned()
         })
         .collect()
+}
+
+pub fn run_server() {
+    let sh = Shell::new().unwrap();
+
+    let launcher_exe = Layout::new(&afs::server_build_dir()).launcher_exe();
+
+    cmd!(sh, "{launcher_exe}").run().unwrap();
 }
 
 pub fn clean() {
@@ -187,6 +197,10 @@ fn main() {
                         build::build_client(is_release, "oculus_quest");
                         build::build_client(is_release, "oculus_go");
                     }
+                }
+                "run-server" => {
+                    build::build_server(is_release, gpl, None, false, experiments);
+                    run_server();
                 }
                 "package-server" => packaging::package_server(root, gpl),
                 "package-client" => {

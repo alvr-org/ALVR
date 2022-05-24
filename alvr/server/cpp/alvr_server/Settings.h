@@ -74,6 +74,7 @@ public:
 	uint64_t m_adaptiveBitrateDownRate;
 	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
+	bool m_forceSW;
 	uint32_t m_swThreadCount;
 
 	// Controller configs

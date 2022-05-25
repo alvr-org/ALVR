@@ -258,6 +258,7 @@ async fn client_handshake(
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,
+        force_sw: settings.video.force_sw,
         sw_thread_count: settings.video.sw_thread_count,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
         enable_adaptive_bitrate: session_settings.video.adaptive_bitrate.enabled,

@@ -143,6 +143,18 @@ impl StatisticsManager {
         {
             frame.total_pipeline_latency = client_stats.total_pipeline_latency;
 
+            let game_time_latency = frame
+                .frame_present
+                .saturating_duration_since(frame.tracking_received);
+
+            let server_compositor_latency = frame
+                .frame_composed
+                .saturating_duration_since(frame.frame_present);
+
+            let encoder_latency = frame
+                .frame_encoded
+                .saturating_duration_since(frame.frame_composed);
+
             // The network latency cannot be estiamed directly. It is what's left of the total
             // latency after subtracting all other latency intervals. In particular it contains the
             // transport latency of the tracking packet and the interval between the first video
@@ -150,7 +162,9 @@ impl StatisticsManager {
             // For safety, use saturating_sub to avoid a crash if for some reason the network
             // latency is miscalculated as negative.
             let network_latency = frame.total_pipeline_latency.saturating_sub(
-                (frame.frame_encoded - frame.tracking_received)
+                game_time_latency
+                    + server_compositor_latency
+                    + encoder_latency
                     + client_stats.video_decode
                     + client_stats.rendering
                     + client_stats.vsync_queue,
@@ -170,8 +184,7 @@ impl StatisticsManager {
                         / 1e6,
                     total_latency_ms: client_stats.total_pipeline_latency.as_secs_f32() * 1000.,
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
-                    encode_latency_ms: (frame.frame_encoded - frame.frame_composed).as_secs_f32()
-                        * 1000.,
+                    encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
                     decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
                     fec_percentage: self.fec_percentage,
                     fec_errors_total: self.fec_errors_total,
@@ -207,9 +220,9 @@ impl StatisticsManager {
             // timestamp as the graph time origin.
             alvr_events::send_event(EventType::GraphStatistics(GraphStatistics {
                 total_pipeline_latency_s: client_stats.total_pipeline_latency.as_secs_f32(),
-                game_time_s: (frame.frame_present - frame.tracking_received).as_secs_f32(),
-                server_compositor_s: (frame.frame_composed - frame.frame_present).as_secs_f32(),
-                encoder_s: (frame.frame_encoded - frame.frame_composed).as_secs_f32(),
+                game_time_s: game_time_latency.as_secs_f32(),
+                server_compositor_s: server_compositor_latency.as_secs_f32(),
+                encoder_s: encoder_latency.as_secs_f32(),
                 network_s: network_latency.as_secs_f32(),
                 decoder_s: client_stats.video_decode.as_secs_f32(),
                 client_compositor_s: client_stats.rendering.as_secs_f32(),

@@ -64,7 +64,8 @@ impl StatisticsManager {
             .iter_mut()
             .find(|frame| frame.intervals.target_timestamp == target_timestamp)
         {
-            frame.intervals.video_decode = Instant::now() - frame.video_packet_received;
+            frame.intervals.video_decode =
+                Instant::now().saturating_duration_since(frame.video_packet_received);
         }
     }
 
@@ -78,13 +79,15 @@ impl StatisticsManager {
             .iter_mut()
             .find(|frame| frame.intervals.target_timestamp == target_timestamp)
         {
-            frame.intervals.rendering =
-                (now - frame.video_packet_received).saturating_sub(frame.intervals.video_decode);
+            frame.intervals.rendering = now.saturating_duration_since(
+                frame.video_packet_received + frame.intervals.video_decode,
+            );
             frame.intervals.vsync_queue = vsync_queue;
-            frame.intervals.total_pipeline_latency = now - frame.input_acquired + vsync_queue;
+            frame.intervals.total_pipeline_latency =
+                now.saturating_duration_since(frame.input_acquired) + vsync_queue;
 
             let vsync = now + vsync_queue;
-            frame.intervals.frame_interval = vsync - self.prev_vsync;
+            frame.intervals.frame_interval = vsync.saturating_duration_since(self.prev_vsync);
             self.prev_vsync = vsync;
         }
     }

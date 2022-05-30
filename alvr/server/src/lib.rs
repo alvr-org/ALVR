@@ -23,7 +23,7 @@ use alvr_common::{
     prelude::*,
     ALVR_VERSION,
 };
-use alvr_events::{EventType, Statistics};
+use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};

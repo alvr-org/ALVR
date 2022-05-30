@@ -1,6 +1,6 @@
 [package]
 name = "alvr_sockets"
-version = "18.0.0-dev02"
+version = "18.0.0-dev03"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"

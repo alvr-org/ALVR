@@ -10,11 +10,9 @@ mod storage;
 #[cfg(target_os = "android")]
 mod permission;
 
-#[cfg(target_os = "android")]
-mod audio;
-
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     once_cell::sync::{Lazy, OnceCell},
@@ -22,7 +20,7 @@ use alvr_common::{
     prelude::*,
     ALVR_VERSION, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_session::Fov;
+use alvr_session::{AudioDeviceId, Fov};
 use alvr_sockets::{
     BatteryPacket, ClientControlPacket, ClientStatistics, HeadsetInfoPacket, Input,
     LegacyController, LegacyInput, MotionData, ViewsConfig,
@@ -198,11 +196,18 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
             slice::from_raw_parts(result.refreshRates, result.refreshRatesCount as _).to_vec();
         let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
+        let microphone_sample_rate =
+            AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Input)
+                .map_err(err!())?
+                .input_sample_rate()
+                .map_err(err!())?;
+
         let headset_info = HeadsetInfoPacket {
             recommended_eye_width: result.recommendedEyeWidth as _,
             recommended_eye_height: result.recommendedEyeHeight as _,
             available_refresh_rates,
             preferred_refresh_rate,
+            microphone_sample_rate,
             reserved: format!("{}", *ALVR_VERSION),
         };
 

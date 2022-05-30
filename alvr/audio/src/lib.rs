@@ -1,9 +1,9 @@
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
-use alvr_session::{AudioConfig, AudioDeviceId, LinuxAudioBackend};
+use alvr_session::{AudioBufferingConfig, AudioDeviceId, LinuxAudioBackend};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, Device, Sample, SampleFormat, SampleRate, StreamConfig,
+    BufferSize, Device, Sample, SampleFormat, StreamConfig,
 };
 use rodio::{OutputStream, Source};
 use std::{
@@ -49,8 +49,6 @@ impl AudioDeviceType {
 
 pub struct AudioDevice {
     inner: Device,
-
-    #[cfg(windows)]
     device_type: AudioDeviceType,
 }
 
@@ -145,14 +143,23 @@ impl AudioDevice {
 
         Ok(Self {
             inner: device,
-
-            #[cfg(windows)]
             device_type,
         })
     }
 
     pub fn name(&self) -> StrResult<String> {
         self.inner.name().map_err(err!())
+    }
+
+    pub fn input_sample_rate(&self) -> StrResult<u32> {
+        let config = if let Ok(config) = self.inner.default_input_config() {
+            config
+        } else {
+            // On Windows, loopback devices are not recognized as input devices. Use output config.
+            self.inner.default_output_config().map_err(err!())?
+        };
+
+        Ok(config.sample_rate().0)
     }
 }
 
@@ -267,66 +274,22 @@ fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
     Ok(())
 }
 
-pub fn get_sample_rate(device: &AudioDevice) -> StrResult<u32> {
-    let maybe_config_range = device
-        .inner
-        .supported_output_configs()
-        .map_err(err!())?
-        .next();
-    let config = if let Some(config) = maybe_config_range {
-        config
-    } else {
-        device
-            .inner
-            .supported_input_configs()
-            .map_err(err!())?
-            .next()
-            .ok_or_else(enone!())?
-    };
-
-    // In theory we should check all configs for a 48000 sample rate.
-    // In practice it seems like most stuff we care about supports one sample rate
-    // or arbitrary ones, and this is enough to unbreak the common Linux desktop
-    // audio setups. Could be revisited later if this ever turns out to matter.
-
-    if config.min_sample_rate().0 <= 48000 && config.max_sample_rate().0 >= 48000 {
-        Ok(48000)
-    } else {
-        // Assumption: device is in shared mode: this means that there is one and fixed sample rate,
-        // format and channel count
-        Ok(config.min_sample_rate().0)
-    }
-}
-
 #[cfg_attr(not(windows), allow(unused_variables))]
 pub async fn record_audio_loop(
     device: AudioDevice,
     channels_count: u16,
-    sample_rate: u32,
     mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let maybe_config_range = device
-        .inner
-        .supported_output_configs()
-        .map_err(err!())?
-        .next();
-    let config = if let Some(config) = maybe_config_range {
+    let config = if let Ok(config) = device.inner.default_input_config() {
         config
     } else {
-        device
-            .inner
-            .supported_input_configs()
-            .map_err(err!())?
-            .next()
-            .ok_or_else(enone!())?
+        // On Windows, loopback devices are not recognized as input devices. Use output config.
+        device.inner.default_output_config().map_err(err!())?
     };
 
-    if sample_rate < config.min_sample_rate().0 || sample_rate > config.max_sample_rate().0 {
-        return fmt_e!("Sample rate not supported");
-    }
-
     if config.channels() > 2 {
+        // todo: handle more than 2 channels
         return fmt_e!(
             "Audio devices with more than 2 channels are not supported. {}",
             "Please turn off surround audio."
@@ -335,7 +298,7 @@ pub async fn record_audio_loop(
 
     let stream_config = StreamConfig {
         channels: config.channels(),
-        sample_rate: SampleRate(sample_rate),
+        sample_rate: config.sample_rate(),
         buffer_size: BufferSize::Default,
     };
 
@@ -611,7 +574,7 @@ pub async fn play_audio_loop(
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
-    config: AudioConfig,
+    config: AudioBufferingConfig,
     receiver: StreamReceiver<()>,
 ) -> StrResult {
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.

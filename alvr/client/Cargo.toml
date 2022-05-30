@@ -1,6 +1,6 @@
 [package]
 name = "alvr_client"
-version = "18.0.0-dev02"
+version = "18.0.0-dev03"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -17,7 +17,6 @@ alvr_sockets = { path = "../sockets" }
 
 bincode = "1"
 bytes = "1"
-cpal = "0.13.5"
 futures = "0.3"
 glyph_brush_layout = "0.2"
 rand = "0.8"
@@ -33,7 +32,7 @@ ndk = "0.6"
 ndk-context = "0.1"
 ndk-sys = "0.3"
 # todo: use CPAL when moving the entry point to Rust
-oboe = "0.4" # Note: cannot use feature "java-interface" to query audio info
+oboe = { version = "0.4", features = ["java-interface"] } # Note: cannot use feature "java-interface" to query audio info
 
 [build-dependencies]
 bindgen = "0.59"

@@ -45,6 +45,7 @@ pub struct HeadsetInfoPacket {
     pub recommended_eye_height: u32,
     pub available_refresh_rates: Vec<f32>,
     pub preferred_refresh_rate: f32,
+    pub microphone_sample_rate: u32,
 
     // reserved field is used to add features in a minor release that otherwise would break the
     // packets schema

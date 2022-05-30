@@ -199,7 +199,7 @@ pub enum AudioDeviceId {
 
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AudioConfig {
+pub struct AudioBufferingConfig {
     #[schema(min = 0, max = 200)]
     pub average_buffering_ms: u64,
 
@@ -215,7 +215,7 @@ pub struct GameAudioDesc {
     #[schema(advanced)]
     pub device_id: AudioDeviceId,
     pub mute_when_streaming: bool,
-    pub config: AudioConfig,
+    pub buffering_config: AudioBufferingConfig,
 }
 
 // Note: sample rate is a free parameter for microphone, because both server and client supports
@@ -234,10 +234,7 @@ pub struct MicrophoneDesc {
     #[schema(advanced)]
     pub output_device_id: AudioDeviceId,
 
-    #[schema(advanced)]
-    pub sample_rate: u32,
-
-    pub config: AudioConfig,
+    pub buffering_config: AudioBufferingConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -630,7 +627,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         Index: 1,
                     },
                     mute_when_streaming: true,
-                    config: AudioConfigDefault {
+                    buffering_config: AudioBufferingConfigDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
@@ -650,8 +647,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         Name: "".into(),
                         Index: 1,
                     },
-                    sample_rate: 44100,
-                    config: AudioConfigDefault {
+                    buffering_config: AudioBufferingConfigDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },

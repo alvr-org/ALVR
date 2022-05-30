@@ -1,8 +1,7 @@
 use crate::{
-    connection_utils, statistics::StatisticsManager, ClientStats, EyeFov, TrackingInfo,
-    TrackingInfo_Controller, TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3,
-    CLIENTS_UPDATED_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    connection_utils, statistics::StatisticsManager, EyeFov, TrackingInfo, TrackingInfo_Controller,
+    TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
+    HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -89,6 +88,7 @@ struct ConnectionInfo {
     version: Option<Version>,
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
+    microphone_sample_rate: u32,
 }
 
 async fn client_handshake(
@@ -191,7 +191,7 @@ async fn client_handshake(
             }
         }
 
-        alvr_audio::get_sample_rate(&game_audio_device).map_err(err!())?
+        game_audio_device.input_sample_rate()?
     } else {
         0
     };
@@ -492,6 +492,7 @@ async fn client_handshake(
         version,
         control_sender,
         control_receiver,
+        microphone_sample_rate: headset_info.microphone_sample_rate,
     })
 }
 
@@ -580,6 +581,7 @@ async fn connection_pipeline() -> StrResult {
         version: _,
         control_sender,
         mut control_receiver,
+        microphone_sample_rate,
     } = connection_info;
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -643,7 +645,6 @@ async fn connection_pipeline() -> StrResult {
             desc.device_id,
             AudioDeviceType::Output,
         )?;
-        let sample_rate = alvr_audio::get_sample_rate(&device)?;
         let sender = stream_socket.request_stream(AUDIO).await?;
         let mute_when_streaming = desc.mute_when_streaming;
 
@@ -660,8 +661,7 @@ async fn connection_pipeline() -> StrResult {
                 )
             }
 
-            alvr_audio::record_audio_loop(device, 2, sample_rate, mute_when_streaming, sender)
-                .await?;
+            alvr_audio::record_audio_loop(device, 2, mute_when_streaming, sender).await?;
 
             #[cfg(windows)]
             {
@@ -721,8 +721,8 @@ async fn connection_pipeline() -> StrResult {
         Box::pin(alvr_audio::play_audio_loop(
             input_device,
             1,
-            desc.sample_rate,
-            desc.config,
+            microphone_sample_rate,
+            desc.buffering_config,
             receiver,
         ))
     } else {

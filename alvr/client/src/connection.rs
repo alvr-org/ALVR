@@ -7,8 +7,9 @@ use crate::{
     storage, VideoFrame, CONTROL_CHANNEL_SENDER, INPUT_SENDER, STATISTICS_MANAGER,
     STATISTICS_SENDER,
 };
+use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
-use alvr_session::{CodecType, SessionDesc};
+use alvr_session::{AudioDeviceId, CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
     HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, ServerHandshakePacket,
@@ -35,9 +36,6 @@ use tokio::{
     task,
     time::{self, Instant},
 };
-
-#[cfg(target_os = "android")]
-use crate::audio;
 
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
@@ -515,32 +513,32 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     });
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        #[cfg(target_os = "android")]
-        {
-            let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
-            Box::pin(audio::play_audio_loop(
-                config_packet.game_audio_sample_rate,
-                desc.config,
-                game_audio_receiver,
-            ))
-        }
-        #[cfg(not(target_os = "android"))]
-        Box::pin(future::pending())
+        let device = AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Output)
+            .map_err(err!())?;
+
+        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        Box::pin(alvr_audio::play_audio_loop(
+            device,
+            2,
+            config_packet.game_audio_sample_rate,
+            desc.buffering_config,
+            game_audio_receiver,
+        ))
     } else {
         Box::pin(future::pending())
     };
 
-    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
-        #[cfg(target_os = "android")]
-        {
-            let microphone_sender = stream_socket.request_stream(AUDIO).await?;
-            Box::pin(audio::record_audio_loop(
-                config.sample_rate,
-                microphone_sender,
-            ))
-        }
-        #[cfg(not(target_os = "android"))]
-        Box::pin(future::pending())
+    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
+        let device = AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Input)
+            .map_err(err!())?;
+
+        let microphone_sender = stream_socket.request_stream(AUDIO).await?;
+        Box::pin(alvr_audio::record_audio_loop(
+            device,
+            1,
+            false,
+            microphone_sender,
+        ))
     } else {
         Box::pin(future::pending())
     };

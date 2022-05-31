@@ -1153,20 +1153,11 @@ bool OvrController::onPoseUpdate(const TrackingInfo::Controller &c) {
             vr::VRDriverInput()->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_TRIGGER_VALUE], c.triggerValue, 0.0);
             {
-                float trigger = 0;
-                if ((c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH)) != 0)
-                    trigger = 0.5f;
-                if ((c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0)
-                    trigger = 1.0f;
-                float grip = 0;
-                if ((c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_TOUCH)) != 0)
-                    grip = 0.5f;
-                if ((c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0)
-                    grip = 1.0f;
                 vr::VRDriverInput()->UpdateScalarComponent(
-                    m_handles[ALVR_INPUT_FINGER_INDEX], trigger, 0.0);
+                    m_handles[ALVR_INPUT_FINGER_INDEX],  c.triggerValue, 0.0);
                 vr::VRDriverInput()->UpdateScalarComponent(
-                    m_handles[ALVR_INPUT_FINGER_MIDDLE], grip, 0.0);
+                    m_handles[ALVR_INPUT_FINGER_MIDDLE],  c.gripValue, 0.0);
+                
                 if ((c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0 ||
                     (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0 ||
                     (c.buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0 ||
@@ -1178,9 +1169,9 @@ bool OvrController::onPoseUpdate(const TrackingInfo::Controller &c) {
                         m_handles[ALVR_INPUT_FINGER_PINKY], 1, 0.0);
                 } else {
                     vr::VRDriverInput()->UpdateScalarComponent(
-                        m_handles[ALVR_INPUT_FINGER_RING], grip, 0.0);
+                        m_handles[ALVR_INPUT_FINGER_RING],  c.gripValue, 0.0);
                     vr::VRDriverInput()->UpdateScalarComponent(
-                        m_handles[ALVR_INPUT_FINGER_PINKY], grip, 0.0);
+                        m_handles[ALVR_INPUT_FINGER_PINKY],  c.gripValue, 0.0);
                 }
             }
             break;

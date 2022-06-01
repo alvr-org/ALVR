@@ -653,6 +653,8 @@ uint8_t getControllerBattery(int index) {
 }
 
 StreamConfigOutput streamStartVR() {
+    auto java = getOvrJava();
+
     if (g_ctx.streamSwapchains[0].inner != nullptr) {
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
@@ -688,6 +690,9 @@ StreamConfigOutput streamStartVR() {
     if (result != ovrSuccess) {
         LOGE("Failed to set refresh rate requested by the server: %d", result);
     }
+
+    vrapi_SetPropertyInt(&java, VRAPI_FOVEATION_LEVEL, g_ctx.streamConfig.oculusFoveationLevel);
+    vrapi_SetPropertyInt(&java, VRAPI_DYNAMIC_FOVEATION_ENABLED, g_ctx.streamConfig.dynamicOculusFoveation);
 
     if (g_ctx.streaming) {
         g_ctx.streaming = false;

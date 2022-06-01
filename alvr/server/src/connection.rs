@@ -11,7 +11,7 @@ use alvr_common::{
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::EventType;
-use alvr_session::{CodecType, FrameSize, OpenvrConfig, OpenvrPropValue, OpenvrPropertyKey};
+use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction, ClientStatistics,
     ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, Input, PeerType,
@@ -33,6 +33,9 @@ use tokio::{
     sync::{mpsc as tmpsc, Mutex},
     time,
 };
+
+#[cfg(windows)]
+use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
 
 const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);

@@ -20,7 +20,6 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
-    prelude::*,
     ALVR_VERSION,
 };
 use alvr_events::EventType;

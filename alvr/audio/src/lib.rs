@@ -47,6 +47,7 @@ impl AudioDeviceType {
     }
 }
 
+#[allow(dead_code)]
 pub struct AudioDevice {
     inner: Device,
     device_type: AudioDeviceType,

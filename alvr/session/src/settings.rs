@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
@@ -84,6 +84,17 @@ pub struct AdaptiveBitrateDesc {
     pub bitrate_light_load_threshold: f32,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+#[repr(u8)]
+pub enum OculusFovetionLevel {
+    None,
+    Low,
+    Medium,
+    High,
+    HighTop,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FoveatedRenderingDesc {
@@ -104,6 +115,9 @@ pub struct FoveatedRenderingDesc {
 
     #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_y: f32,
+
+    pub oculus_foveation_level: OculusFovetionLevel,
+    pub dynamic_oculus_foveation: bool,
 }
 
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
@@ -601,6 +615,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     center_shift_y: 0.1,
                     edge_ratio_x: 4.,
                     edge_ratio_y: 5.,
+                    oculus_foveation_level: OculusFovetionLevelDefault {
+                        variant: OculusFovetionLevelDefaultVariant::HighTop,
+                    },
+                    dynamic_oculus_foveation: true,
                 },
             },
             color_correction: SwitchDefault {

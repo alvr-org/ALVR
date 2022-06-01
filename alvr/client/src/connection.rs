@@ -328,6 +328,20 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             } else {
                 2_f32
             },
+            oculusFoveationLevel: if let Switch::Enabled(foveation_vars) =
+                &settings.video.foveated_rendering
+            {
+                foveation_vars.oculus_foveation_level as i32
+            } else {
+                0
+            },
+            dynamicOculusFoveation: if let Switch::Enabled(foveation_vars) =
+                &settings.video.foveated_rendering
+            {
+                foveation_vars.dynamic_oculus_foveation
+            } else {
+                false
+            },
             extraLatencyMode: settings.headset.extra_latency_mode,
             clientsidePrediction: settings
                 .headset

@@ -100,6 +100,8 @@ struct StreamConfigInput {
     float foveationCenterShiftY;
     float foveationEdgeRatioX;
     float foveationEdgeRatioY;
+    int oculusFoveationLevel;
+    bool dynamicOculusFoveation;
     bool extraLatencyMode;
     bool clientsidePrediction;
 };

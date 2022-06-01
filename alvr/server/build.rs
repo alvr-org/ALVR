@@ -1,4 +1,3 @@
-use alvr_filesystem as afs;
 #[cfg(target_os = "linux")]
 use pkg_config;
 use std::{env, path::PathBuf};
@@ -8,7 +7,7 @@ use std::{env, path::PathBuf};
 // but AFTER the build in other cases because linker flags must appear after.
 #[cfg(target_os = "linux")]
 fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
-    let ffmpeg_path = afs::deps_dir().join("linux/ffmpeg");
+    let ffmpeg_path = alvr_filesystem::deps_dir().join("linux/ffmpeg");
     let alvr_build = if cfg!(feature = "gpl") {
         "alvr_build"
     } else {
@@ -65,7 +64,7 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
 
 #[cfg(all(windows, feature = "gpl"))]
 fn do_ffmpeg_windows_config(build: &mut cc::Build) {
-    let ffmpeg_dir = afs::deps_dir().join("windows/ffmpeg");
+    let ffmpeg_dir = alvr_filesystem::deps_dir().join("windows/ffmpeg");
 
     build.include(format!("{}/include", ffmpeg_dir.to_string_lossy()));
 

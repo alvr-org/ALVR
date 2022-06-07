@@ -30,13 +30,6 @@ OpenGL-ES Utility Functions
 ================================================================================
 */
 
-typedef struct {
-    bool multi_view;                        // GL_OVR_multiview, GL_OVR_multiview2
-    bool EXT_texture_border_clamp;            // GL_EXT_texture_border_clamp, GL_OES_texture_border_clamp
-} OpenGLExtensions_t;
-
-OpenGLExtensions_t glExtensions;
-
 static const char *EglErrorString(const EGLint error) {
     switch (error) {
         case EGL_SUCCESS:
@@ -639,18 +632,16 @@ void ovrProgram_Destroy(ovrProgram *program) {
 //
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
-                        int LoadingTexture, std::vector<GLuint> textures[2], FFRData ffrData) {
-    renderer->NumBuffers = VRAPI_FRAME_LAYER_EYE_MAX;
-
+                        int LoadingTexture, std::vector<GLuint> textures[2], bool darkMode,
+                        FFRData ffrData) {
     renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
-        renderer->ffrSourceTexture = streamTexture;
-        renderer->ffr = std::make_unique<FFR>(renderer->ffrSourceTexture);
+        renderer->ffr = std::make_unique<FFR>(streamTexture);
         renderer->ffr->Initialize(ffrData);
     }
 
     // Create the frame buffers.
-    for (int eye = 0; eye < renderer->NumBuffers; eye++) {
+    for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer_Create(&renderer->FrameBuffer[eye], textures[eye], width, height);
     }
 
@@ -659,13 +650,6 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
     renderer->SceneCreated = false;
     renderer->loadingScene = new GltfModel();
     renderer->loadingScene->load();
-}
-
-
-void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode) {
-    if (renderer->SceneCreated) {
-        return;
-    }
 
     std::string fragment_shader;
     fragment_shader = string_format(FRAGMENT_SHADER,
@@ -682,14 +666,12 @@ void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode) {
 }
 
 void ovrRenderer_Destroy(ovrRenderer *renderer) {
-    if (renderer->SceneCreated) {
-        ovrProgram_Destroy(&renderer->Program);
-        ovrProgram_Destroy(&renderer->ProgramLoading);
-        ovrGeometry_DestroyVAO(&renderer->Panel);
-        ovrGeometry_Destroy(&renderer->Panel);
-    }
+    ovrProgram_Destroy(&renderer->Program);
+    ovrProgram_Destroy(&renderer->ProgramLoading);
+    ovrGeometry_DestroyVAO(&renderer->Panel);
+    ovrGeometry_Destroy(&renderer->Panel);
 
-    for (int eye = 0; eye < renderer->NumBuffers; eye++) {
+    for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
     }
 }
@@ -806,7 +788,7 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer, EyeInput input[2], int swapc
     }
 
     // Render the eye images.
-    for (int eye = 0; eye < renderer->NumBuffers; eye++) {
+    for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
         ovrFramebuffer_SetCurrent(frameBuffer, swapchainIndex[eye]);
 

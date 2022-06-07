@@ -4,11 +4,8 @@ mod connection;
 mod connection_utils;
 mod decoder;
 mod logging_backend;
+mod platform;
 mod statistics;
-mod storage;
-
-#[cfg(target_os = "android")]
-mod permission;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -136,7 +133,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_renderNativ
     _: JObject,
 ) {
     let rendered_frame_index = if let Some(decoder) = &*DECODER_REF.lock() {
-        let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+        let vm = platform::vm();
         let env = vm.get_env().unwrap();
 
         env.call_method(decoder.as_obj(), "clearAvailable", "()J", &[])
@@ -171,7 +168,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
     decoder: JObject,
 ) {
     alvr_common::show_err(|| -> StrResult {
-        let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+        let vm = platform::vm();
         let env = vm.get_env().unwrap();
 
         // let decoder_class = env
@@ -183,7 +180,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onResumeNat
         //     .unwrap();
         *DECODER_REF.lock() = Some(env.new_global_ref(decoder).map_err(err!())?);
 
-        let config = storage::load_config();
+        let config = platform::load_config();
 
         let result = resumeVR(*jscreen_surface as _);
         prepareLoadingRoom(
@@ -244,7 +241,7 @@ pub unsafe extern "system" fn Java_com_polygraphene_alvr_OvrActivity_onStreamSta
 
     streamStartNative();
 
-    let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+    let vm = platform::vm();
     let env = vm.get_env().unwrap();
 
     if let Some(decoder) = &*DECODER_REF.lock() {
@@ -495,7 +492,7 @@ pub fn initialize() {
     }
 
     extern "C" fn push_nal(buffer: *const c_char, length: i32, frame_index: u64) {
-        let vm = unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+        let vm = platform::vm();
         let env = vm.get_env().unwrap();
 
         let decoder_lock = DECODER_REF.lock();
@@ -560,14 +557,14 @@ pub fn initialize() {
     }
 
     // Make sure to reset config in case of version compat mismatch.
-    if storage::load_config().protocol_id != alvr_common::protocol_id() {
+    if platform::load_config().protocol_id != alvr_common::protocol_id() {
         // NB: Config::default() sets the current protocol ID
-        storage::store_config(&storage::Config::default());
+        platform::store_config(&platform::Config::default());
     }
 
-    permission::try_get_microphone_permission();
+    platform::try_get_microphone_permission();
 
-    let vm = unsafe { jni::JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let vm = platform::vm();
     let env = vm.attach_current_thread().unwrap();
 
     let asset_manager = env

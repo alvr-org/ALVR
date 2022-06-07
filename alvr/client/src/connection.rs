@@ -3,9 +3,9 @@
 use crate::{
     connection_utils::{self, ConnectionError},
     decoder::{DECODER_REF, IDR_PARSED},
+    platform,
     statistics::StatisticsManager,
-    storage, VideoFrame, CONTROL_CHANNEL_SENDER, INPUT_SENDER, STATISTICS_MANAGER,
-    STATISTICS_SENDER,
+    VideoFrame, CONTROL_CHANNEL_SENDER, INPUT_SENDER, STATISTICS_MANAGER, STATISTICS_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -20,7 +20,6 @@ use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
-use jni::JavaVM;
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
@@ -71,7 +70,7 @@ impl Drop for StreamCloseGuard {
 }
 
 fn set_loading_message(message: &str) {
-    let hostname = storage::load_config().hostname;
+    let hostname = platform::load_config().hostname;
 
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
@@ -119,13 +118,11 @@ fn set_loading_message(message: &str) {
 }
 
 fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool) {
-    let vm = unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let vm = platform::vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let activity = ndk_context::android_context().context().cast();
-
     env.call_method(
-        activity,
+        platform::context(),
         "onServerConnected",
         "(FIZ)V",
         &[
@@ -138,8 +135,8 @@ fn on_server_connected(fps: f32, codec: CodecType, realtime_decoder: bool) {
 }
 
 async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
-    let device_name = storage::device_name();
-    let hostname = storage::load_config().hostname;
+    let device_name = platform::device_name();
+    let hostname = platform::load_config().hostname;
 
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -271,9 +268,9 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     };
 
     {
-        let mut config = storage::load_config();
+        let mut config = platform::load_config();
         config.dark_mode = settings.extra.client_dark_mode;
-        storage::store_config(&config);
+        platform::store_config(&config);
     }
 
     // create this before initializing the stream on cpp side
@@ -488,7 +485,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             unsafe {
                 // Note: legacyReceive() requires the java context to be attached to the current thread
                 // todo: investigate why
-                let vm = JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap();
+                let vm = platform::vm();
                 let env = vm.attach_current_thread().unwrap();
 
                 crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);

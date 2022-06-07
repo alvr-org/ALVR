@@ -609,8 +609,7 @@ void prepareLoadingRoom(int eyeWidth, int eyeHeight, bool darkMode) {
             { g_ctx.loadingSwapchains[0].textures, g_ctx.loadingSwapchains[1].textures };
     g_ctx.loadingRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.loadingRenderer.get(), eyeWidth, eyeHeight, nullptr,
-                       g_ctx.loadingTexture->GetGLTexture(), textures, {false});
-    ovrRenderer_CreateScene(g_ctx.loadingRenderer.get(), darkMode);
+                       g_ctx.loadingTexture->GetGLTexture(), textures, darkMode, {false});
 }
 
 void setStreamConfig(StreamConfigInput config) {
@@ -731,12 +730,12 @@ void streamStartNative() {
     g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.streamRenderer.get(), g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
                        g_ctx.streamTexture.get(), g_ctx.loadingTexture->GetGLTexture(), textures,
+                       false,
                        {g_ctx.streamConfig.enableFoveation,
                         g_ctx.streamConfig.eyeWidth, g_ctx.streamConfig.eyeHeight,
                         g_ctx.streamConfig.foveationCenterSizeX, g_ctx.streamConfig.foveationCenterSizeY,
                         g_ctx.streamConfig.foveationCenterShiftX, g_ctx.streamConfig.foveationCenterShiftY,
                         g_ctx.streamConfig.foveationEdgeRatioX, g_ctx.streamConfig.foveationEdgeRatioY});
-    ovrRenderer_CreateScene(g_ctx.streamRenderer.get(), false);
 }
 
 void pauseVR() {

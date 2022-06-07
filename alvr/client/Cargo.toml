@@ -31,8 +31,6 @@ jni = "0.19"
 ndk = "0.6"
 ndk-context = "0.1"
 ndk-sys = "0.3"
-# todo: use CPAL when moving the entry point to Rust
-oboe = { version = "0.4", features = ["java-interface"] } # Note: cannot use feature "java-interface" to query audio info
 
 [build-dependencies]
 bindgen = "0.59"

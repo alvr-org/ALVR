@@ -88,8 +88,7 @@ typedef struct {
 //
 
 typedef struct {
-    ovrFramebuffer FrameBuffer[VRAPI_FRAME_LAYER_EYE_MAX];
-    int NumBuffers;
+    ovrFramebuffer FrameBuffer[2];
     bool SceneCreated;
     ovrProgram Program;
     ovrProgram ProgramLoading;
@@ -98,14 +97,13 @@ typedef struct {
     GLuint LoadingTexture;
     GltfModel *loadingScene;
     std::unique_ptr<FFR> ffr;
-    gl_render_utils::Texture *ffrSourceTexture;
     bool enableFFR;
 } ovrRenderer;
 
 void ovrRenderer_Create(ovrRenderer *renderer, int width, int height,
-                        gl_render_utils::Texture *streamTexture, int LoadingTexture, std::vector<GLuint> textures[2], FFRData ffrData);
+                        gl_render_utils::Texture *streamTexture, int LoadingTexture,
+                        std::vector<GLuint> textures[2], bool darkMode, FFRData ffrData);
 void ovrRenderer_Destroy(ovrRenderer *renderer);
-void ovrRenderer_CreateScene(ovrRenderer *renderer, bool darkMode);
 void ovrRenderer_RenderFrame(ovrRenderer *renderer, EyeInput input[2], int swapchainIndex[2], bool loading);
 
 #endif //ALVRCLIENT_RENDER_H

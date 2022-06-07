@@ -1,20 +1,69 @@
-use jni::{objects::JObject, JNIEnv};
+use alvr_common::prelude::*;
+use alvr_session::{CodecType, MediacodecDataType};
+use jni::{
+    objects::{GlobalRef, JObject},
+    sys::jobject,
+    AttachGuard, JNIEnv, JavaVM,
+};
 use ndk_sys as sys;
-use std::{ffi::CString, ptr::NonNull};
+use std::{ffi::CString, ptr::NonNull, sync::Arc, time::Duration};
 
 const MODE_PRIVATE: i32 = 0;
 const CONFIG_KEY: &str = "config";
+const PREF_NAME: &str = "alvr-pref";
+const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
+
+pub fn vm() -> JavaVM {
+    unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
+}
+
+pub fn context() -> jobject {
+    ndk_context::android_context().context().cast()
+}
+
+pub fn try_get_microphone_permission() {
+    let vm = vm();
+    let env = vm.attach_current_thread().unwrap();
+
+    let mic_perm_jstring = env.new_string(MICROPHONE_PERMISSION).unwrap();
+
+    let permission_status = env
+        .call_method(
+            context(),
+            "checkSelfPermission",
+            "(Ljava/lang/String;)I",
+            &[mic_perm_jstring.into()],
+        )
+        .unwrap()
+        .i()
+        .unwrap();
+
+    if permission_status != 0 {
+        let string_class = env.find_class("java/lang/String").unwrap();
+        let perm_array = env
+            .new_object_array(1, string_class, mic_perm_jstring)
+            .unwrap();
+
+        env.call_method(
+            context(),
+            "requestPermissions",
+            "([Ljava/lang/String;I)V",
+            &[perm_array.into(), 0.into()],
+        )
+        .unwrap();
+
+        // todo: handle case where permission is rejected
+    }
+}
 
 pub fn load_asset(fname: &str) -> Vec<u8> {
-    let android_context = ndk_context::android_context();
-
-    let vm = unsafe { jni::JavaVM::from_raw(android_context.vm().cast()).unwrap() };
+    let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
     let asset_manager = unsafe {
         let jasset_manager = env
             .call_method(
-                android_context.context().cast(),
+                context(),
                 "getAssets",
                 "()Landroid/content/res/AssetManager;",
                 &[],
@@ -33,26 +82,21 @@ pub fn load_asset(fname: &str) -> Vec<u8> {
     asset.get_buffer().unwrap().to_vec()
 }
 
-fn get_preferences_object<'a>(env: &'a JNIEnv<'a>) -> JObject<'a> {
-    let pref_name = env.new_string("alvr-pref").unwrap();
-
-    env.call_method(
-        ndk_context::android_context().context().cast(),
-        "getSharedPreferences",
-        "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
-        &[pref_name.into(), MODE_PRIVATE.into()],
-    )
-    .unwrap()
-    .l()
-    .unwrap()
-}
-
 pub fn load_config_string() -> String {
-    let android_context = ndk_context::android_context();
-    let vm = unsafe { jni::JavaVM::from_raw(android_context.vm().cast()).unwrap() };
+    let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let shared_preferences = get_preferences_object(&env);
+    let pref_name = env.new_string(PREF_NAME).unwrap();
+    let shared_preferences = env
+        .call_method(
+            context(),
+            "getSharedPreferences",
+            "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
+            &[pref_name.into(), MODE_PRIVATE.into()],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
 
     let key = env.new_string(CONFIG_KEY).unwrap();
     let default = env.new_string("").unwrap();
@@ -70,11 +114,20 @@ pub fn load_config_string() -> String {
 }
 
 pub fn store_config_string(config: String) {
-    let android_context = ndk_context::android_context();
-    let vm = unsafe { jni::JavaVM::from_raw(android_context.vm().cast()).unwrap() };
+    let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let shared_preferences = get_preferences_object(&env);
+    let pref_name = env.new_string(PREF_NAME).unwrap();
+    let shared_preferences = env
+        .call_method(
+            context(),
+            "getSharedPreferences",
+            "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
+            &[pref_name.into(), MODE_PRIVATE.into()],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
 
     let editor = env
         .call_method(
@@ -101,7 +154,7 @@ pub fn store_config_string(config: String) {
 }
 
 pub fn device_name() -> String {
-    let vm = unsafe { jni::JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() };
+    let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
     let jbrand_name = env

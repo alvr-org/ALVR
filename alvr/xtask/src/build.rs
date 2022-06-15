@@ -204,7 +204,8 @@ pub fn build_server(
 pub fn build_client_lib(is_release: bool) {
     let sh = Shell::new().unwrap();
 
-    let build_dir = afs::build_dir();
+    let build_dir = afs::build_dir().join("alvr_client_core");
+    sh.create_dir(&build_dir).unwrap();
 
     let mut flags = vec![];
     if is_release {

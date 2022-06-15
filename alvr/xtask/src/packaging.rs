@@ -94,3 +94,11 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         command::targz(&sh, &afs::server_build_dir()).unwrap();
     }
 }
+
+pub fn package_client_lib() {
+    let sh = Shell::new().unwrap();
+
+    build::build_client_lib(true);
+
+    command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
+}

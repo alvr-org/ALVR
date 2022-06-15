@@ -24,6 +24,7 @@ SUBCOMMANDS:
     build-client-lib    Build a C-ABI ALVR client library and header.
     run-server          Build server and then open the launcher
     package-server      Build server in release mode, make portable version and installer
+    package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies.
     bump                Bump server and client package versions
     clippy              Show warnings for selected clippy lints
@@ -213,6 +214,7 @@ fn main() {
                         build::build_client(true, "oculus_go");
                     }
                 }
+                "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),

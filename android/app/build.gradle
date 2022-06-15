@@ -37,7 +37,7 @@ android {
     }
     sourceSets {
         main {
-            jniLibs.srcDirs = ["src/main/jniLibs", "../../build"]
+            jniLibs.srcDirs = ["src/main/jniLibs", "../../build/alvr_client_core"]
         }
     }
     compileOptions {

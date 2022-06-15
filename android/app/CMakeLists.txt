@@ -7,14 +7,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -std=c++17 -g")
 set(ANDROID_STL c++_static)
 
 link_directories(src/main/jniLibs/${ANDROID_ABI})
-link_directories(../../build/${ANDROID_ABI})
+link_directories(../../build/alvr_client_core/${ANDROID_ABI})
 
 add_library(native_lib SHARED
         src/main/cpp/ovr_context.cpp
         )
 
 include_directories(src/main/cpp)
-include_directories(../../build)
+include_directories(../../build/alvr_client_core)
 
 target_link_libraries(
         native_lib

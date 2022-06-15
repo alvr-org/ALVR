@@ -56,6 +56,33 @@ jobs:
           command: build
           args: -p alvr_xtask -p alvr_launcher -p alvr_server --features gpl -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper --verbose
 
+  build_client_core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-linux-android
+          override: true
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Install deps
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-ndk
+
+      - name: Build client lib
+        uses: actions-rs/cargo@v1
+        with:
+          command: ndk
+          args: -t arm64-v8a build
+
   tests:
     runs-on: ubuntu-latest
     steps:

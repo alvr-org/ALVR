@@ -70,6 +70,10 @@ jobs:
           target: aarch64-linux-android
           override: true
       - uses: Swatinem/rust-cache@v1
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r22b
 
       - name: Install deps
         uses: actions-rs/cargo@v1
@@ -78,6 +82,8 @@ jobs:
           args: cargo-ndk
 
       - name: Build client lib
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         working-directory: ./alvr/client_core
         run:
           cargo ndk -t arm64-v8a build

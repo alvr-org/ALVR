@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     buildToolsVersion = "32.0.0"
     compileSdkVersion 31
-    ndkVersion "22.0.7026061"
+    ndkVersion "22.1.7171670"
     defaultConfig {
         applicationId "alvr.client"
         minSdkVersion 24

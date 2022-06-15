@@ -10,7 +10,7 @@ link_directories(src/main/jniLibs/${ANDROID_ABI})
 link_directories(../../build/alvr_client_core/${ANDROID_ABI})
 
 add_library(native_lib SHARED
-        src/main/cpp/ovr_context.cpp
+        src/main/cpp/cpp_main.cpp
         )
 
 include_directories(src/main/cpp)

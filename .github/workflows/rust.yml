@@ -78,10 +78,9 @@ jobs:
           args: cargo-ndk
 
       - name: Build client lib
-        uses: actions-rs/cargo@v1
-        with:
-          command: ndk
-          args: -t arm64-v8a build
+        working-directory: ./alvr/client_core
+        run:
+          cargo ndk -t arm64-v8a build
 
   tests:
     runs-on: ubuntu-latest

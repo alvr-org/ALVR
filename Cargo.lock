@@ -117,7 +117,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_client"
+name = "alvr_client_core"
 version = "18.0.0-dev03"
 dependencies = [
  "alvr_audio",

@@ -21,6 +21,7 @@ SUBCOMMANDS:
     prepare-deps        Download and compile server and client external dependencies
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
+    build-client-lib    Build a C-ABI ALVR client library and header.
     run-server          Build server and then open the launcher
     package-server      Build server in release mode, make portable version and installer
     clean               Removes all build artifacts and dependencies.
@@ -198,6 +199,7 @@ fn main() {
                         build::build_client(is_release, "oculus_go");
                     }
                 }
+                "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
                     build::build_server(is_release, gpl, None, false, experiments);
                     run_server();

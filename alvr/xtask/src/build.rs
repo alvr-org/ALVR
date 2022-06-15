@@ -201,8 +201,34 @@ pub fn build_server(
     }
 }
 
+pub fn build_client_lib(is_release: bool) {
+    let sh = Shell::new().unwrap();
+
+    let build_dir = afs::build_dir();
+
+    let mut flags = vec![];
+    if is_release {
+        flags.push("--release");
+    }
+    let flags_ref = &flags;
+
+    let _push_guard = sh.push_dir(afs::crate_dir("client_core"));
+
+    cmd!(
+        sh,
+        "cargo ndk -t arm64-v8a -o {build_dir} build {flags_ref...}"
+    )
+    .run()
+    .unwrap();
+
+    let out = build_dir.join("alvr_client_core.h");
+    cmd!(sh, "cbindgen --output {out}").run().unwrap();
+}
+
 pub fn build_client(is_release: bool, headset_name: &str) {
     let sh = Shell::new().unwrap();
+
+    build_client_lib(is_release);
 
     let is_nightly = version::version().contains("nightly");
     let is_release = if is_nightly { false } else { is_release };

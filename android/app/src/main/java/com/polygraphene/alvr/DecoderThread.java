@@ -363,6 +363,7 @@ public class DecoderThread extends ThreadBase implements Handler.Callback {
         mHandler.sendMessage(message);
     }
 
+    @SuppressWarnings("unused")
     public long clearAvailable() {
         return mQueue.clearAvailable(mStreamSurfaceTexture);
     }

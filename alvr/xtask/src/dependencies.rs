@@ -245,7 +245,7 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add aarch64-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "cargo install cargo-apk").run().unwrap();
+    cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
 
     get_oculus_openxr_mobile_loader();
 }

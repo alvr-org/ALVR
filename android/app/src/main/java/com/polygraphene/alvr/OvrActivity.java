@@ -21,7 +21,8 @@ import java.util.concurrent.Semaphore;
 
 public class OvrActivity extends Activity {
     static {
-        System.loadLibrary("alvr_client");
+        System.loadLibrary("native_lib");
+        System.loadLibrary("alvr_client_core");
     }
 
     final static String TAG = "OvrActivity";
@@ -50,7 +51,8 @@ public class OvrActivity extends Activity {
     final BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context ctxt, Intent intent) {
-            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0), intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0));
+            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0),
+                    intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0);
         }
     };
 
@@ -171,24 +173,28 @@ public class OvrActivity extends Activity {
 
     native void onPauseNative();
 
+    native void onStreamStartNative(int eyeWidth, int eyeHeight, float fps, int codec,
+                                    boolean realtimeDecoder, int oculusFoveationLevel,
+                                    boolean dynamicOculusFoveation, boolean extraLatency,
+                                    boolean clientPrediction);
+
+    native boolean isConnectedNative();
+
     native void renderNative();
 
     native void renderLoadingNative();
 
-    native void onStreamStartNative(int codec, boolean realtimeDecoder);
-
-    native void onBatteryChangedNative(int battery, int plugged);
-
-    native boolean isConnectedNative();
-
-    native void requestIDR();
+    native void onBatteryChangedNative(int battery, boolean plugged);
 
     @SuppressWarnings("unused")
-    public void onServerConnected(float fps, int codec, boolean realtimeDecoder) {
+    public void onServerConnected(int eyeWidth, int eyeHeight, float fps, int codec,
+                                  boolean realtimeDecoder, int oculusFoveationLevel,
+                                  boolean dynamicOculusFoveation, boolean extraLatency,
+                                  boolean clientPrediction) {
         mRefreshRate = fps;
-        mRenderingHandler.post(() -> {
-            onStreamStartNative(codec, realtimeDecoder);
-        });
+        mRenderingHandler.post(() -> onStreamStartNative(eyeWidth, eyeHeight, fps, codec,
+                realtimeDecoder, oculusFoveationLevel, dynamicOculusFoveation, extraLatency,
+                clientPrediction));
     }
 
     @SuppressWarnings("unused")

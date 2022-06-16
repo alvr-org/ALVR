@@ -23,6 +23,6 @@ target_link_libraries(
         EGL
         android
         vrapi
-        libovrplatformloader.so
+        ovrplatformloader
         alvr_client_core
         )

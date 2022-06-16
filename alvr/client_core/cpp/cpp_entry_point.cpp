@@ -5,24 +5,7 @@
 #include "packet_types.h"
 #include "render.h"
 #include "utils.h"
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES2/gl2ext.h>
-#include <GLES3/gl3.h>
-#include <android/input.h>
-#include <android/native_window.h>
-#include <android/native_window_jni.h>
-#include <chrono>
-#include <glm/gtx/euler_angles.hpp>
-#include <inttypes.h>
-#include <jni.h>
-#include <map>
-#include <memory>
 #include <mutex>
-#include <string>
-#include <thread>
-#include <unistd.h>
-#include <vector>
 
 using namespace std;
 using namespace gl_render_utils;

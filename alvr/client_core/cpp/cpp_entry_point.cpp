@@ -62,8 +62,6 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
 
     setAssetManager(env, (jobject)v_assetManager);
 
-    eglInit();
-
     g_ctx.streamTexture = make_unique<Texture>(true);
     g_ctx.loadingTexture =
         make_unique<Texture>(false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
@@ -72,12 +70,8 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
 }
 
 void destroyNative() {
-    LOG("Destroying EGL.");
-
     g_ctx.streamTexture.reset();
     g_ctx.loadingTexture.reset();
-
-    eglDestroy();
 }
 
 void prepareLoadingRoom(

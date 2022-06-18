@@ -951,11 +951,13 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
     env->GetJavaVM(&g_ctx.vm);
     g_ctx.context = env->NewGlobalRef(context);
 
+    auto java = getOvrJava(true);
+
+    eglInit();
+
     alvr_initialize((void *) g_ctx.vm, (void *) g_ctx.context);
 
     memset(g_ctx.hapticsState, 0, sizeof(g_ctx.hapticsState));
-
-    auto java = getOvrJava(true);
     const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
     int32_t initResult = vrapi_Initialize(&initParms);
     if (initResult != VRAPI_INITIALIZE_SUCCESS) {
@@ -969,6 +971,8 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
     vrapi_Shutdown();
 
     alvr_destroy();
+
+    eglDestroy();
 
     auto java = getOvrJava();
     java.Env->DeleteGlobalRef(g_ctx.context);

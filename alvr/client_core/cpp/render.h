@@ -11,10 +11,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-
-void eglInit();
-void eglDestroy();
-
 //
 // ovrFramebuffer
 //

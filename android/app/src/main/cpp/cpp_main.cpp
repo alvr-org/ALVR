@@ -708,8 +708,7 @@ void trackingThread() {
         headMotion.device_id = HEAD_PATH;
         memcpy(&headMotion.orientation, &headTracking.HeadPose.Pose.Orientation, 4 * 4);
         memcpy(headMotion.position, &headTracking.HeadPose.Pose.Position, 4 * 3);
-        memcpy(headMotion.linear_velocity, &headTracking.HeadPose.LinearVelocity, 4 * 3);
-        memcpy(headMotion.angular_velocity, &headTracking.HeadPose.AngularVelocity, 4 * 3);
+        // Note: do not copy velocities. Avoid reprojetion in SteamVR
         motionVec.push_back(headMotion);
 
         {

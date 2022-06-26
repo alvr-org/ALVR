@@ -79,6 +79,7 @@ pub static LEFT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
 pub static RIGHT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
     Lazy::new(|| hash_string(RIGHT_CONTROLLER_HAPTIC_PATH));
 
+pub const HEAD_ENTER_PATH: &str = "/user/head/input/enter/click";
 pub const MENU_CLICK_PATH: &str = "/user/hand/left/input/menu/click";
 pub const A_CLICK_PATH: &str = "/user/hand/right/input/a/click";
 pub const A_TOUCH_PATH: &str = "/user/hand/right/input/a/touch";
@@ -105,6 +106,7 @@ pub const RIGHT_THUMBSTICK_CLICK_PATH: &str = "/user/hand/right/input/thumbstick
 pub const RIGHT_THUMBSTICK_TOUCH_PATH: &str = "/user/hand/right/input/thumbstick/touch";
 pub const RIGHT_THUMBREST_TOUCH_PATH: &str = "/user/hand/right/input/thumbrest/touch";
 
+pub static HEAD_ENTER_ID: Lazy<u64> = Lazy::new(|| hash_string(HEAD_ENTER_PATH));
 pub static MENU_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(MENU_CLICK_PATH));
 pub static A_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(A_CLICK_PATH));
 pub static A_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(A_TOUCH_PATH));

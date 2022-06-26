@@ -176,7 +176,7 @@ public class OvrActivity extends Activity {
     native void onStreamStartNative(int eyeWidth, int eyeHeight, float fps, int codec,
                                     boolean realtimeDecoder, int oculusFoveationLevel,
                                     boolean dynamicOculusFoveation, boolean extraLatency,
-                                    boolean clientPrediction);
+                                    float controllerPredictionMultiplier);
 
     native boolean isConnectedNative();
 
@@ -190,11 +190,11 @@ public class OvrActivity extends Activity {
     public void onServerConnected(int eyeWidth, int eyeHeight, float fps, int codec,
                                   boolean realtimeDecoder, int oculusFoveationLevel,
                                   boolean dynamicOculusFoveation, boolean extraLatency,
-                                  boolean clientPrediction) {
+                                  float controllerPredictionMultiplier) {
         mRefreshRate = fps;
         mRenderingHandler.post(() -> onStreamStartNative(eyeWidth, eyeHeight, fps, codec,
                 realtimeDecoder, oculusFoveationLevel, dynamicOculusFoveation, extraLatency,
-                clientPrediction));
+                controllerPredictionMultiplier));
     }
 
     @SuppressWarnings("unused")

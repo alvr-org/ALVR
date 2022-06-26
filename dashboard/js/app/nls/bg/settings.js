@@ -127,12 +127,6 @@ define({
     // "_root_headset_controllers_content_registeredDeviceType.description": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.name": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.description": "", // adv
-    // "_root_headset_controllers_content_trackingSpeed.name": "",
-    // "_root_headset_controllers_content_trackingSpeed.description": "",
-    "_root_headset_controllers_content_poseTimeOffset.name":
-        "Забавяне на проследяване на позицията", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description":
-        "Офсет за алгоритъма за предсказване на позицията.", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "Изместване на позицията", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "Изместване на позицията в метри за левия контролер. \nЗа десния контролер стойността за оста x се отразява.", // adv

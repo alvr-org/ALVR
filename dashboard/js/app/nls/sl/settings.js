@@ -143,12 +143,6 @@ define({
     "_root_headset_controllers_content_inputProfilePath.name": "Input profile path", // adv
     "_root_headset_controllers_content_inputProfilePath.description":
         "Input profile path of the emulated controller", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "Hitrost sledenja",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "Za hitre igre kot Beatsaber, izberi SREDNJE ali HITRO. Za počasnejše igre kjer potrebuješ večjo natančnost uporabi NAVADNO.\nOCULUS predvidevanje pomeni, da je predvidevanje izvedeno na napravi, namesto na računalniku preko SteamVR.",
-    "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description":
-        "Offset for the pose prediction algorithm", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "Position offset in meters for the left controller. \n For the right controller, x value is mirrored", // adv

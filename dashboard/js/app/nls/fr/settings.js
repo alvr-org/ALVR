@@ -131,11 +131,6 @@ define({
     // "_root_headset_controllers_content_registeredDeviceType.description": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.name": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.description": "", // adv
-    // "_root_headset_controllers_content_trackingSpeed.name": "",
-    // "_root_headset_controllers_content_trackingSpeed.description": "",
-    "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description":
-        "Décalage pour l'algorithme de prédiction de pose", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.name": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.description": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft_0.name": "", // adv

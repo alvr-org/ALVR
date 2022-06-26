@@ -20,14 +20,6 @@ define({
     buttonFirewall: "방화벽 설정 추가하기",
     firewallFailed: "방화벽 설정 실패",
     firewallSuccess: "방화벽 설정 완료",
-    // Tracking page
-    titleTracking: "추적",
-    textTracking:
-        "컨트롤러 추적 설정입니다. 비트세이버처럼 빠른 속도의 게임을 플레이하신다면 보통 혹은 중간을 선택하세요. 스카이림처럼 느린 게임을 플레이하신다면 보통을 선택하세요. 오큘러스 예측은 SteamVR 대신 헤드셋에서 컨트롤러 위치를 예측합니다.",
-    oculusTracking: "오큘러스 예측",
-    normalTracking: "보통",
-    mediumTracking: "중간",
-    fastTracking: "빠름",
     // Performance page
     titlePerformance: "성능 설정",
     textPerformance: "알맞는 설정을 고르세요. 일부 설정이 변경됩니다.",

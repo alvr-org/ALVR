@@ -137,13 +137,13 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 		if (pose) {
 			// found the frameIndex
 			m_prevTargetTimestampNs = m_targetTimestampNs;
-			m_targetTimestampNs = pose->info.targetTimestampNs;
+			m_targetTimestampNs = pose->targetTimestampNs;
 
 			m_prevFramePoseRotation = m_framePoseRotation;
-			m_framePoseRotation.x = pose->info.HeadPose_Pose_Orientation.x;
-			m_framePoseRotation.y = pose->info.HeadPose_Pose_Orientation.y;
-			m_framePoseRotation.z = pose->info.HeadPose_Pose_Orientation.z;
-			m_framePoseRotation.w = pose->info.HeadPose_Pose_Orientation.w;
+			m_framePoseRotation.x = pose->motion.orientation.x;
+			m_framePoseRotation.y = pose->motion.orientation.y;
+			m_framePoseRotation.z = pose->motion.orientation.z;
+			m_framePoseRotation.w = pose->motion.orientation.w;
 
 			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", m_prevTargetTimestampNs, m_targetTimestampNs);
 		}

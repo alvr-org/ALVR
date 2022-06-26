@@ -58,8 +58,6 @@ OvrHmd::OvrHmd()
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
-    m_TrackingInfo = {};
-
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
@@ -73,7 +71,7 @@ OvrHmd::OvrHmd()
     }
 
     if (!Settings::Instance().m_disableController) {
-        m_leftController = std::make_shared<OvrController>(LEFT_HAND_PATH, &m_poseTimeOffset);
+        m_leftController = std::make_shared<OvrController>(LEFT_HAND_PATH);
         ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
             m_leftController->GetSerialNumber().c_str(),
             getControllerDeviceClass(),
@@ -82,7 +80,7 @@ OvrHmd::OvrHmd()
             Warn("Failed to register left controller");
         }
 
-        m_rightController = std::make_shared<OvrController>(RIGHT_HAND_PATH, &m_poseTimeOffset);
+        m_rightController = std::make_shared<OvrController>(RIGHT_HAND_PATH);
         ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
             m_rightController->GetSerialNumber().c_str(),
             getControllerDeviceClass(),
@@ -307,67 +305,43 @@ void *OvrHmd::GetComponent(const char *component_name_and_version) {
     return nullptr;
 }
 
-vr::DriverPose_t OvrHmd::GetPose() {
-    vr::DriverPose_t pose = {};
-    pose.poseIsValid = true;
-    pose.result = vr::TrackingResult_Running_OK;
-    pose.deviceIsConnected = true;
+vr::DriverPose_t OvrHmd::GetPose() { return m_pose; }
 
-    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion) {
+    if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
+        m_pose.poseIsValid = true;
+        m_pose.result = vr::TrackingResult_Running_OK;
+        m_pose.deviceIsConnected = true;
 
-    if (m_TrackingInfo.targetTimestampNs > 0) {
-        TrackingInfo &info = m_TrackingInfo;
+        m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+        m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+        m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-        pose.qRotation = HmdQuaternion_Init(info.HeadPose_Pose_Orientation.w,
-                                            info.HeadPose_Pose_Orientation.x,
-                                            info.HeadPose_Pose_Orientation.y,
-                                            info.HeadPose_Pose_Orientation.z);
+        m_pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
+                                            motion.orientation.x,
+                                            motion.orientation.y,
+                                            motion.orientation.z);
 
-        pose.vecPosition[0] = info.HeadPose_Pose_Position.x;
-        pose.vecPosition[1] = info.HeadPose_Pose_Position.y;
-        pose.vecPosition[2] = info.HeadPose_Pose_Position.z;
-
-        // set prox sensor
-        vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, info.mounted == 1, 0.0);
+        m_pose.vecPosition[0] = motion.position[0];
+        m_pose.vecPosition[1] = motion.position[1];
+        m_pose.vecPosition[2] = motion.position[2];
 
         Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
-              pose.qRotation.x,
-              pose.qRotation.y,
-              pose.qRotation.z,
-              pose.qRotation.w,
-              pose.vecPosition[0],
-              pose.vecPosition[1],
-              pose.vecPosition[2]);
+            m_pose.qRotation.x,
+            m_pose.qRotation.y,
+            m_pose.qRotation.z,
+            m_pose.qRotation.w,
+            m_pose.vecPosition[0],
+            m_pose.vecPosition[1],
+            m_pose.vecPosition[2]);
 
-        pose.poseTimeOffset = -GetTotalLatencyS();
-    }
+        // Note: no velocities are passed, so no reprojection is done. This field is unused
+        m_pose.poseTimeOffset = 0;
 
-    return pose;
-}
-
-void OvrHmd::OnPoseUpdated(TrackingInfo info) {
-    if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
-        // if 3DOF, zero the positional data!
-        if (Settings::Instance().m_force3DOF) {
-            info.HeadPose_Pose_Position.x = 0;
-            info.HeadPose_Pose_Position.y = 0;
-            info.HeadPose_Pose_Position.z = 0;
-        }
-
-        m_TrackingInfo = info;
-
-        // TODO: Right order?
-
-        if (!Settings::Instance().m_disableController) {
-            updateController(info);
-        }
-
-        m_poseHistory->OnPoseUpdated(info);
+        m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
 
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            this->object_id, GetPose(), sizeof(vr::DriverPose_t));
+            this->object_id, m_pose, sizeof(vr::DriverPose_t));
 
         if (m_viveTrackerProxy != nullptr)
             m_viveTrackerProxy->update();
@@ -434,22 +408,6 @@ void OvrHmd::SetViewsConfig(ViewsConfigData config) {
     // todo: check if this is still needed
     vr::VRServerDriverHost()->VendorSpecificEvent(
         object_id, vr::VREvent_LensDistortionChanged, {}, 0);
-}
-
-void OvrHmd::updateController(const TrackingInfo &info) {
-    // Update controller
-
-    if (Settings::Instance().m_serversidePrediction)
-        m_poseTimeOffset = -GetTotalLatencyS();
-    else
-        m_poseTimeOffset = Settings::Instance().m_controllerPoseOffset;
-
-    if (info.controller[0].enabled) {
-        m_leftController->onPoseUpdate(info.controller[0]);
-    }
-    if (info.controller[1].enabled) {
-        m_rightController->onPoseUpdate(info.controller[1]);
-    }
 }
 
 void OvrHmd::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) {

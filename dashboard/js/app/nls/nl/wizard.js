@@ -21,14 +21,6 @@ define({
     buttonFirewall: "Firewall regels toevoegen",
     firewallFailed: "Firewall regels zijn niet succesfol toegevoegd",
     firewallSuccess: "Firewall regels zijn succesfol toegevoegd",
-    // Tracking page
-    titleTracking: "Tracking",
-    textTracking:
-        "Hoe moet het volgen van de controller worden afgehandeld?. Als je een spel speelt waarbij er snelle bewegingen nodig zijn zoals: Beatsaber, kies medium of snel. Voor spellen met tragere beweging zoals Skyrim, laat het dan op normaal staan.\n\nOculus voorspelling betekent dat de controller positie voorspelt word op headset in de plaats van op de PC via SteamVR.",
-    oculusTracking: "Oculus voorspelling",
-    normalTracking: "Normaal",
-    mediumTracking: "Medium",
-    fastTracking: "Snel",
     // Performance page
     titlePerformance: "Performance voorinstelling",
     textPerformance:

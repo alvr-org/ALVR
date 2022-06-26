@@ -10,7 +10,6 @@ struct EyeInput {
 };
 
 struct VideoFrame {
-    unsigned int type; // ALVR_PACKET_TYPE_VIDEO_FRAME
     unsigned int packetCounter;
     unsigned long long trackingFrameIndex;
     // FEC decoder needs some value for identify video frame number to detect new frame.

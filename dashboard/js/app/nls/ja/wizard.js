@@ -20,14 +20,6 @@ define({
     buttonFirewall: "ファイアウォール設定を追加",
     firewallFailed: "ファイアウォールの設定に失敗しました",
     firewallSuccess: "ファイアウォールの設定が完了しました",
-    // Tracking page
-    titleTracking: "トラッキング",
-    textTracking:
-        "コントローラのトラッキング頻度を設定します. Beat Saberのような動きの速いゲームをプレイする場合は中速か高速を, Skyrimのような遅めのゲームの場合は普通を選んでください.",
-    // "oculusTracking": "",
-    normalTracking: "普通",
-    mediumTracking: "中速",
-    fastTracking: "高速",
     // Performance page
     titlePerformance: "パフォーマンス",
     textPerformance:

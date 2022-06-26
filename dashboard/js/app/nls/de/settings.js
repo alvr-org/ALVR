@@ -150,11 +150,6 @@ define({
     "_root_headset_controllers_content_inputProfilePath.name": "Eingangsprofilpfad", // adv
     "_root_headset_controllers_content_inputProfilePath.description":
         "Eingangsprofilpfad jedes simulierten Controllers", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "Trackinggeschwindigkeit",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "Wähle Medium oder Schnell für schnelle Spiele wie BeatSaber. Lass es auf normal für langsamere Spiele wie Skyrim.\nOculus Vorhersage-Algorithmus bedeutet dass die Vorhersage auf dem Headset anstatt des PCs geschiet.",
-    // "_root_headset_controllers_content_poseTimeOffset.name": "", // adv
-    // "_root_headset_controllers_content_poseTimeOffset.description": "", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "Position offset", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "Positions Offset für den linken Controller in Metern \n X ist gespiegelt für den rechten Controller", // adv

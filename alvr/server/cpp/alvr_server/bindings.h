@@ -7,56 +7,24 @@ struct EyeFov {
     float bottom = 48.;
 };
 
-struct TrackingQuat {
+struct AlvrQuat {
     float x;
     float y;
     float z;
     float w;
 };
-struct TrackingVector3 {
-    float x;
-    float y;
-    float z;
+
+struct OculusHand {
+    bool enabled;
+    AlvrQuat boneRotations[19];
 };
-struct TrackingVector2 {
-    float x;
-    float y;
-};
-struct TrackingInfo {
-    unsigned long long targetTimestampNs;
-    TrackingQuat HeadPose_Pose_Orientation;
-    TrackingVector3 HeadPose_Pose_Position;
 
-    unsigned char mounted;
-
-    static const unsigned int MAX_CONTROLLERS = 2;
-    struct Controller {
-        bool enabled;
-        bool isHand;
-        unsigned long long buttons;
-
-        struct {
-            float x;
-            float y;
-        } trackpadPosition;
-
-        float triggerValue;
-        float gripValue;
-
-        // Tracking info of controller. (float * 19 = 76 bytes)
-        TrackingQuat orientation;
-        TrackingVector3 position;
-        TrackingVector3 angularVelocity;
-        TrackingVector3 linearVelocity;
-
-        // Tracking info of hand. A3
-        TrackingQuat boneRotations[19];
-        // TrackingQuat boneRotationsBase[alvrHandBone_MaxSkinnable];
-        TrackingVector3 bonePositionsBase[19];
-        TrackingQuat boneRootOrientation;
-        TrackingVector3 boneRootPosition;
-        unsigned int handFingerConfidences;
-    } controller[2];
+struct AlvrDeviceMotion {
+    unsigned long long deviceID;
+    AlvrQuat orientation;
+    float position[3];
+    float linearVelocity[3];
+    float angularVelocity[3];
 };
 
 struct ClientStats {
@@ -67,7 +35,6 @@ struct ClientStats {
     unsigned long long totalPipelineLatencyNs;
 };
 struct VideoFrame {
-    unsigned int type; // ALVR_PACKET_TYPE_VIDEO_FRAME
     unsigned int packetCounter;
     unsigned long long trackingFrameIndex;
     // FEC decoder needs some value for identify video frame number to detect new frame.
@@ -111,6 +78,19 @@ struct ViewsConfigData {
     float ipd_m;
 };
 
+enum AlvrButtonType {
+    BUTTON_TYPE_BINARY,
+    BUTTON_TYPE_SCALAR,
+};
+
+struct AlvrButtonValue {
+    AlvrButtonType type;
+    union {
+        bool binary;
+        float scalar;
+    };
+};
+
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
@@ -141,19 +121,24 @@ extern "C" void (*ReportPresent)(unsigned long long timestamp_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
 extern "C" void (*ReportFecFailure)(int percentage);
-extern "C" float (*GetTotalLatencyS)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
-extern "C" void SetChaperone(float areaWidth, float areaHeight);
-extern "C" void InputReceive(TrackingInfo data);
+extern "C" void SetTracking(unsigned long long targetTimestampNs,
+                            float controllerPredictionS,
+                            const AlvrDeviceMotion *deviceMotions,
+                            int motionsCount,
+                            OculusHand leftHand,
+                            OculusHand rightHand);
 extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
 extern "C" unsigned long long GetGameFrameIntervalNs();
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, OpenvrProperty prop);
+extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void SetViewsConfig(ViewsConfigData config);
 extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
+extern "C" void SetButton(unsigned long long path, AlvrButtonValue value);

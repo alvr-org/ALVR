@@ -1,6 +1,6 @@
 [package]
 name = "alvr_client_core"
-version = "18.0.0-dev03"
+version = "18.0.0-dev04"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -12,6 +12,7 @@ crate_type = ["staticlib", "cdylib"]
 [dependencies]
 alvr_audio = { path = "../audio" }
 alvr_common = { path = "../common" }
+alvr_events = { path = "../events" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
 
@@ -33,6 +34,6 @@ ndk-context = "0.1"
 ndk-sys = "0.3"
 
 [build-dependencies]
-bindgen = "0.59"
+bindgen = "0.60"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

@@ -244,20 +244,10 @@ define({
             "Use Headset Tracking System",
         "_root_headset_controllers_content_useHeadsetTrackingSystem.description":
             "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
-        "_root_headset_controllers_content_trackingSpeed.name": "Tracking speed",
-        "_root_headset_controllers_content_trackingSpeed.description":
-            "Recommended to use adaptive Oculus or SteamVR prediction. If you want to use fixed tracking speeds: Medium or fast for fast paced games like Beatsaber, normal for slower games like Skyrim. \nOculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
-        "_root_headset_controllers_content_poseTimeOffset.name": "Pose time offset", // adv
-        "_root_headset_controllers_content_poseTimeOffset.description":
-            "Offset for the pose prediction algorithm", // adv
-        "_root_headset_controllers_content_clientsidePrediction.name":
-            "Adaptive prediction (Client)", // adv
-        "_root_headset_controllers_content_clientsidePrediction.description":
-            "Use adaptive prediction from the headset", // adv
-        "_root_headset_controllers_content_serversidePrediction.name":
-            "Adaptive prediction (Server)", // adv
-        "_root_headset_controllers_content_serversidePrediction.description":
-            "Use adaptive prediction from the server. \nAllows using prediction cutoffs to reduce jittering with slow or precise movements", // adv
+        "_root_headset_controllers_content_predictionMultiplier.name":
+            "Tracking prediction multiplier", // adv
+        "_root_headset_controllers_content_predictionMultiplier.description":
+            "Interpolates between prediction on the headset (1.0) and prediction on the driver (0.0)", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.name":
             "Linear velocity cutoff (m/s)", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.description":

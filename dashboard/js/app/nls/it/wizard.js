@@ -21,13 +21,6 @@ define({
     buttonFirewall: "Aggiungi eccezione firewall",
     firewallFailed: "Errore durante l'aggiunta dell'eccezione del firewall",
     firewallSuccess: "Eccezione del firewall impostata con successo",
-    // Tracking page
-    titleTracking: "Tracking",
-    textTracking: `Scegli la modalità di tracciamento dei controller. Giochi frenetici come BeatSaber richiedono la modalità "veloce". Per giochi più tranquilli come Skyrim, scegli "medio" o "lento".`,
-    oculusTracking: "Predizione Oculus",
-    normalTracking: "Lento",
-    mediumTracking: "Medio",
-    fastTracking: "Veloce",
     // Performance page
     titlePerformance: "Impostazioni per la performance",
     textPerformance:

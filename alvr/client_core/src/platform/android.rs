@@ -1,12 +1,6 @@
-use alvr_common::prelude::*;
-use alvr_session::{CodecType, MediacodecDataType};
-use jni::{
-    objects::{GlobalRef, JObject},
-    sys::jobject,
-    AttachGuard, JNIEnv, JavaVM,
-};
+use jni::{sys::jobject, JavaVM};
 use ndk_sys as sys;
-use std::{ffi::CString, ptr::NonNull, sync::Arc, time::Duration};
+use std::{ffi::CString, ptr::NonNull};
 
 const MODE_PRIVATE: i32 = 0;
 const CONFIG_KEY: &str = "config";

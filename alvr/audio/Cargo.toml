@@ -1,6 +1,6 @@
 [package]
 name = "alvr_audio"
-version = "18.0.0-dev03"
+version = "18.0.0-dev04"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -23,8 +23,8 @@ cpal = { git = "https://github.com/RustAudio/cpal", features = ["jack"] }
 cpal = { git = "https://github.com/RustAudio/cpal" }
 
 [target.'cfg(windows)'.dependencies]
-widestring = "0.5"
-windows = { version = "0.36", features = [
+widestring = "1"
+windows = { version = "0.38", features = [
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio_Endpoints",

@@ -41,66 +41,6 @@ inline uint64_t getTimestampUs() {
     return Current;
 }
 
-enum ALVR_INPUT {
-    ALVR_INPUT_SYSTEM_CLICK,
-    ALVR_INPUT_APPLICATION_MENU_CLICK,
-    ALVR_INPUT_GRIP_CLICK,
-    ALVR_INPUT_GRIP_VALUE,
-    ALVR_INPUT_GRIP_TOUCH,
-    ALVR_INPUT_DPAD_LEFT_CLICK,
-    ALVR_INPUT_DPAD_UP_CLICK,
-    ALVR_INPUT_DPAD_RIGHT_CLICK,
-    ALVR_INPUT_DPAD_DOWN_CLICK,
-    ALVR_INPUT_A_CLICK,
-    ALVR_INPUT_A_TOUCH,
-    ALVR_INPUT_B_CLICK,
-    ALVR_INPUT_B_TOUCH,
-    ALVR_INPUT_X_CLICK,
-    ALVR_INPUT_X_TOUCH,
-    ALVR_INPUT_Y_CLICK,
-    ALVR_INPUT_Y_TOUCH,
-    ALVR_INPUT_TRIGGER_LEFT_VALUE,
-    ALVR_INPUT_TRIGGER_RIGHT_VALUE,
-    ALVR_INPUT_SHOULDER_LEFT_CLICK,
-    ALVR_INPUT_SHOULDER_RIGHT_CLICK,
-    ALVR_INPUT_JOYSTICK_LEFT_CLICK,
-    ALVR_INPUT_JOYSTICK_LEFT_X,
-    ALVR_INPUT_JOYSTICK_LEFT_Y,
-    ALVR_INPUT_JOYSTICK_RIGHT_CLICK,
-    ALVR_INPUT_JOYSTICK_RIGHT_X,
-    ALVR_INPUT_JOYSTICK_RIGHT_Y,
-    ALVR_INPUT_JOYSTICK_CLICK,
-    ALVR_INPUT_JOYSTICK_X,
-    ALVR_INPUT_JOYSTICK_Y,
-    ALVR_INPUT_JOYSTICK_TOUCH,
-    ALVR_INPUT_BACK_CLICK,
-    ALVR_INPUT_GUIDE_CLICK,
-    ALVR_INPUT_START_CLICK,
-    ALVR_INPUT_TRIGGER_CLICK,
-    ALVR_INPUT_TRIGGER_VALUE,
-    ALVR_INPUT_TRIGGER_TOUCH,
-    ALVR_INPUT_TRACKPAD_X,
-    ALVR_INPUT_TRACKPAD_Y,
-    ALVR_INPUT_TRACKPAD_CLICK,
-    ALVR_INPUT_TRACKPAD_TOUCH,
-    ALVR_INPUT_THUMB_REST_TOUCH,
-
-    ALVR_INPUT_MAX = ALVR_INPUT_THUMB_REST_TOUCH,
-    ALVR_INPUT_COUNT = ALVR_INPUT_MAX + 1
-};
-enum ALVR_HAND_CONFIDENCE {
-    alvrThumbConfidence_High = (1 << 0),
-    alvrIndexConfidence_High = (1 << 1),
-    alvrMiddleConfidence_High = (1 << 2),
-    alvrRingConfidence_High = (1 << 3),
-    alvrPinkyConfidence_High = (1 << 4),
-    alvrHandConfidence_High = (1 << 5),
-};
-#define ALVR_BUTTON_FLAG(input) (1ULL << (input))
-
-// Must use EGLSyncKHR because the VrApi still supports OpenGL ES 2.0
-#define EGL_SYNC
-
 struct Render_EGL {
     EGLDisplay Display;
     EGLConfig Config;
@@ -276,8 +216,36 @@ uint64_t RIGHT_HAND_PATH;
 uint64_t LEFT_CONTROLLER_HAPTICS_PATH;
 uint64_t RIGHT_CONTROLLER_HAPTICS_PATH;
 
-const uint32_t ovrButton_Unknown1 = 0x01000000;
+// oculus touch
+uint64_t MENU_CLICK;
+uint64_t A_CLICK;
+uint64_t A_TOUCH;
+uint64_t B_CLICK;
+uint64_t B_TOUCH;
+uint64_t X_CLICK;
+uint64_t X_TOUCH;
+uint64_t Y_CLICK;
+uint64_t Y_TOUCH;
+uint64_t LEFT_SQUEEZE_VALUE;
+uint64_t LEFT_TRIGGER_VALUE;
+uint64_t LEFT_TRIGGER_TOUCH;
+uint64_t LEFT_THUMBSTICK_X;
+uint64_t LEFT_THUMBSTICK_Y;
+uint64_t LEFT_THUMBSTICK_CLICK;
+uint64_t LEFT_THUMBSTICK_TOUCH;
+uint64_t LEFT_THUMBREST_TOUCH;
+uint64_t RIGHT_SQUEEZE_VALUE;
+uint64_t RIGHT_TRIGGER_VALUE;
+uint64_t RIGHT_TRIGGER_TOUCH;
+uint64_t RIGHT_THUMBSTICK_X;
+uint64_t RIGHT_THUMBSTICK_Y;
+uint64_t RIGHT_THUMBSTICK_CLICK;
+uint64_t RIGHT_THUMBSTICK_TOUCH;
+uint64_t RIGHT_THUMBREST_TOUCH;
+
 const int MAXIMUM_TRACKING_FRAMES = 360;
+const float BUTTON_EPS = 0.001; // minimum change for a scalar button to be registered as a new value
+const float IPD_EPS = 0.001; // minimum change of IPD to be registered as a new value
 
 const GLenum SWAPCHAIN_FORMAT = GL_RGBA8;
 
@@ -299,7 +267,7 @@ public:
     std::thread trackingThread;
 
     float refreshRate = 60.f;
-    bool clientsidePrediction;
+    bool controllerPredictionMultiplier;
 
     uint64_t ovrFrameIndex = 0;
 
@@ -317,8 +285,7 @@ public:
     float lastIpd;
     EyeFov lastFov;
 
-    ovrHandPose lastHandPose[2];
-    ovrTracking lastTrackingPos[2];
+    std::map<uint64_t, AlvrButtonValue> previousButtonsState;
 
     struct HapticsState {
         uint64_t startUs;
@@ -352,308 +319,116 @@ ovrJava getOvrJava(bool initThread = false) {
     return java;
 }
 
-uint64_t mapButtons(ovrInputTrackedRemoteCapabilities *remoteCapabilities,
-                    ovrInputStateTrackedRemote *remoteInputState) {
-    uint64_t buttons = 0;
-    if (remoteCapabilities->ControllerCapabilities & ovrControllerCaps_ModelOculusTouch) {
-        // Oculus Quest Touch Cotroller
-        if (remoteInputState->Buttons & ovrButton_A) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_B) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_RThumb) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_X) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Y) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_LThumb) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Enter) {
-            // Menu button on left hand
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_GripTrigger) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Trigger) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Joystick) {
-            if (remoteCapabilities->ControllerCapabilities & ovrControllerCaps_LeftHand) {
-                buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_LEFT_CLICK);
-            } else {
-                buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_RIGHT_CLICK);
-            }
-        }
-        if (remoteInputState->Buttons & ovrButton_Unknown1) {
-            // Only on right controller. What's button???
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_BACK_CLICK);
-        }
-        if (remoteInputState->Touches & ovrTouch_A) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_B) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_X) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_Y) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_IndexTrigger) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_Joystick) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
-        }
-        if (remoteInputState->Touches & ovrTouch_ThumbRest) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
-        }
-    } else {
-        // GearVR or Oculus Go Controller
-        if (remoteInputState->Buttons & ovrButton_A) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Enter) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
-        }
-        if (remoteInputState->Buttons & ovrButton_Back) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
-        }
-        if (remoteInputState->TrackpadStatus) {
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRACKPAD_TOUCH);
-            buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
-        }
+void updateBinary(uint64_t path, uint32_t flag) {
+    auto value = flag != 0;
+    auto *stateRef = &g_ctx.previousButtonsState[path];
+    if (stateRef->binary != value) {
+        stateRef->tag = ALVR_BUTTON_VALUE_BINARY;
+        stateRef->binary = value;
+
+        alvr_send_button(path, *stateRef);
     }
-    return buttons;
 }
 
-void setControllerInfo(TrackingInfo *packet, double displayTime) {
-    ovrInputCapabilityHeader curCaps;
-    ovrResult result;
-    int controller = 0;
+void updateScalar(uint64_t path, float value) {
+    auto *stateRef = &g_ctx.previousButtonsState[path];
+    if (abs(stateRef->scalar - value) > BUTTON_EPS) {
+        stateRef->tag = ALVR_BUTTON_VALUE_SCALAR;
+        stateRef->scalar = value;
 
-    for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &curCaps) >= 0;
-         deviceIndex++) {
-        LOG("Device %d: Type=%d ID=%d", deviceIndex, curCaps.Type, curCaps.DeviceID);
-        if (curCaps.Type == ovrControllerType_Hand) { // A3
-            ovrInputHandCapabilities handCapabilities;
-            ovrInputStateHand inputStateHand;
-            handCapabilities.Header = curCaps;
+        alvr_send_button(path, *stateRef);
+    }
+}
 
-            result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &handCapabilities.Header);
-
-            if (result != ovrSuccess) {
-                continue;
-            }
-
-            if ((handCapabilities.HandCapabilities & ovrHandCaps_LeftHand) != 0) {
-                controller = 0;
-            } else {
-                controller = 1;
-            }
-            inputStateHand.Header.ControllerType = handCapabilities.Header.Type;
-
-            result = vrapi_GetCurrentInputState(
-                    g_ctx.ovrContext, handCapabilities.Header.DeviceID, &inputStateHand.Header);
-            if (result != ovrSuccess) {
-                continue;
-            }
-
-            auto &c = packet->controller[controller];
-
-            c.enabled = true;
-            c.isHand = true;
-
-            memcpy(&c.orientation,
-                   &inputStateHand.PointerPose.Orientation,
-                   sizeof(inputStateHand.PointerPose.Orientation));
-            memcpy(&c.position,
-                   &inputStateHand.PointerPose.Position,
-                   sizeof(inputStateHand.PointerPose.Position));
-
-            ovrHandedness handedness = handCapabilities.HandCapabilities & ovrHandCaps_LeftHand
-                                       ? VRAPI_HAND_LEFT
-                                       : VRAPI_HAND_RIGHT;
-            ovrHandSkeleton handSkeleton;
-            handSkeleton.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandSkeleton(g_ctx.ovrContext, handedness, &handSkeleton.Header) !=
+void updateButtons() {
+    ovrInputCapabilityHeader capabilitiesHeader;
+    uint32_t deviceIndex = 0;
+    while (vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &capabilitiesHeader) >= 0) {
+        if (capabilitiesHeader.Type == ovrControllerType_TrackedRemote) {
+            ovrInputTrackedRemoteCapabilities capabilities = {};
+            capabilities.Header = capabilitiesHeader;
+            if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
                 ovrSuccess) {
-                LOG("VrHands - failed to get hand skeleton");
-            } else {
-                for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
-                    memcpy(&c.bonePositionsBase[i],
-                           &handSkeleton.BonePoses[i].Position,
-                           sizeof(handSkeleton.BonePoses[i].Position));
-                }
-            }
-
-            ovrHandPose handPose;
-            handPose.Header.Version = ovrHandVersion_1;
-            if (vrapi_GetHandPose(g_ctx.ovrContext,
-                                  handCapabilities.Header.DeviceID,
-                                  displayTime,
-                                  &handPose.Header) != ovrSuccess) {
-                LOG("VrHands - failed to get hand pose");
-            } else {
-                if (handPose.HandConfidence == ovrConfidence_HIGH) {
-                    c.handFingerConfidences |= alvrHandConfidence_High;
-                }
-                for (int i = 0; i < ovrHandFinger_Max; i++) {
-                    c.handFingerConfidences |=
-                            handPose.FingerConfidences[i] == ovrConfidence_HIGH ? (1 << i) : 0;
-                }
-                if (handPose.Status & ovrHandTrackingStatus_Tracked) {
-                    memcpy(&c.boneRootOrientation,
-                           &handPose.RootPose.Orientation,
-                           sizeof(handPose.RootPose.Orientation));
-                    memcpy(&c.boneRootPosition,
-                           &handPose.RootPose.Position,
-                           sizeof(handPose.RootPose.Position));
-                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
-                        memcpy(&c.boneRotations[i],
-                               &handPose.BoneRotations[i],
-                               sizeof(handPose.BoneRotations[i]));
-                    }
-                    memcpy(&g_ctx.lastHandPose[controller], &handPose, sizeof(handPose));
-                } else if (g_ctx.lastHandPose[controller].Status & ovrHandTrackingStatus_Tracked) {
-                    memcpy(&c.boneRootOrientation,
-                           &g_ctx.lastHandPose[controller].RootPose.Orientation,
-                           sizeof(g_ctx.lastHandPose[controller].RootPose.Orientation));
-                    memcpy(&c.boneRootPosition,
-                           &g_ctx.lastHandPose[controller].RootPose.Position,
-                           sizeof(g_ctx.lastHandPose[controller].RootPose.Position));
-                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
-                        memcpy(&c.boneRotations[i],
-                               &g_ctx.lastHandPose[controller].BoneRotations[i],
-                               sizeof(g_ctx.lastHandPose[controller].BoneRotations[i]));
-                    }
-                }
-            }
-        }
-        if (curCaps.Type == ovrControllerType_TrackedRemote) {
-            ovrInputTrackedRemoteCapabilities remoteCapabilities;
-            ovrInputStateTrackedRemote remoteInputState;
-
-            remoteCapabilities.Header = curCaps;
-            result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
-            if (result != ovrSuccess) {
-                continue;
-            }
-            remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
-
-            result = vrapi_GetCurrentInputState(
-                    g_ctx.ovrContext, remoteCapabilities.Header.DeviceID, &remoteInputState.Header);
-            if (result != ovrSuccess) {
                 continue;
             }
 
-            LOG("ID=%d Cap Controller=%08X Button=%08X Touch=%08X",
-                curCaps.DeviceID,
-                remoteCapabilities.ControllerCapabilities,
-                remoteCapabilities.ButtonCapabilities,
-                remoteCapabilities.TouchCapabilities);
-            LOG("ID=%d Sta Button=%08X Touch=%08X Joystick=(%f,%f) IndexValue=%f GripValue=%f",
-                curCaps.DeviceID,
-                remoteInputState.Buttons,
-                remoteInputState.Touches,
-                remoteInputState.JoystickNoDeadZone.x,
-                remoteInputState.JoystickNoDeadZone.y,
-                remoteInputState.IndexTrigger,
-                remoteInputState.GripTrigger);
-
-            uint64_t hand_path;
-            if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) != 0) {
-                hand_path = LEFT_HAND_PATH;
-                controller = 0;
-            } else {
-                hand_path = RIGHT_HAND_PATH;
-                controller = 1;
+            ovrInputStateTrackedRemote inputState = {};
+            inputState.Header.ControllerType = capabilities.Header.Type;
+            if (vrapi_GetCurrentInputState(g_ctx.ovrContext,
+                                           capabilities.Header.DeviceID,
+                                           &inputState.Header) != ovrSuccess) {
+                continue;
             }
 
-            auto &c = packet->controller[controller];
-
-            c.enabled = true;
-
-            c.buttons = mapButtons(&remoteCapabilities, &remoteInputState);
-
-            if ((remoteCapabilities.ControllerCapabilities & ovrControllerCaps_HasJoystick) != 0) {
-                c.trackpadPosition[0] = remoteInputState.JoystickNoDeadZone.x;
-                c.trackpadPosition[1] = remoteInputState.JoystickNoDeadZone.y;
-            } else {
-                // Normalize to -1.0 - +1.0 for OpenVR Input. y-asix should be reversed.
-                c.trackpadPosition[0] =
-                        remoteInputState.TrackpadPosition.x / remoteCapabilities.TrackpadMaxX *
-                        2.0f -
-                        1.0f;
-                c.trackpadPosition[1] =
-                        remoteInputState.TrackpadPosition.y / remoteCapabilities.TrackpadMaxY *
-                        2.0f -
-                        1.0f;
-                c.trackpadPosition[1] = -c.trackpadPosition[1];
-            }
-            c.triggerValue = remoteInputState.IndexTrigger;
-            c.gripValue = remoteInputState.GripTrigger;
-
-            if (hand_path == LEFT_HAND_PATH) {
-                if (remoteInputState.BatteryPercentRemaining != g_ctx.lastLeftControllerBattery) {
-                    alvr_send_battery(
-                            hand_path, (float) remoteInputState.BatteryPercentRemaining / 100.f,
-                            false);
-                    g_ctx.lastLeftControllerBattery = remoteInputState.BatteryPercentRemaining;
-                }
-            } else {
-                if (remoteInputState.BatteryPercentRemaining != g_ctx.lastRightControllerBattery) {
-                    alvr_send_battery(
-                            hand_path, (float) remoteInputState.BatteryPercentRemaining / 100.f,
-                            false);
-                    g_ctx.lastRightControllerBattery = remoteInputState.BatteryPercentRemaining;
-                }
-            }
-
-            ovrTracking tracking;
-            if (vrapi_GetInputTrackingState(
-                    g_ctx.ovrContext, remoteCapabilities.Header.DeviceID, displayTime, &tracking) !=
-                ovrSuccess) {
-                LOG("vrapi_GetInputTrackingState failed. Device was disconnected?");
-            } else {
-
-                memcpy(&c.orientation,
-                       &tracking.HeadPose.Pose.Orientation,
-                       sizeof(tracking.HeadPose.Pose.Orientation));
-
-                if ((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_TRACKED) ||
-                    (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo)) {
-                    memcpy(&c.position,
-                           &tracking.HeadPose.Pose.Position,
-                           sizeof(tracking.HeadPose.Pose.Position));
-                    memcpy(&g_ctx.lastTrackingPos[controller], &tracking, sizeof(tracking));
+            if (capabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusTouch) {
+                if (capabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) {
+                    updateBinary(MENU_CLICK, inputState.Buttons & ovrButton_Enter);
+                    updateBinary(X_CLICK, inputState.Buttons & ovrButton_X);
+                    updateBinary(X_TOUCH, inputState.Touches & ovrTouch_X);
+                    updateBinary(Y_CLICK, inputState.Buttons & ovrButton_Y);
+                    updateBinary(Y_TOUCH, inputState.Touches & ovrTouch_Y);
+                    updateScalar(LEFT_SQUEEZE_VALUE, inputState.GripTrigger);
+                    updateScalar(LEFT_TRIGGER_VALUE, inputState.IndexTrigger);
+                    updateBinary(LEFT_TRIGGER_TOUCH, inputState.Touches & ovrTouch_IndexTrigger);
+                    updateScalar(LEFT_THUMBSTICK_X, inputState.Joystick.x);
+                    updateScalar(LEFT_THUMBSTICK_Y, inputState.Joystick.y);
+                    updateBinary(LEFT_THUMBSTICK_CLICK, inputState.Buttons & ovrButton_Joystick);
+                    updateBinary(LEFT_THUMBSTICK_TOUCH, inputState.Touches & ovrTouch_LThumb);
+                    updateBinary(LEFT_THUMBREST_TOUCH, inputState.Touches & ovrTouch_ThumbRest);
                 } else {
-                    memcpy(&c.position,
-                           &g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position,
-                           sizeof(g_ctx.lastTrackingPos[controller].HeadPose.Pose.Position));
+                    updateBinary(A_CLICK, inputState.Buttons & ovrButton_A);
+                    updateBinary(A_TOUCH, inputState.Touches & ovrTouch_A);
+                    updateBinary(B_CLICK, inputState.Buttons & ovrButton_B);
+                    updateBinary(B_TOUCH, inputState.Touches & ovrTouch_B);
+                    updateScalar(RIGHT_SQUEEZE_VALUE, inputState.GripTrigger);
+                    updateScalar(RIGHT_TRIGGER_VALUE, inputState.IndexTrigger);
+                    updateBinary(RIGHT_TRIGGER_TOUCH, inputState.Touches & ovrTouch_IndexTrigger);
+                    updateScalar(RIGHT_THUMBSTICK_X, inputState.Joystick.x);
+                    updateScalar(RIGHT_THUMBSTICK_Y, inputState.Joystick.y);
+                    updateBinary(RIGHT_THUMBSTICK_CLICK, inputState.Buttons & ovrButton_Joystick);
+                    updateBinary(RIGHT_THUMBSTICK_TOUCH, inputState.Touches & ovrTouch_RThumb);
+                    updateBinary(RIGHT_THUMBREST_TOUCH, inputState.Touches & ovrTouch_ThumbRest);
                 }
+            } else {
+                // Remap oculus go/gearvr controller to quest.
+                // todo: remap on server side
+                if (capabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) {
+                    updateBinary(X_CLICK, inputState.Buttons & ovrButton_Enter);
+                    updateBinary(X_TOUCH, inputState.TrackpadStatus);
+                    updateBinary(LEFT_THUMBSTICK_TOUCH, inputState.TrackpadStatus);
+                    updateScalar(LEFT_THUMBSTICK_X,
+                                 inputState.TrackpadPosition.x / capabilities.TrackpadMaxX * 2.0f -
+                                 1.0f);
+                    updateScalar(LEFT_THUMBSTICK_Y,
+                                 inputState.TrackpadPosition.y / capabilities.TrackpadMaxY * 2.0f -
+                                 1.0f);
 
-                memcpy(&c.angularVelocity,
-                       &tracking.HeadPose.AngularVelocity,
-                       sizeof(tracking.HeadPose.AngularVelocity));
+                    updateBinary(Y_CLICK, inputState.Buttons & ovrButton_Back);
+                    updateBinary(Y_TOUCH, inputState.Buttons & ovrButton_Back);
 
-                memcpy(&c.linearVelocity,
-                       &tracking.HeadPose.LinearVelocity,
-                       sizeof(tracking.HeadPose.LinearVelocity));
+                    updateBinary(LEFT_TRIGGER_VALUE, inputState.Buttons & ovrButton_A);
+                    updateBinary(LEFT_TRIGGER_TOUCH, inputState.Buttons & ovrButton_A);
+                } else {
+                    updateBinary(A_CLICK, inputState.Buttons & ovrButton_Enter);
+                    updateBinary(A_TOUCH, inputState.TrackpadStatus);
+                    updateBinary(RIGHT_THUMBSTICK_TOUCH, inputState.TrackpadStatus);
+                    updateScalar(RIGHT_THUMBSTICK_X,
+                                 inputState.TrackpadPosition.x / capabilities.TrackpadMaxX * 2.0f -
+                                 1.0f);
+                    updateScalar(RIGHT_THUMBSTICK_Y,
+                                 inputState.TrackpadPosition.y / capabilities.TrackpadMaxY * 2.0f -
+                                 1.0f);
+
+                    updateBinary(B_CLICK, inputState.Buttons & ovrButton_Back);
+                    updateBinary(B_TOUCH, inputState.Buttons & ovrButton_Back);
+
+                    updateBinary(RIGHT_TRIGGER_VALUE, inputState.Buttons & ovrButton_A);
+                    updateBinary(RIGHT_TRIGGER_TOUCH, inputState.Buttons & ovrButton_A);
+                }
             }
         }
+
+        deviceIndex++;
     }
 }
 
@@ -682,34 +457,6 @@ std::pair<EyeFov, EyeFov> getFov() {
         fov[eye].bottom = -(float) atan((d + 1) / b);
     }
     return {fov[0], fov[1]};
-}
-
-TrackingInfo getInput() {
-    auto java = getOvrJava();
-
-    // vrapi_GetTimeInSeconds doesn't match getTimestampUs
-    uint64_t targetTimestampNs = vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
-    auto tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, (double) targetTimestampNs / 1e9);
-
-    {
-        std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
-        g_ctx.trackingFrameMap.insert({targetTimestampNs, tracking});
-        if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
-            g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
-        }
-    }
-
-    TrackingInfo info = {};
-    info.targetTimestampNs = targetTimestampNs;
-
-    info.mounted = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_MOUNTED);
-
-    memcpy(&info.HeadPose_Pose_Orientation, &tracking.HeadPose.Pose.Orientation, sizeof(ovrQuatf));
-    memcpy(&info.HeadPose_Pose_Position, &tracking.HeadPose.Pose.Position, sizeof(ovrVector3f));
-
-    setControllerInfo(&info, g_ctx.clientsidePrediction ? (double) targetTimestampNs / 1e9 : 0.);
-
-    return info;
 }
 
 void getPlayspaceArea(float *width, float *height) {
@@ -870,7 +617,7 @@ AlvrEyeInput trackingToEyeInput(ovrTracking2 *tracking, int eye) {
     }
 
     auto input = AlvrEyeInput{};
-    input.orientation = TrackingQuat{q.x, q.y, q.z, q.w};
+    input.orientation = AlvrQuat{q.x, q.y, q.z, q.w};
     input.position[0] = v[3][0];
     input.position[1] = v[3][1];
     input.position[2] = v[3][2];
@@ -902,12 +649,23 @@ void eventsThread() {
 
         float new_ipd = getIPD();
         auto new_fov = getFov();
-        if (abs(new_ipd - g_ctx.lastIpd) > 0.001 ||
-            abs(new_fov.first.left - g_ctx.lastFov.left) > 0.001) {
+        if (abs(new_ipd - g_ctx.lastIpd) > IPD_EPS ||
+            abs(new_fov.first.left - g_ctx.lastFov.left) > IPD_EPS) {
             EyeFov fov[2] = {new_fov.first, new_fov.second};
             alvr_send_views_config(fov, new_ipd);
             g_ctx.lastIpd = new_ipd;
             g_ctx.lastFov = new_fov.first;
+        }
+
+        uint8_t leftBattery = getControllerBattery(0);
+        if (leftBattery != g_ctx.lastLeftControllerBattery) {
+            alvr_send_battery(LEFT_HAND_PATH, (float) leftBattery / 100.f, false);
+            g_ctx.lastLeftControllerBattery = leftBattery;
+        }
+        uint8_t rightBattery = getControllerBattery(1);
+        if (rightBattery != g_ctx.lastRightControllerBattery) {
+            alvr_send_battery(RIGHT_HAND_PATH, (float) rightBattery / 100.f, false);
+            g_ctx.lastRightControllerBattery = rightBattery;
         }
 
         AlvrEvent event;
@@ -932,14 +690,118 @@ void eventsThread() {
 // note: until some timing optimization algorithms are in place, we poll sensor data 3 times per
 // frame to minimize latency
 void trackingThread() {
-    getOvrJava(true);
-
     auto deadline = std::chrono::steady_clock::now();
     auto interval = std::chrono::nanoseconds((uint64_t) (1e9 / g_ctx.refreshRate / 3));
 
+    auto motionVec = std::vector<AlvrDeviceMotion>();
+
     while (g_ctx.streaming) {
-        auto input = getInput();
-        alvr_send_input(input);
+        motionVec.clear();
+        OculusHand leftHand = {false};
+        OculusHand rightHand = {false};
+
+        AlvrDeviceMotion headMotion = {};
+        uint64_t targetTimestampNs =
+                vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
+        auto headTracking =
+                vrapi_GetPredictedTracking2(g_ctx.ovrContext, (double) targetTimestampNs / 1e9);
+        headMotion.device_id = HEAD_PATH;
+        memcpy(&headMotion.orientation, &headTracking.HeadPose.Pose.Orientation, 4 * 4);
+        memcpy(headMotion.position, &headTracking.HeadPose.Pose.Position, 4 * 3);
+        memcpy(headMotion.linear_velocity, &headTracking.HeadPose.LinearVelocity, 4 * 3);
+        memcpy(headMotion.angular_velocity, &headTracking.HeadPose.AngularVelocity, 4 * 3);
+        motionVec.push_back(headMotion);
+
+        {
+            std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
+            g_ctx.trackingFrameMap.insert({targetTimestampNs, headTracking});
+            if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
+                g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
+            }
+        }
+
+        updateButtons();
+
+        double controllerDisplayTimeS =
+                vrapi_GetTimeInSeconds() +
+                (double) alvr_get_prediction_offset_ns() / 1e9 *
+                g_ctx.controllerPredictionMultiplier;
+
+        ovrInputCapabilityHeader capabilitiesHeader;
+        uint32_t deviceIndex = 0;
+        while (vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &capabilitiesHeader) >=
+               0) {
+            if (capabilitiesHeader.Type == ovrControllerType_TrackedRemote) {
+                ovrInputTrackedRemoteCapabilities capabilities = {};
+                capabilities.Header = capabilitiesHeader;
+                if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
+                    ovrSuccess) {
+                    continue;
+                }
+
+                uint64_t handPath;
+                if (capabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) {
+                    handPath = LEFT_HAND_PATH;
+                } else {
+                    handPath = RIGHT_HAND_PATH;
+                }
+
+                ovrTracking tracking = {};
+                if (vrapi_GetInputTrackingState(g_ctx.ovrContext,
+                                                capabilities.Header.DeviceID,
+                                                controllerDisplayTimeS,
+                                                &tracking) == ovrSuccess) {
+                    AlvrDeviceMotion motion = {};
+                    motion.device_id = handPath;
+                    memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
+                    memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
+                    memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
+                    memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
+
+                    motionVec.push_back(motion);
+                }
+            } else if (capabilitiesHeader.Type == ovrControllerType_Hand) {
+                ovrInputHandCapabilities capabilities;
+                capabilities.Header = capabilitiesHeader;
+                if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
+                    ovrSuccess) {
+                    continue;
+                }
+
+                uint64_t handPath;
+                OculusHand *handRef = nullptr;
+                if (capabilities.HandCapabilities & ovrHandCaps_LeftHand) {
+                    handPath = LEFT_HAND_PATH;
+                    handRef = &leftHand;
+                } else {
+                    handPath = RIGHT_HAND_PATH;
+                    handRef = &rightHand;
+                }
+
+                ovrHandPose handPose;
+                handPose.Header.Version = ovrHandVersion_1;
+                if (vrapi_GetHandPose(g_ctx.ovrContext,
+                                      capabilities.Header.DeviceID,
+                                      controllerDisplayTimeS,
+                                      &handPose.Header) == ovrSuccess &&
+                    (handPose.Status & ovrHandTrackingStatus_Tracked)) {
+                    AlvrDeviceMotion motion = {};
+                    motion.device_id = handPath;
+                    memcpy(&motion.orientation, &handPose.RootPose.Orientation, 4 * 4);
+                    memcpy(motion.position, &handPose.RootPose.Position, 4 * 3);
+                    // Note: ovrHandPose does not have velocities
+                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                        memcpy(&handRef->bone_rotations[i], &handPose.BoneRotations[i], 4 * 4);
+                    }
+                    motionVec.push_back(motion);
+                    handRef->enabled = true;
+                }
+            }
+
+            deviceIndex++;
+        }
+
+        alvr_send_tracking(targetTimestampNs, &motionVec[0], motionVec.size(), leftHand, rightHand);
 
         deadline += interval;
         std::this_thread::sleep_until(deadline);
@@ -950,6 +812,38 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject context) {
     env->GetJavaVM(&g_ctx.vm);
     g_ctx.context = env->NewGlobalRef(context);
+
+    HEAD_PATH = alvr_path_string_to_hash("/user/head");
+    LEFT_HAND_PATH = alvr_path_string_to_hash("/user/hand/left");
+    RIGHT_HAND_PATH = alvr_path_string_to_hash("/user/hand/right");
+    LEFT_CONTROLLER_HAPTICS_PATH = alvr_path_string_to_hash("/user/hand/left/output/haptic");
+    RIGHT_CONTROLLER_HAPTICS_PATH = alvr_path_string_to_hash("/user/hand/right/output/haptic");
+
+    MENU_CLICK = alvr_path_string_to_hash("/user/hand/left/input/menu/click");
+    A_CLICK = alvr_path_string_to_hash("/user/hand/right/input/a/click");
+    A_TOUCH = alvr_path_string_to_hash("/user/hand/right/input/a/touch");
+    B_CLICK = alvr_path_string_to_hash("/user/hand/right/input/b/click");
+    B_TOUCH = alvr_path_string_to_hash("/user/hand/right/input/b/touch");
+    X_CLICK = alvr_path_string_to_hash("/user/hand/left/input/x/click");
+    X_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
+    Y_CLICK = alvr_path_string_to_hash("/user/hand/left/input/y/click");
+    Y_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/y/click");
+    LEFT_SQUEEZE_VALUE = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
+    LEFT_TRIGGER_VALUE = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
+    LEFT_TRIGGER_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");
+    LEFT_THUMBSTICK_X = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/x");
+    LEFT_THUMBSTICK_Y = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/y");
+    LEFT_THUMBSTICK_CLICK = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/click");
+    LEFT_THUMBSTICK_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/touch");
+    LEFT_THUMBREST_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/thumbrest/touch");
+    RIGHT_SQUEEZE_VALUE = alvr_path_string_to_hash("/user/hand/right/input/squeeze/value");
+    RIGHT_TRIGGER_VALUE = alvr_path_string_to_hash("/user/hand/right/input/trigger/value");
+    RIGHT_TRIGGER_TOUCH = alvr_path_string_to_hash("/user/hand/right/input/trigger/touch");
+    RIGHT_THUMBSTICK_X = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/x");
+    RIGHT_THUMBSTICK_Y = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/y");
+    RIGHT_THUMBSTICK_CLICK = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/click");
+    RIGHT_THUMBSTICK_TOUCH = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/touch");
+    RIGHT_THUMBREST_TOUCH = alvr_path_string_to_hash("/user/hand/right/input/thumbrest/touch");
 
     auto java = getOvrJava(true);
 
@@ -1098,11 +992,11 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
                                                            jint oculusFoveationLevel,
                                                            jboolean dynamicOculusFoveation,
                                                            jboolean extraLatency,
-                                                           jboolean clientPrediction) {
+                                                           jfloat controllerPredictionMultiplier) {
     auto java = getOvrJava();
 
     g_ctx.refreshRate = fps;
-    g_ctx.clientsidePrediction = clientPrediction;
+    g_ctx.controllerPredictionMultiplier = controllerPredictionMultiplier;
 
     if (g_ctx.streamSwapchains[0].inner != nullptr) {
         vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);

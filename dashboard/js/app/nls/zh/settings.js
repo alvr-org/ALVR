@@ -138,11 +138,6 @@ define({
     "_root_headset_controllers_content_registeredDeviceType.description": "模拟设备类型的名称", // adv
     "_root_headset_controllers_content_inputProfilePath.name": "配置文件路径", // adv
     "_root_headset_controllers_content_inputProfilePath.description": "输入配置文件的路径", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "追踪速度",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "像需要快速运动的游戏比如《光剑》，选择中速或快速。 运动比较慢的游戏比如《Skyrim》，使用正常即可。",
-    "_root_headset_controllers_content_poseTimeOffset.name": "姿势时间偏移", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description": "姿势预测算法的偏移量", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "位置偏移", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "左侧控制器的位置偏移（以米为单位）。\n对于右侧控制器,x值被镜像", // adv

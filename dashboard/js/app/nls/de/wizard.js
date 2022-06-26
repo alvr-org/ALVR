@@ -20,14 +20,6 @@ define({
     buttonFirewall: "Firewall-Regeln hinzufügen",
     firewallFailed: "Firewall-Regel konnte nicht erstellt werden",
     firewallSuccess: "Firewall-Regel erfolgreich erstellt",
-    // Tracking page
-    titleTracking: "Tracking",
-    textTracking:
-        "Wie soll das Tracking der Controller gehandhabt werden.Wenn du planst schnelle Spiele wie Beatsaber zu spielen, wähle Mittel oder Schnell aus. Für langsamere Spiele wie Skyrim reicht die Einstellung Normal.",
-    oculusTracking: "Oculus Vorhersage",
-    normalTracking: "Normal",
-    mediumTracking: "Mittel",
-    fastTracking: "Schnell",
     // Performance page
     titlePerformance: "Performance Voreinstellung",
     textPerformance:

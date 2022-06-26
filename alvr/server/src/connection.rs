@@ -1,22 +1,24 @@
 use crate::{
-    connection_utils, statistics::StatisticsManager, EyeFov, TrackingInfo, TrackingInfo_Controller,
-    TrackingInfo_Controller__bindgen_ty_1, TrackingQuat, TrackingVector3, CLIENTS_UPDATED_NOTIFIER,
-    HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    buttons::BUTTON_PATH_FROM_ID, connection_utils, statistics::StatisticsManager,
+    tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
+    AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
+    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CLIENTS_UPDATED_NOTIFIER, HAPTICS_SENDER,
+    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Quat, Vec2},
     prelude::*,
     semver::Version,
-    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    HEAD_ID,
 };
-use alvr_events::EventType;
+use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction, ClientStatistics,
-    ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, Input, PeerType,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, AUDIO, HAPTICS, INPUT,
-    STATISTICS, VIDEO,
+    ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, PeerType, ProtoControlSocket,
+    ServerControlPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING,
+    VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -228,17 +230,6 @@ async fn client_handshake(
         .session_settings
         .clone();
 
-    let controller_pose_offset = match settings.headset.controllers {
-        Switch::Enabled(content) => {
-            if content.clientside_prediction {
-                0.
-            } else {
-                content.pose_time_offset
-            }
-        }
-        Switch::Disabled => 0.,
-    };
-
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
         headset_serial_number: settings.headset.serial_number,
@@ -378,13 +369,6 @@ async fn client_handshake(
         controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
         controllers_enabled: session_settings.headset.controllers.enabled,
         position_offset: settings.headset.position_offset,
-        tracking_frame_offset: settings.headset.tracking_frame_offset,
-        controller_pose_offset,
-        serverside_prediction: session_settings
-            .headset
-            .controllers
-            .content
-            .serverside_prediction,
         linear_velocity_cutoff: session_settings
             .headset
             .controllers
@@ -765,8 +749,22 @@ async fn connection_pipeline() -> StrResult {
         }
     };
 
-    fn to_tracking_quat(quat: Quat) -> TrackingQuat {
-        TrackingQuat {
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
+
+    let is_tracking_ref_only = settings.headset.tracking_ref_only;
+    if !is_tracking_ref_only {
+        // use a separate thread because SetChaperone() is blocking
+        thread::spawn(move || {
+            while let Ok(packet) = playspace_sync_receiver.recv() {
+                let width = f32::max(packet.x, 2.0);
+                let height = f32::max(packet.y, 2.0);
+                unsafe { crate::SetChaperone(width, height) };
+            }
+        });
+    }
+
+    fn to_tracking_quat(quat: Quat) -> AlvrQuat {
+        AlvrQuat {
             x: quat.x,
             y: quat.y,
             z: quat.z,
@@ -774,147 +772,94 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    fn to_tracking_vector3(vec: Vec3) -> TrackingVector3 {
-        TrackingVector3 {
-            x: vec.x,
-            y: vec.y,
-            z: vec.z,
-        }
-    }
-
-    let input_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<Input>(INPUT).await?;
+    let tracking_receive_loop = {
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<Tracking>(TRACKING)
+            .await?;
         async move {
+            let controller_prediction_multiplier = settings
+                .headset
+                .controllers
+                .clone()
+                .into_option()
+                .map(|c| c.prediction_multiplier)
+                .unwrap_or_default();
+            let tracking_manager = TrackingManager::new(settings.headset);
             loop {
-                let input = receiver.recv().await?.header;
+                let tracking = receiver.recv().await?.header;
 
-                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_tracking_received(input.target_timestamp);
+                let mut device_motions = vec![];
+                for (id, motion) in tracking.device_motions {
+                    let motion = if id == *HEAD_ID {
+                        tracking_manager.map_head(motion)
+                    } else if let Some(motion) = tracking_manager.map_controller(motion) {
+                        motion
+                    } else {
+                        continue;
+                    };
+                    device_motions.push((id, motion));
                 }
 
-                let head_motion = &input
-                    .device_motions
-                    .iter()
-                    .find(|(id, _)| *id == *HEAD_ID)
-                    .unwrap()
-                    .1;
+                let raw_motions = device_motions
+                    .into_iter()
+                    .map(|(id, motion)| AlvrDeviceMotion {
+                        deviceID: id,
+                        orientation: to_tracking_quat(motion.orientation),
+                        position: motion.position.to_array(),
+                        linearVelocity: motion.linear_velocity.to_array(),
+                        angularVelocity: motion.angular_velocity.to_array(),
+                    })
+                    .collect::<Vec<_>>();
 
-                let left_hand_motion = &input
-                    .device_motions
-                    .iter()
-                    .find(|(id, _)| *id == *LEFT_HAND_ID)
-                    .unwrap()
-                    .1;
+                let left_oculus_hand = if let Some(arr) = tracking.left_hand_skeleton {
+                    let vec = arr.into_iter().map(to_tracking_quat).collect::<Vec<_>>();
+                    let mut array = [AlvrQuat::default(); 19];
+                    array.copy_from_slice(&vec);
 
-                let right_hand_motion = &input
-                    .device_motions
-                    .iter()
-                    .find(|(id, _)| *id == *RIGHT_HAND_ID)
-                    .unwrap()
-                    .1;
-
-                let tracking_info = TrackingInfo {
-                    targetTimestampNs: input.target_timestamp.as_nanos() as _,
-                    HeadPose_Pose_Orientation: to_tracking_quat(head_motion.orientation),
-                    HeadPose_Pose_Position: to_tracking_vector3(head_motion.position),
-                    mounted: input.legacy.mounted,
-                    controller: [
-                        TrackingInfo_Controller {
-                            enabled: input.legacy.controllers[0].enabled,
-                            isHand: input.legacy.controllers[0].is_hand,
-                            buttons: input.legacy.controllers[0].buttons,
-                            trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
-                                x: input.legacy.controllers[0].trackpad_position.x,
-                                y: input.legacy.controllers[0].trackpad_position.y,
-                            },
-                            triggerValue: input.legacy.controllers[0].trigger_value,
-                            gripValue: input.legacy.controllers[0].grip_value,
-                            orientation: to_tracking_quat(left_hand_motion.orientation),
-                            position: to_tracking_vector3(left_hand_motion.position),
-                            angularVelocity: to_tracking_vector3(left_hand_motion.angular_velocity),
-                            linearVelocity: to_tracking_vector3(left_hand_motion.linear_velocity),
-                            boneRotations: {
-                                let vec = input.legacy.controllers[0]
-                                    .bone_rotations
-                                    .iter()
-                                    .cloned()
-                                    .map(to_tracking_quat)
-                                    .collect::<Vec<_>>();
-
-                                let mut array = [TrackingQuat::default(); 19];
-                                array.copy_from_slice(&vec);
-
-                                array
-                            },
-                            bonePositionsBase: {
-                                let vec = input.legacy.controllers[0]
-                                    .bone_positions_base
-                                    .iter()
-                                    .cloned()
-                                    .map(to_tracking_vector3)
-                                    .collect::<Vec<_>>();
-
-                                let mut array = [TrackingVector3::default(); 19];
-                                array.copy_from_slice(&vec);
-
-                                array
-                            },
-                            boneRootOrientation: to_tracking_quat(left_hand_motion.orientation),
-                            boneRootPosition: to_tracking_vector3(left_hand_motion.position),
-                            handFingerConfidences: input.legacy.controllers[0]
-                                .hand_finger_confience,
-                        },
-                        TrackingInfo_Controller {
-                            enabled: input.legacy.controllers[1].enabled,
-                            isHand: input.legacy.controllers[1].is_hand,
-                            buttons: input.legacy.controllers[1].buttons,
-                            trackpadPosition: TrackingInfo_Controller__bindgen_ty_1 {
-                                x: input.legacy.controllers[1].trackpad_position.x,
-                                y: input.legacy.controllers[1].trackpad_position.y,
-                            },
-                            triggerValue: input.legacy.controllers[1].trigger_value,
-                            gripValue: input.legacy.controllers[1].grip_value,
-                            orientation: to_tracking_quat(right_hand_motion.orientation),
-                            position: to_tracking_vector3(right_hand_motion.position),
-                            angularVelocity: to_tracking_vector3(
-                                right_hand_motion.angular_velocity,
-                            ),
-                            linearVelocity: to_tracking_vector3(right_hand_motion.linear_velocity),
-                            boneRotations: {
-                                let vec = input.legacy.controllers[1]
-                                    .bone_rotations
-                                    .iter()
-                                    .cloned()
-                                    .map(to_tracking_quat)
-                                    .collect::<Vec<_>>();
-
-                                let mut array = [TrackingQuat::default(); 19];
-                                array.copy_from_slice(&vec);
-
-                                array
-                            },
-                            bonePositionsBase: {
-                                let vec = input.legacy.controllers[1]
-                                    .bone_positions_base
-                                    .iter()
-                                    .cloned()
-                                    .map(to_tracking_vector3)
-                                    .collect::<Vec<_>>();
-
-                                let mut array = [TrackingVector3::default(); 19];
-                                array.copy_from_slice(&vec);
-
-                                array
-                            },
-                            boneRootOrientation: to_tracking_quat(right_hand_motion.orientation),
-                            boneRootPosition: to_tracking_vector3(right_hand_motion.position),
-                            handFingerConfidences: input.legacy.controllers[1]
-                                .hand_finger_confience,
-                        },
-                    ],
+                    OculusHand {
+                        enabled: true,
+                        boneRotations: array,
+                    }
+                } else {
+                    OculusHand {
+                        enabled: false,
+                        ..Default::default()
+                    }
                 };
 
-                unsafe { crate::InputReceive(tracking_info) };
+                let right_oculus_hand = if let Some(arr) = tracking.right_hand_skeleton {
+                    let vec = arr.into_iter().map(to_tracking_quat).collect::<Vec<_>>();
+                    let mut array = [AlvrQuat::default(); 19];
+                    array.copy_from_slice(&vec);
+
+                    OculusHand {
+                        enabled: true,
+                        boneRotations: array,
+                    }
+                } else {
+                    OculusHand {
+                        enabled: false,
+                        ..Default::default()
+                    }
+                };
+
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    stats.report_tracking_received(tracking.target_timestamp);
+
+                    let prediction_s = stats.average_total_latency().as_secs_f32()
+                        * controller_prediction_multiplier;
+
+                    unsafe {
+                        crate::SetTracking(
+                            tracking.target_timestamp.as_nanos() as _,
+                            prediction_s,
+                            raw_motions.as_ptr(),
+                            raw_motions.len() as _,
+                            left_oculus_hand,
+                            right_oculus_hand,
+                        )
+                    };
+                }
             }
         }
     };
@@ -937,20 +882,6 @@ async fn connection_pipeline() -> StrResult {
             }
         }
     };
-
-    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
-
-    let is_tracking_ref_only = settings.headset.tracking_ref_only;
-    if !is_tracking_ref_only {
-        // use a separate thread because SetChaperone() is blocking
-        thread::spawn(move || {
-            while let Ok(packet) = playspace_sync_receiver.recv() {
-                let width = f32::max(packet.x, 2.0);
-                let height = f32::max(packet.y, 2.0);
-                unsafe { crate::SetChaperone(width, height) };
-            }
-        });
-    }
 
     let keepalive_loop = {
         let control_sender = Arc::clone(&control_sender);
@@ -1009,6 +940,31 @@ async fn connection_pipeline() -> StrResult {
                         stats.report_battery(packet.device_id, packet.gauge_value);
                     }
                 },
+                Ok(ClientControlPacket::Button { path_id, value }) => {
+                    if settings.extra.log_button_presses {
+                        alvr_events::send_event(EventType::Button(ButtonEvent {
+                            path: BUTTON_PATH_FROM_ID
+                                .get(&path_id)
+                                .cloned()
+                                .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", path_id)),
+                            value: value.clone(),
+                        }));
+                    }
+
+                    let value = match value {
+                        ButtonValue::Binary(value) => AlvrButtonValue {
+                            type_: AlvrButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: AlvrButtonValue__bindgen_ty_1 { binary: value },
+                        },
+
+                        ButtonValue::Scalar(value) => AlvrButtonValue {
+                            type_: AlvrButtonType_BUTTON_TYPE_SCALAR,
+                            __bindgen_anon_1: AlvrButtonValue__bindgen_ty_1 { scalar: value },
+                        },
+                    };
+
+                    unsafe { crate::SetButton(path_id, value) };
+                }
                 Ok(_) => (),
                 Err(e) => {
                     alvr_events::send_event(EventType::ClientDisconnected);
@@ -1038,7 +994,7 @@ async fn connection_pipeline() -> StrResult {
         res = spawn_cancelable(video_send_loop) => res,
         res = spawn_cancelable(statistics_receive_loop) => res,
         res = spawn_cancelable(haptics_send_loop) => res,
-        res = spawn_cancelable(input_receive_loop) => res,
+        res = spawn_cancelable(tracking_receive_loop) => res,
 
         // Leave these loops on the current task
         res = keepalive_loop => res,

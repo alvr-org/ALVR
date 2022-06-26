@@ -122,9 +122,6 @@ void Settings::Load()
 		m_OffsetPos[1] = (float)headsetPositionOffset[1].get<double>();
 		m_OffsetPos[2] = (float)headsetPositionOffset[2].get<double>();
 
-		m_trackingFrameOffset = (int32_t)config.get("tracking_frame_offset").get<int64_t>();
-		m_controllerPoseOffset = (double)config.get("controller_pose_offset").get<double>();
-		m_serversidePrediction = config.get("serverside_prediction").get<bool>();
 		m_linearVelocityCutoff = (float)config.get("linear_velocity_cutoff").get<double>();
 		m_angularVelocityCutoff = (float)config.get("angular_velocity_cutoff").get<double>();
 

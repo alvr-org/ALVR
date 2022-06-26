@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub static BUTTON_PATH_FROM_ID: Lazy<HashMap<u64, String>> = Lazy::new(|| {
     [
-        (*HEAD_ENTER_ID, HEAD_ENTER_PATH.into()),
+        (*HEAD_ENTER_CLICK_ID, HEAD_ENTER_CLICK_PATH.into()),
         (*MENU_CLICK_ID, MENU_CLICK_PATH.into()),
         (*A_CLICK_ID, A_CLICK_PATH.into()),
         (*A_TOUCH_ID, A_TOUCH_PATH.into()),

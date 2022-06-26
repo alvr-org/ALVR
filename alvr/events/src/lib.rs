@@ -55,6 +55,18 @@ pub struct LogEvent {
     pub content: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ButtonValue {
+    Binary(bool),
+    Scalar(f32),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ButtonEvent {
+    pub path: String,
+    pub value: ButtonValue,
+}
+
 // Event is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -71,6 +83,7 @@ pub enum EventType {
     UpdateDownloadError,
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
+    Button(ButtonEvent),
     ServerQuitting,
     Log(LogEvent),
 }

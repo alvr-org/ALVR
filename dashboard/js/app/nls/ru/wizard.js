@@ -21,14 +21,6 @@ define({
     buttonFirewall: "Добавить правила брандмауэра",
     firewallFailed: "Установка правил брандмауэра не удалась",
     firewallSuccess: "Правила брандмауэра успешно установлены",
-    // Tracking page
-    titleTracking: "Отслеживание",
-    textTracking:
-        "Как должно происходить отслеживание контроллеров. Если вы планируете играть в активные игры, такие как Beatsaber, выберите средне или быстро. Для более медленных игр, как Skyrim, оставьте выбор на нормально.",
-    // "oculusTracking": "",
-    normalTracking: "Нормально",
-    mediumTracking: "Средне",
-    fastTracking: "Быстро",
     // Performance page
     titlePerformance: "Предустановка производительности",
     textPerformance:

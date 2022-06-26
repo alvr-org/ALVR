@@ -173,7 +173,6 @@ void (*ReportPresent)(unsigned long long timestamp_ns);
 void (*ReportComposed)(unsigned long long timestamp_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
 void (*ReportFecFailure)(int percentage);
-float (*GetTotalLatencyS)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants
@@ -211,11 +210,26 @@ void RequestIDR() {
     }
 }
 
-void InputReceive(TrackingInfo data) {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->m_Statistics->CountPacket(sizeof(TrackingInfo));
-
-        g_driver_provider.hmd->OnPoseUpdated(data);
+void SetTracking(unsigned long long targetTimestampNs,
+                 float controllerPredictionS,
+                 const AlvrDeviceMotion *deviceMotions,
+                 int motionsCount,
+                 OculusHand leftHand,
+                 OculusHand rightHand) {
+    for (int i = 0; i < motionsCount; i++) {
+        if (deviceMotions[i].deviceID == HEAD_PATH && g_driver_provider.hmd) {
+            g_driver_provider.hmd->OnPoseUpdated(
+                targetTimestampNs, deviceMotions[i]);
+        } else {
+            if (deviceMotions[i].deviceID == LEFT_HAND_PATH && g_driver_provider.left_controller) {
+                g_driver_provider.left_controller->onPoseUpdate(
+                    controllerPredictionS, deviceMotions[i], leftHand);
+            } else if (deviceMotions[i].deviceID == RIGHT_HAND_PATH &&
+                       g_driver_provider.right_controller) {
+                g_driver_provider.right_controller->onPoseUpdate(
+                    controllerPredictionS, deviceMotions[i], rightHand);
+            }
+        }
     }
 }
 void ReportNetworkLatency(unsigned long long latencyUs) {
@@ -241,17 +255,16 @@ unsigned long long GetGameFrameIntervalNs() {
     //     t.m_flCompositorRenderGpuMs,
     //     t.m_flCompositorRenderCpuMs,
     //     t.m_flCompositorIdleCpuMs);
-    return (
-        t.m_flClientFrameIntervalMs
-            + t.m_flPresentCallCpuMs
-            + t.m_flWaitForPresentCpuMs // fixme: this should be near zero but it takes the whole frame time!
+    return (t.m_flClientFrameIntervalMs + t.m_flPresentCallCpuMs +
+            t.m_flWaitForPresentCpuMs // fixme: this should be near zero but it takes the whole
+                                      // frame time!
             + t.m_flSubmitFrameMs
             // + t.m_flPreSubmitGpuMs
             // + t.m_flPostSubmitGpuMs
             // + t.m_flTotalRenderGpuMs
-            + t.m_flCompositorRenderGpuMs
-            + t.m_flCompositorRenderCpuMs
-            + t.m_flCompositorIdleCpuMs) * 1e6;
+            + t.m_flCompositorRenderGpuMs + t.m_flCompositorRenderCpuMs +
+            t.m_flCompositorIdleCpuMs) *
+           1e6;
 }
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
@@ -289,5 +302,15 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
             device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value);
         vr::VRProperties()->SetBoolProperty(
             device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged);
+    }
+}
+
+void SetButton(unsigned long long path, AlvrButtonValue value) {
+    if (std::find(LEFT_CONTROLLER_BUTTONS.begin(), LEFT_CONTROLLER_BUTTONS.end(), path) !=
+        LEFT_CONTROLLER_BUTTONS.end()) {
+        g_driver_provider.left_controller->SetButton(path, value);
+    } else if (std::find(RIGHT_CONTROLLER_BUTTONS.begin(), RIGHT_CONTROLLER_BUTTONS.end(), path) !=
+               RIGHT_CONTROLLER_BUTTONS.end()) {
+        g_driver_provider.right_controller->SetButton(path, value);
     }
 }

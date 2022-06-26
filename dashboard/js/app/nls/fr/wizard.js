@@ -20,13 +20,6 @@ define({
     buttonFirewall: "Ajouter règles de pare-feu",
     firewallFailed: "Erreur d'ajout des règles du pare-feu",
     firewallSuccess: "Règles du pare-feu ajouté avec succes",
-    // Tracking page
-    titleTracking: "Suivi",
-    textTracking: `Comment doit être le suivi des controlleurs. Si vous prévoyez de jouer a des jeux rapides tels que Beatsaber, choisez Moyen ou Rapide. Pour des jeux plus lents tels que Skyrim laissez le en Normal.`,
-    // "oculusTracking": "",
-    normalTracking: "Normal",
-    mediumTracking: "Moyen",
-    fastTracking: "Rapide",
     // Performance page
     titlePerformance: "Préréglages de performance",
     textPerformance:

@@ -21,14 +21,6 @@ define({
     buttonFirewall: "Omogoči ALVR prehajanje požarnega zidu",
     firewallFailed: "Dostop zavrnjen",
     firewallSuccess: "Prehajanje omogočeno",
-    // Tracking page
-    titleTracking: "Sledenje",
-    textTracking:
-        "Za hitre igre kot Beatsaber, izberi SREDNJE ali HITRO. Za počasnejše igre kjer potrebuješ večjo natančnost uporabi NAVADNO.\nOCULUS predvidevanje pomeni, da je predvidevanje izvedeno na napravi, namesto na računalniku preko SteamVR.",
-    oculusTracking: "OCULUS",
-    normalTracking: "NAVADNO",
-    mediumTracking: "SREDNJE",
-    fastTracking: "HITRO",
     // Performance page
     titlePerformance: "Prednastavitev",
     textPerformance:

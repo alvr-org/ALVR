@@ -5,20 +5,9 @@
 #include "reedsolomon/rs.h"
 #include "../alvr_server/bindings.h"
 
-enum ALVR_PACKET_TYPE {
-	ALVR_PACKET_TYPE_TRACKING_INFO = 6,
-	ALVR_PACKET_TYPE_VIDEO_FRAME = 9,
-	ALVR_PACKET_TYPE_PACKET_ERROR_REPORT = 12,
-	ALVR_PACKET_TYPE_HAPTICS = 13,
-};
-
 enum ALVR_CODEC {
 	ALVR_CODEC_H264 = 0,
 	ALVR_CODEC_H265 = 1,
-};
-
-enum ALVR_LOST_FRAME_TYPE {
-	ALVR_LOST_FRAME_TYPE_VIDEO = 0,
 };
 
 enum ALVR_INPUT {
@@ -97,30 +86,6 @@ enum ALVR_HAND {
 	alvrHandBone_Pinky2 = 17,	// pinky intermediate phalange bone
 	alvrHandBone_Pinky3 = 18,	// pinky distal phalange bone
 	alvrHandBone_MaxSkinnable = 19,
-};
-enum ALVR_FINGER_PINCH {
-	alvrFingerPinch_Index = 0,
-	alvrFingerPinch_Middle = 1,
-	alvrFingerPinch_Ring = 2,
-	alvrFingerPinch_Pinky = 3,
-	alvrFingerPinch_MaxPinches = 4,
-};
-enum ALVR_HAND_CONFIDENCE {
-	alvrThumbConfidence_High = (1 << 0),
-	alvrIndexConfidence_High = (1 << 1),
-	alvrMiddleConfidence_High = (1 << 2),
-	alvrRingConfidence_High = (1 << 3),
-	alvrPinkyConfidence_High = (1 << 4),
-	alvrHandConfidence_High = (1 << 5),
-};
-enum ALVR_HAND_INPUT {
-	alvrInputStateHandStatus_PointerValid = (1 << 1),	// if this is set the PointerPose and PinchStrength contain valid data, otherwise they should not be used.
-	alvrInputStateHandStatus_IndexPinching = (1 << 2),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_MiddlePinching = (1 << 3),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_RingPinching = (1 << 4),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_PinkyPinching = (1 << 5),	// if this is set the pinch gesture for that finger is on
-	alvrInputStateHandStatus_SystemGestureProcessing = (1 << 6),	// if this is set the hand is currently processing a system gesture
-	alvrInputStateHandStatus_EnumSize = 0x7fffffff
 };
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 

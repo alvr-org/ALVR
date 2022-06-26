@@ -402,9 +402,6 @@ define([
                             content: { default: 0, gui: "slider" },
                         });
                         break;
-                    case "trackingSpeed":
-                        addHidden(element, path, name, advanced);
-                        break;
                     case "displayRefreshRate":
                         addHidden(element, path, name, advanced);
                         break;

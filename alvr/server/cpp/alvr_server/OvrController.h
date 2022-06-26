@@ -3,10 +3,11 @@
 #include "ALVR-common/packet_types.h"
 #include "TrackedDevice.h"
 #include "openvr_driver.h"
+#include <map>
 
 class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
   public:
-    OvrController(uint64_t devicePath, float *poseTimeOffset);
+    OvrController(uint64_t devicePath);
 
     virtual ~OvrController(){};
 
@@ -34,7 +35,9 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
 
     vr::VRInputComponentHandle_t getHapticComponent();
 
-    bool onPoseUpdate(const TrackingInfo::Controller &c);
+    void SetButton(uint64_t id, AlvrButtonValue value);
+
+    bool onPoseUpdate(float predictionS, AlvrDeviceMotion motion, const OculusHand &hand);
     std::string GetSerialNumber();
 
     void GetBoneTransform(bool withController,
@@ -42,14 +45,11 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
                           float thumbAnimationProgress,
                           float indexAnimationProgress,
                           uint64_t lastPoseTouch,
-                          const TrackingInfo::Controller &currentPoseInfo,
                           vr::VRBoneTransform_t outBoneTransform[]);
 
   private:
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
-
-    float *m_poseTimeOffset;
 
     vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
     vr::VRInputComponentHandle_t m_compHaptic;
@@ -96,4 +96,10 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
     float m_indexAnimationProgress = 0;
     uint64_t m_lastThumbTouch = 0;
     uint64_t m_lastIndexTouch = 0;
+
+    uint64_t m_buttons = 0;
+    float m_triggerValue = 0;
+    float m_gripValue = 0;
+    float m_joystickX = 0;
+    float m_joystickY = 0;
 };

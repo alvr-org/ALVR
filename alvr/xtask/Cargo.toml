@@ -1,6 +1,6 @@
 [package]
 name = "alvr_xtask"
-version = "18.0.0-dev03"
+version = "18.0.0-dev04"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -9,7 +9,7 @@ rust-version = "1.59"
 [dependencies]
 alvr_filesystem = { path = "../filesystem" }
 
-pico-args = "0.4"
+pico-args = "0.5"
 xshell = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]

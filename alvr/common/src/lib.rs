@@ -79,6 +79,64 @@ pub static LEFT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
 pub static RIGHT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
     Lazy::new(|| hash_string(RIGHT_CONTROLLER_HAPTIC_PATH));
 
+pub const MENU_CLICK_PATH: &str = "/user/hand/left/input/menu/click";
+pub const A_CLICK_PATH: &str = "/user/hand/right/input/a/click";
+pub const A_TOUCH_PATH: &str = "/user/hand/right/input/a/touch";
+pub const B_CLICK_PATH: &str = "/user/hand/right/input/b/click";
+pub const B_TOUCH_PATH: &str = "/user/hand/right/input/b/touch";
+pub const X_CLICK_PATH: &str = "/user/hand/left/input/x/click";
+pub const X_TOUCH_PATH: &str = "/user/hand/left/input/x/touch";
+pub const Y_CLICK_PATH: &str = "/user/hand/left/input/y/click";
+pub const Y_TOUCH_PATH: &str = "/user/hand/left/input/y/touch";
+pub const LEFT_SQUEEZE_VALUE_PATH: &str = "/user/hand/left/input/squeeze/value";
+pub const LEFT_TRIGGER_VALUE_PATH: &str = "/user/hand/left/input/trigger/value";
+pub const LEFT_TRIGGER_TOUCH_PATH: &str = "/user/hand/left/input/trigger/touch";
+pub const LEFT_THUMBSTICK_X_PATH: &str = "/user/hand/left/input/thumbstick/x";
+pub const LEFT_THUMBSTICK_Y_PATH: &str = "/user/hand/left/input/thumbstick/y";
+pub const LEFT_THUMBSTICK_CLICK_PATH: &str = "/user/hand/left/input/thumbstick/click";
+pub const LEFT_THUMBSTICK_TOUCH_PATH: &str = "/user/hand/left/input/thumbstick/touch";
+pub const LEFT_THUMBREST_TOUCH_PATH: &str = "/user/hand/left/input/thumbrest/touch";
+pub const RIGHT_SQUEEZE_VALUE_PATH: &str = "/user/hand/right/input/squeeze/value";
+pub const RIGHT_TRIGGER_VALUE_PATH: &str = "/user/hand/right/input/trigger/value";
+pub const RIGHT_TRIGGER_TOUCH_PATH: &str = "/user/hand/right/input/trigger/touch";
+pub const RIGHT_THUMBSTICK_X_PATH: &str = "/user/hand/right/input/thumbstick/x";
+pub const RIGHT_THUMBSTICK_Y_PATH: &str = "/user/hand/right/input/thumbstick/y";
+pub const RIGHT_THUMBSTICK_CLICK_PATH: &str = "/user/hand/right/input/thumbstick/click";
+pub const RIGHT_THUMBSTICK_TOUCH_PATH: &str = "/user/hand/right/input/thumbstick/touch";
+pub const RIGHT_THUMBREST_TOUCH_PATH: &str = "/user/hand/right/input/thumbrest/touch";
+
+pub static MENU_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(MENU_CLICK_PATH));
+pub static A_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(A_CLICK_PATH));
+pub static A_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(A_TOUCH_PATH));
+pub static B_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(B_CLICK_PATH));
+pub static B_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(B_TOUCH_PATH));
+pub static X_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(X_CLICK_PATH));
+pub static X_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(X_TOUCH_PATH));
+pub static Y_CLICK_ID: Lazy<u64> = Lazy::new(|| hash_string(Y_CLICK_PATH));
+pub static Y_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(Y_TOUCH_PATH));
+pub static LEFT_SQUEEZE_VALUE_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_SQUEEZE_VALUE_PATH));
+pub static LEFT_TRIGGER_VALUE_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_TRIGGER_VALUE_PATH));
+pub static LEFT_TRIGGER_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_TRIGGER_TOUCH_PATH));
+pub static LEFT_THUMBSTICK_X_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_THUMBSTICK_X_PATH));
+pub static LEFT_THUMBSTICK_Y_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_THUMBSTICK_Y_PATH));
+pub static LEFT_THUMBSTICK_CLICK_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(LEFT_THUMBSTICK_CLICK_PATH));
+pub static LEFT_THUMBSTICK_TOUCH_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(LEFT_THUMBSTICK_TOUCH_PATH));
+pub static LEFT_THUMBREST_TOUCH_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(LEFT_THUMBREST_TOUCH_PATH));
+pub static RIGHT_SQUEEZE_VALUE_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_SQUEEZE_VALUE_PATH));
+pub static RIGHT_TRIGGER_VALUE_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_TRIGGER_VALUE_PATH));
+pub static RIGHT_TRIGGER_TOUCH_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_TRIGGER_TOUCH_PATH));
+pub static RIGHT_THUMBSTICK_X_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_THUMBSTICK_X_PATH));
+pub static RIGHT_THUMBSTICK_Y_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_THUMBSTICK_Y_PATH));
+pub static RIGHT_THUMBSTICK_CLICK_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(RIGHT_THUMBSTICK_CLICK_PATH));
+pub static RIGHT_THUMBSTICK_TOUCH_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(RIGHT_THUMBSTICK_TOUCH_PATH));
+pub static RIGHT_THUMBREST_TOUCH_ID: Lazy<u64> =
+    Lazy::new(|| hash_string(RIGHT_THUMBREST_TOUCH_PATH));
+
 // Simple wrapper for AtomicBool when using Ordering::Relaxed. Deref cannot be implemented (cannot
 // return local reference)
 pub struct RelaxedAtomic(AtomicBool);

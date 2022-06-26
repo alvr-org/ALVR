@@ -132,11 +132,6 @@ define({
     // "_root_headset_controllers_content_registeredDeviceType.description": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.name": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.description": "", // adv
-    // "_root_headset_controllers_content_trackingSpeed.name": "",
-    // "_root_headset_controllers_content_trackingSpeed.description": "",
-    "_root_headset_controllers_content_poseTimeOffset.name": "ポーズタイムオフセット", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description":
-        "姿勢予測アルゴリズム用のオフセット値", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.name": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft.description": "", // adv
     // "_root_headset_controllers_content_positionOffsetLeft_0.name": "", // adv

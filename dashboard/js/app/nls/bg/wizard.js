@@ -21,14 +21,6 @@ define({
     buttonFirewall: "Добавете правила за защитната стена",
     firewallFailed: "Задаването на правила на защитната стена не бе успешно",
     firewallSuccess: "Правилата на защитната стена са зададени успешно",
-    // Tracking page
-    titleTracking: "Проследяване",
-    textTracking:
-        "Как трябва да се обработва проследяването на контролера. Ако планирате да играете бързи игри като Beatsaber, изберете средно или бързо. За по-бавни игри като Skyrim го оставете на нормално.",
-    // "oculusTracking": "",
-    normalTracking: "Нормално",
-    mediumTracking: "Средено",
-    fastTracking: "Бързо",
     // Performance page
     titlePerformance: "Предварителна производителност",
     textPerformance:

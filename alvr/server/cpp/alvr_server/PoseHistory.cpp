@@ -4,16 +4,16 @@
 #include <mutex>
 #include <optional>
 
-void PoseHistory::OnPoseUpdated(const TrackingInfo &info) {
+void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion) {
 	// Put pose history buffer
 	TrackingHistoryFrame history;
-	history.info = info;
+	history.targetTimestampNs = targetTimestampNs;
+	history.motion = motion;
 
-
-	HmdMatrix_QuatToMat(info.HeadPose_Pose_Orientation.w,
-		info.HeadPose_Pose_Orientation.x,
-		info.HeadPose_Pose_Orientation.y,
-		info.HeadPose_Pose_Orientation.z,
+	HmdMatrix_QuatToMat(motion.orientation.w,
+		motion.orientation.x,
+		motion.orientation.y,
+		motion.orientation.z,
 		&history.rotationMatrix);
 
 	Debug("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)\n"
@@ -26,7 +26,7 @@ void PoseHistory::OnPoseUpdated(const TrackingInfo &info) {
 		m_poseBuffer.push_back(history);
 	}
 	else {
-		if (m_poseBuffer.back().info.targetTimestampNs != info.targetTimestampNs) {
+		if (m_poseBuffer.back().targetTimestampNs != targetTimestampNs) {
 			// New track info
 			m_poseBuffer.push_back(history);
 		}
@@ -64,12 +64,12 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(c
 	return {};
 }
 
-std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t client_timestamp_ns) const
+std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t timestampNs) const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 	for (auto it = m_poseBuffer.rbegin(), end = m_poseBuffer.rend() ; it != end ; ++it)
 	{
-		if (it->info.targetTimestampNs == client_timestamp_ns)
+		if (it->targetTimestampNs == timestampNs)
 			return *it;
 	}
 	return {};

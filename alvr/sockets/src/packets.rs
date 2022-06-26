@@ -1,13 +1,14 @@
-use std::{collections::HashMap, net::IpAddr, time::Duration};
+use std::{net::IpAddr, time::Duration};
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
     semver::Version,
 };
+use alvr_events::ButtonValue;
 use alvr_session::Fov;
 use serde::{Deserialize, Serialize};
 
-pub const INPUT: u16 = 0; // tracking and buttons
+pub const TRACKING: u16 = 0;
 pub const HAPTICS: u16 = 1;
 pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
@@ -96,6 +97,7 @@ pub enum ClientControlPacket {
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
     VideoErrorReport, // legacy
+    Button { path_id: u64, value: ButtonValue },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -112,34 +114,8 @@ pub struct VideoFrameHeaderPacket {
     pub fec_percentage: u16,
 }
 
-// legacy time sync packet
-#[derive(Serialize, Deserialize, Default)]
-pub struct TimeSyncPacket {
-    pub mode: u32,
-    pub server_time: u64,
-    pub client_time: u64,
-    pub packets_lost_total: u64,
-    pub packets_lost_in_second: u64,
-    pub average_send_latency: u32,
-    pub average_transport_latency: u32,
-    pub average_decode_latency: u64,
-    pub idle_time: u32,
-    pub fec_failure: u32,
-    pub fec_failure_in_second: u64,
-    pub fec_failure_total: u64,
-    pub fps: f32,
-    pub server_total_latency: u32,
-    pub tracking_recv_frame_index: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum ButtonValue {
-    Binary(bool),
-    Scalar(f32),
-}
-
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct MotionData {
+pub struct DeviceMotion {
     pub orientation: Quat,
     pub position: Vec3,
     pub linear_velocity: Vec3,
@@ -147,38 +123,11 @@ pub struct MotionData {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct HandTrackingInput {
-    pub target_ray_motion: MotionData,
-    pub skeleton_motion: Vec<MotionData>,
-}
-
-#[derive(Serialize, Deserialize, Default)]
-pub struct LegacyController {
-    pub enabled: bool,
-    pub is_hand: bool,
-    pub buttons: u64,
-    pub trackpad_position: Vec2,
-    pub trigger_value: f32,
-    pub grip_value: f32,
-    pub bone_rotations: [Quat; 19],
-    pub bone_positions_base: [Vec3; 19],
-    pub hand_finger_confience: u32,
-}
-
-#[derive(Serialize, Deserialize, Default)]
-pub struct LegacyInput {
-    pub mounted: u8,
-    pub controllers: [LegacyController; 2],
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Input {
+pub struct Tracking {
     pub target_timestamp: Duration,
-    pub device_motions: Vec<(u64, MotionData)>,
-    pub left_hand_tracking: Option<HandTrackingInput>, // unused for now
-    pub right_hand_tracking: Option<HandTrackingInput>, // unused for now
-    pub button_values: HashMap<u64, ButtonValue>,      // unused for now
-    pub legacy: LegacyInput,
+    pub device_motions: Vec<(u64, DeviceMotion)>,
+    pub left_hand_skeleton: Option<[Quat; 19]>, // legacy oculus hand
+    pub right_hand_skeleton: Option<[Quat; 19]>, // legacy oculus hand
 }
 
 #[derive(Serialize, Deserialize)]

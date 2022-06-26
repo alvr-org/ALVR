@@ -159,11 +159,6 @@ define({
     "_root_headset_controllers_content_inputProfilePath.name": "입력 프로파일 경로", // adv
     "_root_headset_controllers_content_inputProfilePath.description":
         "에뮬레이터 컨트롤러의 입력 프로파일 경로", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "트래킹 속도",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "비트세이버처럼 빠른 속도의 게임을 플레이하신다면 보통 혹은 중간을 선택하세요. 스카이림처럼 느린 게임을 플레이하신다면 보통을 선택하세요. \n 오큘러스 예측은 SteamVR 대신 헤드셋에서 컨트롤러 위치를 예측합니다.",
-    "_root_headset_controllers_content_poseTimeOffset.name": "포즈 타임 오프셋", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description": "포즈 예측 알고리즘 오프셋", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "위치 오프셋", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "왼쪽 컨트롤러의 위치 오프셋(미터)입니다. \n오른쪽 컨트롤러와 x 값이 반대입니다.", // adv

@@ -547,7 +547,6 @@ void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *re
         GL(glEnable(GL_BLEND));
         GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-        //LOG("mm:\n%s", DumpMatrix(&mvpMatrix[0]).c_str());
         GL(glUniformMatrix4fv(renderer->ProgramLoading.UniformLocation[UNIFORM_MVP_MATRIX], 2, true,
                               (float *) mvpMatrix));
         GL(glActiveTexture(GL_TEXTURE0));

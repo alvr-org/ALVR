@@ -151,12 +151,6 @@ define({
     "_root_headset_controllers_content_inputProfilePath.name": "Ruta de perfil de entrada", // adv
     "_root_headset_controllers_content_inputProfilePath.description":
         "Ruta del archivo de perfil para la entrada del mando", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "Velocidad de seguimiento",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "Los juegos frenéticos como BeatSaber requieren un modo rápido. Para juegos más tranquilos como Skyrim, elige medio o lento.  \nLa predicción de Oculus significa que la posición del controlador se predice en el visor en lugar de en la PC a través del SteamVR.",
-    "_root_headset_controllers_content_poseTimeOffset.name": "Offset de predicción de mandos", // adv
-    "_root_headset_controllers_content_poseTimeOffset.description":
-        "Offset utilizado por los mandos para el algoritmo de predicción.", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "Offset de posición", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "Compensación de la posición (en metros) del mando izquierdo. \nPara el mando derecho, se utiliza el opuesto del valor X.", // adv

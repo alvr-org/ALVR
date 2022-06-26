@@ -22,15 +22,6 @@ define({
         buttonFirewall: "Add firewall rules",
         firewallFailed: "Setting firewall rules failed",
         firewallSuccess: "Firewall rules successfully set",
-        // Tracking page
-        titleTracking: "Tracking",
-        textTracking:
-            "How should the tracking of the controller be handled. Recommended to use adaptive Oculus or SteamVR prediction. If you want to use fixed tracking speeds: Medium or fast for fast paced games like Beatsaber, normal for slower games like Skyrim. <br/> <br/> Oculus prediction means controller position is predicted on the headset instead of on the PC through SteamVR.",
-        oculusTracking: "Oculus",
-        steamvrTracking: "SteamVR",
-        normalTracking: "Normal",
-        mediumTracking: "Medium",
-        fastTracking: "Fast",
         // Performance page
         titlePerformance: "Performance preset",
         textPerformance:

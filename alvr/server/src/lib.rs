@@ -1,8 +1,10 @@
+mod buttons;
 mod connection;
 mod connection_utils;
 mod dashboard;
 mod logging_backend;
 mod statistics;
+mod tracking;
 mod web_server;
 
 #[allow(
@@ -363,14 +365,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn get_total_latency_s() -> f32 {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.average_total_latency().as_secs_f32()
-        } else {
-            0.
-        }
-    }
-
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
@@ -384,7 +378,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportComposed = Some(report_composed);
     ReportEncoded = Some(report_encoded);
     ReportFecFailure = Some(report_fec_failure);
-    GetTotalLatencyS = Some(get_total_latency_s);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

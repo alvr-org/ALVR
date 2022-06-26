@@ -130,10 +130,6 @@ define({
     // "_root_headset_controllers_content_registeredDeviceType.description": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.name": "", // adv
     // "_root_headset_controllers_content_inputProfilePath.description": "", // adv
-    "_root_headset_controllers_content_trackingSpeed.name": "Velocità di tracking",
-    // "_root_headset_controllers_content_trackingSpeed.description": "",
-    // "_root_headset_controllers_content_poseTimeOffset.name": "", // adv
-    // "_root_headset_controllers_content_poseTimeOffset.description": "", // adv
     "_root_headset_controllers_content_positionOffsetLeft.name": "Offset spaziale", // adv
     "_root_headset_controllers_content_positionOffsetLeft.description":
         "Offset della posizione (in metri) del controller sinistro. \nPer il controller destro, viene usato l'opposto del valore x", // adv

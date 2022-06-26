@@ -80,9 +80,6 @@ define({
     "_root_headset_controllers_content_controllerMode.name": "Controller emulatie modus",
     "_root_headset_controllers_content_controllerMode.description":
         "Emuleert verschillende controllers voor betere compatibiliteit of maakt handvolging mogelijk",
-    "_root_headset_controllers_content_trackingSpeed.name": "Tracking snelheid",
-    "_root_headset_controllers_content_trackingSpeed.description":
-        "Voor spellen met snelle bewegingen zoals Beatsaber, kies voor medium of snel. For tragere spellen zoals Skyrim kies normaal.\nOculus voorspellingen betekent dat de positie van de controllers voospelt worden via de headset en niet op de PC via SteamVR.",
     "_root_headset_controllers_content_hapticsIntensity.name": "Haptische intensiteit",
     "_root_headset_controllers_content_hapticsIntensity.description":
         "Factor die de intensiteit van de vibratie van de controllers vermedert of vermindert.",

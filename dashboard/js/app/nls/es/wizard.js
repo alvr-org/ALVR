@@ -21,13 +21,6 @@ define({
     buttonFirewall: "Añadir excepción al cortafuegos",
     firewallFailed: "Error al añadir la excepción al cortafuegos",
     firewallSuccess: "Se ha añadido la excepción al cortafuegos con éxito",
-    // Tracking page
-    titleTracking: "Seguimiento",
-    textTracking: `Elija el modo de seguimiento para los mandos. Los juegos frenéticos como BeatSaber requieren un modo "rápido". Para juegos más tranquilos como Skyrim, elige "medio" o "lento".  <br/> <br/> La predicción de Oculus significa que la posición del controlador se predice en el visor en lugar de en la PC a través del SteamVR.`,
-    oculusTracking: "Predicción de Oculus",
-    normalTracking: "Lento",
-    mediumTracking: "Medio",
-    fastTracking: "Rápido",
     // Performance page
     titlePerformance: "Ajustes de rendimiento",
     textPerformance:

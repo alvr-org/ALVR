@@ -13,12 +13,6 @@ using namespace gl_render_utils;
 void (*reportSubmit)(unsigned long long targetTimestampNs, unsigned long long vsyncQueueNs);
 unsigned long long (*pathStringToHash)(const char *path);
 
-uint64_t HEAD_PATH;
-uint64_t LEFT_HAND_PATH;
-uint64_t RIGHT_HAND_PATH;
-uint64_t LEFT_CONTROLLER_HAPTICS_PATH;
-uint64_t RIGHT_CONTROLLER_HAPTICS_PATH;
-
 const int LOADING_TEXTURE_WIDTH = 1280;
 const int LOADING_TEXTURE_HEIGHT = 720;
 
@@ -51,14 +45,6 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
     JNIEnv *env;
     JavaVMAttachArgs args = {JNI_VERSION_1_6};
     g_ctx.vm->AttachCurrentThread(&env, &args);
-
-    HEAD_PATH = pathStringToHash("/user/head");
-    LEFT_HAND_PATH = pathStringToHash("/user/hand/left");
-    RIGHT_HAND_PATH = pathStringToHash("/user/hand/right");
-    LEFT_CONTROLLER_HAPTICS_PATH = pathStringToHash("/user/hand/left/output/haptic");
-    RIGHT_CONTROLLER_HAPTICS_PATH = pathStringToHash("/user/hand/right/output/haptic");
-
-    LOG("Initializing EGL.");
 
     setAssetManager(env, (jobject)v_assetManager);
 

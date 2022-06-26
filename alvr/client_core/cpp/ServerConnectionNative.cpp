@@ -48,17 +48,16 @@ void legacyReceive(const unsigned char *packet, unsigned int packetSize) {
     g_socket.m_connected = true;
 
     uint32_t type = *(uint32_t *) packet;
-    if (type == ALVR_PACKET_TYPE_VIDEO_FRAME) {
-        auto *header = (VideoFrame *) packet;
+    
+    auto *header = (VideoFrame *) packet;
 
-        processVideoSequence(header->packetCounter);
+    processVideoSequence(header->packetCounter);
 
-        // Following packets of a video frame
-        bool fecFailure = false;
-        bool ret2 = g_socket.m_nalParser->processPacket(header, packetSize, fecFailure);
-        if (fecFailure) {
-            videoErrorReportSend();
-        }
+    // Following packets of a video frame
+    bool fecFailure = false;
+    bool ret2 = g_socket.m_nalParser->processPacket(header, packetSize, fecFailure);
+    if (fecFailure) {
+        videoErrorReportSend();
     }
 }
 

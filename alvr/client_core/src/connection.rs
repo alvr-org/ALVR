@@ -5,15 +5,15 @@ use crate::{
     platform,
     statistics::StatisticsManager,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_REF, EVENT_BUFFER, IDR_PARSED,
-    INPUT_SENDER, STATISTICS_MANAGER, STATISTICS_SENDER,
+    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{glam::Vec2, prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
     HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, ServerHandshakePacket,
-    StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, INPUT, STATISTICS, VIDEO,
+    StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
@@ -126,7 +126,7 @@ fn on_server_connected(
     oculus_foveation_level: OculusFovetionLevel,
     dynamic_oculus_foveation: bool,
     extra_latency: bool,
-    client_prediction: bool,
+    controller_prediction_multiplier: f32,
 ) {
     let vm = platform::vm();
     let env = vm.attach_current_thread().unwrap();
@@ -134,7 +134,7 @@ fn on_server_connected(
     env.call_method(
         platform::context(),
         "onServerConnected",
-        "(IIFIZIZZZ)V",
+        "(IIFIZIZZF)V",
         &[
             eye_width.into(),
             eye_height.into(),
@@ -144,7 +144,7 @@ fn on_server_connected(
             (oculus_foveation_level as i32).into(),
             dynamic_oculus_foveation.into(),
             extra_latency.into(),
-            client_prediction.into(),
+            controller_prediction_multiplier.into(),
         ],
     )
     .unwrap();
@@ -364,8 +364,8 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             .headset
             .controllers
             .into_option()
-            .map(|c| c.clientside_prediction)
-            .unwrap_or(false),
+            .map(|c| c.prediction_multiplier)
+            .unwrap_or_default(),
     );
 
     // setup stream loops
@@ -387,14 +387,14 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     //     }
     // };
 
-    let input_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(INPUT).await?;
+    let tracking_send_loop = {
+        let mut socket_sender = stream_socket.request_stream(TRACKING).await?;
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *INPUT_SENDER.lock() = Some(data_sender);
-            while let Some(input) = data_receiver.recv().await {
+            *TRACKING_SENDER.lock() = Some(data_sender);
+            while let Some(tracking) = data_receiver.recv().await {
                 socket_sender
-                    .send_buffer(socket_sender.new_buffer(&input, 0)?)
+                    .send_buffer(socket_sender.new_buffer(&tracking, 0)?)
                     .await
                     .ok();
 
@@ -404,7 +404,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                 // so the server can just use total_pipeline_latency as the postTimeoffset.
                 // This hack will be removed once poseTimeOffset can be calculated more accurately.
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_input_acquired(input.target_timestamp);
+                    stats.report_input_acquired(tracking.target_timestamp);
                 }
             }
 
@@ -442,7 +442,6 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
 
                 let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
                 let header = VideoFrame {
-                    type_: 9, // ALVR_PACKET_TYPE_VIDEO_FRAME
                     packetCounter: packet.header.packet_counter,
                     trackingFrameIndex: packet.header.tracking_frame_index,
                     videoFrameIndex: packet.header.video_frame_index,
@@ -627,7 +626,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
         },
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
-        res = spawn_cancelable(input_send_loop) => res,
+        res = spawn_cancelable(tracking_send_loop) => res,
         res = spawn_cancelable(statistics_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,

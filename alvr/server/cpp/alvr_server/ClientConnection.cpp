@@ -59,7 +59,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t targetTimestampNs
 	uint8_t *payload = packetBuffer + sizeof(VideoFrame);
 	int dataRemain = len;
 
-	header->type = ALVR_PACKET_TYPE_VIDEO_FRAME;
 	header->trackingFrameIndex = targetTimestampNs;
 	header->videoFrameIndex = videoFrameIndex;
 	header->sentTime = GetTimestampUs();

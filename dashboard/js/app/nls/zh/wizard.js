@@ -20,14 +20,6 @@ define({
     buttonFirewall: "添加防火墙规则",
     firewallFailed: "设置防火墙规则失败",
     firewallSuccess: "防火墙规则已成功设置",
-    // Tracking page
-    titleTracking: "追踪速度",
-    textTracking:
-        "应该如何处理控制器的跟踪。如果您打算玩节奏快的游戏（如Beatsaber），请选择中速或快速。对于较慢的游戏（如《天际》），请使其保持正常。",
-    // "oculusTracking": "",
-    normalTracking: "正常",
-    mediumTracking: "中速",
-    fastTracking: "快速",
     // Performance page
     titlePerformance: "性能预设",
     textPerformance: "请选择适合您的设置的预设。这将为您调整一些设置。",

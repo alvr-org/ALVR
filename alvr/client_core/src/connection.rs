@@ -36,6 +36,11 @@ use tokio::{
     time::{self, Instant},
 };
 
+#[cfg(target_os = "android")]
+use crate::audio;
+#[cfg(not(target_os = "android"))]
+use alvr_audio as audio;
+
 const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
 const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"Trust\"\nnext to the client entry";
@@ -538,7 +543,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             .map_err(err!())?;
 
         let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
-        Box::pin(alvr_audio::play_audio_loop(
+        Box::pin(audio::play_audio_loop(
             device,
             2,
             config_packet.game_audio_sample_rate,
@@ -554,7 +559,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             .map_err(err!())?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO).await?;
-        Box::pin(alvr_audio::record_audio_loop(
+        Box::pin(audio::record_audio_loop(
             device,
             1,
             false,

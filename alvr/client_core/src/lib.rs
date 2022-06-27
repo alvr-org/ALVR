@@ -6,6 +6,9 @@ mod logging_backend;
 mod platform;
 mod statistics;
 
+#[cfg(target_os = "android")]
+mod audio;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_audio::{AudioDevice, AudioDeviceType};

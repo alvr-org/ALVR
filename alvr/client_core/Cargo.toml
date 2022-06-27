@@ -32,6 +32,7 @@ jni = "0.19"
 ndk = "0.6"
 ndk-context = "0.1"
 ndk-sys = "0.3"
+oboe = "0.4" # todo: remove once AudioThread shutdown crash is fixed
 
 [build-dependencies]
 bindgen = "0.60"

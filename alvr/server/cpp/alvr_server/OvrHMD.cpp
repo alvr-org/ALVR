@@ -187,11 +187,6 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetBoolProperty(
         this->prop_container, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
-    // Use proximity sensor
-    vr::VRProperties()->SetBoolProperty(
-        this->prop_container, vr::Prop_ContainsProximitySensor_Bool, true);
-    vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
-
 #ifdef _WIN32
     float originalIPD =
         vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);

@@ -826,7 +826,7 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
     X_CLICK = alvr_path_string_to_hash("/user/hand/left/input/x/click");
     X_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
     Y_CLICK = alvr_path_string_to_hash("/user/hand/left/input/y/click");
-    Y_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/y/click");
+    Y_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/y/touch");
     LEFT_SQUEEZE_VALUE = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
     LEFT_TRIGGER_VALUE = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
     LEFT_TRIGGER_TOUCH = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");

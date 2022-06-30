@@ -615,92 +615,44 @@ vr::HmdQuaternionf_t QuatMultiply(const vr::HmdQuaternionf_t *q1, const vr::HmdQ
 }
 
 void OvrController::SetButton(uint64_t id, AlvrButtonValue value) {
-    if (id == MENU_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK);
+    if (value.type == BUTTON_TYPE_BINARY) {
+        uint32_t flag;
+        if (id == MENU_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK);
+        } else if (id == A_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
+        } else if (id == A_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
+        } else if (id == B_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
+        } else if (id == B_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
+        } else if (id == X_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK);
+        } else if (id == X_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH);
+        } else if (id == Y_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK);
+        } else if (id == Y_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
+        } else if (id == LEFT_TRIGGER_TOUCH || id == RIGHT_TRIGGER_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
+        } else if (id == LEFT_THUMBSTICK_CLICK || id == RIGHT_THUMBSTICK_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
+        } else if (id == LEFT_THUMBSTICK_TOUCH || id == RIGHT_THUMBSTICK_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
+        } else if (id == LEFT_THUMBREST_TOUCH || id == RIGHT_THUMBREST_TOUCH) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
-    } else if (id == A_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
-        }
-    } else if (id == A_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
-        }
-    } else if (id == B_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
-        }
-    } else if (id == B_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
-        }
-    } else if (id == X_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK);
-        }
-    } else if (id == X_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH);
-        }
-    } else if (id == Y_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        }
-    } else if (id == Y_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        }
+        m_buttons = value.binary ? m_buttons | flag : m_buttons & ~flag;
     } else if (id == LEFT_SQUEEZE_VALUE || id == RIGHT_SQUEEZE_VALUE) {
         m_gripValue = value.scalar;
     } else if (id == LEFT_TRIGGER_VALUE || id == RIGHT_TRIGGER_VALUE) {
         m_triggerValue = value.scalar;
-    } else if (id == LEFT_TRIGGER_TOUCH || id == RIGHT_TRIGGER_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-        }
     } else if (id == LEFT_THUMBSTICK_X || id == RIGHT_THUMBSTICK_X) {
         m_joystickX = value.scalar;
     } else if (id == LEFT_THUMBSTICK_Y || id == RIGHT_THUMBSTICK_Y) {
         m_joystickY = value.scalar;
-    } else if (id == LEFT_THUMBSTICK_CLICK || id == RIGHT_THUMBSTICK_CLICK) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
-        }
-    } else if (id == LEFT_THUMBSTICK_TOUCH || id == RIGHT_THUMBSTICK_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
-        }
-    } else if (id == LEFT_THUMBREST_TOUCH || id == RIGHT_THUMBREST_TOUCH) {
-        if (value.binary) {
-            m_buttons |= ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
-        } else {
-            m_buttons &= ~ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
-        }
     }
 }
 

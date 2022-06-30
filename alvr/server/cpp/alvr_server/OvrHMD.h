@@ -63,8 +63,6 @@ class OvrHmd : public TrackedDevice,
 
     std::shared_ptr<ClientConnection> m_Listener;
 
-    vr::VRInputComponentHandle_t m_proximity;
-
     std::shared_ptr<OvrController> m_leftController;
     std::shared_ptr<OvrController> m_rightController;
 

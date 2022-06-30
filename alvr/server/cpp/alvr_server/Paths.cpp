@@ -61,7 +61,7 @@ void init_paths() {
     X_CLICK = PathStringToHash("/user/hand/left/input/x/click");
     X_TOUCH = PathStringToHash("/user/hand/left/input/x/touch");
     Y_CLICK = PathStringToHash("/user/hand/left/input/y/click");
-    Y_TOUCH = PathStringToHash("/user/hand/left/input/y/click");
+    Y_TOUCH = PathStringToHash("/user/hand/left/input/y/touch");
     LEFT_SQUEEZE_VALUE = PathStringToHash("/user/hand/left/input/squeeze/value");
     LEFT_TRIGGER_VALUE = PathStringToHash("/user/hand/left/input/trigger/value");
     LEFT_TRIGGER_TOUCH = PathStringToHash("/user/hand/left/input/trigger/touch");

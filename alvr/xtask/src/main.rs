@@ -37,6 +37,7 @@ FLAGS:
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
     --nightly           Append nightly tag to versions. For bump subcommand
+    --no-rebuild        Do not rebuild the server with run-server
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
 
 ARGS:
@@ -163,6 +164,7 @@ fn main() {
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
+        let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
@@ -202,7 +204,9 @@ fn main() {
                 }
                 "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
-                    build::build_server(is_release, gpl, None, false, experiments);
+                    if !no_rebuild {
+                        build::build_server(is_release, gpl, None, false, experiments);
+                    }
                     run_server();
                 }
                 "package-server" => packaging::package_server(root, gpl),

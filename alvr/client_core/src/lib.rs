@@ -138,7 +138,7 @@ pub extern "C" fn alvr_initialize(java_vm: *mut c_void, context: *mut c_void) {
 
         let decoder_lock = DECODER_REF.lock();
 
-        let nal = if let Some(decoder) = &*decoder_lock {
+        let mut nal = if let Some(decoder) = &*decoder_lock {
             env.call_method(
                 decoder,
                 "obtainNAL",
@@ -149,17 +149,17 @@ pub extern "C" fn alvr_initialize(java_vm: *mut c_void, context: *mut c_void) {
             .l()
             .unwrap()
         } else {
+            return;
+        };
+
+        if nal.is_null() {
             let nal_class = env.find_class("com/polygraphene/alvr/NAL").unwrap();
-            env.new_object(
+            nal = env.new_object(
                 nal_class,
                 "(I)Lcom/polygraphene/alvr/NAL;",
                 &[length.into()],
             )
-            .unwrap()
-        };
-
-        if nal.is_null() {
-            return;
+            .unwrap();
         }
 
         env.set_field(nal, "length", "I", length.into()).unwrap();
@@ -236,7 +236,6 @@ pub unsafe extern "C" fn alvr_destroy() {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(
-    decoder_object: *mut c_void,
     recommended_eye_width: u32,
     recommended_eye_height: u32,
     refres_rates: *const f32,
@@ -244,11 +243,6 @@ pub unsafe extern "C" fn alvr_resume(
     swapchain_textures: *mut *const i32,
     swapchain_length: i32,
 ) {
-    let vm = platform::vm();
-    let env = vm.get_env().unwrap();
-
-    *DECODER_REF.lock() = Some(env.new_global_ref(decoder_object.cast()).unwrap());
-
     let config = platform::load_config();
 
     prepareLoadingRoom(
@@ -323,6 +317,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_stream(
+    decoder_object: *mut c_void,
     codec: i32,
     real_time: bool,
     swapchain_textures: *mut *const i32,
@@ -333,15 +328,15 @@ pub unsafe extern "C" fn alvr_start_stream(
     let vm = platform::vm();
     let env = vm.get_env().unwrap();
 
-    if let Some(decoder) = &*DECODER_REF.lock() {
-        env.call_method(
-            decoder.as_obj(),
-            "onConnect",
-            "(IZ)V",
-            &[codec.into(), real_time.into()],
-        )
-        .unwrap();
-    }
+    env.call_method(
+        decoder_object.cast(),
+        "onConnect",
+        "(IZ)V",
+        &[codec.into(), real_time.into()],
+    )
+    .unwrap();
+
+    *DECODER_REF.lock() = Some(env.new_global_ref(decoder_object.cast()).unwrap());
 }
 
 #[no_mangle]

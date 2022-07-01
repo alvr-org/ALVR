@@ -99,8 +99,7 @@ public class OvrActivity extends Activity {
     void maybeResume() {
         if (mResumed && mScreenSurface != null) {
             mRenderingHandler.post(() -> {
-                mDecoderThread = new DecoderThread();
-                onResumeNative(mScreenSurface, mDecoderThread);
+                onResumeNative(mScreenSurface);
 
                 // bootstrap the rendering loop
                 mRenderingHandler.post(mRenderRunnable);
@@ -169,12 +168,12 @@ public class OvrActivity extends Activity {
     native void destroyNative();
 
     // nal_class is needed to access NAL objects fields in native code without access to a Java thread
-    native void onResumeNative(Surface screenSurface, DecoderThread decoder);
+    native void onResumeNative(Surface screenSurface);
 
     native void onPauseNative();
 
-    native void onStreamStartNative(int eyeWidth, int eyeHeight, float fps, int codec,
-                                    boolean realtimeDecoder, int oculusFoveationLevel,
+    native void onStreamStartNative(int eyeWidth, int eyeHeight, float fps, DecoderThread decoder,
+                                    int codec, boolean realtimeDecoder, int oculusFoveationLevel,
                                     boolean dynamicOculusFoveation, boolean extraLatency,
                                     float controllerPredictionMultiplier);
 
@@ -192,9 +191,11 @@ public class OvrActivity extends Activity {
                                   boolean dynamicOculusFoveation, boolean extraLatency,
                                   float controllerPredictionMultiplier) {
         mRefreshRate = fps;
-        mRenderingHandler.post(() -> onStreamStartNative(eyeWidth, eyeHeight, fps, codec,
-                realtimeDecoder, oculusFoveationLevel, dynamicOculusFoveation, extraLatency,
-                controllerPredictionMultiplier));
+        mRenderingHandler.post(() -> {
+            mDecoderThread = new DecoderThread();
+            onStreamStartNative(eyeWidth, eyeHeight, fps, mDecoderThread, codec, realtimeDecoder,
+            oculusFoveationLevel, dynamicOculusFoveation, extraLatency,controllerPredictionMultiplier);
+        });
     }
 
     @SuppressWarnings("unused")

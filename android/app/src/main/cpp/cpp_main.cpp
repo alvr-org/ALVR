@@ -872,7 +872,7 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
-        JNIEnv *_env, jobject _context, jobject surface, jobject decoder) {
+        JNIEnv *_env, jobject _context, jobject surface) {
     auto java = getOvrJava();
 
     g_ctx.window = ANativeWindow_fromSurface(java.Env, surface);
@@ -933,8 +933,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
                                       &refreshRatesBuffer[0],
                                       refreshRatesCount);
 
-    alvr_resume((void *) decoder,
-                width,
+    alvr_resume(width,
                 height,
                 &refreshRatesBuffer[0],
                 refreshRatesCount,
@@ -986,6 +985,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
                                                            jint eyeWidth,
                                                            jint eyeHeight,
                                                            jfloat fps,
+                                                           jobject decoder,
                                                            jint codec,
                                                            jboolean realTimeDecoder,
                                                            jint oculusFoveationLevel,
@@ -1059,7 +1059,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
     getPlayspaceArea(&areaWidth, &areaHeight);
     alvr_send_playspace(areaWidth, areaHeight);
 
-    alvr_start_stream(codec, realTimeDecoder, textureHandles, textureHandlesBuffer[0].size());
+    alvr_start_stream(decoder, codec, realTimeDecoder, textureHandles, textureHandlesBuffer[0].size());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL

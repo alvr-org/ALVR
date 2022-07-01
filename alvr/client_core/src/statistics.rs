@@ -1,6 +1,5 @@
 use alvr_sockets::ClientStatistics;
 use std::{
-    cmp,
     collections::VecDeque,
     time::{Duration, Instant},
 };
@@ -15,6 +14,7 @@ pub struct StatisticsManager {
     history_buffer: VecDeque<HistoryFrame>,
     max_history_size: usize,
     prev_vsync: Instant,
+    last_average_total_pipeline_latency: Duration,
 }
 
 impl StatisticsManager {
@@ -23,6 +23,7 @@ impl StatisticsManager {
             max_history_size: history_size,
             history_buffer: VecDeque::new(),
             prev_vsync: Instant::now(),
+            last_average_total_pipeline_latency: Duration::ZERO,
         }
     }
 
@@ -89,6 +90,28 @@ impl StatisticsManager {
             let vsync = now + vsync_queue;
             frame.intervals.frame_interval = vsync.saturating_duration_since(self.prev_vsync);
             self.prev_vsync = vsync;
+        } else {
+            return;
+        };
+
+        // Note: frames_count will be never 0 since one element has been added just before
+        let mut frames_count = 0;
+        let mut sum = Duration::ZERO;
+        for frame in &self.history_buffer {
+            if frame.intervals.total_pipeline_latency != Duration::ZERO {
+                sum += frame.intervals.total_pipeline_latency;
+                frames_count += 1;
+            }
+        }
+        self.last_average_total_pipeline_latency = sum / frames_count;
+
+        if let Some(frame) = self
+            .history_buffer
+            .iter_mut()
+            .find(|frame| frame.intervals.target_timestamp == target_timestamp)
+        {
+            frame.intervals.average_total_pipeline_latency =
+                self.last_average_total_pipeline_latency;
         }
     }
 
@@ -101,15 +124,6 @@ impl StatisticsManager {
 
     // latency used for prediction
     pub fn average_total_pipeline_latency(&self) -> Duration {
-        let mut frames_count = 0;
-        let mut sum = Duration::ZERO;
-        for frame in &self.history_buffer {
-            if frame.intervals.total_pipeline_latency != Duration::ZERO {
-                sum += frame.intervals.total_pipeline_latency;
-                frames_count += 1;
-            }
-        }
-
-        sum / cmp::max(frames_count, 1)
+        self.last_average_total_pipeline_latency
     }
 }

@@ -44,6 +44,7 @@ pub struct StatisticsManager {
     fec_failures_partial_sum: usize,
     fec_percentage: u32,
     battery_gauges: HashMap<u64, f32>,
+    last_average_total_latency: Duration,
 }
 
 impl StatisticsManager {
@@ -61,6 +62,7 @@ impl StatisticsManager {
             fec_failures_partial_sum: 0,
             fec_percentage: 0,
             battery_gauges: HashMap::new(),
+            last_average_total_latency: Duration::ZERO,
         }
     }
 
@@ -136,6 +138,8 @@ impl StatisticsManager {
         client_stats: ClientStatistics,
         game_frame_interval: Duration,
     ) -> Duration {
+        self.last_average_total_latency = client_stats.average_total_pipeline_latency;
+
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -238,15 +242,6 @@ impl StatisticsManager {
     }
 
     pub fn average_total_latency(&self) -> Duration {
-        let mut frames_count = 0;
-        let mut sum = Duration::ZERO;
-        for frame in &self.history_buffer {
-            if frame.total_pipeline_latency != Duration::ZERO {
-                sum += frame.total_pipeline_latency;
-                frames_count += 1;
-            }
-        }
-
-        sum / cmp::max(frames_count, 1)
+        self.last_average_total_latency
     }
 }

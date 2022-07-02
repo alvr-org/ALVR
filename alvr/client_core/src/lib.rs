@@ -154,12 +154,13 @@ pub extern "C" fn alvr_initialize(java_vm: *mut c_void, context: *mut c_void) {
 
         if nal.is_null() {
             let nal_class = env.find_class("com/polygraphene/alvr/NAL").unwrap();
-            nal = env.new_object(
-                nal_class,
-                "(I)Lcom/polygraphene/alvr/NAL;",
-                &[length.into()],
-            )
-            .unwrap();
+            nal = env
+                .new_object(
+                    nal_class,
+                    "(I)Lcom/polygraphene/alvr/NAL;",
+                    &[length.into()],
+                )
+                .unwrap();
         }
 
         env.set_field(nal, "length", "I", length.into()).unwrap();

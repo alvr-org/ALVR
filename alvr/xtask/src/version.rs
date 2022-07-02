@@ -1,6 +1,6 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::fs;
+use std::{error::Error, fs, path::Path};
 use xshell::Shell;
 
 pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, String, String) {
@@ -24,9 +24,13 @@ pub fn version() -> String {
     version
 }
 
-fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
-    let gradle_file_path = afs::workspace_dir().join("android/app/build.gradle");
-    let file_content = fs::read_to_string(&gradle_file_path).unwrap();
+fn bump_client_gradle_version(
+    android_project_root: &Path,
+    new_version: &str,
+    is_nightly: bool,
+) -> Result<(), Box<dyn Error>> {
+    let gradle_file_path = android_project_root.join("app/build.gradle");
+    let file_content = fs::read_to_string(&gradle_file_path)?;
 
     // Replace versionName
     let (file_start, _, file_end) = split_string(&file_content, "versionName \"", '\"');
@@ -44,7 +48,9 @@ fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
         file_content
     };
 
-    fs::write(gradle_file_path, file_content).unwrap();
+    fs::write(gradle_file_path, file_content)?;
+
+    Ok(())
 }
 
 fn bump_cargo_version(crate_dir_name: &str, new_version: &str) {
@@ -123,9 +129,13 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     for dir_name in crate::crate_dir_names() {
         bump_cargo_version(&dir_name, &version);
     }
-    bump_client_gradle_version(&version, is_nightly);
+    bump_client_gradle_version(&afs::workspace_dir().join("android"), &version, is_nightly)
+        .unwrap();
     bump_rpm_spec_version(&version, is_nightly);
     bump_deb_control_version(&version);
+
+    // This is for when the repository is loaded as a submodule. Allow failure
+    bump_client_gradle_version(afs::workspace_dir().parent().unwrap(), &version, is_nightly).ok();
 
     println!("Git tag:\nv{version}");
 }

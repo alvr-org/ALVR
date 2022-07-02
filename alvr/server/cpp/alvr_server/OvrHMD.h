@@ -38,7 +38,7 @@ class OvrHmd : public TrackedDevice,
     virtual void DebugRequest(const char *request, char *response_buffer, uint32_t size) {}
     virtual vr::DriverPose_t GetPose();
 
-    void OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion);
+    void OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDeviceMotion motion);
 
     void StartStreaming();
 

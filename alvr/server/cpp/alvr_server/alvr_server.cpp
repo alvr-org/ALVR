@@ -219,7 +219,7 @@ void SetTracking(unsigned long long targetTimestampNs,
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_PATH && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(
-                targetTimestampNs, deviceMotions[i]);
+                targetTimestampNs, controllerPredictionS, deviceMotions[i]);
         } else {
             if (deviceMotions[i].deviceID == LEFT_HAND_PATH && g_driver_provider.left_controller) {
                 g_driver_provider.left_controller->onPoseUpdate(

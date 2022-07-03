@@ -226,7 +226,7 @@ pub fn build_client_lib(is_release: bool) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_client(is_release: bool, headset_name: &str) {
+pub fn build_quest_client(is_release: bool) {
     let sh = Shell::new().unwrap();
 
     build_client_lib(is_release);
@@ -234,42 +234,33 @@ pub fn build_client(is_release: bool, headset_name: &str) {
     let is_nightly = version::version().contains("nightly");
     let is_release = if is_nightly { false } else { is_release };
 
-    let headset_type = match headset_name {
-        "oculus_go" => "OculusGo",
-        "oculus_quest" => "OculusQuest",
-        _ => {
-            panic!("Unrecognized platform.");
-        }
-    };
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
     let build_type = if is_release { "release" } else { "debug" };
 
-    let build_task = format!("assemble{headset_type}{package_type}{build_type}");
+    let build_task = format!("assemble{package_type}{build_type}");
 
     let client_dir = afs::workspace_dir().join("android");
 
-    let artifact_name = format!("alvr_client_{headset_name}");
+    const ARTIFACT_NAME: &str = "alvr_client_oculus_quest";
 
     let _push_guard = sh.push_dir(&client_dir);
     if cfg!(windows) {
         cmd!(sh, "cmd /C gradlew.bat {build_task}").run().unwrap();
     } else {
-        cmd!(sh, "./gradlew {build_task}").run().unwrap();
+        cmd!(sh, "bash ./gradlew {build_task}").run().unwrap();
     };
 
-    sh.create_dir(&afs::build_dir().join(&artifact_name))
+    sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
         .unwrap();
     sh.copy_file(
         client_dir
             .join("app/build/outputs/apk")
-            .join(format!("{headset_type}{package_type}"))
+            .join(package_type)
             .join(build_type)
-            .join(format!(
-                "app-{headset_type}-{package_type}-{build_type}.apk",
-            )),
+            .join(format!("app-{package_type}-{build_type}.apk")),
         afs::build_dir()
-            .join(&artifact_name)
-            .join(format!("{artifact_name}.apk")),
+            .join(ARTIFACT_NAME)
+            .join(format!("{ARTIFACT_NAME}.apk")),
     )
     .unwrap();
 }

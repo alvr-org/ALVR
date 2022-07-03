@@ -178,9 +178,7 @@ fn main() {
                         match platform.as_str() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
                             "linux" => dependencies::build_ffmpeg_linux(!no_nvidia),
-                            "android" | "oculus_quest" | "oculus_go" => {
-                                dependencies::build_android_deps(for_ci)
-                            }
+                            "android" => dependencies::build_android_deps(for_ci),
                             _ => panic!("Unrecognized platform."),
                         }
                     } else {
@@ -194,14 +192,7 @@ fn main() {
                     }
                 }
                 "build-server" => build::build_server(is_release, gpl, None, false, experiments),
-                "build-client" => {
-                    if let Some(platform) = platform {
-                        build::build_client(is_release, &platform);
-                    } else {
-                        build::build_client(is_release, "oculus_quest");
-                        build::build_client(is_release, "oculus_go");
-                    }
-                }
+                "build-client" => build::build_quest_client(is_release),
                 "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
                     if !no_rebuild {
@@ -210,14 +201,7 @@ fn main() {
                     run_server();
                 }
                 "package-server" => packaging::package_server(root, gpl),
-                "package-client" => {
-                    if let Some(platform) = platform {
-                        build::build_client(true, &platform);
-                    } else {
-                        build::build_client(true, "oculus_quest");
-                        build::build_client(true, "oculus_go");
-                    }
-                }
+                "package-client" => build::build_quest_client(true),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

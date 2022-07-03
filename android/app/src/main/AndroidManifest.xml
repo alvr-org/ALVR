@@ -4,12 +4,21 @@
     android:installLocation="auto">
 
     <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:required="true"
+        android:version="1" />
+    <uses-feature
+        android:name="oculus.software.handtracking"
+        android:required="false" />
+    <uses-feature
         android:name="android.hardware.microphone"
         android:required="true" />
     <uses-feature
         android:glEsVersion="0x00030001"
         android:required="true" />
 
+    <uses-permission android:name="oculus.permission.handtracking" />
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -21,6 +30,17 @@
         <meta-data
             android:name="com.samsung.android.vr.application.mode"
             android:value="vr_only" />
+        <meta-data
+            android:name="com.oculus.supportedDevices"
+            android:value="quest|quest2" />
+        <meta-data
+            android:name="com.oculus.vr.focusaware"
+            android:value="true" />
+        <meta-data
+            android:name="com.oculus.handtracking.frequency"
+            android:value="HIGH" />
+        <meta-data android:name="com.oculus.handtracking.version"
+            android:value="V2.0"/>
 
         <activity
             android:name="com.polygraphene.alvr.OvrActivity"
@@ -31,6 +51,10 @@
             android:screenOrientation="landscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
             android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>

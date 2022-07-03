@@ -5,7 +5,7 @@ android {
     compileSdkVersion 31
     ndkVersion "22.1.7171670"
     defaultConfig {
-        applicationId "alvr.client"
+        applicationId "alvr.client.quest"
         minSdkVersion 24
         targetSdkVersion 31
         versionCode 78
@@ -45,17 +45,8 @@ android {
         targetCompatibility = '1.8'
     }
 
-    flavorDimensions "headset", "package"
+    flavorDimensions "package"
     productFlavors {
-        OculusQuest {
-            dimension "headset"
-            applicationIdSuffix ".quest"
-        }
-        OculusGo {
-            dimension "headset"
-            applicationIdSuffix ".go"
-            minSdkVersion 21
-        }
         Stable {
             dimension "package"
         }

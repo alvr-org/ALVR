@@ -7,7 +7,6 @@
 #include <GLES3/gl3.h>
 #include <android/log.h>
 #include <android/native_window_jni.h>
-#include <glm/gtc/quaternion.hpp>
 #include <map>
 #include <thread>
 #include <unistd.h>
@@ -571,13 +570,7 @@ void updateHapticsState() {
 AlvrEyeInput trackingToEyeInput(ovrTracking2 *tracking, int eye) {
     auto q = tracking->HeadPose.Pose.Orientation;
 
-    auto v = glm::mat4();
-    for (int x = 0; x < 4; x++) {
-        for (int y = 0; y < 4; y++) {
-            v[x][y] = tracking->Eye[eye].ViewMatrix.M[y][x];
-        }
-    }
-    v = glm::inverse(v);
+    auto v = ovrMatrix4f_Inverse(&tracking->Eye[eye].ViewMatrix);
 
     EyeFov fov;
     if (eye == 0) {
@@ -588,9 +581,9 @@ AlvrEyeInput trackingToEyeInput(ovrTracking2 *tracking, int eye) {
 
     auto input = AlvrEyeInput{};
     input.orientation = AlvrQuat{q.x, q.y, q.z, q.w};
-    input.position[0] = v[3][0];
-    input.position[1] = v[3][1];
-    input.position[2] = v[3][2];
+    input.position[0] = v.M[0][3];
+    input.position[1] = v.M[1][3];
+    input.position[2] = v.M[2][3];
     input.fov = fov;
 
     return input;

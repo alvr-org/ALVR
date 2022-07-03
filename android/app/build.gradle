@@ -8,8 +8,8 @@ android {
         applicationId "alvr.client.quest"
         minSdkVersion 24
         targetSdkVersion 31
-        versionCode 78
-        versionName "18.0.0-dev05"
+        versionCode 79
+        versionName "19.0.0-dev00"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fexceptions -frtti"

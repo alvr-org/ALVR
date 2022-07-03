@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -118,7 +118,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -147,7 +147,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "backtrace",
  "glam",
@@ -168,12 +168,12 @@ dependencies = [
  "msgbox",
  "once_cell",
  "parking_lot 0.12.1",
- "semver 1.0.10",
+ "semver 1.0.12",
 ]
 
 [[package]]
 name = "alvr_events"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "dirs",
  "once_cell",
@@ -191,7 +191,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -207,7 +207,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_data"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -271,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -288,14 +288,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "exec",
 ]
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.60.1",
@@ -306,7 +306,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "18.0.0-dev05"
+version = "19.0.0-dev00"
 dependencies = [
  "alvr_filesystem",
  "pico-args",
@@ -405,7 +405,7 @@ checksum = "2c3d816ce6f0e2909a96830d6911c2aff044370b1ef92d7f267b43bae5addedd"
 dependencies = [
  "atk-sys 0.15.1",
  "bitflags",
- "glib 0.15.11",
+ "glib 0.15.12",
  "libc",
 ]
 
@@ -467,9 +467,9 @@ dependencies = [
 
 [[package]]
 name = "base-x"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc19a4937b4fbd3fe3379793130e42060d10627a360f2127802b10b87e7baf74"
+checksum = "4cbbc9d0964165b47557570cce6c952866c2678457aca742aafc9fb771d30270"
 
 [[package]]
 name = "base64"
@@ -518,7 +518,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "clap 3.2.6",
+ "clap 3.2.8",
  "env_logger",
  "lazy_static",
  "lazycell",
@@ -576,9 +576,9 @@ checksum = "37ccbd214614c6783386c1af30caf03192f17891059cecc394b4fb119e363de3"
 
 [[package]]
 name = "bytemuck"
-version = "1.9.1"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdead85bdec19c194affaeeb670c0e41fe23de31459efd1c174d049269cf02cc"
+checksum = "c53dfa917ec274df8ed3c572698f381a24eef2efba9492d797301b72b6db408a"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -623,13 +623,13 @@ dependencies = [
 
 [[package]]
 name = "cairo-rs"
-version = "0.15.11"
+version = "0.15.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62be3562254e90c1c6050a72aa638f6315593e98c5cdaba9017cedbabf0a5dee"
+checksum = "c76ee391b03d35510d9fa917357c7f1855bd9a6659c95a1b392e33f49b3369bc"
 dependencies = [
  "bitflags",
  "cairo-sys-rs 0.15.1",
- "glib 0.15.11",
+ "glib 0.15.12",
  "libc",
  "thiserror",
 ]
@@ -764,9 +764,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.6"
+version = "3.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f1fe12880bae935d142c8702d500c63a4e8634b6c3c57ad72bf978fc7b6249a"
+checksum = "190814073e85d238f31ff738fcb0bf6910cedeb73376c87cd69291028966fd83"
 dependencies = [
  "atty",
  "bitflags",
@@ -779,9 +779,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87eba3c8c7f42ef17f6c659fc7416d0f4758cd3e58861ee63c5fa4a4dde649e4"
+checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
 ]
@@ -1058,9 +1058,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ff1f980957787286a554052d03c7aee98d99cc32e09f6d45f0a814133c87978"
+checksum = "7d82ee10ce34d7bc12c2122495e7593a9c41347ecdd64185af4ecf72cb1a7f83"
 dependencies = [
  "cfg-if 1.0.0",
  "once_cell",
@@ -1068,9 +1068,9 @@ dependencies = [
 
 [[package]]
 name = "crypto-common"
-version = "0.1.3"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57952ca27b5e3606ff4dd79b0020231aaf9d6aa76dc05fd30137538c50bd3ce8"
+checksum = "5999502d32b9c48d492abe66392408144895020ec4709e549e840799f3bb74c0"
 dependencies = [
  "generic-array",
  "typenum",
@@ -1314,9 +1314,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "encoding_rs"
@@ -1619,11 +1619,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6e05c1f572ab0e1f15be94217f0dc29088c248b14f792a5ff0af0d84bcda9e8"
 dependencies = [
  "bitflags",
- "cairo-rs 0.15.11",
+ "cairo-rs 0.15.12",
  "gdk-pixbuf 0.15.11",
  "gdk-sys 0.15.1",
- "gio 0.15.11",
- "glib 0.15.11",
+ "gio 0.15.12",
+ "glib 0.15.12",
  "libc",
  "pango 0.15.10",
 ]
@@ -1651,8 +1651,8 @@ checksum = "ad38dd9cc8b099cceecdf41375bb6d481b1b5a7cd5cd603e10a69a9383f8619a"
 dependencies = [
  "bitflags",
  "gdk-pixbuf-sys 0.15.10",
- "gio 0.15.11",
- "glib 0.15.11",
+ "gio 0.15.12",
+ "glib 0.15.12",
  "libc",
 ]
 
@@ -1766,16 +1766,16 @@ dependencies = [
 
 [[package]]
 name = "gio"
-version = "0.15.11"
+version = "0.15.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f132be35e05d9662b9fa0fee3f349c6621f7782e0105917f4cc73c1bf47eceb"
+checksum = "68fdbc90312d462781a395f7a16d96a2b379bb6ef8cd6310a2df272771c4283b"
 dependencies = [
  "bitflags",
  "futures-channel",
  "futures-core",
  "futures-io",
  "gio-sys 0.15.10",
- "glib 0.15.11",
+ "glib 0.15.12",
  "libc",
  "once_cell",
  "thiserror",
@@ -1837,9 +1837,9 @@ dependencies = [
 
 [[package]]
 name = "glib"
-version = "0.15.11"
+version = "0.15.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd124026a2fa8c33a3d17a3fe59c103f2d9fa5bd92c19e029e037736729abeab"
+checksum = "edb0306fbad0ab5428b0ca674a23893db909a98582969c9b537be4ced78c505d"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -2049,13 +2049,13 @@ checksum = "92e3004a2d5d6d8b5057d2b57b3712c9529b62e82c77f25c1fecde1fd5c23bd0"
 dependencies = [
  "atk 0.15.1",
  "bitflags",
- "cairo-rs 0.15.11",
+ "cairo-rs 0.15.12",
  "field-offset",
  "futures-channel",
  "gdk 0.15.4",
  "gdk-pixbuf 0.15.11",
- "gio 0.15.11",
- "glib 0.15.11",
+ "gio 0.15.12",
+ "glib 0.15.12",
  "gtk-sys 0.15.3",
  "gtk3-macros",
  "libc",
@@ -2315,9 +2315,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c6392766afd7964e2531940894cffe4bd8d7d17dbc3c1c4857040fd4b33bdb3"
+checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.1",
@@ -2656,7 +2656,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c50ad84d85f9deb59cf8bee0cd5a274504a4247f446ce089fdf8475d77fe605"
 dependencies = [
  "cocoa",
- "glib 0.15.11",
+ "glib 0.15.12",
  "gtk 0.15.5",
  "objc",
  "thiserror",
@@ -3067,7 +3067,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22e4045548659aee5313bde6c582b0d83a627b7904dd20dc2d9ef0895d414e4f"
 dependencies = [
  "bitflags",
- "glib 0.15.11",
+ "glib 0.15.12",
  "libc",
  "once_cell",
  "pango-sys 0.15.10",
@@ -3561,9 +3561,9 @@ dependencies = [
 
 [[package]]
 name = "rhai"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f06953bb8b9e4307cb7ccc0d9d018e2ddd25a30d32831f631ce4fe8f17671f7"
+checksum = "9f8a1b0ce6aba109eb3628f36db9c1818c1d396bd5a56449d5203e96e4b713a7"
 dependencies = [
  "ahash 0.7.6",
  "bitflags",
@@ -3756,9 +3756,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.10"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a41d061efea015927ac527063765e73601444cdc344ba855bc7bd44578b25e1c"
+checksum = "a2333e6df6d6598f2b1974829f853c2b4c5f4a6e503c10af918081aa6f8564e1"
 dependencies = [
  "serde",
 ]
@@ -3780,18 +3780,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.137"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
+checksum = "1578c6245786b9d168c5447eeacfb96856573ca56c9d68fdcf394be134882a47"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.137"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f26faba0c3959972377d3b2d306ee9f71faee9714294e41bb777f83f88578be"
+checksum = "023e9b1467aef8a10fb88f25611870ada9800ef7e22afce356bb0d2387b6f27c"
 dependencies = [
  "proc-macro2 1.0.40",
  "quote 1.0.20",
@@ -3800,9 +3800,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b7ce2b32a1aed03c558dc61a5cd328f15aff2dbc17daad8fb8af04d2100e15c"
+checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
 dependencies = [
  "itoa",
  "ryu",
@@ -3937,9 +3937,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
+checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "smartstring"
@@ -3948,6 +3948,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
 dependencies = [
  "autocfg",
+ "serde",
  "static_assertions",
  "version_check",
 ]
@@ -4400,9 +4401,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709595b8878a4965ce5e87ebf880a7d39c9afc6837721b21a5a816a8117d921"
+checksum = "7b7358be39f2f274f322d2aaed611acc57f382e8eb1e5b48cb9ae30933495ce7"
 dependencies = [
  "once_cell",
 ]
@@ -4542,9 +4543,9 @@ checksum = "5bd2fe26506023ed7b5e1e315add59d6f584c621d037f9368fea9cfb988f368c"
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.19"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
+checksum = "854cbdc4f7bc6ae19c820d44abdc3277ac3e1b2b93db20a636825d9322fb60e6"
 dependencies = [
  "tinyvec",
 ]

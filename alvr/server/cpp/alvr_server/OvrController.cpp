@@ -635,6 +635,10 @@ void OvrController::SetButton(uint64_t id, AlvrButtonValue value) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK);
         } else if (id == Y_TOUCH) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
+        } else if (id == LEFT_SQUEEZE_CLICK || id == RIGHT_SQUEEZE_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK);
+        } else if (id == LEFT_TRIGGER_CLICK || id == RIGHT_TRIGGER_CLICK) {
+            flag = ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK);
         } else if (id == LEFT_TRIGGER_TOUCH || id == RIGHT_TRIGGER_TOUCH) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
         } else if (id == LEFT_THUMBSTICK_CLICK || id == RIGHT_THUMBSTICK_CLICK) {

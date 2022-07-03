@@ -98,6 +98,7 @@ pub enum ClientControlPacket {
     Battery(BatteryPacket),
     VideoErrorReport, // legacy
     Button { path_id: u64, value: ButtonValue },
+    ActiveInteractionProfile { device_id: u64, profile_id: u64 },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

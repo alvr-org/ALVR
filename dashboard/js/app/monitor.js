@@ -893,42 +893,6 @@ define([
         }
 
         function updateStatistics(statistics) {
-            clearTimeout(timeoutHandler);
-            // $("#connectionCard").hide();
-            // $("#statisticsCard").show();
-            if (!clientConnected) {
-                clientConnected = true;
-                // hide connection
-                if ($("#connectionTab").hasClass("active"))
-                    $("#connectionTab").removeClass("active");
-                if ($("#connection").hasClass("active")) $("#connection").removeClass("active");
-                // show statistics
-                if (!$("#statisticsTab").hasClass("active")) $("#statisticsTab").addClass("active");
-                if (!$("#statistics").hasClass("active")) $("#statistics").addClass("active");
-                if (!$("#statistics").hasClass("show")) $("#statistics").addClass("show");
-                // hide logging
-                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
-                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
-                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
-            }
-            timeoutHandler = setTimeout(() => {
-                // $("#connectionCard").show();
-                // $("#statisticsCard").hide();
-                clientConnected = false;
-                // show connection
-                if (!$("#connectionTab").hasClass("active")) $("#connectionTab").addClass("active");
-                if (!$("#connection").hasClass("active")) $("#connection").addClass("active");
-                // hide statistics
-                if ($("#statisticsTab").hasClass("active"))
-                    $("#statisticsTab").removeClass("active");
-                if ($("#statistics").hasClass("active")) $("#statistics").removeClass("active");
-                if ($("#statistics").hasClass("show")) $("#statistics").removeClass("show");
-                // hide logging
-                if ($("#loggingTab").hasClass("active")) $("#loggingTab").removeClass("active");
-                if ($("#logging").hasClass("active")) $("#logging").removeClass("active");
-                if ($("#logging").hasClass("show")) $("#logging").removeClass("show");
-            }, 2000);
-
             for (const stat in statistics) {
                 $("#statistic_" + stat).text(statistics[stat]);
             }

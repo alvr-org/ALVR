@@ -25,9 +25,6 @@ define({
     textPerformance: "请选择适合您的设置的预设。这将为您调整一些设置。",
     compatPerformance: "性能",
     qualityPerformance: "画质",
-    // Import page
-    // "titleImport": "",
-    // "textImport": "",
     // End page
     titleFinished: "完成",
     textFinished: "您始终可以从左侧的”安装“标签重新启动此向导",

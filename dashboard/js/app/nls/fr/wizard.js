@@ -26,9 +26,6 @@ define({
         "Choisisez le réglage qui correspond a votre ordinateur. Cela va ajuster quelques reglages pour vous.",
     compatPerformance: "Compatibilité",
     qualityPerformance: "Qualité visuelle",
-    // Import page
-    // "titleImport": "",
-    // "textImport": "",
     // End page
     titleFinished: "Fini",
     textFinished: `Vous pouvez toujours recommencer cet assistant depuis la catégorie "Installation" a gauche`,

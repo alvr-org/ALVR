@@ -1,10 +1,9 @@
 define([
     "lib/lodash",
-    "app/uploadPreset",
     "text!app/templates/wizard.html",
     "i18n!app/nls/wizard",
     "css!app/templates/wizard.css",
-], function (_, uploadPreset, wizardTemplate, i18n) {
+], function (_, wizardTemplate, i18n) {
     return function (alvrSettings) {
         function getAndCheckGPUSupport() {
             let gpu = "Unknown";
@@ -43,8 +42,6 @@ define([
             $("#setupWizard").remove();
             $("body").append(template);
             $(document).ready(() => {
-                uploadPreset.addUploadPreset("importPlaceholder", alvrSettings.getWebClientId());
-
                 $("#setupWizard").modal({
                     backdrop: "static",
                     keyboard: false,

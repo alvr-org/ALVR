@@ -27,13 +27,6 @@ define({
         "Kies een voorinstelling die bij uw setup past. Hierdoor worden er enkele instellingen voor u aangepast.",
     compatPerformance: "Compatibiliteit",
     qualityPerformance: "Visuele kwaliteit",
-    // Import page
-    titleImport: "Importeer ALVR voorinstelling",
-    textImport: `Je kan instellingen of voorinstellingen bestanden importeren (.json):
-    <ul>
-        <li> Voorinstellingen voor een specifieke headset. Dit is aanbeloven voor de <b>Oculus Go</b> (zoek voor <code>oculus_go_preset.json</code> in de installatie map).
-        <li> Instellingen van een vorige ALVR installatie (<code>session.json</code>).
-    <ul>`,
     // End page
     titleFinished: "Voltooid",
     textFinished:

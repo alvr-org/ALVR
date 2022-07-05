@@ -26,9 +26,6 @@ define({
         "あなたの設定に合ったプリセットを選んでください. これにより, いくつかの設定が調整されます.",
     compatPerformance: "互換性重視",
     qualityPerformance: "見栄え重視",
-    // Import page
-    // "titleImport": "",
-    // "textImport": "",
     // End page
     titleFinished: "完了",
     textFinished: 'このウィザードは, 左側の"インストール"タブからいつでもやり直すことができます.',

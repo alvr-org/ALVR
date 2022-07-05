@@ -170,7 +170,7 @@ pub fn build_server(
             &afs::crate_dir("xtask").join("resources/presets"),
             &build_layout.presets_dir(),
         )
-        .unwrap();
+        .ok();
 
         // copy driver manifest
         sh.copy_file(

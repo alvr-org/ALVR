@@ -26,13 +26,6 @@ define({
         "Bitte wähle eine Voreinstellung aus, die zu deinem Setup passt. Das wird ein paar Einstellungen für dich erledigen.",
     compatPerformance: "Kompatibilität",
     qualityPerformance: "Visuelle Qualität",
-    // Import page
-    titleImport: "ALVR Preset importieren",
-    textImport: `Du kannst Einstellungen oder Presets importieren (.json):
-        <ul>
-            <li> Presets für ein spezielles Headset. Dies ist für die <b>Oculus Go</b> (suche nach <code>oculus_go_preset.json</code> im Installationsordner).
-            <li> Einstellungen einer vorherigen ALVR Installation(<code>session.json</code>).
-        <ul>`,
     // End page
     titleFinished: "Fertiggestellt",
     textFinished:

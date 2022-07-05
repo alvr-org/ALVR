@@ -27,9 +27,6 @@ define({
         "Пожалуйста, выберите предустановку, подходящую вашей конфигурации. Это подстроит некоторые параметры под вас.",
     compatPerformance: "Совместимость",
     qualityPerformance: "Визуальное качество",
-    // Import page
-    // "titleImport": "",
-    // "textImport": "",
     // End page
     titleFinished: "Завершение",
     textFinished:

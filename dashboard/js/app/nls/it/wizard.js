@@ -27,10 +27,6 @@ define({
         "Scegli la modalità più adatta al tuo PC. Verrano impostati alcuni valori in automatico.",
     compatPerformance: "Compatibilità",
     qualityPerformance: "Qualità visuale",
-    // Import page
-    titleImport: "Importa preset",
-    textImport:
-        "Puoi importare file di impostazioni e preset (.json): <ul> <li> Preset per un visore specifico. E' consigliato per chi possiede un <b>Oculus Go</b> (cerca <code>oculus_go_preset.json</code> nella cartella di installazione). <li> Impostazini da un'installazione di ALVR precedente (<code>session.json</code>). <ul>",
     // End page
     titleFinished: "Finito",
     textFinished: `Potrai riavviare questa guida dalla sezione "Installazione" a sinistra`,

@@ -27,10 +27,6 @@ define({
         "Elija el modo que mejor se adapte a su PC. Algunos valores se ajustarán automáticamente.",
     compatPerformance: "Compatibilidad",
     qualityPerformance: "Calidad visual",
-    // Import page
-    titleImport: "Importar preconfiguraciones de ALVR",
-    textImport:
-        "Puedes importar configuracioneso o preconfiguraciones (.json): <ul><li> Preconfiguraciones para un visor específico. Se recomienda que para el visor de <b>Oculus Go</b> (utilizar <code>oculus_go_preset.json</code> de la carpeta de instalación).<li> Ajustes de una instalación previa de ALVR (<code>session.json</code>).<ul>",
     // End page
     titleFinished: "Listo!",
     textFinished: `Puedes reiniciar esta guía desde la sección "Instalación" en el menu la izquierda.`,

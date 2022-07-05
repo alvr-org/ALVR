@@ -129,8 +129,8 @@ uniform lowp int Mode;
 void main()
 {
     if(Mode == 0){                                      // ground
-        vec3 groundCenter = vec3(1.0, 1.0, 1.0);
-        vec3 groundHorizon = vec3(1.0, 1.0, 1.0);
+        lowp vec3 groundCenter = vec3(1.0, 1.0, 1.0);
+        lowp vec3 groundHorizon = vec3(1.0, 1.0, 1.0);
 
         lowp float distance = length(position.xz);
         // Pick a coordinate to visualize in a grid
@@ -145,13 +145,13 @@ void main()
         }
         outColor.a = 1.0;
     } else if(Mode == 1) {                             // text
-        vec3 textColor = vec3(0.0, 0.0, 0.0);
+        lowp vec3 textColor = vec3(0.0, 0.0, 0.0);
 
         outColor.rgb = textColor;
         outColor.a = texture(sTexture, uv).a;
     } else {                                           // sky
-        vec3 skyCenter = vec3(0.8, 0.8, 1.0);
-        vec3 skyHorizon = vec3(1.0, 1.0, 1.0);
+        lowp vec3 skyCenter = vec3(0.8, 0.8, 1.0);
+        lowp vec3 skyHorizon = vec3(1.0, 1.0, 1.0);
 
         lowp float coef = 1.0;
         if(position.y < 50.0){

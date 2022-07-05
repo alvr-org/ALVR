@@ -9,8 +9,7 @@ using namespace std;
 using namespace gl_render_utils;
 
 namespace {
-    const string FFR_COMMON_SHADER_FORMAT = R"glsl(
-        #version 300 es
+    const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
         precision highp float;
 

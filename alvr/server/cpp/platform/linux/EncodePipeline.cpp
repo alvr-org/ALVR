@@ -70,7 +70,7 @@ void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
 
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(std::vector<VkFrame> &input_frames, VkFrameCtx &vk_frame_ctx)
 {
-  if(Settings::Instance().m_forceSW == false) {
+  if(Settings::Instance().m_force_sw_encoding == false) {
     try {
       auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frames, vk_frame_ctx);
       Info("using NvEnc encoder");

@@ -78,8 +78,7 @@ define({
             "Reduce color banding (newer nVidia cards or SW encoding only)",
         "_root_video_use10bitEncoder.description":
             "This increases visual quality by streaming 10 bit per color channel instead of 8",
-        "_root_video_forceSwEncoding.name":
-            "Force Software Encoding",
+        "_root_video_forceSwEncoding.name": "Force Software Encoding",
         "_root_video_forceSwEncoding.description":
             "This forces the Encoder to use CPU(Software Encoding) instead of GPU(Hardware Encoding).",
         "_root_video_swThreadCount.name": "Number of threads (software encoding)",

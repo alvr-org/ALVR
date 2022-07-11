@@ -694,11 +694,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    //TODO: Set back to the same default as windows once we fix the "floaty" tracking issues on linux
-                    #[cfg(target_os = "windows")]
                     prediction_multiplier: 1.0,
-                    #[cfg(target_os = "linux")]
-                    prediction_multiplier: 0.0,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],

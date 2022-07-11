@@ -11,6 +11,7 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+#include <deque>
 
 int gGeneralLogLevel = ANDROID_LOG_INFO;
 #define LOG(...)                                                                                   \
@@ -274,7 +275,7 @@ public:
 
     uint64_t ovrFrameIndex = 0;
 
-    std::map<uint64_t, ovrTracking2> trackingFrameMap;
+    std::deque<std::pair<uint64_t, ovrTracking2>> trackingFrameMap;
     std::mutex trackingFrameMutex;
 
     Swapchain loadingSwapchains[2] = {};
@@ -676,9 +677,10 @@ void trackingThread() {
 
         {
             std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
-            g_ctx.trackingFrameMap.insert({targetTimestampNs, headTracking});
+            // Insert from the front: it will be searched first
+            g_ctx.trackingFrameMap.push_front({targetTimestampNs, headTracking});
             if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
-                g_ctx.trackingFrameMap.erase(g_ctx.trackingFrameMap.cbegin());
+                g_ctx.trackingFrameMap.pop_back();
             }
         }
 
@@ -1087,14 +1089,12 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     {
         std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
 
-        const auto it = g_ctx.trackingFrameMap.find(timestampNs);
-        if (it != g_ctx.trackingFrameMap.end()) {
-            tracking = it->second;
-        } else {
-            if (!g_ctx.trackingFrameMap.empty())
-                tracking = g_ctx.trackingFrameMap.cbegin()->second;
-            else
-                return;
+        // Take the frame with equal timestamp, or the next closest one.
+        for (auto &pair: g_ctx.trackingFrameMap) {
+            if (pair.first <= timestampNs) {
+                tracking = pair.second;
+                break;
+            }
         }
     }
 

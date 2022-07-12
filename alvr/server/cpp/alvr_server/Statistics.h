@@ -39,7 +39,7 @@ public:
 	}
 
 	void NetworkSend(uint64_t latencyUs) {
-		if (latencyUs > 5e5)
+		if (latencyUs > 5e5 || latencyUs == 0) // remove invalid latency
 			latencyUs = 5e5;
 		if (m_sendLatency == 0) {
 			m_sendLatency = latencyUs;
@@ -56,12 +56,12 @@ public:
 			uint64_t latencyUs = m_sendLatency;
 			if (latencyUs != 0) {
 				if (latencyUs > m_adaptiveBitrateTarget + m_adaptiveBitrateThreshold) {
-					if (m_bitrate < 5 + m_adaptiveBitrateDownRate)
+					if (m_bitrate <= 5 + m_adaptiveBitrateDownRate)
 						m_bitrate = 5;
 					else
 						m_bitrate -= m_adaptiveBitrateDownRate;
 				} else if (latencyUs < m_adaptiveBitrateTarget - m_adaptiveBitrateThreshold) {
-					if (m_bitrate > m_adaptiveBitrateMaximum - m_adaptiveBitrateDownRate)
+					if (m_bitrate >= m_adaptiveBitrateMaximum - m_adaptiveBitrateUpRate)
 						m_bitrate = m_adaptiveBitrateMaximum;
 					else if (m_bitsSentInSecondPrev * 1e-6 > m_bitrate * m_adaptiveBitrateLightLoadThreshold * (m_framesPrevious == 0 ? m_refreshRate : m_framesPrevious) / m_refreshRate)
 						m_bitrate += m_adaptiveBitrateUpRate;

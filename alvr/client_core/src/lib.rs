@@ -33,7 +33,7 @@ use std::{
     os::raw::c_char,
     ptr, slice,
     sync::atomic::{AtomicBool, Ordering},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
@@ -115,9 +115,34 @@ pub enum AlvrButtonValue {
     Scalar(f32),
 }
 
+#[repr(C)]
+pub enum AlvrLogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn alvr_path_string_to_hash(path: *const c_char) -> u64 {
     alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
+    let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
+    match level {
+        AlvrLogLevel::Error => error!("ALVR native: {message}"),
+        AlvrLogLevel::Warn => warn!("ALVR native: {message}"),
+        AlvrLogLevel::Info => info!("ALVR native: {message}"),
+        AlvrLogLevel::Debug => debug!("ALVR native: {message}"),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_log_time(tag: *const c_char) {
+    let tag = unsafe { CStr::from_ptr(tag) }.to_str().unwrap();
+    error!("ALVR native: {tag}: {:?}", Instant::now());
 }
 
 // NB: context must be thread safe.
@@ -395,10 +420,17 @@ pub unsafe extern "C" fn alvr_wait_for_frame() -> i64 {
         let vm = platform::vm();
         let env = vm.get_env().unwrap();
 
-        env.call_method(decoder.as_obj(), "clearAvailable", "()J", &[])
+        let timestamp_ns = env
+            .call_method(decoder.as_obj(), "clearAvailable", "()J", &[])
             .unwrap()
             .j()
-            .unwrap()
+            .unwrap();
+
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
+        }
+
+        timestamp_ns
     } else {
         -1
     }
@@ -440,10 +472,7 @@ pub unsafe extern "C" fn alvr_render_lobby(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream(timestamp_ns: i64, swapchain_indices: *const i32) {
-    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-        stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
-    }
+pub unsafe extern "C" fn alvr_render_stream(swapchain_indices: *const i32) {
     renderNative(swapchain_indices);
 }
 

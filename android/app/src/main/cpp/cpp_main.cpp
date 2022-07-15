@@ -13,25 +13,24 @@
 #include <vector>
 #include <deque>
 
-int gGeneralLogLevel = ANDROID_LOG_INFO;
-#define LOG(...)                                                                                   \
-    do {                                                                                           \
-        if (gGeneralLogLevel <= ANDROID_LOG_VERBOSE) {                                             \
-            __android_log_print(ANDROID_LOG_VERBOSE, "ALVR Native", __VA_ARGS__);                  \
-        }                                                                                          \
-    } while (false)
-#define LOGI(...)                                                                                  \
-    do {                                                                                           \
-        if (gGeneralLogLevel <= ANDROID_LOG_INFO) {                                                \
-            __android_log_print(ANDROID_LOG_INFO, "ALVR Native", __VA_ARGS__);                     \
-        }                                                                                          \
-    } while (false)
-#define LOGE(...)                                                                                  \
-    do {                                                                                           \
-        if (gGeneralLogLevel <= ANDROID_LOG_ERROR) {                                               \
-            __android_log_print(ANDROID_LOG_ERROR, "ALVR Native", __VA_ARGS__);                    \
-        }                                                                                          \
-    } while (false)
+void log(AlvrLogLevel level, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    char buf[1024];
+    int count = vsnprintf(buf, sizeof(buf), format, args);
+    if (count > (int) sizeof(buf))
+        count = (int) sizeof(buf);
+    if (count > 0 && buf[count - 1] == '\n')
+        buf[count - 1] = '\0';
+
+    alvr_log(level, buf);
+
+    va_end(args);
+}
+
+#define error(...) log(ALVR_LOG_LEVEL_ERROR, __VA_ARGS__)
+#define info(...) log(ALVR_LOG_LEVEL_INFO, __VA_ARGS__)
 
 inline uint64_t getTimestampUs() {
     timeval tv;
@@ -51,8 +50,8 @@ struct Render_EGL {
 
 Render_EGL egl;
 
-static const char *EglErrorString(const EGLint error) {
-    switch (error) {
+static const char *EglErrorString(const EGLint err) {
+    switch (err) {
         case EGL_SUCCESS:
             return "EGL_SUCCESS";
         case EGL_NOT_INITIALIZED:
@@ -101,7 +100,7 @@ void eglInit() {
     EGLConfig configs[MAX_CONFIGS];
     EGLint numConfigs = 0;
     if (eglGetConfigs(egl.Display, configs, MAX_CONFIGS, &numConfigs) == EGL_FALSE) {
-        LOGE("        eglGetConfigs() failed: %s", EglErrorString(eglGetError()));
+        error("        eglGetConfigs() failed: %s", EglErrorString(eglGetError()));
         return;
     }
     const EGLint configAttribs[] = {EGL_RED_SIZE,
@@ -148,28 +147,25 @@ void eglInit() {
         }
     }
     if (egl.Config == 0) {
-        LOGE("        eglChooseConfig() failed: %s", EglErrorString(eglGetError()));
+        error("        eglChooseConfig() failed: %s", EglErrorString(eglGetError()));
         return;
     }
     EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
-    LOG("        Context = eglCreateContext( Display, Config, EGL_NO_CONTEXT, contextAttribs )");
     egl.Context = eglCreateContext(egl.Display, egl.Config, EGL_NO_CONTEXT, contextAttribs);
     if (egl.Context == EGL_NO_CONTEXT) {
-        LOGE("        eglCreateContext() failed: %s", EglErrorString(eglGetError()));
+        error("        eglCreateContext() failed: %s", EglErrorString(eglGetError()));
         return;
     }
     const EGLint surfaceAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
-    LOG("        TinySurface = eglCreatePbufferSurface( Display, Config, surfaceAttribs )");
     egl.TinySurface = eglCreatePbufferSurface(egl.Display, egl.Config, surfaceAttribs);
     if (egl.TinySurface == EGL_NO_SURFACE) {
-        LOGE("        eglCreatePbufferSurface() failed: %s", EglErrorString(eglGetError()));
+        error("        eglCreatePbufferSurface() failed: %s", EglErrorString(eglGetError()));
         eglDestroyContext(egl.Display, egl.Context);
         egl.Context = EGL_NO_CONTEXT;
         return;
     }
-    LOG("        eglMakeCurrent( Display, TinySurface, TinySurface, Context )");
     if (eglMakeCurrent(egl.Display, egl.TinySurface, egl.TinySurface, egl.Context) == EGL_FALSE) {
-        LOGE("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
+        error("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
         eglDestroySurface(egl.Display, egl.TinySurface);
         eglDestroyContext(egl.Display, egl.Context);
         egl.Context = EGL_NO_CONTEXT;
@@ -179,30 +175,30 @@ void eglInit() {
 
 void eglDestroy() {
     if (egl.Display != 0) {
-        LOGE("        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )");
+        error("        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )");
         if (eglMakeCurrent(egl.Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) ==
             EGL_FALSE) {
-            LOGE("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
+            error("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
         }
     }
     if (egl.Context != EGL_NO_CONTEXT) {
-        LOGE("        eglDestroyContext( Display, Context )");
+        error("        eglDestroyContext( Display, Context )");
         if (eglDestroyContext(egl.Display, egl.Context) == EGL_FALSE) {
-            LOGE("        eglDestroyContext() failed: %s", EglErrorString(eglGetError()));
+            error("        eglDestroyContext() failed: %s", EglErrorString(eglGetError()));
         }
         egl.Context = EGL_NO_CONTEXT;
     }
     if (egl.TinySurface != EGL_NO_SURFACE) {
-        LOGE("        eglDestroySurface( Display, TinySurface )");
+        error("        eglDestroySurface( Display, TinySurface )");
         if (eglDestroySurface(egl.Display, egl.TinySurface) == EGL_FALSE) {
-            LOGE("        eglDestroySurface() failed: %s", EglErrorString(eglGetError()));
+            error("        eglDestroySurface() failed: %s", EglErrorString(eglGetError()));
         }
         egl.TinySurface = EGL_NO_SURFACE;
     }
     if (egl.Display != 0) {
-        LOGE("        eglTerminate( Display )");
+        error("        eglTerminate( Display )");
         if (eglTerminate(egl.Display) == EGL_FALSE) {
-            LOGE("        eglTerminate() failed: %s", EglErrorString(eglGetError()));
+            error("        eglTerminate() failed: %s", EglErrorString(eglGetError()));
         }
         egl.Display = 0;
     }
@@ -248,7 +244,8 @@ uint64_t RIGHT_THUMBSTICK_TOUCH;
 uint64_t RIGHT_THUMBREST_TOUCH;
 
 const int MAXIMUM_TRACKING_FRAMES = 360;
-const float BUTTON_EPS = 0.001; // minimum change for a scalar button to be registered as a new value
+// minimum change for a scalar button to be registered as a new value
+const float BUTTON_EPS = 0.001;
 const float IPD_EPS = 0.001; // minimum change of IPD to be registered as a new value
 
 const GLenum SWAPCHAIN_FORMAT = GL_RGBA8;
@@ -270,7 +267,9 @@ public:
     std::thread eventsThread;
     std::thread trackingThread;
 
-    float refreshRate = 60.f;
+    uint32_t recommendedViewWidth = 1;
+    uint32_t recommendedViewHeight = 1;
+    float refreshRate = 72.f;
     float controllerPredictionMultiplier = 1.0f;
 
     uint64_t ovrFrameIndex = 0;
@@ -474,7 +473,7 @@ void finishHapticsBuffer(ovrDeviceID DeviceID) {
 
     auto result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, DeviceID, &buffer);
     if (result != ovrSuccess) {
-        LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
+        info("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
     }
 }
 
@@ -488,7 +487,7 @@ void updateHapticsState() {
 
         if (curCaps.Type != ovrControllerType_TrackedRemote)
             continue;
-            
+
         ovrInputTrackedRemoteCapabilities remoteCapabilities;
 
         remoteCapabilities.Header = curCaps;
@@ -534,9 +533,6 @@ void updateHapticsState() {
 
             // First, call with buffer.Terminated = false and when haptics is no more needed call
             // with buffer.Terminated = true (to stop haptics?).
-            LOG("Send haptic buffer. HapticSamplesMax=%d HapticSampleDurationMS=%d",
-                remoteCapabilities.HapticSamplesMax,
-                remoteCapabilities.HapticSampleDurationMS);
 
             auto requiredHapticsBuffer = static_cast<uint32_t>(
                     (s.endUs - currentUs) / (remoteCapabilities.HapticSampleDurationMS * 1000));
@@ -559,12 +555,11 @@ void updateHapticsState() {
 
             result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, curCaps.DeviceID, &buffer);
             if (result != ovrSuccess) {
-                LOGI("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
+                info("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
             }
             s.buffered = true;
         } else if (remoteCapabilities.ControllerCapabilities &
                    ovrControllerCaps_HasSimpleHapticVibration) {
-            LOG("Send simple haptic. amplitude=%f", s.amplitude);
             vrapi_SetHapticVibrationSimple(g_ctx.ovrContext, curCaps.DeviceID, s.amplitude);
         }
     }
@@ -819,15 +814,25 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
 
     eglInit();
 
-    alvr_initialize((void *) g_ctx.vm, (void *) g_ctx.context);
-
     memset(g_ctx.hapticsState, 0, sizeof(g_ctx.hapticsState));
     const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
-    int32_t initResult = vrapi_Initialize(&initParms);
-    if (initResult != VRAPI_INITIALIZE_SUCCESS) {
-        // If initialization failed, vrapi_* function calls will not be available.
-        LOGE("vrapi_Initialize failed");
-    }
+    vrapi_Initialize(&initParms);
+
+    g_ctx.recommendedViewWidth =
+            vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
+    g_ctx.recommendedViewHeight = vrapi_GetSystemPropertyInt(&java,
+                                                             VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
+
+    auto refreshRatesCount =
+            vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
+    auto refreshRatesBuffer = vector<float>(refreshRatesCount);
+    vrapi_GetSystemPropertyFloatArray(&java,
+                                      VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
+                                      &refreshRatesBuffer[0],
+                                      refreshRatesCount);
+
+    alvr_initialize((void *) g_ctx.vm, (void *) g_ctx.context, g_ctx.recommendedViewWidth,
+                    g_ctx.recommendedViewHeight, &refreshRatesBuffer[0], refreshRatesCount);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -848,7 +853,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 
     g_ctx.window = ANativeWindow_fromSurface(java.Env, surface);
 
-    LOGI("Entering VR mode.");
+    info("Entering VR mode.");
 
     ovrModeParms parms = vrapi_DefaultModeParms(&java);
 
@@ -862,7 +867,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
     g_ctx.ovrContext = vrapi_EnterVrMode(&parms);
 
     if (g_ctx.ovrContext == nullptr) {
-        LOGE("Invalid ANativeWindow");
+        error("Invalid ANativeWindow");
     }
 
     // set Color Space
@@ -874,13 +879,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 
     vrapi_SetTrackingSpace(g_ctx.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
 
-    auto width = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    auto height = vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
-
     std::vector<int32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.loadingSwapchains[eye].inner = vrapi_CreateTextureSwapChain3(
-                VRAPI_TEXTURE_TYPE_2D, SWAPCHAIN_FORMAT, width, height, 1, 3);
+                VRAPI_TEXTURE_TYPE_2D, SWAPCHAIN_FORMAT, g_ctx.recommendedViewWidth,
+                g_ctx.recommendedViewHeight, 1, 3);
         int size = vrapi_GetTextureSwapChainLength(g_ctx.loadingSwapchains[eye].inner);
 
         for (int index = 0; index < size; index++) {
@@ -896,27 +899,16 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
     g_ctx.running = true;
     g_ctx.eventsThread = std::thread(eventsThread);
 
-    auto refreshRatesCount =
-            vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
-    auto refreshRatesBuffer = vector<float>(refreshRatesCount);
-    vrapi_GetSystemPropertyFloatArray(&java,
-                                      VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
-                                      &refreshRatesBuffer[0],
-                                      refreshRatesCount);
+    alvr_resume(textureHandles, textureHandlesBuffer[0].size());
 
-    alvr_resume(width,
-                height,
-                &refreshRatesBuffer[0],
-                refreshRatesCount,
-                textureHandles,
-                textureHandlesBuffer[0].size());
+    vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, g_ctx.refreshRate);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _context) {
     alvr_pause();
 
-    LOGI("Leaving VR mode.");
+    info("Leaving VR mode.");
 
     if (g_ctx.streaming) {
         g_ctx.streaming = false;
@@ -1003,7 +995,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
 
     ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, fps);
     if (result != ovrSuccess) {
-        LOGE("Failed to set refresh rate requested by the server: %d", result);
+        error("Failed to set refresh rate requested by the server: %d", result);
     }
 
     vrapi_SetPropertyInt(&java, VRAPI_FOVEATION_LEVEL, oculusFoveationLevel);
@@ -1073,6 +1065,8 @@ Java_com_polygraphene_alvr_OvrActivity_renderLoadingNative(JNIEnv *_env, jobject
 
     g_ctx.loadingSwapchains[0].index = (g_ctx.loadingSwapchains[0].index + 1) % 3;
     g_ctx.loadingSwapchains[1].index = (g_ctx.loadingSwapchains[1].index + 1) % 3;
+
+    g_ctx.ovrFrameIndex++;
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -1082,8 +1076,6 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     if (timestampNs == -1) {
         return;
     }
-
-    g_ctx.ovrFrameIndex++;
 
     updateHapticsState();
 
@@ -1101,7 +1093,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     }
 
     int swapchainIndices[2] = {g_ctx.streamSwapchains[0].index, g_ctx.streamSwapchains[1].index};
-    alvr_render_stream(timestampNs, swapchainIndices);
+    alvr_render_stream(swapchainIndices);
 
     double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) -
                          vrapi_GetTimeInSeconds();
@@ -1131,6 +1123,8 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
 
     g_ctx.streamSwapchains[0].index = (g_ctx.streamSwapchains[0].index + 1) % 3;
     g_ctx.streamSwapchains[1].index = (g_ctx.streamSwapchains[1].index + 1) % 3;
+
+    g_ctx.ovrFrameIndex++;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(

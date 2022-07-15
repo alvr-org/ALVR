@@ -16,10 +16,10 @@ use alvr_common::{
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientListAction, ClientStatistics,
-    ControlSocketReceiver, ControlSocketSender, HeadsetInfoPacket, PeerType, ProtoControlSocket,
-    ServerControlPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING,
-    VIDEO,
+    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
+    ClientListAction, ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType,
+    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
+    STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::{BoxFuture, Either};
 use settings_schema::Switch;
@@ -114,21 +114,25 @@ async fn client_handshake(
             })
     };
 
-    let (mut proto_socket, client_ip) = loop {
-        if let Ok(pair) =
+    let (mut proto_socket, headset_info, client_ip, server_ip) = loop {
+        if let Ok((mut proto_socket, client_ip)) =
             ProtoControlSocket::connect_to(PeerType::AnyClient(client_ips.clone())).await
         {
-            break pair;
+            if let ClientConnectionResult::ServerAccepted {
+                headset_info,
+                server_ip,
+            } = proto_socket.recv().await.map_err(err!())?
+            {
+                break (proto_socket, headset_info, client_ip, server_ip);
+            } else {
+                debug!("Found client in standby. Retrying");
+            }
+        } else {
+            debug!("Timeout while searching for client. Retrying");
         }
 
-        debug!("Timeout while searching for client. Retrying");
         time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
     };
-
-    let (headset_info, server_ip) = proto_socket
-        .recv::<(HeadsetInfoPacket, IpAddr)>()
-        .await
-        .map_err(err!())?;
 
     let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
 

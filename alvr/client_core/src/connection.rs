@@ -5,7 +5,7 @@ use crate::{
     platform,
     statistics::StatisticsManager,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_REF, EVENT_BUFFER, IDR_PARSED,
-    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    IS_RESUMED, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -207,6 +207,11 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
             }
         } => pair
     };
+
+    if !IS_RESUMED.value() {
+        info!("Not streaming because not resumed");
+        return Ok(());
+    }
 
     proto_socket
         .send(&(headset_info, server_ip))
@@ -508,6 +513,10 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
                 let mut idr_request_deadline = None;
 
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
+                    if !IS_RESUMED.value() {
+                        break;
+                    }
+
                     // Send again IDR packet every 2s in case it is missed
                     // (due to dropped burst of packets at the start of the stream or otherwise).
                     if !IDR_PARSED.load(Ordering::Relaxed) {
@@ -528,10 +537,17 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
 
                 crate::closeSocket();
 
-                if let Some(decoder) = &*DECODER_REF.lock() {
+                let mut decoder = DECODER_REF.lock();
+
+                if let Some(decoder) = &*decoder {
                     env.call_method(decoder.as_obj(), "onDisconnect", "()V", &[])
                         .unwrap();
+
+                    env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
+                        .unwrap();
                 }
+
+                *decoder = None;
             }
 
             Ok(())

@@ -13,11 +13,11 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
     prelude::*,
-    ALVR_VERSION,
+    RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_events::ButtonValue;
 use alvr_session::{AudioDeviceId, Fov};
@@ -50,13 +50,16 @@ static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatisti
     Lazy::new(|| Mutex::new(None));
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static ON_PAUSE_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static ON_DESTROY_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static DECODER_REF: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
+static PREFERRED_RESOLUTION: Lazy<Mutex<UVec2>> = Lazy::new(|| Mutex::new(UVec2::ZERO));
 
 static EVENT_BUFFER: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+
+static IS_RESUMED: Lazy<RelaxedAtomic> = Lazy::new(|| RelaxedAtomic::new(false));
 
 #[repr(u8)]
 pub enum AlvrEvent {
@@ -132,24 +135,33 @@ pub unsafe extern "C" fn alvr_path_string_to_hash(path: *const c_char) -> u64 {
 pub extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
     let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
     match level {
-        AlvrLogLevel::Error => error!("ALVR native: {message}"),
-        AlvrLogLevel::Warn => warn!("ALVR native: {message}"),
-        AlvrLogLevel::Info => info!("ALVR native: {message}"),
-        AlvrLogLevel::Debug => debug!("ALVR native: {message}"),
+        AlvrLogLevel::Error => error!("[ALVR NATIVE] {message}"),
+        AlvrLogLevel::Warn => warn!("[ALVR NATIVE] {message}"),
+        AlvrLogLevel::Info => info!("[ALVR NATIVE] {message}"),
+        AlvrLogLevel::Debug => debug!("[ALVR NATIVE] {message}"),
     }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_log_time(tag: *const c_char) {
     let tag = unsafe { CStr::from_ptr(tag) }.to_str().unwrap();
-    error!("ALVR native: {tag}: {:?}", Instant::now());
+    error!("[ALVR NATIVE] {tag}: {:?}", Instant::now());
 }
 
 // NB: context must be thread safe.
 #[no_mangle]
-pub extern "C" fn alvr_initialize(java_vm: *mut c_void, context: *mut c_void) {
+pub extern "C" fn alvr_initialize(
+    java_vm: *mut c_void,
+    context: *mut c_void,
+    recommended_eye_width: u32,
+    recommended_eye_height: u32,
+    refresh_rates: *const f32,
+    refresh_rates_count: i32,
+) {
     unsafe { ndk_context::initialize_android_context(java_vm, context) };
     logging_backend::init_logging();
+
+    error!("alvr_initialize");
 
     extern "C" fn video_error_report_send() {
         if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
@@ -253,34 +265,11 @@ pub extern "C" fn alvr_initialize(java_vm: *mut c_void, context: *mut c_void) {
         .set(asset_manager)
         .map_err(|_| ())
         .unwrap();
-}
 
-#[no_mangle]
-pub unsafe extern "C" fn alvr_destroy() {
-    destroyNative();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_resume(
-    recommended_eye_width: u32,
-    recommended_eye_height: u32,
-    refres_rates: *const f32,
-    refresh_rates_count: i32,
-    swapchain_textures: *mut *const i32,
-    swapchain_length: i32,
-) {
-    let config = platform::load_config();
-
-    prepareLoadingRoom(
-        recommended_eye_width as _,
-        recommended_eye_height as _,
-        config.dark_mode,
-        swapchain_textures,
-        swapchain_length,
-    );
+    *PREFERRED_RESOLUTION.lock() = UVec2::new(recommended_eye_width, recommended_eye_height);
 
     let available_refresh_rates =
-        slice::from_raw_parts(refres_rates, refresh_rates_count as _).to_vec();
+        unsafe { slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec() };
     let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
     let microphone_sample_rate =
@@ -305,7 +294,7 @@ pub unsafe extern "C" fn alvr_resume(
 
         tokio::select! {
             _ = connection_loop => (),
-            _ = ON_PAUSE_NOTIFIER.notified() => ()
+            _ = ON_DESTROY_NOTIFIER.notified() => ()
         };
     });
 
@@ -313,21 +302,37 @@ pub unsafe extern "C" fn alvr_resume(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_pause() {
-    ON_PAUSE_NOTIFIER.notify_waiters();
+pub unsafe extern "C" fn alvr_destroy() {
+    ON_DESTROY_NOTIFIER.notify_waiters();
 
     // shutdown and wait for tasks to finish
     drop(RUNTIME.lock().take());
 
+    destroyNative();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
+    let config = platform::load_config();
+
+    let resolution = *PREFERRED_RESOLUTION.lock();
+
+    prepareLoadingRoom(
+        resolution.x as _,
+        resolution.y as _,
+        config.dark_mode,
+        swapchain_textures,
+        swapchain_length,
+    );
+
+    IS_RESUMED.set(true);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_pause() {
+    IS_RESUMED.set(false);
+
     destroyRenderers();
-
-    if let Some(decoder) = DECODER_REF.lock().take() {
-        let vm = platform::vm();
-        let env = vm.attach_current_thread().unwrap();
-
-        env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
-            .unwrap();
-    }
 }
 
 #[no_mangle]

@@ -62,6 +62,15 @@ pub struct HeadsetInfoPacket {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum ClientConnectionResult {
+    ServerAccepted {
+        headset_info: HeadsetInfoPacket,
+        server_ip: IpAddr,
+    },
+    ClientStandby,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ClientConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
     pub dashboard_url: String,

@@ -639,13 +639,13 @@ async fn connection_pipeline() -> StrResult {
                         warn!("New audio device Failed : {e}");
                         time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
                         continue;
-                    },                    
+                    }
                 };
                 let mute_when_streaming = desc.mute_when_streaming;
-    
+
                 #[cfg(windows)]
                 unsafe {
-                    let device_id = match alvr_audio::get_windows_device_id(&device){
+                    let device_id = match alvr_audio::get_windows_device_id(&device) {
                         Ok(data) => data,
                         Err(_) => continue,
                     };
@@ -664,7 +664,7 @@ async fn connection_pipeline() -> StrResult {
                     Ok(_) => warn!("Audio Normal exit."),
                     Err(e) => warn!("Audio Normal exit Failed : {e}"),
                 };
-    
+
                 #[cfg(windows)]
                 {
                     let default_device = match AudioDevice::new(
@@ -673,13 +673,13 @@ async fn connection_pipeline() -> StrResult {
                         AudioDeviceType::Output,
                     ) {
                         Ok(data) => data,
-                        Err(_) => continue,                          
+                        Err(_) => continue,
                     };
                     let default_device_id = match alvr_audio::get_windows_device_id(&default_device)
                     {
                         Ok(data) => data,
-                        Err(_) => continue,                        
-                    };    
+                        Err(_) => continue,
+                    };
                     unsafe {
                         crate::SetOpenvrProperty(
                             *HEAD_ID,

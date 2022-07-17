@@ -259,7 +259,7 @@ pub unsafe extern "C" fn alvr_resume(
     let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
     let microphone_sample_rate =
-        AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Input)
+        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
             .unwrap()
             .input_sample_rate()
             .unwrap();

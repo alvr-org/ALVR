@@ -627,13 +627,13 @@ async fn connection_pipeline() -> StrResult {
     let _stream_guard = StreamCloseGuard;
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO).await?;
-        Box::pin(async move{
-            loop{
+        Box::pin(async move {
+            loop {
                 let device = match AudioDevice::new(
                     Some(settings.audio.linux_backend),
                     &desc.device_id,
                     AudioDeviceType::Output,
-                ){
+                ) {
                     Ok(data) => data,
                     Err(e) => {
                         warn!("New audio device Failed : {e}");
@@ -647,7 +647,7 @@ async fn connection_pipeline() -> StrResult {
                 unsafe {
                     let device_id = match alvr_audio::get_windows_device_id(&device){
                         Ok(data) => data,
-                        Err(e) => continue,
+                        Err(_) => continue,
                     };
                     crate::SetOpenvrProperty(
                         *HEAD_ID,
@@ -658,10 +658,12 @@ async fn connection_pipeline() -> StrResult {
                     )
                 }
                 let new_sender = sender.clone();
-                match alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender).await{
-                        Ok(_) => warn!("Audio Normal exit."),
-                        Err(e) => warn!("Audio Normal exit Failed : {e}"),
-                    };
+                match alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender)
+                    .await
+                {
+                    Ok(_) => warn!("Audio Normal exit."),
+                    Err(e) => warn!("Audio Normal exit Failed : {e}"),
+                };
     
                 #[cfg(windows)]
                 {
@@ -669,11 +671,12 @@ async fn connection_pipeline() -> StrResult {
                         None,
                         &alvr_session::AudioDeviceId::Default,
                         AudioDeviceType::Output,
-                    ){
+                    ) {
                         Ok(data) => data,
                         Err(_) => continue,                          
                     };
-                    let default_device_id = match alvr_audio::get_windows_device_id(&default_device){
+                    let default_device_id = match alvr_audio::get_windows_device_id(&default_device)
+                    {
                         Ok(data) => data,
                         Err(_) => continue,                        
                     };    

@@ -127,6 +127,7 @@ extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void RequestIDR();
 extern "C" void SetTracking(unsigned long long targetTimestampNs,
+                            float headPredictionS,
                             float controllerPredictionS,
                             const AlvrDeviceMotion *deviceMotions,
                             int motionsCount,

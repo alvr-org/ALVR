@@ -8,11 +8,10 @@
 #include <cstring>
 #include <string_view>
 
-OvrController::OvrController(uint64_t devicePath)
-    : TrackedDevice(devicePath) {
+OvrController::OvrController(uint64_t devicePath) : TrackedDevice(devicePath) {
     double rightHandSignFlip = devicePath == LEFT_HAND_PATH ? 1. : -1.;
 
-    memset(&m_pose, 0, sizeof(m_pose));
+    m_pose = vr::DriverPose_t{};
     m_pose.poseIsValid = true;
     m_pose.result = vr::TrackingResult_Running_OK;
     m_pose.deviceIsConnected = true;
@@ -660,19 +659,46 @@ void OvrController::SetButton(uint64_t id, AlvrButtonValue value) {
     }
 }
 
-float ShapeMagnitude(const float v[3], float a) {
-    auto magSqr = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-    return (magSqr > a * a ? 1 - (a * a / magSqr) : 0.);
-}
+inline float Magnitude(const float v[3]) { return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; }
+// Magnitude already squared
+inline float Shape(float x, float a) { return (x > a * a ? 1 - (a * a / x) : 0.); }
 
-bool OvrController::onPoseUpdate(float predictionS, AlvrDeviceMotion motion, const OculusHand &hand) {
+bool OvrController::onPoseUpdate(float predictionS,
+                                 AlvrDeviceMotion motion,
+                                 const OculusHand &hand) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
 
-    m_pose.vecPosition[0] = motion.position[0];
-    m_pose.vecPosition[1] = motion.position[1];
-    m_pose.vecPosition[2] = motion.position[2];
+    auto pose = vr::DriverPose_t{};
+
+    pose.poseIsValid = true;
+    pose.result = vr::TrackingResult_Running_OK;
+    pose.deviceIsConnected = true;
+
+    double rightHandSignFlip = this->device_path == LEFT_HAND_PATH ? 1. : -1.;
+
+    // controller is rotated and translated, prepare pose
+    double rotation[3] = {
+        Settings::Instance().m_leftControllerRotationOffset[1] * DEG_TO_RAD * rightHandSignFlip,
+        Settings::Instance().m_leftControllerRotationOffset[2] * DEG_TO_RAD * rightHandSignFlip,
+        Settings::Instance().m_leftControllerRotationOffset[0] * DEG_TO_RAD,
+    };
+    pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
+
+    vr::HmdVector3d_t offset;
+    offset.v[0] = Settings::Instance().m_leftControllerPositionOffset[0] * rightHandSignFlip;
+    offset.v[1] = Settings::Instance().m_leftControllerPositionOffset[1];
+    offset.v[2] = Settings::Instance().m_leftControllerPositionOffset[2];
+
+    vr::HmdVector3d_t offsetRes =
+        vrmath::quaternionRotateVector(pose.qDriverFromHeadRotation, offset, false);
+
+    pose.vecDriverFromHeadTranslation[0] = offsetRes.v[0];
+    pose.vecDriverFromHeadTranslation[1] = offsetRes.v[1];
+    pose.vecDriverFromHeadTranslation[2] = offsetRes.v[2];
+
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
     if (hand.enabled) {
         vr::HmdQuaternion_t rootBoneRot = HmdQuaternion_Init(
@@ -680,45 +706,66 @@ bool OvrController::onPoseUpdate(float predictionS, AlvrDeviceMotion motion, con
         vr::HmdQuaternion_t boneFixer = this->device_path == LEFT_HAND_PATH
                                             ? HmdQuaternion_Init(-0.5, 0.5, 0.5, -0.5)
                                             : HmdQuaternion_Init(0.5, 0.5, 0.5, 0.5);
-        m_pose.qRotation = QuatMultiply(&rootBoneRot, &boneFixer);
+        pose.qRotation = QuatMultiply(&rootBoneRot, &boneFixer);
+        pose.vecPosition[0] = motion.position[0];
+        pose.vecPosition[1] = motion.position[1];
+        pose.vecPosition[2] = motion.position[2];
 
-        double bonePosFixer[3] = {0.0, 0.05, -0.05};
-        vr::HmdVector3d_t posFix = vrmath::quaternionRotateVector(m_pose.qRotation, bonePosFixer);
-        m_pose.vecPosition[0] += posFix.v[0];
-        m_pose.vecPosition[1] += posFix.v[1];
-        m_pose.vecPosition[2] += posFix.v[2];
+        if (this->device_path == LEFT_HAND_PATH) {
+            double bonePosFixer[3] = {0.0, 0.05, -0.05};
+            vr::HmdVector3d_t posFix =
+                vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
+            pose.vecPosition[0] = motion.position[0] + posFix.v[0];
+            pose.vecPosition[1] = motion.position[1] + posFix.v[1];
+            pose.vecPosition[2] = motion.position[2] + posFix.v[2];
+        } else {
+            double bonePosFixer[3] = {0.0, 0.05, -0.05};
+            vr::HmdVector3d_t posFix =
+                vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
+            pose.vecPosition[0] = motion.position[0] + posFix.v[0];
+            pose.vecPosition[1] = motion.position[1] + posFix.v[1];
+            pose.vecPosition[2] = motion.position[2] + posFix.v[2];
+        }
     } else {
-        m_pose.qRotation = HmdQuaternion_Init(
-            motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
+        pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
+                                              motion.orientation.x,
+                                              motion.orientation.y,
+                                              motion.orientation.z); // controllerRotation;
+
+        pose.vecPosition[0] = motion.position[0];
+        pose.vecPosition[1] = motion.position[1];
+        pose.vecPosition[2] = motion.position[2];
     }
 
     // use cutoffs for velocity to stop jitter when there is not a lot of movement
     float LinearVelocityMultiplier =
-        ShapeMagnitude(motion.linearVelocity, Settings::Instance().m_linearVelocityCutoff);
-    float AngularVelocityMultiplier = ShapeMagnitude(
-        motion.angularVelocity, Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
+        Shape(Magnitude(motion.linearVelocity), Settings::Instance().m_linearVelocityCutoff);
+    float AngularVelocityMultiplier =
+        Shape(Magnitude(motion.angularVelocity),
+              Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
 
-    m_pose.vecVelocity[0] = motion.linearVelocity[0] * LinearVelocityMultiplier;
-    m_pose.vecVelocity[1] = motion.linearVelocity[1] * LinearVelocityMultiplier;
-    m_pose.vecVelocity[2] = motion.linearVelocity[2] * LinearVelocityMultiplier;
-    m_pose.vecAngularVelocity[0] = motion.angularVelocity[0] * AngularVelocityMultiplier;
-    m_pose.vecAngularVelocity[1] = motion.angularVelocity[1] * AngularVelocityMultiplier;
-    m_pose.vecAngularVelocity[2] = motion.angularVelocity[2] * AngularVelocityMultiplier;
+    pose.vecVelocity[0] = motion.linearVelocity[0] * LinearVelocityMultiplier;
+    pose.vecVelocity[1] = motion.linearVelocity[1] * LinearVelocityMultiplier;
+    pose.vecVelocity[2] = motion.linearVelocity[2] * LinearVelocityMultiplier;
+    pose.vecAngularVelocity[0] = motion.angularVelocity[0] * AngularVelocityMultiplier;
+    pose.vecAngularVelocity[1] = motion.angularVelocity[1] * AngularVelocityMultiplier;
+    pose.vecAngularVelocity[2] = motion.angularVelocity[2] * AngularVelocityMultiplier;
 
     // correct direction of velocities
     vr::HmdVector3d_t angVel;
-    angVel.v[0] = m_pose.vecAngularVelocity[0];
-    angVel.v[1] = m_pose.vecAngularVelocity[1];
-    angVel.v[2] = m_pose.vecAngularVelocity[2];
-    vr::HmdVector3d_t angVelRes = vrmath::quaternionRotateVector(m_pose.qRotation, angVel, true);
-    m_pose.vecAngularVelocity[0] = angVelRes.v[0];
-    m_pose.vecAngularVelocity[1] = angVelRes.v[1];
-    m_pose.vecAngularVelocity[2] = angVelRes.v[2];
+    angVel.v[0] = pose.vecAngularVelocity[0];
+    angVel.v[1] = pose.vecAngularVelocity[1];
+    angVel.v[2] = pose.vecAngularVelocity[2];
+    vr::HmdVector3d_t angVelRes = vrmath::quaternionRotateVector(pose.qRotation, angVel, true);
+    pose.vecAngularVelocity[0] = angVelRes.v[0];
+    pose.vecAngularVelocity[1] = angVelRes.v[1];
+    pose.vecAngularVelocity[2] = angVelRes.v[2];
 
-    m_pose.poseTimeOffset = predictionS;
+    pose.poseTimeOffset = predictionS;
+
+    m_pose = pose;
 
     if (hand.enabled) {
-        // m_pose.poseTimeOffset = 0.;
         float rotThumb =
             (hand.boneRotations[alvrHandBone_Thumb0].z + hand.boneRotations[alvrHandBone_Thumb0].y +
              hand.boneRotations[alvrHandBone_Thumb1].z + hand.boneRotations[alvrHandBone_Thumb1].y +
@@ -1026,7 +1073,7 @@ bool OvrController::onPoseUpdate(float predictionS, AlvrDeviceMotion motion, con
             m_handles[ALVR_INPUT_FINGER_PINKY], rotPinky, 0.0);
 
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            this->object_id, m_pose, sizeof(vr::DriverPose_t));
+            this->object_id, pose, sizeof(vr::DriverPose_t));
     } else {
         switch (Settings::Instance().m_controllerMode) {
         case 3:
@@ -1342,7 +1389,7 @@ bool OvrController::onPoseUpdate(float predictionS, AlvrDeviceMotion motion, con
         }
 
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            this->object_id, m_pose, sizeof(vr::DriverPose_t));
+            this->object_id, pose, sizeof(vr::DriverPose_t));
     }
 
     return false;

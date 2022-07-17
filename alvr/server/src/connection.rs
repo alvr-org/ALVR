@@ -846,13 +846,24 @@ async fn connection_pipeline() -> StrResult {
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    let prediction_s = stats.average_total_latency().as_secs_f32()
-                        * controller_prediction_multiplier;
+                    let head_prediction_s;
+                    let controllers_prediction_s;
+                    if cfg!(windows) {
+                        head_prediction_s = 0.0;
+                        controllers_prediction_s = stats.average_total_latency().as_secs_f32()
+                            * controller_prediction_multiplier;
+                    } else {
+                        head_prediction_s = -stats.average_total_latency().as_secs_f32();
+                        controllers_prediction_s = stats.average_total_latency().as_secs_f32()
+                            * controller_prediction_multiplier
+                            - 1.0;
+                    }
 
                     unsafe {
                         crate::SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
-                            prediction_s,
+                            head_prediction_s,
+                            controllers_prediction_s,
                             raw_motions.as_ptr(),
                             raw_motions.len() as _,
                             left_oculus_hand,

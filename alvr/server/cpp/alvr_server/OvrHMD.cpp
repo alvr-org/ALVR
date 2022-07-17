@@ -58,6 +58,11 @@ OvrHmd::OvrHmd()
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
+    m_pose = vr::DriverPose_t{};
+    m_pose.poseIsValid = true;
+    m_pose.result = vr::TrackingResult_Running_OK;
+    m_pose.deviceIsConnected = true;
+
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
@@ -217,15 +222,16 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                           vr::Prop_NamedIconPathDeviceStandby_String,
                                           "{oculus}/icons/quest_headset_standby.png");
 
-    // Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
-    // which never applies reprojection
-    // Also Disable async reprojection on vulkan
-    #ifndef _WIN32
+// Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
+// which never applies reprojection
+// Also Disable async reprojection on vulkan
+#ifndef _WIN32
     vr::VRSettings()->SetBool(
         vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, true);
-    vr::VRSettings()->SetBool(
-        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool, Settings::Instance().m_enableLinuxVulkanAsync);
-    #endif
+    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section,
+                              vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
+                              Settings::Instance().m_enableLinuxVulkanAsync);
+#endif
 
     if (!m_baseComponentsInitialized) {
         m_baseComponentsInitialized = true;
@@ -304,40 +310,31 @@ vr::DriverPose_t OvrHmd::GetPose() { return m_pose; }
 
 void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDeviceMotion motion) {
     if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
-        m_pose.poseIsValid = true;
-        m_pose.result = vr::TrackingResult_Running_OK;
-        m_pose.deviceIsConnected = true;
+        auto pose = vr::DriverPose_t{};
+        pose.poseIsValid = true;
+        pose.result = vr::TrackingResult_Running_OK;
+        pose.deviceIsConnected = true;
 
-        m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-        m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-        m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+        pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+        pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-        m_pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
-                                            motion.orientation.x,
-                                            motion.orientation.y,
-                                            motion.orientation.z);
+        pose.qRotation = HmdQuaternion_Init(
+            motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
 
-        m_pose.vecPosition[0] = motion.position[0];
-        m_pose.vecPosition[1] = motion.position[1];
-        m_pose.vecPosition[2] = motion.position[2];
-
-        Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
-            m_pose.qRotation.x,
-            m_pose.qRotation.y,
-            m_pose.qRotation.z,
-            m_pose.qRotation.w,
-            m_pose.vecPosition[0],
-            m_pose.vecPosition[1],
-            m_pose.vecPosition[2]);
+        pose.vecPosition[0] = motion.position[0];
+        pose.vecPosition[1] = motion.position[1];
+        pose.vecPosition[2] = motion.position[2];
 
         // This value is ignored on Windows (since it uses a direct mode driver), but necessary on
         // Linux for correct controllers tracking.
-        m_pose.poseTimeOffset = predictionS;
+        pose.poseTimeOffset = predictionS;
+
+        m_pose = pose;
 
         m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
 
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            this->object_id, m_pose, sizeof(vr::DriverPose_t));
+            this->object_id, pose, sizeof(vr::DriverPose_t));
 
         if (m_viveTrackerProxy != nullptr)
             m_viveTrackerProxy->update();

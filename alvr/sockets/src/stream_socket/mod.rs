@@ -82,7 +82,7 @@ impl<T> SenderBuffer<T> {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct StreamSender<T> {
     stream_id: u16,
     socket: StreamSendSocket,

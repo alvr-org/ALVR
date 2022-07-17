@@ -539,7 +539,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     });
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let device = AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Output)
+        let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Output)
             .map_err(err!())?;
 
         let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
@@ -555,7 +555,7 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     };
 
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new(None, AudioDeviceId::Default, AudioDeviceType::Input)
+        let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
             .map_err(err!())?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO).await?;

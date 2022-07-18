@@ -661,8 +661,8 @@ async fn connection_pipeline() -> StrResult {
                 match alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender)
                     .await
                 {
-                    Ok(_) => warn!("Audio Normal exit."),
-                    Err(e) => warn!("Audio Normal exit Failed : {e}"),
+                    Ok(_) => (),
+                    Err(e) => warn!("Audio task exit with error : {e}"),
                 };
 
                 #[cfg(windows)]

@@ -853,9 +853,9 @@ async fn connection_pipeline() -> StrResult {
                         controllers_prediction_s = stats.average_total_latency().as_secs_f32()
                             * controller_prediction_multiplier;
                     } else {
-                        head_prediction_s = -stats.average_total_latency().as_secs_f32();
-                        controllers_prediction_s = -stats.average_total_latency().as_secs_f32()
-                            * (1.0 - controller_prediction_multiplier);
+                        let latency_s = stats.average_total_latency().as_secs_f32();
+                        head_prediction_s = -latency_s; // or 0? or +latency_s
+                        controllers_prediction_s = -latency_s; // or 0? or +latency_s
                     }
 
                     unsafe {

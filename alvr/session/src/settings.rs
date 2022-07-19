@@ -328,6 +328,12 @@ pub struct ControllersDesc {
     #[schema(advanced, min = 0.0, max = 1.0, step = 0.01)]
     pub prediction_multiplier: f32,
 
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
+    pub multiplier2: f32,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
+    pub multiplier3: f32,
+
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
@@ -695,6 +701,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     prediction_multiplier: 1.0,
+                    multiplier2: 0.0,
+                    multiplier3: 1.0,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],

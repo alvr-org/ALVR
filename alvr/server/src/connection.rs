@@ -784,6 +784,21 @@ async fn connection_pipeline() -> StrResult {
                 .into_option()
                 .map(|c| c.prediction_multiplier)
                 .unwrap_or_default();
+            let multiplier2 = settings
+                .headset
+                .controllers
+                .clone()
+                .into_option()
+                .map(|c| c.multiplier2)
+                .unwrap_or_default();
+
+            let multiplier3 = settings
+                .headset
+                .controllers
+                .clone()
+                .into_option()
+                .map(|c| c.multiplier3)
+                .unwrap_or_default();
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv().await?.header;
@@ -846,17 +861,10 @@ async fn connection_pipeline() -> StrResult {
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    let head_prediction_s;
-                    let controllers_prediction_s;
-                    if cfg!(windows) {
-                        head_prediction_s = 0.0;
-                        controllers_prediction_s = stats.average_total_latency().as_secs_f32()
-                            * controller_prediction_multiplier;
-                    } else {
-                        let latency_s = stats.average_total_latency().as_secs_f32();
-                        head_prediction_s = -latency_s; // or 0? or +latency_s
-                        controllers_prediction_s = -latency_s; // or 0? or +latency_s
-                    }
+                    let head_prediction_s =
+                        stats.average_total_latency().as_secs_f32() * multiplier2;
+                    let controllers_prediction_s =
+                        stats.average_total_latency().as_secs_f32() * multiplier3;
 
                     unsafe {
                         crate::SetTracking(

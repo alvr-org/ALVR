@@ -2,21 +2,34 @@
 use pkg_config;
 use std::{env, path::PathBuf};
 
-// this code must be executed BEFORE the actual cpp build when using bundled ffmpeg,
-// as it adds definitions and include flags
-// but AFTER the build in other cases because linker flags must appear after.
+// this code must be executed before the actual cpp build when using bundled ffmpeg,
+// as it adds definitions and include flags. It also needs to be executed when using 
+// when using the ffmpeg system package, as it gets the include flags from the
+// package_config (eg pkg-config --variable=includedir libavutil). 
 #[cfg(target_os = "linux")]
 fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
-    let ffmpeg_path = alvr_filesystem::deps_dir().join("linux/ffmpeg");
-    let alvr_build = if cfg!(feature = "gpl") {
-        "alvr_build"
-    } else {
-        ""
-    };
-    let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
+
+    let pkg = pkg_config::Config::new()
+        .cargo_metadata(cfg!(not(feature = "gpl")))
+        .to_owned();
+    let avutil = pkg.probe("libavutil").unwrap();
+    let avfilter = pkg.probe("libavfilter").unwrap();
+    let avcodec = pkg.probe("libavcodec").unwrap();
+    let swscale = pkg.probe("libswscale").unwrap();
+
+    build.include(pkg_config::get_variable("libavutil","includedir").unwrap());
+    build.include(pkg_config::get_variable("libavfilter","includedir").unwrap());
+    build.include(pkg_config::get_variable("libavcodec","includedir").unwrap());
+    build.include(pkg_config::get_variable("libswscale","includedir").unwrap());
+
 
     #[cfg(feature = "gpl")]
     {
+        let ffmpeg_path = alvr_filesystem::deps_dir().join("linux/ffmpeg");
+        let alvr_build = "alvr_build";
+        let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
+    
+
         assert!(ffmpeg_path.exists());
         let ffmpeg_pkg_path = ffmpeg_build_dir.join("lib/pkgconfig/");
         assert!(ffmpeg_pkg_path.exists());
@@ -28,17 +41,7 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
                 format!("{ffmpeg_pkg_path}:{old}")
             }),
         );
-    }
 
-    let pkg = pkg_config::Config::new()
-        .cargo_metadata(cfg!(not(feature = "gpl")))
-        .to_owned();
-    let avutil = pkg.probe("libavutil").unwrap();
-    let avfilter = pkg.probe("libavfilter").unwrap();
-    let avcodec = pkg.probe("libavcodec").unwrap();
-    let swscale = pkg.probe("libswscale").unwrap();
-
-    if cfg!(feature = "gpl") {
         build
             .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
             .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
@@ -135,7 +138,8 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(all(target_os = "linux", feature = "gpl"))]
+
+    #[cfg(target_os = "linux")]
     do_ffmpeg_pkg_config(&mut build);
 
     #[cfg(all(windows, feature = "gpl"))]
@@ -145,9 +149,6 @@ fn main() {
     }
 
     build.compile("bindings");
-
-    #[cfg(all(target_os = "linux", not(feature = "gpl")))]
-    do_ffmpeg_pkg_config(&mut build);
 
     bindgen::builder()
         .clang_arg("-xc++")

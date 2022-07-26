@@ -3,8 +3,8 @@ use crate::{
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
     AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CLIENTS_UPDATED_NOTIFIER,
-    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, LAST_AVERAGE_TOTAL_LATENCY, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -844,9 +844,9 @@ async fn connection_pipeline() -> StrResult {
                     stats.report_tracking_received(tracking.target_timestamp);
 
                     let head_prediction_s =
-                        stats.average_total_latency().as_secs_f32() * hmd_multiplier;
+                        LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32() * hmd_multiplier;
                     let controllers_prediction_s =
-                        stats.average_total_latency().as_secs_f32() * controller_multiplier;
+                        LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32() * controller_multiplier;
 
                     unsafe {
                         crate::SetTracking(
@@ -871,6 +871,7 @@ async fn connection_pipeline() -> StrResult {
         async move {
             loop {
                 let client_stats = receiver.recv().await?.header;
+                *LAST_AVERAGE_TOTAL_LATENCY.lock() = client_stats.average_total_pipeline_latency;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let game_frame_interval =

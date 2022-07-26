@@ -104,11 +104,11 @@ async fn http_api(
         "/api/settings-schema" => reply_json(&alvr_session::settings_schema(
             alvr_session::session_settings_default(),
         ))?,
-        "/api/session/load" => reply_json(SERVER_DATA_MANAGER.lock().session())?,
+        "/api/session/load" => reply_json(SERVER_DATA_MANAGER.read().session())?,
         "/api/session/store-settings" => {
             if let Ok(session_settings) = from_request_body::<json::Value>(request).await {
                 let res = SERVER_DATA_MANAGER
-                    .lock()
+                    .write()
                     .session_mut()
                     .merge_from_json(&json::json!({ "session_settings": session_settings }));
                 if let Err(e) = res {
@@ -126,7 +126,7 @@ async fn http_api(
             if let Ok(data) = from_request_body::<json::Value>(request).await {
                 if let Some(value) = data.get("session") {
                     let res = SERVER_DATA_MANAGER
-                        .lock()
+                        .write()
                         .session_mut()
                         .merge_from_json(value);
                     if let Err(e) = res {
@@ -179,8 +179,8 @@ async fn http_api(
             }
             reply_json(&maybe_err.unwrap_or(0))?
         }
-        "/api/audio-devices" => reply_json(&SERVER_DATA_MANAGER.lock().get_audio_devices_list()?)?,
-        "/api/graphics-devices" => reply_json(&[SERVER_DATA_MANAGER.lock().get_gpu_name()])?,
+        "/api/audio-devices" => reply_json(&SERVER_DATA_MANAGER.read().get_audio_devices_list()?)?,
+        "/api/graphics-devices" => reply_json(&[SERVER_DATA_MANAGER.read().get_gpu_name()])?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?
@@ -189,12 +189,13 @@ async fn http_api(
             if let Ok((display_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
-                SERVER_DATA_MANAGER.lock().update_client_list(
+                let mut data_manager_ref = SERVER_DATA_MANAGER.write();
+                data_manager_ref.update_client_list(
                     hostname.clone(),
                     ClientListAction::AddIfMissing { display_name },
                     Some(&CLIENTS_UPDATED_NOTIFIER),
                 );
-                SERVER_DATA_MANAGER.lock().update_client_list(
+                data_manager_ref.update_client_list(
                     hostname,
                     ClientListAction::TrustAndMaybeAddIp(Some(ip)),
                     Some(&CLIENTS_UPDATED_NOTIFIER),
@@ -207,7 +208,7 @@ async fn http_api(
         }
         "/api/client/trust" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                SERVER_DATA_MANAGER.lock().update_client_list(
+                SERVER_DATA_MANAGER.write().update_client_list(
                     hostname,
                     ClientListAction::TrustAndMaybeAddIp(maybe_ip),
                     Some(&CLIENTS_UPDATED_NOTIFIER),
@@ -219,7 +220,7 @@ async fn http_api(
         }
         "/api/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                SERVER_DATA_MANAGER.lock().update_client_list(
+                SERVER_DATA_MANAGER.write().update_client_list(
                     hostname,
                     ClientListAction::RemoveIpOrEntry(maybe_ip),
                     Some(&CLIENTS_UPDATED_NOTIFIER),
@@ -322,9 +323,8 @@ pub async fn web_server(
     events_sender: broadcast::Sender<String>,
 ) -> StrResult {
     let web_server_port = SERVER_DATA_MANAGER
-        .lock()
-        .session()
-        .to_settings()
+        .read()
+        .settings()
         .connection
         .web_server_port;
 

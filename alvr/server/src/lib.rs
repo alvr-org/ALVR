@@ -21,7 +21,7 @@ use bindings::*;
 use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
-    parking_lot::Mutex,
+    parking_lot::{Mutex, RwLock},
     ALVR_VERSION,
 };
 use alvr_events::EventType;
@@ -50,10 +50,11 @@ use tokio::{
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
     afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap())
 });
-static SERVER_DATA_MANAGER: Lazy<Mutex<ServerDataManager>> =
-    Lazy::new(|| Mutex::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
+static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
+    Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
+
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
@@ -170,17 +171,17 @@ fn init() {
     if let Some(runtime) = RUNTIME.lock().as_mut() {
         // Acquire and drop the data manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
-        SERVER_DATA_MANAGER.lock().session_mut();
+        SERVER_DATA_MANAGER.write().session_mut();
 
         runtime.spawn(async move {
             let connections = SERVER_DATA_MANAGER
-                .lock()
+                .read()
                 .session()
                 .client_connections
                 .clone();
             for (hostname, connection) in connections {
                 if !connection.trusted {
-                    SERVER_DATA_MANAGER.lock().update_client_list(
+                    SERVER_DATA_MANAGER.write().update_client_list(
                         hostname,
                         ClientListAction::RemoveIpOrEntry(None),
                         Some(&CLIENTS_UPDATED_NOTIFIER),
@@ -203,7 +204,7 @@ fn init() {
     }
 
     {
-        let mut data_manager = SERVER_DATA_MANAGER.lock();
+        let mut data_manager = SERVER_DATA_MANAGER.write();
         if matches!(data_manager.get_gpu_vendor(), GpuVendor::Nvidia) {
             data_manager
                 .session_mut()

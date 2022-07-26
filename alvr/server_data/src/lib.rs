@@ -1,11 +1,11 @@
 use alvr_common::prelude::*;
 use alvr_events::EventType;
-use alvr_session::{ClientConnectionDesc, SessionDesc};
+use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
 use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
-    collections::{hash_map::Entry, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     fs,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
@@ -21,6 +21,7 @@ fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
 pub struct SessionLock<'a> {
     session_desc: &'a mut SessionDesc,
     session_path: &'a Path,
+    settings: &'a mut Settings,
 }
 
 impl Deref for SessionLock<'_> {
@@ -39,6 +40,7 @@ impl DerefMut for SessionLock<'_> {
 impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, self.session_path).unwrap();
+        *self.settings = self.session_desc.to_settings();
         alvr_events::send_event(EventType::SessionUpdated); // deprecated
         alvr_events::send_event(EventType::Session(Box::new(self.session_desc.clone())));
     }
@@ -51,6 +53,7 @@ impl Drop for SessionLock<'_> {
 // write need to happen on separate threads, a critical region should be implemented.
 pub struct ServerDataManager {
     session: SessionDesc,
+    settings: Settings,
     session_path: PathBuf,
     script_engine: rhai::Engine,
     gpu_adapters: Vec<Adapter>,
@@ -103,13 +106,15 @@ impl ServerDataManager {
         let script_engine = rhai::Engine::new();
 
         Self {
-            session: session_desc,
+            session: session_desc.clone(),
+            settings: session_desc.to_settings(),
             session_path: session_path.to_owned(),
             script_engine,
             gpu_adapters,
         }
     }
 
+    // prefer settings()
     pub fn session(&self) -> &SessionDesc {
         &self.session
     }
@@ -118,7 +123,16 @@ impl ServerDataManager {
         SessionLock {
             session_desc: &mut self.session,
             session_path: &self.session_path,
+            settings: &mut self.settings,
         }
+    }
+
+    pub fn settings(&self) -> &Settings {
+        &self.settings
+    }
+
+    pub fn client_list(&self) -> &HashMap<String, ClientConnectionDesc> {
+        &self.session.client_connections
     }
 
     // Note: "value" can be any session subtree, in json format.
@@ -137,6 +151,7 @@ impl ServerDataManager {
 
         // session_json has been updated
         self.session = serde_json::from_value(session_json).map_err(err!())?;
+        self.settings = self.session.to_settings();
 
         save_session(&self.session, &self.session_path).unwrap();
         alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));

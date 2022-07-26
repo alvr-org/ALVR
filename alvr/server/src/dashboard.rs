@@ -59,9 +59,8 @@ pub fn ui_thread() -> StrResult {
                 "--disk-cache-size=1",
                 &format!("--window-position={pos_left},{pos_top}"),
                 if SERVER_DATA_MANAGER
-                    .lock()
-                    .session()
-                    .session_settings
+                    .read()
+                    .settings()
                     .extra
                     .patches
                     .remove_sync_popup

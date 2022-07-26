@@ -62,7 +62,8 @@ struct ClientId {
 async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
     let (ip, handshake_packet) =
         connection_utils::search_client_loop(|handshake_packet| async move {
-            SERVER_DATA_MANAGER.lock().update_client_list(
+            let mut data_manager_ref = SERVER_DATA_MANAGER.write();
+            data_manager_ref.update_client_list(
                 handshake_packet.hostname.clone(),
                 ClientListAction::AddIfMissing {
                     display_name: handshake_packet.device_name,
@@ -70,10 +71,8 @@ async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
                 Some(&CLIENTS_UPDATED_NOTIFIER),
             );
 
-            if let Some(connection_desc) = SERVER_DATA_MANAGER
-                .lock()
-                .session()
-                .client_connections
+            if let Some(connection_desc) = data_manager_ref
+                .client_list()
                 .get(&handshake_packet.hostname)
             {
                 connection_desc.trusted || auto_trust_clients
@@ -103,15 +102,13 @@ async fn client_handshake(
     let client_ips = if let Some(id) = trusted_discovered_client_id {
         vec![id.ip]
     } else {
-        SERVER_DATA_MANAGER
-            .lock()
-            .session()
-            .client_connections
-            .iter()
-            .fold(Vec::new(), |mut clients_info, (_, client)| {
+        SERVER_DATA_MANAGER.read().client_list().iter().fold(
+            Vec::new(),
+            |mut clients_info, (_, client)| {
                 clients_info.extend(client.manual_ips.clone());
                 clients_info
-            })
+            },
+        )
     };
 
     let (mut proto_socket, headset_info, client_ip, server_ip) = loop {
@@ -134,7 +131,7 @@ async fn client_handshake(
         time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
     };
 
-    let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
+    let settings = SERVER_DATA_MANAGER.read().settings().clone();
 
     let (eye_width, eye_height) = match settings.video.render_resolution {
         FrameSize::Scale(scale) => (
@@ -210,7 +207,7 @@ async fn client_handshake(
 
     let client_config = ClientConfigPacket {
         session_desc: {
-            let mut session = SERVER_DATA_MANAGER.lock().session().clone();
+            let mut session = SERVER_DATA_MANAGER.read().session().clone();
             if cfg!(target_os = "linux") {
                 session.session_settings.video.foveated_rendering.enabled = false;
             }
@@ -229,11 +226,126 @@ async fn client_handshake(
 
     let (mut control_sender, control_receiver) = proto_socket.split();
 
-    let session_settings = SERVER_DATA_MANAGER
-        .lock()
-        .session()
-        .session_settings
-        .clone();
+    let mut bitrate_maximum = 0;
+    let mut latency_target = 0;
+    let mut latency_use_frametime = false;
+    let mut latency_target_maximum = 0;
+    let mut latency_target_offset = 0;
+    let mut latency_threshold = 0;
+    let mut bitrate_up_rate = 0;
+    let mut bitrate_down_rate = 0;
+    let mut bitrate_light_load_threshold = 0.0;
+    let enable_adaptive_bitrate = if let Switch::Enabled(config) = settings.video.adaptive_bitrate {
+        bitrate_maximum = config.bitrate_maximum;
+        latency_target = config.latency_target;
+
+        latency_use_frametime = if let Switch::Enabled(config) = config.latency_use_frametime {
+            latency_target_maximum = config.latency_target_maximum;
+            latency_target_offset = config.latency_target_offset;
+
+            true
+        } else {
+            false
+        };
+
+        latency_threshold = config.latency_threshold;
+        bitrate_up_rate = config.bitrate_up_rate;
+        bitrate_down_rate = config.bitrate_down_rate;
+        bitrate_light_load_threshold = config.bitrate_light_load_threshold;
+
+        true
+    } else {
+        false
+    };
+
+    let mut steamvr_hmd_prediction_multiplier = 0.0;
+    let mut steamvr_ctrl_prediction_multiplier = 0.0;
+    let mut controllers_mode_idx = 0;
+    let mut controllers_tracking_system_name = "".into();
+    let mut controllers_manufacturer_name = "".into();
+    let mut controllers_model_number = "".into();
+    let mut render_model_name_left_controller = "".into();
+    let mut render_model_name_right_controller = "".into();
+    let mut controllers_serial_number = "".into();
+    let mut controllers_type_left = "".into();
+    let mut controllers_type_right = "".into();
+    let mut controllers_registered_device_type = "".into();
+    let mut controllers_input_profile_path = "".into();
+    let mut linear_velocity_cutoff = 0.0;
+    let mut angular_velocity_cutoff = 0.0;
+    let mut position_offset_left = [0.0; 3];
+    let mut rotation_offset_left = [0.0; 3];
+    let mut haptics_intensity = 0.0;
+    let mut haptics_amplitude_curve = 0.0;
+    let mut haptics_min_duration = 0.0;
+    let mut haptics_low_duration_amplitude_multiplier = 0.0;
+    let mut haptics_low_duration_range = 0.0;
+    let mut use_headset_tracking_system = false;
+    let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
+        steamvr_hmd_prediction_multiplier = config.steamvr_hmd_prediction_multiplier;
+        steamvr_ctrl_prediction_multiplier = config.steamvr_ctrl_prediction_multiplier;
+        controllers_mode_idx = config.mode_idx;
+        controllers_tracking_system_name = config.tracking_system_name.clone();
+        controllers_manufacturer_name = config.manufacturer_name.clone();
+        controllers_model_number = config.model_number.clone();
+        render_model_name_left_controller = config.render_model_name_left.clone();
+        render_model_name_right_controller = config.render_model_name_right.clone();
+        controllers_serial_number = config.serial_number.clone();
+        controllers_type_left = config.ctrl_type_left.clone();
+        controllers_type_right = config.ctrl_type_right.clone();
+        controllers_registered_device_type = config.registered_device_type.clone();
+        controllers_input_profile_path = config.input_profile_path.clone();
+        linear_velocity_cutoff = config.linear_velocity_cutoff;
+        angular_velocity_cutoff = config.angular_velocity_cutoff;
+        position_offset_left = config.position_offset_left;
+        rotation_offset_left = config.rotation_offset_left;
+        haptics_intensity = config.haptics_intensity;
+        haptics_amplitude_curve = config.haptics_amplitude_curve;
+        haptics_min_duration = config.haptics_min_duration;
+        haptics_low_duration_amplitude_multiplier =
+            config.haptics_low_duration_amplitude_multiplier;
+        haptics_low_duration_range = config.haptics_low_duration_range;
+        use_headset_tracking_system = config.use_headset_tracking_system;
+        true
+    } else {
+        false
+    };
+
+    let mut foveation_center_size_x = 0.0;
+    let mut foveation_center_size_y = 0.0;
+    let mut foveation_center_shift_x = 0.0;
+    let mut foveation_center_shift_y = 0.0;
+    let mut foveation_edge_ratio_x = 0.0;
+    let mut foveation_edge_ratio_y = 0.0;
+    let enable_foveated_rendering =
+        if let Switch::Enabled(config) = settings.video.foveated_rendering {
+            foveation_center_size_x = config.center_size_x;
+            foveation_center_size_y = config.center_size_y;
+            foveation_center_shift_x = config.center_shift_x;
+            foveation_center_shift_y = config.center_shift_y;
+            foveation_edge_ratio_x = config.edge_ratio_x;
+            foveation_edge_ratio_y = config.edge_ratio_y;
+
+            true
+        } else {
+            false
+        };
+
+    let mut brightness = 0.0;
+    let mut contrast = 0.0;
+    let mut saturation = 0.0;
+    let mut gamma = 0.0;
+    let mut sharpening = 0.0;
+    let enable_color_correction = if let Switch::Enabled(config) = settings.video.color_correction {
+        brightness = config.brightness;
+        contrast = config.contrast;
+        saturation = config.saturation;
+        gamma = config.gamma;
+        sharpening = config.sharpening;
+        true
+    } else {
+        false
+    };
 
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
@@ -260,223 +372,60 @@ async fn client_handshake(
         force_sw_encoding: settings.video.force_sw_encoding,
         sw_thread_count: settings.video.sw_thread_count,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
-        enable_adaptive_bitrate: session_settings.video.adaptive_bitrate.enabled,
-        bitrate_maximum: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .bitrate_maximum,
-        latency_target: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .latency_target,
-        latency_use_frametime: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .latency_use_frametime
-            .enabled,
-        latency_target_maximum: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .latency_use_frametime
-            .content
-            .latency_target_maximum,
-        latency_target_offset: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .latency_use_frametime
-            .content
-            .latency_target_offset,
-        latency_threshold: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .latency_threshold,
-        bitrate_up_rate: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .bitrate_up_rate,
-        bitrate_down_rate: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .bitrate_down_rate,
-        bitrate_light_load_threshold: session_settings
-            .video
-            .adaptive_bitrate
-            .content
-            .bitrate_light_load_threshold,
-        controllers_tracking_system_name: session_settings
-            .headset
-            .controllers
-            .content
-            .tracking_system_name
-            .clone(),
-        controllers_manufacturer_name: session_settings
-            .headset
-            .controllers
-            .content
-            .manufacturer_name
-            .clone(),
-        controllers_model_number: session_settings
-            .headset
-            .controllers
-            .content
-            .model_number
-            .clone(),
-        render_model_name_left_controller: session_settings
-            .headset
-            .controllers
-            .content
-            .render_model_name_left
-            .clone(),
-        render_model_name_right_controller: session_settings
-            .headset
-            .controllers
-            .content
-            .render_model_name_right
-            .clone(),
-        controllers_serial_number: session_settings
-            .headset
-            .controllers
-            .content
-            .serial_number
-            .clone(),
-        controllers_type_left: session_settings
-            .headset
-            .controllers
-            .content
-            .ctrl_type_left
-            .clone(),
-        controllers_type_right: session_settings
-            .headset
-            .controllers
-            .content
-            .ctrl_type_right
-            .clone(),
-        controllers_registered_device_type: session_settings
-            .headset
-            .controllers
-            .content
-            .registered_device_type
-            .clone(),
-        controllers_input_profile_path: session_settings
-            .headset
-            .controllers
-            .content
-            .input_profile_path
-            .clone(),
-        controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
-        controllers_enabled: session_settings.headset.controllers.enabled,
+        enable_adaptive_bitrate,
+        bitrate_maximum,
+        latency_target,
+        latency_use_frametime,
+        latency_target_maximum,
+        latency_target_offset,
+        latency_threshold,
+        bitrate_up_rate,
+        bitrate_down_rate,
+        bitrate_light_load_threshold,
         position_offset: settings.headset.position_offset,
-        steamvr_hmd_prediction_multiplier: session_settings
-            .headset
-            .controllers
-            .content
-            .steamvr_hmd_prediction_multiplier,
-        steamvr_ctrl_prediction_multiplier: session_settings
-            .headset
-            .controllers
-            .content
-            .steamvr_ctrl_prediction_multiplier,
-        linear_velocity_cutoff: session_settings
-            .headset
-            .controllers
-            .content
-            .linear_velocity_cutoff,
-        angular_velocity_cutoff: session_settings
-            .headset
-            .controllers
-            .content
-            .angular_velocity_cutoff,
-        position_offset_left: session_settings
-            .headset
-            .controllers
-            .content
-            .position_offset_left,
-        rotation_offset_left: session_settings
-            .headset
-            .controllers
-            .content
-            .rotation_offset_left,
-        haptics_intensity: session_settings
-            .headset
-            .controllers
-            .content
-            .haptics_intensity,
-        haptics_amplitude_curve: session_settings
-            .headset
-            .controllers
-            .content
-            .haptics_amplitude_curve,
-        haptics_min_duration: session_settings
-            .headset
-            .controllers
-            .content
-            .haptics_min_duration,
-        haptics_low_duration_amplitude_multiplier: session_settings
-            .headset
-            .controllers
-            .content
-            .haptics_low_duration_amplitude_multiplier,
-        haptics_low_duration_range: session_settings
-            .headset
-            .controllers
-            .content
-            .haptics_low_duration_range,
-        use_headset_tracking_system: session_settings
-            .headset
-            .controllers
-            .content
-            .use_headset_tracking_system,
-        enable_foveated_rendering: session_settings.video.foveated_rendering.enabled,
-        foveation_center_size_x: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .center_size_x,
-        foveation_center_size_y: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .center_size_y,
-        foveation_center_shift_x: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .center_shift_x,
-        foveation_center_shift_y: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .center_shift_y,
-        foveation_edge_ratio_x: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .edge_ratio_x,
-        foveation_edge_ratio_y: session_settings
-            .video
-            .foveated_rendering
-            .content
-            .edge_ratio_y,
-        enable_color_correction: session_settings.video.color_correction.enabled,
-        brightness: session_settings.video.color_correction.content.brightness,
-        contrast: session_settings.video.color_correction.content.contrast,
-        saturation: session_settings.video.color_correction.content.saturation,
-        gamma: session_settings.video.color_correction.content.gamma,
-        sharpening: session_settings.video.color_correction.content.sharpening,
-        enable_fec: session_settings.connection.enable_fec,
-        linux_async_reprojection: session_settings.extra.patches.linux_async_reprojection,
+        controllers_enabled,
+        steamvr_hmd_prediction_multiplier,
+        steamvr_ctrl_prediction_multiplier,
+        controllers_mode_idx,
+        controllers_tracking_system_name,
+        controllers_manufacturer_name,
+        controllers_model_number,
+        render_model_name_left_controller,
+        render_model_name_right_controller,
+        controllers_serial_number,
+        controllers_type_left,
+        controllers_type_right,
+        controllers_registered_device_type,
+        controllers_input_profile_path,
+        linear_velocity_cutoff,
+        angular_velocity_cutoff,
+        position_offset_left,
+        rotation_offset_left,
+        haptics_intensity,
+        haptics_amplitude_curve,
+        haptics_min_duration,
+        haptics_low_duration_amplitude_multiplier,
+        haptics_low_duration_range,
+        use_headset_tracking_system,
+        enable_foveated_rendering,
+        foveation_center_size_x,
+        foveation_center_size_y,
+        foveation_center_shift_x,
+        foveation_center_shift_y,
+        foveation_edge_ratio_x,
+        foveation_edge_ratio_y,
+        enable_color_correction,
+        brightness,
+        contrast,
+        saturation,
+        gamma,
+        sharpening,
+        enable_fec: settings.connection.enable_fec,
+        linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
     };
 
-    if SERVER_DATA_MANAGER.lock().session().openvr_config != new_openvr_config {
-        SERVER_DATA_MANAGER.lock().session_mut().openvr_config = new_openvr_config;
+    if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {
+        SERVER_DATA_MANAGER.write().session_mut().openvr_config = new_openvr_config;
 
         control_sender
             .send(&ServerControlPacket::Restarting)
@@ -505,9 +454,12 @@ impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
         unsafe { crate::DeinitializeStreaming() };
 
-        let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
-
-        let on_disconnect_script = settings.connection.on_disconnect_script;
+        let on_disconnect_script = SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .connection
+            .on_disconnect_script
+            .clone();
         if !on_disconnect_script.is_empty() {
             info!("Running on disconnect script (disconnect): {on_disconnect_script}");
             if let Err(e) = Command::new(&on_disconnect_script)
@@ -524,11 +476,11 @@ async fn connection_pipeline() -> StrResult {
     let mut trusted_discovered_client_id = None;
     let connection_info = loop {
         let client_discovery_config = SERVER_DATA_MANAGER
-            .lock()
-            .session()
-            .to_settings()
+            .read()
+            .settings()
             .connection
-            .client_discovery;
+            .client_discovery
+            .clone();
 
         let try_connection_future: BoxFuture<Either<StrResult<ClientId>, _>> =
             if let (Switch::Enabled(config), None) =
@@ -603,7 +555,7 @@ async fn connection_pipeline() -> StrResult {
         }
     }
 
-    let settings = SERVER_DATA_MANAGER.lock().session().to_settings();
+    let settings = SERVER_DATA_MANAGER.read().settings().clone();
 
     let stream_socket = tokio::select! {
         res = StreamSocketBuilder::connect_to_client(

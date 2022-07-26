@@ -44,13 +44,7 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
         log_dispatch = log_dispatch.level(LevelFilter::Info);
     }
 
-    if SERVER_DATA_MANAGER
-        .lock()
-        .session()
-        .to_settings()
-        .extra
-        .log_to_disk
-    {
+    if SERVER_DATA_MANAGER.read().settings().extra.log_to_disk {
         log_dispatch = log_dispatch.chain(
             fs::OpenOptions::new()
                 .write(true)

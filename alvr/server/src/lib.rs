@@ -55,6 +55,7 @@ static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
 
+static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =

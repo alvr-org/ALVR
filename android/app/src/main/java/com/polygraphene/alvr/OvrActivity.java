@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -66,6 +69,30 @@ public class OvrActivity extends Activity {
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
 
+    private DeviceListener mDeviceListener = new DeviceListener();
+    class DeviceListener extends AudioDeviceCallback {
+        private boolean mDevicesInitialized = false;
+        private void logDevices(String label, boolean added, AudioDeviceInfo[] devices) {
+            for(AudioDeviceInfo device : devices) {
+                onAudioDeviceChangedNative(device.getId(), added, device.isSource(), device.isSink());
+            }
+        }
+
+        @Override
+        public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices ) {
+            // Note: This will get called when the callback is installed.
+            if (mDevicesInitialized) {
+                logDevices("onAudioDevicesAdded", true, addedDevices);
+            }
+            mDevicesInitialized = true;
+        }
+
+        @Override
+        public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+            logDevices("onAudioDevicesRemoved", false, removedDevices);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,6 +113,9 @@ public class OvrActivity extends Activity {
         holder.addCallback(new RenderingCallbacks());
 
         this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+
+        AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        am.registerAudioDeviceCallback(mDeviceListener, null);
     }
 
     @Override
@@ -184,6 +214,8 @@ public class OvrActivity extends Activity {
     native void renderLoadingNative();
 
     native void onBatteryChangedNative(int battery, boolean plugged);
+
+    native void onAudioDeviceChangedNative(int deviceID, boolean added, boolean isInput, boolean isOutput);
 
     @SuppressWarnings("unused")
     public void onServerConnected(int eyeWidth, int eyeHeight, float fps, int codec,

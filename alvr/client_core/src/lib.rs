@@ -32,7 +32,7 @@ use std::{
     ffi::{c_void, CStr},
     os::raw::c_char,
     ptr, slice,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicI32, Ordering},
     time::{Duration, Instant},
 };
 use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
@@ -56,6 +56,11 @@ static DECODER_REF: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(Non
 static IDR_PARSED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
 static STREAM_TEAXTURE_HANDLE: Lazy<Mutex<i32>> = Lazy::new(|| Mutex::new(0));
 static PREFERRED_RESOLUTION: Lazy<Mutex<UVec2>> = Lazy::new(|| Mutex::new(UVec2::ZERO));
+
+static AUDIO_INPUT_UPDATED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+static AUDIO_INPUT_DEVICE: Lazy<AtomicI32> = Lazy::new(|| AtomicI32::new(-1));
+static AUDIO_OUTPUT_UPDATED: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+static AUDIO_OUTPUT_DEVICE: Lazy<AtomicI32> = Lazy::new(|| AtomicI32::new(-1));
 
 static EVENT_BUFFER: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
@@ -406,6 +411,24 @@ pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged
                 is_plugged,
             }))
             .ok();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_audio_change(
+    device_id: i32,
+    is_added: bool,
+    is_input: bool,
+    is_output: bool,
+) {
+    let device_id = if !is_added { -1 } else { device_id };
+    if is_input {
+        AUDIO_INPUT_DEVICE.store(device_id, Ordering::Relaxed);
+        AUDIO_INPUT_UPDATED.store(true, Ordering::Relaxed);
+    }
+    if is_output {
+        AUDIO_OUTPUT_DEVICE.store(device_id, Ordering::Relaxed);
+        AUDIO_OUTPUT_UPDATED.store(true, Ordering::Relaxed);
     }
 }
 

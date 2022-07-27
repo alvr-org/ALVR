@@ -1138,6 +1138,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatte
     g_ctx.hmdPlugged = plugged;
 }
 
+extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onAudioDeviceChangedNative(
+        JNIEnv *_env, jobject _context, jint deviceID, jboolean added, jboolean isInput, jboolean isOutput) {
+    alvr_audio_change(deviceID, (bool) added, (bool) isInput, (bool) isOutput);
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
         JNIEnv *_env, jclass _class, jboolean waiting) {
     alvr_set_waiting_next_idr(waiting);

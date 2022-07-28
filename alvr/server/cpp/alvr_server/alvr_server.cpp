@@ -316,3 +316,9 @@ void SetButton(unsigned long long path, AlvrButtonValue value) {
         g_driver_provider.right_controller->SetButton(path, value);
     }
 }
+
+void SetAdaptiveBitrateMax(unsigned long long bitrate_max) {
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
+        g_driver_provider.hmd->m_Listener->m_Statistics->m_adaptiveBitrateMaximum = bitrate_max;
+    }
+}

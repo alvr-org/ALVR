@@ -144,3 +144,5 @@ extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void SetViewsConfig(ViewsConfigData config);
 extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long path, AlvrButtonValue value);
+
+extern "C" void SetAdaptiveBitrateMax(unsigned long long bitrate_max);

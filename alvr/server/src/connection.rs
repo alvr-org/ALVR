@@ -901,12 +901,27 @@ async fn connection_pipeline() -> StrResult {
                 time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
 
                 // copy some settings periodically into c++
+                let data_manager = SERVER_DATA_MANAGER.read();
+                let settings = data_manager.settings();
 
-                if let Switch::Enabled(config) =
+                let mut bitrate_maximum = 0;
+                let adaptive_bitrate_enabled = if let Switch::Enabled(config) =
                     &SERVER_DATA_MANAGER.read().settings().video.adaptive_bitrate
                 {
-                    unsafe { crate::SetAdaptiveBitrateMax(config.bitrate_maximum) };
-                }
+                    bitrate_maximum = config.bitrate_maximum;
+
+                    true
+                } else {
+                    false
+                };
+
+                unsafe {
+                    crate::SetBitrateParameters(
+                        settings.video.encode_bitrate_mbs,
+                        adaptive_bitrate_enabled,
+                        bitrate_maximum,
+                    )
+                };
             }
         }
     };

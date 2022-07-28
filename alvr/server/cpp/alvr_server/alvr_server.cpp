@@ -317,8 +317,16 @@ void SetButton(unsigned long long path, AlvrButtonValue value) {
     }
 }
 
-void SetAdaptiveBitrateMax(unsigned long long bitrate_max) {
+void SetBitrateParameters(unsigned long long bitrate_mbs,
+                          bool adaptive_bitrate_enabled,
+                          unsigned long long bitrate_max) {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->m_Statistics->m_adaptiveBitrateMaximum = bitrate_max;
+        if (adaptive_bitrate_enabled) {
+            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = true;
+            g_driver_provider.hmd->m_Listener->m_Statistics->m_adaptiveBitrateMaximum = bitrate_max;
+        } else {
+            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = false;
+            g_driver_provider.hmd->m_Listener->m_Statistics->m_bitrate = bitrate_mbs;
+        }
     }
 }

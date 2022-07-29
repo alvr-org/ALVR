@@ -31,6 +31,7 @@ use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
 use statistics::StatisticsManager;
 use std::{
+    collections::HashMap,
     ffi::{c_void, CStr, CString},
     os::raw::c_char,
     ptr,
@@ -39,7 +40,7 @@ use std::{
         Arc, Once,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::{
     runtime::Runtime,
@@ -273,6 +274,26 @@ pub unsafe extern "C" fn HmdDriverFactory(
         log(log::Level::Debug, string_ptr);
     }
 
+    // Should not be used in production
+    unsafe extern "C" fn log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
+        const INTERVAL: Duration = Duration::from_secs(1);
+        static LASTEST_TAG_TIMESTAMPS: Lazy<Mutex<HashMap<String, Instant>>> =
+            Lazy::new(|| Mutex::new(HashMap::new()));
+
+        let tag = CStr::from_ptr(tag_ptr).to_string_lossy();
+        let message = CStr::from_ptr(message_ptr).to_string_lossy();
+
+        let mut timestamps_ref = LASTEST_TAG_TIMESTAMPS.lock();
+        let old_timestamp = timestamps_ref
+            .entry(tag.to_string())
+            .or_insert_with(Instant::now);
+        if *old_timestamp + INTERVAL < Instant::now() {
+            *old_timestamp += INTERVAL;
+
+            log::warn!("{}: {}", tag, message);
+        }
+    }
+
     extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
             let header = VideoFrameHeaderPacket {
@@ -369,6 +390,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
     LogDebug = Some(log_debug);
+    LogPeriodically = Some(log_periodically);
     DriverReadyIdle = Some(driver_ready_idle);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);

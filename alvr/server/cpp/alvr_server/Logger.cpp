@@ -70,3 +70,20 @@ void Debug(const char *format, ...)
 	(void)format;
 #endif
 }
+
+void LogPeriod(const char *tag, const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	char buf[1024];
+	int count = vsnprintf(buf, sizeof(buf), format, args);
+	if (count > (int)sizeof(buf))
+		count = (int)sizeof(buf);
+	if (count > 0 && buf[count - 1] == '\n')
+		buf[count - 1] = '\0';
+
+	LogPeriodically(tag, buf);
+
+	va_end(args);
+}

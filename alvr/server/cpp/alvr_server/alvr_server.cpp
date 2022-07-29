@@ -164,6 +164,7 @@ void (*LogError)(const char *stringPtr);
 void (*LogWarn)(const char *stringPtr);
 void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
+void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);

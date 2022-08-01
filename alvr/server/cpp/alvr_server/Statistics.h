@@ -87,7 +87,7 @@ public:
 	void ResetSecond() {
 		m_bitsSentInSecondPrev = m_bitsSentInSecond;
 		m_bitsSentInSecond = 0;
-		m_bitrateSent = m_bitsSentInSecond / BITS_IN_MBIT;
+		m_bitrateSent = m_bitsSentInSecondPrev / BITS_IN_MBIT;
 
 		m_framesPrevious = m_framesInSecond;
 		m_framesInSecond = 0;

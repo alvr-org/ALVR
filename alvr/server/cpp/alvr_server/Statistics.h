@@ -162,7 +162,7 @@ private:
 	void ResetSecond() {
 		m_packetsSentInSecondPrev = m_packetsSentInSecond;
 		m_bitsSentInSecondPrev = m_bitsSentInSecond;
-		m_bitrateSent = m_bitsSentInSecond / BITS_IN_MBIT;
+		m_bitrateSent = m_bitsSentInSecondPrev / BITS_IN_MBIT;
 		m_packetsSentInSecond = 0;
 		m_bitsSentInSecond = 0;
 

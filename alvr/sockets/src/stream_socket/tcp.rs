@@ -29,6 +29,7 @@ pub async fn accept_from_server(
         return fmt_e!("Connected to wrong client: {server_address} != {server_ip}");
     }
 
+    socket.set_nodelay(true).map_err(err!())?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 

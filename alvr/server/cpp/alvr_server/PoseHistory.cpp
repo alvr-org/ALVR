@@ -16,11 +16,6 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion mot
 		motion.orientation.z,
 		&history.rotationMatrix);
 
-	Debug("Rotation Matrix=(%f, %f, %f, %f) (%f, %f, %f, %f) (%f, %f, %f, %f)\n"
-		, history.rotationMatrix.m[0][0], history.rotationMatrix.m[0][1], history.rotationMatrix.m[0][2], history.rotationMatrix.m[0][3]
-		, history.rotationMatrix.m[1][0], history.rotationMatrix.m[1][1], history.rotationMatrix.m[1][2], history.rotationMatrix.m[1][3]
-		, history.rotationMatrix.m[2][0], history.rotationMatrix.m[2][1], history.rotationMatrix.m[2][2], history.rotationMatrix.m[2][3]);
-
 	std::unique_lock<std::mutex> lock(m_mutex);
 	if (m_poseBuffer.size() == 0) {
 		m_poseBuffer.push_back(history);
@@ -52,7 +47,6 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(c
 				distance += pow(it->rotationMatrix.m[j][i] - pose.m[j][i], 2);
 			}
 		}
-		//LogDriver("diff %f %llu", distance, it->info.FrameIndex);
 		if (minDiff > distance) {
 			minIt = it;
 			minDiff = distance;

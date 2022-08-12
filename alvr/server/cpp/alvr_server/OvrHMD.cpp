@@ -321,15 +321,6 @@ void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDe
         m_pose.vecPosition[1] = motion.position[1];
         m_pose.vecPosition[2] = motion.position[2];
 
-        Debug("GetPose: Rotation=(%f, %f, %f, %f) Position=(%f, %f, %f)\n",
-            m_pose.qRotation.x,
-            m_pose.qRotation.y,
-            m_pose.qRotation.z,
-            m_pose.qRotation.w,
-            m_pose.vecPosition[0],
-            m_pose.vecPosition[1],
-            m_pose.vecPosition[2]);
-
         // This value is ignored on Windows (since it uses a direct mode driver), but necessary on
         // Linux for correct controllers tracking.
         m_pose.poseTimeOffset = predictionS;

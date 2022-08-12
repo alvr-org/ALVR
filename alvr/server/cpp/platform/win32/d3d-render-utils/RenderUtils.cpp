@@ -157,15 +157,12 @@ namespace d3d_render_utils {
 
 		ComPtr<IDXGIKeyedMutex> keyedMutex;
 		OK_OR_THROW(QUERY(syncTexture, &keyedMutex), "Failed to query mutex");
-		Debug("[VDispDvr] Wait for SyncTexture Mutex.\n");
 
 		// TODO: Reasonable timeout and timeout handling
 		OK_OR_THROW(keyedMutex->AcquireSync(0, (DWORD)timeout), "[VDispDvr] ACQUIRESYNC FAILED!!!");
-		Debug("[VDispDvr] Mutex Acquired.\n");
 
 		callback();
 
 		keyedMutex->ReleaseSync(0);
-		Debug("[VDispDvr] Mutex Released.\n");
 	}
 }

@@ -29,9 +29,6 @@ void ClientConnection::FECSend(uint8_t *buf, int len, uint64_t targetTimestampNs
 
 	assert(totalShards <= DATA_SHARDS_MAX);
 
-	Debug("reed_solomon_new. dataShards=%d totalParityShards=%d totalShards=%d blockSize=%d shardPackets=%d\n"
-		, dataShards, totalParityShards, totalShards, blockSize, shardPackets);
-
 	reed_solomon *rs = reed_solomon_new(dataShards, totalParityShards);
 
 	std::vector<uint8_t *> shards(totalShards);

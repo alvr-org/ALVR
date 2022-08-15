@@ -2,8 +2,9 @@ use crate::{
     buttons::BUTTON_PATH_FROM_ID, connection_utils, statistics::StatisticsManager,
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
-    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CLIENTS_UPDATED_NOTIFIER, HAPTICS_SENDER,
-    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CLIENTS_UPDATED_NOTIFIER,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -1024,6 +1025,7 @@ async fn connection_pipeline() -> StrResult {
         res = keepalive_loop => res,
         res = control_loop => res,
 
+        _ = DISCONNECT_CLIENT_NOTIFIER.notified() => Ok(()),
         _ = RESTART_NOTIFIER.notified() => {
             control_sender
                 .lock()

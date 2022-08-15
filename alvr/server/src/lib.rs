@@ -62,6 +62,7 @@ static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 
 static CLIENTS_UPDATED_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 

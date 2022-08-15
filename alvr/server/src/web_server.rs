@@ -1,4 +1,6 @@
-use crate::{CLIENTS_UPDATED_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
+use crate::{
+    CLIENTS_UPDATED_NOTIFIER, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
+};
 use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_events::EventType;
 use alvr_sockets::ClientListAction;
@@ -222,6 +224,8 @@ async fn http_api(
                     ClientListAction::RemoveIpOrEntry(maybe_ip),
                     Some(&CLIENTS_UPDATED_NOTIFIER),
                 );
+                DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?

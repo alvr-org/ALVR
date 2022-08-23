@@ -795,7 +795,7 @@ async fn connection_pipeline() -> StrResult {
                 .map(|c| c.steamvr_hmd_predication_multiplier)
                 .unwrap_or_default()
                 * -1.0;
-            
+
             let controller_multiplier = settings
                 .headset
                 .controllers
@@ -804,7 +804,7 @@ async fn connection_pipeline() -> StrResult {
                 .map(|c| c.steamvr_ctrl_predication_multiplier)
                 .unwrap_or_default()
                 * -1.0;
-            
+
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv().await?.header;

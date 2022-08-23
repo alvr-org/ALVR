@@ -62,7 +62,10 @@ OvrHmd::OvrHmd()
     m_pose.poseIsValid = true;
     m_pose.result = vr::TrackingResult_Running_OK;
     m_pose.deviceIsConnected = true;
-
+    m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly

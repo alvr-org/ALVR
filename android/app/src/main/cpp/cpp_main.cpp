@@ -271,7 +271,7 @@ public:
     std::thread trackingThread;
 
     float refreshRate = 60.f;
-    bool controllerPredictionMultiplier;
+    float controllerPredictionMultiplier = 1.0f;
 
     uint64_t ovrFrameIndex = 0;
 

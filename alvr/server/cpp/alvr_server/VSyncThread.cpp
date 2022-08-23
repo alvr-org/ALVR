@@ -22,7 +22,6 @@ void VSyncThread::Run() {
 			uint64_t sleepTimeMs = (m_PreviousVsync + interval - current) / 1000;
 
 			if (sleepTimeMs > 0) {
-				Debug("Sleep %llu ms for next VSync.\n", sleepTimeMs);
 				std::this_thread::sleep_for(std::chrono::milliseconds(sleepTimeMs));
 			}
 
@@ -31,7 +30,6 @@ void VSyncThread::Run() {
 		else {
 			m_PreviousVsync = current;
 		}
-		Debug("Generate VSync Event by VSyncThread\n");
 		vr::VRServerDriverHost()->VsyncEvent(0);
 	}
 }

@@ -108,7 +108,6 @@ void AMFTextureEncoder::Submit(amf::AMFData *data)
 {
 	while (true)
 	{
-		Debug("AMFTextureEncoder::Submit.\n");
 		auto res = m_amfEncoder->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{
@@ -194,7 +193,6 @@ void AMFTextureConverter::Submit(amf::AMFData *data)
 {
 	while (true)
 	{
-		Debug("AMFTextureConverter::Submit.\n");
 		auto res = m_amfConverter->SubmitInput(data);
 		if (res == AMF_INPUT_FULL)
 		{

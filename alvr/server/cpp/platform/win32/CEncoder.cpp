@@ -81,8 +81,6 @@
 
 			while (!m_bExiting)
 			{
-				Debug("CEncoder: Waiting for new frame...\n");
-
 				m_newFrameReady.Wait();
 				if (m_bExiting)
 					break;
@@ -106,7 +104,6 @@
 
 		void CEncoder::NewFrameReady()
 		{
-			Debug("New Frame Ready\n");
 			m_encodeFinished.Reset();
 			m_newFrameReady.Set();
 		}

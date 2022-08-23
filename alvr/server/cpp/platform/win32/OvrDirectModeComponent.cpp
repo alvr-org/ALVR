@@ -101,7 +101,6 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid)
 /** After Present returns, calls this to get the next index to use for rendering. */
 void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t(*pIndices)[2])
 {
-	Debug("GetNextSwapTextureSetIndex %p %p %d %d\n", sharedTextureHandles[0], sharedTextureHandles[1], (*pIndices)[0], (*pIndices)[1]);
 	(*pIndices)[0]++;
 	(*pIndices)[0] %= 3;
 	(*pIndices)[1]++;
@@ -113,20 +112,6 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_
 void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 {
 	auto pPose = &perEye[0].mHmdPose; // TODO: are both poses the same? Name HMD suggests yes.
-	Debug("SubmitLayer Handles=%p,%p DepthHandles=%p,%p %f-%f,%f-%f %f-%f,%f-%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n"
-		, perEye[0].hTexture, perEye[1].hTexture, perEye[0].hDepthTexture, perEye[1].hDepthTexture
-		, perEye[0].bounds.uMin, perEye[0].bounds.uMax, perEye[0].bounds.vMin, perEye[0].bounds.vMax
-		, perEye[1].bounds.uMin, perEye[1].bounds.uMax, perEye[1].bounds.vMin, perEye[1].bounds.vMax
-		, pPose->m[0][0], pPose->m[0][1], pPose->m[0][2], pPose->m[0][3]
-		, pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], pPose->m[1][3]
-		, pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], pPose->m[2][3]
-	);
-	// pPose is qRotation which is calculated by SteamVR using vr::DriverPose_t::qRotation.
-	// pPose->m[0][0], pPose->m[0][1], pPose->m[0][2],
-	// pPose->m[1][0], pPose->m[1][1], pPose->m[1][2], 
-	// pPose->m[2][0], pPose->m[2][1], pPose->m[2][2], 
-	// position
-	// x = pPose->m[0][3], y = pPose->m[1][3], z = pPose->m[2][3]
 
 	if (m_submitLayer == 0) {
 		// Detect FrameIndex of submitted frame by pPose.
@@ -144,8 +129,6 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 			m_framePoseRotation.y = pose->motion.orientation.y;
 			m_framePoseRotation.z = pose->motion.orientation.z;
 			m_framePoseRotation.w = pose->motion.orientation.w;
-
-			Debug("Frame pose found. m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", m_prevTargetTimestampNs, m_targetTimestampNs);
 		}
 		else {
 			m_targetTimestampNs = 0;
@@ -175,7 +158,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	ReportPresent(m_targetTimestampNs);
 
 	bool useMutex = true;
-	Debug("Present syncTexture=%p (use:%d) m_prevSubmitFrameIndex=%llu m_submitFrameIndex=%llu\n", syncTexture, useMutex, m_prevTargetTimestampNs, m_targetTimestampNs);
 
 	IDXGIKeyedMutex *pKeyedMutex = NULL;
 
@@ -200,7 +182,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		// This enforces scheduling of work on the gpu between processes.
 		if (SUCCEEDED(pSyncTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void **)&pKeyedMutex)))
 		{
-			Debug("[VDispDvr] Wait for SyncTexture Mutex.\n");
 			// TODO: Reasonable timeout and timeout handling
 			HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
 			if (hr != S_OK)
@@ -210,8 +191,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 				return;
 			}
 		}
-
-		Debug("[VDispDvr] Mutex Acquired.\n");
 	}
 
 	CopyTexture(layerCount);
@@ -222,7 +201,6 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 			pKeyedMutex->ReleaseSync(0);
 			pKeyedMutex->Release();
 		}
-		Debug("[VDispDvr] Mutex Released.\n");
 	}
 
 	ReportComposed(m_targetTimestampNs);
@@ -253,8 +231,6 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 			D3D11_TEXTURE2D_DESC desc;
 			Texture[i][0]->GetDesc(&desc);
 
-			Debug("CopyTexture: layer=%d/%d pid=%d Texture Size=%dx%d Format=%d\n", i, layerCount, it->second.first->pid, desc.Width, desc.Height, desc.Format);
-
 			// Find right eye texture.
 			HANDLE rightEyeTexture = (HANDLE)m_submitLayers[i][1].hTexture;
 			it = m_handleMap.find(rightEyeTexture);
@@ -278,8 +254,6 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 	m_pD3DRender->GetContext()->Flush();
 
 	if (m_pEncoder) {
-		Debug("Waiting for finish of previous encode.\n");
-
 		// Wait for the encoder to be ready.  This is important because the encoder thread
 		// blocks on transmit which uses our shared d3d context (which is not thread safe).
 		m_pEncoder->WaitForEncode();
@@ -287,8 +261,6 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 		std::string debugText;
 
 		uint64_t submitFrameIndex = m_targetTimestampNs + Settings::Instance().m_trackingFrameOffset;
-		Debug("Fix frame index. FrameIndex=%llu Offset=%d New FrameIndex=%llu\n"
-			, m_targetTimestampNs, Settings::Instance().m_trackingFrameOffset, submitFrameIndex);
 
 		// Copy entire texture to staging so we can read the pixels to send to remote device.
 		m_pEncoder->CopyToStaging(pTexture, bounds, layerCount,false, presentationTime, submitFrameIndex,"", debugText);

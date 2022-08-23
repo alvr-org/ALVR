@@ -369,6 +369,16 @@ async fn client_handshake(
         controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
         controllers_enabled: session_settings.headset.controllers.enabled,
         position_offset: settings.headset.position_offset,
+        steamvr_hmd_predication_multiplier: session_settings
+            .headset
+            .controllers
+            .content
+            .steamvr_hmd_predication_multiplier,
+        steamvr_ctrl_predication_multiplier: session_settings
+            .headset
+            .controllers
+            .content
+            .steamvr_ctrl_predication_multiplier,
         linear_velocity_cutoff: session_settings
             .headset
             .controllers
@@ -777,28 +787,24 @@ async fn connection_pipeline() -> StrResult {
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
         async move {
-            let controller_prediction_multiplier = settings
+            let hmd_multiplier = settings
                 .headset
                 .controllers
                 .clone()
                 .into_option()
-                .map(|c| c.prediction_multiplier)
-                .unwrap_or_default();
-            let multiplier2 = settings
+                .map(|c| c.steamvr_hmd_predication_multiplier)
+                .unwrap_or_default()
+                * -1.0;
+            
+            let controller_multiplier = settings
                 .headset
                 .controllers
                 .clone()
                 .into_option()
-                .map(|c| c.multiplier2)
-                .unwrap_or_default();
-
-            let multiplier3 = settings
-                .headset
-                .controllers
-                .clone()
-                .into_option()
-                .map(|c| c.multiplier3)
-                .unwrap_or_default();
+                .map(|c| c.steamvr_ctrl_predication_multiplier)
+                .unwrap_or_default()
+                * -1.0;
+            
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv().await?.header;
@@ -862,9 +868,9 @@ async fn connection_pipeline() -> StrResult {
                     stats.report_tracking_received(tracking.target_timestamp);
 
                     let head_prediction_s =
-                        stats.average_total_latency().as_secs_f32() * multiplier2;
+                        stats.average_total_latency().as_secs_f32() * hmd_multiplier;
                     let controllers_prediction_s =
-                        stats.average_total_latency().as_secs_f32() * multiplier3;
+                        stats.average_total_latency().as_secs_f32() * controller_multiplier;
 
                     unsafe {
                         crate::SetTracking(

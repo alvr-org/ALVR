@@ -27,9 +27,7 @@ use alvr_common::{
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
-use alvr_session::{
-    OpenvrPropValue, OpenvrPropertyKey,
-};
+use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
 use statistics::StatisticsManager;
 use std::{

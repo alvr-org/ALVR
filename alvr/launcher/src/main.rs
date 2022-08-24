@@ -16,7 +16,7 @@ use druid::{
 use std::{
     env,
     io::{self, prelude::*, BufReader},
-    net::{TcpListener},
+    net::TcpListener,
     process, thread,
     time::Duration,
 };
@@ -309,7 +309,9 @@ fn start_watcher_thread() {
     });
 }
 
-fn handle_client_server_connection(conn: Result<std::net::TcpStream, io::Error>) -> Option<ControlPacket> {
+fn handle_client_server_connection(
+    conn: Result<std::net::TcpStream, io::Error>,
+) -> Option<ControlPacket> {
     let conn = conn.unwrap();
     let mut buffer = BufReader::new(conn);
     let mut data = Vec::new();

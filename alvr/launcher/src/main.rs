@@ -270,7 +270,7 @@ fn main() {
         match packet.message {
             LauncherMessages::Shutdown => {
                 if is_driver_restarting {
-                    // don't exit if we are expecting restart from client
+                    // don't exit if we are expecting restart from driver
                     continue;
                 }
                 commands::kill_steamvr();

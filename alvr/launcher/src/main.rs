@@ -260,16 +260,16 @@ fn main() {
 
     alvr_common::show_err(make_window());
     start_watcher_thread();
-    let mut is_client_restarting = false;
+    let mut is_driver_restarting = false;
     for conn in listener.incoming() {
-        let packet = match handle_client_server_connection(conn) {
+        let packet = match handle_driver_launcher_connection(conn) {
             Some(value) => value,
             None => continue,
         };
 
         match packet.message {
             LauncherMessages::Shutdown => {
-                if is_client_restarting {
+                if is_driver_restarting {
                     // don't exit if we are expecting restart from client
                     continue;
                 }
@@ -277,10 +277,10 @@ fn main() {
                 process::exit(0);
             }
             LauncherMessages::DriverStarted => {
-                is_client_restarting = false;
+                is_driver_restarting = false;
             }
             LauncherMessages::RestartSteamvr => {
-                is_client_restarting = true;
+                is_driver_restarting = true;
                 commands::restart_steamvr();
             }
             LauncherMessages::Update => {
@@ -309,7 +309,7 @@ fn start_watcher_thread() {
     });
 }
 
-fn handle_client_server_connection(
+fn handle_driver_launcher_connection(
     conn: Result<std::net::TcpStream, io::Error>,
 ) -> Option<LauncherPacket> {
     let conn = conn.unwrap();

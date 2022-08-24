@@ -195,8 +195,8 @@ pub struct LauncherPacket {
 }
 
 pub fn send_launcher_packet(launcher_packet: LauncherPacket) {
-    let mut stream = TcpStream::connect(ALVR_LAUNCHER_ADDRESS)
-        .expect("Failed to connect to listening server.");
+    let mut stream =
+        TcpStream::connect(ALVR_LAUNCHER_ADDRESS).expect("Failed to connect to listening server.");
 
     stream
         .write_all(serde_json::to_string(&launcher_packet).unwrap().as_bytes())

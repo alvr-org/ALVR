@@ -319,14 +319,14 @@ fn handle_driver_launcher_connection(
     match bytes_read {
         Ok(bytes_read) => {
             if bytes_read == 0 {
-                show_e("Empty control packet received");
+                show_e("Empty launcher packet received");
                 return None;
             }
             let packet: LauncherPacket = serde_json::from_slice(&data).unwrap();
             Some(packet)
         }
         Err(e) => {
-            show_e("Error occurred while receiving control message, is another program trying to communicate with ALVR?");
+            show_e("Error occurred while receiving launcher message, is another program trying to communicate with ALVR?");
             show_e(e);
             None
         }

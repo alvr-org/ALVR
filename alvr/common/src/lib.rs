@@ -1,10 +1,14 @@
 mod logging;
 
 use once_cell::sync::Lazy;
-use semver::Version;
+use semver::{Prerelease, Version};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
+    fmt::{self, Display},
     hash::{Hash, Hasher},
+    io::Write,
+    net::TcpStream,
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -25,6 +29,7 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const ALVR_NAME: &str = "ALVR";
 pub static ALVR_VERSION: Lazy<Version> =
     Lazy::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
+pub const ALVR_SERVER_WATCHER_ADDRESS: &str = "127.0.0.1:9999";
 
 // Consistent across architectures, might not be consistent across different compiler versions.
 pub fn hash_string(string: &str) -> u64 {
@@ -163,4 +168,37 @@ impl RelaxedAtomic {
     pub fn set(&self, value: bool) {
         self.0.store(value, Ordering::Relaxed);
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ControlMessages {
+    Shutdown,
+    RestartSteamvr,
+    ClientStarted,
+    Update,
+}
+
+impl Display for ControlMessages {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ControlMessages::Shutdown => write!(f, "Shutdown"),
+            ControlMessages::RestartSteamvr => write!(f, "RestartSteamvr"),
+            ControlMessages::ClientStarted => write!(f, "ClientStarted"),
+            ControlMessages::Update => write!(f, "Update"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ControlPacket {
+    pub message: ControlMessages,
+}
+
+pub fn send_control_packet(control_packet: ControlPacket) {
+    let mut stream = TcpStream::connect(ALVR_SERVER_WATCHER_ADDRESS)
+        .expect("Failed to connect to listening server.");
+
+    stream
+        .write(serde_json::to_string(&control_packet).unwrap().as_bytes())
+        .expect("Failed to tell the server to restart steamvr.");
 }

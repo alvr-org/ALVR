@@ -2,7 +2,9 @@
 
 mod commands;
 
-use alvr_common::prelude::*;
+use alvr_common::{
+    prelude::*, send_control_packet, ControlMessages, ControlPacket, ALVR_SERVER_WATCHER_ADDRESS,
+};
 use alvr_filesystem as afs;
 use druid::{
     commands::CLOSE_WINDOW,
@@ -11,7 +13,15 @@ use druid::{
     AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, ExtEventSink, FontDescriptor,
     Handled, Screen, Selector, Target, Widget, WindowDesc, WindowId,
 };
-use std::{env, thread, time::Duration};
+use std::{
+    env,
+    io::{self, prelude::*, BufReader},
+    net::{TcpListener},
+    process, thread,
+    time::Duration,
+};
+
+use crate::commands::is_steamvr_running;
 
 const WINDOW_WIDTH: f64 = 500.0;
 const WINDOW_HEIGHT: f64 = 300.0;
@@ -246,12 +256,77 @@ fn make_window() -> StrResult {
 }
 
 fn main() {
-    let args = env::args().collect::<Vec<_>>();
-    match args.get(1) {
-        Some(flag) if flag == "--restart-steamvr" => commands::restart_steamvr(),
-        Some(flag) if flag == "--update" => commands::invoke_installer(),
-        Some(_) | None => {
-            alvr_common::show_err_blocking(make_window());
+    let listener = TcpListener::bind(ALVR_SERVER_WATCHER_ADDRESS).unwrap();
+
+    alvr_common::show_err(make_window());
+    start_watcher_thread();
+    let mut is_client_restarting = false;
+    for conn in listener.incoming() {
+        let packet = match handle_client_server_connection(conn) {
+            Some(value) => value,
+            None => continue,
+        };
+
+        match packet.message {
+            ControlMessages::Shutdown => {
+                if is_client_restarting {
+                    // don't exit if we are expecting restart from client
+                    continue;
+                }
+                commands::kill_steamvr();
+                process::exit(0);
+            }
+            ControlMessages::ClientStarted => {
+                is_client_restarting = false;
+            }
+            ControlMessages::RestartSteamvr => {
+                is_client_restarting = true;
+                commands::restart_steamvr();
+            }
+            ControlMessages::Update => {
+                commands::invoke_installer();
+            }
+        }
+    }
+}
+
+fn start_watcher_thread() {
+    thread::spawn(move || {
+        let mut steamvr_not_running_counter = 0;
+        loop {
+            thread::sleep(Duration::from_secs(2));
+            if steamvr_not_running_counter >= 5 {
+                send_control_packet(ControlPacket {
+                    message: ControlMessages::Shutdown,
+                });
+            }
+            if !is_steamvr_running() {
+                steamvr_not_running_counter += 1;
+            } else {
+                steamvr_not_running_counter = 0;
+            }
+        }
+    });
+}
+
+fn handle_client_server_connection(conn: Result<std::net::TcpStream, io::Error>) -> Option<ControlPacket> {
+    let conn = conn.unwrap();
+    let mut buffer = BufReader::new(conn);
+    let mut data = Vec::new();
+    let bytes_read = buffer.read_to_end(&mut data);
+    match bytes_read {
+        Ok(bytes_read) => {
+            if bytes_read == 0 {
+                show_e("Empty control packet received");
+                return None;
+            }
+            let packet: ControlPacket = serde_json::from_slice(&data).unwrap();
+            Some(packet)
+        }
+        Err(e) => {
+            show_e("Error occurred while receiving control message, is another program trying to communicate with ALVR?");
+            show_e(e);
+            None
         }
     }
 }

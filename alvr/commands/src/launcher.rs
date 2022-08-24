@@ -1,19 +1,16 @@
-use alvr_common::prelude::*;
-use std::{path::Path, process::Command};
+use alvr_common::{prelude::*, send_control_packet, ControlMessages, ControlPacket};
 
-fn invoke_launcher(launcher_path: &Path, flag: &str) -> StrResult {
-    Command::new(launcher_path)
-        .arg(flag)
-        .status()
-        .map_err(err!())?;
 
+pub fn restart_steamvr() -> StrResult {
+    send_control_packet(ControlPacket {
+        message: ControlMessages::RestartSteamvr,
+    });
     Ok(())
 }
 
-pub fn restart_steamvr(launcher_path: &Path) -> StrResult {
-    invoke_launcher(launcher_path, "--restart-steamvr")
-}
-
-pub fn invoke_application_update(launcher_path: &Path) -> StrResult {
-    invoke_launcher(launcher_path, "--update")
+pub fn invoke_application_update() -> StrResult {
+    send_control_packet(ControlPacket {
+        message: ControlMessages::Update,
+    });
+    Ok(())
 }

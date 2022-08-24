@@ -22,12 +22,14 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
-    ALVR_VERSION,
+    send_control_packet, ControlMessages, ControlPacket, ALVR_VERSION,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
-use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
+use alvr_session::{
+    OpenvrPropValue, OpenvrPropertyKey,
+};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
 use statistics::StatisticsManager;
 use std::{
@@ -118,6 +120,13 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
     }
 }
 
+pub fn shutdown_runtime_by_driver() {
+    send_control_packet(ControlPacket {
+        message: ControlMessages::Shutdown,
+    });
+    shutdown_runtime();
+}
+
 pub fn shutdown_runtime() {
     alvr_events::send_event(EventType::ServerQuitting);
 
@@ -152,13 +161,13 @@ pub fn notify_shutdown_driver() {
 pub fn notify_restart_driver() {
     notify_shutdown_driver();
 
-    alvr_commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::restart_steamvr().ok();
 }
 
 pub fn notify_application_update() {
     notify_shutdown_driver();
 
-    alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::invoke_application_update().ok();
 }
 
 fn init() {
@@ -232,6 +241,9 @@ fn init() {
         .unwrap()
         .into_raw();
     };
+    send_control_packet(ControlPacket {
+        message: ControlMessages::ClientStarted,
+    });
 }
 
 /// # Safety
@@ -355,7 +367,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtime();
+        shutdown_runtime_by_driver();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {

@@ -34,10 +34,15 @@ pub fn is_steamvr_running() -> bool {
     );
     system.refresh_processes();
 
-    system
+    let vrserver_is_running = system
         .processes_by_name(&afs::exec_fname("vrserver"))
         .count()
-        != 0
+        != 0;
+    let vrmonitor_is_running = system
+        .processes_by_name(&afs::exec_fname("vrmonitor"))
+        .count()
+        != 0;
+    vrserver_is_running || vrmonitor_is_running
 }
 
 pub fn maybe_launch_steamvr() {

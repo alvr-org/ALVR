@@ -1,15 +1,15 @@
-use alvr_common::{prelude::*, send_control_packet, ControlMessages, ControlPacket};
+use alvr_common::{prelude::*, send_launcher_packet, LauncherMessages, LauncherPacket};
 
 pub fn restart_steamvr() -> StrResult {
-    send_control_packet(ControlPacket {
-        message: ControlMessages::RestartSteamvr,
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::RestartSteamvr,
     });
     Ok(())
 }
 
 pub fn invoke_application_update() -> StrResult {
-    send_control_packet(ControlPacket {
-        message: ControlMessages::Update,
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::Update,
     });
     Ok(())
 }

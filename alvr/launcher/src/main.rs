@@ -3,7 +3,7 @@
 mod commands;
 
 use alvr_common::{
-    prelude::*, send_control_packet, ControlMessages, ControlPacket, ALVR_SERVER_WATCHER_ADDRESS,
+    prelude::*, send_launcher_packet, LauncherMessages, LauncherPacket, ALVR_LAUNCHER_ADDRESS,
 };
 use alvr_filesystem as afs;
 use druid::{
@@ -256,7 +256,7 @@ fn make_window() -> StrResult {
 }
 
 fn main() {
-    let listener = TcpListener::bind(ALVR_SERVER_WATCHER_ADDRESS).unwrap();
+    let listener = TcpListener::bind(ALVR_LAUNCHER_ADDRESS).unwrap();
 
     alvr_common::show_err(make_window());
     start_watcher_thread();
@@ -268,7 +268,7 @@ fn main() {
         };
 
         match packet.message {
-            ControlMessages::Shutdown => {
+            LauncherMessages::Shutdown => {
                 if is_client_restarting {
                     // don't exit if we are expecting restart from client
                     continue;
@@ -276,14 +276,14 @@ fn main() {
                 commands::kill_steamvr();
                 process::exit(0);
             }
-            ControlMessages::ClientStarted => {
+            LauncherMessages::DriverStarted => {
                 is_client_restarting = false;
             }
-            ControlMessages::RestartSteamvr => {
+            LauncherMessages::RestartSteamvr => {
                 is_client_restarting = true;
                 commands::restart_steamvr();
             }
-            ControlMessages::Update => {
+            LauncherMessages::Update => {
                 commands::invoke_installer();
             }
         }
@@ -296,8 +296,8 @@ fn start_watcher_thread() {
         loop {
             thread::sleep(Duration::from_secs(2));
             if steamvr_not_running_counter >= 5 {
-                send_control_packet(ControlPacket {
-                    message: ControlMessages::Shutdown,
+                send_launcher_packet(LauncherPacket {
+                    message: LauncherMessages::Shutdown,
                 });
             }
             if !is_steamvr_running() {
@@ -311,7 +311,7 @@ fn start_watcher_thread() {
 
 fn handle_client_server_connection(
     conn: Result<std::net::TcpStream, io::Error>,
-) -> Option<ControlPacket> {
+) -> Option<LauncherPacket> {
     let conn = conn.unwrap();
     let mut buffer = BufReader::new(conn);
     let mut data = Vec::new();
@@ -322,7 +322,7 @@ fn handle_client_server_connection(
                 show_e("Empty control packet received");
                 return None;
             }
-            let packet: ControlPacket = serde_json::from_slice(&data).unwrap();
+            let packet: LauncherPacket = serde_json::from_slice(&data).unwrap();
             Some(packet)
         }
         Err(e) => {

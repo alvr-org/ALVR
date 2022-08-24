@@ -22,7 +22,7 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
-    send_control_packet, ControlMessages, ControlPacket, ALVR_VERSION,
+    send_launcher_packet, LauncherMessages, LauncherPacket, ALVR_VERSION,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -119,8 +119,8 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
 }
 
 pub fn shutdown_runtime_by_driver() {
-    send_control_packet(ControlPacket {
-        message: ControlMessages::Shutdown,
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::Shutdown,
     });
     shutdown_runtime();
 }
@@ -239,8 +239,8 @@ fn init() {
         .unwrap()
         .into_raw();
     };
-    send_control_packet(ControlPacket {
-        message: ControlMessages::ClientStarted,
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::DriverStarted,
     });
 }
 

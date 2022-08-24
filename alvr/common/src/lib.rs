@@ -29,7 +29,7 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const ALVR_NAME: &str = "ALVR";
 pub static ALVR_VERSION: Lazy<Version> =
     Lazy::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
-pub const ALVR_SERVER_WATCHER_ADDRESS: &str = "127.0.0.1:9999";
+pub const ALVR_LAUNCHER_ADDRESS: &str = "127.0.0.1:9999";
 
 // Consistent across architectures, might not be consistent across different compiler versions.
 pub fn hash_string(string: &str) -> u64 {
@@ -171,34 +171,34 @@ impl RelaxedAtomic {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum ControlMessages {
+pub enum LauncherMessages {
     Shutdown,
     RestartSteamvr,
-    ClientStarted,
+    DriverStarted,
     Update,
 }
 
-impl Display for ControlMessages {
+impl Display for LauncherMessages {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ControlMessages::Shutdown => write!(f, "Shutdown"),
-            ControlMessages::RestartSteamvr => write!(f, "RestartSteamvr"),
-            ControlMessages::ClientStarted => write!(f, "ClientStarted"),
-            ControlMessages::Update => write!(f, "Update"),
+            LauncherMessages::Shutdown => write!(f, "Shutdown"),
+            LauncherMessages::RestartSteamvr => write!(f, "RestartSteamvr"),
+            LauncherMessages::DriverStarted => write!(f, "DriverStarted"),
+            LauncherMessages::Update => write!(f, "Update"),
         }
     }
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ControlPacket {
-    pub message: ControlMessages,
+pub struct LauncherPacket {
+    pub message: LauncherMessages,
 }
 
-pub fn send_control_packet(control_packet: ControlPacket) {
-    let mut stream = TcpStream::connect(ALVR_SERVER_WATCHER_ADDRESS)
+pub fn send_launcher_packet(launcher_packet: LauncherPacket) {
+    let mut stream = TcpStream::connect(ALVR_LAUNCHER_ADDRESS)
         .expect("Failed to connect to listening server.");
 
     stream
-        .write_all(serde_json::to_string(&control_packet).unwrap().as_bytes())
+        .write_all(serde_json::to_string(&launcher_packet).unwrap().as_bytes())
         .expect("Failed to tell the server to restart steamvr.");
 }

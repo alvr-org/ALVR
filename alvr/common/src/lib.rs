@@ -1,7 +1,7 @@
 mod logging;
 
 use once_cell::sync::Lazy;
-use semver::{Prerelease, Version};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
@@ -199,6 +199,6 @@ pub fn send_control_packet(control_packet: ControlPacket) {
         .expect("Failed to connect to listening server.");
 
     stream
-        .write(serde_json::to_string(&control_packet).unwrap().as_bytes())
+        .write_all(serde_json::to_string(&control_packet).unwrap().as_bytes())
         .expect("Failed to tell the server to restart steamvr.");
 }

@@ -261,6 +261,7 @@ fn main() {
     alvr_common::show_err(make_window());
     start_watcher_thread();
     let mut is_driver_restarting = false;
+    let mut is_update_in_progress = false;
     for conn in listener.incoming() {
         let packet = match handle_driver_launcher_connection(conn) {
             Some(value) => value,
@@ -269,8 +270,8 @@ fn main() {
 
         match packet.message {
             LauncherMessages::Shutdown => {
-                if is_driver_restarting {
-                    // don't exit if we are expecting restart from driver
+                if is_driver_restarting || is_update_in_progress {
+                    // don't exit if we are expecting restart from driver or updating
                     continue;
                 }
                 commands::kill_steamvr();
@@ -284,7 +285,12 @@ fn main() {
                 commands::restart_steamvr();
             }
             LauncherMessages::Update => {
-                commands::invoke_installer();
+                if cfg!(windows) {
+                    commands::invoke_installer();
+                    return;
+                } else {
+                    show_e("Auto-updating on non-windows OS is unsupported.");
+                }
             }
         }
     }

@@ -261,7 +261,6 @@ fn main() {
     alvr_common::show_err(make_window());
     start_watcher_thread();
     let mut is_driver_restarting = false;
-    let mut is_update_in_progress = false;
     for conn in listener.incoming() {
         let packet = match handle_driver_launcher_connection(conn) {
             Some(value) => value,
@@ -270,7 +269,7 @@ fn main() {
 
         match packet.message {
             LauncherMessages::Shutdown => {
-                if is_driver_restarting || is_update_in_progress {
+                if is_driver_restarting {
                     // don't exit if we are expecting restart from driver or updating
                     continue;
                 }

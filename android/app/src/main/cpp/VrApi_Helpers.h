@@ -600,112 +600,22 @@ static inline ovrPerformanceParms vrapi_DefaultPerformanceParms() {
     return parms;
 }
 
-
-typedef enum {
-    VRAPI_FRAME_INIT_DEFAULT = 0,
-    VRAPI_FRAME_INIT_BLACK = 1,
-    VRAPI_FRAME_INIT_BLACK_FLUSH = 2,
-    VRAPI_FRAME_INIT_BLACK_FINAL = 3,
-    VRAPI_FRAME_INIT_LOADING_ICON = 4,
-    VRAPI_FRAME_INIT_LOADING_ICON_FLUSH = 5,
-
-    // enum 6 used to be VRAPI_FRAME_INIT_MESSAGE
-
-    // enum 7 used to be VRAPI_FRAME_INIT_MESSAGE_FLUSH
-} ovrFrameInit;
-
-/// Utility function to default initialize the ovrFrameParms.
-static inline ovrFrameParms vrapi_DefaultFrameParms(
-    const ovrJava* java,
-    const ovrFrameInit init,
-    const double currentTime,
-    ovrTextureSwapChain* textureSwapChain) {
-    const ovrMatrix4f projectionMatrix =
-        ovrMatrix4f_CreateProjectionFov(90.0f, 90.0f, 0.0f, 0.0f, 0.1f, 0.0f);
-    const ovrMatrix4f texCoordsFromTanAngles =
-        ovrMatrix4f_TanAngleMatrixFromProjection(&projectionMatrix);
-
-    ovrFrameParms parms;
-    memset(&parms, 0, sizeof(parms));
-
-    parms.Type = VRAPI_STRUCTURE_TYPE_FRAME_PARMS;
-    for (int layer = 0; layer < VRAPI_FRAME_LAYER_TYPE_MAX; layer++) {
-        parms.Layers[layer].ColorScale = 1.0f;
-        for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-            parms.Layers[layer].Textures[eye].TexCoordsFromTanAngles = texCoordsFromTanAngles;
-            parms.Layers[layer].Textures[eye].TextureRect.width = 1.0f;
-            parms.Layers[layer].Textures[eye].TextureRect.height = 1.0f;
-            parms.Layers[layer].Textures[eye].HeadPose.Pose.Orientation.w = 1.0f;
-            parms.Layers[layer].Textures[eye].HeadPose.TimeInSeconds = currentTime;
-        }
-    }
-    parms.LayerCount = 1;
-    parms.SwapInterval = 1;
-    parms.ExtraLatencyMode = VRAPI_EXTRA_LATENCY_MODE_OFF;
-    parms.Reserved.M[0][0] = 1.0f;
-    parms.Reserved.M[1][1] = 1.0f;
-    parms.Reserved.M[2][2] = 1.0f;
-    parms.Reserved.M[3][3] = 1.0f;
-    parms.PerformanceParms = vrapi_DefaultPerformanceParms();
-    parms.Java = *java;
-
-    parms.Layers[0].SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
-    parms.Layers[0].DstBlend = VRAPI_FRAME_LAYER_BLEND_ZERO;
-    parms.Layers[0].Flags = 0;
-    parms.Layers[0].SpinSpeed = 0.0f;
-    parms.Layers[0].SpinScale = 1.0f;
-
-    parms.Layers[1].SrcBlend = VRAPI_FRAME_LAYER_BLEND_SRC_ALPHA;
-    parms.Layers[1].DstBlend = VRAPI_FRAME_LAYER_BLEND_ONE_MINUS_SRC_ALPHA;
-    parms.Layers[1].Flags = 0;
-    parms.Layers[1].SpinSpeed = 0.0f;
-    parms.Layers[1].SpinScale = 1.0f;
-
-    switch (init) {
-        case VRAPI_FRAME_INIT_DEFAULT: {
-            break;
-        }
-        case VRAPI_FRAME_INIT_BLACK:
-        case VRAPI_FRAME_INIT_BLACK_FLUSH:
-        case VRAPI_FRAME_INIT_BLACK_FINAL: {
-            parms.Layers[0].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            // NOTE: When requesting a solid black frame, set ColorScale to 0.0f
-            parms.Layers[0].ColorScale = 0.0f;
-            for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-                parms.Layers[0].Textures[eye].ColorTextureSwapChain =
-                    (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN;
-            }
-            break;
-        }
-        case VRAPI_FRAME_INIT_LOADING_ICON:
-        case VRAPI_FRAME_INIT_LOADING_ICON_FLUSH: {
-            parms.LayerCount = 2;
-            parms.Layers[0].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            parms.Layers[1].Flags = VRAPI_FRAME_LAYER_FLAG_INHIBIT_SRGB_FRAMEBUFFER;
-            // NOTE: When requesting a solid black frame, set ColorScale to 0.0f
-            parms.Layers[0].ColorScale = 0.0f;
-            parms.Layers[1].Flags |= VRAPI_FRAME_LAYER_FLAG_SPIN;
-            parms.Layers[1].SpinSpeed = 1.0f; // rotation in radians per second
-            parms.Layers[1].SpinScale = 16.0f; // icon size factor smaller than fullscreen
-            for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-                parms.Layers[0].Textures[eye].ColorTextureSwapChain =
-                    (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN;
-                parms.Layers[1].Textures[eye].ColorTextureSwapChain = (textureSwapChain != NULL)
-                    ? textureSwapChain
-                    : (ovrTextureSwapChain*)VRAPI_DEFAULT_TEXTURE_SWAPCHAIN_LOADING_ICON;
-            }
-            break;
-        }
-    }
-
-    if (init == VRAPI_FRAME_INIT_BLACK_FLUSH || init == VRAPI_FRAME_INIT_LOADING_ICON_FLUSH) {
-        parms.Flags |= VRAPI_FRAME_FLAG_FLUSH;
-    }
-    if (init == VRAPI_FRAME_INIT_BLACK_FINAL) {
-        parms.Flags |= VRAPI_FRAME_FLAG_FLUSH | VRAPI_FRAME_FLAG_FINAL;
-    }
-
-    return parms;
+/// Utility function to specify the default sampler state for a texture swapchain (ie, the sampler
+/// state used at create time).
+static inline ovrTextureSamplerState vrapi_DefaultTextureSamplerState(
+    ovrTextureType type,
+    const int mipCount) {
+    ovrTextureSamplerState state = {};
+    state.MinFilter =
+        (mipCount > 1) ? VRAPI_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR : VRAPI_TEXTURE_FILTER_LINEAR;
+    state.MagFilter = VRAPI_TEXTURE_FILTER_LINEAR;
+    state.WrapModeS = (type != VRAPI_TEXTURE_TYPE_CUBE) ? VRAPI_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE
+                                                        : VRAPI_TEXTURE_WRAP_MODE_REPEAT;
+    state.WrapModeT = (type != VRAPI_TEXTURE_TYPE_CUBE) ? VRAPI_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE
+                                                        : VRAPI_TEXTURE_WRAP_MODE_REPEAT;
+    memset(state.BorderColor, 0, sizeof(state.BorderColor));
+    state.MaxAnisotropy = 1.0f;
+    return state;
 }
 
 //-----------------------------------------------------------------
@@ -742,10 +652,6 @@ static inline ovrLayerProjection2 vrapi_DefaultLayerProjection2() {
 
     return layer;
 }
-
-//-----------------------------------------------------------------
-// Layer Types - default initialization.
-//-----------------------------------------------------------------
 
 static inline ovrLayerProjection2 vrapi_DefaultLayerBlackProjection2() {
     ovrLayerProjection2 layer = {};
@@ -794,6 +700,7 @@ static inline ovrLayerProjection2 vrapi_DefaultLayerSolidColorProjection2(
 
     return layer;
 }
+
 
 static inline ovrLayerCylinder2 vrapi_DefaultLayerCylinder2() {
     ovrLayerCylinder2 layer = {};
@@ -883,6 +790,40 @@ static inline ovrLayerEquirect2 vrapi_DefaultLayerEquirect2() {
     return layer;
 }
 
+static inline ovrLayerEquirect3 vrapi_DefaultLayerEquirect3() {
+    ovrLayerEquirect3 layer = {};
+
+    layer.Header.Type = VRAPI_LAYER_TYPE_EQUIRECT3;
+    layer.Header.Flags = 0;
+    layer.Header.ColorScale.x = 1.0f;
+    layer.Header.ColorScale.y = 1.0f;
+    layer.Header.ColorScale.z = 1.0f;
+    layer.Header.ColorScale.w = 1.0f;
+    layer.Header.SrcBlend = VRAPI_FRAME_LAYER_BLEND_ONE;
+    layer.Header.DstBlend = VRAPI_FRAME_LAYER_BLEND_ZERO;
+    layer.Header.Reserved = NULL;
+
+    layer.HeadPose.Pose.Orientation.w = 1.0f;
+
+    for (int i = 0; i < VRAPI_FRAME_LAYER_EYE_MAX; i++) {
+        layer.Textures[i].TexCoordsFromTanAngles = ovrMatrix4f_CreateIdentity();
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][0] = 0.0f; // center translation, X
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][1] = 0.0f; // center translation, Y
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][2] = 0.0f; // center translation, Z
+        layer.Textures[i].TexCoordsFromTanAngles.M[3][3] = 0.0f; // radius, infinity
+        layer.Textures[i].TextureRect.x = 0.0f;
+        layer.Textures[i].TextureRect.y = 0.0f;
+        layer.Textures[i].TextureRect.width = 1.0f;
+        layer.Textures[i].TextureRect.height = 1.0f;
+        layer.Textures[i].TextureMatrix.M[0][0] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[1][1] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[2][2] = 1.0f;
+        layer.Textures[i].TextureMatrix.M[3][3] = 1.0f;
+    }
+
+    return layer;
+}
+
 static inline ovrLayerLoadingIcon2 vrapi_DefaultLayerLoadingIcon2() {
     ovrLayerLoadingIcon2 layer = {};
 
@@ -942,6 +883,9 @@ static inline ovrLayerFishEye2 vrapi_DefaultLayerFishEye2() {
 
 
 
+
+
+
 //-----------------------------------------------------------------
 // Eye view matrix helper functions.
 //-----------------------------------------------------------------
@@ -950,9 +894,10 @@ static inline float vrapi_GetInterpupillaryDistance(const ovrTracking2* tracking
     const ovrMatrix4f leftPose =
         ovrMatrix4f_Inverse(&tracking2->Eye[0].ViewMatrix); // convert to world
     const ovrMatrix4f rightPose = ovrMatrix4f_Inverse(&tracking2->Eye[1].ViewMatrix);
-    const ovrVector3f delta = {rightPose.M[0][3] - leftPose.M[0][3],
-                               rightPose.M[1][3] - leftPose.M[1][3],
-                               rightPose.M[2][3] - leftPose.M[2][3]};
+    const ovrVector3f delta = {
+        rightPose.M[0][3] - leftPose.M[0][3],
+        rightPose.M[1][3] - leftPose.M[1][3],
+        rightPose.M[2][3] - leftPose.M[2][3]};
     return sqrtf(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
 }
 
@@ -969,9 +914,19 @@ static inline ovrMatrix4f vrapi_GetTransformFromPose(const ovrPosef* pose) {
     return ovrMatrix4f_Multiply(&translation, &rotation);
 }
 
-static inline ovrMatrix4f vrapi_GetViewMatrixFromPose(const ovrPosef* pose) {
-    const ovrMatrix4f transform = vrapi_GetTransformFromPose(pose);
-    return ovrMatrix4f_Inverse(&transform);
+// Compute center-eye from eye view matrices.
+static inline ovrMatrix4f vrapi_GetCenterViewMatrix(
+    const ovrMatrix4f* leftEyeViewMatrix,
+    const ovrMatrix4f* rightEyeViewMatrix) {
+    // NOTE: This only works for eye-poses with parallel directions - ie. tilt, but NOT canting
+    // TODO: Compute a directional "union" between head and eye-poses so that this does something
+    // more reasoanble for the canted scenario where the eye views are divergent
+    ovrMatrix4f centerViewMatrix = *leftEyeViewMatrix;
+    // set the center point between left and right.
+    centerViewMatrix.M[0][3] = (leftEyeViewMatrix->M[0][3] + rightEyeViewMatrix->M[0][3]) / 2;
+    centerViewMatrix.M[1][3] = (leftEyeViewMatrix->M[1][3] + rightEyeViewMatrix->M[1][3]) / 2;
+    centerViewMatrix.M[2][3] = (leftEyeViewMatrix->M[2][3] + rightEyeViewMatrix->M[2][3]) / 2;
+    return centerViewMatrix;
 }
 
 #endif // OVR_VrApi_Helpers_h

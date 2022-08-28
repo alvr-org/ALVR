@@ -369,16 +369,16 @@ async fn client_handshake(
         controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
         controllers_enabled: session_settings.headset.controllers.enabled,
         position_offset: settings.headset.position_offset,
-        steamvr_hmd_predication_multiplier: session_settings
+        steamvr_hmd_prediction_multiplier: session_settings
             .headset
             .controllers
             .content
-            .steamvr_hmd_predication_multiplier,
-        steamvr_ctrl_predication_multiplier: session_settings
+            .steamvr_hmd_prediction_multiplier,
+        steamvr_ctrl_prediction_multiplier: session_settings
             .headset
             .controllers
             .content
-            .steamvr_ctrl_predication_multiplier,
+            .steamvr_ctrl_prediction_multiplier,
         linear_velocity_cutoff: session_settings
             .headset
             .controllers
@@ -792,7 +792,7 @@ async fn connection_pipeline() -> StrResult {
                 .controllers
                 .clone()
                 .into_option()
-                .map(|c| c.steamvr_hmd_predication_multiplier)
+                .map(|c| c.steamvr_hmd_prediction_multiplier)
                 .unwrap_or_default()
                 * -1.0;
 
@@ -801,7 +801,7 @@ async fn connection_pipeline() -> StrResult {
                 .controllers
                 .clone()
                 .into_option()
-                .map(|c| c.steamvr_ctrl_predication_multiplier)
+                .map(|c| c.steamvr_ctrl_prediction_multiplier)
                 .unwrap_or_default()
                 * -1.0;
 

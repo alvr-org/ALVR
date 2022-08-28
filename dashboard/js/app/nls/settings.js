@@ -251,13 +251,13 @@ define({
             "Client controller prediction multiplier", // adv
         "_root_headset_controllers_content_predictionMultiplier.description":
             "Interpolates between prediction on the client-side controllers", // adv
-        "_root_headset_controllers_content_steamvrHmdPredicationMultiplier.name":
+        "_root_headset_controllers_content_steamvrHmdPredictionMultiplier.name":
             "SteamVR headset prediction multiplier", // adv
-        "_root_headset_controllers_content_steamvrHmdPredicationMultiplier.description":
+        "_root_headset_controllers_content_steamvrHmdPredictionMultiplier.description":
             "Interpolates between prediction on the server-side headset, zero is off, negative values applies smoothing but adds lag",
-        "_root_headset_controllers_content_steamvrCtrlPredicationMultiplier.name":
+        "_root_headset_controllers_content_steamvrCtrlPredictionMultiplier.name":
             "SteamVR controller prediction multiplier", // adv
-        "_root_headset_controllers_content_steamvrCtrlPredicationMultiplier.description":
+        "_root_headset_controllers_content_steamvrCtrlPredictionMultiplier.description":
             "Interpolates between prediction on the server-side controllers, zero is off, negative values applies smoothing but adds lag",
         "_root_headset_controllers_content_linearVelocityCutoff.name":
             "Linear velocity cutoff (m/s)", // adv

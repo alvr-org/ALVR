@@ -485,8 +485,10 @@ void updateHapticsState() {
     for (uint32_t deviceIndex = 0;
          vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &curCaps) >= 0;
          deviceIndex++) {
-        if (curCaps.Type == ovrControllerType_Gamepad)
+
+        if (curCaps.Type != ovrControllerType_TrackedRemote)
             continue;
+            
         ovrInputTrackedRemoteCapabilities remoteCapabilities;
 
         remoteCapabilities.Header = curCaps;

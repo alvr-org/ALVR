@@ -38,7 +38,7 @@ CEncoder::~CEncoder() { Stop(); }
 namespace {
 void read_exactly(pollfd pollfds, char *out, size_t size, std::atomic_bool &exiting) {
     while (not exiting and size != 0) {
-        int timeout = 1; // was 100 mircoseconds but because polls api does milliseconds we do the best we can(1000 mircoseconds)
+        int timeout = 1; // poll api doesn't fit perfectly(100 mircoseconds) poll uses milliseconds we do the best we can(1000 mircoseconds)
         pollfds.events = POLLIN;
         int count = poll(&pollfds, 1, timeout);
         if (count < 0) {
@@ -58,7 +58,7 @@ void read_latest(pollfd pollfds, char *out, size_t size, std::atomic_bool &exiti
     read_exactly(pollfds, out, size, exiting);
     while (not exiting)
     {
-        int timeout = 0; // the poll api fits the original value perfectly
+        int timeout = 0; // poll api fixes the original perfectly(0 microseconds)
         pollfds.events = POLLIN;
         int count = poll(&pollfds, 1 , timeout);
         if (count == 0)
@@ -69,7 +69,7 @@ void read_latest(pollfd pollfds, char *out, size_t size, std::atomic_bool &exiti
 
 int accept_timeout(pollfd socket, std::atomic_bool &exiting) {
     while (not exiting) {
-        int timeout = 15; // poll api also fits the original perfect(15000 microseconds)
+        int timeout = 15; // poll api also fits the original perfectly(15000 microseconds)
         socket.events = POLLIN;
         int count = poll(&socket, 1, timeout);
         if (count < 0) {

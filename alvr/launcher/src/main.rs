@@ -2,7 +2,9 @@
 
 mod commands;
 
-use alvr_common::prelude::*;
+use alvr_common::{
+    prelude::*, send_launcher_packet, LauncherMessages, LauncherPacket, ALVR_LAUNCHER_ADDRESS,
+};
 use alvr_filesystem as afs;
 use druid::{
     commands::CLOSE_WINDOW,
@@ -11,7 +13,15 @@ use druid::{
     AppDelegate, AppLauncher, Color, Command, Data, DelegateCtx, Env, ExtEventSink, FontDescriptor,
     Handled, Screen, Selector, Target, Widget, WindowDesc, WindowId,
 };
-use std::{env, thread, time::Duration};
+use std::{
+    env,
+    io::{self, prelude::*, BufReader},
+    net::TcpListener,
+    process, thread,
+    time::Duration,
+};
+
+use crate::commands::is_steamvr_running;
 
 const WINDOW_WIDTH: f64 = 500.0;
 const WINDOW_HEIGHT: f64 = 300.0;
@@ -246,12 +256,84 @@ fn make_window() -> StrResult {
 }
 
 fn main() {
-    let args = env::args().collect::<Vec<_>>();
-    match args.get(1) {
-        Some(flag) if flag == "--restart-steamvr" => commands::restart_steamvr(),
-        Some(flag) if flag == "--update" => commands::invoke_installer(),
-        Some(_) | None => {
-            alvr_common::show_err_blocking(make_window());
+    let listener = TcpListener::bind(ALVR_LAUNCHER_ADDRESS).unwrap();
+
+    alvr_common::show_err(make_window());
+    start_watcher_thread();
+    let mut is_driver_restarting = false;
+    for conn in listener.incoming() {
+        let packet = match handle_driver_launcher_connection(conn) {
+            Some(value) => value,
+            None => continue,
+        };
+
+        match packet.message {
+            LauncherMessages::Shutdown => {
+                if is_driver_restarting {
+                    // don't exit if we are expecting restart from driver or updating
+                    continue;
+                }
+                commands::kill_steamvr();
+                process::exit(0);
+            }
+            LauncherMessages::DriverStarted => {
+                is_driver_restarting = false;
+            }
+            LauncherMessages::RestartSteamvr => {
+                is_driver_restarting = true;
+                commands::restart_steamvr();
+            }
+            LauncherMessages::Update => {
+                if cfg!(windows) {
+                    commands::invoke_installer();
+                    return;
+                } else {
+                    show_e("Auto-updating on non-windows OS is unsupported.");
+                }
+            }
+        }
+    }
+}
+
+fn start_watcher_thread() {
+    thread::spawn(move || {
+        let mut steamvr_not_running_counter = 0;
+        loop {
+            thread::sleep(Duration::from_secs(2));
+            if steamvr_not_running_counter >= 5 {
+                send_launcher_packet(LauncherPacket {
+                    message: LauncherMessages::Shutdown,
+                });
+            }
+            if !is_steamvr_running() {
+                steamvr_not_running_counter += 1;
+            } else {
+                steamvr_not_running_counter = 0;
+            }
+        }
+    });
+}
+
+fn handle_driver_launcher_connection(
+    conn: Result<std::net::TcpStream, io::Error>,
+) -> Option<LauncherPacket> {
+    let conn = conn.unwrap();
+    let mut buffer = BufReader::new(conn);
+    let mut data = Vec::new();
+    let bytes_read = buffer.read_to_end(&mut data);
+    match bytes_read {
+        Ok(bytes_read) => {
+            if bytes_read == 0 {
+                show_e("Empty launcher packet received");
+                return None;
+            }
+            let packet: LauncherPacket = serde_json::from_slice(&data).unwrap();
+            Some(packet)
+        }
+        Err(e) => {
+            show_e("Error occurred while receiving launcher message, is another program trying to communicate with ALVR?");
+            show_e(e);
+            None
         }
     }
 }

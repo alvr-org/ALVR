@@ -22,7 +22,7 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::Mutex,
-    ALVR_VERSION,
+    send_launcher_packet, LauncherMessages, LauncherPacket, ALVR_VERSION,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -118,6 +118,13 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
     }
 }
 
+pub fn shutdown_runtime_by_driver() {
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::Shutdown,
+    });
+    shutdown_runtime();
+}
+
 pub fn shutdown_runtime() {
     alvr_events::send_event(EventType::ServerQuitting);
 
@@ -152,13 +159,13 @@ pub fn notify_shutdown_driver() {
 pub fn notify_restart_driver() {
     notify_shutdown_driver();
 
-    alvr_commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::restart_steamvr().ok();
 }
 
 pub fn notify_application_update() {
     notify_shutdown_driver();
 
-    alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
+    alvr_commands::invoke_application_update().ok();
 }
 
 fn init() {
@@ -232,6 +239,9 @@ fn init() {
         .unwrap()
         .into_raw();
     };
+    send_launcher_packet(LauncherPacket {
+        message: LauncherMessages::DriverStarted,
+    });
 }
 
 /// # Safety
@@ -355,7 +365,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtime();
+        shutdown_runtime_by_driver();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {

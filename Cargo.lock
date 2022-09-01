@@ -169,6 +169,8 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "semver 1.0.12",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -2,9 +2,13 @@ mod logging;
 
 use once_cell::sync::Lazy;
 use semver::Version;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
+    fmt::{self, Display},
     hash::{Hash, Hasher},
+    io::Write,
+    net::TcpStream,
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -25,6 +29,7 @@ pub type StrResult<T = ()> = Result<T, String>;
 pub const ALVR_NAME: &str = "ALVR";
 pub static ALVR_VERSION: Lazy<Version> =
     Lazy::new(|| Version::parse(env!("CARGO_PKG_VERSION")).unwrap());
+pub const ALVR_LAUNCHER_ADDRESS: &str = "127.0.0.1:9999";
 
 // Consistent across architectures, might not be consistent across different compiler versions.
 pub fn hash_string(string: &str) -> u64 {
@@ -163,4 +168,37 @@ impl RelaxedAtomic {
     pub fn set(&self, value: bool) {
         self.0.store(value, Ordering::Relaxed);
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum LauncherMessages {
+    Shutdown,
+    RestartSteamvr,
+    DriverStarted,
+    Update,
+}
+
+impl Display for LauncherMessages {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            LauncherMessages::Shutdown => write!(f, "Shutdown"),
+            LauncherMessages::RestartSteamvr => write!(f, "RestartSteamvr"),
+            LauncherMessages::DriverStarted => write!(f, "DriverStarted"),
+            LauncherMessages::Update => write!(f, "Update"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LauncherPacket {
+    pub message: LauncherMessages,
+}
+
+pub fn send_launcher_packet(launcher_packet: LauncherPacket) {
+    let mut stream =
+        TcpStream::connect(ALVR_LAUNCHER_ADDRESS).expect("Failed to connect to listening server.");
+
+    stream
+        .write_all(serde_json::to_string(&launcher_packet).unwrap().as_bytes())
+        .expect("Failed to tell the server to restart steamvr.");
 }

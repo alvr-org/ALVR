@@ -3,11 +3,13 @@
 #include <chrono>
 #include <exception>
 #include <memory>
+#include <poll.h>
 #include <sstream>
 #include <stdexcept>
 #include <stdlib.h>
 #include <string>
 #include <sys/mman.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -34,20 +36,15 @@ CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
 CEncoder::~CEncoder() { Stop(); }
 
 namespace {
-void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
+void read_exactly(pollfd pollfds, char *out, size_t size, std::atomic_bool &exiting) {
     while (not exiting and size != 0) {
-        timeval timeout{.tv_sec = 0, .tv_usec = 100};
-        fd_set read_fd, write_fd, except_fd;
-        FD_ZERO(&read_fd);
-        FD_SET(fd, &read_fd);
-        FD_ZERO(&write_fd);
-        FD_ZERO(&except_fd);
-        // TODO move away from select as it can only take fd < 1024
-        int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        int timeout = 1; // poll api doesn't fit perfectly(100 mircoseconds) poll uses milliseconds we do the best we can(1000 mircoseconds)
+        pollfds.events = POLLIN;
+        int count = poll(&pollfds, 1, timeout);
         if (count < 0) {
-            throw MakeException("select failed: %s", strerror(errno));
+            throw MakeException("poll failed: %s", strerror(errno));
         } else if (count == 1) {
-            int s = read(fd, out, size);
+            int s = read(pollfds.fd, out, size);
             if (s == -1) {
                 throw MakeException("read failed: %s", strerror(errno));
             }
@@ -57,38 +54,28 @@ void read_exactly(int fd, char *out, size_t size, std::atomic_bool &exiting) {
     }
 }
 
-void read_latest(int fd, char *out, size_t size, std::atomic_bool &exiting) {
-    read_exactly(fd, out, size, exiting);
+void read_latest(pollfd pollfds, char *out, size_t size, std::atomic_bool &exiting) {
+    read_exactly(pollfds, out, size, exiting);
     while (not exiting)
     {
-        timeval timeout{.tv_sec = 0, .tv_usec = 0};
-        fd_set read_fd, write_fd, except_fd;
-        FD_ZERO(&read_fd);
-        FD_SET(fd, &read_fd);
-        FD_ZERO(&write_fd);
-        FD_ZERO(&except_fd);
-        // TODO move away from select as it can only take fd < 1024
-        int count = select(fd + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        int timeout = 0; // poll api fixes the original perfectly(0 microseconds)
+        pollfds.events = POLLIN;
+        int count = poll(&pollfds, 1 , timeout);
         if (count == 0)
             return;
-        read_exactly(fd, out, size, exiting);
+        read_exactly(pollfds, out, size, exiting);
     }
 }
 
-int accept_timeout(int socket, std::atomic_bool &exiting) {
+int accept_timeout(pollfd socket, std::atomic_bool &exiting) {
     while (not exiting) {
-        timeval timeout{.tv_sec = 0, .tv_usec = 15000};
-        fd_set read_fd, write_fd, except_fd;
-        FD_ZERO(&read_fd);
-        FD_SET(socket, &read_fd);
-        FD_ZERO(&write_fd);
-        FD_ZERO(&except_fd);
-        // TODO move away from select as it can only take fd < 1024
-        int count = select(socket + 1, &read_fd, &write_fd, &except_fd, &timeout);
+        int timeout = 15; // poll api also fits the original perfectly(15000 microseconds)
+        socket.events = POLLIN;
+        int count = poll(&socket, 1, timeout);
         if (count < 0) {
-            throw MakeException("select failed: %s", strerror(errno));
+            throw MakeException("poll failed: %s", strerror(errno));
         } else if (count == 1) {
-          return accept(socket, NULL, NULL);
+          return accept(socket.fd, NULL, NULL);
         }
     }
     return -1;
@@ -151,9 +138,9 @@ void CEncoder::Run() {
     // run
     ret = unlink(m_socketPath.c_str());
 
-    m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    m_socket.fd = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un name;
-    if (m_socket == -1) {
+    if (m_socket.fd == -1) {
         perror("socket");
         exit(1);
     }
@@ -162,23 +149,25 @@ void CEncoder::Run() {
     name.sun_family = AF_UNIX;
     strncpy(name.sun_path, m_socketPath.c_str(), sizeof(name.sun_path) - 1);
 
-    ret = bind(m_socket, (const struct sockaddr *)&name, sizeof(name));
+    ret = bind(m_socket.fd, (const struct sockaddr *)&name, sizeof(name));
     if (ret == -1) {
         perror("bind");
         exit(1);
     }
 
-    ret = listen(m_socket, 1024);
+    ret = listen(m_socket.fd, 1024);
     if (ret == -1) {
         perror("listen");
         exit(1);
     }
 
     Info("CEncoder Listening\n");
-    int client = accept_timeout(m_socket, m_exiting);
+    struct pollfd client;
+    client.fd = accept_timeout(m_socket, m_exiting);
     if (m_exiting)
       return;
     init_packet init;
+    client.events = POLLIN;
     read_exactly(client, (char *)&init, sizeof(init), m_exiting);
     if (m_exiting)
       return;
@@ -195,7 +184,7 @@ void CEncoder::Run() {
     Info("CEncoder client connected, pid %d, cmdline %s\n", (int)init.source_pid, ifbuf2);
 
     try {
-        GetFds(client, &m_fds);
+        GetFds(client.fd, &m_fds);
 
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
@@ -265,12 +254,14 @@ void CEncoder::Run() {
       Error(err.str().c_str());
     }
 
-    close(client);
+    client.events = POLLHUP;
+    close(client.fd);
 }
 
 void CEncoder::Stop() {
     m_exiting = true;
-    close(m_socket);
+    m_socket.events = POLLHUP;
+    close(m_socket.fd);
     unlink(m_socketPath.c_str());
 }
 

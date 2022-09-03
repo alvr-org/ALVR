@@ -4,6 +4,7 @@
 #include "shared/threadtools.h"
 #include <atomic>
 #include <memory>
+#include <poll.h>
 #include <sys/types.h>
 
 class ClientConnection;
@@ -26,7 +27,7 @@ class CEncoder : public CThread {
     std::shared_ptr<PoseHistory> m_poseHistory;
     std::atomic_bool m_exiting{false};
     IDRScheduler m_scheduler;
-    int m_socket;
+    pollfd m_socket;
     std::string m_socketPath;
     int m_fds[6];
 };

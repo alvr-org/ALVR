@@ -5,12 +5,14 @@ use std::{fs, sync::Arc};
 #[cfg(not(target_os = "macos"))]
 pub fn get_screen_size() -> StrResult<(u32, u32)> {
     #[cfg(not(windows))]
-    use winit::platform::unix::EventLoopExtUnix;
+    use winit::platform::unix::EventLoopBuilderExtUnix;
     #[cfg(windows)]
-    use winit::platform::windows::EventLoopExtWindows;
+    use winit::platform::windows::EventLoopBuilderExtWindows;
     use winit::{window::*, *};
 
-    let event_loop = event_loop::EventLoop::<Window>::new_any_thread();
+    let event_loop = event_loop::EventLoopBuilder::new()
+        .with_any_thread(true)
+        .build();
     let window_handle = WindowBuilder::new()
         .with_visible(false)
         .build(&event_loop)

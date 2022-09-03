@@ -4,6 +4,3 @@ members = [
     "alvr/*",
     # "experiments/*"
 ]
-
-[patch.crates-io]
-cpal = { git = "https://github.com/RustAudio/cpal" }

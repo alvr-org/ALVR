@@ -72,6 +72,8 @@ pub struct OpenvrConfig {
     pub controllers_mode_idx: i32,
     pub controllers_enabled: bool,
     pub position_offset: [f32; 3],
+    pub steamvr_hmd_prediction_multiplier: f32,
+    pub steamvr_ctrl_prediction_multiplier: f32,
     pub linear_velocity_cutoff: f32,
     pub angular_velocity_cutoff: f32,
     pub position_offset_left: [f32; 3],

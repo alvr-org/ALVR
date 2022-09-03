@@ -369,6 +369,16 @@ async fn client_handshake(
         controllers_mode_idx: session_settings.headset.controllers.content.mode_idx,
         controllers_enabled: session_settings.headset.controllers.enabled,
         position_offset: settings.headset.position_offset,
+        steamvr_hmd_prediction_multiplier: session_settings
+            .headset
+            .controllers
+            .content
+            .steamvr_hmd_prediction_multiplier,
+        steamvr_ctrl_prediction_multiplier: session_settings
+            .headset
+            .controllers
+            .content
+            .steamvr_ctrl_prediction_multiplier,
         linear_velocity_cutoff: session_settings
             .headset
             .controllers
@@ -777,13 +787,24 @@ async fn connection_pipeline() -> StrResult {
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
         async move {
-            let controller_prediction_multiplier = settings
+            let hmd_multiplier = settings
                 .headset
                 .controllers
                 .clone()
                 .into_option()
-                .map(|c| c.prediction_multiplier)
-                .unwrap_or_default();
+                .map(|c| c.steamvr_hmd_prediction_multiplier)
+                .unwrap_or_default()
+                * -1.0;
+
+            let controller_multiplier = settings
+                .headset
+                .controllers
+                .clone()
+                .into_option()
+                .map(|c| c.steamvr_ctrl_prediction_multiplier)
+                .unwrap_or_default()
+                * -1.0;
+
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv().await?.header;
@@ -846,13 +867,16 @@ async fn connection_pipeline() -> StrResult {
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    let prediction_s = stats.average_total_latency().as_secs_f32()
-                        * controller_prediction_multiplier;
+                    let head_prediction_s =
+                        stats.average_total_latency().as_secs_f32() * hmd_multiplier;
+                    let controllers_prediction_s =
+                        stats.average_total_latency().as_secs_f32() * controller_multiplier;
 
                     unsafe {
                         crate::SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
-                            prediction_s,
+                            head_prediction_s,
+                            controllers_prediction_s,
                             raw_motions.as_ptr(),
                             raw_motions.len() as _,
                             left_oculus_hand,

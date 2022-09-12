@@ -8,7 +8,7 @@ use crate::{
     STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientControlPacket, ClientHandshakePacket, Haptics,
@@ -154,8 +154,10 @@ fn on_server_connected(
     )
     .unwrap();
 }
-
-async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
+async fn connection_pipeline(
+    headset_info: &HeadsetInfoPacket,
+    decoder_guard: Arc<parking_lot::Mutex<()>>,
+) -> StrResult {
     let device_name = platform::device_name();
     let hostname = platform::load_config().hostname;
 
@@ -496,8 +498,11 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
     let legacy_stream_socket_loop = task::spawn_blocking({
         let codec = settings.video.codec;
         let enable_fec = settings.connection.enable_fec;
+        let decoder_guard = Arc::clone(&decoder_guard);
         move || -> StrResult {
             unsafe {
+                let _guard = decoder_guard.lock();
+
                 // Note: legacyReceive() requires the java context to be attached to the current thread
                 // todo: investigate why
                 let vm = platform::vm();
@@ -648,10 +653,13 @@ async fn connection_pipeline(headset_info: &HeadsetInfoPacket) -> StrResult {
 pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
     set_loading_message(INITIAL_MESSAGE);
 
+    let decoder_guard = Arc::new(parking_lot::Mutex::new(()));
+
     loop {
         tokio::join!(
             async {
-                let maybe_error = connection_pipeline(&headset_info).await;
+                let maybe_error =
+                    connection_pipeline(&headset_info, Arc::clone(&decoder_guard)).await;
 
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");

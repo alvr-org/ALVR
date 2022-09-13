@@ -57,7 +57,7 @@ pub struct AudioDevice {
 impl AudioDevice {
     pub fn new(
         linux_backend: Option<LinuxAudioBackend>,
-        id: AudioDeviceId,
+        id: &AudioDeviceId,
         device_type: AudioDeviceType,
     ) -> StrResult<Self> {
         #[cfg(target_os = "linux")]

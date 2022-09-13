@@ -181,14 +181,14 @@ async fn client_handshake(
     {
         let game_audio_device = AudioDevice::new(
             Some(settings.audio.linux_backend),
-            game_audio_desc.device_id,
+            &game_audio_desc.device_id,
             AudioDeviceType::Output,
         )?;
 
         if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
             let microphone_device = AudioDevice::new(
                 Some(settings.audio.linux_backend),
-                microphone_desc.input_device_id,
+                &microphone_desc.input_device_id,
                 AudioDeviceType::VirtualMicrophoneInput,
             )?;
             #[cfg(not(target_os = "linux"))]
@@ -636,61 +636,80 @@ async fn connection_pipeline() -> StrResult {
 
     unsafe { crate::InitializeStreaming() };
     let _stream_guard = StreamCloseGuard;
-
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let device = AudioDevice::new(
-            Some(settings.audio.linux_backend),
-            desc.device_id,
-            AudioDeviceType::Output,
-        )?;
         let sender = stream_socket.request_stream(AUDIO).await?;
-        let mute_when_streaming = desc.mute_when_streaming;
-
         Box::pin(async move {
-            #[cfg(windows)]
-            unsafe {
-                let device_id = alvr_audio::get_windows_device_id(&device)?;
-                crate::SetOpenvrProperty(
-                    *HEAD_ID,
-                    crate::to_cpp_openvr_prop(
-                        OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                        OpenvrPropValue::String(device_id),
-                    ),
-                )
-            }
-
-            alvr_audio::record_audio_loop(device, 2, mute_when_streaming, sender).await?;
-
-            #[cfg(windows)]
-            {
-                let default_device = AudioDevice::new(
-                    None,
-                    alvr_session::AudioDeviceId::Default,
+            loop {
+                let device = match AudioDevice::new(
+                    Some(settings.audio.linux_backend),
+                    &desc.device_id,
                     AudioDeviceType::Output,
-                )?;
-                let default_device_id = alvr_audio::get_windows_device_id(&default_device)?;
+                ) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        warn!("New audio device Failed : {e}");
+                        time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
+                        continue;
+                    }
+                };
+                let mute_when_streaming = desc.mute_when_streaming;
 
+                #[cfg(windows)]
                 unsafe {
+                    let device_id = match alvr_audio::get_windows_device_id(&device) {
+                        Ok(data) => data,
+                        Err(_) => continue,
+                    };
                     crate::SetOpenvrProperty(
                         *HEAD_ID,
                         crate::to_cpp_openvr_prop(
                             OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                            OpenvrPropValue::String(default_device_id),
+                            OpenvrPropValue::String(device_id),
                         ),
                     )
                 }
-            }
+                let new_sender = sender.clone();
+                match alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender)
+                    .await
+                {
+                    Ok(_) => (),
+                    Err(e) => warn!("Audio task exit with error : {e}"),
+                };
 
-            Ok(())
+                #[cfg(windows)]
+                {
+                    let default_device = match AudioDevice::new(
+                        None,
+                        &alvr_session::AudioDeviceId::Default,
+                        AudioDeviceType::Output,
+                    ) {
+                        Ok(data) => data,
+                        Err(_) => continue,
+                    };
+                    let default_device_id = match alvr_audio::get_windows_device_id(&default_device)
+                    {
+                        Ok(data) => data,
+                        Err(_) => continue,
+                    };
+                    unsafe {
+                        crate::SetOpenvrProperty(
+                            *HEAD_ID,
+                            crate::to_cpp_openvr_prop(
+                                OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                OpenvrPropValue::String(default_device_id),
+                            ),
+                        )
+                    }
+                }
+            }
         })
     } else {
         Box::pin(future::pending())
     };
-
     let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
         let input_device = AudioDevice::new(
             Some(settings.audio.linux_backend),
-            desc.input_device_id,
+            &desc.input_device_id,
             AudioDeviceType::VirtualMicrophoneInput,
         )?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
@@ -699,7 +718,7 @@ async fn connection_pipeline() -> StrResult {
         {
             let microphone_device = AudioDevice::new(
                 None,
-                desc.output_device_id,
+                &desc.output_device_id,
                 AudioDeviceType::VirtualMicrophoneOutput {
                     matching_input_device_name: input_device.name()?,
                 },

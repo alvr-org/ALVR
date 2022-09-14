@@ -20,9 +20,9 @@ use alvr_common::{
     ALVR_VERSION,
 };
 use alvr_events::ButtonValue;
-use alvr_session::{AudioDeviceId, Fov};
+use alvr_session::AudioDeviceId;
 use alvr_sockets::{
-    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, HeadsetInfoPacket,
+    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, HeadsetInfoPacket,
     Tracking, ViewsConfig,
 };
 use jni::objects::{GlobalRef, ReleaseMode};

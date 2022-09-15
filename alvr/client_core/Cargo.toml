@@ -1,6 +1,6 @@
 [package]
 name = "alvr_client_core"
-version = "19.0.0-dev01"
+version = "19.0.0-dev02"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -29,9 +29,12 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 # Android
 android_logger = "0.11"
 jni = "0.19"
-ndk = "0.6"
+ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0", features = [
+    "api-level-26",
+    "media",
+] }
 ndk-context = "0.1"
-ndk-sys = "0.3"
+ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0" }
 oboe = "0.4" # todo: remove once AudioThread shutdown crash is fixed
 
 [build-dependencies]

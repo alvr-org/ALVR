@@ -34,6 +34,7 @@ fn main() {
             .compile("bindings_rs_c");
 
         println!("cargo:rustc-link-lib=log");
+        println!("cargo:rustc-link-lib=EGL");
         println!("cargo:rustc-link-lib=GLESv3");
         println!("cargo:rustc-link-lib=android");
     }

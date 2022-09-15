@@ -46,7 +46,7 @@ extern "C" void prepareLoadingRoom(int eyeWidth,
                                    bool darkMode,
                                    const int *swapchainTextures[2],
                                    int swapchainLength);
-extern "C" void renderNative(const int swapchainIndices[2]);
+extern "C" void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer);
 extern "C" void updateLoadingTexuture(const unsigned char *data);
 extern "C" void renderLoadingNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
 extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
@@ -63,4 +63,5 @@ extern "C" void closeSocket();
 extern "C" unsigned long long (*pathStringToHash)(const char *path);
 
 extern "C" void (*videoErrorReportSend)();
+extern "C" void (*createDecoder)(const char *csd_0, int length);
 extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

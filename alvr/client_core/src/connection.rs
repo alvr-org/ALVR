@@ -4,12 +4,15 @@ use crate::{
     connection_utils::{self, ConnectionError},
     platform,
     statistics::StatisticsManager,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_REF, EVENT_BUFFER, IDR_PARSED,
-    IS_RESUMED, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_DEQUEUER, DECODER_ENQUEUER,
+    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_BUFFER, IS_RESUMED, STATISTICS_MANAGER,
+    STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
-use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
+use alvr_session::{
+    AudioDeviceId, CodecType, MediacodecDataType, OculusFovetionLevel, SessionDesc,
+};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
     ClientHandshakePacket, Haptics, HeadsetInfoPacket, PeerType, ProtoControlSocket,
@@ -313,6 +316,24 @@ async fn connection_pipeline(
     let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
     *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
+    {
+        let config = &mut *DECODER_INIT_CONFIG.lock();
+
+        config.codec = settings.video.codec;
+
+        config.options = vec![
+            ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
+            ("priority".into(), MediacodecDataType::Int32(0)),
+            // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+            // cabable, since they are on level 29.
+            ("low-latency".into(), MediacodecDataType::Int32(1)),
+            (
+                "vendor.qti-ext-dec-low-latency.enable".into(),
+                MediacodecDataType::Int32(1),
+            ),
+        ];
+    }
+
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
             eyeWidth: config_packet.eye_resolution_width,
@@ -519,30 +540,13 @@ async fn connection_pipeline(
                 // Note: legacyReceive() requires the java context to be attached to the current thread
                 // todo: investigate why
                 let vm = platform::vm();
-                let env = vm.attach_current_thread().unwrap();
+                let _env = vm.attach_current_thread().unwrap();
 
                 crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);
-
-                let mut idr_request_deadline = None;
 
                 while let Ok(mut data) = legacy_receive_data_receiver.recv() {
                     if !IS_RESUMED.value() {
                         break;
-                    }
-
-                    // Send again IDR packet every 2s in case it is missed
-                    // (due to dropped burst of packets at the start of the stream or otherwise).
-                    if !IDR_PARSED.load(Ordering::Relaxed) {
-                        if let Some(deadline) = idr_request_deadline {
-                            if deadline < Instant::now() {
-                                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                                    sender.send(ClientControlPacket::RequestIdr).ok();
-                                }
-                                idr_request_deadline = None;
-                            }
-                        } else {
-                            idr_request_deadline = Some(Instant::now() + Duration::from_secs(2));
-                        }
                     }
 
                     crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
@@ -550,17 +554,8 @@ async fn connection_pipeline(
 
                 crate::closeSocket();
 
-                let mut decoder = DECODER_REF.lock();
-
-                if let Some(decoder) = &*decoder {
-                    env.call_method(decoder.as_obj(), "onDisconnect", "()V", &[])
-                        .unwrap();
-
-                    env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
-                        .unwrap();
-                }
-
-                *decoder = None;
+                *DECODER_ENQUEUER.lock() = None;
+                *DECODER_DEQUEUER.lock() = None;
             }
 
             Ok(())
@@ -671,6 +666,8 @@ async fn connection_pipeline(
         res = keepalive_sender_loop => res,
         res = control_receive_loop => res,
         // res = debug_loop => res,
+
+        _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
     }
 }
 

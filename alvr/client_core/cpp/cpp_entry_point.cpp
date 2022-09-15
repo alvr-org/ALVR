@@ -5,6 +5,10 @@
 #include "packet_types.h"
 #include "render.h"
 #include "utils.h"
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
 #include <mutex>
 
 using namespace std;
@@ -20,6 +24,7 @@ class GlobalContext {
   public:
     JavaVM *vm;
     jobject context;
+    EGLDisplay eglDisplay;
 
     unique_ptr<Texture> streamTexture;
     unique_ptr<Texture> loadingTexture;
@@ -35,8 +40,10 @@ class GlobalContext {
 };
 
 namespace {
+PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID;
+PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 GlobalContext g_ctx;
-}
+} // namespace
 
 OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
     g_ctx.vm = (JavaVM *)v_vm;
@@ -47,6 +54,12 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
     g_ctx.vm->AttachCurrentThread(&env, &args);
 
     setAssetManager(env, (jobject)v_assetManager);
+
+    g_ctx.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress(
+        "eglGetNativeClientBufferANDROID");
+    glEGLImageTargetTexture2DOES =
+        (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 
     g_ctx.streamTexture = make_unique<Texture>(true);
     g_ctx.loadingTexture =
@@ -60,8 +73,11 @@ void destroyNative() {
     g_ctx.loadingTexture.reset();
 }
 
-void prepareLoadingRoom(
-    int eyeWidth, int eyeHeight, bool darkMode, const int *swapchainTextures[2], int swapchainLength) {
+void prepareLoadingRoom(int eyeWidth,
+                        int eyeHeight,
+                        bool darkMode,
+                        const int *swapchainTextures[2],
+                        int swapchainLength) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.loadingSwapchainTextures[eye].clear();
 
@@ -127,9 +143,19 @@ void destroyRenderers() {
     }
 }
 
-void renderNative(const int swapchainIndices[2]) {
+void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
+    GL(EGLClientBuffer clientBuffer =
+           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+    GL(EGLImage image = eglCreateImage(
+           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+
+    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
     EyeInput eyeInputs[2] = {};
     ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
+
+    GL(eglDestroyImage(g_ctx.eglDisplay, image));
 }
 
 void updateLoadingTexuture(const unsigned char *data) {

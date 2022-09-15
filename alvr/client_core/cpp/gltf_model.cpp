@@ -1,7 +1,5 @@
 #include "gltf_model.h"
 
-#include "asset.h"
-
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE_WRITE
@@ -10,17 +8,46 @@
 #include "utils.h"
 #include "render.h"
 
+const unsigned char *LOBBY_ROOM_GLTF_PTR;
+unsigned int LOBBY_ROOM_GLTF_LEN;
+const unsigned char *LOBBY_ROOM_BIN_PTR;
+unsigned int LOBBY_ROOM_BIN_LEN;
+
+bool AssetFileExists(const std::string &abs_filename, void *) {
+    return true;
+}
+
+std::string AssetExpandFilePath(const std::string &path, void *) {
+    return path;
+}
+
+bool AssetReadWholeFile(std::vector<unsigned char> *out,
+                               std::string *, const std::string &path,
+                               void *) {
+    out->resize(LOBBY_ROOM_BIN_LEN);
+    memcpy(&(*out)[0], LOBBY_ROOM_BIN_PTR, LOBBY_ROOM_BIN_LEN);
+
+    return true;
+}
+
+bool AssetWriteWholeFile(std::string *, const std::string &,
+                        const std::vector<unsigned char> &, void *) {
+    return false;
+}
+
+tinygltf::FsCallbacks gAssetFsCallbacks {.FileExists=AssetFileExists,
+        .ExpandFilePath=AssetExpandFilePath,
+        .ReadWholeFile=AssetReadWholeFile,
+        .WriteWholeFile=AssetWriteWholeFile};
+
 void GltfModel::load() {
     tinygltf::TinyGLTF loader;
     std::string err, warn;
 
     loader.SetFsCallbacks(gAssetFsCallbacks);
 
-    std::vector<unsigned char> buffer;
-    if (!loadAsset("loading.gltf", buffer)) {
-        LOGE("Error on loading scene gltf file.");
-        return;
-    }
+    auto buffer = std::vector<unsigned char>(LOBBY_ROOM_GLTF_LEN);
+    memcpy(&buffer[0], LOBBY_ROOM_GLTF_PTR, LOBBY_ROOM_GLTF_LEN);
     bool ret = loader.LoadASCIIFromString(&m_model, &err, &warn, (char *) &buffer[0], buffer.size(), "");
 
     LOGI("GltfModel loaded. ret=%d scenes=%lu defaultScene=%d err=%s.\nwarn=%s", ret, m_model.scenes.size(), m_model.defaultScene, err.c_str(), warn.c_str());

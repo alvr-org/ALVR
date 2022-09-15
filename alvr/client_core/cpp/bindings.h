@@ -40,20 +40,24 @@ struct StreamConfigInput {
     float foveationEdgeRatioY;
 };
 
-extern "C" OnCreateResult initNative(void *g_vm, void *g_context, void *assetManager);
+extern "C" const unsigned char *LOBBY_ROOM_GLTF_PTR;
+extern "C" unsigned int LOBBY_ROOM_GLTF_LEN;
+extern "C" const unsigned char *LOBBY_ROOM_BIN_PTR;
+extern "C" unsigned int LOBBY_ROOM_BIN_LEN;
+
+extern "C" void initNative();
+extern "C" void destroyNative();
 extern "C" void prepareLoadingRoom(int eyeWidth,
                                    int eyeHeight,
                                    bool darkMode,
                                    const int *swapchainTextures[2],
                                    int swapchainLength);
-extern "C" void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer);
+extern "C" void setStreamConfig(StreamConfigInput config);
+extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
 extern "C" void updateLoadingTexuture(const unsigned char *data);
 extern "C" void renderLoadingNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
-extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
-extern "C" void setStreamConfig(StreamConfigInput config);
 extern "C" void destroyRenderers();
-extern "C" void batteryChangedNative(int battery, int plugged);
-extern "C" void destroyNative();
+extern "C" void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer);
 
 extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
 extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);

@@ -16,6 +16,7 @@ alvr_events = { path = "../events" }
 alvr_session = { path = "../session" }
 alvr_sockets = { path = "../sockets" }
 
+app_dirs2 = "2"
 bincode = "1"
 bytes = "1"
 futures = "0.3"

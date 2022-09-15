@@ -1,6 +1,5 @@
 #include "bindings.h"
 
-#include "asset.h"
 #include "ffr.h"
 #include "packet_types.h"
 #include "render.h"
@@ -22,8 +21,6 @@ const int LOADING_TEXTURE_HEIGHT = 720;
 
 class GlobalContext {
   public:
-    JavaVM *vm;
-    jobject context;
     EGLDisplay eglDisplay;
 
     unique_ptr<Texture> streamTexture;
@@ -45,16 +42,7 @@ PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 GlobalContext g_ctx;
 } // namespace
 
-OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
-    g_ctx.vm = (JavaVM *)v_vm;
-    g_ctx.context = (jobject)v_context;
-
-    JNIEnv *env;
-    JavaVMAttachArgs args = {JNI_VERSION_1_6};
-    g_ctx.vm->AttachCurrentThread(&env, &args);
-
-    setAssetManager(env, (jobject)v_assetManager);
-
+void initNative() {
     g_ctx.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress(
         "eglGetNativeClientBufferANDROID");
@@ -64,8 +52,6 @@ OnCreateResult initNative(void *v_vm, void *v_context, void *v_assetManager) {
     g_ctx.streamTexture = make_unique<Texture>(true);
     g_ctx.loadingTexture =
         make_unique<Texture>(false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
-
-    return {(int)g_ctx.streamTexture->GetGLTexture(), (int)g_ctx.loadingTexture->GetGLTexture()};
 }
 
 void destroyNative() {
@@ -143,21 +129,6 @@ void destroyRenderers() {
     }
 }
 
-void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
-    GL(EGLClientBuffer clientBuffer =
-           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-    GL(EGLImage image = eglCreateImage(
-           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
-
-    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
-    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
-
-    EyeInput eyeInputs[2] = {};
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
-
-    GL(eglDestroyImage(g_ctx.eglDisplay, image));
-}
-
 void updateLoadingTexuture(const unsigned char *data) {
     std::lock_guard<std::mutex> lock(g_ctx.loadingTextureMutex);
 
@@ -188,4 +159,19 @@ void renderLoadingNative(const EyeInput eyeInputs[2], const int swapchainIndices
     }
 
     ovrRenderer_RenderFrame(g_ctx.loadingRenderer.get(), eyeInputs, swapchainIndices, true);
+}
+
+void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
+    GL(EGLClientBuffer clientBuffer =
+           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+    GL(EGLImage image = eglCreateImage(
+           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+
+    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
+    EyeInput eyeInputs[2] = {};
+    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
+
+    GL(eglDestroyImage(g_ctx.eglDisplay, image));
 }

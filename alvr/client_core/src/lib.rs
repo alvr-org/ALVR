@@ -5,12 +5,17 @@ mod connection_utils;
 mod logging_backend;
 mod platform;
 mod statistics;
+mod storage;
 
 #[cfg(target_os = "android")]
 mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use crate::{
+    platform::DecoderDequeuedData,
+    storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF},
+};
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -40,17 +45,12 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use storage::Config;
 use tokio::{
     runtime::{self, Runtime},
     sync::mpsc,
     sync::Notify,
 };
-
-use crate::platform::DecoderDequeuedData;
-
-// This is the actual storage for the context pointer set in ndk-context. usually stored in
-// ndk-glue instead
-static GLOBAL_ASSET_MANAGER: OnceCell<GlobalRef> = OnceCell::new();
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
@@ -240,43 +240,22 @@ pub extern "C" fn alvr_initialize(
         videoErrorReportSend = Some(video_error_report_send);
         createDecoder = Some(create_decoder);
         pushNal = Some(push_nal);
+
+        LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
+        LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
+        LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
+        LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
     }
 
     // Make sure to reset config in case of version compat mismatch.
-    if platform::load_config().protocol_id != alvr_common::protocol_id() {
+    if Config::load().protocol_id != alvr_common::protocol_id() {
         // NB: Config::default() sets the current protocol ID
-        platform::store_config(&platform::Config::default());
+        Config::default().store();
     }
 
     platform::try_get_microphone_permission();
 
-    let vm = platform::vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    let asset_manager = env
-        .call_method(
-            ndk_context::android_context().context().cast(),
-            "getAssets",
-            "()Landroid/content/res/AssetManager;",
-            &[],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-    let asset_manager = env.new_global_ref(asset_manager).unwrap();
-
-    let result = unsafe {
-        initNative(
-            ndk_context::android_context().vm(),
-            ndk_context::android_context().context(),
-            *asset_manager.as_obj() as _,
-        )
-    };
-
-    GLOBAL_ASSET_MANAGER
-        .set(asset_manager)
-        .map_err(|_| ())
-        .unwrap();
+    unsafe { initNative() };
 
     *PREFERRED_RESOLUTION.lock() = UVec2::new(recommended_view_width, recommended_view_height);
 
@@ -325,7 +304,7 @@ pub unsafe extern "C" fn alvr_destroy() {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
-    let config = platform::load_config();
+    let config = Config::load();
 
     let resolution = *PREFERRED_RESOLUTION.lock();
 

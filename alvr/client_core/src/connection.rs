@@ -4,6 +4,7 @@ use crate::{
     connection_utils::{self, ConnectionError},
     platform,
     statistics::StatisticsManager,
+    storage::Config,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_DEQUEUER, DECODER_ENQUEUER,
     DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_BUFFER, IS_RESUMED, STATISTICS_MANAGER,
     STATISTICS_SENDER, TRACKING_SENDER,
@@ -79,7 +80,7 @@ impl Drop for StreamCloseGuard {
 }
 
 fn set_loading_message(message: &str) {
-    let hostname = platform::load_config().hostname;
+    let hostname = Config::load().hostname;
 
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
@@ -163,7 +164,7 @@ async fn connection_pipeline(
     decoder_guard: Arc<parking_lot::Mutex<()>>,
 ) -> StrResult {
     let device_name = platform::device_name();
-    let hostname = platform::load_config().hostname;
+    let hostname = Config::load().hostname;
 
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -307,9 +308,9 @@ async fn connection_pipeline(
     };
 
     {
-        let mut config = platform::load_config();
+        let mut config = Config::load();
         config.dark_mode = settings.extra.client_dark_mode;
-        platform::store_config(&config);
+        config.store();
     }
 
     // create this before initializing the stream on cpp side

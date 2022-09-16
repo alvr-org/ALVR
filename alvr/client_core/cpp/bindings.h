@@ -59,13 +59,13 @@ extern "C" void renderLoadingNative(const EyeInput eyeInputs[2], const int swapc
 extern "C" void destroyRenderers();
 extern "C" void renderNative(const int swapchainIndices[2], void *streamHardwareBuffer);
 
-extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
-extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
-extern "C" bool isConnectedNative();
-extern "C" void closeSocket();
+extern "C" void initializeNalParser(int codec, bool enableFec);
+extern "C" bool processNalPacket(VideoFrame header,
+                                 const unsigned char *payload,
+                                 int payloadSize,
+                                 bool &outHadFecFailure);
 
 extern "C" unsigned long long (*pathStringToHash)(const char *path);
 
-extern "C" void (*videoErrorReportSend)();
 extern "C" void (*createDecoder)(const char *csd_0, int length);
 extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

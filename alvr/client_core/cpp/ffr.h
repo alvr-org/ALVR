@@ -2,9 +2,7 @@
 
 #include <memory>
 #include <vector>
-
 #include "gl_render_utils/render_pipeline.h"
-#include "packet_types.h"
 
 struct FFRData {
     bool enabled;

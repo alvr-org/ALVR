@@ -6,8 +6,8 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_DEQUEUER, DECODER_ENQUEUER,
-    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_BUFFER, IS_RESUMED, STATISTICS_MANAGER,
-    STATISTICS_SENDER, TRACKING_SENDER,
+    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_BUFFER, IS_RESUMED, IS_STREAMING,
+    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -67,17 +67,6 @@ const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 const LOADING_TEXTURE_WIDTH: usize = 1280;
 const LOADING_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
-
-// close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard {
-    is_connected: Arc<AtomicBool>,
-}
-
-impl Drop for StreamCloseGuard {
-    fn drop(&mut self) {
-        self.is_connected.store(false, Ordering::Relaxed);
-    }
-}
 
 fn set_loading_message(message: &str) {
     let hostname = Config::load().hostname;
@@ -161,7 +150,7 @@ fn on_server_connected(
 }
 async fn connection_pipeline(
     headset_info: HeadsetInfoPacket,
-    decoder_guard: Arc<parking_lot::Mutex<()>>,
+    decoder_guard: Arc<Mutex<()>>,
 ) -> StrResult {
     let device_name = platform::device_name();
     let hostname = Config::load().hostname;
@@ -301,11 +290,6 @@ async fn connection_pipeline(
     let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
-
-    let is_connected = Arc::new(AtomicBool::new(true));
-    let _stream_guard = StreamCloseGuard {
-        is_connected: Arc::clone(&is_connected),
-    };
 
     {
         let mut config = Config::load();
@@ -470,19 +454,43 @@ async fn connection_pipeline(
         }
     };
 
-    let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
-    let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
-
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
-        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
+        let codec = settings.video.codec;
+        let enable_fec = settings.connection.enable_fec;
         async move {
+            let _decoder_guard = decoder_guard.lock().await;
+
+            // close stream on Drop (manual disconnection or execution canceling)
+            struct StreamCloseGuard;
+
+            impl Drop for StreamCloseGuard {
+                fn drop(&mut self) {
+                    error!(" StreamCloseGuard closed");
+                    IS_STREAMING.set(false);
+
+                    *DECODER_ENQUEUER.lock() = None;
+                    *DECODER_DEQUEUER.lock() = None;
+                }
+            }
+
+            let _stream_guard = StreamCloseGuard;
+
+            unsafe {
+                crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
+            };
+
+            IS_STREAMING.set(true);
+
             loop {
                 let packet = receiver.recv().await?;
 
-                let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
+                if !IS_RESUMED.value() {
+                    break Ok(());
+                }
+
                 let header = VideoFrame {
                     packetCounter: packet.header.packet_counter,
                     trackingFrameIndex: packet.header.tracking_frame_index,
@@ -493,18 +501,26 @@ async fn connection_pipeline(
                     fecPercentage: packet.header.fec_percentage,
                 };
 
-                buffer[..mem::size_of::<VideoFrame>()].copy_from_slice(unsafe {
-                    &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
-                });
-                buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
-
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_video_packet_received(Duration::from_nanos(
                         packet.header.tracking_frame_index,
                     ));
                 }
 
-                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                let mut fec_failure = false;
+                unsafe {
+                    crate::processNalPacket(
+                        header,
+                        packet.buffer.as_ptr(),
+                        packet.buffer.len() as _,
+                        &mut fec_failure,
+                    )
+                };
+                if fec_failure {
+                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                        sender.send(ClientControlPacket::VideoErrorReport).ok();
+                    }
+                }
             }
         }
     };
@@ -526,42 +542,6 @@ async fn connection_pipeline(
             }
         }
     };
-
-    // The main stream loop must be run in a normal thread, because it needs to access the JNI env
-    // many times per second. If using a future I'm forced to attach and detach the env continuously.
-    // When the parent function exits or gets canceled, this loop will run to finish.
-    let legacy_stream_socket_loop = task::spawn_blocking({
-        let codec = settings.video.codec;
-        let enable_fec = settings.connection.enable_fec;
-        let decoder_guard = Arc::clone(&decoder_guard);
-        move || -> StrResult {
-            unsafe {
-                let _guard = decoder_guard.lock();
-
-                // Note: legacyReceive() requires the java context to be attached to the current thread
-                // todo: investigate why
-                let vm = platform::vm();
-                let _env = vm.attach_current_thread().unwrap();
-
-                crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);
-
-                while let Ok(mut data) = legacy_receive_data_receiver.recv() {
-                    if !IS_RESUMED.value() {
-                        break;
-                    }
-
-                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
-                }
-
-                crate::closeSocket();
-
-                *DECODER_ENQUEUER.lock() = None;
-                *DECODER_DEQUEUER.lock() = None;
-            }
-
-            Ok(())
-        }
-    });
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Output)
@@ -661,7 +641,6 @@ async fn connection_pipeline(
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = spawn_cancelable(control_send_loop) => res,
-        res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
@@ -675,7 +654,7 @@ async fn connection_pipeline(
 pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
     set_loading_message(INITIAL_MESSAGE);
 
-    let decoder_guard = Arc::new(parking_lot::Mutex::new(()));
+    let decoder_guard = Arc::new(Mutex::new(()));
 
     loop {
         tokio::join!(

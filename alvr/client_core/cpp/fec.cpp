@@ -1,10 +1,28 @@
-#include <vector>
-#include <algorithm>
-#include <stdlib.h>
-#include <inttypes.h>
+
 #include "fec.h"
-#include "packet_types.h"
 #include "utils.h"
+#include <assert.h>
+
+static const int ALVR_MAX_VIDEO_BUFFER_SIZE = 1400;
+static const int ALVR_FEC_SHARDS_MAX = 20;
+
+inline int CalculateParityShards(int dataShards, int fecPercentage) {
+	int totalParityShards = (dataShards * fecPercentage + 99) / 100;
+	return totalParityShards;
+}
+
+// Calculate how many packet is needed for make signal shard.
+inline int CalculateFECShardPackets(int len, int fecPercentage) {
+	// This reed solomon implementation accept only 255 shards.
+	// Normally, we use ALVR_MAX_VIDEO_BUFFER_SIZE as block_size and single packet becomes single shard.
+	// If we need more than maxDataShards packets, we need to combine multiple packet to make single shrad.
+	// NOTE: Moonlight seems to use only 255 shards for video frame.
+	int maxDataShards = ((ALVR_FEC_SHARDS_MAX - 2) * 100 + 99 + fecPercentage) / (100 + fecPercentage);
+	int minBlockSize = (len + maxDataShards - 1) / maxDataShards;
+	int shardPackets = (minBlockSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) / ALVR_MAX_VIDEO_BUFFER_SIZE;
+	assert(maxDataShards + CalculateParityShards(maxDataShards, fecPercentage) <= ALVR_FEC_SHARDS_MAX);
+	return shardPackets;
+}
 
 bool FECQueue::reed_solomon_initialized = false;
 
@@ -26,11 +44,11 @@ FECQueue::~FECQueue() {
 }
 
 // Add packet to queue. packet must point to buffer whose size=ALVR_MAX_PACKET_SIZE.
-void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fecFailure) {
-    if (m_recovered && m_currentFrame.videoFrameIndex == packet->videoFrameIndex) {
+void FECQueue::addVideoPacket(VideoFrame header, const unsigned char *payload, int payloadSize, bool &fecFailure) {
+    if (m_recovered && m_currentFrame.videoFrameIndex == header.videoFrameIndex) {
         return;
     }
-    if (m_currentFrame.videoFrameIndex != packet->videoFrameIndex) {
+    if (m_currentFrame.videoFrameIndex != header.videoFrameIndex) {
         // New frame
         if (!m_recovered) {
             FrameLog(m_currentFrame.trackingFrameIndex,
@@ -48,13 +66,13 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
             }
             fecFailure = m_fecFailure = true;
         }
-        m_currentFrame = *packet;
+        m_currentFrame = header;
         m_recovered = false;
         if (m_rs != NULL) {
             reed_solomon_release(m_rs);
         }
 
-        uint32_t fecDataPackets = (packet->frameByteSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) /
+        uint32_t fecDataPackets = (header.frameByteSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) /
                                   ALVR_MAX_VIDEO_BUFFER_SIZE;
         m_shardPackets = CalculateFECShardPackets(m_currentFrame.frameByteSize,
                                                   m_currentFrame.fecPercentage);
@@ -135,12 +153,12 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
                  m_currentFrame.videoFrameIndex, m_currentFrame.frameByteSize, m_currentFrame.fecPercentage, m_totalDataShards,
                  m_totalParityShards, m_totalShards, m_shardPackets, m_blockSize);
     }
-    size_t shardIndex = packet->fecIndex / m_shardPackets;
-    size_t packetIndex = packet->fecIndex % m_shardPackets;
+    size_t shardIndex = header.fecIndex / m_shardPackets;
+    size_t packetIndex = header.fecIndex % m_shardPackets;
     if (m_marks[packetIndex][shardIndex] == 0) {
         // Duplicate packet.
-        LOGI("Packet duplication. packetCounter=%d fecIndex=%d", packet->packetCounter,
-             packet->fecIndex);
+        LOGI("Packet duplication. packetCounter=%d fecIndex=%d", header.packetCounter,
+             header.fecIndex);
         return;
     }
     m_marks[packetIndex][shardIndex] = 0;
@@ -150,9 +168,7 @@ void FECQueue::addVideoPacket(const VideoFrame *packet, int packetSize, bool &fe
         m_receivedParityShards[packetIndex]++;
     }
 
-    std::byte *p = &m_frameBuffer[packet->fecIndex * ALVR_MAX_VIDEO_BUFFER_SIZE];
-    char *payload = ((char *) packet) + sizeof(VideoFrame);
-    int payloadSize = packetSize - sizeof(VideoFrame);
+    std::byte *p = &m_frameBuffer[header.fecIndex * ALVR_MAX_VIDEO_BUFFER_SIZE];
     memcpy(p, payload, payloadSize);
     if (payloadSize != ALVR_MAX_VIDEO_BUFFER_SIZE) {
         // Fill padding
@@ -225,10 +241,6 @@ const std::byte *FECQueue::getFrameBuffer() {
 
 int FECQueue::getFrameByteSize() {
     return m_currentFrame.frameByteSize;
-}
-
-bool FECQueue::fecFailure() {
-    return m_fecFailure;
 }
 
 void FECQueue::clearFecFailure() {

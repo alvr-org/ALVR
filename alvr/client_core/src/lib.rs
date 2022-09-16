@@ -85,7 +85,8 @@ pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
 static DECODER_ENQUEUER: Lazy<Mutex<Option<VideoDecoderEnqueuer>>> = Lazy::new(|| Mutex::new(None));
 static DECODER_DEQUEUER: Lazy<Mutex<Option<VideoDecoderDequeuer>>> = Lazy::new(|| Mutex::new(None));
 
-static IS_RESUMED: Lazy<RelaxedAtomic> = Lazy::new(|| RelaxedAtomic::new(false));
+static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
+static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
 #[repr(u8)]
 pub enum AlvrEvent {
@@ -187,12 +188,6 @@ pub extern "C" fn alvr_initialize(
     unsafe { ndk_context::initialize_android_context(java_vm, context) };
     logging_backend::init_logging();
 
-    extern "C" fn video_error_report_send() {
-        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-            sender.send(ClientControlPacket::VideoErrorReport).ok();
-        }
-    }
-
     extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
         if DECODER_ENQUEUER.lock().is_none() {
             let mut csd_0 = vec![0; length as _];
@@ -237,7 +232,6 @@ pub extern "C" fn alvr_initialize(
 
     unsafe {
         pathStringToHash = Some(alvr_path_string_to_hash);
-        videoErrorReportSend = Some(video_error_report_send);
         createDecoder = Some(create_decoder);
         pushNal = Some(push_nal);
 
@@ -413,7 +407,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(buffer: *mut *mut c_void) -> i64 {
                 timestamp,
             }) => {
                 if Instant::now() - start_instant < Duration::from_millis(5) {
-                    info!("Try draining extra decoder frame");
+                    debug!("Try draining extra decoder frame");
                     match decoder
                         .dequeue_frame(Duration::from_micros(1), Duration::from_millis(100))
                     {
@@ -519,7 +513,7 @@ pub unsafe extern "C" fn alvr_render_stream(
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_is_streaming() -> bool {
-    isConnectedNative()
+    IS_STREAMING.value()
 }
 
 #[no_mangle]

@@ -1,6 +1,6 @@
 [package]
 name = "alvr_server"
-version = "19.0.0-dev02"
+version = "19.0.0-dev03"
 authors = ["alvr-org", "polygraphene", "Valve Corporation"]
 license = "MIT"
 edition = "2021"
@@ -54,7 +54,7 @@ tokio-util = { version = "0.7", features = ["codec"] }
 # Browser interop
 tempfile = "3"
 alcro = "0.5.4"
-webbrowser = "0.7" # this is just for opening links in the default browser
+webbrowser = "0.8" # this is just for opening links in the default browser
 # Miscellaneous
 fern = "0.6"
 winit = "0.27" # needed to get the screen size

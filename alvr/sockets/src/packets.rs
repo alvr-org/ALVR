@@ -74,8 +74,8 @@ pub enum ClientConnectionResult {
 pub struct ClientConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
     pub dashboard_url: String,
-    pub eye_resolution_width: u32,
-    pub eye_resolution_height: u32,
+    pub view_resolution_width: u32,
+    pub view_resolution_height: u32,
     pub fps: f32,
     pub game_audio_sample_rate: u32,
     pub reserved: String,

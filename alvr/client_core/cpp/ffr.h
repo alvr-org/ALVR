@@ -6,8 +6,8 @@
 
 struct FFRData {
     bool enabled;
-    uint32_t eyeWidth;
-    uint32_t eyeHeight;
+    uint32_t viewWidth;
+    uint32_t viewHeight;
     float centerSizeX;
     float centerSizeY;
     float centerShiftX;

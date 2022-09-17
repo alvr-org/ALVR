@@ -1,6 +1,6 @@
 [package]
 name = "alvr_audio"
-version = "19.0.0-dev02"
+version = "19.0.0-dev03"
 authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
 license = "MIT"
 edition = "2021"
@@ -18,7 +18,7 @@ tokio = "1"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "1"
-windows = { version = "0.39", features = [
+windows = { version = "0.40", features = [
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio_Endpoints",

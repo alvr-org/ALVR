@@ -6,7 +6,6 @@
 
 #include "tinygltf/tiny_gltf.h"
 #include "utils.h"
-#include "render.h"
 
 const unsigned char *LOBBY_ROOM_GLTF_PTR;
 unsigned int LOBBY_ROOM_GLTF_LEN;

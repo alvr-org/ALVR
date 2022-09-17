@@ -4,14 +4,13 @@
 
 #include "bindings.h"
 #include "fec.h"
-#include "utils.h"
 
 static const std::byte NAL_TYPE_SPS = static_cast<const std::byte>(7);
 static const std::byte H265_NAL_TYPE_VPS = static_cast<const std::byte>(32);
 
 enum ALVR_CODEC {
-	ALVR_CODEC_H264 = 0,
-	ALVR_CODEC_H265 = 1,
+    ALVR_CODEC_H264 = 0,
+    ALVR_CODEC_H265 = 1,
 };
 
 void (*createDecoder)(const char *csd_0, int length);
@@ -54,7 +53,10 @@ int findVPSSPS(const std::byte *frameBuffer, int frameByteSize) {
     return -1;
 }
 
-bool processNalPacket(VideoFrame header, const unsigned char *payload, int payloadSize, bool &outHadFecFailure) {
+bool processNalPacket(VideoFrame header,
+                      const unsigned char *payload,
+                      int payloadSize,
+                      bool &outHadFecFailure) {
     if (m_enableFEC) {
         m_queue.addVideoPacket(header, payload, payloadSize, outHadFecFailure);
     }
@@ -86,10 +88,8 @@ bool processNalPacket(VideoFrame header, const unsigned char *payload, int paylo
             int end = findVPSSPS(frameBuffer, frameByteSize);
             if (end == -1) {
                 // Invalid frame.
-                LOG("Got invalid frame. Too large SPS or PPS?");
                 return false;
             }
-            LOGI("Got frame=%d %d, Codec=%d", (std::int32_t)NALType, end, m_codec);
             createDecoder((const char *)&frameBuffer[0], end);
             pushNal(
                 (const char *)&frameBuffer[end], frameByteSize - end, header.trackingFrameIndex);

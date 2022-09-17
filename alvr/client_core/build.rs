@@ -10,29 +10,43 @@ fn main() {
         .map(|entry| entry.into_path())
         .collect::<Vec<_>>();
 
+    let source_files_paths = if platform_name == "android" {
+        cpp_paths
+            .iter()
+            .filter_map(|path| {
+                path.extension()
+                    .filter(|ext| ext.to_string_lossy() == "cpp")
+                    .is_some()
+                    .then(|| path.clone())
+            })
+            .collect()
+    } else {
+        vec![
+            PathBuf::new().join("cpp/fec.cpp"),
+            PathBuf::new().join("cpp/nal.cpp"),
+        ]
+    };
+
+    let mut builder = &mut cc::Build::new();
+    builder = builder
+        .cpp(true)
+        .flag("-std=c++17")
+        .flag("-fexceptions")
+        .flag("-frtti")
+        .files(source_files_paths)
+        .include("cpp")
+        .include("cpp/gl_render_utils");
     if platform_name == "android" {
-        let source_files_paths = cpp_paths.iter().filter(|path| {
-            path.extension()
-                .filter(|ext| ext.to_string_lossy() == "cpp")
-                .is_some()
-        });
+        builder = builder.cpp_link_stdlib("c++_static");
+    }
+    builder.compile("bindings");
 
-        cc::Build::new()
-            .cpp(true)
-            .flag("-std=c++17")
-            .flag("-fexceptions")
-            .flag("-frtti")
-            .files(source_files_paths)
-            .include("cpp")
-            .include("cpp/gl_render_utils")
-            .cpp_link_stdlib("c++_static")
-            .compile("bindings");
+    cc::Build::new()
+        .cpp(false)
+        .files(&["cpp/reedsolomon/rs.c"])
+        .compile("bindings_rs_c");
 
-        cc::Build::new()
-            .cpp(false)
-            .files(&["cpp/reedsolomon/rs.c"])
-            .compile("bindings_rs_c");
-
+    if platform_name == "android" {
         println!("cargo:rustc-link-lib=log");
         println!("cargo:rustc-link-lib=EGL");
         println!("cargo:rustc-link-lib=GLESv3");

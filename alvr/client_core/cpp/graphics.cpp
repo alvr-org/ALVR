@@ -16,6 +16,15 @@ const int MAX_PROGRAM_TEXTURES = 8;
 const int HUD_TEXTURE_WIDTH = 1280;
 const int HUD_TEXTURE_HEIGHT = 720;
 
+/// Integer version of ovrRectf
+typedef struct Recti_
+{
+    int x;
+    int y;
+    int width;
+    int height;
+} Recti;
+
 typedef struct {
     std::vector<std::unique_ptr<gl_render_utils::Texture>> renderTargets;
     std::vector<std::unique_ptr<gl_render_utils::RenderState>> renderStates;

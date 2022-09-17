@@ -250,7 +250,7 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "walkdir",
- "webbrowser",
+ "webbrowser 0.8.0",
  "winit",
 ]
 
@@ -1246,7 +1246,7 @@ dependencies = [
  "instant",
  "smithay-clipboard",
  "tracing",
- "webbrowser",
+ "webbrowser 0.7.1",
  "winit",
 ]
 
@@ -2606,6 +2606,21 @@ name = "ndk-context"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
+
+[[package]]
+name = "ndk-glue"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d0c4a7b83860226e6b4183edac21851f05d5a51756e97a1144b7f5a6b63e65f"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "log",
+ "ndk 0.6.0",
+ "ndk-context",
+ "ndk-macro",
+ "ndk-sys 0.3.0",
+]
 
 [[package]]
 name = "ndk-glue"
@@ -4455,12 +4470,26 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc6a3cffdb686fbb24d9fb8f03a213803277ed2300f11026a3afe1f108dc021b"
+dependencies = [
+ "jni",
+ "ndk-glue 0.6.2",
+ "url",
+ "web-sys",
+ "widestring 0.5.1",
+ "winapi",
+]
+
+[[package]]
+name = "webbrowser"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01d62aa75495ab67cdc273d0b95cc76bcedfea2ba28338a4cf9b4137949dfac5"
 dependencies = [
  "jni",
- "ndk-glue",
+ "ndk-glue 0.7.0",
  "objc",
  "raw-window-handle 0.5.0",
  "url",
@@ -4608,6 +4637,12 @@ name = "widestring"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
+
+[[package]]
+name = "widestring"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17882f045410753661207383517a6f62ec3dbeb6a4ed2acce01f0728238d1983"
 
 [[package]]
 name = "widestring"
@@ -4814,7 +4849,7 @@ dependencies = [
  "log",
  "mio",
  "ndk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ndk-glue",
+ "ndk-glue 0.7.0",
  "objc",
  "once_cell",
  "parking_lot 0.12.1",

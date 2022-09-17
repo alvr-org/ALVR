@@ -2,6 +2,7 @@
 
 mod connection;
 mod connection_utils;
+mod decoder;
 mod logging_backend;
 mod platform;
 mod statistics;
@@ -12,10 +13,7 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use crate::{
-    platform::DecoderDequeuedData,
-    storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF},
-};
+use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -25,18 +23,18 @@ use alvr_common::{
     RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_events::ButtonValue;
-use alvr_session::{AudioDeviceId, CodecType, MediacodecDataType};
+use alvr_session::AudioDeviceId;
 use alvr_sockets::{
     BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, HeadsetInfoPacket,
     Tracking, ViewsConfig,
 };
-use platform::{VideoDecoderDequeuer, VideoDecoderEnqueuer};
+use decoder::EXTERNAL_DECODER;
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
     ffi::{c_void, CStr},
     os::raw::c_char,
-    ptr, slice, thread,
+    ptr, slice,
     time::{Duration, Instant},
 };
 use storage::Config;
@@ -58,31 +56,15 @@ static PREFERRED_RESOLUTION: Lazy<Mutex<UVec2>> = Lazy::new(|| Mutex::new(UVec2:
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
-static LAST_ENQUEUED_TIMESTAMPS: Lazy<Mutex<VecDeque<Duration>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
-
-pub struct DecoderInitConfig {
-    codec: CodecType,
-    options: Vec<(String, MediacodecDataType)>,
-}
-
-pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
-    Mutex::new(DecoderInitConfig {
-        codec: CodecType::H264,
-        options: vec![],
-    })
-});
-static DECODER_ENQUEUER: Lazy<Mutex<Option<VideoDecoderEnqueuer>>> = Lazy::new(|| Mutex::new(None));
-static DECODER_DEQUEUER: Lazy<Mutex<Option<VideoDecoderDequeuer>>> = Lazy::new(|| Mutex::new(None));
-
-static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
-static NAL_QUEUE: Lazy<Mutex<VecDeque<(Duration, Vec<u8>)>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
-
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
 static USE_OPENGL: RelaxedAtomic = RelaxedAtomic::new(true);
+
+pub enum AlvrCodec {
+    H264,
+    H265,
+}
 
 #[repr(u8)]
 pub enum AlvrEvent {
@@ -101,6 +83,9 @@ pub enum AlvrEvent {
         duration_s: f32,
         frequency: f32,
         amplitude: f32,
+    },
+    CreateDecoder {
+        codec: AlvrCodec,
     },
     NalReady,
 }
@@ -182,7 +167,8 @@ pub extern "C" fn alvr_log_time(tag: *const c_char) {
     error!("[ALVR NATIVE] {tag}: {:?}", Instant::now());
 }
 
-// NB: context must be thread safe.
+/// On non-Android platforms, java_vm and constext should be null.
+/// NB: context must be thread safe.
 #[no_mangle]
 pub extern "C" fn alvr_initialize(
     java_vm: *mut c_void,
@@ -194,73 +180,24 @@ pub extern "C" fn alvr_initialize(
     use_opengl: bool,
     external_decoder: bool,
 ) {
-    unsafe { ndk_context::initialize_android_context(java_vm, context) };
+    #[cfg(target_os = "android")]
+    unsafe {
+        ndk_context::initialize_android_context(java_vm, context)
+    };
+
     logging_backend::init_logging();
 
-    extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
-        let mut csd_0 = vec![0; length as _];
-        unsafe { ptr::copy_nonoverlapping(buffer, csd_0.as_mut_ptr(), length as _) };
-
-        if EXTERNAL_DECODER.value() {
-            // duration == 0 is the flag to identify the config NALS
-            NAL_QUEUE.lock().push_back((Duration::ZERO, csd_0));
-            EVENT_QUEUE.lock().push_back(AlvrEvent::NalReady);
-        } else {
-            if DECODER_ENQUEUER.lock().is_none() {
-                let config = DECODER_INIT_CONFIG.lock();
-
-                let (enqueuer, dequeuer) =
-                    platform::video_decoder_split(config.codec, &csd_0, &config.options).unwrap();
-
-                *DECODER_ENQUEUER.lock() = Some(enqueuer);
-                *DECODER_DEQUEUER.lock() = Some(dequeuer);
-
-                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                    sender.send(ClientControlPacket::RequestIdr).ok();
-                }
-            }
-        }
-    }
-
-    extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64) {
-        let timestamp = Duration::from_nanos(timestamp_ns);
-
-        {
-            let mut timestamps_lock = LAST_ENQUEUED_TIMESTAMPS.lock();
-
-            timestamps_lock.push_back(timestamp);
-            if timestamps_lock.len() > 20 {
-                timestamps_lock.pop_front();
-            }
-        }
-
-        let mut nal_buffer = vec![0; length as _];
-        unsafe { ptr::copy_nonoverlapping(buffer, nal_buffer.as_mut_ptr(), length as _) }
-
-        if EXTERNAL_DECODER.value() {
-            NAL_QUEUE.lock().push_back((timestamp, nal_buffer));
-            EVENT_QUEUE.lock().push_back(AlvrEvent::NalReady);
-        } else {
-            if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-                show_err(decoder.push_frame_nal(
-                    timestamp,
-                    &nal_buffer,
-                    Duration::from_millis(500),
-                ));
-            } else if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                sender.send(ClientControlPacket::RequestIdr).ok();
-            }
-        }
-    }
-
+    #[cfg(target_os = "android")]
     unsafe {
         LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
         LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
         LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
         LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
+    }
 
-        createDecoder = Some(create_decoder);
-        pushNal = Some(push_nal);
+    unsafe {
+        createDecoder = Some(decoder::create_decoder);
+        pushNal = Some(decoder::push_nal);
     }
 
     // Make sure to reset config in case of version compat mismatch.
@@ -269,11 +206,13 @@ pub extern "C" fn alvr_initialize(
         Config::default().store();
     }
 
+    #[cfg(target_os = "android")]
     platform::try_get_microphone_permission();
 
     USE_OPENGL.set(use_opengl);
     EXTERNAL_DECODER.set(external_decoder);
 
+    #[cfg(target_os = "android")]
     if use_opengl {
         unsafe { initGraphicsNative() };
     }
@@ -320,13 +259,16 @@ pub unsafe extern "C" fn alvr_destroy() {
     // shutdown and wait for tasks to finish
     drop(RUNTIME.lock().take());
 
+    #[cfg(target_os = "android")]
     if USE_OPENGL.value() {
         destroyGraphicsNative();
     }
 }
 
+/// If no OpenGL is selected, arguments are ignored
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
+    #[cfg(target_os = "android")]
     if USE_OPENGL.value() {
         let resolution = *PREFERRED_RESOLUTION.lock();
         prepareLobbyRoom(
@@ -344,12 +286,13 @@ pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapch
 pub unsafe extern "C" fn alvr_pause() {
     IS_RESUMED.set(false);
 
+    #[cfg(target_os = "android")]
     if USE_OPENGL.value() {
         destroyRenderers();
     }
 }
 
-// Returns true if there was a new event
+/// Returns true if there was a new event
 #[no_mangle]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     if let Some(event) = EVENT_QUEUE.lock().pop_front() {
@@ -362,6 +305,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
 }
 
 /// Call only when using OpenGL
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_stream(
     swapchain_textures: *mut *const i32,
@@ -418,88 +362,8 @@ pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
     }
 }
 
-/// Call only with internal decoder
-/// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
-/// from out_buffer.
-#[no_mangle]
-pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i64 {
-    let timestamp = if let Some(decoder) = &*DECODER_DEQUEUER.lock() {
-        // Note on frame pacing: sometines there could be late frames stored inside the decoder,
-        // which are gradually drained by polling two frames per frame. But sometimes a frame could
-        // be received earlier than usual because of network jitter. In this case, if we polled the
-        // second frame immediately, the next frame would probably be late. To mitigate this
-        // scenario, a 5ms delay measurement is used to decide if to poll the second frame or not.
-        // todo: remove the 5ms "magic number" and implement proper phase sync measuring network
-        // jitter variance.
-        let start_instant = Instant::now();
-        match decoder.dequeue_frame(Duration::from_millis(50), Duration::from_millis(100)) {
-            Ok(DecoderDequeuedData::Frame {
-                buffer_ptr,
-                timestamp,
-            }) => {
-                if Instant::now() - start_instant < Duration::from_millis(5) {
-                    debug!("Try draining extra decoder frame");
-                    match decoder
-                        .dequeue_frame(Duration::from_micros(1), Duration::from_millis(100))
-                    {
-                        Ok(DecoderDequeuedData::Frame {
-                            buffer_ptr,
-                            timestamp,
-                        }) => {
-                            *out_buffer = buffer_ptr;
-                            Some(timestamp)
-                        }
-                        Ok(_) => {
-                            // Note: data from first dequeue!
-                            *out_buffer = buffer_ptr;
-                            Some(timestamp)
-                        }
-                        Err(e) => {
-                            error!("Error while decoder dequeue (2nd time): {e}");
-                            DISCONNECT_NOTIFIER.notify_waiters();
-
-                            None
-                        }
-                    }
-                } else {
-                    *out_buffer = buffer_ptr;
-                    Some(timestamp)
-                }
-            }
-            Ok(data) => {
-                info!("Decoder: no frame dequeued. {data:?}");
-
-                None
-            }
-            Err(e) => {
-                error!("Error while decoder dequeue: {e}");
-                DISCONNECT_NOTIFIER.notify_waiters();
-
-                None
-            }
-        }
-    } else {
-        thread::sleep(Duration::from_millis(5));
-        None
-    };
-
-    if let Some(timestamp) = timestamp {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_frame_decoded(timestamp);
-        }
-
-        if !LAST_ENQUEUED_TIMESTAMPS.lock().contains(&timestamp) {
-            error!("Detected late decoder, disconnecting...");
-            DISCONNECT_NOTIFIER.notify_waiters();
-        }
-
-        timestamp.as_nanos() as i64
-    } else {
-        -1
-    }
-}
-
 /// Call only when using OpenGL
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_lobby(
     eye_inputs: *const AlvrEyeInput,
@@ -536,6 +400,8 @@ pub unsafe extern "C" fn alvr_render_lobby(
 }
 
 /// Call only when using OpenGL
+
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_stream(
     swapchain_indices: *const i32,
@@ -661,29 +527,5 @@ pub extern "C" fn alvr_request_idr() {
 pub extern "C" fn alvr_report_frame_decoded(timestamp_ns: u64) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
-    }
-}
-
-/// Call only with external decoder
-/// Returns the number of bytes of the next nal, or 0 if there are no nals ready.
-/// If out_nal or out_timestamp_ns is null, no nal is dequeued. Use to get the nal allocation size.
-/// Returns out_timestamp_ns == 0 if config NAL.
-#[no_mangle]
-pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64) -> u64 {
-    let mut queue_lock = NAL_QUEUE.lock();
-    if let Some((timestamp, nal)) = queue_lock.pop_front() {
-        let nal_size = nal.len();
-        if !out_nal.is_null() && !out_timestamp_ns.is_null() {
-            unsafe {
-                ptr::copy_nonoverlapping(nal.as_ptr(), out_nal, nal_size);
-                *out_timestamp_ns = timestamp.as_nanos() as _;
-            }
-        } else {
-            queue_lock.push_front((timestamp, nal))
-        }
-
-        nal_size as u64
-    } else {
-        0
     }
 }

@@ -44,7 +44,7 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-pub fn package_server(root: Option<String>, gpl: bool) {
+pub fn package_server(root: Option<String>, gpl: bool, appimage: bool) {
     let sh = Shell::new().unwrap();
 
     build::build_server(true, gpl, root, true, false);
@@ -92,7 +92,55 @@ pub fn package_server(root: Option<String>, gpl: bool) {
         build_windows_installer();
     } else {
         command::targz(&sh, &afs::server_build_dir()).unwrap();
+
+        if appimage {
+            server_appimage();
+        }
     }
+}
+
+pub fn server_appimage() {
+    let sh = Shell::new().unwrap();
+
+    let appdir = &afs::build_dir().join("ALVR.AppDir");
+    let bin = &afs::build_dir().join("alvr_server_linux");
+
+    let icon = &afs::workspace_dir().join("resources/alvr.png");
+    let desktop = &afs::workspace_dir().join("packaging/freedesktop/alvr.desktop");
+
+    let linuxdeploy = &afs::build_dir().join("linuxdeploy-x86_64.AppImage");
+
+    if !sh.path_exists(&linuxdeploy) {
+        // command::download(&sh, "https://github.com/AppImage/AppImageKit/releases/download/continuous/AppRun-x86_64", &appdir.join("AppRun")).ok();
+        command::download(&sh, "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20220822-1/linuxdeploy-x86_64.AppImage", &linuxdeploy).ok();
+    }
+    cmd!(&sh, "chmod a+x {linuxdeploy}").run().ok();
+
+    let _env = sh.push_env("ARCH", "x86_64");
+
+    if sh.path_exists(&appdir) {
+        sh.remove_path(&appdir).ok();
+    }
+
+    cmd!(&sh, "{linuxdeploy} --appdir={appdir}")
+        .run()
+        .ok();
+
+    sh.cmd("sh")
+        .arg("-c")
+        .arg(format!(
+            "cp -r {}/* {}/usr",
+            bin.to_string_lossy(),
+            appdir.to_string_lossy()
+        ))
+        .run()
+        .ok();
+
+    cmd!(&sh, "sh -c cp -r {bin}/* {appdir}/usr").run().ok();
+
+    cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so").run().ok();
+
+    command::appimage(&sh, &appdir, "ALVR-x86_64").ok();
 }
 
 pub fn package_client_lib() {

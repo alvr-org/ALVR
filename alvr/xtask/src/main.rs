@@ -167,6 +167,8 @@ fn main() {
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
 
+        let appimage = args.contains("--appimage");
+
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
@@ -200,7 +202,7 @@ fn main() {
                     }
                     run_server();
                 }
-                "package-server" => packaging::package_server(root, gpl),
+                "package-server" => packaging::package_server(root, gpl, appimage),
                 "package-client" => build::build_quest_client(true),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

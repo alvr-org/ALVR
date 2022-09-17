@@ -159,9 +159,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "Predefinito di sistema",
     "_root_extra_theme_classic-choice-.name": "Classico",
     "_root_extra_theme_darkly-choice-.name": "Darkly",
-    "_root_extra_clientDarkMode.name": "Tema scuro per il client",
-    "_root_extra_clientDarkMode.description":
-        "Applicato dopo la connessione, sospensione e riaccensione del visore",
     "_root_extra_revertConfirmDialog.name": "Conferma reimpostazione valori",
     "_root_extra_revertConfirmDialog.description":
         "Chiedi conferma prima di reipostare i valori delle impostazioni al valore predefinito",

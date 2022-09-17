@@ -158,8 +158,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "Система",
     "_root_extra_theme_classic-choice-.name": "Класически",
     "_root_extra_theme_darkly-choice-.name": "Мрачно",
-    // "_root_extra_clientDarkMode.name": "",
-    // "_root_extra_clientDarkMode.description": "",
     "_root_extra_revertConfirmDialog.name": "Потвърдете възстановяването",
     "_root_extra_revertConfirmDialog.description":
         "Поискайте потвърждение, преди да върнете параметъра до стойността му по подразбиране.",

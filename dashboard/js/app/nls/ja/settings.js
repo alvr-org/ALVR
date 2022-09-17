@@ -159,8 +159,6 @@ define({
     // "_root_extra_theme_systemDefault-choice-.name": "",
     // "_root_extra_theme_classic-choice-.name": "",
     // "_root_extra_theme_darkly-choice-.name": "",
-    // "_root_extra_clientDarkMode.name": "",
-    // "_root_extra_clientDarkMode.description": "",
     "_root_extra_revertConfirmDialog.name": "初期化の確認ダイアログ",
     "_root_extra_revertConfirmDialog.description": "設定値をデフォルトの値に戻す前に確認を求める",
     "_root_extra_restartConfirmDialog.name": "再起動の確認ダイアログ",

@@ -328,14 +328,10 @@ pub unsafe extern "C" fn alvr_destroy() {
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
     if USE_OPENGL.value() {
-        let config = Config::load();
-
         let resolution = *PREFERRED_RESOLUTION.lock();
-
         prepareLobbyRoom(
             resolution.x as _,
             resolution.y as _,
-            config.dark_mode,
             swapchain_textures,
             swapchain_length,
         );

@@ -159,8 +159,6 @@ define({
     // "_root_extra_theme_systemDefault-choice-.name": "",
     // "_root_extra_theme_classic-choice-.name": "",
     // "_root_extra_theme_darkly-choice-.name": "",
-    // "_root_extra_clientDarkMode.name": "",
-    // "_root_extra_clientDarkMode.description": "",
     "_root_extra_revertConfirmDialog.name": "Confirmer remise a zéro",
     "_root_extra_revertConfirmDialog.description":
         "Demande une confirmations avant de remettre une valeur a zéro",

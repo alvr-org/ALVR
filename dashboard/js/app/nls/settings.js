@@ -325,8 +325,6 @@ define({
         "_root_extra_theme_systemDefault-choice-.name": "System",
         "_root_extra_theme_classic-choice-.name": "Classic",
         "_root_extra_theme_darkly-choice-.name": "Darkly",
-        "_root_extra_clientDarkMode.name": "Client dark mode",
-        "_root_extra_clientDarkMode.description": "Applied after connection and sleep-wake cycle",
         "_root_extra_revertConfirmDialog.name": "Confirm revert",
         "_root_extra_revertConfirmDialog.description":
             "Ask for confirmation before reverting settings to default value",

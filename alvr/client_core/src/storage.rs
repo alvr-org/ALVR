@@ -23,7 +23,6 @@ fn config_path() -> PathBuf {
 pub struct Config {
     pub protocol_id: u64,
     pub hostname: String,
-    pub dark_mode: bool,
 }
 
 impl Default for Config {
@@ -39,7 +38,6 @@ impl Default for Config {
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),
             ),
-            dark_mode: false,
         }
     }
 }

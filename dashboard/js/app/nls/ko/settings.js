@@ -201,8 +201,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "시스템",
     "_root_extra_theme_classic-choice-.name": "클래식",
     "_root_extra_theme_darkly-choice-.name": "다크",
-    "_root_extra_clientDarkMode.name": "클라이언트 다크 모드",
-    "_root_extra_clientDarkMode.description": "Applied after connection and sleep-wake cycle",
     "_root_extra_revertConfirmDialog.name": "초기화 확인",
     "_root_extra_revertConfirmDialog.description": "기본값으로 초기화할 때 다시 한번 확인합니다.",
     "_root_extra_restartConfirmDialog.name": "SteamVr 재시작 확인",

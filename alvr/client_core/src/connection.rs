@@ -253,12 +253,6 @@ async fn connection_pipeline(
 
     info!("Connected to server");
 
-    {
-        let mut config = Config::load();
-        config.dark_mode = settings.extra.client_dark_mode;
-        config.store();
-    }
-
     // create this before initializing the stream on cpp side
     let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
     *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);

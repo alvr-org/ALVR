@@ -192,9 +192,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "Sistema",
     "_root_extra_theme_classic-choice-.name": "Clasico",
     "_root_extra_theme_darkly-choice-.name": "Oscuro",
-    "_root_extra_clientDarkMode.name": "Cliente en modo oscuro",
-    "_root_extra_clientDarkMode.description":
-        "Aplicado después de la conexión y el ciclo sueño-vigilia",
     "_root_extra_revertConfirmDialog.name": "Confirmar los valores de restablecimiento",
     "_root_extra_revertConfirmDialog.description":
         "Pedir confirmación antes de restablecer los ajustes al valor predeterminado.",

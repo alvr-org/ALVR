@@ -2,12 +2,12 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
+    decoder::DECODER_INIT_CONFIG,
     platform,
     statistics::StatisticsManager,
     storage::Config,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_DEQUEUER, DECODER_ENQUEUER,
-    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED, IS_STREAMING,
-    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER, USE_OPENGL,
+    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED,
+    IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER, USE_OPENGL,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -32,6 +32,9 @@ use tokio::{
     sync::{mpsc as tmpsc, Mutex},
     time,
 };
+
+#[cfg(target_os = "android")]
+use crate::decoder::{DECODER_DEQUEUER, DECODER_ENQUEUER};
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -105,6 +108,7 @@ fn set_loading_message(message: &str) {
         }
     }
 
+    #[cfg(target_os = "android")]
     if USE_OPENGL.value() {
         unsafe { crate::updateLobbyHudTexture(buffer.as_ptr()) };
     }
@@ -275,6 +279,7 @@ async fn connection_pipeline(
         ];
     }
 
+    #[cfg(target_os = "android")]
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
             viewWidth: config_packet.view_resolution_width,
@@ -430,8 +435,11 @@ async fn connection_pipeline(
 
                     IS_STREAMING.set(false);
 
-                    *DECODER_ENQUEUER.lock() = None;
-                    *DECODER_DEQUEUER.lock() = None;
+                    #[cfg(target_os = "android")]
+                    {
+                        *DECODER_ENQUEUER.lock() = None;
+                        *DECODER_DEQUEUER.lock() = None;
+                    }
                 }
             }
 

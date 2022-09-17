@@ -27,7 +27,7 @@ serde_json = "1"
 settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
-# Android
+[target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.11"
 jni = "0.19"
 ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0", features = [

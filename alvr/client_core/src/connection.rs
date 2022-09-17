@@ -6,11 +6,11 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_DEQUEUER, DECODER_ENQUEUER,
-    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_BUFFER, IS_RESUMED, IS_STREAMING,
-    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    DECODER_INIT_CONFIG, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED, IS_STREAMING,
+    STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER, USE_OPENGL,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
 use alvr_session::{
     AudioDeviceId, CodecType, MediacodecDataType, OculusFovetionLevel, SessionDesc,
 };
@@ -27,18 +27,10 @@ use glyph_brush_layout::{
 };
 use serde_json as json;
 use settings_schema::Switch;
-use std::{
-    future, mem,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
-    },
-    time::Duration,
-};
+use std::{future, sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc as tmpsc, Mutex},
-    task,
-    time::{self, Instant},
+    time,
 };
 
 #[cfg(target_os = "android")]
@@ -113,41 +105,11 @@ fn set_loading_message(message: &str) {
         }
     }
 
-    unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
+    if USE_OPENGL.value() {
+        unsafe { crate::updateLobbyHudTexture(buffer.as_ptr()) };
+    }
 }
 
-fn on_server_connected(
-    eye_width: i32,
-    eye_height: i32,
-    fps: f32,
-    codec: CodecType,
-    realtime_decoder: bool,
-    oculus_foveation_level: OculusFovetionLevel,
-    dynamic_oculus_foveation: bool,
-    extra_latency: bool,
-    controller_prediction_multiplier: f32,
-) {
-    let vm = platform::vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    env.call_method(
-        platform::context(),
-        "onServerConnected",
-        "(IIFIZIZZF)V",
-        &[
-            eye_width.into(),
-            eye_height.into(),
-            fps.into(),
-            (matches!(codec, CodecType::HEVC) as i32).into(),
-            realtime_decoder.into(),
-            (oculus_foveation_level as i32).into(),
-            dynamic_oculus_foveation.into(),
-            extra_latency.into(),
-            controller_prediction_multiplier.into(),
-        ],
-    )
-    .unwrap();
-}
 async fn connection_pipeline(
     headset_info: HeadsetInfoPacket,
     decoder_guard: Arc<Mutex<()>>,
@@ -321,8 +283,8 @@ async fn connection_pipeline(
 
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
-            eyeWidth: config_packet.eye_resolution_width,
-            eyeHeight: config_packet.eye_resolution_height,
+            viewWidth: config_packet.view_resolution_width,
+            viewHeight: config_packet.view_resolution_height,
             enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
@@ -368,31 +330,6 @@ async fn connection_pipeline(
             },
         });
     }
-
-    on_server_connected(
-        config_packet.eye_resolution_width as _,
-        config_packet.eye_resolution_height as _,
-        config_packet.fps,
-        settings.video.codec,
-        settings.video.client_request_realtime_decoder,
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.oculus_foveation_level
-        } else {
-            OculusFovetionLevel::None
-        },
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.dynamic_oculus_foveation
-        } else {
-            false
-        },
-        settings.headset.extra_latency_mode,
-        settings
-            .headset
-            .controllers
-            .into_option()
-            .map(|c| c.prediction_multiplier)
-            .unwrap_or_default(),
-    );
 
     // setup stream loops
 
@@ -454,6 +391,33 @@ async fn connection_pipeline(
         }
     };
 
+    let streaming_start_event = AlvrEvent::StreamingStarted {
+        view_width: config_packet.view_resolution_width as _,
+        view_height: config_packet.view_resolution_height as _,
+        fps: config_packet.fps,
+        oculus_foveation_level: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.oculus_foveation_level
+        } else {
+            OculusFovetionLevel::None
+        } as i32,
+        dynamic_oculus_foveation: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.dynamic_oculus_foveation
+        } else {
+            false
+        },
+        extra_latency: settings.headset.extra_latency_mode,
+        controller_prediction_multiplier: settings
+            .headset
+            .controllers
+            .into_option()
+            .map(|c| c.prediction_multiplier)
+            .unwrap_or_default(),
+    };
+
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
@@ -468,7 +432,8 @@ async fn connection_pipeline(
 
             impl Drop for StreamCloseGuard {
                 fn drop(&mut self) {
-                    error!(" StreamCloseGuard closed");
+                    EVENT_QUEUE.lock().push_back(AlvrEvent::StreamingStopped);
+
                     IS_STREAMING.set(false);
 
                     *DECODER_ENQUEUER.lock() = None;
@@ -483,6 +448,8 @@ async fn connection_pipeline(
             };
 
             IS_STREAMING.set(true);
+
+            EVENT_QUEUE.lock().push_back(streaming_start_event);
 
             loop {
                 let packet = receiver.recv().await?;
@@ -533,7 +500,7 @@ async fn connection_pipeline(
             loop {
                 let packet = receiver.recv().await?.header;
 
-                EVENT_BUFFER.lock().push_back(AlvrEvent::Haptics {
+                EVENT_QUEUE.lock().push_back(AlvrEvent::Haptics {
                     device_id: packet.path,
                     duration_s: packet.duration.as_secs_f32(),
                     frequency: packet.frequency,

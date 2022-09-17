@@ -1,15 +1,16 @@
 apply plugin: 'com.android.application'
 
 android {
-    buildToolsVersion = "32.0.0"
-    compileSdkVersion 32
-    ndkVersion "22.1.7171670"
+    namespace 'com.polygraphene.alvr'
+    buildToolsVersion = "33.0.0"
+    compileSdkVersion 33
+    ndkVersion "25.1.8937393"
     defaultConfig {
         applicationId "alvr.client.quest"
         minSdkVersion 26
-        targetSdkVersion 32
-        versionCode 81
-        versionName "19.0.0-dev02"
+        targetSdkVersion 33
+        versionCode 82
+        versionName "19.0.0-dev03"
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fexceptions -frtti"
@@ -59,6 +60,6 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.so'])
-    implementation 'androidx.appcompat:appcompat:1.5.0'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }

@@ -19,7 +19,7 @@ use crate::{
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
-    once_cell::sync::{Lazy, OnceCell},
+    once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
     RelaxedAtomic, ALVR_VERSION,
@@ -30,27 +30,17 @@ use alvr_sockets::{
     BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, HeadsetInfoPacket,
     Tracking, ViewsConfig,
 };
-use jni::{
-    objects::{GlobalRef, ReleaseMode},
-    sys::jobject,
-};
 use platform::{VideoDecoderDequeuer, VideoDecoderEnqueuer};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
     ffi::{c_void, CStr},
     os::raw::c_char,
-    ptr, slice,
-    sync::atomic::{AtomicBool, Ordering},
-    thread,
+    ptr, slice, thread,
     time::{Duration, Instant},
 };
 use storage::Config;
-use tokio::{
-    runtime::{self, Runtime},
-    sync::mpsc,
-    sync::Notify,
-};
+use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
@@ -66,7 +56,7 @@ static ON_DESTROY_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static PREFERRED_RESOLUTION: Lazy<Mutex<UVec2>> = Lazy::new(|| Mutex::new(UVec2::ZERO));
 
-static EVENT_BUFFER: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+static EVENT_QUEUE: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
 static LAST_ENQUEUED_TIMESTAMPS: Lazy<Mutex<VecDeque<Duration>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
@@ -85,17 +75,34 @@ pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
 static DECODER_ENQUEUER: Lazy<Mutex<Option<VideoDecoderEnqueuer>>> = Lazy::new(|| Mutex::new(None));
 static DECODER_DEQUEUER: Lazy<Mutex<Option<VideoDecoderDequeuer>>> = Lazy::new(|| Mutex::new(None));
 
+static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
+static NAL_QUEUE: Lazy<Mutex<VecDeque<(Duration, Vec<u8>)>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
+
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
+static USE_OPENGL: RelaxedAtomic = RelaxedAtomic::new(true);
+
 #[repr(u8)]
 pub enum AlvrEvent {
+    StreamingStarted {
+        view_width: u32,
+        view_height: u32,
+        fps: f32,
+        oculus_foveation_level: i32,
+        dynamic_oculus_foveation: bool,
+        extra_latency: bool,
+        controller_prediction_multiplier: f32,
+    },
+    StreamingStopped,
     Haptics {
         device_id: u64,
         duration_s: f32,
         frequency: f32,
         amplitude: f32,
     },
+    NalReady,
 }
 
 #[repr(C)]
@@ -184,61 +191,76 @@ pub extern "C" fn alvr_initialize(
     recommended_view_height: u32,
     refresh_rates: *const f32,
     refresh_rates_count: i32,
+    use_opengl: bool,
+    external_decoder: bool,
 ) {
     unsafe { ndk_context::initialize_android_context(java_vm, context) };
     logging_backend::init_logging();
 
     extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
-        if DECODER_ENQUEUER.lock().is_none() {
-            let mut csd_0 = vec![0; length as _];
-            unsafe { ptr::copy_nonoverlapping(buffer, csd_0.as_mut_ptr(), length as _) };
+        let mut csd_0 = vec![0; length as _];
+        unsafe { ptr::copy_nonoverlapping(buffer, csd_0.as_mut_ptr(), length as _) };
 
-            let config = DECODER_INIT_CONFIG.lock();
+        if EXTERNAL_DECODER.value() {
+            // duration == 0 is the flag to identify the config NALS
+            NAL_QUEUE.lock().push_back((Duration::ZERO, csd_0));
+            EVENT_QUEUE.lock().push_back(AlvrEvent::NalReady);
+        } else {
+            if DECODER_ENQUEUER.lock().is_none() {
+                let config = DECODER_INIT_CONFIG.lock();
 
-            let (enqueuer, dequeuer) =
-                platform::video_decoder_split(config.codec, &csd_0, &config.options).unwrap();
+                let (enqueuer, dequeuer) =
+                    platform::video_decoder_split(config.codec, &csd_0, &config.options).unwrap();
 
-            *DECODER_ENQUEUER.lock() = Some(enqueuer);
-            *DECODER_DEQUEUER.lock() = Some(dequeuer);
+                *DECODER_ENQUEUER.lock() = Some(enqueuer);
+                *DECODER_DEQUEUER.lock() = Some(dequeuer);
 
-            if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                    sender.send(ClientControlPacket::RequestIdr).ok();
+                }
+            }
+        }
+    }
+
+    extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64) {
+        let timestamp = Duration::from_nanos(timestamp_ns);
+
+        {
+            let mut timestamps_lock = LAST_ENQUEUED_TIMESTAMPS.lock();
+
+            timestamps_lock.push_back(timestamp);
+            if timestamps_lock.len() > 20 {
+                timestamps_lock.pop_front();
+            }
+        }
+
+        let mut nal_buffer = vec![0; length as _];
+        unsafe { ptr::copy_nonoverlapping(buffer, nal_buffer.as_mut_ptr(), length as _) }
+
+        if EXTERNAL_DECODER.value() {
+            NAL_QUEUE.lock().push_back((timestamp, nal_buffer));
+            EVENT_QUEUE.lock().push_back(AlvrEvent::NalReady);
+        } else {
+            if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
+                show_err(decoder.push_frame_nal(
+                    timestamp,
+                    &nal_buffer,
+                    Duration::from_millis(500),
+                ));
+            } else if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                 sender.send(ClientControlPacket::RequestIdr).ok();
             }
         }
     }
 
-    extern "C" fn push_nal(buffer: *const c_char, length: i32, frame_index: u64) {
-        if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            let timestamp = Duration::from_nanos(frame_index);
-
-            {
-                let mut timestamps_lock = LAST_ENQUEUED_TIMESTAMPS.lock();
-
-                timestamps_lock.push_back(timestamp);
-                if timestamps_lock.len() > 20 {
-                    timestamps_lock.pop_front();
-                }
-            }
-
-            // todo: check is copy can be avoided
-            let mut nal_buffer = vec![0; length as _];
-            unsafe { ptr::copy_nonoverlapping(buffer, nal_buffer.as_mut_ptr(), length as _) }
-
-            show_err(decoder.push_frame_nal(timestamp, &nal_buffer, Duration::from_millis(500)));
-        } else if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-            sender.send(ClientControlPacket::RequestIdr).ok();
-        }
-    }
-
     unsafe {
-        pathStringToHash = Some(alvr_path_string_to_hash);
-        createDecoder = Some(create_decoder);
-        pushNal = Some(push_nal);
-
         LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
         LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
         LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
         LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
+
+        createDecoder = Some(create_decoder);
+        pushNal = Some(push_nal);
     }
 
     // Make sure to reset config in case of version compat mismatch.
@@ -249,7 +271,12 @@ pub extern "C" fn alvr_initialize(
 
     platform::try_get_microphone_permission();
 
-    unsafe { initNative() };
+    USE_OPENGL.set(use_opengl);
+    EXTERNAL_DECODER.set(external_decoder);
+
+    if use_opengl {
+        unsafe { initGraphicsNative() };
+    }
 
     *PREFERRED_RESOLUTION.lock() = UVec2::new(recommended_view_width, recommended_view_height);
 
@@ -293,22 +320,26 @@ pub unsafe extern "C" fn alvr_destroy() {
     // shutdown and wait for tasks to finish
     drop(RUNTIME.lock().take());
 
-    destroyNative();
+    if USE_OPENGL.value() {
+        destroyGraphicsNative();
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
-    let config = Config::load();
+    if USE_OPENGL.value() {
+        let config = Config::load();
 
-    let resolution = *PREFERRED_RESOLUTION.lock();
+        let resolution = *PREFERRED_RESOLUTION.lock();
 
-    prepareLoadingRoom(
-        resolution.x as _,
-        resolution.y as _,
-        config.dark_mode,
-        swapchain_textures,
-        swapchain_length,
-    );
+        prepareLobbyRoom(
+            resolution.x as _,
+            resolution.y as _,
+            config.dark_mode,
+            swapchain_textures,
+            swapchain_length,
+        );
+    }
 
     IS_RESUMED.set(true);
 }
@@ -317,12 +348,15 @@ pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapch
 pub unsafe extern "C" fn alvr_pause() {
     IS_RESUMED.set(false);
 
-    destroyRenderers();
+    if USE_OPENGL.value() {
+        destroyRenderers();
+    }
 }
 
+// Returns true if there was a new event
 #[no_mangle]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    if let Some(event) = EVENT_BUFFER.lock().pop_front() {
+    if let Some(event) = EVENT_QUEUE.lock().pop_front() {
         *out_event = event;
 
         true
@@ -331,10 +365,9 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     }
 }
 
+/// Call only when using OpenGL
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_stream(
-    codec: i32,
-    real_time: bool,
     swapchain_textures: *mut *const i32,
     swapchain_length: i32,
 ) {
@@ -389,9 +422,11 @@ pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
     }
 }
 
-/// Returns frame timestamp in nanoseconds
+/// Call only with internal decoder
+/// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
+/// from out_buffer.
 #[no_mangle]
-pub unsafe extern "C" fn alvr_wait_for_frame(buffer: *mut *mut c_void) -> i64 {
+pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i64 {
     let timestamp = if let Some(decoder) = &*DECODER_DEQUEUER.lock() {
         // Note on frame pacing: sometines there could be late frames stored inside the decoder,
         // which are gradually drained by polling two frames per frame. But sometimes a frame could
@@ -415,12 +450,12 @@ pub unsafe extern "C" fn alvr_wait_for_frame(buffer: *mut *mut c_void) -> i64 {
                             buffer_ptr,
                             timestamp,
                         }) => {
-                            *buffer = buffer_ptr;
+                            *out_buffer = buffer_ptr;
                             Some(timestamp)
                         }
                         Ok(_) => {
                             // Note: data from first dequeue!
-                            *buffer = buffer_ptr;
+                            *out_buffer = buffer_ptr;
                             Some(timestamp)
                         }
                         Err(e) => {
@@ -431,7 +466,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(buffer: *mut *mut c_void) -> i64 {
                         }
                     }
                 } else {
-                    *buffer = buffer_ptr;
+                    *out_buffer = buffer_ptr;
                     Some(timestamp)
                 }
             }
@@ -468,6 +503,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(buffer: *mut *mut c_void) -> i64 {
     }
 }
 
+/// Call only when using OpenGL
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_lobby(
     eye_inputs: *const AlvrEyeInput,
@@ -500,20 +536,16 @@ pub unsafe extern "C" fn alvr_render_lobby(
         },
     ];
 
-    renderLoadingNative(eye_inputs.as_ptr(), swapchain_indices);
+    renderLobbyNative(eye_inputs.as_ptr(), swapchain_indices);
 }
 
+/// Call only when using OpenGL
 #[no_mangle]
 pub unsafe extern "C" fn alvr_render_stream(
     swapchain_indices: *const i32,
     hardware_buffer: *mut c_void,
 ) {
-    renderNative(swapchain_indices, hardware_buffer);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_is_streaming() -> bool {
-    IS_STREAMING.value()
+    renderStreamNative(swapchain_indices, hardware_buffer);
 }
 
 #[no_mangle]
@@ -617,5 +649,45 @@ pub extern "C" fn alvr_report_submit(target_timestamp_ns: u64, vsync_queue_ns: u
                 error!("Statistics summary not ready!");
             }
         }
+    }
+}
+
+/// Call only with external decoder
+#[no_mangle]
+pub extern "C" fn alvr_request_idr() {
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender.send(ClientControlPacket::RequestIdr).ok();
+    }
+}
+
+/// Call only with external decoder
+#[no_mangle]
+pub extern "C" fn alvr_report_frame_decoded(timestamp_ns: u64) {
+    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
+    }
+}
+
+/// Call only with external decoder
+/// Returns the number of bytes of the next nal, or 0 if there are no nals ready.
+/// If out_nal or out_timestamp_ns is null, no nal is dequeued. Use to get the nal allocation size.
+/// Returns out_timestamp_ns == 0 if config NAL.
+#[no_mangle]
+pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64) -> u64 {
+    let mut queue_lock = NAL_QUEUE.lock();
+    if let Some((timestamp, nal)) = queue_lock.pop_front() {
+        let nal_size = nal.len();
+        if !out_nal.is_null() && !out_timestamp_ns.is_null() {
+            unsafe {
+                ptr::copy_nonoverlapping(nal.as_ptr(), out_nal, nal_size);
+                *out_timestamp_ns = timestamp.as_nanos() as _;
+            }
+        } else {
+            queue_lock.push_front((timestamp, nal))
+        }
+
+        nal_size as u64
+    } else {
+        0
     }
 }

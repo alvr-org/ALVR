@@ -1,29 +1,19 @@
 use alvr_common::{
-    glam::UVec2,
-    once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Condvar, Mutex},
     prelude::*,
 };
 use alvr_session::{CodecType, MediacodecDataType};
-use jni::{objects::GlobalRef, sys::jobject, JavaVM};
+use jni::{sys::jobject, JavaVM};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
-        image_reader::{Image, ImageFormat, ImageListener, ImageReader},
+        image_reader::{Image, ImageFormat, ImageReader},
         media_codec::{
             MediaCodec, MediaCodecDirection, MediaCodecInfo, MediaCodecResult, MediaFormat,
         },
     },
-    native_window::NativeWindow,
 };
-use ndk_sys as sys;
-use std::{
-    collections::HashMap,
-    ffi::{c_void, CString},
-    ptr::NonNull,
-    sync::Arc,
-    time::Duration,
-};
+use std::{ffi::c_void, sync::Arc, time::Duration};
 
 const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 

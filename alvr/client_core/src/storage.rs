@@ -1,4 +1,4 @@
-use alvr_common::{once_cell::sync::Lazy, prelude::*};
+use alvr_common::prelude::*;
 use app_dirs2::{AppDataType, AppInfo};
 use rand::Rng;
 use serde::{Deserialize, Serialize};

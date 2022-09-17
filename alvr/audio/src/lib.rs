@@ -179,7 +179,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
     use windows::Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{eAll, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE},
-        System::Com::{self, StructuredStorage::STGM_READ, CLSCTX_ALL, COINIT_MULTITHREADED},
+        System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     };
 
     let device_name = device.inner.name().map_err(err!())?;
@@ -240,18 +240,20 @@ pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
 // device must be an output device
 #[cfg(windows)]
 fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
-    use std::ptr;
-    use windows::Win32::{Media::Audio::Endpoints::IAudioEndpointVolume, System::Com::CLSCTX_ALL};
+    use windows::{
+        core::GUID,
+        Win32::{Media::Audio::Endpoints::IAudioEndpointVolume, System::Com::CLSCTX_ALL},
+    };
 
     unsafe {
         let imm_device = get_windows_device(device)?;
 
         let endpoint_volume = imm_device
-            .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, ptr::null_mut())
+            .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
             .map_err(err!())?;
 
         endpoint_volume
-            .SetMute(mute, ptr::null_mut())
+            .SetMute(mute, &GUID::zeroed())
             .map_err(err!())?;
     }
 

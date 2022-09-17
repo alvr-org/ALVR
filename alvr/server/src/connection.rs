@@ -215,8 +215,8 @@ async fn client_handshake(
             serde_json::to_string(&session).map_err(err!())?
         },
         dashboard_url,
-        eye_resolution_width: video_eye_width,
-        eye_resolution_height: video_eye_height,
+        view_resolution_width: video_eye_width,
+        view_resolution_height: video_eye_height,
         fps,
         game_audio_sample_rate,
         reserved: "".into(),

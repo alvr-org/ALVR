@@ -136,30 +136,32 @@ jobs:
           sudo apt-get install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit
           cp packaging/deb/cuda.pc /usr/share/pkgconfig
           cargo xtask prepare-deps --platform linux
+          
+      # - name: Build and package ALVR (.tar.gz)
+      #   id: build
+      #   env:
+      #     RUST_BACKTRACE: 1
+      #     PKG_CONFIG_PATH: /home/runner/work/ALVR/ALVR/deps/linux/ffmpeg/lib/pkgconfig/
+      #   run: |
+      #     cargo xtask package-server
 
-      - name: Build and package ALVR (.tar.gz)
-        id: build
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cargo xtask package-server
+      # - name: Upload server for Linux
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+      #     asset_path: ./build/alvr_server_linux.tar.gz
+      #     asset_name: alvr_server_linux.tar.gz
+      #     asset_content_type: application/gzip
 
-      - name: Upload server for Linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_linux.tar.gz
-          asset_name: alvr_server_linux.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Build and package ALVR portable (.tar.gz)
+      - name: Build and package ALVR portable (.AppImage)
         id: build_portable
         env:
           RUST_BACKTRACE: 1
+          PKG_CONFIG_PATH: /home/runner/work/ALVR/ALVR/deps/linux/ffmpeg/lib/pkgconfig/
         run: |
-          cargo xtask package-server --gpl
+          cargo xtask package-server --gpl --appimage
 
       - name: Upload portable server for Linux
         uses: actions/upload-release-asset@v1
@@ -167,9 +169,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server_linux.tar.gz
-          asset_name: alvr_server_linux_portable.tar.gz
-          asset_content_type: application/gzip          
+          asset_path: ./build/ALVR-x86_64.AppImage
+          asset_name: ALVR-x86_64.AppImage
+          asset_content_type: application/appimage
 
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.

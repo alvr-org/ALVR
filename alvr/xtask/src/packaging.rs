@@ -47,7 +47,7 @@ fn build_windows_installer() {
 pub fn package_server(root: Option<String>, gpl: bool, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(true, gpl, root, true, false, appimage);
+    build::build_server(true, gpl, root, true, false);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -161,12 +161,17 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) -> Result<(), xsh
 
     if gpl {
         for lib_path in sh
-            .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
+            .read_dir(appdir.join("usr/lib64/alvr"))
             .unwrap()
             .into_iter()
             .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
         {
-            cmd = cmd.arg(format!("-l{}", lib_path.to_string_lossy()));
+            let file_name = lib_path.file_name().unwrap().to_string_lossy();
+            if file_name.contains("libx264.so") || file_name.contains("libx265.so") {
+                sh.remove_path(lib_path).ok();
+            } else {
+                cmd = cmd.arg(format!("--deploy-deps-only={}", lib_path.to_string_lossy()));
+            }
         }
     }
 

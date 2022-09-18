@@ -196,12 +196,12 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(is_release, gpl, None, false, experiments, false),
+                "build-server" => build::build_server(is_release, gpl, None, false, experiments),
                 "build-client" => build::build_quest_client(is_release),
                 "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(is_release, gpl, None, false, experiments, false);
+                        build::build_server(is_release, gpl, None, false, experiments);
                     }
                     run_server();
                 }

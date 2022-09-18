@@ -8,7 +8,6 @@ pub fn build_server(
     root: Option<String>,
     reproducible: bool,
     experiments: bool,
-    no_copy_ffmpeg: bool,
 ) {
     let sh = Shell::new().unwrap();
 
@@ -119,7 +118,7 @@ pub fn build_server(
         .unwrap();
 
         // copy ffmpeg binaries
-        if gpl && !no_copy_ffmpeg {
+        if gpl {
             let lib_dir = &build_layout.openvr_driver_root_dir;
             let mut libavcodec_so = std::path::PathBuf::new();
             sh.create_dir(&lib_dir).unwrap();

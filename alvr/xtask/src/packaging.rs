@@ -1,6 +1,6 @@
 use crate::{build, command, version};
 use alvr_filesystem as afs;
-use std::path::PathBuf;
+use std::{fmt::format, path::PathBuf};
 use xshell::{cmd, Shell};
 
 fn build_windows_installer() {
@@ -47,7 +47,7 @@ fn build_windows_installer() {
 pub fn package_server(root: Option<String>, gpl: bool, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(true, gpl, root, true, false);
+    build::build_server(true, gpl, root, true, false, appimage);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -94,12 +94,12 @@ pub fn package_server(root: Option<String>, gpl: bool, appimage: bool, zsync: bo
         command::targz(&sh, &afs::server_build_dir()).unwrap();
 
         if appimage {
-            server_appimage(true, zsync).unwrap();
+            server_appimage(true, gpl, zsync).unwrap();
         }
     }
 }
 
-pub fn server_appimage(release: bool, update: bool) -> Result<(), xshell::Error> {
+pub fn server_appimage(release: bool, gpl: bool, update: bool) -> Result<(), xshell::Error> {
     let sh = Shell::new().unwrap();
 
     let appdir = &afs::build_dir().join("ALVR.AppDir");
@@ -139,8 +139,15 @@ pub fn server_appimage(release: bool, update: bool) -> Result<(), xshell::Error>
         sh.set_var("VERSION", &version);
 
         if update {
-            let repo = if version.contains("nightly") { "ALVR-nightly" } else { "ALVR" };
-            sh.set_var("UPDATE_INFORMATION", format!("gh-releases-zsync|alvr-org|{repo}|latest|ALVR-x86_64.AppImage.zsync"));
+            let repo = if version.contains("nightly") {
+                "ALVR-nightly"
+            } else {
+                "ALVR"
+            };
+            sh.set_var(
+                "UPDATE_INFORMATION",
+                format!("gh-releases-zsync|alvr-org|{repo}|latest|ALVR-x86_64.AppImage.zsync"),
+            );
         }
     }
 
@@ -149,18 +156,21 @@ pub fn server_appimage(release: bool, update: bool) -> Result<(), xshell::Error>
     // Faster decompression (gzip) or smaller AppImage size (xz)?
     // sh.set_var("APPIMAGE_COMP", "xz"); // Currently uses gzip compression, will take effect when linuxdeploy updates.
 
-    // if gpl {
-    //     cmd = cmd
-    //         .arg("--exclude-library=libavcodec.so")
-    //         .arg("--exclude-library=libavfilter.so")
-    //         .arg("--exclude-library=libavutil.so")
-    //         .arg("--exclude-library=libswscale.so")
-    //         .arg("--exclude-library=libx264.so")
-    //         .arg("--exclude-library=libx265.so");
-    // }
-
     sh.change_dir(&afs::build_dir());
-    cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage").run()
+    let mut cmd = cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage");
+
+    if gpl {
+        for lib_path in sh
+            .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
+            .unwrap()
+            .into_iter()
+            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
+        {
+            cmd = cmd.arg(format!("-l{}", lib_path.to_string_lossy()));
+        }
+    }
+
+    cmd.run()
 }
 
 pub fn package_client_lib() {

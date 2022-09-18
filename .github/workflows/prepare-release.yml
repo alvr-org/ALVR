@@ -160,7 +160,7 @@ jobs:
         env:
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask package-server --gpl --appimage
+          cargo xtask package-server --gpl --appimage --zsync
 
       - name: Upload portable server for Linux
         uses: actions/upload-release-asset@v1
@@ -170,6 +170,16 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/ALVR-x86_64.AppImage
           asset_name: ALVR-x86_64.AppImage
+          asset_content_type: application/appimage
+
+      - name: Upload portable server for Linux (zsync)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/ALVR-x86_64.AppImage.zsync
+          asset_name: ALVR-x86_64.AppImage.zsync
           asset_content_type: application/appimage
 
   build_android_client:

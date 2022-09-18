@@ -39,6 +39,8 @@ FLAGS:
     --nightly           Append nightly tag to versions. For bump subcommand
     --no-rebuild        Do not rebuild the server with run-server
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
+    --appimage          Package as AppImage
+    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information.
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -168,6 +170,7 @@ fn main() {
         let for_ci = args.contains("--ci");
 
         let appimage = args.contains("--appimage");
+        let zsync = args.contains("--zsync");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -202,7 +205,7 @@ fn main() {
                     }
                     run_server();
                 }
-                "package-server" => packaging::package_server(root, gpl, appimage),
+                "package-server" => packaging::package_server(root, gpl, appimage, zsync),
                 "package-client" => build::build_quest_client(true),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

@@ -44,7 +44,7 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-pub fn package_server(root: Option<String>, gpl: bool, appimage: bool) {
+pub fn package_server(root: Option<String>, gpl: bool, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
     build::build_server(true, gpl, root, true, false);
@@ -94,12 +94,12 @@ pub fn package_server(root: Option<String>, gpl: bool, appimage: bool) {
         command::targz(&sh, &afs::server_build_dir()).unwrap();
 
         if appimage {
-            server_appimage(true).unwrap();
+            server_appimage(true, zsync).unwrap();
         }
     }
 }
 
-pub fn server_appimage(release: bool) -> Result<(), xshell::Error> {
+pub fn server_appimage(release: bool, update: bool) -> Result<(), xshell::Error> {
     let sh = Shell::new().unwrap();
 
     let appdir = &afs::build_dir().join("ALVR.AppDir");
@@ -137,6 +137,11 @@ pub fn server_appimage(release: bool) -> Result<(), xshell::Error> {
     if release {
         let version = version::version();
         sh.set_var("VERSION", &version);
+
+        if update {
+            let repo = if version.contains("nightly") { "ALVR-nightly" } else { "ALVR" };
+            sh.set_var("UPDATE_INFORMATION", format!("gh-releases-zsync|alvr-org|{repo}|latest|ALVR-x86_64.AppImage.zsync"));
+        }
     }
 
     sh.set_var("VERBOSE", "1");

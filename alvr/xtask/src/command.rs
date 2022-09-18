@@ -17,12 +17,6 @@ pub fn targz(sh: &Shell, source: &Path) -> Result<(), xshell::Error> {
     cmd!(sh, "tar -czvf {source}.tar.gz -C {parent_dir} {file_name}").run()
 }
 
-pub fn appimage(sh: &Shell, source: &Path, name: &str) -> Result<(), xshell::Error> {
-    let parent_dir = source.parent().unwrap();
-
-    cmd!(sh, "appimagetool --comp xz -v -n {source} {parent_dir}/{name}.AppImage").run()
-}
-
 pub fn download(sh: &Shell, url: &str, destination: &Path) -> Result<(), xshell::Error> {
     cmd!(sh, "curl -L -o {destination} --url {url}").run()
 }

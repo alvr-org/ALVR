@@ -136,8 +136,6 @@ pub fn server_appimage() {
         .run()
         .ok();
 
-    cmd!(&sh, "sh -c cp -r {bin}/* {appdir}/usr").run().ok();
-
     cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so").run().ok();
 
     command::appimage(&sh, &appdir, "ALVR-x86_64").ok();

@@ -159,7 +159,6 @@ jobs:
         id: build_portable
         env:
           RUST_BACKTRACE: 1
-          PKG_CONFIG_PATH: /home/runner/work/ALVR/ALVR/deps/linux/ffmpeg/lib/pkgconfig/
         run: |
           cargo xtask package-server --gpl --appimage
 

@@ -11,14 +11,13 @@ alvr_commands = { path = "../commands" }
 alvr_common = { path = "../common" }
 alvr_filesystem = { path = "../filesystem" }
 
-druid = "0.7"
+env_logger = "0.9"
+# eframe = "0.19" # Change back after next release (0.19.1)
+eframe = { git = "https://github.com/emilk/egui", rev = "311eb66"}
 serde_json = "1"
 single-instance = "0.3"
 sysinfo = "0.26"
 ureq = "2"
-
-[target.'cfg(target_os = "linux")'.dependencies]
-gtk = "0.9"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

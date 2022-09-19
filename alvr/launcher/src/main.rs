@@ -5,8 +5,9 @@ mod commands;
 use alvr_common::prelude::*;
 use alvr_filesystem as afs;
 use eframe::{
-    egui::{self, FontDefinitions, RichText},
-    epaint::Vec2, Theme,
+    egui::{self, RichText},
+    epaint::Vec2,
+    Theme,
 };
 use std::{
     env,
@@ -46,7 +47,7 @@ fn launcher_lifecycle(state: Arc<Mutex<State>>) {
     loop {
         let steamvr_ok = commands::check_steamvr_installation();
 
-        if steamvr_ok {
+        if !steamvr_ok {
             break;
         } else {
             let steamvr_string =
@@ -139,7 +140,7 @@ impl eframe::App for ALVRLauncher {
 
 fn make_window() -> StrResult {
     env_logger::init();
-    
+
     let instance_mutex =
         single_instance::SingleInstance::new("alvr_launcher_mutex").map_err(err!())?;
     if instance_mutex.is_single() {

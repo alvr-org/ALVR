@@ -47,7 +47,7 @@ fn launcher_lifecycle(state: Arc<Mutex<State>>) {
     loop {
         let steamvr_ok = commands::check_steamvr_installation();
 
-        if !steamvr_ok {
+        if steamvr_ok {
             break;
         } else {
             let steamvr_string =
@@ -169,8 +169,7 @@ fn make_window() -> StrResult {
             "ALVR Launcher",
             eframe::NativeOptions {
                 vsync: false, // Fix "NoAvailablePixelFormat" error under nvidia (possibly wayland related?)
-                // TODO: Figure out how to get screen size / center pos
-                // initial_window_pos:
+                centered: true,
                 initial_window_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
                 resizable: false,
                 default_theme: Theme::Light,

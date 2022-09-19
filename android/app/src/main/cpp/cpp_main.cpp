@@ -948,7 +948,6 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
                                                            jint eyeWidth,
                                                            jint eyeHeight,
                                                            jfloat fps,
-                                                           jobject decoder,
                                                            jint codec,
                                                            jboolean realTimeDecoder,
                                                            jint oculusFoveationLevel,
@@ -1022,8 +1021,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env,
     getPlayspaceArea(&areaWidth, &areaHeight);
     alvr_send_playspace(areaWidth, areaHeight);
 
-    alvr_start_stream(
-            decoder, codec, realTimeDecoder, textureHandles, textureHandlesBuffer[0].size());
+    alvr_start_stream(codec, realTimeDecoder, textureHandles, textureHandlesBuffer[0].size());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -1071,7 +1069,8 @@ Java_com_polygraphene_alvr_OvrActivity_renderLoadingNative(JNIEnv *_env, jobject
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _context) {
-    auto timestampNs = alvr_wait_for_frame();
+    void *streamHardwareBuffer = nullptr;
+    auto timestampNs = alvr_wait_for_frame(&streamHardwareBuffer);
 
     if (timestampNs == -1) {
         return;
@@ -1093,7 +1092,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     }
 
     int swapchainIndices[2] = {g_ctx.streamSwapchains[0].index, g_ctx.streamSwapchains[1].index};
-    alvr_render_stream(swapchainIndices);
+    alvr_render_stream(swapchainIndices, streamHardwareBuffer);
 
     double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) -
                          vrapi_GetTimeInSeconds();
@@ -1132,24 +1131,4 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatte
     alvr_send_battery(HEAD_PATH, (float) battery / 100.f, (bool) plugged);
     g_ctx.hmdBattery = battery;
     g_ctx.hmdPlugged = plugged;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_DecoderThread_setWaitingNextIDR(
-        JNIEnv *_env, jclass _class, jboolean waiting) {
-    alvr_set_waiting_next_idr(waiting);
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_DecoderThread_requestIDR(JNIEnv *_env, jclass _class) {
-    alvr_request_idr();
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_DecoderThread_restartRenderCycle(JNIEnv *_env, jclass _class) {
-    alvr_restart_rendering_cycle();
-}
-
-extern "C" JNIEXPORT jint JNICALL
-Java_com_polygraphene_alvr_DecoderThread_getStreamTextureHandle(JNIEnv *_env, jclass _class) {
-    return alvr_get_stream_texture_handle();
 }

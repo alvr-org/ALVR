@@ -44,7 +44,13 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-pub fn package_server(root: Option<String>, gpl: bool, local_ffmpeg: bool, appimage: bool, zsync: bool) {
+pub fn package_server(
+    root: Option<String>,
+    gpl: bool,
+    local_ffmpeg: bool,
+    appimage: bool,
+    zsync: bool,
+) {
     let sh = Shell::new().unwrap();
 
     build::build_server(true, gpl, root, true, false, local_ffmpeg);

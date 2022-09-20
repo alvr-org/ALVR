@@ -31,23 +31,14 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     }
 
     let pkg = pkg_config::Config::new()
-        .cargo_metadata(cfg!(not(feature = "gpl")))
+        .cargo_metadata(cfg!(not(feature = "local_ffmpeg")))
         .to_owned();
     let avutil = pkg.probe("libavutil").unwrap();
     let avfilter = pkg.probe("libavfilter").unwrap();
     let avcodec = pkg.probe("libavcodec").unwrap();
     let swscale = pkg.probe("libswscale").unwrap();
 
-    if cfg!(feature = "gpl") {
-        build
-            .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
-            .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
-            .define(
-                "AVFILTER_MAJOR",
-                avfilter.version.split(".").next().unwrap(),
-            )
-            .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
-
+    if cfg!(feature = "local_ffmpeg") {
         assert!(ffmpeg_build_dir.join("include").exists());
         build.include(ffmpeg_build_dir.join("include"));
 
@@ -60,9 +51,20 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
 
         println!("cargo:rustc-link-lib=dl");
     }
+
+    if cfg!(feature = "gpl") {
+        build
+            .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
+            .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
+            .define(
+                "AVFILTER_MAJOR",
+                avfilter.version.split(".").next().unwrap(),
+            )
+            .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
+    }
 }
 
-#[cfg(all(windows, feature = "gpl"))]
+#[cfg(all(windows, feature = "local_ffmpeg"))]
 fn do_ffmpeg_windows_config(build: &mut cc::Build) {
     let ffmpeg_dir = alvr_filesystem::deps_dir().join("windows/ffmpeg");
 
@@ -135,10 +137,10 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(all(target_os = "linux", feature = "gpl"))]
+    #[cfg(all(target_os = "linux", feature = "local_ffmpeg"))]
     do_ffmpeg_pkg_config(&mut build);
 
-    #[cfg(all(windows, feature = "gpl"))]
+    #[cfg(all(windows, feature = "local_ffmpeg"))]
     {
         do_ffmpeg_windows_config(&mut build);
         build.define("ALVR_GPL", None);
@@ -146,7 +148,7 @@ fn main() {
 
     build.compile("bindings");
 
-    #[cfg(all(target_os = "linux", not(feature = "gpl")))]
+    #[cfg(all(target_os = "linux", not(feature = "local_ffmpeg")))]
     do_ffmpeg_pkg_config(&mut build);
 
     bindgen::builder()

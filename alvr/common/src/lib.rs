@@ -152,7 +152,7 @@ pub static RIGHT_THUMBREST_TOUCH_ID: Lazy<u64> =
 pub struct RelaxedAtomic(AtomicBool);
 
 impl RelaxedAtomic {
-    pub fn new(initial_value: bool) -> Self {
+    pub const fn new(initial_value: bool) -> Self {
         Self(AtomicBool::new(initial_value))
     }
 

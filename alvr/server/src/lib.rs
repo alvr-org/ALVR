@@ -68,17 +68,13 @@ static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-static FRAME_RENDER_VS_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec());
-static FRAME_RENDER_PS_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec());
-static QUAD_SHADER_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec());
-static COMPRESS_AXIS_ALIGNED_CSO: Lazy<Vec<u8>> = Lazy::new(|| {
-    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec()
-});
-static COLOR_CORRECTION_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec());
+static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
+static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
+static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/QuadVertexShader.cso");
+static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
+static COLOR_CORRECTION_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
 
 pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
     let type_ = match value {

@@ -1,10 +1,20 @@
+use alvr_common::{
+    parking_lot::{Condvar, Mutex},
+    prelude::*,
+};
+use alvr_session::{CodecType, MediacodecDataType};
 use jni::{sys::jobject, JavaVM};
-use ndk_sys as sys;
-use std::{ffi::CString, ptr::NonNull};
+use ndk::{
+    hardware_buffer::HardwareBufferUsage,
+    media::{
+        image_reader::{Image, ImageFormat, ImageReader},
+        media_codec::{
+            MediaCodec, MediaCodecDirection, MediaCodecInfo, MediaCodecResult, MediaFormat,
+        },
+    },
+};
+use std::{ffi::c_void, sync::Arc, time::Duration};
 
-const MODE_PRIVATE: i32 = 0;
-const CONFIG_KEY: &str = "config";
-const PREF_NAME: &str = "alvr-pref";
 const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 
 pub fn vm() -> JavaVM {
@@ -50,103 +60,6 @@ pub fn try_get_microphone_permission() {
     }
 }
 
-pub fn load_asset(fname: &str) -> Vec<u8> {
-    let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    let asset_manager = unsafe {
-        let jasset_manager = env
-            .call_method(
-                context(),
-                "getAssets",
-                "()Landroid/content/res/AssetManager;",
-                &[],
-            )
-            .unwrap()
-            .l()
-            .unwrap();
-        let asset_manager_ptr =
-            sys::AAssetManager_fromJava(env.get_native_interface(), jasset_manager.cast());
-
-        ndk::asset::AssetManager::from_ptr(NonNull::new(asset_manager_ptr).unwrap())
-    };
-
-    let fname_cstring = CString::new(fname).unwrap();
-    let mut asset = asset_manager.open(fname_cstring.as_c_str()).unwrap();
-    asset.get_buffer().unwrap().to_vec()
-}
-
-pub fn load_config_string() -> String {
-    let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    let pref_name = env.new_string(PREF_NAME).unwrap();
-    let shared_preferences = env
-        .call_method(
-            context(),
-            "getSharedPreferences",
-            "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
-            &[pref_name.into(), MODE_PRIVATE.into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-
-    let key = env.new_string(CONFIG_KEY).unwrap();
-    let default = env.new_string("").unwrap();
-
-    let config = env
-        .call_method(
-            shared_preferences,
-            "getString",
-            "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-            &[key.into(), default.into()],
-        )
-        .unwrap();
-
-    env.get_string(config.l().unwrap().into()).unwrap().into()
-}
-
-pub fn store_config_string(config: String) {
-    let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    let pref_name = env.new_string(PREF_NAME).unwrap();
-    let shared_preferences = env
-        .call_method(
-            context(),
-            "getSharedPreferences",
-            "(Ljava/lang/String;I)Landroid/content/SharedPreferences;",
-            &[pref_name.into(), MODE_PRIVATE.into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-
-    let editor = env
-        .call_method(
-            shared_preferences,
-            "edit",
-            "()Landroid/content/SharedPreferences$Editor;",
-            &[],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-
-    let key = env.new_string(CONFIG_KEY).unwrap();
-    let value = env.new_string(config).unwrap();
-    env.call_method(
-        editor,
-        "putString",
-        "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;",
-        &[key.into(), value.into()],
-    )
-    .unwrap();
-
-    env.call_method(editor, "apply", "()V", &[]).unwrap();
-}
-
 pub fn device_name() -> String {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
@@ -176,4 +89,210 @@ pub fn device_name() -> String {
     let device_name = device_name_raw.to_string_lossy().as_ref().to_owned();
 
     format!("{brand_name} {device_name}")
+}
+
+pub struct VideoDecoderEnqueuer {
+    inner: Arc<MediaCodec>,
+}
+
+unsafe impl Send for VideoDecoderEnqueuer {}
+
+impl VideoDecoderEnqueuer {
+    // Block until the buffer has been written or timeout is reached. Returns false if timeout.
+    pub fn push_frame_nal(
+        &self,
+        timestamp: Duration,
+        data: &[u8],
+        timeout: Duration,
+    ) -> StrResult<bool> {
+        match self.inner.dequeue_input_buffer(timeout) {
+            MediaCodecResult::Ok(mut buffer) => {
+                buffer.buffer_mut()[..data.len()].copy_from_slice(data);
+
+                // NB: the function expects the timestamp in micros, but nanos is used to have complete
+                // precision, so when converted back to Duration it can compare correctly to other
+                // Durations
+                self.inner
+                    .queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)
+                    .map_err(err!())?;
+
+                Ok(true)
+            }
+            MediaCodecResult::Info(_) => {
+                // Should be TryAgainLater
+                Ok(false)
+            }
+            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum DecoderDequeuedData {
+    Frame {
+        buffer_ptr: *mut c_void,
+        timestamp: Duration,
+    },
+    TryAgainLater,
+    OtherNonFatal,
+}
+
+pub struct VideoDecoderDequeuer {
+    inner: Option<Arc<MediaCodec>>,
+    image_reader: Option<ImageReader>,
+    acquired_image: Arc<Mutex<StrResult<Option<Image>>>>,
+    image_acquired_notifier: Arc<Condvar>,
+}
+
+unsafe impl Send for VideoDecoderDequeuer {}
+
+impl VideoDecoderDequeuer {
+    // dequeue_timeout: Should be small.
+    // deadlock_timeout: Should be not too small, not too large. When this timeout is reached an
+    // error is returned and the client should be disconnected
+    pub fn dequeue_frame(
+        &self,
+        dequeue_timeout: Duration,  // should be small
+        deadlock_timeout: Duration, // should be not too small not too large
+    ) -> StrResult<DecoderDequeuedData> {
+        let mut acquired_image_ref = self.acquired_image.lock();
+
+        match self
+            .inner
+            .as_ref()
+            .unwrap()
+            .dequeue_output_buffer(dequeue_timeout)
+        {
+            MediaCodecResult::Ok(buffer) => {
+                // The buffer timestamp is actually nanoseconds
+                let timestamp = Duration::from_nanos(buffer.presentation_time_us() as _);
+
+                self.inner
+                    .as_ref()
+                    .unwrap()
+                    .release_output_buffer(buffer, true)
+                    .map_err(err!())?;
+
+                // Note: parking_lot::Condvar has no spurious wakeups
+                if self
+                    .image_acquired_notifier
+                    .wait_for(&mut acquired_image_ref, deadlock_timeout)
+                    .timed_out()
+                {
+                    return fmt_e!("ImageReader stalled");
+                }
+
+                match &*acquired_image_ref {
+                    Ok(Some(image)) => Ok(DecoderDequeuedData::Frame {
+                        buffer_ptr: image.get_hardware_buffer().map_err(err!())?.as_ptr().cast(),
+                        timestamp,
+                    }),
+                    Ok(None) => fmt_e!("No buffer available"),
+                    Err(e) => fmt_e!("{e}"),
+                }
+            }
+            MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => {
+                Ok(DecoderDequeuedData::TryAgainLater)
+            }
+            MediaCodecResult::Info(_) => Ok(DecoderDequeuedData::OtherNonFatal),
+            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+        }
+    }
+}
+
+impl Drop for VideoDecoderDequeuer {
+    fn drop(&mut self) {
+        // Make sure the ImageReader surface is not used anymore. Destroy the decoder
+        drop(self.inner.take());
+
+        // Make sure there is no lingering image form the ImageReader
+        *self.acquired_image.lock() = Ok(None);
+
+        // Finally destroy the ImageReader
+        // FIXME: it still crashes!
+        // drop(self.image_reader.take());
+
+        // Since I cannot destroy the ImageReader, leak its memory
+        // THIS IS VERY WRONG. todo: find solution ASAP
+        error!("Leaking ImageReader. FIXME");
+        Box::leak(Box::new(self.image_reader.take()));
+    }
+}
+
+pub fn video_decoder_split(
+    codec_type: CodecType,
+    csd_0: &[u8],
+    extra_options: &[(String, MediacodecDataType)],
+) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
+    let mut image_reader = ImageReader::new_with_usage(
+        1,
+        1,
+        ImageFormat::PRIVATE,
+        HardwareBufferUsage::GPU_SAMPLED_IMAGE,
+        5,
+    )
+    .unwrap();
+
+    let mime = match codec_type {
+        CodecType::H264 => "video/avc",
+        CodecType::HEVC => "video/hevc",
+    };
+
+    let format = MediaFormat::new();
+    format.set_str("mime", mime);
+    format.set_i32("width", 512);
+    format.set_i32("height", 1024);
+    format.set_buffer("csd-0", csd_0);
+
+    for (key, value) in extra_options {
+        match value {
+            MediacodecDataType::Float(value) => format.set_f32(key, *value),
+            MediacodecDataType::Int32(value) => format.set_i32(key, *value),
+            MediacodecDataType::Int64(value) => format.set_i64(key, *value),
+            MediacodecDataType::String(value) => format.set_str(key, value),
+        }
+    }
+
+    let decoder = Arc::new(MediaCodec::from_decoder_type(mime).ok_or_else(enone!())?);
+    decoder
+        .configure(
+            &format,
+            Some(&image_reader.get_window().unwrap()),
+            MediaCodecDirection::Decoder,
+        )
+        .map_err(err!())?;
+    decoder.start().map_err(err!())?;
+
+    let acquired_image = Arc::new(Mutex::new(Ok(None)));
+    let image_acquired_notifier = Arc::new(Condvar::new());
+
+    image_reader
+        .set_image_listener(Box::new({
+            let acquired_image = Arc::clone(&acquired_image);
+            let image_acquired_notifier = Arc::clone(&image_acquired_notifier);
+            move |image_reader| {
+                let mut acquired_image_lock = acquired_image.lock();
+                *acquired_image_lock = image_reader.acquire_latest_image().map_err(err!());
+                image_acquired_notifier.notify_one();
+            }
+        }))
+        .map_err(err!())?;
+
+    // Documentation says that this call is necessary to properly dispose acquired buffers.
+    // todo: find out how to use it and avoid leaking the ImageReader
+    image_reader
+        .set_buffer_removed_listener(Box::new(|_, _| ()))
+        .map_err(err!())?;
+
+    Ok((
+        VideoDecoderEnqueuer {
+            inner: Arc::clone(&decoder),
+        },
+        VideoDecoderDequeuer {
+            inner: Some(Arc::clone(&decoder)),
+            image_reader: Some(image_reader),
+            acquired_image,
+            image_acquired_notifier,
+        },
+    ))
 }

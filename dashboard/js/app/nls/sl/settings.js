@@ -175,7 +175,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "SAMODEJEN",
     "_root_extra_theme_classic-choice-.name": "NAVADEN",
     "_root_extra_theme_darkly-choice-.name": "TEMEN",
-    "_root_extra_clientDarkMode.name": "Temen izgled na napravi",
     "_root_extra_revertConfirmDialog.name": "Potrdi povrnitev",
     "_root_extra_revertConfirmDialog.description":
         "Vprašaj za potrditev, preden se nastavitev povrne.",

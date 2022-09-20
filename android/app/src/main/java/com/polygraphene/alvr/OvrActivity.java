@@ -9,6 +9,7 @@ import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -60,8 +61,6 @@ public class OvrActivity extends Activity {
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
     Surface mScreenSurface;
-    DecoderThread mDecoderThread = null;
-    float mRefreshRate = 60f;
 
     // Cache method references for performance reasons
     final Runnable mRenderRunnable = this::render;
@@ -86,6 +85,31 @@ public class OvrActivity extends Activity {
         holder.addCallback(new RenderingCallbacks());
 
         this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Semaphore sem = new Semaphore(1);
+        try {
+            sem.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        mRenderingHandler.post(() -> {
+            Log.i(TAG, "Destroying vrapi state.");
+            destroyNative();
+            sem.release();
+        });
+        mRenderingHandlerThread.quitSafely();
+        try {
+            // Wait until destroyNative() is finished. Can't use Thread.join here, because
+            // the posted lambda might not run, so wait on an object instead.
+            sem.acquire();
+            sem.release();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -123,43 +147,12 @@ public class OvrActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        Semaphore sem = new Semaphore(1);
-        try {
-            sem.acquire();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        mRenderingHandler.post(() -> {
-            Utils.logi(TAG, () -> "Destroying vrapi state.");
-            destroyNative();
-            sem.release();
-        });
-        mRenderingHandlerThread.quitSafely();
-        try {
-            // Wait until destroyNative() is finished. Can't use Thread.join here, because
-            // the posted lambda might not run, so wait on an object instead.
-            sem.acquire();
-            sem.release();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void render() {
         if (mResumed && mScreenSurface != null) {
-            if (isConnectedNative()) {
-                renderNative();
+            renderNative();
 
-                mRenderingHandler.removeCallbacks(mRenderRunnable);
-                mRenderingHandler.postDelayed(mRenderRunnable, 1);
-            } else {
-                renderLoadingNative();
-                mRenderingHandler.removeCallbacks(mRenderRunnable);
-                mRenderingHandler.postDelayed(mRenderRunnable, (long) (1f / mRefreshRate));
-            }
+            mRenderingHandler.removeCallbacks(mRenderRunnable);
+            mRenderingHandler.postDelayed(mRenderRunnable, 2);
         }
     }
 
@@ -167,40 +160,25 @@ public class OvrActivity extends Activity {
 
     native void destroyNative();
 
-    // nal_class is needed to access NAL objects fields in native code without access to a Java thread
     native void onResumeNative(Surface screenSurface);
 
     native void onPauseNative();
 
-    native void onStreamStartNative(int eyeWidth, int eyeHeight, float fps, DecoderThread decoder,
-                                    int codec, boolean realtimeDecoder, int oculusFoveationLevel,
-                                    boolean dynamicOculusFoveation, boolean extraLatency,
-                                    float controllerPredictionMultiplier);
+    native void onStreamStartNative();
 
-    native boolean isConnectedNative();
+    native void onStreamStopNative();
 
     native void renderNative();
-
-    native void renderLoadingNative();
 
     native void onBatteryChangedNative(int battery, boolean plugged);
 
     @SuppressWarnings("unused")
-    public void onServerConnected(int eyeWidth, int eyeHeight, float fps, int codec,
-                                  boolean realtimeDecoder, int oculusFoveationLevel,
-                                  boolean dynamicOculusFoveation, boolean extraLatency,
-                                  float controllerPredictionMultiplier) {
-        mRefreshRate = fps;
-        mRenderingHandler.post(() -> {
-            mDecoderThread = new DecoderThread();
-            onStreamStartNative(eyeWidth, eyeHeight, fps, mDecoderThread, codec, realtimeDecoder,
-            oculusFoveationLevel, dynamicOculusFoveation, extraLatency,controllerPredictionMultiplier);
-        });
+    public void onStreamStart() {
+        mRenderingHandler.post(this::onStreamStartNative);
     }
 
     @SuppressWarnings("unused")
-    public void restartRenderCycle() {
-        mRenderingHandler.removeCallbacks(mRenderRunnable);
-        mRenderingHandler.post(mRenderRunnable);
+    public void onStreamStop() {
+        mRenderingHandler.post(this::onStreamStopNative);
     }
 }

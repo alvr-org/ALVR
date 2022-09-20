@@ -2,14 +2,18 @@
 
 use crate::{
     connection_utils::{self, ConnectionError},
+    decoder::DECODER_INIT_CONFIG,
     platform,
     statistics::StatisticsManager,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_REF, EVENT_BUFFER, IDR_PARSED,
-    IS_RESUMED, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    storage::Config,
+    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED,
+    IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER, USE_OPENGL,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
-use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
+use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_session::{
+    AudioDeviceId, CodecType, MediacodecDataType, OculusFovetionLevel, SessionDesc,
+};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
     ClientHandshakePacket, Haptics, HeadsetInfoPacket, PeerType, ProtoControlSocket,
@@ -23,19 +27,14 @@ use glyph_brush_layout::{
 };
 use serde_json as json;
 use settings_schema::Switch;
-use std::{
-    future, mem,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
-    },
-    time::Duration,
-};
+use std::{future, sync::Arc, time::Duration};
 use tokio::{
     sync::{mpsc as tmpsc, Mutex},
-    task,
-    time::{self, Instant},
+    time,
 };
+
+#[cfg(target_os = "android")]
+use crate::decoder::{DECODER_DEQUEUER, DECODER_ENQUEUER};
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -64,19 +63,8 @@ const LOADING_TEXTURE_WIDTH: usize = 1280;
 const LOADING_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
 
-// close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard {
-    is_connected: Arc<AtomicBool>,
-}
-
-impl Drop for StreamCloseGuard {
-    fn drop(&mut self) {
-        self.is_connected.store(false, Ordering::Relaxed);
-    }
-}
-
 fn set_loading_message(message: &str) {
-    let hostname = platform::load_config().hostname;
+    let hostname = Config::load().hostname;
 
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
@@ -120,47 +108,18 @@ fn set_loading_message(message: &str) {
         }
     }
 
-    unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
+    #[cfg(target_os = "android")]
+    if USE_OPENGL.value() {
+        unsafe { crate::updateLobbyHudTexture(buffer.as_ptr()) };
+    }
 }
 
-fn on_server_connected(
-    eye_width: i32,
-    eye_height: i32,
-    fps: f32,
-    codec: CodecType,
-    realtime_decoder: bool,
-    oculus_foveation_level: OculusFovetionLevel,
-    dynamic_oculus_foveation: bool,
-    extra_latency: bool,
-    controller_prediction_multiplier: f32,
-) {
-    let vm = platform::vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    env.call_method(
-        platform::context(),
-        "onServerConnected",
-        "(IIFIZIZZF)V",
-        &[
-            eye_width.into(),
-            eye_height.into(),
-            fps.into(),
-            (matches!(codec, CodecType::HEVC) as i32).into(),
-            realtime_decoder.into(),
-            (oculus_foveation_level as i32).into(),
-            dynamic_oculus_foveation.into(),
-            extra_latency.into(),
-            controller_prediction_multiplier.into(),
-        ],
-    )
-    .unwrap();
-}
 async fn connection_pipeline(
     headset_info: HeadsetInfoPacket,
-    decoder_guard: Arc<parking_lot::Mutex<()>>,
+    decoder_guard: Arc<Mutex<()>>,
 ) -> StrResult {
     let device_name = platform::device_name();
-    let hostname = platform::load_config().hostname;
+    let hostname = Config::load().hostname;
 
     let handshake_packet = ClientHandshakePacket {
         alvr_name: ALVR_NAME.into(),
@@ -298,25 +257,33 @@ async fn connection_pipeline(
 
     info!("Connected to server");
 
-    let is_connected = Arc::new(AtomicBool::new(true));
-    let _stream_guard = StreamCloseGuard {
-        is_connected: Arc::clone(&is_connected),
-    };
-
-    {
-        let mut config = platform::load_config();
-        config.dark_mode = settings.extra.client_dark_mode;
-        platform::store_config(&config);
-    }
-
     // create this before initializing the stream on cpp side
     let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
     *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
+    {
+        let config = &mut *DECODER_INIT_CONFIG.lock();
+
+        config.codec = settings.video.codec;
+
+        config.options = vec![
+            ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
+            ("priority".into(), MediacodecDataType::Int32(0)),
+            // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+            // cabable, since they are on level 29.
+            ("low-latency".into(), MediacodecDataType::Int32(1)),
+            (
+                "vendor.qti-ext-dec-low-latency.enable".into(),
+                MediacodecDataType::Int32(1),
+            ),
+        ];
+    }
+
+    #[cfg(target_os = "android")]
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
-            eyeWidth: config_packet.eye_resolution_width,
-            eyeHeight: config_packet.eye_resolution_height,
+            viewWidth: config_packet.view_resolution_width,
+            viewHeight: config_packet.view_resolution_height,
             enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
@@ -362,31 +329,6 @@ async fn connection_pipeline(
             },
         });
     }
-
-    on_server_connected(
-        config_packet.eye_resolution_width as _,
-        config_packet.eye_resolution_height as _,
-        config_packet.fps,
-        settings.video.codec,
-        settings.video.client_request_realtime_decoder,
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.oculus_foveation_level
-        } else {
-            OculusFovetionLevel::None
-        },
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.dynamic_oculus_foveation
-        } else {
-            false
-        },
-        settings.headset.extra_latency_mode,
-        settings
-            .headset
-            .controllers
-            .into_option()
-            .map(|c| c.prediction_multiplier)
-            .unwrap_or_default(),
-    );
 
     // setup stream loops
 
@@ -448,19 +390,76 @@ async fn connection_pipeline(
         }
     };
 
-    let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
-    let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
+    let streaming_start_event = AlvrEvent::StreamingStarted {
+        view_width: config_packet.view_resolution_width as _,
+        view_height: config_packet.view_resolution_height as _,
+        fps: config_packet.fps,
+        oculus_foveation_level: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.oculus_foveation_level
+        } else {
+            OculusFovetionLevel::None
+        } as i32,
+        dynamic_oculus_foveation: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.dynamic_oculus_foveation
+        } else {
+            false
+        },
+        extra_latency: settings.headset.extra_latency_mode,
+        controller_prediction_multiplier: settings
+            .headset
+            .controllers
+            .into_option()
+            .map(|c| c.prediction_multiplier)
+            .unwrap_or_default(),
+    };
 
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
-        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
+        let codec = settings.video.codec;
+        let enable_fec = settings.connection.enable_fec;
         async move {
+            let _decoder_guard = decoder_guard.lock().await;
+
+            // close stream on Drop (manual disconnection or execution canceling)
+            struct StreamCloseGuard;
+
+            impl Drop for StreamCloseGuard {
+                fn drop(&mut self) {
+                    EVENT_QUEUE.lock().push_back(AlvrEvent::StreamingStopped);
+
+                    IS_STREAMING.set(false);
+
+                    #[cfg(target_os = "android")]
+                    {
+                        *DECODER_ENQUEUER.lock() = None;
+                        *DECODER_DEQUEUER.lock() = None;
+                    }
+                }
+            }
+
+            let _stream_guard = StreamCloseGuard;
+
+            unsafe {
+                crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
+            };
+
+            IS_STREAMING.set(true);
+
+            EVENT_QUEUE.lock().push_back(streaming_start_event);
+
             loop {
                 let packet = receiver.recv().await?;
 
-                let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
+                if !IS_RESUMED.value() {
+                    break Ok(());
+                }
+
                 let header = VideoFrame {
                     packetCounter: packet.header.packet_counter,
                     trackingFrameIndex: packet.header.tracking_frame_index,
@@ -471,18 +470,26 @@ async fn connection_pipeline(
                     fecPercentage: packet.header.fec_percentage,
                 };
 
-                buffer[..mem::size_of::<VideoFrame>()].copy_from_slice(unsafe {
-                    &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
-                });
-                buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
-
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_video_packet_received(Duration::from_nanos(
                         packet.header.tracking_frame_index,
                     ));
                 }
 
-                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                let mut fec_failure = false;
+                unsafe {
+                    crate::processNalPacket(
+                        header,
+                        packet.buffer.as_ptr(),
+                        packet.buffer.len() as _,
+                        &mut fec_failure,
+                    )
+                };
+                if fec_failure {
+                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                        sender.send(ClientControlPacket::VideoErrorReport).ok();
+                    }
+                }
             }
         }
     };
@@ -495,7 +502,7 @@ async fn connection_pipeline(
             loop {
                 let packet = receiver.recv().await?.header;
 
-                EVENT_BUFFER.lock().push_back(AlvrEvent::Haptics {
+                EVENT_QUEUE.lock().push_back(AlvrEvent::Haptics {
                     device_id: packet.path,
                     duration_s: packet.duration.as_secs_f32(),
                     frequency: packet.frequency,
@@ -504,68 +511,6 @@ async fn connection_pipeline(
             }
         }
     };
-
-    // The main stream loop must be run in a normal thread, because it needs to access the JNI env
-    // many times per second. If using a future I'm forced to attach and detach the env continuously.
-    // When the parent function exits or gets canceled, this loop will run to finish.
-    let legacy_stream_socket_loop = task::spawn_blocking({
-        let codec = settings.video.codec;
-        let enable_fec = settings.connection.enable_fec;
-        let decoder_guard = Arc::clone(&decoder_guard);
-        move || -> StrResult {
-            unsafe {
-                let _guard = decoder_guard.lock();
-
-                // Note: legacyReceive() requires the java context to be attached to the current thread
-                // todo: investigate why
-                let vm = platform::vm();
-                let env = vm.attach_current_thread().unwrap();
-
-                crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);
-
-                let mut idr_request_deadline = None;
-
-                while let Ok(mut data) = legacy_receive_data_receiver.recv() {
-                    if !IS_RESUMED.value() {
-                        break;
-                    }
-
-                    // Send again IDR packet every 2s in case it is missed
-                    // (due to dropped burst of packets at the start of the stream or otherwise).
-                    if !IDR_PARSED.load(Ordering::Relaxed) {
-                        if let Some(deadline) = idr_request_deadline {
-                            if deadline < Instant::now() {
-                                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                                    sender.send(ClientControlPacket::RequestIdr).ok();
-                                }
-                                idr_request_deadline = None;
-                            }
-                        } else {
-                            idr_request_deadline = Some(Instant::now() + Duration::from_secs(2));
-                        }
-                    }
-
-                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
-                }
-
-                crate::closeSocket();
-
-                let mut decoder = DECODER_REF.lock();
-
-                if let Some(decoder) = &*decoder {
-                    env.call_method(decoder.as_obj(), "onDisconnect", "()V", &[])
-                        .unwrap();
-
-                    env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
-                        .unwrap();
-                }
-
-                *decoder = None;
-            }
-
-            Ok(())
-        }
-    });
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Output)
@@ -665,19 +610,20 @@ async fn connection_pipeline(
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = spawn_cancelable(control_send_loop) => res,
-        res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
         res = control_receive_loop => res,
         // res = debug_loop => res,
+
+        _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
     }
 }
 
 pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
     set_loading_message(INITIAL_MESSAGE);
 
-    let decoder_guard = Arc::new(parking_lot::Mutex::new(()));
+    let decoder_guard = Arc::new(Mutex::new(()));
 
     loop {
         tokio::join!(

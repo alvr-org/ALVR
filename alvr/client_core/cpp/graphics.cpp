@@ -1,16 +1,76 @@
-#include <GLES3/gl3.h>
-#include <GLES2/gl2ext.h>
-#include <memory>
-
-#include "render.h"
-#include "utils.h"
+#include "bindings.h"
+#include "ffr.h"
 #include "gltf_model.h"
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/mat4x4.hpp>
+#include "utils.h"
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <glm/gtc/quaternion.hpp>
+#include <mutex>
 
 using namespace gl_render_utils;
 
 const float NEAR = 0.1;
+const int MAX_VERTEX_ATTRIB_POINTERS = 5;
+const int MAX_PROGRAM_UNIFORMS = 8;
+const int MAX_PROGRAM_TEXTURES = 8;
+const int HUD_TEXTURE_WIDTH = 1280;
+const int HUD_TEXTURE_HEIGHT = 720;
+
+/// Integer version of ovrRectf
+typedef struct Recti_
+{
+    int x;
+    int y;
+    int width;
+    int height;
+} Recti;
+
+typedef struct {
+    std::vector<std::unique_ptr<gl_render_utils::Texture>> renderTargets;
+    std::vector<std::unique_ptr<gl_render_utils::RenderState>> renderStates;
+} ovrFramebuffer;
+
+typedef struct {
+    GLuint Index;
+    GLint Size;
+    GLenum Type;
+    GLboolean Normalized;
+    GLsizei Stride;
+    const GLvoid *Pointer;
+} ovrVertexAttribPointer;
+
+typedef struct {
+    GLuint VertexBuffer;
+    GLuint IndexBuffer;
+    GLuint VertexArrayObject;
+    GLuint VertexUVBuffer;
+    int VertexCount;
+    int IndexCount;
+    ovrVertexAttribPointer VertexAttribs[MAX_VERTEX_ATTRIB_POINTERS];
+} ovrGeometry;
+
+typedef struct {
+    GLuint streamProgram;
+    GLuint VertexShader;
+    GLuint FragmentShader;
+    // These will be -1 if not used by the program.
+    GLint UniformLocation[MAX_PROGRAM_UNIFORMS]; // ProgramUniforms[].name
+    GLint UniformBinding[MAX_PROGRAM_UNIFORMS];  // ProgramUniforms[].name
+    GLint Textures[MAX_PROGRAM_TEXTURES];        // Texture%i
+} ovrProgram;
+
+typedef struct {
+    ovrFramebuffer FrameBuffer[2];
+    bool SceneCreated;
+    ovrProgram streamProgram;
+    ovrProgram lobbyProgram;
+    ovrGeometry Panel;
+    gl_render_utils::Texture *streamTexture;
+    GLuint hudTexture;
+    GltfModel *lobbyScene;
+    std::unique_ptr<FFR> ffr;
+    bool enableFFR;
+} ovrRenderer;
 
 enum VertexAttributeLocation {
     VERTEX_ATTRIBUTE_LOCATION_POSITION,
@@ -20,13 +80,69 @@ enum VertexAttributeLocation {
     VERTEX_ATTRIBUTE_LOCATION_NORMAL
 };
 
-/*
-================================================================================
+typedef struct {
+    enum VertexAttributeLocation location;
+    const char *name;
+} ovrVertexAttribute;
 
-OpenGL-ES Utility Functions
+ovrVertexAttribute ProgramVertexAttributes[] = {
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition"},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor"},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv"},
+    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform"},
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal"}};
 
-================================================================================
-*/
+enum E1test {
+    UNIFORM_VIEW_ID,
+    UNIFORM_MVP_MATRIX,
+    UNIFORM_ALPHA,
+    UNIFORM_COLOR,
+    UNIFORM_M_MATRIX,
+    UNIFORM_MODE
+};
+enum E2test {
+    UNIFORM_TYPE_VECTOR4,
+    UNIFORM_TYPE_MATRIX4X4,
+    UNIFORM_TYPE_INT,
+    UNIFORM_TYPE_BUFFER,
+    UNIFORM_TYPE_FLOAT,
+};
+typedef struct {
+    E1test index;
+    E2test type;
+    const char *name;
+} ovrUniform;
+
+static ovrUniform ProgramUniforms[] = {
+    {UNIFORM_VIEW_ID, UNIFORM_TYPE_INT, "ViewID"},
+    {UNIFORM_MVP_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mvpMatrix"},
+    {UNIFORM_ALPHA, UNIFORM_TYPE_FLOAT, "alpha"},
+    {UNIFORM_COLOR, UNIFORM_TYPE_VECTOR4, "Color"},
+    {UNIFORM_M_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mMatrix"},
+    {UNIFORM_MODE, UNIFORM_TYPE_INT, "Mode"},
+};
+
+class GraphicsContext {
+  public:
+    EGLDisplay eglDisplay;
+
+    std::vector<uint8_t> hudTextureBitmap;
+    std::mutex hudTextureMutex;
+    std::unique_ptr<Texture> hudTexture;
+    std::vector<GLuint> lobbySwapchainTextures[2];
+    std::unique_ptr<ovrRenderer> lobbyRenderer;
+
+    StreamConfigInput streamConfig{};
+    std::unique_ptr<Texture> streamTexture;
+    std::vector<GLuint> streamSwapchainTextures[2];
+    std::unique_ptr<ovrRenderer> streamRenderer;
+};
+
+namespace {
+PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID;
+PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+GraphicsContext g_ctx;
+} // namespace
 
 static const char VERTEX_SHADER[] = R"glsl(
 #ifndef DISABLE_MULTIVIEW
@@ -60,7 +176,6 @@ void main()
 }
 )glsl";
 
-
 static const char FRAGMENT_SHADER[] = R"glsl(
 #extension GL_OES_EGL_image_external_essl3 : enable
 #extension GL_OES_EGL_image_external : enable
@@ -74,7 +189,7 @@ void main()
 }
 )glsl";
 
-static const char VERTEX_SHADER_LOADING[] = R"glsl(
+static const char LOBBY_VERTEX_SHADER[] = R"glsl(
 #ifndef DISABLE_MULTIVIEW
     #define DISABLE_MULTIVIEW 0
 #endif
@@ -116,7 +231,7 @@ void main()
 }
 )glsl";
 
-static const char FRAGMENT_SHADER_LOADING[] = R"glsl(
+static const char LOBBY_FRAGMENT_SHADER[] = R"glsl(
 in lowp vec2 uv;
 in lowp vec4 fragmentColor;
 in lowp float fragmentLight;
@@ -150,7 +265,7 @@ void main()
         outColor.rgb = textColor;
         outColor.a = texture(sTexture, uv).a;
     } else {                                           // sky
-        lowp vec3 skyCenter = vec3(0.8, 0.8, 1.0);
+        lowp vec3 skyCenter = vec3(0.95, 0.95, 0.95);
         lowp vec3 skyHorizon = vec3(1.0, 1.0, 1.0);
 
         lowp float coef = 1.0;
@@ -164,18 +279,22 @@ void main()
         outColor.a = 1.0;
         outColor.rgb = skyCenter * coef + skyHorizon * (1.0 - coef);
     }
-    %s
+
+    // invert. looks good only for black and white
+    outColor.rgb = 1.0 - outColor.rgb;
 }
 )glsl";
 
-void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer, std::vector<GLuint> textures, const int width,
+void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
+                           std::vector<GLuint> textures,
+                           const int width,
                            const int height) {
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
-        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
-                glRenderTarget, false, width, height));
-        frameBuffer->renderStates.push_back(std::make_unique<gl_render_utils::RenderState>(
-                frameBuffer->renderTargets[i].get()));
+        frameBuffer->renderTargets.push_back(
+            std::make_unique<gl_render_utils::Texture>(glRenderTarget, false, width, height));
+        frameBuffer->renderStates.push_back(
+            std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
 }
 
@@ -188,9 +307,7 @@ void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer, int index) {
     GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->renderStates[index]->GetFrameBuffer()));
 }
 
-void ovrFramebuffer_SetNone() {
-    GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
-}
+void ovrFramebuffer_SetNone() { GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)); }
 
 void ovrFramebuffer_Resolve() {
     // Discard the depth buffer, so the tiler won't need to write it back out to memory.
@@ -200,24 +317,6 @@ void ovrFramebuffer_Resolve() {
     // Flush this frame worth of commands.
     glFlush();
 }
-
-//
-// ovrGeometry
-//
-
-typedef struct {
-    enum VertexAttributeLocation location;
-    const char *name;
-} ovrVertexAttribute;
-
-ovrVertexAttribute ProgramVertexAttributes[] =
-        {
-                {VERTEX_ATTRIBUTE_LOCATION_POSITION,  "vertexPosition"},
-                {VERTEX_ATTRIBUTE_LOCATION_COLOR,     "vertexColor"},
-                {VERTEX_ATTRIBUTE_LOCATION_UV,        "vertexUv"},
-                {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform"},
-                {VERTEX_ATTRIBUTE_LOCATION_NORMAL,    "vertexNormal"}
-        };
 
 void ovrGeometry_Clear(ovrGeometry *geometry) {
     geometry->VertexBuffer = 0;
@@ -237,21 +336,20 @@ void ovrGeometry_CreatePanel(ovrGeometry *geometry) {
         float uv[4][2];
     } ovrCubeVertices;
 
-    static const ovrCubeVertices cubeVertices =
-            {
-                    // positions
-                    {
-                            {-1, -1, 0, 1}, {1,   1, 0, 1}, {1,   -1, 0, 1}, {-1, 1, 0, 1}
-                    },
-                    // uv
-                    {       {0,  1},        {0.5, 0},       {0.5, 1},        {0,  0}}
-            };
+    static const ovrCubeVertices cubeVertices = {
+        // positions
+        {{-1, -1, 0, 1}, {1, 1, 0, 1}, {1, -1, 0, 1}, {-1, 1, 0, 1}},
+        // uv
+        {{0, 1}, {0.5, 0}, {0.5, 1}, {0, 0}}};
 
-    static const unsigned short cubeIndices[6] =
-            {
-                    0, 2, 1, 0, 1, 3,
-            };
-
+    static const unsigned short cubeIndices[6] = {
+        0,
+        2,
+        1,
+        0,
+        1,
+        3,
+    };
 
     geometry->VertexCount = 4;
     geometry->IndexCount = 6;
@@ -261,14 +359,14 @@ void ovrGeometry_CreatePanel(ovrGeometry *geometry) {
     geometry->VertexAttribs[0].Type = GL_FLOAT;
     geometry->VertexAttribs[0].Normalized = true;
     geometry->VertexAttribs[0].Stride = sizeof(cubeVertices.positions[0]);
-    geometry->VertexAttribs[0].Pointer = (const GLvoid *) offsetof(ovrCubeVertices, positions);
+    geometry->VertexAttribs[0].Pointer = (const GLvoid *)offsetof(ovrCubeVertices, positions);
 
     geometry->VertexAttribs[1].Index = VERTEX_ATTRIBUTE_LOCATION_UV;
     geometry->VertexAttribs[1].Size = 2;
     geometry->VertexAttribs[1].Type = GL_FLOAT;
     geometry->VertexAttribs[1].Normalized = true;
     geometry->VertexAttribs[1].Stride = 8;
-    geometry->VertexAttribs[1].Pointer = (const GLvoid *) offsetof(ovrCubeVertices, uv);
+    geometry->VertexAttribs[1].Pointer = (const GLvoid *)offsetof(ovrCubeVertices, uv);
 
     geometry->VertexAttribs[2].Index = -1;
     geometry->VertexAttribs[3].Index = -1;
@@ -319,45 +417,9 @@ void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
     GL(glDeleteVertexArrays(1, &geometry->VertexArrayObject));
 }
 
-//
-// ovrProgram
-//
-
-enum E1test {
-    UNIFORM_VIEW_ID,
-    UNIFORM_MVP_MATRIX,
-    UNIFORM_ALPHA,
-    UNIFORM_COLOR,
-    UNIFORM_M_MATRIX,
-    UNIFORM_MODE
-};
-enum E2test {
-    UNIFORM_TYPE_VECTOR4,
-    UNIFORM_TYPE_MATRIX4X4,
-    UNIFORM_TYPE_INT,
-    UNIFORM_TYPE_BUFFER,
-    UNIFORM_TYPE_FLOAT,
-};
-typedef struct {
-    E1test index;
-    E2test type;
-    const char *name;
-} ovrUniform;
-
-static ovrUniform ProgramUniforms[] =
-        {
-                {UNIFORM_VIEW_ID,    UNIFORM_TYPE_INT,       "ViewID"},
-                {UNIFORM_MVP_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mvpMatrix"},
-                {UNIFORM_ALPHA,      UNIFORM_TYPE_FLOAT,     "alpha"},
-                {UNIFORM_COLOR,      UNIFORM_TYPE_VECTOR4,   "Color"},
-                {UNIFORM_M_MATRIX,   UNIFORM_TYPE_MATRIX4X4, "mMatrix"},
-                {UNIFORM_MODE,       UNIFORM_TYPE_INT,       "Mode"},
-        };
-
 static const char *programVersion = "#version 300 es\n";
 
-bool
-ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
+bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -392,21 +454,23 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
         // Ignore compile error. If this error is only a warning, we can proceed to next.
     }
 
-    GL(program->Program = glCreateProgram());
-    GL(glAttachShader(program->Program, program->VertexShader));
-    GL(glAttachShader(program->Program, program->FragmentShader));
+    GL(program->streamProgram = glCreateProgram());
+    GL(glAttachShader(program->streamProgram, program->VertexShader));
+    GL(glAttachShader(program->streamProgram, program->FragmentShader));
 
     // Bind the vertex attribute locations.
-    for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]); i++) {
-        GL(glBindAttribLocation(program->Program, ProgramVertexAttributes[i].location,
+    for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
+         i++) {
+        GL(glBindAttribLocation(program->streamProgram,
+                                ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
     }
 
-    GL(glLinkProgram(program->Program));
-    GL(glGetProgramiv(program->Program, GL_LINK_STATUS, &r));
+    GL(glLinkProgram(program->streamProgram));
+    GL(glGetProgramiv(program->streamProgram, GL_LINK_STATUS, &r));
     if (r == GL_FALSE) {
         GLchar msg[4096];
-        GL(glGetProgramInfoLog(program->Program, sizeof(msg), 0, msg));
+        GL(glGetProgramInfoLog(program->streamProgram, sizeof(msg), 0, msg));
         LOGE("Linking program failed: %s\n", msg);
         return false;
     }
@@ -418,25 +482,26 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
     for (unsigned long i = 0; i < sizeof(ProgramUniforms) / sizeof(ProgramUniforms[0]); i++) {
         const int uniformIndex = ProgramUniforms[i].index;
         if (ProgramUniforms[i].type == UNIFORM_TYPE_BUFFER) {
-            GL(program->UniformLocation[uniformIndex] = glGetUniformBlockIndex(program->Program,
-                                                                               ProgramUniforms[i].name));
+            GL(program->UniformLocation[uniformIndex] =
+                   glGetUniformBlockIndex(program->streamProgram, ProgramUniforms[i].name));
             program->UniformBinding[uniformIndex] = numBufferBindings++;
-            GL(glUniformBlockBinding(program->Program, program->UniformLocation[uniformIndex],
+            GL(glUniformBlockBinding(program->streamProgram,
+                                     program->UniformLocation[uniformIndex],
                                      program->UniformBinding[uniformIndex]));
         } else {
-            GL(program->UniformLocation[uniformIndex] = glGetUniformLocation(program->Program,
-                                                                             ProgramUniforms[i].name));
+            GL(program->UniformLocation[uniformIndex] =
+                   glGetUniformLocation(program->streamProgram, ProgramUniforms[i].name));
             program->UniformBinding[uniformIndex] = program->UniformLocation[uniformIndex];
         }
     }
 
-    GL(glUseProgram(program->Program));
+    GL(glUseProgram(program->streamProgram));
 
     // Get the texture locations.
     for (int i = 0; i < MAX_PROGRAM_TEXTURES; i++) {
         char name[32];
         sprintf(name, "Texture%i", i);
-        program->Textures[i] = glGetUniformLocation(program->Program, name);
+        program->Textures[i] = glGetUniformLocation(program->streamProgram, name);
         if (program->Textures[i] != -1) {
             GL(glUniform1i(program->Textures[i], i));
         }
@@ -449,9 +514,9 @@ ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fra
 }
 
 void ovrProgram_Destroy(ovrProgram *program) {
-    if (program->Program != 0) {
-        GL(glDeleteProgram(program->Program));
-        program->Program = 0;
+    if (program->streamProgram != 0) {
+        GL(glDeleteProgram(program->streamProgram));
+        program->streamProgram = 0;
     }
     if (program->VertexShader != 0) {
         GL(glDeleteShader(program->VertexShader));
@@ -463,12 +528,12 @@ void ovrProgram_Destroy(ovrProgram *program) {
     }
 }
 
-//
-// ovrRenderer
-//
-
-void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *streamTexture,
-                        int LoadingTexture, std::vector<GLuint> textures[2], bool darkMode,
+void ovrRenderer_Create(ovrRenderer *renderer,
+                        int width,
+                        int height,
+                        Texture *streamTexture,
+                        int hudTexture,
+                        std::vector<GLuint> textures[2],
                         FFRData ffrData) {
     renderer->enableFFR = ffrData.enabled;
     if (renderer->enableFFR) {
@@ -482,19 +547,17 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
     }
 
     renderer->streamTexture = streamTexture;
-    renderer->LoadingTexture = LoadingTexture;
+    renderer->hudTexture = hudTexture;
     renderer->SceneCreated = false;
-    renderer->loadingScene = new GltfModel();
-    renderer->loadingScene->load();
+    renderer->lobbyScene = new GltfModel();
+    renderer->lobbyScene->load();
 
     std::string fragment_shader;
-    fragment_shader = string_format(FRAGMENT_SHADER,
-                                    renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
-    ovrProgram_Create(&renderer->Program, VERTEX_SHADER, fragment_shader.c_str());
+    fragment_shader =
+        string_format(FRAGMENT_SHADER, renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, fragment_shader.c_str());
 
-    fragment_shader = string_format(FRAGMENT_SHADER_LOADING,
-                                    darkMode ? "outColor.rgb = 1.0 - outColor.rgb;" : "");
-    ovrProgram_Create(&renderer->ProgramLoading, VERTEX_SHADER_LOADING, fragment_shader.c_str());
+    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
 
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
@@ -502,8 +565,8 @@ void ovrRenderer_Create(ovrRenderer *renderer, int width, int height, Texture *s
 }
 
 void ovrRenderer_Destroy(ovrRenderer *renderer) {
-    ovrProgram_Destroy(&renderer->Program);
-    ovrProgram_Destroy(&renderer->ProgramLoading);
+    ovrProgram_Destroy(&renderer->streamProgram);
+    ovrProgram_Destroy(&renderer->lobbyProgram);
     ovrGeometry_DestroyVAO(&renderer->Panel);
     ovrGeometry_Destroy(&renderer->Panel);
 
@@ -512,21 +575,21 @@ void ovrRenderer_Destroy(ovrRenderer *renderer) {
     }
 }
 
-void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *renderer,
-               bool loading) {
-    if (loading) {
-        GL(glUseProgram(renderer->ProgramLoading.Program));
-        if (renderer->ProgramLoading.UniformLocation[UNIFORM_VIEW_ID] >=
-            0)  // NOTE: will not be present when multiview path is enabled.
+void renderEye(
+    int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *renderer, bool isLobby) {
+    if (isLobby) {
+        GL(glUseProgram(renderer->lobbyProgram.streamProgram));
+        if (renderer->lobbyProgram.UniformLocation[UNIFORM_VIEW_ID] >=
+            0) // NOTE: will not be present when multiview path is enabled.
         {
-            GL(glUniform1i(renderer->ProgramLoading.UniformLocation[UNIFORM_VIEW_ID], eye));
+            GL(glUniform1i(renderer->lobbyProgram.UniformLocation[UNIFORM_VIEW_ID], eye));
         }
     } else {
-        GL(glUseProgram(renderer->Program.Program));
-        if (renderer->Program.UniformLocation[UNIFORM_VIEW_ID] >=
-            0)  // NOTE: will not be present when multiview path is enabled.
+        GL(glUseProgram(renderer->streamProgram.streamProgram));
+        if (renderer->streamProgram.UniformLocation[UNIFORM_VIEW_ID] >=
+            0) // NOTE: will not be present when multiview path is enabled.
         {
-            GL(glUniform1i(renderer->Program.UniformLocation[UNIFORM_VIEW_ID], eye));
+            GL(glUniform1i(renderer->streamProgram.UniformLocation[UNIFORM_VIEW_ID], eye));
         }
     }
     GL(glEnable(GL_SCISSOR_TEST));
@@ -538,7 +601,7 @@ void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *re
     GL(glViewport(viewport->x, viewport->y, viewport->width, viewport->height));
     GL(glScissor(viewport->x, viewport->y, viewport->width, viewport->height));
 
-    if (loading) {
+    if (isLobby) {
         // For drawing back frace of the sphere in gltf
         GL(glDisable(GL_CULL_FACE));
         GL(glClearColor(0.88f, 0.95f, 0.95f, 1.0f));
@@ -547,17 +610,19 @@ void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *re
         GL(glEnable(GL_BLEND));
         GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-        GL(glUniformMatrix4fv(renderer->ProgramLoading.UniformLocation[UNIFORM_MVP_MATRIX], 2, true,
-                              (float *) mvpMatrix));
+        GL(glUniformMatrix4fv(renderer->lobbyProgram.UniformLocation[UNIFORM_MVP_MATRIX],
+                              2,
+                              true,
+                              (float *)mvpMatrix));
         GL(glActiveTexture(GL_TEXTURE0));
 
-        GL(glBindTexture(GL_TEXTURE_2D, renderer->LoadingTexture));
-        renderer->loadingScene->drawScene(VERTEX_ATTRIBUTE_LOCATION_POSITION,
-                                          VERTEX_ATTRIBUTE_LOCATION_UV,
-                                          VERTEX_ATTRIBUTE_LOCATION_NORMAL,
-                                          renderer->ProgramLoading.UniformLocation[UNIFORM_COLOR],
-                                          renderer->ProgramLoading.UniformLocation[UNIFORM_M_MATRIX],
-                                          renderer->ProgramLoading.UniformLocation[UNIFORM_MODE]);
+        GL(glBindTexture(GL_TEXTURE_2D, renderer->hudTexture));
+        renderer->lobbyScene->drawScene(VERTEX_ATTRIBUTE_LOCATION_POSITION,
+                                        VERTEX_ATTRIBUTE_LOCATION_UV,
+                                        VERTEX_ATTRIBUTE_LOCATION_NORMAL,
+                                        renderer->lobbyProgram.UniformLocation[UNIFORM_COLOR],
+                                        renderer->lobbyProgram.UniformLocation[UNIFORM_M_MATRIX],
+                                        renderer->lobbyProgram.UniformLocation[UNIFORM_MODE]);
         GL(glBindVertexArray(0));
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     } else {
@@ -569,14 +634,15 @@ void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *re
 
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 
-        GL(glUniformMatrix4fv(renderer->Program.UniformLocation[UNIFORM_MVP_MATRIX], 2, true,
-                              (float *) mvpMatrix));
+        GL(glUniformMatrix4fv(renderer->streamProgram.UniformLocation[UNIFORM_MVP_MATRIX],
+                              2,
+                              true,
+                              (float *)mvpMatrix));
 
-        GL(glUniform1f(renderer->Program.UniformLocation[UNIFORM_ALPHA], 2.0f));
+        GL(glUniform1f(renderer->streamProgram.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
         if (renderer->enableFFR) {
-            GL(glBindTexture(GL_TEXTURE_2D,
-                             renderer->ffr->GetOutputTexture()->GetGLTexture()));
+            GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
             GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->streamTexture->GetGLTexture()));
         }
@@ -594,7 +660,10 @@ void renderEye(int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *re
     GL(glUseProgram(0));
 }
 
-void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], const int swapchainIndex[2], bool loading) {
+void ovrRenderer_RenderFrame(ovrRenderer *renderer,
+                             const EyeInput input[2],
+                             const int swapchainIndex[2],
+                             bool isLobby) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -615,10 +684,8 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], con
         auto b = 2 / (tanb - tant);
         auto c = (tanr + tanl) / (tanr - tanl);
         auto d = (tanb + tant) / (tanb - tant);
-        auto proj = glm::mat4(a, 0.f, c,    0.f,
-                            0.f, b,   d,    0.f,
-                            0.f, 0.f, -1.f, -2 * NEAR,
-                            0.f, 0.f, -1.f, 0.f);
+        auto proj = glm::mat4(
+            a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
         proj = glm::transpose(proj);
 
         mvpMatrix[eye] = glm::transpose(proj * viewInv);
@@ -629,13 +696,147 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], con
         ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
         ovrFramebuffer_SetCurrent(frameBuffer, swapchainIndex[eye]);
 
-        Recti viewport = {0, 0, (int) frameBuffer->renderTargets[0]->GetWidth(),
-                          (int) frameBuffer->renderTargets[0]->GetHeight()};
+        Recti viewport = {0,
+                          0,
+                          (int)frameBuffer->renderTargets[0]->GetWidth(),
+                          (int)frameBuffer->renderTargets[0]->GetHeight()};
 
-        renderEye(eye, mvpMatrix, &viewport, renderer, loading);
+        renderEye(eye, mvpMatrix, &viewport, renderer, isLobby);
 
         ovrFramebuffer_Resolve();
     }
 
     ovrFramebuffer_SetNone();
+}
+
+void initGraphicsNative() {
+    g_ctx.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress(
+        "eglGetNativeClientBufferANDROID");
+    glEGLImageTargetTexture2DOES =
+        (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
+
+    g_ctx.streamTexture = std::make_unique<Texture>(true);
+    g_ctx.hudTexture = std::make_unique<Texture>(
+        false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+}
+
+void destroyGraphicsNative() {
+    g_ctx.streamTexture.reset();
+    g_ctx.hudTexture.reset();
+}
+
+// on resume
+void prepareLobbyRoom(int viewWidth,
+                      int viewHeight,
+                      const int *swapchainTextures[2],
+                      int swapchainLength) {
+    for (int eye = 0; eye < 2; eye++) {
+        g_ctx.lobbySwapchainTextures[eye].clear();
+
+        for (int i = 0; i < swapchainLength; i++) {
+            g_ctx.lobbySwapchainTextures[eye].push_back(swapchainTextures[eye][i]);
+        }
+    }
+
+    g_ctx.lobbyRenderer = std::make_unique<ovrRenderer>();
+    ovrRenderer_Create(g_ctx.lobbyRenderer.get(),
+                       viewWidth,
+                       viewHeight,
+                       nullptr,
+                       g_ctx.hudTexture->GetGLTexture(),
+                       g_ctx.lobbySwapchainTextures,
+                       {false});
+}
+
+// on pause
+void destroyRenderers() {
+    if (g_ctx.streamRenderer) {
+        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
+        g_ctx.streamRenderer.release();
+    }
+    if (g_ctx.lobbyRenderer) {
+        ovrRenderer_Destroy(g_ctx.lobbyRenderer.get());
+        g_ctx.lobbyRenderer.release();
+    }
+}
+
+void setStreamConfig(StreamConfigInput config) { g_ctx.streamConfig = config; }
+
+void streamStartNative(const int *swapchainTextures[2], int swapchainLength) {
+    if (g_ctx.streamRenderer) {
+        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
+        g_ctx.streamRenderer.release();
+    }
+
+    for (int eye = 0; eye < 2; eye++) {
+        g_ctx.streamSwapchainTextures[eye].clear();
+
+        for (int i = 0; i < swapchainLength; i++) {
+            g_ctx.streamSwapchainTextures[eye].push_back(swapchainTextures[eye][i]);
+        }
+    }
+
+    g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
+    ovrRenderer_Create(g_ctx.streamRenderer.get(),
+                       g_ctx.streamConfig.viewWidth,
+                       g_ctx.streamConfig.viewHeight,
+                       g_ctx.streamTexture.get(),
+                       g_ctx.hudTexture->GetGLTexture(),
+                       g_ctx.streamSwapchainTextures,
+                       {g_ctx.streamConfig.enableFoveation,
+                        g_ctx.streamConfig.viewWidth,
+                        g_ctx.streamConfig.viewHeight,
+                        g_ctx.streamConfig.foveationCenterSizeX,
+                        g_ctx.streamConfig.foveationCenterSizeY,
+                        g_ctx.streamConfig.foveationCenterShiftX,
+                        g_ctx.streamConfig.foveationCenterShiftY,
+                        g_ctx.streamConfig.foveationEdgeRatioX,
+                        g_ctx.streamConfig.foveationEdgeRatioY});
+}
+
+void updateLobbyHudTexture(const unsigned char *data) {
+    std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
+
+    g_ctx.hudTextureBitmap.resize(HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
+
+    memcpy(&g_ctx.hudTextureBitmap[0], data, HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
+}
+
+void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]) {
+    // update text image
+    {
+        std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
+
+        if (!g_ctx.hudTextureBitmap.empty()) {
+            glBindTexture(GL_TEXTURE_2D, g_ctx.hudTexture->GetGLTexture());
+            glTexSubImage2D(GL_TEXTURE_2D,
+                            0,
+                            0,
+                            0,
+                            HUD_TEXTURE_WIDTH,
+                            HUD_TEXTURE_HEIGHT,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            &g_ctx.hudTextureBitmap[0]);
+        }
+        g_ctx.hudTextureBitmap.clear();
+    }
+
+    ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, swapchainIndices, true);
+}
+
+void renderStreamNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
+    GL(EGLClientBuffer clientBuffer =
+           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+    GL(EGLImage image = eglCreateImage(
+           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+
+    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
+    EyeInput eyeInputs[2] = {};
+    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
+
+    GL(eglDestroyImage(g_ctx.eglDisplay, image));
 }

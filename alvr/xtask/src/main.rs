@@ -36,11 +36,12 @@ FLAGS:
     --release           Optimized build without debug info. For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
+    --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
+    --appimage          Package as AppImage. For package-server subcommand
+    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
     --no-rebuild        Do not rebuild the server with run-server
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
-    --appimage          Package as AppImage
-    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information.
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -172,6 +173,8 @@ fn main() {
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
 
+        let local_ffmpeg = args.contains("--local-ffmpeg");
+
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
         let root: Option<String> = args.opt_value_from_str("--root").unwrap();
@@ -196,16 +199,16 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(is_release, gpl, None, false, experiments),
+                "build-server" => build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg),
                 "build-client" => build::build_quest_client(is_release),
                 "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(is_release, gpl, None, false, experiments);
+                        build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg);
                     }
                     run_server();
                 }
-                "package-server" => packaging::package_server(root, gpl, appimage, zsync),
+                "package-server" => packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync),
                 "package-client" => build::build_quest_client(true),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

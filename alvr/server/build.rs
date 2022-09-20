@@ -8,14 +8,14 @@ use std::{env, path::PathBuf};
 #[cfg(target_os = "linux")]
 fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     let ffmpeg_path = alvr_filesystem::deps_dir().join("linux/ffmpeg");
-    let alvr_build = if cfg!(feature = "gpl") {
+    let alvr_build = if cfg!(feature = "local_ffmpeg") {
         "alvr_build"
     } else {
         ""
     };
     let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
 
-    #[cfg(feature = "gpl")]
+    #[cfg(feature = "local_ffmpeg")]
     {
         assert!(ffmpeg_path.exists());
         let ffmpeg_pkg_path = ffmpeg_build_dir.join("lib/pkgconfig/");

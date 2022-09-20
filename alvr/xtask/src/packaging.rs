@@ -44,10 +44,10 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-pub fn package_server(root: Option<String>, gpl: bool, appimage: bool, zsync: bool) {
+pub fn package_server(root: Option<String>, gpl: bool, local_ffmpeg: bool, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(true, gpl, root, true, false);
+    build::build_server(true, gpl, root, true, false, local_ffmpeg);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");

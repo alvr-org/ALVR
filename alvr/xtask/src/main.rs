@@ -199,16 +199,27 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg),
+                "build-server" => {
+                    build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg)
+                }
                 "build-client" => build::build_quest_client(is_release),
                 "build-client-lib" => build::build_client_lib(is_release),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg);
+                        build::build_server(
+                            is_release,
+                            gpl,
+                            None,
+                            false,
+                            experiments,
+                            local_ffmpeg,
+                        );
                     }
                     run_server();
                 }
-                "package-server" => packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync),
+                "package-server" => {
+                    packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
+                }
                 "package-client" => build::build_quest_client(true),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

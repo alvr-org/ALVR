@@ -217,7 +217,7 @@ pub fn build_client_lib(is_release: bool) {
 
     cmd!(
         sh,
-        "cargo ndk -t arm64-v8a -o {build_dir} build {flags_ref...}"
+        "cargo ndk -t arm64-v8a -p 26 -o {build_dir} build {flags_ref...}"
     )
     .run()
     .unwrap();

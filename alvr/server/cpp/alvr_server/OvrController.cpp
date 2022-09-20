@@ -8,8 +8,8 @@
 #include <cstring>
 #include <string_view>
 
-OvrController::OvrController(uint64_t devicePath) : TrackedDevice(devicePath) {
-    double rightHandSignFlip = devicePath == LEFT_HAND_PATH ? 1. : -1.;
+OvrController::OvrController(uint64_t deviceID) : TrackedDevice(deviceID) {
+    double rightHandSignFlip = deviceID == LEFT_HAND_ID ? 1. : -1.;
 
     m_pose = vr::DriverPose_t{};
     m_pose.poseIsValid = true;
@@ -46,7 +46,7 @@ OvrController::OvrController(uint64_t devicePath) : TrackedDevice(devicePath) {
     }
 }
 
-bool OvrController::GetHand() { return this->device_path == LEFT_HAND_PATH; }
+bool OvrController::GetHand() { return this->device_id == LEFT_HAND_ID; }
 
 //
 // ITrackedDeviceServerDriver
@@ -73,14 +73,14 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetStringProperty(
         this->prop_container,
         vr::Prop_ModelNumber_String,
-        this->device_path == LEFT_HAND_PATH
+        this->device_id == LEFT_HAND_ID
             ? (Settings::Instance().m_controllerModelNumber + " (Left Controller)").c_str()
             : (Settings::Instance().m_controllerModelNumber + " (Right Controller)").c_str());
 
     vr::VRProperties()->SetStringProperty(
         this->prop_container,
         vr::Prop_RenderModelName_String,
-        this->device_path == LEFT_HAND_PATH
+        this->device_id == LEFT_HAND_ID
             ? Settings::Instance().m_controllerRenderModelNameLeft.c_str()
             : Settings::Instance().m_controllerRenderModelNameRight.c_str());
 
@@ -93,7 +93,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         const auto &settings = Settings::Instance();
         if (isViveTracker) {
             static constexpr const std::string_view vive_prefix = "vive_tracker_";
-            const auto &ctrlType = this->device_path == LEFT_HAND_PATH
+            const auto &ctrlType = this->device_id == LEFT_HAND_ID
                                        ? settings.m_controllerTypeLeft
                                        : settings.m_controllerTypeRight;
             std::string ret = settings.mControllerRegisteredDeviceType;
@@ -104,7 +104,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                        : ctrlType.substr(vive_prefix.length());
             return ret;
         }
-        return this->device_path == LEFT_HAND_PATH
+        return this->device_id == LEFT_HAND_ID
                    ? (Settings::Instance().mControllerRegisteredDeviceType + "_Left")
                    : (Settings::Instance().mControllerRegisteredDeviceType + "_Right");
     }();
@@ -125,13 +125,13 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                          vr::Prop_ControllerRoleHint_Int32,
                                          isViveTracker
                                              ? vr::TrackedControllerRole_Invalid
-                                             : (this->device_path == LEFT_HAND_PATH
+                                             : (this->device_id == LEFT_HAND_ID
                                                     ? vr::TrackedControllerRole_LeftHand
                                                     : vr::TrackedControllerRole_RightHand));
 
     vr::VRProperties()->SetStringProperty(this->prop_container,
                                           vr::Prop_ControllerType_String,
-                                          this->device_path == LEFT_HAND_PATH
+                                          this->device_id == LEFT_HAND_ID
                                               ? Settings::Instance().m_controllerTypeLeft.c_str()
                                               : Settings::Instance().m_controllerTypeRight.c_str());
     vr::VRProperties()->SetStringProperty(
@@ -160,7 +160,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRDriverInput()->CreateBooleanComponent(
             this->prop_container, "/input/grip/touch", &m_handles[ALVR_INPUT_GRIP_TOUCH]);
 
-        if (this->device_path == RIGHT_HAND_PATH) {
+        if (this->device_id == RIGHT_HAND_ID) {
             // A,B for right hand.
             vr::VRDriverInput()->CreateBooleanComponent(
                 this->prop_container, "/input/a/click", &m_handles[ALVR_INPUT_A_CLICK]);
@@ -370,7 +370,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                                    &m_handles[ALVR_INPUT_FINGER_PINKY],
                                                    vr::VRScalarType_Absolute,
                                                    vr::VRScalarUnits_NormalizedOneSided);
-        if (this->device_path == LEFT_HAND_PATH) {
+        if (this->device_id == LEFT_HAND_ID) {
             vr::VRDriverInput()->CreateSkeletonComponent(
                 this->prop_container,
                 "/input/skeleton/left",
@@ -524,7 +524,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                                     &m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK]);
         vr::VRDriverInput()->CreateBooleanComponent(
             this->prop_container, "/input/system/click", &m_handles[ALVR_INPUT_SYSTEM_CLICK]);
-        if (this->device_path == LEFT_HAND_PATH) {
+        if (this->device_id == LEFT_HAND_ID) {
             vr::VRDriverInput()->CreateSkeletonComponent(
                 this->prop_container,
                 "/input/skeleton/left",
@@ -616,45 +616,45 @@ vr::HmdQuaternionf_t QuatMultiply(const vr::HmdQuaternionf_t *q1, const vr::HmdQ
 void OvrController::SetButton(uint64_t id, AlvrButtonValue value) {
     if (value.type == BUTTON_TYPE_BINARY) {
         uint32_t flag;
-        if (id == MENU_CLICK) {
+        if (id == MENU_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK);
-        } else if (id == A_CLICK) {
+        } else if (id == A_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK);
-        } else if (id == A_TOUCH) {
+        } else if (id == A_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH);
-        } else if (id == B_CLICK) {
+        } else if (id == B_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_B_CLICK);
-        } else if (id == B_TOUCH) {
+        } else if (id == B_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH);
-        } else if (id == X_CLICK) {
+        } else if (id == X_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_X_CLICK);
-        } else if (id == X_TOUCH) {
+        } else if (id == X_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH);
-        } else if (id == Y_CLICK) {
+        } else if (id == Y_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_CLICK);
-        } else if (id == Y_TOUCH) {
+        } else if (id == Y_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH);
-        } else if (id == LEFT_SQUEEZE_CLICK || id == RIGHT_SQUEEZE_CLICK) {
+        } else if (id == LEFT_SQUEEZE_CLICK_ID || id == RIGHT_SQUEEZE_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK);
-        } else if (id == LEFT_TRIGGER_CLICK || id == RIGHT_TRIGGER_CLICK) {
+        } else if (id == LEFT_TRIGGER_CLICK_ID || id == RIGHT_TRIGGER_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK);
-        } else if (id == LEFT_TRIGGER_TOUCH || id == RIGHT_TRIGGER_TOUCH) {
+        } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-        } else if (id == LEFT_THUMBSTICK_CLICK || id == RIGHT_THUMBSTICK_CLICK) {
+        } else if (id == LEFT_THUMBSTICK_CLICK_ID || id == RIGHT_THUMBSTICK_CLICK_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_CLICK);
-        } else if (id == LEFT_THUMBSTICK_TOUCH || id == RIGHT_THUMBSTICK_TOUCH) {
+        } else if (id == LEFT_THUMBSTICK_TOUCH_ID || id == RIGHT_THUMBSTICK_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH);
-        } else if (id == LEFT_THUMBREST_TOUCH || id == RIGHT_THUMBREST_TOUCH) {
+        } else if (id == LEFT_THUMBREST_TOUCH_ID || id == RIGHT_THUMBREST_TOUCH_ID) {
             flag = ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH);
         }
         m_buttons = value.binary ? m_buttons | flag : m_buttons & ~flag;
-    } else if (id == LEFT_SQUEEZE_VALUE || id == RIGHT_SQUEEZE_VALUE) {
+    } else if (id == LEFT_SQUEEZE_VALUE_ID || id == RIGHT_SQUEEZE_VALUE_ID) {
         m_gripValue = value.scalar;
-    } else if (id == LEFT_TRIGGER_VALUE || id == RIGHT_TRIGGER_VALUE) {
+    } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
         m_triggerValue = value.scalar;
-    } else if (id == LEFT_THUMBSTICK_X || id == RIGHT_THUMBSTICK_X) {
+    } else if (id == LEFT_THUMBSTICK_X_ID || id == RIGHT_THUMBSTICK_X_ID) {
         m_joystickX = value.scalar;
-    } else if (id == LEFT_THUMBSTICK_Y || id == RIGHT_THUMBSTICK_Y) {
+    } else if (id == LEFT_THUMBSTICK_Y_ID || id == RIGHT_THUMBSTICK_Y_ID) {
         m_joystickY = value.scalar;
     }
 }
@@ -676,7 +676,7 @@ bool OvrController::onPoseUpdate(float predictionS,
     pose.result = vr::TrackingResult_Running_OK;
     pose.deviceIsConnected = true;
 
-    double rightHandSignFlip = this->device_path == LEFT_HAND_PATH ? 1. : -1.;
+    double rightHandSignFlip = this->device_id == LEFT_HAND_ID ? 1. : -1.;
 
     // controller is rotated and translated, prepare pose
     double rotation[3] = {
@@ -703,7 +703,7 @@ bool OvrController::onPoseUpdate(float predictionS,
     if (hand.enabled) {
         vr::HmdQuaternion_t rootBoneRot = HmdQuaternion_Init(
             motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
-        vr::HmdQuaternion_t boneFixer = this->device_path == LEFT_HAND_PATH
+        vr::HmdQuaternion_t boneFixer = this->device_id == LEFT_HAND_ID
                                             ? HmdQuaternion_Init(-0.5, 0.5, 0.5, -0.5)
                                             : HmdQuaternion_Init(0.5, 0.5, 0.5, 0.5);
         pose.qRotation = QuatMultiply(&rootBoneRot, &boneFixer);
@@ -711,7 +711,7 @@ bool OvrController::onPoseUpdate(float predictionS,
         pose.vecPosition[1] = motion.position[1];
         pose.vecPosition[2] = motion.position[2];
 
-        if (this->device_path == LEFT_HAND_PATH) {
+        if (this->device_id == LEFT_HAND_ID) {
             double bonePosFixer[3] = {0.0, 0.05, -0.05};
             vr::HmdVector3d_t posFix =
                 vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
@@ -805,7 +805,7 @@ bool OvrController::onPoseUpdate(float predictionS,
                 m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_THUMB_REST_TOUCH], false, 0.0);
-            if (this->device_path == RIGHT_HAND_PATH) {
+            if (this->device_id == RIGHT_HAND_ID) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK], false, 0.0);
                 vr::VRDriverInput()->UpdateBooleanComponent(
@@ -972,7 +972,7 @@ bool OvrController::onPoseUpdate(float predictionS,
 
         // Use position data (and orientation for missing bones - index, middle and ring finger bone
         // 0) from the functions below.
-        if (this->device_path == LEFT_HAND_PATH) {
+        if (this->device_id == LEFT_HAND_ID) {
             m_boneTransform[2].position = {-0.012083f, 0.028070f, 0.025050f, 1.f};
             m_boneTransform[3].position = {0.040406f, 0.000000f, -0.000000f, 1.f};
             m_boneTransform[4].position = {0.032517f, 0.000000f, 0.000000f, 1.f};
@@ -1033,7 +1033,7 @@ bool OvrController::onPoseUpdate(float predictionS,
         // Move the hand itself back to counteract the translation applied to the controller
         // position. (more or less)
         float bonePosFixer[3] = {0.025f, 0.f, 0.1f};
-        if (this->device_path == RIGHT_HAND_PATH)
+        if (this->device_id == RIGHT_HAND_ID)
             bonePosFixer[0] = -bonePosFixer[0];
         m_boneTransform[HSB_Wrist].position.v[0] =
             m_boneTransform[HSB_Wrist].position.v[0] + bonePosFixer[0];
@@ -1043,7 +1043,7 @@ bool OvrController::onPoseUpdate(float predictionS,
             m_boneTransform[HSB_Wrist].position.v[2] + bonePosFixer[2];
 
         // Rotate thumb0 and pinky0 properly.
-        if (this->device_path == LEFT_HAND_PATH) {
+        if (this->device_id == LEFT_HAND_ID) {
             vr::HmdQuaternion_t fixer = HmdQuaternion_Init(0.5, 0.5, -0.5, 0.5);
             m_boneTransform[HSB_Thumb0].orientation =
                 QuatMultiply(&fixer, &m_boneTransform[HSB_Thumb0].orientation);
@@ -1107,7 +1107,7 @@ bool OvrController::onPoseUpdate(float predictionS,
                 m_handles[ALVR_INPUT_JOYSTICK_TOUCH],
                 (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0,
                 0.0);
-            if (this->device_path == RIGHT_HAND_PATH) {
+            if (this->device_id == RIGHT_HAND_ID) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK],
                     (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0,
@@ -1204,7 +1204,7 @@ bool OvrController::onPoseUpdate(float predictionS,
                 (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0,
                 0.0);
 
-            if (this->device_path == RIGHT_HAND_PATH) {
+            if (this->device_id == RIGHT_HAND_ID) {
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_APPLICATION_MENU_CLICK],
                     (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_CLICK)) != 0,
@@ -1241,7 +1241,7 @@ bool OvrController::onPoseUpdate(float predictionS,
                 (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_THUMB_REST_TOUCH)) != 0,
                 0.0);
 
-            if (this->device_path == RIGHT_HAND_PATH) {
+            if (this->device_id == RIGHT_HAND_ID) {
                 // A,B for right hand.
                 vr::VRDriverInput()->UpdateBooleanComponent(
                     m_handles[ALVR_INPUT_A_CLICK],
@@ -1351,7 +1351,7 @@ bool OvrController::onPoseUpdate(float predictionS,
             // pose, first to create a pose "With Controller", that is as close to the pose of the
             // user's real hand as possible
             GetBoneTransform(true,
-                             this->device_path == LEFT_HAND_PATH,
+                             this->device_id == LEFT_HAND_ID,
                              m_thumbAnimationProgress,
                              m_indexAnimationProgress,
                              lastPoseTouch,
@@ -1369,7 +1369,7 @@ bool OvrController::onPoseUpdate(float predictionS,
             }
 
             GetBoneTransform(false,
-                             this->device_path == LEFT_HAND_PATH,
+                             this->device_id == LEFT_HAND_ID,
                              m_thumbAnimationProgress,
                              m_indexAnimationProgress,
                              lastPoseTouch,
@@ -2308,6 +2308,6 @@ void OvrController::GetBoneTransform(bool withController,
 
 std::string OvrController::GetSerialNumber() {
     char str[100];
-    snprintf(str, sizeof(str), "_%s", this->device_path == LEFT_HAND_PATH ? "Left" : "Right");
+    snprintf(str, sizeof(str), "_%s", this->device_id == LEFT_HAND_ID ? "Left" : "Right");
     return Settings::Instance().m_controllerSerialNumber + str;
 }

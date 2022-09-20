@@ -100,9 +100,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "Systeem",
     "_root_extra_theme_classic-choice-.name": "Klassiek",
     "_root_extra_theme_darkly-choice-.name": "Donker",
-    "_root_extra_clientDarkMode.name": "Client donkere modus",
-    "_root_extra_clientDarkMode.description":
-        "Toegepast nadat de headset opnieuw verbonden en uit slaap modus gehaald wordt",
     "_root_extra_revertConfirmDialog.name": "Bevestig terugzetten instellingen",
     "_root_extra_revertConfirmDialog.description":
         "Vraag bevestiging voordat instellingen naar hun standaardwaarden teruggezet worden.",

@@ -11,7 +11,11 @@ fn get_ffmpeg_path() -> PathBuf {
         })
         .join("ffmpeg");
 
-    ffmpeg_path.join("alvr_build")
+    if cfg!(target_os = "linux") {
+        ffmpeg_path.join("alvr_build")
+    } else {
+        ffmpeg_path
+    }
 }
 
 #[cfg(feature = "local_ffmpeg")]
@@ -79,13 +83,16 @@ fn do_ffmpeg_config_post() {
         println!("cargo:rustc-link-lib={}=avfilter", kind);
         println!("cargo:rustc-link-lib={}=avcodec", kind);
         println!("cargo:rustc-link-lib={}=swscale", kind);
-    } else if cfg!(target_os = "linux") {
-        let pkg = pkg_config::Config::new().to_owned();
+    } else {
+        #[cfg(target_os = "linux")]
+        {
+            let pkg = pkg_config::Config::new().to_owned();
 
-        pkg.probe("libavutil").unwrap();
-        pkg.probe("libavfilter").unwrap();
-        pkg.probe("libavcodec").unwrap();
-        pkg.probe("libswscale").unwrap();
+            pkg.probe("libavutil").unwrap();
+            pkg.probe("libavfilter").unwrap();
+            pkg.probe("libavcodec").unwrap();
+            pkg.probe("libswscale").unwrap();
+        }
     }
 }
 

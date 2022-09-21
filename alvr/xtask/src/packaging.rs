@@ -1,6 +1,6 @@
 use crate::{build, command, version};
 use alvr_filesystem as afs;
-use std::{fmt::format, path::PathBuf};
+use std::path::PathBuf;
 use xshell::{cmd, Shell};
 
 fn build_windows_installer() {

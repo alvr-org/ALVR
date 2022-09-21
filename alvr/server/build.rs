@@ -14,11 +14,12 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
         ""
     };
     let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
+    let ffmpeg_lib_path = ffmpeg_build_dir.join("lib");
+    let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
 
     #[cfg(feature = "local_ffmpeg")]
     {
         assert!(ffmpeg_path.exists());
-        let ffmpeg_pkg_path = ffmpeg_build_dir.join("lib/pkgconfig/");
         assert!(ffmpeg_pkg_path.exists());
 
         let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
@@ -38,18 +39,22 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     let avcodec = pkg.probe("libavcodec").unwrap();
     let swscale = pkg.probe("libswscale").unwrap();
 
+    #[cfg(all(feature = "local_ffmpeg", not(feature = "gpl")))]
+    {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ffmpeg_lib_path.to_string_lossy()
+        );
+
+        println!("cargo:rustc-link-lib=avutil");
+        println!("cargo:rustc-link-lib=avfilter");
+        println!("cargo:rustc-link-lib=avcodec");
+        println!("cargo:rustc-link-lib=swscale");
+    }
+
     if cfg!(feature = "local_ffmpeg") {
         assert!(ffmpeg_build_dir.join("include").exists());
         build.include(ffmpeg_build_dir.join("include"));
-
-        // activate dlopen for libav libraries
-        build
-            .define("LIBRARY_LOADER_AVCODEC_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_AVFILTER_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_SWSCALE_LOADER_H_DLOPEN", None);
-
-        println!("cargo:rustc-link-lib=dl");
     }
 
     if cfg!(feature = "gpl") {
@@ -61,6 +66,15 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
                 avfilter.version.split(".").next().unwrap(),
             )
             .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
+
+        // activate dlopen for libav libraries
+        build
+            .define("LIBRARY_LOADER_AVCODEC_LOADER_H_DLOPEN", None)
+            .define("LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN", None)
+            .define("LIBRARY_LOADER_AVFILTER_LOADER_H_DLOPEN", None)
+            .define("LIBRARY_LOADER_SWSCALE_LOADER_H_DLOPEN", None);
+
+        println!("cargo:rustc-link-lib=dl");
     }
 }
 
@@ -143,12 +157,13 @@ fn main() {
     #[cfg(all(windows, feature = "local_ffmpeg"))]
     {
         do_ffmpeg_windows_config(&mut build);
+        #[cfg(feature = "gpl")]
         build.define("ALVR_GPL", None);
     }
 
     build.compile("bindings");
 
-    #[cfg(all(target_os = "linux", not(feature = "local_ffmpeg")))]
+    #[cfg(all(target_os = "linux", not(feature = "gpl")))]
     do_ffmpeg_pkg_config(&mut build);
 
     bindgen::builder()

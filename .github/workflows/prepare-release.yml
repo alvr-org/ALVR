@@ -84,7 +84,7 @@ jobs:
           Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
           Expand-Archive -Path wix314-binaries.zip -DestinationPath wix314-binaries/bin
 
-      - name: Build and package ALVR (.zip, .exe)
+      - name: Build and package ALVR
         id: build
         env:
           WIX: "wix314-binaries"
@@ -95,8 +95,7 @@ jobs:
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
 
-      # Assets upload: .exe, .zip
-      - name: Upload Windows installer
+      - name: Upload Windows installer (exe)
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,6 +103,15 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/${{ steps.build.outputs.exe_filename }}
           asset_name: ${{ steps.build.outputs.exe_filename }}
+          asset_content_type: application/octet-stream
+      - name: Upload Windows installer (msi)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_server.msi
+          asset_name: alvr_server.msi
           asset_content_type: application/octet-stream
       - name: Upload portable server for Windows
         uses: actions/upload-release-asset@v1

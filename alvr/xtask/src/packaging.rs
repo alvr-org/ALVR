@@ -27,7 +27,7 @@ fn build_windows_installer() {
     let main_object = wix_target_dir.join("main.wixobj");
     let harvested_source = wix_target_dir.join("harvested.wxs");
     let harvested_object = wix_target_dir.join("harvested.wixobj");
-    let alvr_msi = wix_target_dir.join("alvr.msi");
+    let alvr_msi = afs::build_dir().join("alvr_server.msi");
     let bundle_source = wix_source_dir.join("bundle.wxs");
     let bundle_object = wix_target_dir.join("bundle.wixobj");
     let installer = afs::build_dir().join(format!("ALVR_Installer_v{version}.exe"));
@@ -100,12 +100,12 @@ pub fn package_server(
         command::targz(&sh, &afs::server_build_dir()).unwrap();
 
         if appimage {
-            server_appimage(true, gpl, zsync).unwrap();
+            server_appimage(true, gpl, zsync);
         }
     }
 }
 
-pub fn server_appimage(release: bool, gpl: bool, update: bool) -> Result<(), xshell::Error> {
+pub fn server_appimage(release: bool, gpl: bool, update: bool) {
     let sh = Shell::new().unwrap();
 
     let appdir = &afs::build_dir().join("ALVR.AppDir");
@@ -114,7 +114,7 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) -> Result<(), xsh
     let icon = &afs::workspace_dir().join("resources/alvr.png");
     let desktop = &afs::workspace_dir().join("packaging/freedesktop/alvr.desktop");
 
-    let linuxdeploy = &afs::build_dir().join("linuxdeploy-x86_64.AppImage");
+    let linuxdeploy = afs::build_dir().join("linuxdeploy-x86_64.AppImage");
 
     if !sh.path_exists(&linuxdeploy) {
         command::download(&sh, "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage", &linuxdeploy).ok();
@@ -181,7 +181,7 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) -> Result<(), xsh
         }
     }
 
-    cmd.run()
+    cmd.run().unwrap();
 }
 
 pub fn package_client_lib() {

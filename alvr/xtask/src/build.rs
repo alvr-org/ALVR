@@ -8,6 +8,7 @@ pub fn build_server(
     root: Option<String>,
     reproducible: bool,
     experiments: bool,
+    local_ffmpeg: bool,
 ) {
     let sh = Shell::new().unwrap();
 
@@ -24,7 +25,9 @@ pub fn build_server(
     }
     let common_flags_ref = &common_flags;
 
-    let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
+    let gpl_flag = (gpl || local_ffmpeg)
+        .then(|| vec!["--features", if gpl { "gpl" } else { "local_ffmpeg" }])
+        .unwrap_or_default();
 
     let artifacts_dir = afs::target_dir().join(build_type);
 

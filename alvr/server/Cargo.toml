@@ -10,7 +10,8 @@ rust-version = "1.58"
 crate-type = ["cdylib"]
 
 [features]
-gpl = []
+gpl = ["local_ffmpeg"]
+local_ffmpeg = []
 
 [dependencies]
 alvr_audio = { path = "../audio" }

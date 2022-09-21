@@ -2,23 +2,32 @@
 use pkg_config;
 use std::{env, path::PathBuf};
 
-// this code must be executed BEFORE the actual cpp build when using bundled ffmpeg,
-// as it adds definitions and include flags
-// but AFTER the build in other cases because linker flags must appear after.
-#[cfg(target_os = "linux")]
-fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
-    let ffmpeg_path = alvr_filesystem::deps_dir().join("linux/ffmpeg");
-    let alvr_build = if cfg!(feature = "gpl") {
-        "alvr_build"
-    } else {
-        ""
-    };
-    let ffmpeg_build_dir = ffmpeg_path.join(alvr_build);
+fn get_ffmpeg_path() -> PathBuf {
+    let ffmpeg_path = alvr_filesystem::deps_dir()
+        .join(if cfg!(target_os = "linux") {
+            "linux"
+        } else {
+            "windows"
+        })
+        .join("ffmpeg");
 
-    #[cfg(feature = "gpl")]
+    if cfg!(target_os = "linux") {
+        ffmpeg_path.join("alvr_build")
+    } else {
+        ffmpeg_path
+    }
+}
+
+#[cfg(feature = "local_ffmpeg")]
+fn do_ffmpeg_config(build: &mut cc::Build) {
+    let ffmpeg_path = get_ffmpeg_path();
+
+    assert!(ffmpeg_path.join("include").exists());
+    build.include(ffmpeg_path.join("include"));
+
+    #[cfg(all(feature = "gpl", target_os = "linux"))]
     {
-        assert!(ffmpeg_path.exists());
-        let ffmpeg_pkg_path = ffmpeg_build_dir.join("lib/pkgconfig/");
+        let ffmpeg_pkg_path = ffmpeg_path.join("lib").join("pkgconfig");
         assert!(ffmpeg_pkg_path.exists());
 
         let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
@@ -28,17 +37,14 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
                 format!("{ffmpeg_pkg_path}:{old}")
             }),
         );
-    }
 
-    let pkg = pkg_config::Config::new()
-        .cargo_metadata(cfg!(not(feature = "gpl")))
-        .to_owned();
-    let avutil = pkg.probe("libavutil").unwrap();
-    let avfilter = pkg.probe("libavfilter").unwrap();
-    let avcodec = pkg.probe("libavcodec").unwrap();
-    let swscale = pkg.probe("libswscale").unwrap();
+        let pkg = pkg_config::Config::new().cargo_metadata(false).to_owned();
 
-    if cfg!(feature = "gpl") {
+        let avutil = pkg.probe("libavutil").unwrap();
+        let avfilter = pkg.probe("libavfilter").unwrap();
+        let avcodec = pkg.probe("libavcodec").unwrap();
+        let swscale = pkg.probe("libswscale").unwrap();
+
         build
             .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
             .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
@@ -47,9 +53,6 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
                 avfilter.version.split(".").next().unwrap(),
             )
             .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
-
-        assert!(ffmpeg_build_dir.join("include").exists());
-        build.include(ffmpeg_build_dir.join("include"));
 
         // activate dlopen for libav libraries
         build
@@ -62,20 +65,35 @@ fn do_ffmpeg_pkg_config(build: &mut cc::Build) {
     }
 }
 
-#[cfg(all(windows, feature = "gpl"))]
-fn do_ffmpeg_windows_config(build: &mut cc::Build) {
-    let ffmpeg_dir = alvr_filesystem::deps_dir().join("windows/ffmpeg");
+fn do_ffmpeg_config_post() {
+    if cfg!(feature = "local_ffmpeg") {
+        // TODO: cfg!(feature = "gpl") - switch to static linking
+        let kind = if false { "static" } else { "dylib" };
 
-    build.include(format!("{}/include", ffmpeg_dir.to_string_lossy()));
+        let ffmpeg_path = get_ffmpeg_path();
+        let ffmpeg_lib_path = ffmpeg_path.join("lib");
+        assert!(ffmpeg_lib_path.exists());
 
-    println!(
-        "cargo:rustc-link-search=native={}/lib",
-        ffmpeg_dir.to_string_lossy()
-    );
-    println!("cargo:rustc-link-lib=avcodec");
-    println!("cargo:rustc-link-lib=avutil");
-    println!("cargo:rustc-link-lib=avfilter");
-    println!("cargo:rustc-link-lib=swscale");
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ffmpeg_lib_path.to_string_lossy()
+        );
+
+        println!("cargo:rustc-link-lib={}=avutil", kind);
+        println!("cargo:rustc-link-lib={}=avfilter", kind);
+        println!("cargo:rustc-link-lib={}=avcodec", kind);
+        println!("cargo:rustc-link-lib={}=swscale", kind);
+    } else {
+        #[cfg(target_os = "linux")]
+        {
+            let pkg = pkg_config::Config::new().to_owned();
+
+            pkg.probe("libavutil").unwrap();
+            pkg.probe("libavfilter").unwrap();
+            pkg.probe("libavcodec").unwrap();
+            pkg.probe("libswscale").unwrap();
+        }
+    }
 }
 
 fn main() {
@@ -135,19 +153,15 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(all(target_os = "linux", feature = "gpl"))]
-    do_ffmpeg_pkg_config(&mut build);
+    #[cfg(feature = "local_ffmpeg")]
+    do_ffmpeg_config(&mut build);
 
     #[cfg(all(windows, feature = "gpl"))]
-    {
-        do_ffmpeg_windows_config(&mut build);
-        build.define("ALVR_GPL", None);
-    }
+    build.define("ALVR_GPL", None);
 
     build.compile("bindings");
 
-    #[cfg(all(target_os = "linux", not(feature = "gpl")))]
-    do_ffmpeg_pkg_config(&mut build);
+    do_ffmpeg_config_post();
 
     bindgen::builder()
         .clang_arg("-xc++")

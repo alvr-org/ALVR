@@ -30,7 +30,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
+          args: -p alvr_xtask -p alvr_server -p alvr_launcher -p alvr_client_core --verbose
 
   build_linux:
     runs-on: ubuntu-latest
@@ -54,9 +54,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -p alvr_xtask -p alvr_launcher -p alvr_server --features gpl -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper --verbose
+          args: -p alvr_xtask -p alvr_launcher -p alvr_server --features gpl -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper -p alvr_client_core --verbose
 
-  build_client_core:
+  build_android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

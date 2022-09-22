@@ -177,7 +177,7 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/ALVR-x86_64.AppImage
           asset_name: ALVR-x86_64.AppImage
-          asset_content_type: application/appimage
+          asset_content_type: application/x-executable
 
       - name: Upload portable server for Linux (zsync)
         uses: actions/upload-release-asset@v1
@@ -187,7 +187,7 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/ALVR-x86_64.AppImage.zsync
           asset_name: ALVR-x86_64.AppImage.zsync
-          asset_content_type: application/appimage
+          asset_content_type: application/octet-stream
 
   build_android_client:
     # Windows latest has Rust, Android NDK and LLVM already installed.

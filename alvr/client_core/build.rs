@@ -30,12 +30,17 @@ fn main() {
     let mut builder = &mut cc::Build::new();
     builder = builder
         .cpp(true)
-        .flag("-std=c++17")
-        .flag("-fexceptions")
-        .flag("-frtti")
         .files(source_files_paths)
         .include("cpp")
         .include("cpp/gl_render_utils");
+    if platform_name == "windows" {
+        builder = builder.flag("/std:c++17")
+    } else {
+        builder = builder
+            .flag("-std=c++17")
+            .flag("-fexceptions")
+            .flag("-frtti")
+    }
     if platform_name == "android" {
         builder = builder.cpp_link_stdlib("c++_static");
     }

@@ -2,8 +2,9 @@
 #define ALVRCLIENT_FEC_H
 
 #include "bindings.h"
-#include <vector>
 #include "reedsolomon/rs.h"
+#include <cstddef>
+#include <vector>
 
 class FECQueue {
 public:

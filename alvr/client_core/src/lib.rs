@@ -61,6 +61,7 @@ static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
 static USE_OPENGL: RelaxedAtomic = RelaxedAtomic::new(true);
 
+#[repr(u8)]
 pub enum AlvrCodec {
     H264,
     H265,
@@ -151,8 +152,8 @@ pub unsafe extern "C" fn alvr_path_string_to_hash(path: *const c_char) -> u64 {
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
-    let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
+pub unsafe extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
+    let message = CStr::from_ptr(message).to_str().unwrap();
     match level {
         AlvrLogLevel::Error => error!("[ALVR NATIVE] {message}"),
         AlvrLogLevel::Warn => warn!("[ALVR NATIVE] {message}"),
@@ -162,15 +163,16 @@ pub extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_log_time(tag: *const c_char) {
-    let tag = unsafe { CStr::from_ptr(tag) }.to_str().unwrap();
+pub unsafe extern "C" fn alvr_log_time(tag: *const c_char) {
+    let tag = CStr::from_ptr(tag).to_str().unwrap();
     error!("[ALVR NATIVE] {tag}: {:?}", Instant::now());
 }
 
 /// On non-Android platforms, java_vm and constext should be null.
 /// NB: context must be thread safe.
+#[allow(unused_variables)]
 #[no_mangle]
-pub extern "C" fn alvr_initialize(
+pub unsafe extern "C" fn alvr_initialize(
     java_vm: *mut c_void,
     context: *mut c_void,
     recommended_view_width: u32,
@@ -181,24 +183,20 @@ pub extern "C" fn alvr_initialize(
     external_decoder: bool,
 ) {
     #[cfg(target_os = "android")]
-    unsafe {
-        ndk_context::initialize_android_context(java_vm, context)
-    };
+    ndk_context::initialize_android_context(java_vm, context);
 
     logging_backend::init_logging();
 
     #[cfg(target_os = "android")]
-    unsafe {
+    {
         LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
         LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
         LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
         LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
     }
 
-    unsafe {
-        createDecoder = Some(decoder::create_decoder);
-        pushNal = Some(decoder::push_nal);
-    }
+    createDecoder = Some(decoder::create_decoder);
+    pushNal = Some(decoder::push_nal);
 
     // Make sure to reset config in case of version compat mismatch.
     if Config::load().protocol_id != alvr_common::protocol_id() {
@@ -214,13 +212,13 @@ pub extern "C" fn alvr_initialize(
 
     #[cfg(target_os = "android")]
     if use_opengl {
-        unsafe { initGraphicsNative() };
+        initGraphicsNative();
     }
 
     *PREFERRED_RESOLUTION.lock() = UVec2::new(recommended_view_width, recommended_view_height);
 
     let available_refresh_rates =
-        unsafe { slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec() };
+        slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
     let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
     let microphone_sample_rate =
@@ -266,6 +264,7 @@ pub unsafe extern "C" fn alvr_destroy() {
 }
 
 /// If no OpenGL is selected, arguments are ignored
+#[allow(unused_variables)]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
     #[cfg(target_os = "android")]
@@ -315,8 +314,8 @@ pub unsafe extern "C" fn alvr_start_stream(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_send_views_config(fov: *const EyeFov, ipd_m: f32) {
-    let fov = unsafe { slice::from_raw_parts(fov, 2) };
+pub unsafe extern "C" fn alvr_send_views_config(fov: *const EyeFov, ipd_m: f32) {
+    let fov = slice::from_raw_parts(fov, 2);
     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
         sender
             .send(ClientControlPacket::ViewsConfig(ViewsConfig {
@@ -426,7 +425,7 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_send_tracking(
+pub unsafe extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
@@ -455,13 +454,11 @@ pub extern "C" fn alvr_send_tracking(
 
     if let Some(sender) = &*TRACKING_SENDER.lock() {
         let mut raw_motions = vec![AlvrDeviceMotion::default(); device_motions_count as _];
-        unsafe {
-            ptr::copy_nonoverlapping(
-                device_motions,
-                raw_motions.as_mut_ptr(),
-                device_motions_count as _,
-            )
-        };
+        ptr::copy_nonoverlapping(
+            device_motions,
+            raw_motions.as_mut_ptr(),
+            device_motions_count as _,
+        );
 
         let device_motions = raw_motions
             .into_iter()

@@ -4,6 +4,7 @@
 #include "bindings.h"
 #include "reedsolomon/rs.h"
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 class FECQueue {

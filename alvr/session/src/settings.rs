@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
@@ -18,20 +18,50 @@ pub enum FrameSize {
     },
 }
 
+#[repr(i64)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum NvencPreset {
+    LowLatencyDefault = 0,
+    LowLatencyHighQuality = 1,
+    LowLatencyHighPerformance = 2,
+}
+
+/// Except for preset, the value of these fields is not applied if == -1 (flag)
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NvencOverrides {
+    pub preset: NvencPreset,
+    pub refresh_rate: i64,
+    pub enable_intra_refresh: i64,
+    pub intra_refresh_period: i64,
+    pub intra_refresh_count: i64,
+    pub max_num_ref_frames: i64,
+    pub gop_length: i64,
+    pub p_frame_strategy: i64,
+    pub rate_control_mode: i64,
+    pub rc_buffer_size: i64,
+    pub rc_initial_delay: i64,
+    pub rc_max_bitrate: i64,
+    pub rc_average_bitrate: i64,
+    pub enable_aq: i64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum MediacodecDataType {
     Float(f32),
     Int32(i32),
     Int64(i64),
-    String(String), // Note: Double, Rect and Size are for level 28 and not compatible with the Oculus Go
+    String(String),
 }
 
-// #[derive(SettingsSchema, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct VideoCoding {
-//     codec: CodecType,
-//     mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
-// }
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedCodecOptions {
+    pub nvenc_overrides: NvencOverrides,
+    pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
+}
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -178,6 +208,9 @@ pub struct VideoDesc {
     pub encode_bitrate_mbs: u64,
 
     pub adaptive_bitrate: Switch<AdaptiveBitrateDesc>,
+
+    #[schema(advanced)]
+    pub advanced_codec_options: AdvancedCodecOptions,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -538,32 +571,6 @@ pub fn session_settings_default() -> SettingsDefault {
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
-            // video_coding: VideoCodingDefault {
-            //     codec: CodecTypeDefault {
-            //         variant: CodecTypeDefaultVariant::H264,
-            //     },
-            //     mediacodec_extra_options: DictionaryDefault {
-            //         key: "".into(),
-            //         value: MediacodecDataTypeDefault {
-            //             variant: MediacodecDataTypeDefaultVariant::String,
-            //             Float: 0.0,
-            //             Int32: 0,
-            //             Int64: 0,
-            //             String: "".into(),
-            //         },
-            //         content: vec![
-            //             ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
-            //             ("priority".into(), MediacodecDataType::Int32(0)),
-            //             // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-            //             // cabable, since they are on level 29.
-            //             ("low-latency".into(), MediacodecDataType::Int32(1)),
-            //             (
-            //                 "vendor.qti-ext-dec-low-latency.enable".into(),
-            //                 MediacodecDataType::Int32(1),
-            //             ),
-            //         ],
-            //     },
-            // },
             client_request_realtime_decoder: true,
             use_10bit_encoder: false,
             force_sw_encoding: false,
@@ -585,6 +592,47 @@ pub fn session_settings_default() -> SettingsDefault {
                     bitrate_up_rate: 1,
                     bitrate_down_rate: 3,
                     bitrate_light_load_threshold: 0.7,
+                },
+            },
+            advanced_codec_options: AdvancedCodecOptionsDefault {
+                nvenc_overrides: NvencOverridesDefault {
+                    preset: NvencPresetDefault {
+                        variant: NvencPresetDefaultVariant::LowLatencyHighQuality,
+                    },
+                    refresh_rate: -1,
+                    enable_intra_refresh: -1,
+                    intra_refresh_period: -1,
+                    intra_refresh_count: -1,
+                    max_num_ref_frames: -1,
+                    gop_length: -1,
+                    p_frame_strategy: -1,
+                    rate_control_mode: -1,
+                    rc_buffer_size: -1,
+                    rc_initial_delay: -1,
+                    rc_max_bitrate: -1,
+                    rc_average_bitrate: -1,
+                    enable_aq: -1,
+                },
+                mediacodec_extra_options: DictionaryDefault {
+                    key: "".into(),
+                    value: MediacodecDataTypeDefault {
+                        variant: MediacodecDataTypeDefaultVariant::String,
+                        Float: 0.0,
+                        Int32: 0,
+                        Int64: 0,
+                        String: "".into(),
+                    },
+                    content: vec![
+                        ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
+                        ("priority".into(), MediacodecDataType::Int32(0)),
+                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                        // cabable, since they are on level 29.
+                        ("low-latency".into(), MediacodecDataType::Int32(1)),
+                        (
+                            "vendor.qti-ext-dec-low-latency.enable".into(),
+                            MediacodecDataType::Int32(1),
+                        ),
+                    ],
                 },
             },
             seconds_from_vsync_to_photons: 0.005,

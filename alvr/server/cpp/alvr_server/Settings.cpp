@@ -161,6 +161,21 @@ void Settings::Load()
 		m_enableFec = config.get("enable_fec").get<bool>();
 
 		m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
+
+		m_nvencPreset = config.get("nvenc_preset").get<int64_t>();
+		m_nvencRefreshRate = config.get("nvenc_refresh_rate").get<int64_t>();
+		m_nvencEnableIntraRefresh = config.get("enable_intra_refresh").get<int64_t>();
+		m_nvencIntraRefreshPeriod = config.get("intra_refresh_period").get<int64_t>();
+		m_nvencIntraRefreshCount = config.get("intra_refresh_count").get<int64_t>();
+		m_nvencMaxNumRefFrames = config.get("max_num_ref_frames").get<int64_t>();
+		m_nvencGopLength = config.get("gop_length").get<int64_t>();
+		m_nvencPFrameStrategy = config.get("p_frame_strategy").get<int64_t>();
+		m_nvencRateControlMode = config.get("rate_control_mode").get<int64_t>();
+		m_nvencRcBufferSize = config.get("rc_buffer_size").get<int64_t>();
+		m_nvencRcInitialDelay = config.get("rc_initial_delay").get<int64_t>();
+		m_nvencRcMaxBitrate = config.get("rc_max_bitrate").get<int64_t>();
+		m_nvencRcAverageBitrate = config.get("rc_average_bitrate").get<int64_t>();
+		m_nvencEnableAQ = config.get("enable_aq").get<int64_t>();
 		
 		Debug("Config JSON: %hs\n", json.c_str());
 		Info("Serial Number: %hs\n", mSerialNumber.c_str());

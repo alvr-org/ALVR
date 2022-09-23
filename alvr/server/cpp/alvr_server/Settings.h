@@ -128,4 +128,19 @@ public:
 	bool m_enableFec;
 
 	bool m_enableLinuxVulkanAsync;
+
+	int64_t m_nvencPreset;
+	int64_t m_nvencRefreshRate;
+	int64_t m_nvencEnableIntraRefresh;
+	int64_t m_nvencIntraRefreshPeriod;
+	int64_t m_nvencIntraRefreshCount;
+	int64_t m_nvencMaxNumRefFrames;
+	int64_t m_nvencGopLength;
+	int64_t m_nvencPFrameStrategy;
+	int64_t m_nvencRateControlMode;
+	int64_t m_nvencRcBufferSize;
+	int64_t m_nvencRcInitialDelay;
+	int64_t m_nvencRcMaxBitrate;
+	int64_t m_nvencRcAverageBitrate;
+	int64_t m_nvencEnableAQ;
 };

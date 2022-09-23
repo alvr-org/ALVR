@@ -11,9 +11,7 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
-use alvr_session::{
-    AudioDeviceId, CodecType, MediacodecDataType, OculusFovetionLevel, SessionDesc,
-};
+use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
     ClientHandshakePacket, Haptics, HeadsetInfoPacket, PeerType, ProtoControlSocket,
@@ -265,18 +263,10 @@ async fn connection_pipeline(
         let config = &mut *DECODER_INIT_CONFIG.lock();
 
         config.codec = settings.video.codec;
-
-        config.options = vec![
-            ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
-            ("priority".into(), MediacodecDataType::Int32(0)),
-            // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-            // cabable, since they are on level 29.
-            ("low-latency".into(), MediacodecDataType::Int32(1)),
-            (
-                "vendor.qti-ext-dec-low-latency.enable".into(),
-                MediacodecDataType::Int32(1),
-            ),
-        ];
+        config.options = settings
+            .video
+            .advanced_codec_options
+            .mediacodec_extra_options;
     }
 
     #[cfg(target_os = "android")]

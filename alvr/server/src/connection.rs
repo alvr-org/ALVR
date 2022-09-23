@@ -347,6 +347,8 @@ async fn client_handshake(
         false
     };
 
+    let nvenc_overrides = settings.video.advanced_codec_options.nvenc_overrides;
+
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
         headset_serial_number: settings.headset.serial_number,
@@ -422,6 +424,20 @@ async fn client_handshake(
         sharpening,
         enable_fec: settings.connection.enable_fec,
         linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
+        nvenc_preset: nvenc_overrides.preset as i64,
+        nvenc_refresh_rate: nvenc_overrides.refresh_rate,
+        enable_intra_refresh: nvenc_overrides.enable_intra_refresh,
+        intra_refresh_period: nvenc_overrides.intra_refresh_period,
+        intra_refresh_count: nvenc_overrides.intra_refresh_count,
+        max_num_ref_frames: nvenc_overrides.max_num_ref_frames,
+        gop_length: nvenc_overrides.gop_length,
+        p_frame_strategy: nvenc_overrides.p_frame_strategy,
+        rate_control_mode: nvenc_overrides.rate_control_mode,
+        rc_buffer_size: nvenc_overrides.rc_buffer_size,
+        rc_initial_delay: nvenc_overrides.rc_initial_delay,
+        rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
+        rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
+        enable_aq: nvenc_overrides.enable_aq,
     };
 
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {

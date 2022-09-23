@@ -649,9 +649,7 @@ void eventsThread() {
                 g_ctx.streamingConfig = event.STREAMING_STARTED;
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStartMethod);
             } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
-                error("STOPPING STREAM");
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStopMethod);
-                error("STOPPED STREAM");
             } else if (event.tag == ALVR_EVENT_NAL_READY) {
                 // unused and unreachable
             }
@@ -927,55 +925,10 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _context) {
-    alvr_pause();
-
-    info("Leaving VR mode.");
-
-    if (g_ctx.streaming) {
-        g_ctx.streaming = false;
-        g_ctx.trackingThread.join();
-    }
-    if (g_ctx.running) {
-        g_ctx.running = false;
-        g_ctx.eventsThread.join();
-    }
-
-    if (g_ctx.streamSwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
-        g_ctx.streamSwapchains[0].inner = nullptr;
-        g_ctx.streamSwapchains[1].inner = nullptr;
-    }
-    if (g_ctx.lobbySwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[1].inner);
-        g_ctx.lobbySwapchains[0].inner = nullptr;
-        g_ctx.lobbySwapchains[1].inner = nullptr;
-    }
-
-    vrapi_LeaveVrMode(g_ctx.ovrContext);
-
-    g_ctx.ovrContext = nullptr;
-
-    if (g_ctx.window != nullptr) {
-        ANativeWindow_release(g_ctx.window);
-    }
-    g_ctx.window = nullptr;
-}
-
-extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
     auto java = getOvrJava();
 
     g_ctx.refreshRate = g_ctx.streamingConfig.fps;
-
-    if (g_ctx.streamSwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
-        g_ctx.streamSwapchains[0].inner = nullptr;
-        g_ctx.streamSwapchains[1].inner = nullptr;
-    }
 
     std::vector<int32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
@@ -1019,13 +972,6 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
     vrapi_SetPropertyInt(
             &java, VRAPI_DYNAMIC_FOVEATION_ENABLED, g_ctx.streamingConfig.dynamic_oculus_foveation);
 
-    if (g_ctx.streaming) {
-        g_ctx.streaming = false;
-        g_ctx.trackingThread.join();
-    }
-    g_ctx.streaming = true;
-    g_ctx.trackingThread = std::thread(trackingThread);
-
     auto fov = getFov();
 
     EyeFov fovArr[2] = {fov.first, fov.second};
@@ -1041,6 +987,9 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
     alvr_send_playspace(areaWidth, areaHeight);
 
     alvr_start_stream(textureHandles, textureHandlesBuffer[0].size());
+
+    g_ctx.streaming = true;
+    g_ctx.trackingThread = std::thread(trackingThread);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -1056,6 +1005,33 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject 
         g_ctx.streamSwapchains[0].inner = nullptr;
         g_ctx.streamSwapchains[1].inner = nullptr;
     }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _context) {
+    Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(_env, _context);
+
+    alvr_pause();
+
+    if (g_ctx.running) {
+        g_ctx.running = false;
+        g_ctx.eventsThread.join();
+    }
+    if (g_ctx.lobbySwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[1].inner);
+        g_ctx.lobbySwapchains[0].inner = nullptr;
+        g_ctx.lobbySwapchains[1].inner = nullptr;
+    }
+
+    vrapi_LeaveVrMode(g_ctx.ovrContext);
+
+    g_ctx.ovrContext = nullptr;
+
+    if (g_ctx.window != nullptr) {
+        ANativeWindow_release(g_ctx.window);
+    }
+    g_ctx.window = nullptr;
 }
 
 extern "C" JNIEXPORT void JNICALL

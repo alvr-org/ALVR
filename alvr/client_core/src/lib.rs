@@ -13,7 +13,6 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -189,6 +188,8 @@ pub unsafe extern "C" fn alvr_initialize(
 
     #[cfg(target_os = "android")]
     {
+        use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
+
         LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
         LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
         LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();

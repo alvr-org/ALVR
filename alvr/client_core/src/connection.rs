@@ -7,7 +7,7 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
     AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED,
-    IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER, USE_OPENGL,
+    IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
@@ -109,7 +109,7 @@ fn set_loading_message(message: &str) {
     }
 
     #[cfg(target_os = "android")]
-    if USE_OPENGL.value() {
+    if crate::USE_OPENGL.value() {
         unsafe { crate::updateLobbyHudTexture(buffer.as_ptr()) };
     }
 }

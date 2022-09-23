@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::{env, fs, path::PathBuf};
+use std::{env, fmt::Write, fs, path::PathBuf};
 
 fn main() {
     let openvr_driver_header_string =
@@ -20,12 +20,14 @@ fn main() {
     for entry in property_finder.captures_iter(&openvr_driver_header_string) {
         // exclude repeated property
         if &entry[1] != "HardwareRevision" {
-            mappings_fn_string.push_str(&format!(
+            write!(
+                mappings_fn_string,
                 r"
-     {} = {},",
+            {} = {},",
                 &entry[1].replace('_', ""),
-                &entry[2],
-            ));
+                &entry[2]
+            )
+            .unwrap();
         }
     }
 

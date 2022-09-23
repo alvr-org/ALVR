@@ -1,20 +1,7 @@
-use crate::{
-    platform, AlvrCodec, AlvrEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE,
-    STATISTICS_MANAGER,
-};
+use crate::{AlvrCodec, AlvrEvent, DISCONNECT_NOTIFIER, EVENT_QUEUE, STATISTICS_MANAGER};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
-use alvr_sockets::ClientControlPacket;
-use std::{
-    collections::VecDeque,
-    ffi::c_void,
-    os::raw::c_char,
-    ptr, thread,
-    time::{Duration, Instant},
-};
-
-#[cfg(target_os = "android")]
-use crate::platform::{DecoderDequeuedData, VideoDecoderDequeuer, VideoDecoderEnqueuer};
+use std::{collections::VecDeque, ffi::c_void, os::raw::c_char, ptr, time::Duration};
 
 pub struct DecoderInitConfig {
     pub codec: CodecType,
@@ -28,14 +15,19 @@ pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     })
 });
 #[cfg(target_os = "android")]
-pub static DECODER_ENQUEUER: Lazy<Mutex<Option<VideoDecoderEnqueuer>>> =
+pub static DECODER_ENQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderEnqueuer>>> =
     Lazy::new(|| Mutex::new(None));
 #[cfg(target_os = "android")]
-pub static DECODER_DEQUEUER: Lazy<Mutex<Option<VideoDecoderDequeuer>>> =
+pub static DECODER_DEQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderDequeuer>>> =
     Lazy::new(|| Mutex::new(None));
 
+struct ReconstructedNal {
+    timestamp: Duration,
+    data: Vec<u8>,
+}
+
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
-static NAL_QUEUE: Lazy<Mutex<VecDeque<(Duration, Vec<u8>)>>> =
+static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
 static LAST_ENQUEUED_TIMESTAMPS: Lazy<Mutex<VecDeque<Duration>>> =
@@ -49,7 +41,10 @@ pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
 
     if EXTERNAL_DECODER.value() {
         // duration == 0 is the flag to identify the config NALS
-        NAL_QUEUE.lock().push_back((Duration::ZERO, csd_0));
+        NAL_QUEUE.lock().push_back(ReconstructedNal {
+            timestamp: Duration::ZERO,
+            data: csd_0,
+        });
         EVENT_QUEUE.lock().push_back(AlvrEvent::CreateDecoder {
             codec: if matches!(config.codec, CodecType::H264) {
                 AlvrCodec::H264
@@ -61,13 +56,16 @@ pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
             let (enqueuer, dequeuer) =
-                platform::video_decoder_split(config.codec, &csd_0, &config.options).unwrap();
+                crate::platform::video_decoder_split(config.codec, &csd_0, &config.options)
+                    .unwrap();
 
             *DECODER_ENQUEUER.lock() = Some(enqueuer);
             *DECODER_DEQUEUER.lock() = Some(dequeuer);
 
-            if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                sender.send(ClientControlPacket::RequestIdr).ok();
+            if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
+                sender
+                    .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                    .ok();
             }
         }
     }
@@ -85,18 +83,22 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
         }
     }
 
-    let mut nal_buffer = vec![0; length as _];
-    unsafe { ptr::copy_nonoverlapping(buffer, nal_buffer.as_mut_ptr() as _, length as _) }
+    let mut data = vec![0; length as _];
+    unsafe { ptr::copy_nonoverlapping(buffer, data.as_mut_ptr() as _, length as _) }
 
     if EXTERNAL_DECODER.value() {
-        NAL_QUEUE.lock().push_back((timestamp, nal_buffer));
+        NAL_QUEUE
+            .lock()
+            .push_back(ReconstructedNal { timestamp, data });
         EVENT_QUEUE.lock().push_back(AlvrEvent::NalReady);
     } else {
         #[cfg(target_os = "android")]
         if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            show_err(decoder.push_frame_nal(timestamp, &nal_buffer, Duration::from_millis(500)));
-        } else if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-            sender.send(ClientControlPacket::RequestIdr).ok();
+            show_err(decoder.push_frame_nal(timestamp, &data, Duration::from_millis(500)));
+        } else if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
+            sender
+                .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                .ok();
         }
     }
 }
@@ -104,10 +106,13 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
 /// Call only with internal decoder
 /// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
 /// from out_buffer.
-#[cfg(target_os = "android")]
+#[allow(unused_variables)]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i64 {
+    #[cfg(target_os = "android")]
     let timestamp = if let Some(decoder) = &*DECODER_DEQUEUER.lock() {
+        use std::time::Instant;
+
         // Note on frame pacing: sometines there could be late frames stored inside the decoder,
         // which are gradually drained by polling two frames per frame. But sometimes a frame could
         // be received earlier than usual because of network jitter. In this case, if we polled the
@@ -117,7 +122,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
         // jitter variance.
         let start_instant = Instant::now();
         match decoder.dequeue_frame(Duration::from_millis(50), Duration::from_millis(100)) {
-            Ok(DecoderDequeuedData::Frame {
+            Ok(crate::platform::DecoderDequeuedData::Frame {
                 buffer_ptr,
                 timestamp,
             }) => {
@@ -126,7 +131,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
                     match decoder
                         .dequeue_frame(Duration::from_micros(1), Duration::from_millis(100))
                     {
-                        Ok(DecoderDequeuedData::Frame {
+                        Ok(crate::platform::DecoderDequeuedData::Frame {
                             buffer_ptr,
                             timestamp,
                         }) => {
@@ -163,9 +168,11 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
             }
         }
     } else {
-        thread::sleep(Duration::from_millis(5));
+        std::thread::sleep(Duration::from_millis(5));
         None
     };
+    #[cfg(not(target_os = "android"))]
+    let timestamp = None;
 
     if let Some(timestamp) = timestamp {
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
@@ -190,15 +197,15 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
 #[no_mangle]
 pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64) -> u64 {
     let mut queue_lock = NAL_QUEUE.lock();
-    if let Some((timestamp, nal)) = queue_lock.pop_front() {
-        let nal_size = nal.len();
+    if let Some(ReconstructedNal { timestamp, data }) = queue_lock.pop_front() {
+        let nal_size = data.len();
         if !out_nal.is_null() && !out_timestamp_ns.is_null() {
             unsafe {
-                ptr::copy_nonoverlapping(nal.as_ptr(), out_nal as _, nal_size);
+                ptr::copy_nonoverlapping(data.as_ptr(), out_nal as _, nal_size);
                 *out_timestamp_ns = timestamp.as_nanos() as _;
             }
         } else {
-            queue_lock.push_front((timestamp, nal))
+            queue_lock.push_front(ReconstructedNal { timestamp, data })
         }
 
         nal_size as u64

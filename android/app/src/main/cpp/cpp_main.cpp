@@ -277,7 +277,7 @@ public:
     std::deque<std::pair<uint64_t, ovrTracking2>> trackingFrameMap;
     std::mutex trackingFrameMutex;
 
-    Swapchain loadingSwapchains[2] = {};
+    Swapchain lobbySwapchains[2] = {};
     Swapchain streamSwapchains[2] = {};
 
     uint8_t hmdBattery = 0;
@@ -899,22 +899,22 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 
     std::vector<int32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
-        g_ctx.loadingSwapchains[eye].inner =
+        g_ctx.lobbySwapchains[eye].inner =
                 vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
                                               SWAPCHAIN_FORMAT,
                                               g_ctx.recommendedViewWidth,
                                               g_ctx.recommendedViewHeight,
                                               1,
                                               3);
-        int size = vrapi_GetTextureSwapChainLength(g_ctx.loadingSwapchains[eye].inner);
+        int size = vrapi_GetTextureSwapChainLength(g_ctx.lobbySwapchains[eye].inner);
 
         for (int index = 0; index < size; index++) {
             auto handle =
-                    vrapi_GetTextureSwapChainHandle(g_ctx.loadingSwapchains[eye].inner, index);
+                    vrapi_GetTextureSwapChainHandle(g_ctx.lobbySwapchains[eye].inner, index);
             textureHandlesBuffer[eye].push_back(handle);
         }
 
-        g_ctx.loadingSwapchains[eye].index = 0;
+        g_ctx.lobbySwapchains[eye].index = 0;
     }
     const int32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
 
@@ -947,11 +947,11 @@ Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _cont
         g_ctx.streamSwapchains[0].inner = nullptr;
         g_ctx.streamSwapchains[1].inner = nullptr;
     }
-    if (g_ctx.loadingSwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.loadingSwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.loadingSwapchains[1].inner);
-        g_ctx.loadingSwapchains[0].inner = nullptr;
-        g_ctx.loadingSwapchains[1].inner = nullptr;
+    if (g_ctx.lobbySwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[1].inner);
+        g_ctx.lobbySwapchains[0].inner = nullptr;
+        g_ctx.lobbySwapchains[1].inner = nullptr;
     }
 
     vrapi_LeaveVrMode(g_ctx.ovrContext);
@@ -1060,9 +1060,15 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject 
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _context) {
+    ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
+
+    double displayTime;
+    ovrTracking2 tracking;
+
     if (g_ctx.streaming) {
         void *streamHardwareBuffer = nullptr;
         auto timestampNs = alvr_wait_for_frame(&streamHardwareBuffer);
+        displayTime = (double) timestampNs / 1e9;
 
         if (timestampNs == -1) {
             return;
@@ -1070,7 +1076,6 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
 
         updateHapticsState();
 
-        ovrTracking2 tracking;
         {
             std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
 
@@ -1091,69 +1096,49 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
                              vrapi_GetTimeInSeconds();
         alvr_report_submit(timestampNs, vsyncQueueS * 1e9);
 
-        ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
         worldLayer.HeadPose = tracking.HeadPose;
-        for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
+        for (int eye = 0; eye < 2; eye++) {
             worldLayer.Textures[eye].ColorSwapChain = g_ctx.streamSwapchains[eye].inner;
             worldLayer.Textures[eye].SwapChainIndex = g_ctx.streamSwapchains[eye].index;
-            worldLayer.Textures[eye].TexCoordsFromTanAngles =
-                    ovrMatrix4f_TanAngleMatrixFromProjection(&tracking.Eye[eye].ProjectionMatrix);
+            g_ctx.streamSwapchains[eye].index = (g_ctx.streamSwapchains[eye].index + 1) % 3;
         }
-        worldLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
-
-        const ovrLayerHeader2 *layers2[] = {&worldLayer.Header};
-
-        ovrSubmitFrameDescription2 frameDesc = {};
-        frameDesc.Flags = 0;
-        frameDesc.SwapInterval = 1;
-        frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
-        frameDesc.DisplayTime = (double) timestampNs / 1e9;
-        frameDesc.LayerCount = 1;
-        frameDesc.Layers = layers2;
-
-        vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
-
-        g_ctx.streamSwapchains[0].index = (g_ctx.streamSwapchains[0].index + 1) % 3;
-        g_ctx.streamSwapchains[1].index = (g_ctx.streamSwapchains[1].index + 1) % 3;
-
-        g_ctx.ovrFrameIndex++;
     } else {
-        double displayTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
-        ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
+        displayTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
+        tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
 
         AlvrEyeInput eyeInputs[2] = {trackingToEyeInput(&tracking, 0),
                                      trackingToEyeInput(&tracking, 1)};
-        int swapchainIndices[2] = {g_ctx.loadingSwapchains[0].index,
-                                   g_ctx.loadingSwapchains[1].index};
+        int swapchainIndices[2] = {g_ctx.lobbySwapchains[0].index,
+                                   g_ctx.lobbySwapchains[1].index};
         alvr_render_lobby(eyeInputs, swapchainIndices);
 
-        ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
-        worldLayer.HeadPose = tracking.HeadPose;
-        for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++) {
-            worldLayer.Textures[eye].ColorSwapChain = g_ctx.loadingSwapchains[eye].inner;
-            worldLayer.Textures[eye].SwapChainIndex = g_ctx.loadingSwapchains[eye].index;
-            worldLayer.Textures[eye].TexCoordsFromTanAngles =
-                    ovrMatrix4f_TanAngleMatrixFromProjection(&tracking.Eye[eye].ProjectionMatrix);
+        for (int eye = 0; eye < 2; eye++) {
+            worldLayer.Textures[eye].ColorSwapChain = g_ctx.lobbySwapchains[eye].inner;
+            worldLayer.Textures[eye].SwapChainIndex = g_ctx.lobbySwapchains[eye].index;
+            g_ctx.lobbySwapchains[eye].index = (g_ctx.lobbySwapchains[eye].index + 1) % 3;
         }
-        worldLayer.Header.Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
-
-        const ovrLayerHeader2 *layers[] = {&worldLayer.Header};
-
-        ovrSubmitFrameDescription2 frameDesc = {};
-        frameDesc.Flags = 0;
-        frameDesc.SwapInterval = 1;
-        frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
-        frameDesc.DisplayTime = displayTime;
-        frameDesc.LayerCount = 1;
-        frameDesc.Layers = layers;
-
-        vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
-
-        g_ctx.loadingSwapchains[0].index = (g_ctx.loadingSwapchains[0].index + 1) % 3;
-        g_ctx.loadingSwapchains[1].index = (g_ctx.loadingSwapchains[1].index + 1) % 3;
-
-        g_ctx.ovrFrameIndex++;
     }
+
+    for (int eye = 0; eye < 2; eye++) {
+        worldLayer.Textures[eye].TexCoordsFromTanAngles =
+                ovrMatrix4f_TanAngleMatrixFromProjection(&tracking.Eye[eye].ProjectionMatrix);
+    }
+
+    worldLayer.HeadPose = tracking.HeadPose;
+
+    const ovrLayerHeader2 *layers[] = {&worldLayer.Header};
+
+    ovrSubmitFrameDescription2 frameDesc = {};
+    frameDesc.Flags = 0;
+    frameDesc.SwapInterval = 1;
+    frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
+    frameDesc.DisplayTime = displayTime;
+    frameDesc.LayerCount = 1;
+    frameDesc.Layers = layers;
+
+    vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
+
+    g_ctx.ovrFrameIndex++;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(

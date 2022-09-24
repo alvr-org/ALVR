@@ -1,4 +1,4 @@
-use crate::{SERVER_DATA_MANAGER, WINDOW};
+use crate::{SERVER_DATA_MANAGER, WINDOW, WindowType};
 use alvr_common::prelude::*;
 use std::{fs, sync::Arc};
 
@@ -72,22 +72,27 @@ pub fn ui_thread() -> StrResult {
         ])
         .run();
 
+    // Use non-chrome browser if no chromium browser found
     if matches!(window, Err(alcro::UILaunchError::LocateChromeError(_))) {
         webbrowser::open(SERVER_URL).map_err(err!())?;
         return Ok(());
     }
 
-    let window = Arc::new(window.map_err(err!())?);
+    let window_type = Arc::new(WindowType::Alcro(window.map_err(err!())?));
 
-    *WINDOW.lock() = Some(Arc::clone(&window));
+    if let WindowType::Alcro(window) = window_type.as_ref() {
+        *WINDOW.lock() = Some(Arc::clone(&window_type));
 
-    window.wait_finish();
+        window.wait_finish();
 
-    // prevent panic on window.close()
-    *WINDOW.lock() = None;
-    crate::shutdown_runtime();
+        // prevent panic on window.close()
+        *WINDOW.lock() = None;
+        crate::shutdown_runtime();
 
-    unsafe { crate::ShutdownSteamvr() };
+        unsafe { crate::ShutdownSteamvr() };
+    } else {
+        panic!("Not an Alcro window.");
+    }
 
     Ok(())
 }

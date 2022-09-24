@@ -54,7 +54,7 @@ static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
-static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
+static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
@@ -76,6 +76,11 @@ static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
 static COLOR_CORRECTION_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
+
+pub enum WindowType {
+    Alcro(alcro::UI),
+    Browser
+}
 
 pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
     let type_ = match value {

@@ -72,7 +72,7 @@ pub fn ui_thread() -> StrResult {
         ])
         .run();
 
-    if window.is_err_and(|e| matches!(e, alcro::UILaunchError::LocateChromeError(_))) {
+    if matches!(window, Err(alcro::UILaunchError::LocateChromeError(_))) {
         webbrowser::open(SERVER_URL).map_err(err!())?;
         return Ok(());
     }

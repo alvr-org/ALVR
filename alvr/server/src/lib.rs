@@ -79,7 +79,7 @@ static COLOR_CORRECTION_CSO: &[u8] =
 
 pub enum WindowType {
     Alcro(alcro::UI),
-    Browser
+    Browser,
 }
 
 pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
@@ -126,8 +126,11 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
 pub fn shutdown_runtime() {
     alvr_events::send_event(EventType::ServerQuitting);
 
-    if let Some(window) = WINDOW.lock().take() {
-        window.close();
+    if let Some(window_type) = WINDOW.lock().take() {
+        match window_type.as_ref() {
+            WindowType::Alcro(window) => window.close(),
+            WindowType::Browser => (),
+        }
     }
 
     SHUTDOWN_NOTIFIER.notify_waiters();

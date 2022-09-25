@@ -1,4 +1,4 @@
-use crate::{SERVER_DATA_MANAGER, WINDOW, WindowType};
+use crate::{WindowType, SERVER_DATA_MANAGER, WINDOW};
 use alvr_common::prelude::*;
 use std::{fs, sync::Arc};
 

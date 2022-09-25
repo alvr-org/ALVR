@@ -1,9 +1,23 @@
 [workspace]
 resolver = "2"
-members = [
-    "alvr/*",
-    # "experiments/*"
-]
+members = ["alvr/*"]
+
+[workspace.package]
+version = "19.0.0-dev03"
+edition = "2021"
+rust-version = "1.64"
+authors = ["alvr-org"]
+license = "MIT"
+
+[workspace.dependencies]
+alvr_audio = { path = "alvr/audio" }
+alvr_commands = { path = "alvr/commands" }
+alvr_common = { path = "alvr/common" }
+alvr_events = { path = "alvr/events" }
+alvr_filesystem = { path = "alvr/filesystem" }
+alvr_server_data = { path = "alvr/server_data" }
+alvr_session = { path = "alvr/session" }
+alvr_sockets = { path = "alvr/sockets" }
 
 [profile.release]
 lto = true

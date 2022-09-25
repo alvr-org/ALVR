@@ -174,7 +174,6 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
 
 #[cfg(windows)]
 fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
-    use std::ptr;
     use widestring::U16CStr;
     use windows::Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
@@ -186,7 +185,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
 
     unsafe {
         // This will fail the second time is called, ignore it
-        Com::CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED).ok();
+        Com::CoInitializeEx(None, COINIT_MULTITHREADED).ok();
 
         let imm_device_enumerator: IMMDeviceEnumerator =
             Com::CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(err!())?;
@@ -231,7 +230,7 @@ pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
         let id_str = U16CStr::from_ptr_str(id_str_ptr.0)
             .to_string()
             .map_err(err!())?;
-        Com::CoTaskMemFree(id_str_ptr.0 as _);
+        Com::CoTaskMemFree(Some(id_str_ptr.0 as _));
 
         Ok(id_str)
     }

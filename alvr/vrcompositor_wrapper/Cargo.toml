@@ -1,10 +1,10 @@
 [package]
 name = "alvr_vrcompositor_wrapper"
-version = "19.0.0-dev03"
-authors = ["alvr-org", "Patrick Nicolas <patricknicolas@laposte.net>"]
-license = "MIT"
-edition = "2021"
-rust-version = "1.58"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
 exec = "0.3.1"

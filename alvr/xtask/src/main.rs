@@ -4,6 +4,7 @@ mod dependencies;
 mod packaging;
 mod version;
 
+use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
 use pico_args::Arguments;
@@ -33,7 +34,7 @@ SUBCOMMANDS:
 FLAGS:
     --help              Print this text
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
-    --release           Optimized build without debug info. For build subcommands
+    --release           Optimized build with less debug checks. For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
     --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
@@ -138,6 +139,11 @@ fn main() {
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let no_nvidia = args.contains("--no-nvidia");
         let is_release = args.contains("--release");
+        let profile = if is_release {
+            Profile::Release
+        } else {
+            Profile::Debug
+        };
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
@@ -174,27 +180,20 @@ fn main() {
                     }
                 }
                 "build-server" => {
-                    build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg)
+                    build::build_server(profile, gpl, None, false, experiments, local_ffmpeg)
                 }
-                "build-client" => build::build_quest_client(is_release),
-                "build-client-lib" => build::build_client_lib(is_release),
+                "build-client" => build::build_quest_client(profile),
+                "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(
-                            is_release,
-                            gpl,
-                            None,
-                            false,
-                            experiments,
-                            local_ffmpeg,
-                        );
+                        build::build_server(profile, gpl, None, false, experiments, local_ffmpeg);
                     }
                     run_server();
                 }
                 "package-server" => {
                     packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
                 }
-                "package-client" => build::build_quest_client(true),
+                "package-client" => build::build_quest_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

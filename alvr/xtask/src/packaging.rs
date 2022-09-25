@@ -1,4 +1,7 @@
-use crate::{build, command, version};
+use crate::{
+    build::{self, Profile},
+    command, version,
+};
 use alvr_filesystem as afs;
 use std::path::PathBuf;
 use xshell::{cmd, Shell};
@@ -53,7 +56,7 @@ pub fn package_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(true, gpl, root, true, false, local_ffmpeg);
+    build::build_server(Profile::Distribution, gpl, root, true, false, local_ffmpeg);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -90,7 +93,9 @@ pub fn package_server(
         command::zip(&sh, &afs::server_build_dir()).unwrap();
 
         sh.copy_file(
-            afs::target_dir().join("release").join("alvr_server.pdb"),
+            afs::target_dir()
+                .join(Profile::Distribution.to_string())
+                .join("alvr_server.pdb"),
             afs::build_dir(),
         )
         .unwrap();
@@ -187,7 +192,7 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
 pub fn package_client_lib() {
     let sh = Shell::new().unwrap();
 
-    build::build_client_lib(true);
+    build::build_client_lib(Profile::Distribution);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

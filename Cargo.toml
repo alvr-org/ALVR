@@ -18,3 +18,7 @@ alvr_filesystem = { path = "alvr/filesystem" }
 alvr_server_data = { path = "alvr/server_data" }
 alvr_session = { path = "alvr/session" }
 alvr_sockets = { path = "alvr/sockets" }
+
+[profile.distribution]
+inherits = "release"
+lto = true

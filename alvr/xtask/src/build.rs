@@ -1,9 +1,28 @@
 use crate::{command, dependencies, version};
 use alvr_filesystem::{self as afs, Layout};
+use std::fmt::{self, Display, Formatter};
 use xshell::{cmd, Shell};
 
+#[derive(Clone, Copy)]
+pub enum Profile {
+    Debug,
+    Release,
+    Distribution,
+}
+
+impl Display for Profile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            Profile::Distribution => "distribution",
+            Profile::Release => "release",
+            Profile::Debug => "debug",
+        };
+        write!(f, "{string}")
+    }
+}
+
 pub fn build_server(
-    is_release: bool,
+    profile: Profile,
     gpl: bool,
     root: Option<String>,
     reproducible: bool,
@@ -14,11 +33,14 @@ pub fn build_server(
 
     let build_layout = Layout::new(&afs::server_build_dir());
 
-    let build_type = if is_release { "release" } else { "debug" };
-
     let mut common_flags = vec![];
-    if is_release {
-        common_flags.push("--release");
+    match profile {
+        Profile::Distribution => {
+            common_flags.push("--profile");
+            common_flags.push("distribution");
+        }
+        Profile::Release => common_flags.push("--release"),
+        Profile::Debug => (),
     }
     if reproducible {
         common_flags.push("--locked");
@@ -29,7 +51,7 @@ pub fn build_server(
         .then(|| vec!["--features", if gpl { "gpl" } else { "local_ffmpeg" }])
         .unwrap_or_default();
 
-    let artifacts_dir = afs::target_dir().join(build_type);
+    let artifacts_dir = afs::target_dir().join(profile.to_string());
 
     sh.remove_path(&afs::server_build_dir()).unwrap();
     sh.create_dir(&afs::server_build_dir()).unwrap();
@@ -204,15 +226,20 @@ pub fn build_server(
     }
 }
 
-pub fn build_client_lib(is_release: bool) {
+pub fn build_client_lib(profile: Profile) {
     let sh = Shell::new().unwrap();
 
     let build_dir = afs::build_dir().join("alvr_client_core");
     sh.create_dir(&build_dir).unwrap();
 
     let mut flags = vec![];
-    if is_release {
-        flags.push("--release");
+    match profile {
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution")
+        }
+        Profile::Release => flags.push("--release"),
+        Profile::Debug => (),
     }
     let flags_ref = &flags;
 
@@ -229,18 +256,16 @@ pub fn build_client_lib(is_release: bool) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_quest_client(is_release: bool) {
+pub fn build_quest_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
-    build_client_lib(is_release);
+    build_client_lib(profile);
 
     let is_nightly = version::version().contains("nightly");
-    let is_release = if is_nightly { false } else { is_release };
 
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
-    let build_type = if is_release { "release" } else { "debug" };
 
-    let build_task = format!("assemble{package_type}{build_type}");
+    let build_task = format!("assemble{package_type}{profile}");
 
     let client_dir = afs::workspace_dir().join("android");
 
@@ -259,8 +284,8 @@ pub fn build_quest_client(is_release: bool) {
         client_dir
             .join("app/build/outputs/apk")
             .join(package_type)
-            .join(build_type)
-            .join(format!("app-{package_type}-{build_type}.apk")),
+            .join(profile.to_string())
+            .join(format!("app-{package_type}-{profile}.apk")),
         afs::build_dir()
             .join(ARTIFACT_NAME)
             .join(format!("{ARTIFACT_NAME}.apk")),

@@ -68,3 +68,6 @@ walkdir = "2"
 
 [target.'cfg(unix)'.build-dependencies]
 pkg-config = "0.3.9"
+
+[profile.release]
+lto = true

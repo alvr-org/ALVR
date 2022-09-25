@@ -21,3 +21,6 @@ ureq = "2"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
+
+[profile.release]
+lto = true

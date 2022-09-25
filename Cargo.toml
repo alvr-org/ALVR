@@ -4,3 +4,6 @@ members = [
     "alvr/*",
     # "experiments/*"
 ]
+
+[profile.release]
+lto = true

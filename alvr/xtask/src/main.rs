@@ -89,12 +89,12 @@ pub fn clean() {
 fn clippy() {
     let crate_flags = crate_dir_names()
         .into_iter()
-        .filter(|name| name != "client" && name != "vulkan_layer")
+        .filter(|name| name != "vulkan_layer")
         .flat_map(|name| ["-p".into(), format!("alvr_{name}")]);
 
     // lints updated for Rust 1.59
     let restriction_lints = [
-        // "allow_attributes_without_reason", // Rust 1.61
+        "allow_attributes_without_reason",
         "clone_on_ref_ptr",
         "create_dir",
         "decimal_literal_representation",
@@ -121,7 +121,7 @@ fn clippy() {
         "wildcard_enum_match_arm",
     ];
     let pedantic_lints = [
-        // "borrow_as_ptr", // Rust 1.60
+        "borrow_as_ptr",
         "enum_glob_use",
         "explicit_deref_methods",
         "explicit_into_iter_loop",

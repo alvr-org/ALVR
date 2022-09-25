@@ -1,10 +1,10 @@
 [package]
 name = "alvr_server"
-version = "19.0.0-dev03"
-authors = ["alvr-org", "polygraphene", "Valve Corporation"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors = ["alvr-org", "Valve Corporation"]
 license = "MIT"
-edition = "2021"
-rust-version = "1.58"
 
 [lib]
 crate-type = ["cdylib"]
@@ -14,14 +14,14 @@ gpl = ["local_ffmpeg"]
 local_ffmpeg = []
 
 [dependencies]
-alvr_audio = { path = "../audio" }
-alvr_commands = { path = "../commands" }
-alvr_common = { path = "../common" }
-alvr_events = { path = "../events" }
-alvr_filesystem = { path = "../filesystem" }
-alvr_server_data = { path = "../server_data" }
-alvr_session = { path = "../session" }
-alvr_sockets = { path = "../sockets" }
+alvr_audio.workspace = true
+alvr_commands.workspace = true
+alvr_common.workspace = true
+alvr_events.workspace = true
+alvr_filesystem.workspace = true
+alvr_server_data.workspace = true
+alvr_session.workspace = true
+alvr_sockets.workspace = true
 
 # Basic utilities
 chrono = "0.4"

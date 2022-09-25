@@ -1,13 +1,13 @@
 [package]
 name = "alvr_xtask"
-version = "19.0.0-dev03"
-authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
-license = "MIT"
-edition = "2021"
-rust-version = "1.59"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
-alvr_filesystem = { path = "../filesystem" }
+alvr_filesystem.workspace = true
 
 pico-args = "0.5"
 xshell = "0.2"

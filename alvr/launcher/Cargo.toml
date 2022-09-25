@@ -1,15 +1,15 @@
 [package]
 name = "alvr_launcher"
-version = "19.0.0-dev03"
-authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
-license = "MIT"
-edition = "2021"
-rust-version = "1.58"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
-alvr_commands = { path = "../commands" }
-alvr_common = { path = "../common" }
-alvr_filesystem = { path = "../filesystem" }
+alvr_commands.workspace = true
+alvr_common.workspace = true
+alvr_filesystem.workspace = true
 
 env_logger = "0.9"
 # eframe = "0.19" # Change back after next release (0.19.1)

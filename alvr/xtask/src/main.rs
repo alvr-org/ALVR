@@ -214,7 +214,7 @@ fn main() {
                 "package-server" => {
                     packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
                 }
-                "package-client" => build::build_quest_client(build::Profile::Release),
+                "package-client" => build::build_quest_client(build::Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

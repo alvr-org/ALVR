@@ -44,8 +44,6 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-const DEFAULT_PROFILE: build::Profile = build::Profile::Distribution;
-
 pub fn package_server(
     root: Option<String>,
     gpl: bool,
@@ -55,7 +53,14 @@ pub fn package_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(DEFAULT_PROFILE, gpl, root, true, false, local_ffmpeg);
+    build::build_server(
+        build::Profile::Distribution,
+        gpl,
+        root,
+        true,
+        false,
+        local_ffmpeg,
+    );
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -93,7 +98,7 @@ pub fn package_server(
 
         sh.copy_file(
             afs::target_dir()
-                .join(Into::<&str>::into(DEFAULT_PROFILE))
+                .join(Into::<&str>::into(build::Profile::Distribution))
                 .join("alvr_server.pdb"),
             afs::build_dir(),
         )
@@ -191,7 +196,7 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
 pub fn package_client_lib() {
     let sh = Shell::new().unwrap();
 
-    build::build_client_lib(DEFAULT_PROFILE);
+    build::build_client_lib(build::Profile::Distribution);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

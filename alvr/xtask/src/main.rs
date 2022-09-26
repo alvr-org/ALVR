@@ -33,7 +33,8 @@ SUBCOMMANDS:
 FLAGS:
     --help              Print this text
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
-    --release           Optimized build without debug info. For build subcommands
+    --release           Optimized build with less debug checks. For build subcommands
+    --distribution      Optimized build with focus on less size (takes longer). For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
     --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
@@ -163,7 +164,7 @@ fn main() {
         println!("{HELP_STR}");
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let no_nvidia = args.contains("--no-nvidia");
-        let is_release = args.contains("--release");
+        let profile = (args.contains("--release"), args.contains("--distribution")).into();
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
@@ -200,14 +201,14 @@ fn main() {
                     }
                 }
                 "build-server" => {
-                    build::build_server(is_release, gpl, None, false, experiments, local_ffmpeg)
+                    build::build_server(profile, gpl, None, false, experiments, local_ffmpeg)
                 }
-                "build-client" => build::build_quest_client(is_release),
-                "build-client-lib" => build::build_client_lib(is_release),
+                "build-client" => build::build_quest_client(profile),
+                "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
                         build::build_server(
-                            is_release,
+                            profile,
                             gpl,
                             None,
                             false,
@@ -220,7 +221,7 @@ fn main() {
                 "package-server" => {
                     packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
                 }
-                "package-client" => build::build_quest_client(true),
+                "package-client" => build::build_quest_client(build::Profile::Release),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

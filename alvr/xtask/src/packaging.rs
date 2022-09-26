@@ -53,7 +53,7 @@ pub fn package_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(true, gpl, root, true, false, local_ffmpeg);
+    build::build_server(build::Profile::Distribution, gpl, root, true, false, local_ffmpeg);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -187,7 +187,7 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
 pub fn package_client_lib() {
     let sh = Shell::new().unwrap();
 
-    build::build_client_lib(true);
+    build::build_client_lib(build::Profile::Distribution);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

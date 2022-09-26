@@ -1,6 +1,9 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::{fs, io::BufRead};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use xshell::{cmd, Shell};
 
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
@@ -250,26 +253,22 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     get_oculus_openxr_mobile_loader();
 }
 
-pub fn find_resolved_so_paths(
-    bin_or_so: &std::path::Path,
-    depends_so: &str,
-) -> Vec<std::path::PathBuf> {
+pub fn find_resolved_so_paths(bin_or_so: &Path, depends_so: &str) -> Vec<PathBuf> {
+    let sh = Shell::new().unwrap();
+
     let cmdline = format!(
         "ldd {} | cut -d '>' -f 2 | awk \'{{print $1}}\' | grep {}",
-        bin_or_so.display(),
+        bin_or_so.to_string_lossy(),
         depends_so
     );
-    std::process::Command::new("sh")
+
+    cmd!(sh, "sh")
         .args(&["-c", &cmdline])
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .map_or(vec![], |mut child| {
-            let mut result = std::io::BufReader::new(child.stdout.take().unwrap())
+        .read()
+        .map_or(vec![], |output| {
+            let mut result = output
                 .lines()
-                .filter(|line| line.is_ok())
-                .map(|line| std::path::PathBuf::from(line.unwrap()).canonicalize()) // canonicalize resolves symlinks
-                .filter(|result| result.is_ok())
-                .map(|pp| pp.unwrap())
+                .filter_map(|line| PathBuf::from(line).canonicalize().ok()) // canonicalize resolves symlinks
                 .collect::<Vec<_>>();
             result.dedup();
             result

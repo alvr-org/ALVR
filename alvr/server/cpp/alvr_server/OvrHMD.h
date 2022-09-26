@@ -35,7 +35,7 @@ class OvrHmd : public TrackedDevice,
     virtual void Deactivate();
     virtual void EnterStandby() {}
     void *GetComponent(const char *pchComponentNameAndVersion);
-    virtual void DebugRequest(const char *request, char *response_buffer, uint32_t size) {}
+    virtual void DebugRequest(const char *, char *, uint32_t) {}
     virtual vr::DriverPose_t GetPose();
 
     void OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDeviceMotion motion);

@@ -1,4 +1,9 @@
-#![allow(non_upper_case_globals, non_snake_case, clippy::missing_safety_doc)]
+#![allow(
+    non_upper_case_globals,
+    non_snake_case,
+    clippy::missing_safety_doc,
+    clippy::unseparated_literal_suffix
+)]
 
 mod connection;
 mod connection_utils;

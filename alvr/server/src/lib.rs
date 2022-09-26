@@ -11,7 +11,8 @@ mod web_server;
     non_camel_case_types,
     non_upper_case_globals,
     dead_code,
-    non_snake_case
+    non_snake_case,
+    clippy::unseparated_literal_suffix
 )]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

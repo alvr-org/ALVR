@@ -93,9 +93,8 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         const auto &settings = Settings::Instance();
         if (isViveTracker) {
             static constexpr const std::string_view vive_prefix = "vive_tracker_";
-            const auto &ctrlType = this->device_id == LEFT_HAND_ID
-                                       ? settings.m_controllerTypeLeft
-                                       : settings.m_controllerTypeRight;
+            const auto &ctrlType = this->device_id == LEFT_HAND_ID ? settings.m_controllerTypeLeft
+                                                                   : settings.m_controllerTypeRight;
             std::string ret = settings.mControllerRegisteredDeviceType;
             if (ret.length() > 0 && ret[ret.length() - 1] != '/')
                 ret += '/';
@@ -121,13 +120,12 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     vr::VRProperties()->SetInt32Property(
         this->prop_container, vr::Prop_Axis0Type_Int32, vr::k_eControllerAxis_Joystick);
 
-    vr::VRProperties()->SetInt32Property(this->prop_container,
-                                         vr::Prop_ControllerRoleHint_Int32,
-                                         isViveTracker
-                                             ? vr::TrackedControllerRole_Invalid
-                                             : (this->device_id == LEFT_HAND_ID
-                                                    ? vr::TrackedControllerRole_LeftHand
-                                                    : vr::TrackedControllerRole_RightHand));
+    vr::VRProperties()->SetInt32Property(
+        this->prop_container,
+        vr::Prop_ControllerRoleHint_Int32,
+        isViveTracker ? vr::TrackedControllerRole_Invalid
+                      : (this->device_id == LEFT_HAND_ID ? vr::TrackedControllerRole_LeftHand
+                                                         : vr::TrackedControllerRole_RightHand));
 
     vr::VRProperties()->SetStringProperty(this->prop_container,
                                           vr::Prop_ControllerType_String,
@@ -419,7 +417,7 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRProperties()->SetInt32Property(
             this->prop_container, vr::Prop_ControllerHandSelectionPriority_Int32, -1);
         vr::HmdMatrix34_t l_transform = {
-            -1.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 0.f, -1.f, 0.f, 0.f};
+            {{-1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {0.f, -1.f, 0.f, 0.f}}};
         vr::VRProperties()->SetProperty(this->prop_container,
                                         vr::Prop_StatusDisplayTransform_Matrix34,
                                         &l_transform,
@@ -713,24 +711,22 @@ bool OvrController::onPoseUpdate(float predictionS,
 
         if (this->device_id == LEFT_HAND_ID) {
             double bonePosFixer[3] = {0.0, 0.05, -0.05};
-            vr::HmdVector3d_t posFix =
-                vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
+            vr::HmdVector3d_t posFix = vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
             pose.vecPosition[0] = motion.position[0] + posFix.v[0];
             pose.vecPosition[1] = motion.position[1] + posFix.v[1];
             pose.vecPosition[2] = motion.position[2] + posFix.v[2];
         } else {
             double bonePosFixer[3] = {0.0, 0.05, -0.05};
-            vr::HmdVector3d_t posFix =
-                vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
+            vr::HmdVector3d_t posFix = vrmath::quaternionRotateVector(pose.qRotation, bonePosFixer);
             pose.vecPosition[0] = motion.position[0] + posFix.v[0];
             pose.vecPosition[1] = motion.position[1] + posFix.v[1];
             pose.vecPosition[2] = motion.position[2] + posFix.v[2];
         }
     } else {
         pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
-                                              motion.orientation.x,
-                                              motion.orientation.y,
-                                              motion.orientation.z); // controllerRotation;
+                                            motion.orientation.x,
+                                            motion.orientation.y,
+                                            motion.orientation.z); // controllerRotation;
 
         pose.vecPosition[0] = motion.position[0];
         pose.vecPosition[1] = motion.position[1];

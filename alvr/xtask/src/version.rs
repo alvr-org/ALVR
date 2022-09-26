@@ -69,7 +69,7 @@ fn bump_rpm_spec_version(new_version: &str, is_nightly: bool) {
             tmp_end.remove(0);
             (tmp_start, format!("0.0.1{tmp_end}"))
         } else {
-            (new_version.to_string(), "1.0.0".to_string())
+            (new_version.to_owned(), "1.0.0".to_owned())
         }
     };
 

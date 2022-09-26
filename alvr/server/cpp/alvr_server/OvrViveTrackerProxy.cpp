@@ -38,7 +38,7 @@ vr::EVRInitError OvrViveTrackerProxy::Activate( vr::TrackedDeviceIndex_t unObjec
     vr::VRProperties()->SetBoolProperty(propertyContainer, vr::Prop_DeviceIsCharging_Bool, false);
     vr::VRProperties()->SetFloatProperty(propertyContainer, vr::Prop_DeviceBatteryPercentage_Float, 1.f); // Always charged
 
-    vr::HmdMatrix34_t l_transform = { -1.f, 0.f, 0.f, 0.f, 0.f, 0.f, -1.f, 0.f, 0.f, -1.f, 0.f, 0.f };
+    vr::HmdMatrix34_t l_transform = {{{-1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {0.f, -1.f, 0.f, 0.f}}};
     vr::VRProperties()->SetProperty(propertyContainer, vr::Prop_StatusDisplayTransform_Matrix34, &l_transform, sizeof(vr::HmdMatrix34_t), vr::k_unHmdMatrix34PropertyTag);
 
     vr::VRProperties()->SetBoolProperty(propertyContainer, vr::Prop_Firmware_UpdateAvailable_Bool, false);

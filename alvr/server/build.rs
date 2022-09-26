@@ -168,9 +168,9 @@ fn main() {
         .header("cpp/alvr_server/bindings.h")
         .derive_default(true)
         .generate()
-        .expect("bindings")
+        .unwrap()
         .write_to_file(out_dir.join("bindings.rs"))
-        .expect("bindings.rs");
+        .unwrap();
 
     println!(
         "cargo:rustc-link-search=native={}",

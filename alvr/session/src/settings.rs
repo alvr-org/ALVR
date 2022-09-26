@@ -470,7 +470,7 @@ pub struct DiscoveryConfig {
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
-    #[schema(advanced, min = 1024, max = 65535)]
+    #[schema(advanced, min = 1024, max = 0xFFFF)]
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,

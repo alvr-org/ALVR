@@ -207,14 +207,7 @@ fn main() {
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(
-                            profile,
-                            gpl,
-                            None,
-                            false,
-                            experiments,
-                            local_ffmpeg,
-                        );
+                        build::build_server(profile, gpl, None, false, experiments, local_ffmpeg);
                     }
                     run_server();
                 }

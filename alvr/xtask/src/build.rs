@@ -26,7 +26,7 @@ impl From<Profile> for &'static str {
         match flag {
             Profile::Distribution => "distribution",
             Profile::Release => "release",
-            Profile::Debug => "debug"
+            Profile::Debug => "debug",
         }
     }
 }
@@ -289,7 +289,10 @@ pub fn build_quest_client(profile: Profile) {
             .join("app/build/outputs/apk")
             .join(package_type)
             .join(Into::<&str>::into(profile))
-            .join(format!("app-{package_type}-{}.apk", Into::<&str>::into(profile))),
+            .join(format!(
+                "app-{package_type}-{}.apk",
+                Into::<&str>::into(profile)
+            )),
         afs::build_dir()
             .join(ARTIFACT_NAME)
             .join(format!("{ARTIFACT_NAME}.apk")),

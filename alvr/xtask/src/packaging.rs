@@ -53,7 +53,14 @@ pub fn package_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(build::Profile::Distribution, gpl, root, true, false, local_ffmpeg);
+    build::build_server(
+        build::Profile::Distribution,
+        gpl,
+        root,
+        true,
+        false,
+        local_ffmpeg,
+    );
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");

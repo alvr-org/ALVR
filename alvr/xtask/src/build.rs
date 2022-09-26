@@ -36,7 +36,7 @@ pub fn build_server(
         Profile::Distribution => {
             common_flags.push("--profile");
             common_flags.push("distribution");
-        },
+        }
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
@@ -235,7 +235,7 @@ pub fn build_client_lib(profile: Profile) {
         Profile::Distribution => {
             flags.push("--profile");
             flags.push("distribution")
-        },
+        }
         Profile::Release => flags.push("--release"),
         Profile::Debug => (),
     }

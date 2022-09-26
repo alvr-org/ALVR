@@ -138,7 +138,11 @@ fn main() {
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let no_nvidia = args.contains("--no-nvidia");
         let is_release = args.contains("--release");
-        let profile = if is_release { build::Profile::Release } else { build::Profile::Debug };
+        let profile = if is_release {
+            build::Profile::Release
+        } else {
+            build::Profile::Debug
+        };
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");

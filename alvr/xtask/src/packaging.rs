@@ -55,14 +55,7 @@ pub fn package_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(
-        DEFAULT_PROFILE,
-        gpl,
-        root,
-        true,
-        false,
-        local_ffmpeg,
-    );
+    build::build_server(DEFAULT_PROFILE, gpl, root, true, false, local_ffmpeg);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");
@@ -99,7 +92,9 @@ pub fn package_server(
         command::zip(&sh, &afs::server_build_dir()).unwrap();
 
         sh.copy_file(
-            afs::target_dir().join(Into::<&str>::into(DEFAULT_PROFILE)).join("alvr_server.pdb"),
+            afs::target_dir()
+                .join(Into::<&str>::into(DEFAULT_PROFILE))
+                .join("alvr_server.pdb"),
             afs::build_dir(),
         )
         .unwrap();

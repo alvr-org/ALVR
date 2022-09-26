@@ -9,18 +9,6 @@ pub enum Profile {
     Distribution,
 }
 
-impl From<(bool, bool)> for Profile {
-    fn from((release, distribution): (bool, bool)) -> Self {
-        if distribution {
-            Self::Distribution
-        } else if release {
-            Self::Release
-        } else {
-            Self::Debug
-        }
-    }
-}
-
 impl From<Profile> for &'static str {
     fn from(flag: Profile) -> Self {
         match flag {
@@ -45,7 +33,10 @@ pub fn build_server(
 
     let mut common_flags = vec![];
     match profile {
-        Profile::Distribution => common_flags.push("--profile distribution"),
+        Profile::Distribution => {
+            common_flags.push("--profile");
+            common_flags.push("distribution");
+        },
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
     }
@@ -241,7 +232,10 @@ pub fn build_client_lib(profile: Profile) {
 
     let mut flags = vec![];
     match profile {
-        Profile::Distribution => flags.push("--profile distribution"),
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution")
+        },
         Profile::Release => flags.push("--release"),
         Profile::Debug => (),
     }

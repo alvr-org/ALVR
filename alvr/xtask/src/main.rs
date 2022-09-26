@@ -34,7 +34,6 @@ FLAGS:
     --help              Print this text
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
-    --distribution      Optimized build with focus on less size (takes longer). For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
     --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
@@ -138,7 +137,8 @@ fn main() {
         println!("{HELP_STR}");
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let no_nvidia = args.contains("--no-nvidia");
-        let profile = (args.contains("--release"), args.contains("--distribution")).into();
+        let is_release = args.contains("--release");
+        let profile = if is_release { build::Profile::Release } else { build::Profile::Debug };
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");

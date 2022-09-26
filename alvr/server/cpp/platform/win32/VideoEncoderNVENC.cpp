@@ -121,7 +121,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
 	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput(GetTimestampUs() - presentationTime);
+		m_Listener->GetStatistics()->EncodeOutput();
 	}
 
 	m_nFrame += (int)vPacket.size();

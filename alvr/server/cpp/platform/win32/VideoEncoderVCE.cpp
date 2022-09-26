@@ -332,7 +332,7 @@ void VideoEncoderVCE::Receive(amf::AMFData *data)
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
 
 	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput((current_time - start_time) / MICROSEC_TIME);
+		m_Listener->GetStatistics()->EncodeOutput();
 	}
 
 	char *p = reinterpret_cast<char *>(buffer->GetNative());

@@ -50,25 +50,6 @@ ARGS:
                         relative paths, which requires conforming to FHS on Linux.
 "#;
 
-// Crates at "alvr/" level that are prefixed with "alvr_"
-pub fn crate_dir_names() -> Vec<String> {
-    let sh = Shell::new().unwrap();
-
-    // NB: macOS might create a .DS_Store file. Filter to only directories
-    sh.read_dir(afs::workspace_dir().join("alvr"))
-        .unwrap()
-        .into_iter()
-        .filter(|path| path.is_dir())
-        .map(|path| {
-            path.file_name()
-                .unwrap()
-                .to_string_lossy()
-                .as_ref()
-                .to_owned()
-        })
-        .collect()
-}
-
 pub fn run_server() {
     let sh = Shell::new().unwrap();
 
@@ -87,11 +68,6 @@ pub fn clean() {
 }
 
 fn clippy() {
-    let crate_flags = crate_dir_names()
-        .into_iter()
-        .filter(|name| name != "vulkan_layer")
-        .flat_map(|name| ["-p".into(), format!("alvr_{name}")]);
-
     // lints updated for Rust 1.59
     let restriction_lints = [
         "allow_attributes_without_reason",
@@ -109,9 +85,9 @@ fn clippy() {
         "mem_forget",
         "multiple_inherent_impl",
         "rest_pat_in_fully_bound_structs",
-        "self_named_module_files",
+        // "self_named_module_files",
         "str_to_string",
-        "string_slice",
+        // "string_slice",
         "string_to_string",
         "try_err",
         "unnecessary_self_imports",
@@ -138,9 +114,7 @@ fn clippy() {
         .flat_map(|name| ["-W".to_owned(), format!("clippy::{name}")]);
 
     let sh = Shell::new().unwrap();
-    cmd!(sh, "cargo clippy {crate_flags...} -- {flags...}")
-        .run()
-        .unwrap();
+    cmd!(sh, "cargo clippy -- {flags...}").run().unwrap();
 }
 
 // Avoid Oculus link popups when debugging the client

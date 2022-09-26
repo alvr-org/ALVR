@@ -16,7 +16,7 @@ pub async fn search_client_loop<F: Future<Output = bool>>(
         .await
         .map_err(err!())?;
 
-    let mut packet_buffer = [0u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
+    let mut packet_buffer = [0_u8; MAX_HANDSHAKE_PACKET_SIZE_BYTES];
 
     loop {
         let (handshake_packet_size, client_address) =

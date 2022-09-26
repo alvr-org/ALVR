@@ -55,42 +55,36 @@ fn mbits_to_bytes(value: u64) -> u32 {
 
 #[derive(Clone)]
 struct ClientId {
-    hostname: String,
     ip: IpAddr,
 }
 
 async fn client_discovery(auto_trust_clients: bool) -> StrResult<ClientId> {
-    let (ip, handshake_packet) =
-        connection_utils::search_client_loop(|handshake_packet| async move {
-            let mut data_manager_ref = SERVER_DATA_MANAGER.write();
-            data_manager_ref.update_client_list(
-                handshake_packet.hostname.clone(),
-                ClientListAction::AddIfMissing {
-                    display_name: handshake_packet.device_name,
-                },
-                Some(&CLIENTS_UPDATED_NOTIFIER),
-            );
+    let (ip, _) = connection_utils::search_client_loop(|handshake_packet| async move {
+        let mut data_manager_ref = SERVER_DATA_MANAGER.write();
+        data_manager_ref.update_client_list(
+            handshake_packet.hostname.clone(),
+            ClientListAction::AddIfMissing {
+                display_name: handshake_packet.device_name,
+            },
+            Some(&CLIENTS_UPDATED_NOTIFIER),
+        );
 
-            if let Some(connection_desc) = data_manager_ref
-                .client_list()
-                .get(&handshake_packet.hostname)
-            {
-                connection_desc.trusted || auto_trust_clients
-            } else {
-                false
-            }
-        })
-        .await?;
-
-    Ok(ClientId {
-        hostname: handshake_packet.hostname,
-        ip,
+        if let Some(connection_desc) = data_manager_ref
+            .client_list()
+            .get(&handshake_packet.hostname)
+        {
+            connection_desc.trusted || auto_trust_clients
+        } else {
+            false
+        }
     })
+    .await?;
+
+    Ok(ClientId { ip })
 }
 
 struct ConnectionInfo {
     client_ip: IpAddr,
-    version: Option<Version>,
     control_sender: ControlSocketSender<ServerControlPacket>,
     control_receiver: ControlSocketReceiver<ClientControlPacket>,
     microphone_sample_rate: u32,
@@ -456,7 +450,6 @@ async fn client_handshake(
 
     Ok(ConnectionInfo {
         client_ip,
-        version,
         control_sender,
         control_receiver,
         microphone_sample_rate: headset_info.microphone_sample_rate,
@@ -548,7 +541,6 @@ async fn connection_pipeline() -> StrResult {
 
     let ConnectionInfo {
         client_ip,
-        version: _,
         control_sender,
         mut control_receiver,
         microphone_sample_rate,

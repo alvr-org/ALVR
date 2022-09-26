@@ -1,3 +1,4 @@
+#[cfg(target_os = "linux")]
 fn main() {
     let argv0 = std::env::args().next().unwrap();
     // location of the ALVR vulkan layer manifest
@@ -16,3 +17,6 @@ fn main() {
     let err = exec::execvp(argv0 + ".real", std::env::args());
     println!("Failed to run vrcompositor {err}");
 }
+
+#[cfg(not(target_os = "linux"))]
+fn main() {}

@@ -126,7 +126,7 @@ impl eframe::App for ALVRLauncher {
                     ui.add_space(15.0);
                     if !resetting {
                         if ui.button(text("Reset drivers and retry")).clicked() {
-                            reset_and_retry(self.state.clone());
+                            reset_and_retry(Arc::clone(&self.state));
                         }
                     } else {
                         ui.label(text("Please wait for multiple restarts"));
@@ -161,7 +161,7 @@ fn make_window() -> StrResult {
         }));
 
         thread::spawn({
-            let state = state.clone();
+            let state = Arc::clone(&state);
             move || launcher_lifecycle(state)
         });
 

@@ -63,9 +63,9 @@ fn main() {
         .header("cpp/bindings.h")
         .derive_default(true)
         .generate()
-        .expect("bindings")
+        .unwrap()
         .write_to_file(out_dir.join("bindings.rs"))
-        .expect("bindings.rs");
+        .unwrap();
 
     for path in cpp_paths {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());

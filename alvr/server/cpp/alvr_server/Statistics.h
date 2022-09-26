@@ -36,7 +36,7 @@ public:
 		m_bitsSentInSecond += bytes * 8;
 	}
 
-	void EncodeOutput(uint64_t latencyUs) {
+	void EncodeOutput() {
 		CheckAndResetSecond();
 
 		m_framesInSecond++;

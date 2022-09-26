@@ -15,7 +15,7 @@ pub fn split_string(source: &str, start_pattern: &str, end: char) -> (String, St
 }
 
 pub fn version() -> String {
-    let manifest_path = afs::crate_dir("common").join("Cargo.toml");
+    let manifest_path = afs::workspace_dir().join("Cargo.toml");
     println!("cargo:rerun-if-changed={}", manifest_path.to_string_lossy());
 
     let manifest = fs::read_to_string(manifest_path).unwrap();

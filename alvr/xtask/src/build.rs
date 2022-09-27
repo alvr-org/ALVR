@@ -75,6 +75,16 @@ pub fn build_server(
             build_layout.openvr_driver_lib(),
         )
         .unwrap();
+
+        if cfg!(windows) {
+            sh.copy_file(
+                artifacts_dir.join("alvr_server.pdb"),
+                build_layout
+                    .openvr_driver_lib_dir()
+                    .join("driver_alvr_server.pdb"),
+            )
+            .unwrap();
+        }
     }
 
     // build launcher

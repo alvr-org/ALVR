@@ -92,14 +92,6 @@ pub fn package_server(
     if cfg!(windows) {
         command::zip(&sh, &afs::server_build_dir()).unwrap();
 
-        sh.copy_file(
-            afs::target_dir()
-                .join(Profile::Distribution.to_string())
-                .join("alvr_server.pdb"),
-            afs::build_dir(),
-        )
-        .unwrap();
-
         build_windows_installer();
     } else {
         command::targz(&sh, &afs::server_build_dir()).unwrap();

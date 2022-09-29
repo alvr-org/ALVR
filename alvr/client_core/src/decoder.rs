@@ -1,7 +1,10 @@
-use crate::{AlvrCodec, AlvrEvent, DISCONNECT_NOTIFIER, EVENT_QUEUE, STATISTICS_MANAGER};
-use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*, RelaxedAtomic};
+use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE};
+use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
-use std::{collections::VecDeque, ffi::c_void, os::raw::c_char, ptr, time::Duration};
+use std::{collections::VecDeque, os::raw::c_char, ptr, time::Duration};
+
+#[cfg(target_os = "android")]
+use alvr_common::prelude::*;
 
 pub struct DecoderInitConfig {
     pub codec: CodecType,
@@ -106,10 +109,10 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
 /// Call only with internal decoder
 /// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
 /// from out_buffer.
+#[cfg(target_os = "android")]
 #[allow(unused_variables)]
 #[no_mangle]
-pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i64 {
-    #[cfg(target_os = "android")]
+pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut std::ffi::c_void) -> i64 {
     let timestamp = if let Some(decoder) = &*DECODER_DEQUEUER.lock() {
         use std::time::Instant;
 
@@ -145,7 +148,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
                         }
                         Err(e) => {
                             error!("Error while decoder dequeue (2nd time): {e}");
-                            DISCONNECT_NOTIFIER.notify_waiters();
+                            crate::DISCONNECT_NOTIFIER.notify_waiters();
 
                             None
                         }
@@ -162,7 +165,7 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
             }
             Err(e) => {
                 error!("Error while decoder dequeue: {e}");
-                DISCONNECT_NOTIFIER.notify_waiters();
+                crate::DISCONNECT_NOTIFIER.notify_waiters();
 
                 None
             }
@@ -171,17 +174,16 @@ pub unsafe extern "C" fn alvr_wait_for_frame(out_buffer: *mut *mut c_void) -> i6
         std::thread::sleep(Duration::from_millis(5));
         None
     };
-    #[cfg(not(target_os = "android"))]
-    let timestamp = None;
 
     if let Some(timestamp) = timestamp {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
             stats.report_frame_decoded(timestamp);
         }
 
         if !LAST_ENQUEUED_TIMESTAMPS.lock().contains(&timestamp) {
-            error!("Detected late decoder, disconnecting...");
-            DISCONNECT_NOTIFIER.notify_waiters();
+            error!("Detected late decoder, recreating decoder...");
+            *DECODER_ENQUEUER.lock() = None;
+            *DECODER_DEQUEUER.lock() = None;
         }
 
         timestamp.as_nanos() as i64

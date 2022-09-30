@@ -275,7 +275,14 @@ pub fn build_quest_client(profile: Profile) {
 
     let package_type = if is_nightly { "Nightly" } else { "Stable" };
 
-    let build_task = format!("assemble{package_type}{profile}");
+    let build_type = if matches!(profile, Profile::Debug) {
+        "debug"
+    } else {
+        // Release or Distribution
+        "release"
+    };
+
+    let build_task = format!("assemble{package_type}{build_type}");
 
     let client_dir = afs::workspace_dir().join("android");
 
@@ -294,8 +301,8 @@ pub fn build_quest_client(profile: Profile) {
         client_dir
             .join("app/build/outputs/apk")
             .join(package_type)
-            .join(profile.to_string())
-            .join(format!("app-{package_type}-{profile}.apk")),
+            .join(build_type)
+            .join(format!("app-{package_type}-{build_type}.apk")),
         afs::build_dir()
             .join(ARTIFACT_NAME)
             .join(format!("{ARTIFACT_NAME}.apk")),

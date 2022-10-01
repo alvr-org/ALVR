@@ -17,8 +17,7 @@ const int HUD_TEXTURE_WIDTH = 1280;
 const int HUD_TEXTURE_HEIGHT = 720;
 
 /// Integer version of ovrRectf
-typedef struct Recti_
-{
+typedef struct Recti_ {
     int x;
     int y;
     int width;
@@ -139,6 +138,8 @@ class GraphicsContext {
 };
 
 namespace {
+PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
 PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC eglGetNativeClientBufferANDROID;
 PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 GraphicsContext g_ctx;
@@ -711,6 +712,8 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer,
 
 void initGraphicsNative() {
     g_ctx.eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
+    eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
     eglGetNativeClientBufferANDROID = (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress(
         "eglGetNativeClientBufferANDROID");
     glEGLImageTargetTexture2DOES =
@@ -829,7 +832,7 @@ void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2
 void renderStreamNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
     GL(EGLClientBuffer clientBuffer =
            eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-    GL(EGLImage image = eglCreateImage(
+    GL(EGLImageKHR image = eglCreateImageKHR(
            g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
 
     GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
@@ -838,5 +841,5 @@ void renderStreamNative(const int swapchainIndices[2], void *streamHardwareBuffe
     EyeInput eyeInputs[2] = {};
     ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
 
-    GL(eglDestroyImage(g_ctx.eglDisplay, image));
+    GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
 }

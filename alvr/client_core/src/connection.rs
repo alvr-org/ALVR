@@ -57,11 +57,11 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
 
-const LOADING_TEXTURE_WIDTH: usize = 1280;
-const LOADING_TEXTURE_HEIGHT: usize = 720;
+const HUD_TEXTURE_WIDTH: usize = 1280;
+const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
 
-fn set_loading_message(message: &str) {
+fn set_hud_message(message: &str) {
     let hostname = Config::load().hostname;
 
     let message = format!(
@@ -79,8 +79,8 @@ fn set_loading_message(message: &str) {
             &[&ubuntu_font],
             &SectionGeometry {
                 screen_position: (
-                    LOADING_TEXTURE_WIDTH as f32 / 2_f32,
-                    LOADING_TEXTURE_HEIGHT as f32 / 2_f32,
+                    HUD_TEXTURE_WIDTH as f32 / 2_f32,
+                    HUD_TEXTURE_HEIGHT as f32 / 2_f32,
                 ),
                 ..Default::default()
             },
@@ -93,7 +93,7 @@ fn set_loading_message(message: &str) {
 
     let scaled_font = ubuntu_font.as_scaled(FONT_SIZE);
 
-    let mut buffer = vec![0_u8; LOADING_TEXTURE_WIDTH * LOADING_TEXTURE_HEIGHT * 4];
+    let mut buffer = vec![0_u8; HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4];
 
     for section_glyph in section_glyphs {
         if let Some(outlined) = scaled_font.outline_glyph(section_glyph.glyph) {
@@ -101,15 +101,15 @@ fn set_loading_message(message: &str) {
             outlined.draw(|x, y, alpha| {
                 let x = x as usize + bounds.min.x as usize;
                 let y = y as usize + bounds.min.y as usize;
-                buffer[(y * LOADING_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
+                buffer[(y * HUD_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
             });
         }
     }
 
     #[cfg(target_os = "android")]
-    if crate::USE_OPENGL.value() {
-        unsafe { crate::updateLobbyHudTexture(buffer.as_ptr()) };
-    }
+    unsafe {
+        crate::updateLobbyHudTexture(buffer.as_ptr())
+    };
 }
 
 async fn connection_pipeline(
@@ -138,18 +138,18 @@ async fn connection_pipeline(
                         ServerHandshakePacket::IncompatibleVersions =>
                             INCOMPATIBLE_VERSIONS_MESSAGE,
                     };
-                    set_loading_message(message_str);
+                    set_hud_message(message_str);
                     return Ok(());
                 }
                 ConnectionError::NetworkUnreachable => {
                     info!("Network unreachable");
-                    set_loading_message(
+                    set_hud_message(
                         NETWORK_UNREACHABLE_MESSAGE,
                     );
 
                     time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
 
-                    set_loading_message(
+                    set_hud_message(
                         INITIAL_MESSAGE,
                     );
 
@@ -195,21 +195,21 @@ async fn connection_pipeline(
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(STREAM_STARTING_MESSAGE);
+            set_hud_message(STREAM_STARTING_MESSAGE);
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(SERVER_RESTART_MESSAGE);
+            set_hud_message(SERVER_RESTART_MESSAGE);
             return Ok(());
         }
         Err(e) => {
             info!("Server disconnected. Cause: {e}");
-            set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+            set_hud_message(SERVER_DISCONNECTED_MESSAGE);
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message("Unexpected packet");
+            set_hud_message("Unexpected packet");
             return Ok(());
         }
     }
@@ -238,7 +238,7 @@ async fn connection_pipeline(
         .await
     {
         info!("Server disconnected. Cause: {e}");
-        set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+        set_hud_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
 
@@ -544,7 +544,7 @@ async fn connection_pipeline(
                     .await;
                 if let Err(e) = res {
                     info!("Server disconnected. Cause: {e}");
-                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
 
@@ -566,13 +566,13 @@ async fn connection_pipeline(
             match control_receiver.recv().await {
                 Ok(ServerControlPacket::Restarting) => {
                     info!("{SERVER_RESTART_MESSAGE}");
-                    set_loading_message(SERVER_RESTART_MESSAGE);
+                    set_hud_message(SERVER_RESTART_MESSAGE);
                     break Ok(());
                 }
                 Ok(_) => (),
                 Err(e) => {
                     info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
-                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
             }
@@ -587,7 +587,7 @@ async fn connection_pipeline(
             if let Err(e) = res {
                 info!("Server disconnected. Cause: {e}");
             }
-            set_loading_message(
+            set_hud_message(
                 SERVER_DISCONNECTED_MESSAGE
             );
 
@@ -611,7 +611,7 @@ async fn connection_pipeline(
 }
 
 pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
-    set_loading_message(INITIAL_MESSAGE);
+    set_hud_message(INITIAL_MESSAGE);
 
     let decoder_guard = Arc::new(Mutex::new(()));
 
@@ -624,7 +624,7 @@ pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
                 if let Err(e) = maybe_error {
                     let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                     error!("{message}");
-                    set_loading_message(&message);
+                    set_hud_message(&message);
                 }
 
                 // let any running task or socket shutdown

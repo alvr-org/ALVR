@@ -56,14 +56,10 @@ static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientCon
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static ON_DESTROY_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-static PREFERRED_RESOLUTION: Lazy<Mutex<UVec2>> = Lazy::new(|| Mutex::new(UVec2::ZERO));
-
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
-
-static USE_OPENGL: RelaxedAtomic = RelaxedAtomic::new(true);
 
 #[repr(u8)]
 pub enum AlvrCodec {
@@ -183,23 +179,12 @@ pub unsafe extern "C" fn alvr_initialize(
     recommended_view_height: u32,
     refresh_rates: *const f32,
     refresh_rates_count: i32,
-    use_opengl: bool,
     external_decoder: bool,
 ) {
     #[cfg(target_os = "android")]
     ndk_context::initialize_android_context(java_vm, context);
 
     logging_backend::init_logging();
-
-    #[cfg(target_os = "android")]
-    {
-        use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
-
-        LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
-        LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
-        LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
-        LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
-    }
 
     createDecoder = Some(decoder::create_decoder);
     pushNal = Some(decoder::push_nal);
@@ -213,15 +198,7 @@ pub unsafe extern "C" fn alvr_initialize(
     #[cfg(target_os = "android")]
     platform::try_get_microphone_permission();
 
-    USE_OPENGL.set(use_opengl);
     EXTERNAL_DECODER.set(external_decoder);
-
-    #[cfg(target_os = "android")]
-    if use_opengl {
-        initGraphicsNative();
-    }
-
-    *PREFERRED_RESOLUTION.lock() = UVec2::new(recommended_view_width, recommended_view_height);
 
     let available_refresh_rates =
         slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
@@ -257,44 +234,21 @@ pub unsafe extern "C" fn alvr_initialize(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_destroy() {
+pub extern "C" fn alvr_destroy() {
     ON_DESTROY_NOTIFIER.notify_waiters();
 
     // shutdown and wait for tasks to finish
     drop(RUNTIME.lock().take());
-
-    #[cfg(target_os = "android")]
-    if USE_OPENGL.value() {
-        destroyGraphicsNative();
-    }
 }
 
-/// If no OpenGL is selected, arguments are ignored
-#[allow(unused_variables)]
 #[no_mangle]
-pub unsafe extern "C" fn alvr_resume(swapchain_textures: *mut *const i32, swapchain_length: i32) {
-    #[cfg(target_os = "android")]
-    if USE_OPENGL.value() {
-        let resolution = *PREFERRED_RESOLUTION.lock();
-        prepareLobbyRoom(
-            resolution.x as _,
-            resolution.y as _,
-            swapchain_textures,
-            swapchain_length,
-        );
-    }
-
+pub extern "C" fn alvr_resume() {
     IS_RESUMED.set(true);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_pause() {
     IS_RESUMED.set(false);
-
-    #[cfg(target_os = "android")]
-    if USE_OPENGL.value() {
-        destroyRenderers();
-    }
 }
 
 /// Returns true if there was a new event
@@ -307,16 +261,6 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     } else {
         false
     }
-}
-
-/// Call only when using OpenGL
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_start_stream(
-    swapchain_textures: *mut *const i32,
-    swapchain_length: i32,
-) {
-    streamStartNative(swapchain_textures, swapchain_length);
 }
 
 #[no_mangle]
@@ -365,54 +309,6 @@ pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
             .send(ClientControlPacket::PlayspaceSync(Vec2::new(width, height)))
             .ok();
     }
-}
-
-/// Call only when using OpenGL
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby(
-    eye_inputs: *const AlvrEyeInput,
-    swapchain_indices: *const i32,
-) {
-    let eye_inputs = [
-        {
-            let o = (*eye_inputs).orientation;
-            let f = (*eye_inputs).fov;
-            EyeInput {
-                orientation: [o.x, o.y, o.z, o.w],
-                position: (*eye_inputs).position,
-                fovLeft: f.left,
-                fovRight: f.right,
-                fovTop: f.top,
-                fovBottom: f.bottom,
-            }
-        },
-        {
-            let o = (*eye_inputs.offset(1)).orientation;
-            let f = (*eye_inputs.offset(1)).fov;
-            EyeInput {
-                orientation: [o.x, o.y, o.z, o.w],
-                position: (*eye_inputs.offset(1)).position,
-                fovLeft: f.left,
-                fovRight: f.right,
-                fovTop: f.top,
-                fovBottom: f.bottom,
-            }
-        },
-    ];
-
-    renderLobbyNative(eye_inputs.as_ptr(), swapchain_indices);
-}
-
-/// Call only when using OpenGL
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream(
-    swapchain_indices: *const i32,
-    hardware_buffer: *mut c_void,
-) {
-    renderStreamNative(swapchain_indices, hardware_buffer);
 }
 
 #[no_mangle]
@@ -531,4 +427,102 @@ pub extern "C" fn alvr_report_frame_decoded(timestamp_ns: u64) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
     }
+}
+
+/// Can be called before or after `alvr_initialize()`
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_initialize_opengl() {
+    use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
+
+    LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
+    LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
+    LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
+    LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
+
+    initGraphicsNative();
+}
+
+/// Must be called after `alvr_destroy()`. Can be skipped if the GL context is destroyed before
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_destroy_opengl() {
+    destroyGraphicsNative();
+}
+
+/// Must be called before `alvr_resume()`
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_resume_opengl(
+    preferred_view_width: u32,
+    preferred_view_height: u32,
+    swapchain_textures: *mut *const i32,
+    swapchain_length: i32,
+) {
+    prepareLobbyRoom(
+        preferred_view_width as _,
+        preferred_view_height as _,
+        swapchain_textures,
+        swapchain_length,
+    );
+}
+
+/// Must be called after `alvr_pause()`
+#[no_mangle]
+pub unsafe extern "C" fn alvr_pause_opengl() {
+    destroyRenderers();
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_start_stream_opengl(
+    swapchain_textures: *mut *const i32,
+    swapchain_length: i32,
+) {
+    streamStartNative(swapchain_textures, swapchain_length);
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_render_lobby_opengl(
+    eye_inputs: *const AlvrEyeInput,
+    swapchain_indices: *const i32,
+) {
+    let eye_inputs = [
+        {
+            let o = (*eye_inputs).orientation;
+            let f = (*eye_inputs).fov;
+            EyeInput {
+                orientation: [o.x, o.y, o.z, o.w],
+                position: (*eye_inputs).position,
+                fovLeft: f.left,
+                fovRight: f.right,
+                fovTop: f.top,
+                fovBottom: f.bottom,
+            }
+        },
+        {
+            let o = (*eye_inputs.offset(1)).orientation;
+            let f = (*eye_inputs.offset(1)).fov;
+            EyeInput {
+                orientation: [o.x, o.y, o.z, o.w],
+                position: (*eye_inputs.offset(1)).position,
+                fovLeft: f.left,
+                fovRight: f.right,
+                fovTop: f.top,
+                fovBottom: f.bottom,
+            }
+        },
+    ];
+
+    renderLobbyNative(eye_inputs.as_ptr(), swapchain_indices);
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_render_stream_opengl(
+    hardware_buffer: *mut c_void,
+    swapchain_indices: *const i32,
+) {
+    renderStreamNative(hardware_buffer, swapchain_indices);
 }

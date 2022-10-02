@@ -847,8 +847,8 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
                     g_ctx.recommendedViewHeight,
                     &refreshRatesBuffer[0],
                     refreshRatesCount,
-                    true,
                     false);
+    alvr_initialize_opengl();
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -856,6 +856,7 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
     vrapi_Shutdown();
 
     alvr_destroy();
+    alvr_destroy_opengl();
 
     eglDestroy();
 
@@ -919,7 +920,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
     g_ctx.running = true;
     g_ctx.eventsThread = std::thread(eventsThread);
 
-    alvr_resume(textureHandles, textureHandlesBuffer[0].size());
+    alvr_resume_opengl(textureHandles, textureHandlesBuffer[0].size());
+    alvr_resume();
 
     vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, g_ctx.refreshRate);
 }
@@ -986,7 +988,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
     getPlayspaceArea(&areaWidth, &areaHeight);
     alvr_send_playspace(areaWidth, areaHeight);
 
-    alvr_start_stream(textureHandles, textureHandlesBuffer[0].size());
+    alvr_start_stream_opengl(textureHandles, textureHandlesBuffer[0].size());
 
     g_ctx.streaming = true;
     g_ctx.trackingThread = std::thread(trackingThread);
@@ -1012,6 +1014,7 @@ Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _cont
     Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(_env, _context);
 
     alvr_pause();
+    alvr_pause_opengl();
 
     if (g_ctx.running) {
         g_ctx.running = false;
@@ -1066,7 +1069,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
 
         int swapchainIndices[2] = {g_ctx.streamSwapchains[0].index,
                                    g_ctx.streamSwapchains[1].index};
-        alvr_render_stream(swapchainIndices, streamHardwareBuffer);
+        alvr_render_stream_opengl(streamHardwareBuffer, swapchainIndices);
 
         double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) -
                              vrapi_GetTimeInSeconds();
@@ -1086,7 +1089,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
                                      trackingToEyeInput(&tracking, 1)};
         int swapchainIndices[2] = {g_ctx.lobbySwapchains[0].index,
                                    g_ctx.lobbySwapchains[1].index};
-        alvr_render_lobby(eyeInputs, swapchainIndices);
+        alvr_render_lobby_opengl(eyeInputs, swapchainIndices);
 
         for (int eye = 0; eye < 2; eye++) {
             worldLayer.Textures[eye].ColorSwapChain = g_ctx.lobbySwapchains[eye].inner;

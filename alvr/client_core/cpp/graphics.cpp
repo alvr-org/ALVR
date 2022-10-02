@@ -829,7 +829,7 @@ void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2
     ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, swapchainIndices, true);
 }
 
-void renderStreamNative(const int swapchainIndices[2], void *streamHardwareBuffer) {
+void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]) {
     GL(EGLClientBuffer clientBuffer =
            eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
     GL(EGLImageKHR image = eglCreateImageKHR(

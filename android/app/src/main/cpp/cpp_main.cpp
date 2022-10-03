@@ -32,13 +32,54 @@ void log(AlvrLogLevel level, const char *format, ...) {
 #define error(...) log(ALVR_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define info(...) log(ALVR_LOG_LEVEL_INFO, __VA_ARGS__)
 
-inline uint64_t getTimestampUs() {
-    timeval tv;
-    gettimeofday(&tv, nullptr);
+uint64_t HEAD_ID = alvr_path_string_to_hash("/user/head");
+uint64_t LEFT_HAND_ID = alvr_path_string_to_hash("/user/hand/left");
+uint64_t RIGHT_HAND_ID = alvr_path_string_to_hash("/user/hand/right");
+uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/left/output/haptic");
+uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/right/output/haptic");
 
-    uint64_t Current = (uint64_t) tv.tv_sec * 1000 * 1000 + tv.tv_usec;
-    return Current;
-}
+uint64_t MENU_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/menu/click");
+uint64_t A_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/a/click");
+uint64_t A_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/a/touch");
+uint64_t B_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/b/click");
+uint64_t B_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/b/touch");
+uint64_t X_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/x/click");
+uint64_t X_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
+uint64_t Y_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/y/click");
+uint64_t Y_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/y/touch");
+uint64_t LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/click");
+uint64_t LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
+uint64_t LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/click");
+uint64_t LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
+uint64_t LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");
+uint64_t LEFT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/x");
+uint64_t LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/y");
+uint64_t LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+        "/user/hand/left/input/thumbstick/click");
+uint64_t LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+        "/user/hand/left/input/thumbstick/touch");
+uint64_t LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+        "/user/hand/left/input/thumbrest/touch");
+uint64_t RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/click");
+uint64_t RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/value");
+uint64_t RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/click");
+uint64_t RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/value");
+uint64_t RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/touch");
+uint64_t RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/x");
+uint64_t RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/y");
+uint64_t RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+        "/user/hand/right/input/thumbstick/click");
+uint64_t RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+        "/user/hand/right/input/thumbstick/touch");
+uint64_t RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+        "/user/hand/right/input/thumbrest/touch");
+
+const int MAXIMUM_TRACKING_FRAMES = 360;
+// minimum change for a scalar button to be registered as a new value
+const float BUTTON_EPS = 0.001;
+const float IPD_EPS = 0.001; // minimum change of IPD to be registered as a new value
+
+const GLenum SWAPCHAIN_FORMAT = GL_RGBA8;
 
 struct Render_EGL {
     EGLDisplay Display;
@@ -48,7 +89,60 @@ struct Render_EGL {
     EGLContext Context;
 };
 
-Render_EGL egl;
+struct Swapchain {
+    ovrTextureSwapChain *inner;
+    int index;
+};
+
+class NativeContext {
+public:
+    JavaVM *vm;
+    jobject context;
+
+    Render_EGL egl;
+
+    ANativeWindow *window = nullptr;
+    ovrMobile *ovrContext{};
+
+    bool running = false;
+    bool streaming = false;
+    std::thread eventsThread;
+
+    uint32_t recommendedViewWidth = 1;
+    uint32_t recommendedViewHeight = 1;
+    float refreshRate = 72.f;
+    StreamingStarted_Body streamingConfig = {};
+
+    uint64_t ovrFrameIndex = 0;
+
+    std::deque<std::pair<uint64_t, ovrTracking2>> trackingFrameMap;
+    std::mutex trackingFrameMutex;
+
+    Swapchain lobbySwapchains[2] = {};
+    Swapchain streamSwapchains[2] = {};
+
+    uint8_t hmdBattery = 0;
+    bool hmdPlugged = false;
+    uint8_t lastLeftControllerBattery = 0;
+    uint8_t lastRightControllerBattery = 0;
+
+    float lastIpd;
+    EyeFov lastFov;
+
+    std::map<uint64_t, AlvrButtonValue> previousButtonsState;
+
+    struct HapticsState {
+        uint64_t startUs;
+        uint64_t endUs;
+        float amplitude;
+        float frequency;
+        bool fresh;
+        bool buffered;
+    };
+    HapticsState hapticsState[2]{};
+};
+
+NativeContext CTX = {};
 
 static const char *EglErrorString(const EGLint err) {
     switch (err) {
@@ -90,8 +184,8 @@ static const char *EglErrorString(const EGLint err) {
 void eglInit() {
     EGLint major, minor;
 
-    egl.Display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    eglInitialize(egl.Display, &major, &minor);
+    CTX.egl.Display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglInitialize(CTX.egl.Display, &major, &minor);
 
     // Do NOT use eglChooseConfig, because the Android EGL code pushes in multisample
     // flags in eglChooseConfig if the user has selected the "force 4x MSAA" option in
@@ -99,7 +193,7 @@ void eglInit() {
     const int MAX_CONFIGS = 1024;
     EGLConfig configs[MAX_CONFIGS];
     EGLint numConfigs = 0;
-    if (eglGetConfigs(egl.Display, configs, MAX_CONFIGS, &numConfigs) == EGL_FALSE) {
+    if (eglGetConfigs(CTX.egl.Display, configs, MAX_CONFIGS, &numConfigs) == EGL_FALSE) {
         error("        eglGetConfigs() failed: %s", EglErrorString(eglGetError()));
         return;
     }
@@ -118,213 +212,122 @@ void eglInit() {
                                     EGL_SAMPLES,
                                     0,
                                     EGL_NONE};
-    egl.Config = 0;
+    CTX.egl.Config = 0;
     for (int i = 0; i < numConfigs; i++) {
         EGLint value = 0;
 
-        eglGetConfigAttrib(egl.Display, configs[i], EGL_RENDERABLE_TYPE, &value);
+        eglGetConfigAttrib(CTX.egl.Display, configs[i], EGL_RENDERABLE_TYPE, &value);
         if ((value & EGL_OPENGL_ES3_BIT_KHR) != EGL_OPENGL_ES3_BIT_KHR) {
             continue;
         }
 
         // The pbuffer config also needs to be compatible with normal window rendering
         // so it can share textures with the window context.
-        eglGetConfigAttrib(egl.Display, configs[i], EGL_SURFACE_TYPE, &value);
+        eglGetConfigAttrib(CTX.egl.Display, configs[i], EGL_SURFACE_TYPE, &value);
         if ((value & (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) != (EGL_WINDOW_BIT | EGL_PBUFFER_BIT)) {
             continue;
         }
 
         int j = 0;
         for (; configAttribs[j] != EGL_NONE; j += 2) {
-            eglGetConfigAttrib(egl.Display, configs[i], configAttribs[j], &value);
+            eglGetConfigAttrib(CTX.egl.Display, configs[i], configAttribs[j], &value);
             if (value != configAttribs[j + 1]) {
                 break;
             }
         }
         if (configAttribs[j] == EGL_NONE) {
-            egl.Config = configs[i];
+            CTX.egl.Config = configs[i];
             break;
         }
     }
-    if (egl.Config == 0) {
+    if (CTX.egl.Config == 0) {
         error("        eglChooseConfig() failed: %s", EglErrorString(eglGetError()));
         return;
     }
     EGLint contextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE};
-    egl.Context = eglCreateContext(egl.Display, egl.Config, EGL_NO_CONTEXT, contextAttribs);
-    if (egl.Context == EGL_NO_CONTEXT) {
+    CTX.egl.Context = eglCreateContext(CTX.egl.Display, CTX.egl.Config, EGL_NO_CONTEXT,
+                                       contextAttribs);
+    if (CTX.egl.Context == EGL_NO_CONTEXT) {
         error("        eglCreateContext() failed: %s", EglErrorString(eglGetError()));
         return;
     }
     const EGLint surfaceAttribs[] = {EGL_WIDTH, 16, EGL_HEIGHT, 16, EGL_NONE};
-    egl.TinySurface = eglCreatePbufferSurface(egl.Display, egl.Config, surfaceAttribs);
-    if (egl.TinySurface == EGL_NO_SURFACE) {
+    CTX.egl.TinySurface = eglCreatePbufferSurface(CTX.egl.Display, CTX.egl.Config, surfaceAttribs);
+    if (CTX.egl.TinySurface == EGL_NO_SURFACE) {
         error("        eglCreatePbufferSurface() failed: %s", EglErrorString(eglGetError()));
-        eglDestroyContext(egl.Display, egl.Context);
-        egl.Context = EGL_NO_CONTEXT;
+        eglDestroyContext(CTX.egl.Display, CTX.egl.Context);
+        CTX.egl.Context = EGL_NO_CONTEXT;
         return;
     }
-    if (eglMakeCurrent(egl.Display, egl.TinySurface, egl.TinySurface, egl.Context) == EGL_FALSE) {
+    if (eglMakeCurrent(CTX.egl.Display, CTX.egl.TinySurface, CTX.egl.TinySurface,
+                       CTX.egl.Context) == EGL_FALSE) {
         error("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
-        eglDestroySurface(egl.Display, egl.TinySurface);
-        eglDestroyContext(egl.Display, egl.Context);
-        egl.Context = EGL_NO_CONTEXT;
+        eglDestroySurface(CTX.egl.Display, CTX.egl.TinySurface);
+        eglDestroyContext(CTX.egl.Display, CTX.egl.Context);
+        CTX.egl.Context = EGL_NO_CONTEXT;
         return;
     }
 }
 
 void eglDestroy() {
-    if (egl.Display != 0) {
+    if (CTX.egl.Display != 0) {
         error("        eglMakeCurrent( Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT )");
-        if (eglMakeCurrent(egl.Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) ==
+        if (eglMakeCurrent(CTX.egl.Display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) ==
             EGL_FALSE) {
             error("        eglMakeCurrent() failed: %s", EglErrorString(eglGetError()));
         }
     }
-    if (egl.Context != EGL_NO_CONTEXT) {
+    if (CTX.egl.Context != EGL_NO_CONTEXT) {
         error("        eglDestroyContext( Display, Context )");
-        if (eglDestroyContext(egl.Display, egl.Context) == EGL_FALSE) {
+        if (eglDestroyContext(CTX.egl.Display, CTX.egl.Context) == EGL_FALSE) {
             error("        eglDestroyContext() failed: %s", EglErrorString(eglGetError()));
         }
-        egl.Context = EGL_NO_CONTEXT;
+        CTX.egl.Context = EGL_NO_CONTEXT;
     }
-    if (egl.TinySurface != EGL_NO_SURFACE) {
+    if (CTX.egl.TinySurface != EGL_NO_SURFACE) {
         error("        eglDestroySurface( Display, TinySurface )");
-        if (eglDestroySurface(egl.Display, egl.TinySurface) == EGL_FALSE) {
+        if (eglDestroySurface(CTX.egl.Display, CTX.egl.TinySurface) == EGL_FALSE) {
             error("        eglDestroySurface() failed: %s", EglErrorString(eglGetError()));
         }
-        egl.TinySurface = EGL_NO_SURFACE;
+        CTX.egl.TinySurface = EGL_NO_SURFACE;
     }
-    if (egl.Display != 0) {
+    if (CTX.egl.Display != 0) {
         error("        eglTerminate( Display )");
-        if (eglTerminate(egl.Display) == EGL_FALSE) {
+        if (eglTerminate(CTX.egl.Display) == EGL_FALSE) {
             error("        eglTerminate() failed: %s", EglErrorString(eglGetError()));
         }
-        egl.Display = 0;
+        CTX.egl.Display = 0;
     }
 }
 
-using namespace std;
+inline uint64_t getTimestampUs() {
+    timeval tv;
+    gettimeofday(&tv, nullptr);
 
-uint64_t HEAD_ID;
-uint64_t LEFT_HAND_ID;
-uint64_t RIGHT_HAND_ID;
-uint64_t LEFT_CONTROLLER_HAPTICS_ID;
-uint64_t RIGHT_CONTROLLER_HAPTICS_ID;
-
-// oculus touch
-uint64_t MENU_CLICK_ID;
-uint64_t A_CLICK_ID;
-uint64_t A_TOUCH_ID;
-uint64_t B_CLICK_ID;
-uint64_t B_TOUCH_ID;
-uint64_t X_CLICK_ID;
-uint64_t X_TOUCH_ID;
-uint64_t Y_CLICK_ID;
-uint64_t Y_TOUCH_ID;
-uint64_t LEFT_SQUEEZE_CLICK_ID;
-uint64_t LEFT_SQUEEZE_VALUE_ID;
-uint64_t LEFT_TRIGGER_CLICK_ID;
-uint64_t LEFT_TRIGGER_VALUE_ID;
-uint64_t LEFT_TRIGGER_TOUCH_ID;
-uint64_t LEFT_THUMBSTICK_X_ID;
-uint64_t LEFT_THUMBSTICK_Y_ID;
-uint64_t LEFT_THUMBSTICK_CLICK_ID;
-uint64_t LEFT_THUMBSTICK_TOUCH_ID;
-uint64_t LEFT_THUMBREST_TOUCH_ID;
-uint64_t RIGHT_SQUEEZE_CLICK_ID;
-uint64_t RIGHT_SQUEEZE_VALUE_ID;
-uint64_t RIGHT_TRIGGER_CLICK_ID;
-uint64_t RIGHT_TRIGGER_VALUE_ID;
-uint64_t RIGHT_TRIGGER_TOUCH_ID;
-uint64_t RIGHT_THUMBSTICK_X_ID;
-uint64_t RIGHT_THUMBSTICK_Y_ID;
-uint64_t RIGHT_THUMBSTICK_CLICK_ID;
-uint64_t RIGHT_THUMBSTICK_TOUCH_ID;
-uint64_t RIGHT_THUMBREST_TOUCH_ID;
-
-const int MAXIMUM_TRACKING_FRAMES = 360;
-// minimum change for a scalar button to be registered as a new value
-const float BUTTON_EPS = 0.001;
-const float IPD_EPS = 0.001; // minimum change of IPD to be registered as a new value
-
-const GLenum SWAPCHAIN_FORMAT = GL_RGBA8;
-
-struct Swapchain {
-    ovrTextureSwapChain *inner;
-    int index;
-};
-
-class GraphicsContext {
-public:
-    JavaVM *vm;
-    jobject context;
-    ANativeWindow *window = nullptr;
-    ovrMobile *ovrContext{};
-    bool running = false;
-    bool streaming = false;
-
-    std::thread eventsThread;
-    std::thread trackingThread;
-
-    uint32_t recommendedViewWidth = 1;
-    uint32_t recommendedViewHeight = 1;
-    float refreshRate = 72.f;
-    StreamingStarted_Body streamingConfig = {};
-
-    uint64_t ovrFrameIndex = 0;
-
-    std::deque<std::pair<uint64_t, ovrTracking2>> trackingFrameMap;
-    std::mutex trackingFrameMutex;
-
-    Swapchain lobbySwapchains[2] = {};
-    Swapchain streamSwapchains[2] = {};
-
-    uint8_t hmdBattery = 0;
-    bool hmdPlugged = false;
-    uint8_t lastLeftControllerBattery = 0;
-    uint8_t lastRightControllerBattery = 0;
-
-    float lastIpd;
-    EyeFov lastFov;
-
-    std::map<uint64_t, AlvrButtonValue> previousButtonsState;
-
-    struct HapticsState {
-        uint64_t startUs;
-        uint64_t endUs;
-        float amplitude;
-        float frequency;
-        bool fresh;
-        bool buffered;
-    };
-    HapticsState hapticsState[2]{};
-};
-
-namespace {
-    GraphicsContext g_ctx;
+    uint64_t Current = (uint64_t) tv.tv_sec * 1000 * 1000 + tv.tv_usec;
+    return Current;
 }
 
 ovrJava getOvrJava(bool initThread = false) {
     JNIEnv *env;
     if (initThread) {
         JavaVMAttachArgs args = {JNI_VERSION_1_6};
-        g_ctx.vm->AttachCurrentThread(&env, &args);
+        CTX.vm->AttachCurrentThread(&env, &args);
     } else {
-        g_ctx.vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+        CTX.vm->GetEnv((void **) &env, JNI_VERSION_1_6);
     }
 
     ovrJava java{};
-    java.Vm = g_ctx.vm;
+    java.Vm = CTX.vm;
     java.Env = env;
-    java.ActivityObject = g_ctx.context;
+    java.ActivityObject = CTX.context;
 
     return java;
 }
 
 void updateBinary(uint64_t path, uint32_t flag) {
     auto value = flag != 0;
-    auto *stateRef = &g_ctx.previousButtonsState[path];
+    auto *stateRef = &CTX.previousButtonsState[path];
     if (stateRef->binary != value) {
         stateRef->tag = ALVR_BUTTON_VALUE_BINARY;
         stateRef->binary = value;
@@ -334,7 +337,7 @@ void updateBinary(uint64_t path, uint32_t flag) {
 }
 
 void updateScalar(uint64_t path, float value) {
-    auto *stateRef = &g_ctx.previousButtonsState[path];
+    auto *stateRef = &CTX.previousButtonsState[path];
     if (abs(stateRef->scalar - value) > BUTTON_EPS) {
         stateRef->tag = ALVR_BUTTON_VALUE_SCALAR;
         stateRef->scalar = value;
@@ -346,18 +349,18 @@ void updateScalar(uint64_t path, float value) {
 void updateButtons() {
     ovrInputCapabilityHeader capabilitiesHeader;
     uint32_t deviceIndex = 0;
-    while (vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &capabilitiesHeader) >= 0) {
+    while (vrapi_EnumerateInputDevices(CTX.ovrContext, deviceIndex, &capabilitiesHeader) >= 0) {
         if (capabilitiesHeader.Type == ovrControllerType_TrackedRemote) {
             ovrInputTrackedRemoteCapabilities capabilities = {};
             capabilities.Header = capabilitiesHeader;
-            if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
+            if (vrapi_GetInputDeviceCapabilities(CTX.ovrContext, &capabilities.Header) !=
                 ovrSuccess) {
                 continue;
             }
 
             ovrInputStateTrackedRemote inputState = {};
             inputState.Header.ControllerType = capabilities.Header.Type;
-            if (vrapi_GetCurrentInputState(g_ctx.ovrContext,
+            if (vrapi_GetCurrentInputState(CTX.ovrContext,
                                            capabilities.Header.DeviceID,
                                            &inputState.Header) != ovrSuccess) {
                 continue;
@@ -401,31 +404,23 @@ void updateButtons() {
     }
 }
 
-float getIPD() {
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, 0.0);
-    float ipd = vrapi_GetInterpupillaryDistance(&tracking);
-    return ipd;
-}
-
 // return fov in OpenXR convention
-std::pair<EyeFov, EyeFov> getFov() {
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, 0.0);
+EyeFov getFov(ovrTracking2 tracking, int eye) {
+    // ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
 
-    EyeFov fov[2];
+    EyeFov fov;
+    auto projection = tracking.Eye[eye].ProjectionMatrix;
+    double a = projection.M[0][0];
+    double b = projection.M[1][1];
+    double c = projection.M[0][2];
+    double d = projection.M[1][2];
 
-    for (int eye = 0; eye < 2; eye++) {
-        auto projection = tracking.Eye[eye].ProjectionMatrix;
-        double a = projection.M[0][0];
-        double b = projection.M[1][1];
-        double c = projection.M[0][2];
-        double d = projection.M[1][2];
+    fov.left = (float) atan((c - 1) / a);
+    fov.right = (float) atan((c + 1) / a);
+    fov.top = -(float) atan((d - 1) / b);
+    fov.bottom = -(float) atan((d + 1) / b);
 
-        fov[eye].left = (float) atan((c - 1) / a);
-        fov[eye].right = (float) atan((c + 1) / a);
-        fov[eye].top = -(float) atan((d - 1) / b);
-        fov[eye].bottom = -(float) atan((d + 1) / b);
-    }
-    return {fov[0], fov[1]};
+    return fov;
 }
 
 void getPlayspaceArea(float *width, float *height) {
@@ -433,21 +428,21 @@ void getPlayspaceArea(float *width, float *height) {
     ovrVector3f bboxScale;
     // Theoretically pose (the 2nd parameter) could be nullptr, since we already have that, but
     // then this function gives us 0-size bounding box, so it has to be provided.
-    vrapi_GetBoundaryOrientedBoundingBox(g_ctx.ovrContext, &spacePose, &bboxScale);
+    vrapi_GetBoundaryOrientedBoundingBox(CTX.ovrContext, &spacePose, &bboxScale);
     *width = 2.0f * bboxScale.x;
     *height = 2.0f * bboxScale.z;
 }
 
 uint8_t getControllerBattery(int index) {
     ovrInputCapabilityHeader curCaps;
-    auto result = vrapi_EnumerateInputDevices(g_ctx.ovrContext, index, &curCaps);
+    auto result = vrapi_EnumerateInputDevices(CTX.ovrContext, index, &curCaps);
     if (result < 0 || curCaps.Type != ovrControllerType_TrackedRemote) {
         return 0;
     }
 
     ovrInputTrackedRemoteCapabilities remoteCapabilities;
     remoteCapabilities.Header = curCaps;
-    result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
+    result = vrapi_GetInputDeviceCapabilities(CTX.ovrContext, &remoteCapabilities.Header);
     if (result != ovrSuccess) {
         return 0;
     }
@@ -455,7 +450,7 @@ uint8_t getControllerBattery(int index) {
     ovrInputStateTrackedRemote remoteInputState;
     remoteInputState.Header.ControllerType = remoteCapabilities.Header.Type;
     result = vrapi_GetCurrentInputState(
-            g_ctx.ovrContext, remoteCapabilities.Header.DeviceID, &remoteInputState.Header);
+            CTX.ovrContext, remoteCapabilities.Header.DeviceID, &remoteInputState.Header);
     if (result != ovrSuccess) {
         return 0;
     }
@@ -466,12 +461,12 @@ uint8_t getControllerBattery(int index) {
 void finishHapticsBuffer(ovrDeviceID DeviceID) {
     uint8_t hapticBuffer[1] = {0};
     ovrHapticBuffer buffer;
-    buffer.BufferTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
+    buffer.BufferTime = vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex);
     buffer.HapticBuffer = &hapticBuffer[0];
     buffer.NumSamples = 1;
     buffer.Terminated = true;
 
-    auto result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, DeviceID, &buffer);
+    auto result = vrapi_SetHapticVibrationBuffer(CTX.ovrContext, DeviceID, &buffer);
     if (result != ovrSuccess) {
         info("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
     }
@@ -482,7 +477,7 @@ void updateHapticsState() {
     ovrResult result;
 
     for (uint32_t deviceIndex = 0;
-         vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &curCaps) >= 0;
+         vrapi_EnumerateInputDevices(CTX.ovrContext, deviceIndex, &curCaps) >= 0;
          deviceIndex++) {
 
         if (curCaps.Type != ovrControllerType_TrackedRemote)
@@ -491,14 +486,14 @@ void updateHapticsState() {
         ovrInputTrackedRemoteCapabilities remoteCapabilities;
 
         remoteCapabilities.Header = curCaps;
-        result = vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &remoteCapabilities.Header);
+        result = vrapi_GetInputDeviceCapabilities(CTX.ovrContext, &remoteCapabilities.Header);
         if (result != ovrSuccess) {
             continue;
         }
 
         int curHandIndex =
                 (remoteCapabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) ? 1 : 0;
-        auto &s = g_ctx.hapticsState[curHandIndex];
+        auto &s = CTX.hapticsState[curHandIndex];
 
         uint64_t currentUs = getTimestampUs();
 
@@ -540,7 +535,7 @@ void updateHapticsState() {
             std::vector<uint8_t> hapticBuffer(remoteCapabilities.HapticSamplesMax);
             ovrHapticBuffer buffer;
             buffer.BufferTime =
-                    vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
+                    vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex);
             buffer.HapticBuffer = &hapticBuffer[0];
             buffer.NumSamples =
                     std::min(remoteCapabilities.HapticSamplesMax, requiredHapticsBuffer);
@@ -553,38 +548,16 @@ void updateHapticsState() {
                     hapticBuffer[i] = static_cast<uint8_t>(255 * s.amplitude);
             }
 
-            result = vrapi_SetHapticVibrationBuffer(g_ctx.ovrContext, curCaps.DeviceID, &buffer);
+            result = vrapi_SetHapticVibrationBuffer(CTX.ovrContext, curCaps.DeviceID, &buffer);
             if (result != ovrSuccess) {
                 info("vrapi_SetHapticVibrationBuffer: Failed. result=%d", result);
             }
             s.buffered = true;
         } else if (remoteCapabilities.ControllerCapabilities &
                    ovrControllerCaps_HasSimpleHapticVibration) {
-            vrapi_SetHapticVibrationSimple(g_ctx.ovrContext, curCaps.DeviceID, s.amplitude);
+            vrapi_SetHapticVibrationSimple(CTX.ovrContext, curCaps.DeviceID, s.amplitude);
         }
     }
-}
-
-AlvrEyeInput trackingToEyeInput(ovrTracking2 *tracking, int eye) {
-    auto q = tracking->HeadPose.Pose.Orientation;
-
-    auto v = ovrMatrix4f_Inverse(&tracking->Eye[eye].ViewMatrix);
-
-    EyeFov fov;
-    if (eye == 0) {
-        fov = getFov().first;
-    } else {
-        fov = getFov().second;
-    }
-
-    auto input = AlvrEyeInput{};
-    input.orientation = AlvrQuat{q.x, q.y, q.z, q.w};
-    input.position[0] = v.M[0][3];
-    input.position[1] = v.M[1][3];
-    input.position[2] = v.M[2][3];
-    input.fov = fov;
-
-    return input;
 }
 
 // low frequency events.
@@ -596,9 +569,123 @@ void eventsThread() {
     jmethodID onStreamStartMethod = java.Env->GetMethodID(cls, "onStreamStart", "()V");
     jmethodID onStreamStopMethod = java.Env->GetMethodID(cls, "onStreamStop", "()V");
 
+    auto deadline = std::chrono::steady_clock::now();
+    auto motionVec = std::vector<AlvrDeviceMotion>();
+
     int recenterCount = 0;
 
-    while (g_ctx.running) {
+    while (CTX.running) {
+        if (CTX.streaming) {
+            motionVec.clear();
+            OculusHand leftHand = {false};
+            OculusHand rightHand = {false};
+
+            AlvrDeviceMotion headMotion = {};
+            uint64_t targetTimestampNs =
+                    vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
+            auto headTracking =
+                    vrapi_GetPredictedTracking2(CTX.ovrContext, (double) targetTimestampNs / 1e9);
+            headMotion.device_id = HEAD_ID;
+            memcpy(&headMotion.orientation, &headTracking.HeadPose.Pose.Orientation, 4 * 4);
+            memcpy(headMotion.position, &headTracking.HeadPose.Pose.Position, 4 * 3);
+            // Note: do not copy velocities. Avoid reprojection in SteamVR
+            motionVec.push_back(headMotion);
+
+            {
+                std::lock_guard<std::mutex> lock(CTX.trackingFrameMutex);
+                // Insert from the front: it will be searched first
+                CTX.trackingFrameMap.push_front({targetTimestampNs, headTracking});
+                if (CTX.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
+                    CTX.trackingFrameMap.pop_back();
+                }
+            }
+
+            updateButtons();
+
+            double controllerDisplayTimeS =
+                    vrapi_GetTimeInSeconds() + (double) alvr_get_prediction_offset_ns() / 1e9 *
+                                               CTX.streamingConfig.controller_prediction_multiplier;
+
+            ovrInputCapabilityHeader capabilitiesHeader;
+            uint32_t deviceIndex = 0;
+            while (vrapi_EnumerateInputDevices(CTX.ovrContext, deviceIndex, &capabilitiesHeader) >=
+                   0) {
+                if (capabilitiesHeader.Type == ovrControllerType_TrackedRemote) {
+                    ovrInputTrackedRemoteCapabilities capabilities = {};
+                    capabilities.Header = capabilitiesHeader;
+                    if (vrapi_GetInputDeviceCapabilities(CTX.ovrContext, &capabilities.Header) !=
+                        ovrSuccess) {
+                        continue;
+                    }
+
+                    uint64_t handID;
+                    if (capabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) {
+                        handID = LEFT_HAND_ID;
+                    } else {
+                        handID = RIGHT_HAND_ID;
+                    }
+
+                    ovrTracking tracking = {};
+                    if (vrapi_GetInputTrackingState(CTX.ovrContext,
+                                                    capabilities.Header.DeviceID,
+                                                    controllerDisplayTimeS,
+                                                    &tracking) == ovrSuccess) {
+                        AlvrDeviceMotion motion = {};
+                        motion.device_id = handID;
+                        memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
+                        memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
+                        memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
+                        memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
+
+                        motionVec.push_back(motion);
+                    }
+                } else if (capabilitiesHeader.Type == ovrControllerType_Hand) {
+                    ovrInputHandCapabilities capabilities;
+                    capabilities.Header = capabilitiesHeader;
+                    if (vrapi_GetInputDeviceCapabilities(CTX.ovrContext, &capabilities.Header) !=
+                        ovrSuccess) {
+                        continue;
+                    }
+
+                    uint64_t handID;
+                    OculusHand *handRef = nullptr;
+                    if (capabilities.HandCapabilities & ovrHandCaps_LeftHand) {
+                        handID = LEFT_HAND_ID;
+                        handRef = &leftHand;
+                    } else {
+                        handID = RIGHT_HAND_ID;
+                        handRef = &rightHand;
+                    }
+
+                    ovrHandPose handPose;
+                    handPose.Header.Version = ovrHandVersion_1;
+                    if (vrapi_GetHandPose(CTX.ovrContext,
+                                          capabilities.Header.DeviceID,
+                                          controllerDisplayTimeS,
+                                          &handPose.Header) == ovrSuccess &&
+                        (handPose.Status & ovrHandTrackingStatus_Tracked)) {
+                        AlvrDeviceMotion motion = {};
+                        motion.device_id = handID;
+                        memcpy(&motion.orientation, &handPose.RootPose.Orientation, 4 * 4);
+                        memcpy(motion.position, &handPose.RootPose.Position, 4 * 3);
+                        // Note: ovrHandPose does not have velocities
+                        for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
+                            memcpy(&handRef->bone_rotations[i], &handPose.BoneRotations[i], 4 * 4);
+                        }
+                        motionVec.push_back(motion);
+                        handRef->enabled = true;
+                    }
+                }
+
+                deviceIndex++;
+            }
+
+            alvr_send_tracking(targetTimestampNs, &motionVec[0], motionVec.size(), leftHand,
+                               rightHand);
+
+        }
+
+
         // there is no useful event in the oculus API, ignore
         ovrEventHeader _eventHeader;
         auto _res = vrapi_PollEvent(&_eventHeader);
@@ -612,25 +699,28 @@ void eventsThread() {
             recenterCount = newRecenterCount;
         }
 
-        float new_ipd = getIPD();
-        auto new_fov = getFov();
-        if (abs(new_ipd - g_ctx.lastIpd) > IPD_EPS ||
-            abs(new_fov.first.left - g_ctx.lastFov.left) > IPD_EPS) {
-            EyeFov fov[2] = {new_fov.first, new_fov.second};
-            alvr_send_views_config(fov, new_ipd);
-            g_ctx.lastIpd = new_ipd;
-            g_ctx.lastFov = new_fov.first;
+        ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
+        auto newLeftFov = getFov(tracking, 0);
+        auto newRightFov = getFov(tracking, 1);
+        float newIpd = vrapi_GetInterpupillaryDistance(&tracking);
+
+        if (abs(newIpd - CTX.lastIpd) > IPD_EPS ||
+            abs(newLeftFov.left - CTX.lastFov.left) > IPD_EPS) {
+            EyeFov fov[2] = {newLeftFov, newRightFov};
+            alvr_send_views_config(fov, newIpd);
+            CTX.lastIpd = newIpd;
+            CTX.lastFov = newLeftFov;
         }
 
         uint8_t leftBattery = getControllerBattery(0);
-        if (leftBattery != g_ctx.lastLeftControllerBattery) {
+        if (leftBattery != CTX.lastLeftControllerBattery) {
             alvr_send_battery(LEFT_HAND_ID, (float) leftBattery / 100.f, false);
-            g_ctx.lastLeftControllerBattery = leftBattery;
+            CTX.lastLeftControllerBattery = leftBattery;
         }
         uint8_t rightBattery = getControllerBattery(1);
-        if (rightBattery != g_ctx.lastRightControllerBattery) {
+        if (rightBattery != CTX.lastRightControllerBattery) {
             alvr_send_battery(RIGHT_HAND_ID, (float) rightBattery / 100.f, false);
-            g_ctx.lastRightControllerBattery = rightBattery;
+            CTX.lastRightControllerBattery = rightBattery;
         }
 
         AlvrEvent event;
@@ -638,7 +728,7 @@ void eventsThread() {
             if (event.tag == ALVR_EVENT_HAPTICS) {
                 auto haptics = event.HAPTICS;
                 int curHandIndex = (haptics.device_id == RIGHT_CONTROLLER_HAPTICS_ID ? 0 : 1);
-                auto &s = g_ctx.hapticsState[curHandIndex];
+                auto &s = CTX.hapticsState[curHandIndex];
                 s.startUs = 0;
                 s.endUs = (uint64_t) (haptics.duration_s * 1000'000);
                 s.amplitude = haptics.amplitude;
@@ -646,7 +736,7 @@ void eventsThread() {
                 s.fresh = true;
                 s.buffered = false;
             } else if (event.tag == ALVR_EVENT_STREAMING_STARTED) {
-                g_ctx.streamingConfig = event.STREAMING_STARTED;
+                CTX.streamingConfig = event.STREAMING_STARTED;
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStartMethod);
             } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStopMethod);
@@ -655,196 +745,41 @@ void eventsThread() {
             }
         }
 
-        usleep(1e6 / g_ctx.refreshRate);
-    }
-}
-
-// note: until some timing optimization algorithms are in place, we poll sensor data 3 times per
-// frame to minimize latency
-void trackingThread() {
-    auto deadline = std::chrono::steady_clock::now();
-    auto interval = std::chrono::nanoseconds((uint64_t) (1e9 / g_ctx.refreshRate / 3));
-
-    auto motionVec = std::vector<AlvrDeviceMotion>();
-
-    while (g_ctx.streaming) {
-        motionVec.clear();
-        OculusHand leftHand = {false};
-        OculusHand rightHand = {false};
-
-        AlvrDeviceMotion headMotion = {};
-        uint64_t targetTimestampNs =
-                vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
-        auto headTracking =
-                vrapi_GetPredictedTracking2(g_ctx.ovrContext, (double) targetTimestampNs / 1e9);
-        headMotion.device_id = HEAD_ID;
-        memcpy(&headMotion.orientation, &headTracking.HeadPose.Pose.Orientation, 4 * 4);
-        memcpy(headMotion.position, &headTracking.HeadPose.Pose.Position, 4 * 3);
-        // Note: do not copy velocities. Avoid reprojection in SteamVR
-        motionVec.push_back(headMotion);
-
-        {
-            std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
-            // Insert from the front: it will be searched first
-            g_ctx.trackingFrameMap.push_front({targetTimestampNs, headTracking});
-            if (g_ctx.trackingFrameMap.size() > MAXIMUM_TRACKING_FRAMES) {
-                g_ctx.trackingFrameMap.pop_back();
-            }
-        }
-
-        updateButtons();
-
-        double controllerDisplayTimeS =
-                vrapi_GetTimeInSeconds() + (double) alvr_get_prediction_offset_ns() / 1e9 *
-                                           g_ctx.streamingConfig.controller_prediction_multiplier;
-
-        ovrInputCapabilityHeader capabilitiesHeader;
-        uint32_t deviceIndex = 0;
-        while (vrapi_EnumerateInputDevices(g_ctx.ovrContext, deviceIndex, &capabilitiesHeader) >=
-               0) {
-            if (capabilitiesHeader.Type == ovrControllerType_TrackedRemote) {
-                ovrInputTrackedRemoteCapabilities capabilities = {};
-                capabilities.Header = capabilitiesHeader;
-                if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
-                    ovrSuccess) {
-                    continue;
-                }
-
-                uint64_t handID;
-                if (capabilities.ControllerCapabilities & ovrControllerCaps_LeftHand) {
-                    handID = LEFT_HAND_ID;
-                } else {
-                    handID = RIGHT_HAND_ID;
-                }
-
-                ovrTracking tracking = {};
-                if (vrapi_GetInputTrackingState(g_ctx.ovrContext,
-                                                capabilities.Header.DeviceID,
-                                                controllerDisplayTimeS,
-                                                &tracking) == ovrSuccess) {
-                    AlvrDeviceMotion motion = {};
-                    motion.device_id = handID;
-                    memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
-                    memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
-                    memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
-                    memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
-
-                    motionVec.push_back(motion);
-                }
-            } else if (capabilitiesHeader.Type == ovrControllerType_Hand) {
-                ovrInputHandCapabilities capabilities;
-                capabilities.Header = capabilitiesHeader;
-                if (vrapi_GetInputDeviceCapabilities(g_ctx.ovrContext, &capabilities.Header) !=
-                    ovrSuccess) {
-                    continue;
-                }
-
-                uint64_t handID;
-                OculusHand *handRef = nullptr;
-                if (capabilities.HandCapabilities & ovrHandCaps_LeftHand) {
-                    handID = LEFT_HAND_ID;
-                    handRef = &leftHand;
-                } else {
-                    handID = RIGHT_HAND_ID;
-                    handRef = &rightHand;
-                }
-
-                ovrHandPose handPose;
-                handPose.Header.Version = ovrHandVersion_1;
-                if (vrapi_GetHandPose(g_ctx.ovrContext,
-                                      capabilities.Header.DeviceID,
-                                      controllerDisplayTimeS,
-                                      &handPose.Header) == ovrSuccess &&
-                    (handPose.Status & ovrHandTrackingStatus_Tracked)) {
-                    AlvrDeviceMotion motion = {};
-                    motion.device_id = handID;
-                    memcpy(&motion.orientation, &handPose.RootPose.Orientation, 4 * 4);
-                    memcpy(motion.position, &handPose.RootPose.Position, 4 * 3);
-                    // Note: ovrHandPose does not have velocities
-                    for (int i = 0; i < ovrHandBone_MaxSkinnable; i++) {
-                        memcpy(&handRef->bone_rotations[i], &handPose.BoneRotations[i], 4 * 4);
-                    }
-                    motionVec.push_back(motion);
-                    handRef->enabled = true;
-                }
-            }
-
-            deviceIndex++;
-        }
-
-        alvr_send_tracking(targetTimestampNs, &motionVec[0], motionVec.size(), leftHand, rightHand);
-
-        deadline += interval;
+        deadline += std::chrono::nanoseconds((uint64_t) (1e9 / CTX.refreshRate / 3));
         std::this_thread::sleep_until(deadline);
     }
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject context) {
-    env->GetJavaVM(&g_ctx.vm);
-    g_ctx.context = env->NewGlobalRef(context);
-
-    HEAD_ID = alvr_path_string_to_hash("/user/head");
-    LEFT_HAND_ID = alvr_path_string_to_hash("/user/hand/left");
-    RIGHT_HAND_ID = alvr_path_string_to_hash("/user/hand/right");
-    LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/left/output/haptic");
-    RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/right/output/haptic");
-
-    MENU_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/menu/click");
-    A_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/a/click");
-    A_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/a/touch");
-    B_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/b/click");
-    B_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/b/touch");
-    X_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/x/click");
-    X_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
-    Y_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/y/click");
-    Y_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/y/touch");
-    LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/click");
-    LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
-    LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/click");
-    LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
-    LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");
-    LEFT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/x");
-    LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/y");
-    LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/click");
-    LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/touch");
-    LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbrest/touch");
-    RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/click");
-    RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/value");
-    RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/click");
-    RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/value");
-    RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/touch");
-    RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/x");
-    RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/y");
-    RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/click");
-    RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/touch");
-    RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbrest/touch");
+    env->GetJavaVM(&CTX.vm);
+    CTX.context = env->NewGlobalRef(context);
 
     auto java = getOvrJava(true);
 
     eglInit();
 
-    memset(g_ctx.hapticsState, 0, sizeof(g_ctx.hapticsState));
+    memset(CTX.hapticsState, 0, sizeof(CTX.hapticsState));
     const ovrInitParms initParms = vrapi_DefaultInitParms(&java);
     vrapi_Initialize(&initParms);
 
-    g_ctx.recommendedViewWidth =
+    CTX.recommendedViewWidth =
             vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_WIDE) / 2;
-    g_ctx.recommendedViewHeight =
+    CTX.recommendedViewHeight =
             vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_DISPLAY_PIXELS_HIGH);
 
     auto refreshRatesCount =
             vrapi_GetSystemPropertyInt(&java, VRAPI_SYS_PROP_NUM_SUPPORTED_DISPLAY_REFRESH_RATES);
-    auto refreshRatesBuffer = vector<float>(refreshRatesCount);
+    auto refreshRatesBuffer = std::vector<float>(refreshRatesCount);
     vrapi_GetSystemPropertyFloatArray(&java,
                                       VRAPI_SYS_PROP_SUPPORTED_DISPLAY_REFRESH_RATES,
                                       &refreshRatesBuffer[0],
                                       refreshRatesCount);
 
-    alvr_initialize((void *) g_ctx.vm,
-                    (void *) g_ctx.context,
-                    g_ctx.recommendedViewWidth,
-                    g_ctx.recommendedViewHeight,
+    alvr_initialize((void *) CTX.vm,
+                    (void *) CTX.context,
+                    CTX.recommendedViewWidth,
+                    CTX.recommendedViewHeight,
                     &refreshRatesBuffer[0],
                     refreshRatesCount,
                     false);
@@ -861,14 +796,14 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
     eglDestroy();
 
     auto java = getOvrJava();
-    java.Env->DeleteGlobalRef(g_ctx.context);
+    java.Env->DeleteGlobalRef(CTX.context);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
         JNIEnv *_env, jobject _context, jobject surface) {
     auto java = getOvrJava();
 
-    g_ctx.window = ANativeWindow_fromSurface(java.Env, surface);
+    CTX.window = ANativeWindow_fromSurface(java.Env, surface);
 
     info("Entering VR mode.");
 
@@ -877,78 +812,79 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
     parms.Flags |= VRAPI_MODE_FLAG_RESET_WINDOW_FULLSCREEN;
 
     parms.Flags |= VRAPI_MODE_FLAG_NATIVE_WINDOW;
-    parms.Display = (size_t) egl.Display;
-    parms.WindowSurface = (size_t) g_ctx.window;
-    parms.ShareContext = (size_t) egl.Context;
+    parms.Display = (size_t) CTX.egl.Display;
+    parms.WindowSurface = (size_t) CTX.window;
+    parms.ShareContext = (size_t) CTX.egl.Context;
 
-    g_ctx.ovrContext = vrapi_EnterVrMode(&parms);
+    CTX.ovrContext = vrapi_EnterVrMode(&parms);
 
-    if (g_ctx.ovrContext == nullptr) {
+    if (CTX.ovrContext == nullptr) {
         error("Invalid ANativeWindow");
     }
 
     // set Color Space
     ovrHmdColorDesc colorDesc{};
     colorDesc.ColorSpace = VRAPI_COLORSPACE_RIFT_S;
-    vrapi_SetClientColorDesc(g_ctx.ovrContext, &colorDesc);
+    vrapi_SetClientColorDesc(CTX.ovrContext, &colorDesc);
 
-    vrapi_SetPerfThread(g_ctx.ovrContext, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
+    vrapi_SetPerfThread(CTX.ovrContext, VRAPI_PERF_THREAD_TYPE_MAIN, gettid());
 
-    vrapi_SetTrackingSpace(g_ctx.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
+    vrapi_SetTrackingSpace(CTX.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
 
     std::vector<int32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
-        g_ctx.lobbySwapchains[eye].inner =
+        CTX.lobbySwapchains[eye].inner =
                 vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
                                               SWAPCHAIN_FORMAT,
-                                              g_ctx.recommendedViewWidth,
-                                              g_ctx.recommendedViewHeight,
+                                              CTX.recommendedViewWidth,
+                                              CTX.recommendedViewHeight,
                                               1,
                                               3);
-        int size = vrapi_GetTextureSwapChainLength(g_ctx.lobbySwapchains[eye].inner);
+        int size = vrapi_GetTextureSwapChainLength(CTX.lobbySwapchains[eye].inner);
 
         for (int index = 0; index < size; index++) {
             auto handle =
-                    vrapi_GetTextureSwapChainHandle(g_ctx.lobbySwapchains[eye].inner, index);
+                    vrapi_GetTextureSwapChainHandle(CTX.lobbySwapchains[eye].inner, index);
             textureHandlesBuffer[eye].push_back(handle);
         }
 
-        g_ctx.lobbySwapchains[eye].index = 0;
+        CTX.lobbySwapchains[eye].index = 0;
     }
     const int32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
 
-    g_ctx.running = true;
-    g_ctx.eventsThread = std::thread(eventsThread);
+    CTX.running = true;
+    CTX.eventsThread = std::thread(eventsThread);
 
-    alvr_resume_opengl(textureHandles, textureHandlesBuffer[0].size());
+    alvr_resume_opengl(CTX.recommendedViewWidth, CTX.recommendedViewHeight, textureHandles,
+                       textureHandlesBuffer[0].size());
     alvr_resume();
 
-    vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, g_ctx.refreshRate);
+    vrapi_SetDisplayRefreshRate(CTX.ovrContext, CTX.refreshRate);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
     auto java = getOvrJava();
 
-    g_ctx.refreshRate = g_ctx.streamingConfig.fps;
+    CTX.refreshRate = CTX.streamingConfig.fps;
 
     std::vector<int32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
-        g_ctx.streamSwapchains[eye].inner =
+        CTX.streamSwapchains[eye].inner =
                 vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
                                               SWAPCHAIN_FORMAT,
-                                              g_ctx.streamingConfig.view_width,
-                                              g_ctx.streamingConfig.view_height,
+                                              CTX.streamingConfig.view_width,
+                                              CTX.streamingConfig.view_height,
                                               1,
                                               3);
-        auto size = vrapi_GetTextureSwapChainLength(g_ctx.streamSwapchains[eye].inner);
+        auto size = vrapi_GetTextureSwapChainLength(CTX.streamSwapchains[eye].inner);
 
         for (int index = 0; index < size; index++) {
-            auto handle = vrapi_GetTextureSwapChainHandle(g_ctx.streamSwapchains[eye].inner, index);
+            auto handle = vrapi_GetTextureSwapChainHandle(CTX.streamSwapchains[eye].inner, index);
             textureHandlesBuffer[eye].push_back(handle);
         }
 
-        g_ctx.streamSwapchains[eye].index = 0;
+        CTX.streamSwapchains[eye].index = 0;
     }
     const int32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
 
@@ -961,26 +897,25 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
     //    I/VrApi:
     //    FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
     // We need to set ExtraLatencyMode On to workaround for this issue.
-    vrapi_SetExtraLatencyMode(g_ctx.ovrContext,
-                              (ovrExtraLatencyMode) g_ctx.streamingConfig.extra_latency);
+    vrapi_SetExtraLatencyMode(CTX.ovrContext,
+                              (ovrExtraLatencyMode) CTX.streamingConfig.extra_latency);
 
-    ovrResult result = vrapi_SetDisplayRefreshRate(g_ctx.ovrContext, g_ctx.refreshRate);
+    ovrResult result = vrapi_SetDisplayRefreshRate(CTX.ovrContext, CTX.refreshRate);
     if (result != ovrSuccess) {
         error("Failed to set refresh rate requested by the server: %d", result);
     }
 
     vrapi_SetPropertyInt(
-            &java, VRAPI_FOVEATION_LEVEL, g_ctx.streamingConfig.oculus_foveation_level);
+            &java, VRAPI_FOVEATION_LEVEL, CTX.streamingConfig.oculus_foveation_level);
     vrapi_SetPropertyInt(
-            &java, VRAPI_DYNAMIC_FOVEATION_ENABLED, g_ctx.streamingConfig.dynamic_oculus_foveation);
+            &java, VRAPI_DYNAMIC_FOVEATION_ENABLED, CTX.streamingConfig.dynamic_oculus_foveation);
 
-    auto fov = getFov();
-
-    EyeFov fovArr[2] = {fov.first, fov.second};
-    auto ipd = getIPD();
+    ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
+    EyeFov fovArr[2] = {getFov(tracking, 0), getFov(tracking, 1)};
+    float ipd = vrapi_GetInterpupillaryDistance(&tracking);
     alvr_send_views_config(fovArr, ipd);
 
-    alvr_send_battery(HEAD_ID, g_ctx.hmdBattery, g_ctx.hmdPlugged);
+    alvr_send_battery(HEAD_ID, CTX.hmdBattery, CTX.hmdPlugged);
     alvr_send_battery(LEFT_HAND_ID, getControllerBattery(0) / 100.f, false);
     alvr_send_battery(RIGHT_HAND_ID, getControllerBattery(1) / 100.f, false);
 
@@ -990,22 +925,18 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
 
     alvr_start_stream_opengl(textureHandles, textureHandlesBuffer[0].size());
 
-    g_ctx.streaming = true;
-    g_ctx.trackingThread = std::thread(trackingThread);
+    CTX.streaming = true;
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
-    if (g_ctx.streaming) {
-        g_ctx.streaming = false;
-        g_ctx.trackingThread.join();
-    }
+    CTX.streaming = false;
 
-    if (g_ctx.streamSwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.streamSwapchains[1].inner);
-        g_ctx.streamSwapchains[0].inner = nullptr;
-        g_ctx.streamSwapchains[1].inner = nullptr;
+    if (CTX.streamSwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[1].inner);
+        CTX.streamSwapchains[0].inner = nullptr;
+        CTX.streamSwapchains[1].inner = nullptr;
     }
 }
 
@@ -1016,25 +947,25 @@ Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _cont
     alvr_pause();
     alvr_pause_opengl();
 
-    if (g_ctx.running) {
-        g_ctx.running = false;
-        g_ctx.eventsThread.join();
+    if (CTX.running) {
+        CTX.running = false;
+        CTX.eventsThread.join();
     }
-    if (g_ctx.lobbySwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(g_ctx.lobbySwapchains[1].inner);
-        g_ctx.lobbySwapchains[0].inner = nullptr;
-        g_ctx.lobbySwapchains[1].inner = nullptr;
+    if (CTX.lobbySwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(CTX.lobbySwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(CTX.lobbySwapchains[1].inner);
+        CTX.lobbySwapchains[0].inner = nullptr;
+        CTX.lobbySwapchains[1].inner = nullptr;
     }
 
-    vrapi_LeaveVrMode(g_ctx.ovrContext);
+    vrapi_LeaveVrMode(CTX.ovrContext);
 
-    g_ctx.ovrContext = nullptr;
+    CTX.ovrContext = nullptr;
 
-    if (g_ctx.window != nullptr) {
-        ANativeWindow_release(g_ctx.window);
+    if (CTX.window != nullptr) {
+        ANativeWindow_release(CTX.window);
     }
-    g_ctx.window = nullptr;
+    CTX.window = nullptr;
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -1044,7 +975,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     double displayTime;
     ovrTracking2 tracking;
 
-    if (g_ctx.streaming) {
+    if (CTX.streaming) {
         void *streamHardwareBuffer = nullptr;
         auto timestampNs = alvr_wait_for_frame(&streamHardwareBuffer);
         displayTime = (double) timestampNs / 1e9;
@@ -1056,10 +987,10 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
         updateHapticsState();
 
         {
-            std::lock_guard<std::mutex> lock(g_ctx.trackingFrameMutex);
+            std::lock_guard<std::mutex> lock(CTX.trackingFrameMutex);
 
             // Take the frame with equal timestamp, or the next closest one.
-            for (auto &pair: g_ctx.trackingFrameMap) {
+            for (auto &pair: CTX.trackingFrameMap) {
                 if (pair.first <= timestampNs) {
                     tracking = pair.second;
                     break;
@@ -1067,34 +998,44 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
             }
         }
 
-        int swapchainIndices[2] = {g_ctx.streamSwapchains[0].index,
-                                   g_ctx.streamSwapchains[1].index};
+        int swapchainIndices[2] = {CTX.streamSwapchains[0].index,
+                                   CTX.streamSwapchains[1].index};
         alvr_render_stream_opengl(streamHardwareBuffer, swapchainIndices);
 
-        double vsyncQueueS = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex) -
+        double vsyncQueueS = vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex) -
                              vrapi_GetTimeInSeconds();
         alvr_report_submit(timestampNs, vsyncQueueS * 1e9);
 
         worldLayer.HeadPose = tracking.HeadPose;
         for (int eye = 0; eye < 2; eye++) {
-            worldLayer.Textures[eye].ColorSwapChain = g_ctx.streamSwapchains[eye].inner;
-            worldLayer.Textures[eye].SwapChainIndex = g_ctx.streamSwapchains[eye].index;
-            g_ctx.streamSwapchains[eye].index = (g_ctx.streamSwapchains[eye].index + 1) % 3;
+            worldLayer.Textures[eye].ColorSwapChain = CTX.streamSwapchains[eye].inner;
+            worldLayer.Textures[eye].SwapChainIndex = CTX.streamSwapchains[eye].index;
+            CTX.streamSwapchains[eye].index = (CTX.streamSwapchains[eye].index + 1) % 3;
         }
     } else {
-        displayTime = vrapi_GetPredictedDisplayTime(g_ctx.ovrContext, g_ctx.ovrFrameIndex);
-        tracking = vrapi_GetPredictedTracking2(g_ctx.ovrContext, displayTime);
+        displayTime = vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex);
+        tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, displayTime);
 
-        AlvrEyeInput eyeInputs[2] = {trackingToEyeInput(&tracking, 0),
-                                     trackingToEyeInput(&tracking, 1)};
-        int swapchainIndices[2] = {g_ctx.lobbySwapchains[0].index,
-                                   g_ctx.lobbySwapchains[1].index};
+        AlvrEyeInput eyeInputs[2] = {};
+        int swapchainIndices[2] = {};
+        for (int eye = 0; eye < 2; eye++) {
+            auto q = tracking.HeadPose.Pose.Orientation;
+            auto v = ovrMatrix4f_Inverse(&tracking.Eye[eye].ViewMatrix);
+
+            eyeInputs[eye].orientation = AlvrQuat{q.x, q.y, q.z, q.w};
+            eyeInputs[eye].position[0] = v.M[0][3];
+            eyeInputs[eye].position[1] = v.M[1][3];
+            eyeInputs[eye].position[2] = v.M[2][3];
+            eyeInputs[eye].fov = getFov(tracking, eye);
+
+            swapchainIndices[eye] = CTX.lobbySwapchains[eye].index;
+        }
         alvr_render_lobby_opengl(eyeInputs, swapchainIndices);
 
         for (int eye = 0; eye < 2; eye++) {
-            worldLayer.Textures[eye].ColorSwapChain = g_ctx.lobbySwapchains[eye].inner;
-            worldLayer.Textures[eye].SwapChainIndex = g_ctx.lobbySwapchains[eye].index;
-            g_ctx.lobbySwapchains[eye].index = (g_ctx.lobbySwapchains[eye].index + 1) % 3;
+            worldLayer.Textures[eye].ColorSwapChain = CTX.lobbySwapchains[eye].inner;
+            worldLayer.Textures[eye].SwapChainIndex = CTX.lobbySwapchains[eye].index;
+            CTX.lobbySwapchains[eye].index = (CTX.lobbySwapchains[eye].index + 1) % 3;
         }
     }
 
@@ -1110,19 +1051,19 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     ovrSubmitFrameDescription2 frameDesc = {};
     frameDesc.Flags = 0;
     frameDesc.SwapInterval = 1;
-    frameDesc.FrameIndex = g_ctx.ovrFrameIndex;
+    frameDesc.FrameIndex = CTX.ovrFrameIndex;
     frameDesc.DisplayTime = displayTime;
     frameDesc.LayerCount = 1;
     frameDesc.Layers = layers;
 
-    vrapi_SubmitFrame2(g_ctx.ovrContext, &frameDesc);
+    vrapi_SubmitFrame2(CTX.ovrContext, &frameDesc);
 
-    g_ctx.ovrFrameIndex++;
+    CTX.ovrFrameIndex++;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
         JNIEnv *_env, jobject _context, jint battery, jboolean plugged) {
     alvr_send_battery(HEAD_ID, (float) battery / 100.f, (bool) plugged);
-    g_ctx.hmdBattery = battery;
-    g_ctx.hmdPlugged = plugged;
+    CTX.hmdBattery = battery;
+    CTX.hmdPlugged = plugged;
 }

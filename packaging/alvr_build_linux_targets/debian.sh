@@ -71,13 +71,13 @@ build_debian_server() {
 
     cd "${repoDir}" > /dev/null || return 4
     log info 'Building ALVR server ...'
+    if [ -n ${kwArgs['--no-nvidia']} ]; then
+        cargo xtask prepare-deps --platform linux --gpl
+    else
+        cargo xtask prepare-deps --platform linux --gpl --no-nvidia
+    fi
     # Cargo does NOT like quotes
     # shellcheck disable=SC2086
-    if kwArgs['--no-nvidia']; then
-        cargo xtask prepare-deps --platform linux --gpl --no-nvidia
-    else
-        cargo xtask prepare-deps --platform linux --gpl
-    fi
     if cargo xtask build-server ${kwArgs['--server-args']:---release --gpl}; then
         cd - > /dev/null || return 4
     else

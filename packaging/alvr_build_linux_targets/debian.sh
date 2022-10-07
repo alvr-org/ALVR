@@ -73,7 +73,12 @@ build_debian_server() {
     log info 'Building ALVR server ...'
     # Cargo does NOT like quotes
     # shellcheck disable=SC2086
-    if cargo xtask build-server ${kwArgs['--server-args']:---release --bundle-ffmpeg}; then
+    if kwArgs['--no-nvidia']; then
+        cargo xtask prepare-deps --platform linux --gpl --no-nvidia
+    else
+        cargo xtask prepare-deps --platform linux --gpl
+    fi
+    if cargo xtask build-server ${kwArgs['--server-args']:---release --gpl}; then
         cd - > /dev/null || return 4
     else
         cd - > /dev/null && return 4

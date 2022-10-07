@@ -167,7 +167,7 @@ main() {
             fi
         ;;
         'server')
-            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR server${kwArgs['--server-args']:+" with arguments: ${kwArgs['--server-args']} and "} with${kwArgs['--no-nvidia']+"out"} NVENC Support"
+            log info "Preparing ${PRETTY_NAME} (${ID}) to build ALVR server${kwArgs['--server-args']:+" with arguments: ${kwArgs['--server-args']} and"} with${kwArgs['--no-nvidia']+"out"} NVENC Support"
             if [ "${kwArgs['--build-only']}" != '' ] && build_"${ID}"_server; then
                 log info "${PRETTY_NAME} (${ID}) package built successfully."
             elif [ "${kwArgs['--build-only']}" != '' ]; then

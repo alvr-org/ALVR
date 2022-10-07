@@ -130,7 +130,7 @@ transform_control() {
 
     if [ "${kwArgs['--no-nvidia']}" != '' ]; then
         log info 'Removing unused nvidia build dependency ...'
-        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
+        sed -i 's/\nnvidia-cuda-toolkit,//' "${tmpDir}/control"
     fi
 
 }

@@ -20,7 +20,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, UVec2, Vec2, Vec3},
+    glam::{Quat, Vec2, Vec3},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
@@ -468,6 +468,7 @@ pub unsafe extern "C" fn alvr_resume_opengl(
 }
 
 /// Must be called after `alvr_pause()`
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_pause_opengl() {
     destroyRenderers();

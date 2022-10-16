@@ -13,7 +13,7 @@ alvr_filesystem.workspace = true
 
 env_logger = "0.9"
 # eframe = "0.19" # Change back after next release (0.19.1)
-eframe = { git = "https://github.com/emilk/egui", rev = "311eb66"}
+eframe = { git = "https://github.com/emilk/egui", rev = "311eb66", default-features = false, features = ["wgpu", "default_fonts"]}
 serde_json = "1"
 single-instance = "0.3"
 sysinfo = "0.26"

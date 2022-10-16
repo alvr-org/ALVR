@@ -1211,10 +1211,9 @@ source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc
 dependencies = [
  "bytemuck",
  "egui",
+ "egui-wgpu",
  "egui-winit",
- "egui_glow",
  "getrandom",
- "glow",
  "glutin",
  "js-sys",
  "percent-encoding",
@@ -1222,6 +1221,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "wgpu",
  "winit",
 ]
 
@@ -1237,6 +1237,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-wgpu"
+version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+dependencies = [
+ "bytemuck",
+ "egui",
+ "pollster",
+ "tracing",
+ "type-map",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "egui-winit"
 version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
@@ -1248,20 +1262,6 @@ dependencies = [
  "tracing",
  "webbrowser 0.7.1",
  "winit",
-]
-
-[[package]]
-name = "egui_glow"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
-dependencies = [
- "bytemuck",
- "egui",
- "glow",
- "memoffset",
- "tracing",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
@@ -3112,6 +3112,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pollster"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4154,6 +4160,15 @@ dependencies = [
  "thiserror",
  "url",
  "utf-8",
+]
+
+[[package]]
+name = "type-map"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deb68604048ff8fa93347f02441e4487594adc20bb8a084f9e564d2b827a0a9f"
+dependencies = [
+ "rustc-hash",
 ]
 
 [[package]]

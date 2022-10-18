@@ -1,6 +1,6 @@
 use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
-use alvr_session::SessionDesc;
-use egui::{Align, Layout, Resize, Ui};
+use alvr_session::{ClientConnectionDesc, ConnectionDesc, SessionDesc};
+use egui::{Align, Color32, Frame, Layout, Resize, RichText, Style, Ui};
 use std::cmp;
 
 const MIN_CLIENT_CARD_WIDTH: f32 = 200_f32;
@@ -32,30 +32,51 @@ impl ConnectionsTab {
     }
 
     pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
-        let available_width = ui.available_width();
+        let mut response = None;
 
-        let clients_count = 4;
+        // Get the different types of clients from the session
+        let trusted: Vec<(&String, &ClientConnectionDesc)> = session
+            .client_connections
+            .iter()
+            .filter_map(|(name, client_desc)| {
+                if client_desc.trusted {
+                    Some((name, client_desc))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let new: Vec<(&String, &ClientConnectionDesc)> = session
+            .client_connections
+            .iter()
+            .filter_map(|(name, client_desc)| {
+                if !client_desc.trusted {
+                    Some((name, client_desc))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        let cols_count = cmp::max((available_width / MIN_CLIENT_CARD_WIDTH) as usize, 1);
-
-        ui.add_space(20_f32);
-        ui.columns(cols_count, |cols| {
-            for (col, col_ui) in cols.iter_mut().enumerate() {
-                col_ui.horizontal(|ui| {
-                    ui.add_space((ui.available_width() - MIN_CLIENT_CARD_WIDTH) / 2_f32);
-
-                    ui.vertical(|ui| {
-                        for row in 0..(clients_count / cols_count + 1) {
-                            if row * cols_count + col < clients_count {
-                                client_card(ui, false);
-                                ui.add_space(20_f32);
-                            }
-                        }
+        Frame::group(ui.style())
+            .fill(Color32::DARK_GRAY.linear_multiply(0.2))
+            .show(ui, |ui| {
+                ui.label(RichText::new("New clients").size(20.0));
+                for (name, client_desc) in trusted {
+                    ui.horizontal(|ui| {
+                        ui.label(name);
+                        ui.button("Trust");
                     });
-                });
-            }
-        });
-
-        None
+                }
+            });
+        ui.add_space(10.0);
+        Frame::group(ui.style())
+            .fill(Color32::DARK_GRAY.linear_multiply(0.2))
+            .show(ui, |ui| {
+                ui.label(RichText::new("Trusted clients").size(20.0));
+            });
+        ui.add_space(10.0);
+        if ui.button("Add client manually").clicked() {}
+        response
     }
 }

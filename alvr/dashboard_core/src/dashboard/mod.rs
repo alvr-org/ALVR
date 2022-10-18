@@ -10,7 +10,7 @@ use crate::{
     translation::{self, SharedTranslation, TranslationBundle},
 };
 use alvr_events::{Event, EventType};
-use alvr_session::{SessionDesc, Theme};
+use alvr_session::{ClientConnectionDesc, ConnectionDesc, SessionDesc, Theme};
 use basic_components::ModalResponse;
 use egui::{Align, CentralPanel, ComboBox, Context, Layout, ScrollArea, SidePanel, Ui};
 use std::{
@@ -20,9 +20,11 @@ use std::{
 };
 
 pub enum ClientListAction {
-    AddIfMissing { display_name: String },
-    TrustAndMaybeAddIp(Option<IpAddr>),
-    RemoveIpOrEntry(Option<IpAddr>),
+    AddOrUpdate {
+        name: String,
+        client_desc: ClientConnectionDesc,
+    },
+    RemoveEntry(String),
 }
 
 pub struct ConnectionsResponse {

@@ -8,8 +8,8 @@ use alvr_events::{GraphStatistics, Statistics};
 use egui::{
     emath,
     plot::{Line, Plot, PlotPoints},
-    popup, pos2, vec2, Align2, Color32, FontId, Frame, Id, Label, Layout, Pos2, Rect, RichText,
-    Rounding, Shape, Stroke, Ui,
+    popup, pos2, vec2, Align, Align2, Color32, FontId, Frame, Id, Label, Layout, Pos2, Rect,
+    RichText, Rounding, Shape, Stroke, Ui,
 };
 
 pub struct StatisticsTab {
@@ -22,10 +22,10 @@ pub struct StatisticsTab {
 mod graph_colors {
     pub const RENDER: egui::Color32 = egui::Color32::RED;
     pub const NETWORK: egui::Color32 = egui::Color32::DARK_GRAY;
-    pub const TRANSCODE: egui::Color32 = egui::Color32::LIGHT_BLUE;
+    pub const TRANSCODE: egui::Color32 = egui::Color32::BLUE;
     pub const IDLE: egui::Color32 = egui::Color32::GOLD;
     pub const SERVER_FPS: egui::Color32 = egui::Color32::GOLD;
-    pub const CLIENT_FPS: egui::Color32 = egui::Color32::LIGHT_BLUE;
+    pub const CLIENT_FPS: egui::Color32 = egui::Color32::BLUE;
 }
 
 impl StatisticsTab {
@@ -54,6 +54,7 @@ impl StatisticsTab {
         ui.vertical(|ui| {
             self.draw_latency_graph(ui);
             self.draw_fps_graph(ui);
+            self.draw_statistics_overview(ui);
         });
 
         None
@@ -150,57 +151,32 @@ impl StatisticsTab {
                     {
                         Some(graph) => {
                             ui.label(&format!(
-                                "{}: {:.2}ms",
-                                self.trans.attribute("latency", "total"),
+                                "Total latency: {:.2}ms",
                                 graph.total_pipeline_latency_s
                             ));
                             ui.colored_label(
                                 graph_colors::IDLE,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "client-compositor"),
-                                    graph.client_compositor_s
-                                ),
+                                &format!("Client compositor: {:.2}ms", graph.client_compositor_s),
                             );
                             ui.colored_label(
                                 graph_colors::TRANSCODE,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "decode"),
-                                    graph.decoder_s
-                                ),
+                                &format!("Decode: {:.2}ms", graph.decoder_s),
                             );
                             ui.colored_label(
                                 graph_colors::NETWORK,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "network"),
-                                    graph.network_s
-                                ),
+                                &format!("Network: {:.2}ms", graph.network_s),
                             );
                             ui.colored_label(
                                 graph_colors::TRANSCODE,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "encode"),
-                                    graph.encoder_s
-                                ),
+                                &format!("Encode: {:.2}ms", graph.encoder_s),
                             );
                             ui.colored_label(
                                 graph_colors::IDLE,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "server-compositor"),
-                                    graph.server_compositor_s
-                                ),
+                                &format!("Server compositor: {:.2}ms", graph.server_compositor_s),
                             );
                             ui.colored_label(
                                 graph_colors::RENDER,
-                                &format!(
-                                    "{}: {:.2}ms",
-                                    self.trans.attribute("latency", "render"),
-                                    graph.game_time_s
-                                ),
+                                &format!("Render: {:.2}ms", graph.game_time_s),
                             );
                         }
                         None => {}
@@ -210,30 +186,12 @@ impl StatisticsTab {
             None => (),
         }
         ui.horizontal(|ui| {
-            ui.colored_label(
-                graph_colors::IDLE,
-                self.trans.attribute("latency", "client-compositor"),
-            );
-            ui.colored_label(
-                graph_colors::TRANSCODE,
-                self.trans.attribute("latency", "decode"),
-            );
-            ui.colored_label(
-                graph_colors::NETWORK,
-                self.trans.attribute("latency", "network"),
-            );
-            ui.colored_label(
-                graph_colors::TRANSCODE,
-                self.trans.attribute("latency", "encode"),
-            );
-            ui.colored_label(
-                graph_colors::IDLE,
-                self.trans.attribute("latency", "server-compositor"),
-            );
-            ui.colored_label(
-                graph_colors::RENDER,
-                self.trans.attribute("latency", "render"),
-            );
+            ui.colored_label(graph_colors::IDLE, "Client compositor");
+            ui.colored_label(graph_colors::TRANSCODE, "Decode");
+            ui.colored_label(graph_colors::NETWORK, "Network");
+            ui.colored_label(graph_colors::TRANSCODE, "Encode");
+            ui.colored_label(graph_colors::IDLE, "Server compositor");
+            ui.colored_label(graph_colors::RENDER, "Render");
         });
     }
 
@@ -331,19 +289,11 @@ impl StatisticsTab {
                         Some(graph) => {
                             ui.colored_label(
                                 graph_colors::CLIENT_FPS,
-                                format!(
-                                    "{}: {:.2}",
-                                    self.trans.get("client-fps"),
-                                    graph.client_fps
-                                ),
+                                format!("Client FPS: {:.2}", graph.client_fps),
                             );
                             ui.colored_label(
                                 graph_colors::SERVER_FPS,
-                                format!(
-                                    "{}: {:.2}",
-                                    self.trans.get("server-fps"),
-                                    graph.server_fps
-                                ),
+                                format!("Server FPS: {:.2}", graph.server_fps),
                             );
                         }
                         None => (),
@@ -353,8 +303,50 @@ impl StatisticsTab {
             None => (),
         }
         ui.horizontal(|ui| {
-            ui.colored_label(graph_colors::CLIENT_FPS, self.trans.get("client-fps"));
-            ui.colored_label(graph_colors::SERVER_FPS, self.trans.get("server-fps"));
+            ui.colored_label(graph_colors::CLIENT_FPS, "Client FPS");
+            ui.colored_label(graph_colors::SERVER_FPS, "Server FPS");
+        });
+    }
+
+    fn draw_statistics_overview(&self, ui: &mut Ui) {
+        let statistics = self.last_statistics.clone().unwrap_or_default();
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.label("Total packets:");
+                //ui.label("Total packets lost:");
+                ui.label("Total sent:");
+                ui.label("Total sent:");
+                ui.label("Bitrate:");
+                //ui.label("Ping:");
+                ui.label("Total latency:");
+                ui.label("Encoder latency:");
+                ui.label("Transport latency:");
+                ui.label("Decoder latency:");
+                ui.label("Fec percentage:");
+                ui.label("Fec failure total:");
+                ui.label("Client FPS:");
+                ui.label("Server FPS:");
+            });
+            ui.vertical(|ui| {
+                ui.label(&format!(
+                    "{} packets ({} packets/s)",
+                    statistics.video_packets_total, statistics.video_packets_per_sec
+                ));
+                ui.label(&format!("{} packets", statistics.video_packets_total));
+                ui.label(&format!("{} MB", statistics.video_mbytes_total));
+                ui.label(&format!("{} Mbps", statistics.video_mbits_per_sec));
+                ui.label(&format!("{} ms", statistics.total_latency_ms));
+                ui.label(&format!("{} ms", statistics.encode_latency_ms));
+                ui.label(&format!("{} ms", statistics.network_latency_ms));
+                ui.label(&format!("{} ms", statistics.decode_latency_ms));
+                ui.label(&format!("{} %", statistics.fec_percentage));
+                ui.label(&format!(
+                    "{} packets ({} packets/s)",
+                    statistics.fec_errors_total, statistics.fec_errors_per_sec
+                ));
+                ui.label(&format!("{} FPS", statistics.client_fps));
+                ui.label(&format!("{} FPS", statistics.server_fps));
+            });
         });
     }
 }

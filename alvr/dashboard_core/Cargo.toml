@@ -3,7 +3,7 @@ name = "dashboard_core"
 version = "0.1.0"
 authors = ["alvr-org"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 alvr_common = { path = "../common" }

@@ -11,7 +11,7 @@ pub enum EventSeverity {
 }
 
 // todo: remove some unused statistics
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")] // todo: remove casing conversion
 pub struct Statistics {
     pub video_packets_total: usize,
@@ -32,7 +32,7 @@ pub struct Statistics {
     pub battery_right: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")] // todo: remove casing conversion
 pub struct GraphStatistics {
     pub total_pipeline_latency_s: f32,

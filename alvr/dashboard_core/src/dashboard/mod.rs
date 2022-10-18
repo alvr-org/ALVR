@@ -123,7 +123,7 @@ impl Dashboard {
                 (Tab::About, format!("ℹ {}", translation_bundle.get("about"))),
             ]
             .into_iter()
-            .map(|val| (*val).clone())
+            .map(|val| val.clone())
             .collect(),
             language_label: format!("🌐 {}", translation_bundle.get("language")),
             connections_tab: ConnectionsTab::new(&translation_bundle),

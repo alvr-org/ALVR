@@ -12,13 +12,13 @@ alvr_session.workspace = true
 alvr_sockets.workspace = true
 
 cpal = { version = "0.14", features = ["jack"] }
-rodio = { git = "https://github.com/RustAudio/rodio" }
+rodio = "0.16"
 serde = "1"
 tokio = "1"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "1"
-windows = { version = "0.41", features = [
+windows = { version = "0.42", features = [
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio_Endpoints",

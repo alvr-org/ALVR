@@ -168,7 +168,6 @@ fn make_window() -> StrResult {
         eframe::run_native(
             "ALVR Launcher",
             eframe::NativeOptions {
-                vsync: false, // Fix "NoAvailablePixelFormat" error under nvidia (possibly wayland related?)
                 centered: true,
                 initial_window_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
                 resizable: false,

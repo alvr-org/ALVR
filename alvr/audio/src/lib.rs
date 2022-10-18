@@ -13,9 +13,6 @@ use std::{
 };
 use tokio::sync::mpsc as tmpsc;
 
-#[cfg(windows)]
-use windows::Win32::Media::Audio::IMMDevice;
-
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     vec![
         ("CABLE Input".into(), "CABLE Output".into()),
@@ -173,7 +170,7 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
 }
 
 #[cfg(windows)]
-fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
+fn get_windows_device(device: &AudioDevice) -> StrResult<windows::Win32::Media::Audio::IMMDevice> {
     use widestring::U16CStr;
     use windows::Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
@@ -184,7 +181,7 @@ fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
     let device_name = device.inner.name().map_err(err!())?;
 
     unsafe {
-        // This will fail the second time is called, ignore it
+        // This will fail the second time is called, ignore the error
         Com::CoInitializeEx(None, COINIT_MULTITHREADED).ok();
 
         let imm_device_enumerator: IMMDeviceEnumerator =

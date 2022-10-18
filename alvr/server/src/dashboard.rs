@@ -1,4 +1,4 @@
-use crate::{SERVER_DATA_MANAGER, WINDOW};
+use crate::{WindowType, SERVER_DATA_MANAGER, WINDOW};
 use alvr_common::prelude::*;
 use std::{fs, sync::Arc};
 
@@ -31,6 +31,7 @@ pub fn get_screen_size() -> StrResult<(u32, u32)> {
     Ok((0, 0))
 }
 
+const SERVER_URL: &str = "http://127.0.0.1:8082";
 // this thread gets interrupted when SteamVR closes
 // todo: handle this in a better way
 pub fn ui_thread() -> StrResult {
@@ -50,39 +51,48 @@ pub fn ui_thread() -> StrResult {
     let user_data_dir = temp_dir.path();
     fs::File::create(temp_dir.path().join("FirstLaunchAfterInstallation")).map_err(err!())?;
 
-    let window = Arc::new(
-        alcro::UIBuilder::new()
-            .content(alcro::Content::Url("http://127.0.0.1:8082"))
-            .user_data_dir(user_data_dir)
-            .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
-            .custom_args(&[
-                "--disk-cache-size=1",
-                &format!("--window-position={pos_left},{pos_top}"),
-                if SERVER_DATA_MANAGER
-                    .read()
-                    .settings()
-                    .extra
-                    .patches
-                    .remove_sync_popup
-                {
-                    "--enable-automation"
-                } else {
-                    ""
-                },
-            ])
-            .run()
-            .map_err(err!())?,
-    );
+    let window = alcro::UIBuilder::new()
+        .content(alcro::Content::Url(SERVER_URL))
+        .user_data_dir(user_data_dir)
+        .size(WINDOW_WIDTH as _, WINDOW_HEIGHT as _)
+        .custom_args(&[
+            "--disk-cache-size=1",
+            &format!("--window-position={pos_left},{pos_top}"),
+            if SERVER_DATA_MANAGER
+                .read()
+                .settings()
+                .extra
+                .patches
+                .remove_sync_popup
+            {
+                "--enable-automation"
+            } else {
+                ""
+            },
+        ])
+        .run();
 
-    *WINDOW.lock() = Some(Arc::clone(&window));
+    // Use non-chrome browser if no chromium browser found
+    if matches!(window, Err(alcro::UILaunchError::LocateChromeError(_))) {
+        webbrowser::open(SERVER_URL).map_err(err!())?;
+        return Ok(());
+    }
 
-    window.wait_finish();
+    let window_type = Arc::new(WindowType::Alcro(window.map_err(err!())?));
 
-    // prevent panic on window.close()
-    *WINDOW.lock() = None;
-    crate::shutdown_runtime();
+    if let WindowType::Alcro(window) = window_type.as_ref() {
+        *WINDOW.lock() = Some(Arc::clone(&window_type));
 
-    unsafe { crate::ShutdownSteamvr() };
+        window.wait_finish();
+
+        // prevent panic on window.close()
+        *WINDOW.lock() = None;
+        crate::shutdown_runtime();
+
+        unsafe { crate::ShutdownSteamvr() };
+    } else {
+        panic!("Not an Alcro window.");
+    }
 
     Ok(())
 }

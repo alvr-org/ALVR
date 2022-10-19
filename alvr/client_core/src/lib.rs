@@ -6,10 +6,10 @@
 )]
 
 mod connection;
-mod connection_utils;
 mod decoder;
 mod logging_backend;
 mod platform;
+mod sockets;
 mod statistics;
 mod storage;
 
@@ -38,14 +38,14 @@ use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr},
     ptr, slice,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 use storage::Config;
-use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
+use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
-static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
 static TRACKING_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
@@ -53,12 +53,14 @@ static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatisti
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static ON_DESTROY_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
+static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
+
+static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 
 #[repr(u8)]
 pub enum AlvrCodec {
@@ -218,26 +220,18 @@ pub unsafe extern "C" fn alvr_initialize(
         reserved: format!("{}", *ALVR_VERSION),
     };
 
-    let runtime = Runtime::new().unwrap();
-
-    runtime.spawn(async move {
-        let connection_loop = connection::connection_lifecycle_loop(headset_info);
-
-        tokio::select! {
-            _ = connection_loop => (),
-            _ = ON_DESTROY_NOTIFIER.notified() => ()
-        };
-    });
-
-    *RUNTIME.lock() = Some(runtime);
+    *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
+        connection::connection_lifecycle_loop(headset_info).ok();
+    }));
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_destroy() {
-    ON_DESTROY_NOTIFIER.notify_waiters();
+    IS_ALIVE.set(false);
 
-    // shutdown and wait for tasks to finish
-    drop(RUNTIME.lock().take());
+    if let Some(thread) = CONNECTION_THREAD.lock().take() {
+        thread.join().ok();
+    }
 }
 
 #[no_mangle]

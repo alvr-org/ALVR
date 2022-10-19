@@ -1,7 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Quat, UVec2, Vec2, Vec3},
     semver::Version,
 };
 use alvr_events::ButtonValue;
@@ -174,10 +174,14 @@ pub enum PathSegment {
     Index(usize),
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ClientListAction {
-    AddIfMissing { display_name: String },
-    TrustAndMaybeAddIp(Option<IpAddr>),
-    RemoveIpOrEntry(Option<IpAddr>),
+    AddIfMissing,
+    SetDisplayName(String),
+    Trust,
+    AddIp(IpAddr),
+    RemoveIp(IpAddr),
+    RemoveEntry,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -192,4 +196,11 @@ pub struct ClientStatistics {
     // Note: This is used for the controller prediction.
     // NB: This contains also the tracking packet send latency so it might lead to overprediction
     pub average_total_pipeline_latency: Duration,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VideoStreamingCapabilities {
+    pub default_view_resolution: UVec2,
+    pub supported_refresh_rates: Vec<f32>,
+    pub microphone_sample_rate: u32,
 }

@@ -1,8 +1,8 @@
 mod buttons;
 mod connection;
-mod connection_utils;
 mod dashboard;
 mod logging_backend;
+mod sockets;
 mod statistics;
 mod tracking;
 mod web_server;
@@ -23,7 +23,8 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
-    ALVR_VERSION,
+    prelude::*,
+    RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -52,7 +53,8 @@ static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
-static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
+static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
+    Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
@@ -63,10 +65,8 @@ static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPa
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 
-static CLIENTS_UPDATED_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -75,6 +75,8 @@ static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
 static COLOR_CORRECTION_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
+
+static IS_ALIVE: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
 pub enum WindowType {
     Alcro(alcro::UI),
@@ -122,8 +124,11 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
     }
 }
 
-pub fn shutdown_runtime() {
+pub fn shutdown_runtimes() {
     alvr_events::send_event(EventType::ServerQuitting);
+
+    // Shutsdown all connection runtimes
+    IS_ALIVE.set(false);
 
     if let Some(window_type) = WINDOW.lock().take() {
         match window_type.as_ref() {
@@ -132,15 +137,7 @@ pub fn shutdown_runtime() {
         }
     }
 
-    SHUTDOWN_NOTIFIER.notify_waiters();
-
-    if let Some(runtime) = RUNTIME.lock().take() {
-        runtime.shutdown_background();
-        // shutdown_background() is non blocking and it does not guarantee that every internal
-        // thread is terminated in a timely manner. Using shutdown_background() instead of just
-        // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
-        // much as possible before the process is killed because of alvr_launcher timeout.
-    }
+    WEBSERVER_RUNTIME.lock().take();
 }
 
 pub fn notify_shutdown_driver() {
@@ -150,7 +147,7 @@ pub fn notify_shutdown_driver() {
         // give time to the control loop to send the restart packet (not crucial)
         thread::sleep(Duration::from_millis(100));
 
-        shutdown_runtime();
+        shutdown_runtimes();
 
         unsafe { ShutdownSteamvr() };
     });
@@ -173,37 +170,28 @@ fn init() {
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
-    if let Some(runtime) = RUNTIME.lock().as_mut() {
+    if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
         // Acquire and drop the data manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
         SERVER_DATA_MANAGER.write().session_mut();
 
-        runtime.spawn(async move {
-            let connections = SERVER_DATA_MANAGER
-                .read()
-                .session()
-                .client_connections
-                .clone();
-            for (hostname, connection) in connections {
-                if !connection.trusted {
-                    SERVER_DATA_MANAGER.write().update_client_list(
-                        hostname,
-                        ClientListAction::RemoveIpOrEntry(None),
-                        Some(&CLIENTS_UPDATED_NOTIFIER),
-                    );
-                }
+        let connections = SERVER_DATA_MANAGER
+            .read()
+            .session()
+            .client_connections
+            .clone();
+        for (hostname, connection) in connections {
+            if !connection.trusted {
+                SERVER_DATA_MANAGER
+                    .write()
+                    .update_client_list(hostname, ClientListAction::RemoveEntry);
             }
+        }
 
-            let web_server = alvr_common::show_err_async(web_server::web_server(
-                log_sender,
-                events_sender.clone(),
-            ));
-
-            tokio::select! {
-                _ = web_server => (),
-                _ = SHUTDOWN_NOTIFIER.notified() => (),
-            }
-        });
+        runtime.spawn(alvr_common::show_err_async(web_server::web_server(
+            log_sender,
+            events_sender,
+        )));
 
         thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
@@ -346,23 +334,24 @@ pub unsafe extern "C" fn HmdDriverFactory(
             FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
         ));
 
-        if let Some(runtime) = &mut *RUNTIME.lock() {
-            runtime.spawn(async move {
-                if set_default_chap {
-                    // call this when inside a new tokio thread. Calling this on the parent thread will
-                    // crash SteamVR
-                    unsafe { SetChaperone(2.0, 2.0) };
-                }
-                tokio::select! {
-                    _ = connection::connection_lifecycle_loop() => (),
-                    _ = SHUTDOWN_NOTIFIER.notified() => (),
-                }
-            });
-        }
+        IS_ALIVE.set(true);
+
+        thread::spawn(move || {
+            if set_default_chap {
+                // call this when inside a new tokio thread. Calling this on the parent thread will
+                // crash SteamVR
+                unsafe { SetChaperone(2.0, 2.0) };
+            }
+
+            if let Err(InterruptibleError::Other(e)) = connection::handshake_loop() {
+                error!("Connection thread closed: {e}");
+                // warn!("Connection thread closed: {e}");
+            }
+        });
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtime();
+        shutdown_runtimes();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {

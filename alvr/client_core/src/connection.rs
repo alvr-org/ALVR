@@ -1,22 +1,18 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    connection_utils::{self, ConnectionError},
-    decoder::DECODER_INIT_CONFIG,
-    platform,
-    statistics::StatisticsManager,
-    storage::Config,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_RESUMED,
-    IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    decoder::DECODER_INIT_CONFIG, sockets::AnnouncerSocket, statistics::StatisticsManager,
+    storage::Config, AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER,
+    EVENT_QUEUE, IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER,
+    TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
-    ClientHandshakePacket, Haptics, HeadsetInfoPacket, PeerType, ProtoControlSocket,
-    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO,
-    HAPTICS, STATISTICS, TRACKING, VIDEO,
+    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket, Haptics,
+    HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, StreamSocketBuilder,
+    VideoFrameHeaderPacket, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
@@ -25,37 +21,38 @@ use glyph_brush_layout::{
 };
 use serde_json as json;
 use settings_schema::Switch;
-use std::{future, sync::Arc, time::Duration};
+use std::{future, net::IpAddr, sync::Arc, thread, time::Duration};
 use tokio::{
+    runtime::Runtime,
     sync::{mpsc as tmpsc, Mutex},
     time,
 };
-
-#[cfg(target_os = "android")]
-use crate::decoder::{DECODER_DEQUEUER, DECODER_ENQUEUER};
 
 #[cfg(target_os = "android")]
 use crate::audio;
 #[cfg(not(target_os = "android"))]
 use alvr_audio as audio;
 
-const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
+const INITIAL_MESSAGE: &str = concat!(
+    "Searching for server...\n",
+    "Open ALVR on your PC then click \"Trust\"\n",
+    "next to the client entry",
+);
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
-const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"Trust\"\nnext to the client entry";
 const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Server and client have\n",
     "incompatible types.\n",
     "Please update either the app\n",
-    "on the PC or on the headset"
+    "on the PC or on the headset",
 );
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
-const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
+const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
-const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
+const CONNECTION_ERROR_PAUSE: Duration = Duration::from_millis(500);
 
 const HUD_TEXTURE_WIDTH: usize = 1280;
 const HUD_TEXTURE_HEIGHT: usize = 720;
@@ -112,83 +109,107 @@ fn set_hud_message(message: &str) {
     };
 }
 
-async fn connection_pipeline(
-    headset_info: HeadsetInfoPacket,
+pub fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) -> IntResult {
+    set_hud_message(INITIAL_MESSAGE);
+
+    let decoder_guard = Arc::new(Mutex::new(()));
+
+    loop {
+        check_interrupt!(IS_ALIVE.value());
+
+        match connection_pipeline(&headset_info, Arc::clone(&decoder_guard)) {
+            Ok(()) => continue,
+            Err(InterruptibleError::Interrupted) => return Ok(()),
+            Err(InterruptibleError::Other(e)) => {
+                let message = format!("Connection error:\n{e}\nCheck the PC for more details");
+                error!("{message}");
+                set_hud_message(&message);
+
+                // avoid spamming error messages
+                thread::sleep(CONNECTION_ERROR_PAUSE);
+            }
+        }
+    }
+}
+
+fn connection_pipeline(
+    headset_info: &HeadsetInfoPacket,
     decoder_guard: Arc<Mutex<()>>,
-) -> StrResult {
-    let device_name = platform::device_name();
-    let hostname = Config::load().hostname;
+) -> IntResult {
+    let runtime = Runtime::new().map_err(to_int_e!())?;
 
-    let handshake_packet = ClientHandshakePacket {
-        alvr_name: ALVR_NAME.into(),
-        version: ALVR_VERSION.clone(),
-        device_name,
-        hostname,
-        reserved1: "".into(),
-        reserved2: "".into(),
-    };
+    let (mut proto_control_socket, server_ip) = {
+        let config = Config::load();
+        let announcer_socket = AnnouncerSocket::new(&config.hostname).map_err(to_int_e!())?;
+        let listener_socket = runtime
+            .block_on(alvr_sockets::get_server_listener())
+            .map_err(to_int_e!())?;
 
-    let (mut proto_socket, server_ip) = tokio::select! {
-        res = connection_utils::announce_client_loop(handshake_packet) => {
-            match res? {
-                ConnectionError::ServerMessage(message) => {
-                    info!("Server response: {message:?}");
-                    let message_str = match message {
-                        ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
-                        ServerHandshakePacket::IncompatibleVersions =>
-                            INCOMPATIBLE_VERSIONS_MESSAGE,
-                    };
-                    set_hud_message(message_str);
-                    return Ok(());
-                }
-                ConnectionError::NetworkUnreachable => {
-                    info!("Network unreachable");
-                    set_hud_message(
-                        NETWORK_UNREACHABLE_MESSAGE,
-                    );
+        loop {
+            check_interrupt!(IS_ALIVE.value());
 
-                    time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
+            if let Err(e) = announcer_socket.broadcast() {
+                warn!("Broadcast error: {e}");
 
-                    set_hud_message(
-                        INITIAL_MESSAGE,
-                    );
+                set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
 
-                    return Ok(());
-                }
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+
+                set_hud_message(INITIAL_MESSAGE);
+
+                return Ok(());
             }
-        },
-        pair = async {
-            loop {
-                if let Ok(pair) = ProtoControlSocket::connect_to(PeerType::Server).await {
-                    break pair;
-                }
 
-                time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
+            let maybe_pair = runtime.block_on(async {
+                tokio::select! {
+                    maybe_pair = ProtoControlSocket::connect_to(PeerType::Server(&listener_socket)) => {
+                        maybe_pair.map_err(to_int_e!())
+                    },
+                    _ = time::sleep(DISCOVERY_RETRY_PAUSE) => Err(InterruptibleError::Interrupted)
+                }
+            });
+
+            if let Ok(pair) = maybe_pair {
+                break pair;
             }
-        } => pair
+        }
     };
 
     if !IS_RESUMED.value() {
         info!("Not streaming because not resumed");
-        proto_socket
-            .send(&ClientConnectionResult::ClientStandby)
-            .await
-            .map_err(err!())?;
-        return Ok(());
+        return runtime
+            .block_on(proto_control_socket.send(&ClientConnectionResult::ClientStandby))
+            .map_err(to_int_e!());
     }
 
-    proto_socket
-        .send(&ClientConnectionResult::ServerAccepted {
-            headset_info,
-            server_ip,
-        })
-        .await
-        .map_err(err!())?;
-    let config_packet = proto_socket
-        .recv::<ClientConfigPacket>()
-        .await
-        .map_err(err!())?;
+    runtime
+        .block_on(
+            proto_control_socket.send(&ClientConnectionResult::ServerAccepted {
+                headset_info: headset_info.clone(),
+                server_ip,
+            }),
+        )
+        .map_err(to_int_e!())?;
+    let config_packet = runtime
+        .block_on(proto_control_socket.recv::<ClientConfigPacket>())
+        .map_err(to_int_e!())?;
 
+    runtime
+        .block_on(stream_pipeline(
+            proto_control_socket,
+            config_packet,
+            server_ip,
+            decoder_guard,
+        ))
+        .map_err(to_int_e!())
+}
+
+async fn stream_pipeline(
+    proto_socket: ProtoControlSocket,
+    config_packet: ClientConfigPacket,
+    server_ip: IpAddr,
+    decoder_guard: Arc<Mutex<()>>,
+) -> StrResult {
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -427,8 +448,8 @@ async fn connection_pipeline(
 
                     #[cfg(target_os = "android")]
                     {
-                        *DECODER_ENQUEUER.lock() = None;
-                        *DECODER_DEQUEUER.lock() = None;
+                        *crate::decoder::DECODER_ENQUEUER.lock() = None;
+                        *crate::decoder::DECODER_DEQUEUER.lock() = None;
                     }
                 }
             }
@@ -607,30 +628,5 @@ async fn connection_pipeline(
         // res = debug_loop => res,
 
         _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
-    }
-}
-
-pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
-    set_hud_message(INITIAL_MESSAGE);
-
-    let decoder_guard = Arc::new(Mutex::new(()));
-
-    loop {
-        tokio::join!(
-            async {
-                let maybe_error =
-                    connection_pipeline(headset_info.clone(), Arc::clone(&decoder_guard)).await;
-
-                if let Err(e) = maybe_error {
-                    let message = format!("Connection error:\n{e}\nCheck the PC for more details");
-                    error!("{message}");
-                    set_hud_message(&message);
-                }
-
-                // let any running task or socket shutdown
-                time::sleep(CLEANUP_PAUSE).await;
-            },
-            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
-        );
     }
 }

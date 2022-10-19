@@ -136,3 +136,29 @@ macro_rules! enone {
         || format!("At {}:{}", file!(), line!())
     };
 }
+
+#[macro_export]
+macro_rules! int_fmt_e {
+    ($($args:tt)+) => {
+        Err(InterruptibleError::Other(format!($($args)+)))
+    };
+}
+
+#[macro_export]
+macro_rules! int_e {
+    () => {
+        |e| match e {
+            InterruptibleError::Interrupted => InterruptibleError::Interrupted,
+            InterruptibleError::Other(e) => {
+                InterruptibleError::Other(format!("At {}:{}: {e}", file!(), line!()))
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! to_int_e {
+    () => {
+        |e| InterruptibleError::Other(format!("At {}:{}: {e}", file!(), line!()))
+    };
+}

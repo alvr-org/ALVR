@@ -8,19 +8,18 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, Vec2},
+    glam::{Quat, UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    semver::Version,
     HEAD_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
-    ClientListAction, ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType,
-    ProtoControlSocket, ServerControlPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
+    spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
+    ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
+    ServerControlPacket, StreamConfigPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
     KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
@@ -30,7 +29,6 @@ use std::{
     future,
     net::IpAddr,
     process::Command,
-    str::FromStr,
     sync::{mpsc as smpsc, Arc},
     thread,
     time::Duration,
@@ -45,6 +43,8 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
 static CONNECTED_CLIENT_HOSTNAMES: Lazy<parking_lot::Mutex<HashSet<String>>> =
     Lazy::new(|| parking_lot::Mutex::new(HashSet::new()));
+static STREAMING_CLIENT_HOSTNAME: Lazy<parking_lot::Mutex<Option<String>>> =
+    Lazy::new(|| parking_lot::Mutex::new(None));
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -114,7 +114,7 @@ pub fn handshake_loop() -> IntResult {
                 match try_connect([(client_ip, client_hostname.clone())].into_iter().collect()) {
                     Ok(()) => continue,
                     // use error!(): usually errors should not happen here
-                    Err(e) => error!("Handshake error for {client_hostname}: {e}"),
+                    Err(e) => warn!("Handshake error for {client_hostname}: {e}"),
                 }
             }
         }
@@ -132,47 +132,60 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         )))
         .map_err(to_int_e!())?;
 
-    let (headset_info, server_ip) = if let ClientConnectionResult::ServerAccepted {
-        headset_info,
-        server_ip,
-    } =
-        runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
+    // Safety: this never panics because client_ip is picked from client_ips keys
+    let client_hostname = client_ips.remove(&client_ip).unwrap();
+
+    let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
+        display_name,
+        server_ip: _,
+        streaming_capabilities,
+    } = runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
     {
-        (headset_info, server_ip)
+        SERVER_DATA_MANAGER.write().update_client_list(
+            client_hostname.clone(),
+            ClientListAction::SetDisplayName(display_name),
+        );
+
+        streaming_capabilities
     } else {
         debug!("Found client in standby. Retrying");
         return Ok(());
     };
 
-    // Safety: this never panics because client_ip is picked from client_ips keys
-    let client_hostname = client_ips.remove(&client_ip).unwrap();
+    let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
+        if let Some(hostname) = &*STREAMING_CLIENT_HOSTNAME.lock() {
+            return int_fmt_e!("Streaming client {hostname} is already connected!");
+        } else {
+            streaming_caps
+        }
+    } else {
+        return int_fmt_e!("Only streaming clients are supported for now");
+    };
 
     let settings = SERVER_DATA_MANAGER.read().settings().clone();
 
-    let (eye_width, eye_height) = match settings.video.render_resolution {
-        FrameSize::Scale(scale) => (
-            headset_info.recommended_eye_width as f32 * scale,
-            headset_info.recommended_eye_height as f32 * scale,
-        ),
-        FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32),
+    let stream_view_resolution = match settings.video.render_resolution {
+        FrameSize::Scale(scale) => streaming_caps.default_view_resolution.as_vec2() * scale,
+        FrameSize::Absolute { width, height } => Vec2::new(width as f32 / 2_f32, height as f32),
     };
-    let video_eye_width = align32(eye_width);
-    let video_eye_height = align32(eye_height);
+    let stream_view_resolution = UVec2::new(
+        align32(stream_view_resolution.x),
+        align32(stream_view_resolution.y),
+    );
 
-    let (eye_width, eye_height) = match settings.video.recommended_target_resolution {
-        FrameSize::Scale(scale) => (
-            headset_info.recommended_eye_width as f32 * scale,
-            headset_info.recommended_eye_height as f32 * scale,
-        ),
-        FrameSize::Absolute { width, height } => (width as f32 / 2_f32, height as f32),
+    let target_view_resolution = match settings.video.recommended_target_resolution {
+        FrameSize::Scale(scale) => streaming_caps.default_view_resolution.as_vec2() * scale,
+        FrameSize::Absolute { width, height } => Vec2::new(width as f32 / 2_f32, height as f32),
     };
-    let target_eye_width = align32(eye_width);
-    let target_eye_height = align32(eye_height);
+    let target_view_resolution = UVec2::new(
+        align32(target_view_resolution.x),
+        align32(target_view_resolution.y),
+    );
 
     let fps = {
         let mut best_match = 0_f32;
         let mut min_diff = f32::MAX;
-        for rr in &headset_info.available_refresh_rates {
+        for rr in &streaming_caps.supported_refresh_rates {
             let diff = (*rr - settings.video.preferred_fps).abs();
             if diff < min_diff {
                 best_match = *rr;
@@ -182,17 +195,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         best_match
     };
 
-    if !headset_info
-        .available_refresh_rates
+    if !streaming_caps
+        .supported_refresh_rates
         .contains(&settings.video.preferred_fps)
     {
         warn!("Chosen refresh rate not supported. Using {fps}Hz");
     }
-
-    let dashboard_url = format!(
-        "http://{server_ip}:{}/",
-        settings.connection.web_server_port
-    );
 
     let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
     {
@@ -221,9 +229,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         0
     };
 
-    let version = Version::from_str(&headset_info.reserved).ok();
-
-    let client_config = ClientConfigPacket {
+    let client_config = StreamConfigPacket {
         session_desc: {
             let mut session = SERVER_DATA_MANAGER.read().session().clone();
             if cfg!(target_os = "linux") {
@@ -232,13 +238,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
             serde_json::to_string(&session).map_err(to_int_e!())?
         },
-        dashboard_url,
-        view_resolution_width: video_eye_width,
-        view_resolution_height: video_eye_height,
+        view_resolution: stream_view_resolution,
         fps,
         game_audio_sample_rate,
-        reserved: "".into(),
-        server_version: version,
     };
     runtime
         .block_on(proto_socket.send(&client_config))
@@ -378,10 +380,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         headset_manufacturer_name: settings.headset.manufacturer_name,
         headset_render_model_name: settings.headset.render_model_name,
         headset_registered_device_type: settings.headset.registered_device_type,
-        eye_resolution_width: video_eye_width,
-        eye_resolution_height: video_eye_height,
-        target_eye_resolution_width: target_eye_width,
-        target_eye_resolution_height: target_eye_height,
+        eye_resolution_width: stream_view_resolution.x,
+        eye_resolution_height: stream_view_resolution.y,
+        target_eye_resolution_width: target_view_resolution.x,
+        target_eye_resolution_height: target_view_resolution.y,
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
         force_3dof: settings.headset.force_3dof,
         tracking_ref_only: settings.headset.tracking_ref_only,
@@ -474,6 +476,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .lock()
         .insert(client_hostname.clone());
 
+    *STREAMING_CLIENT_HOSTNAME.lock() = Some(client_hostname.clone());
+
     thread::spawn(move || {
         runtime.block_on(async move {
             // this is a bridge between sync and async, skips the needs for a notifier
@@ -488,7 +492,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     client_ip,
                     control_sender,
                     control_receiver,
-                    headset_info.microphone_sample_rate,
+                    streaming_caps.microphone_sample_rate,
                 ) => {
                     show_warn(res);
                 },
@@ -496,6 +500,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 _ = shutdown_detector => (),
             };
         });
+
+        {
+            let mut streaming_hostname_mut = STREAMING_CLIENT_HOSTNAME.lock();
+            if let Some(hostname) = streaming_hostname_mut.clone() {
+                if hostname == client_hostname {
+                    *streaming_hostname_mut = None
+                }
+            }
+        }
 
         CONNECTED_CLIENT_HOSTNAMES.lock().remove(&client_hostname);
     });

@@ -1,9 +1,6 @@
 use std::{net::IpAddr, time::Duration};
 
-use alvr_common::{
-    glam::{Quat, UVec2, Vec2, Vec3},
-    semver::Version,
-};
+use alvr_common::glam::{Quat, UVec2, Vec2, Vec3};
 use alvr_events::ButtonValue;
 use serde::{Deserialize, Serialize};
 
@@ -23,63 +20,28 @@ pub struct Fov {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ClientHandshakePacket {
-    pub alvr_name: String,
-    pub version: Version,
-    pub device_name: String,
-    pub hostname: String,
-
-    // reserved field is used to add features between major releases: the schema of the packet
-    // should never change anymore (required only for this packet).
-    pub reserved1: String,
-    pub reserved2: String,
-}
-
-// Since this packet is not essential, any change to it will not be a braking change
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ServerHandshakePacket {
-    ClientUntrusted,
-    IncompatibleVersions,
-}
-
-#[derive(Serialize, Deserialize)]
-pub enum HandshakePacket {
-    Client(ClientHandshakePacket),
-    Server(ServerHandshakePacket),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct HeadsetInfoPacket {
-    pub recommended_eye_width: u32,
-    pub recommended_eye_height: u32,
-    pub available_refresh_rates: Vec<f32>,
-    pub preferred_refresh_rate: f32,
+pub struct VideoStreamingCapabilities {
+    pub default_view_resolution: UVec2,
+    pub supported_refresh_rates: Vec<f32>,
     pub microphone_sample_rate: u32,
-
-    // reserved field is used to add features in a minor release that otherwise would break the
-    // packets schema
-    pub reserved: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientConnectionResult {
-    ServerAccepted {
-        headset_info: HeadsetInfoPacket,
+    ConnectionAccepted {
+        display_name: String,
         server_ip: IpAddr,
+        streaming_capabilities: Option<VideoStreamingCapabilities>,
     },
     ClientStandby,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ClientConfigPacket {
+pub struct StreamConfigPacket {
     pub session_desc: String, // transfer session as string to allow for extrapolation
-    pub dashboard_url: String,
-    pub view_resolution_width: u32,
-    pub view_resolution_height: u32,
+    pub view_resolution: UVec2,
     pub fps: f32,
     pub game_audio_sample_rate: u32,
-    pub reserved: String,
-    pub server_version: Option<Version>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -196,11 +158,4 @@ pub struct ClientStatistics {
     // Note: This is used for the controller prediction.
     // NB: This contains also the tracking packet send latency so it might lead to overprediction
     pub average_total_pipeline_latency: Duration,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct VideoStreamingCapabilities {
-    pub default_view_resolution: UVec2,
-    pub supported_refresh_rates: Vec<f32>,
-    pub microphone_sample_rate: u32,
 }

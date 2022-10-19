@@ -18,19 +18,16 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
-    RelaxedAtomic, ALVR_VERSION,
+    RelaxedAtomic,
 };
 use alvr_events::ButtonValue;
-use alvr_session::AudioDeviceId;
 use alvr_sockets::{
-    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, HeadsetInfoPacket,
-    Tracking, ViewsConfig,
+    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, Tracking, ViewsConfig,
 };
 use decoder::EXTERNAL_DECODER;
 use statistics::StatisticsManager;
@@ -201,27 +198,14 @@ pub unsafe extern "C" fn alvr_initialize(
 
     EXTERNAL_DECODER.set(external_decoder);
 
-    let available_refresh_rates =
+    let recommended_view_resolution = UVec2::new(recommended_view_width, recommended_view_height);
+
+    let supported_refresh_rates =
         slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
-    let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
-
-    let microphone_sample_rate =
-        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
-            .unwrap()
-            .input_sample_rate()
-            .unwrap();
-
-    let headset_info = HeadsetInfoPacket {
-        recommended_eye_width: recommended_view_width as _,
-        recommended_eye_height: recommended_view_height as _,
-        available_refresh_rates,
-        preferred_refresh_rate,
-        microphone_sample_rate,
-        reserved: format!("{}", *ALVR_VERSION),
-    };
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
-        connection::connection_lifecycle_loop(headset_info).ok();
+        connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
+            .ok();
     }));
 }
 

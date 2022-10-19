@@ -1,18 +1,19 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::DECODER_INIT_CONFIG, sockets::AnnouncerSocket, statistics::StatisticsManager,
-    storage::Config, AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER,
-    EVENT_QUEUE, IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER,
-    TRACKING_SENDER,
+    decoder::DECODER_INIT_CONFIG, platform, sockets::AnnouncerSocket,
+    statistics::StatisticsManager, storage::Config, AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER,
+    DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
+    STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{prelude::*, ALVR_VERSION};
+use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
 use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket, Haptics,
-    HeadsetInfoPacket, PeerType, ProtoControlSocket, ServerControlPacket, StreamSocketBuilder,
-    VideoFrameHeaderPacket, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    spawn_cancelable, ClientConnectionResult, ClientControlPacket, Haptics, PeerType,
+    ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
+    VideoFrameHeaderPacket, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
+    VIDEO,
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
@@ -109,7 +110,10 @@ fn set_hud_message(message: &str) {
     };
 }
 
-pub fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) -> IntResult {
+pub fn connection_lifecycle_loop(
+    recommended_view_resolution: UVec2,
+    supported_refresh_rates: Vec<f32>,
+) -> IntResult {
     set_hud_message(INITIAL_MESSAGE);
 
     let decoder_guard = Arc::new(Mutex::new(()));
@@ -117,7 +121,11 @@ pub fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) -> IntResult {
     loop {
         check_interrupt!(IS_ALIVE.value());
 
-        match connection_pipeline(&headset_info, Arc::clone(&decoder_guard)) {
+        match connection_pipeline(
+            recommended_view_resolution,
+            supported_refresh_rates.clone(),
+            Arc::clone(&decoder_guard),
+        ) {
             Ok(()) => continue,
             Err(InterruptibleError::Interrupted) => return Ok(()),
             Err(InterruptibleError::Other(e)) => {
@@ -133,7 +141,8 @@ pub fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) -> IntResult {
 }
 
 fn connection_pipeline(
-    headset_info: &HeadsetInfoPacket,
+    recommended_view_resolution: UVec2,
+    supported_refresh_rates: Vec<f32>,
     decoder_guard: Arc<Mutex<()>>,
 ) -> IntResult {
     let runtime = Runtime::new().map_err(to_int_e!())?;
@@ -182,16 +191,27 @@ fn connection_pipeline(
             .map_err(to_int_e!());
     }
 
+    let microphone_sample_rate =
+        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
+            .unwrap()
+            .input_sample_rate()
+            .unwrap();
+
     runtime
         .block_on(
-            proto_control_socket.send(&ClientConnectionResult::ServerAccepted {
-                headset_info: headset_info.clone(),
+            proto_control_socket.send(&ClientConnectionResult::ConnectionAccepted {
+                display_name: platform::device_name(),
                 server_ip,
+                streaming_capabilities: Some(VideoStreamingCapabilities {
+                    default_view_resolution: recommended_view_resolution,
+                    supported_refresh_rates,
+                    microphone_sample_rate,
+                }),
             }),
         )
         .map_err(to_int_e!())?;
     let config_packet = runtime
-        .block_on(proto_control_socket.recv::<ClientConfigPacket>())
+        .block_on(proto_control_socket.recv::<StreamConfigPacket>())
         .map_err(to_int_e!())?;
 
     runtime
@@ -206,7 +226,7 @@ fn connection_pipeline(
 
 async fn stream_pipeline(
     proto_socket: ProtoControlSocket,
-    config_packet: ClientConfigPacket,
+    stream_config: StreamConfigPacket,
     server_ip: IpAddr,
     decoder_guard: Arc<Mutex<()>>,
 ) -> StrResult {
@@ -238,7 +258,7 @@ async fn stream_pipeline(
     let settings = {
         let mut session_desc = SessionDesc::default();
         session_desc
-            .merge_from_json(&json::from_str(&config_packet.session_desc).map_err(err!())?)?;
+            .merge_from_json(&json::from_str(&stream_config.session_desc).map_err(err!())?)?;
         session_desc.to_settings()
     };
 
@@ -293,8 +313,8 @@ async fn stream_pipeline(
     #[cfg(target_os = "android")]
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
-            viewWidth: config_packet.view_resolution_width,
-            viewHeight: config_packet.view_resolution_height,
+            viewWidth: stream_config.view_resolution.x,
+            viewHeight: stream_config.view_resolution.y,
             enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
@@ -341,25 +361,6 @@ async fn stream_pipeline(
         });
     }
 
-    // setup stream loops
-
-    // let (debug_sender, mut debug_receiver) = tmpsc::unbounded_channel();
-    // let debug_loop = {
-    //     let control_sender = Arc::clone(&control_sender);
-    //     async move {
-    //         while let Some(data) = debug_receiver.recv().await {
-    //             control_sender
-    //                 .lock()
-    //                 .await
-    //                 .send(&ClientControlPacket::Reserved(data))
-    //                 .await
-    //                 .ok();
-    //         }
-
-    //         Ok(())
-    //     }
-    // };
-
     let tracking_send_loop = {
         let mut socket_sender = stream_socket.request_stream(TRACKING).await?;
         async move {
@@ -402,9 +403,9 @@ async fn stream_pipeline(
     };
 
     let streaming_start_event = AlvrEvent::StreamingStarted {
-        view_width: config_packet.view_resolution_width as _,
-        view_height: config_packet.view_resolution_height as _,
-        fps: config_packet.fps,
+        view_width: stream_config.view_resolution.x,
+        view_height: stream_config.view_resolution.y,
+        fps: stream_config.fps,
         oculus_foveation_level: if let Switch::Enabled(foveation_vars) =
             &settings.video.foveated_rendering
         {
@@ -531,7 +532,7 @@ async fn stream_pipeline(
         Box::pin(audio::play_audio_loop(
             device,
             2,
-            config_packet.game_audio_sample_rate,
+            stream_config.game_audio_sample_rate,
             desc.buffering_config,
             game_audio_receiver,
         ))
@@ -625,7 +626,6 @@ async fn stream_pipeline(
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
         res = control_receive_loop => res,
-        // res = debug_loop => res,
 
         _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
     }

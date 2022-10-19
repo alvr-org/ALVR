@@ -36,8 +36,7 @@ use decoder::EXTERNAL_DECODER;
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
-    ffi::{c_void, CStr},
-    os::raw::c_char,
+    ffi::{c_char, c_void, CStr},
     ptr, slice,
     time::{Duration, Instant},
 };

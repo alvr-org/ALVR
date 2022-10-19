@@ -1,7 +1,7 @@
 use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
-use std::{collections::VecDeque, os::raw::c_char, ptr, time::Duration};
+use std::{collections::VecDeque, ffi::c_char, ptr, time::Duration};
 
 #[cfg(target_os = "android")]
 use alvr_common::prelude::*;

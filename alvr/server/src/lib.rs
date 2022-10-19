@@ -33,8 +33,7 @@ use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket}
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
-    ffi::{c_void, CStr, CString},
-    os::raw::c_char,
+    ffi::{c_char, c_void, CStr, CString},
     ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},

@@ -62,7 +62,7 @@ winit = "0.27" # needed to get the screen size
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.60"
+bindgen = "0.61"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 

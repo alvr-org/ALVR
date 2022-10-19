@@ -3,7 +3,7 @@ use alvr_common::{
     prelude::*,
 };
 use alvr_session::{CodecType, MediacodecDataType};
-use jni::{sys::jobject, JavaVM};
+use jni::{objects::JObject, sys::jobject, JavaVM};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
@@ -33,7 +33,7 @@ pub fn try_get_microphone_permission() {
 
     let permission_status = env
         .call_method(
-            context(),
+            unsafe { JObject::from_raw(context()) },
             "checkSelfPermission",
             "(Ljava/lang/String;)I",
             &[mic_perm_jstring.into()],
@@ -49,10 +49,10 @@ pub fn try_get_microphone_permission() {
             .unwrap();
 
         env.call_method(
-            context(),
+            unsafe { JObject::from_raw(context()) },
             "requestPermissions",
             "([Ljava/lang/String;I)V",
-            &[perm_array.into(), 0.into()],
+            &[unsafe { JObject::from_raw(perm_array) }.into(), 0.into()],
         )
         .unwrap();
 

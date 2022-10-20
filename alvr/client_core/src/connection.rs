@@ -269,6 +269,8 @@ async fn stream_pipeline(
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         settings.connection.stream_port,
         settings.connection.stream_protocol,
+        settings.connection.client_send_buffer_bytes,
+        settings.connection.client_recv_buffer_bytes,
     )
     .await?;
 

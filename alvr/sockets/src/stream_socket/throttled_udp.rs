@@ -1,4 +1,3 @@
-use crate::LOCAL_IP;
 use alvr_common::prelude::*;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::{Stream, StreamExt};
@@ -84,6 +83,7 @@ impl Stream for ThrottledUdpStreamReceiveSocket {
 }
 
 pub async fn connect_to_client(
+    socket: UdpSocket,
     client_ip: IpAddr,
     port: u16,
     video_byterate: u32,
@@ -93,7 +93,6 @@ pub async fn connect_to_client(
     ThrottledUdpStreamReceiveSocket,
 )> {
     let client_addr: SocketAddr = (client_ip, port).into();
-    let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
     socket.connect(client_addr).await.map_err(err!())?;
 
     let rx = Arc::new(socket);
@@ -120,10 +119,6 @@ pub async fn connect_to_client(
             buffer: BytesMut::new(),
         },
     ))
-}
-
-pub async fn listen_for_server(port: u16) -> StrResult<UdpSocket> {
-    UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())
 }
 
 pub async fn accept_from_server(

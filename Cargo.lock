@@ -294,6 +294,7 @@ dependencies = [
  "governor",
  "nonzero_ext 0.3.0",
  "serde",
+ "socket2",
  "tokio",
  "tokio-util",
 ]

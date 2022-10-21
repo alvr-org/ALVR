@@ -38,7 +38,6 @@ struct ALVRLauncher {
 
 impl ALVRLauncher {
     fn new(_cc: &eframe::CreationContext<'_>, state: Arc<Mutex<State>>) -> Self {
-        // _cc.egui_ctx.
         Self { state }
     }
 }
@@ -73,7 +72,7 @@ fn launcher_lifecycle(state: Arc<Mutex<State>>) {
         let maybe_response = request_agent.get("http://127.0.0.1:8082/index.html").call();
         if let Ok(response) = maybe_response {
             if response.status() == 200 {
-                state.lock().unwrap().view = View::Close;
+                std::process::exit(0);
                 break;
             }
         }

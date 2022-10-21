@@ -25,7 +25,6 @@ const FONT_SIZE: f32 = 20.0;
 enum View {
     RequirementsCheck { steamvr: String },
     Launching { resetting: bool },
-    Close,
 }
 
 struct State {
@@ -73,7 +72,6 @@ fn launcher_lifecycle(state: Arc<Mutex<State>>) {
         if let Ok(response) = maybe_response {
             if response.status() == 200 {
                 std::process::exit(0);
-                break;
             }
         }
 
@@ -112,7 +110,7 @@ fn text(text: impl Into<String>) -> RichText {
 }
 
 impl eframe::App for ALVRLauncher {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical_centered(|ui| match &self.state.lock().unwrap().view.clone() {
                 View::RequirementsCheck { steamvr } => {
@@ -131,7 +129,6 @@ impl eframe::App for ALVRLauncher {
                         ui.label(text("Please wait for multiple restarts"));
                     }
                 }
-                View::Close => frame.close(),
             });
         });
     }

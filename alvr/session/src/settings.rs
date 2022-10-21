@@ -342,15 +342,6 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(advanced, min = 0.0, max = 1.0, step = 0.01)]
-    pub prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_hmd_prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_ctrl_prediction_multiplier: f32,
-
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
@@ -422,8 +413,17 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub registered_device_type: String,
 
-    #[schema(advanced)]
-    pub tracking_frame_offset: i32,
+    #[schema(advanced, min = 0.0, max = 1.0, step = 0.05)]
+    pub clientside_controller_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -20, max = 20)]
+    pub tracking_latency_offset_ms: i64,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_hmd_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_ctrl_prediction_multiplier: f32,
 
     #[schema(advanced)]
     pub position_offset: [f32; 3],
@@ -732,7 +732,10 @@ pub fn session_settings_default() -> SettingsDefault {
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
-            tracking_frame_offset: 0,
+            clientside_controller_prediction_multiplier: 0.5,
+            tracking_latency_offset_ms: -3,
+            steamvr_hmd_prediction_multiplier: 0.5,
+            steamvr_ctrl_prediction_multiplier: 0.5,
             position_offset: [0., 0., 0.],
             force_3dof: false,
             tracking_ref_only: false,
@@ -751,9 +754,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    prediction_multiplier: 1.0,
-                    steamvr_hmd_prediction_multiplier: 1.0,
-                    steamvr_ctrl_prediction_multiplier: 0.0,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],

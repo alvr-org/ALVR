@@ -280,8 +280,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         false
     };
 
-    let mut steamvr_hmd_prediction_multiplier = 0.0;
-    let mut steamvr_ctrl_prediction_multiplier = 0.0;
     let mut controllers_mode_idx = 0;
     let mut controllers_tracking_system_name = "".into();
     let mut controllers_manufacturer_name = "".into();
@@ -304,8 +302,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut haptics_low_duration_range = 0.0;
     let mut use_headset_tracking_system = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
-        steamvr_hmd_prediction_multiplier = config.steamvr_hmd_prediction_multiplier;
-        steamvr_ctrl_prediction_multiplier = config.steamvr_ctrl_prediction_multiplier;
         controllers_mode_idx = config.mode_idx;
         controllers_tracking_system_name = config.tracking_system_name.clone();
         controllers_manufacturer_name = config.manufacturer_name.clone();
@@ -408,8 +404,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         bitrate_light_load_threshold,
         position_offset: settings.headset.position_offset,
         controllers_enabled,
-        steamvr_hmd_prediction_multiplier,
-        steamvr_ctrl_prediction_multiplier,
         controllers_mode_idx,
         controllers_tracking_system_name,
         controllers_manufacturer_name,
@@ -775,23 +769,10 @@ async fn connection_pipeline(
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
         async move {
-            let hmd_multiplier = settings
-                .headset
-                .controllers
-                .clone()
-                .into_option()
-                .map(|c| c.steamvr_hmd_prediction_multiplier)
-                .unwrap_or_default()
-                * -1.0;
-
-            let controller_multiplier = settings
-                .headset
-                .controllers
-                .clone()
-                .into_option()
-                .map(|c| c.steamvr_ctrl_prediction_multiplier)
-                .unwrap_or_default()
-                * -1.0;
+            let tracking_latency_offset_s =
+                settings.headset.tracking_latency_offset_ms as f32 / 1000.;
+            let hmd_multiplier = settings.headset.steamvr_hmd_prediction_multiplier;
+            let controller_multiplier = settings.headset.steamvr_ctrl_prediction_multiplier;
 
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
@@ -855,10 +836,14 @@ async fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    let head_prediction_s =
-                        LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32() * hmd_multiplier;
-                    let controllers_prediction_s =
-                        LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32() * controller_multiplier;
+                    let head_prediction_s = tracking_latency_offset_s
+                        + (LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32()
+                            + tracking_latency_offset_s)
+                            * hmd_multiplier;
+                    let controllers_prediction_s = tracking_latency_offset_s
+                        + (LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32()
+                            + tracking_latency_offset_s)
+                            * controller_multiplier;
 
                     unsafe {
                         crate::SetTracking(

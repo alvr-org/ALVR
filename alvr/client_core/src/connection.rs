@@ -425,10 +425,7 @@ async fn stream_pipeline(
         extra_latency: settings.headset.extra_latency_mode,
         controller_prediction_multiplier: settings
             .headset
-            .controllers
-            .into_option()
-            .map(|c| c.prediction_multiplier)
-            .unwrap_or_default(),
+            .clientside_controller_prediction_multiplier,
     };
 
     let video_receive_loop = {

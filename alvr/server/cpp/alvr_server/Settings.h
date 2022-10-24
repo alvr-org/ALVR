@@ -74,6 +74,11 @@ public:
 	uint64_t m_adaptiveBitrateDownRate;
 	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
+	bool m_usePreproc;
+	uint32_t m_preProcSigma;
+	uint32_t m_preProcTor;
+	uint32_t m_h264QualityPreset;
+	uint32_t m_h265QualityPreset;
 	bool m_force_sw_encoding;
 	uint32_t m_swThreadCount;
 

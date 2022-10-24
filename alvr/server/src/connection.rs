@@ -366,6 +366,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     };
 
     let nvenc_overrides = settings.video.advanced_codec_options.nvenc_overrides;
+    let amf_controls = settings.video.advanced_codec_options.amf_controls;
 
     let new_openvr_config = OpenvrConfig {
         universe_id: settings.headset.universe_id,
@@ -389,6 +390,11 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,
+        use_preproc: amf_controls.use_preproc,
+        preproc_sigma: amf_controls.preproc_sigma,
+        preproc_tor: amf_controls.preproc_tor,
+        h264_quality_preset: amf_controls.h264_quality_preset as u32,
+        h265_quality_preset: amf_controls.h265_quality_preset as u32,
         force_sw_encoding: settings.video.force_sw_encoding,
         sw_thread_count: settings.video.sw_thread_count,
         encode_bitrate_mbs: settings.video.encode_bitrate_mbs,

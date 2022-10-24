@@ -17,7 +17,7 @@ AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver)
 
 AMFPipe::~AMFPipe() 
 {
-	Debug("AMFPipe::Shutdown() m_amfComponentSrc->Drain\n");
+	Debug("AMFPipe::~AMFPipe()  m_amfComponentSrc->Drain\n");
 	m_amfComponentSrc->Drain();
 }
 
@@ -80,9 +80,9 @@ AMFPipeline::~AMFPipeline()
 	if (m_thread) 
 	{
 		isRunning = false;
-		Debug("AMFPipeline::Shutdown() m_thread->join\n");
+		Debug("AMFPipeline::~AMFPipeline() m_thread->join\n");
 		m_thread->join();
-		Debug("AMFPipeline::Shutdown() joined.\n");
+		Debug("AMFPipeline::~AMFPipeline() m_thread joined.\n");
 		delete m_thread;
 		m_thread = nullptr;
 	}

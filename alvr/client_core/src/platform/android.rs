@@ -1,6 +1,8 @@
+use crate::decoder::DecoderInitConfig;
 use alvr_common::{
     parking_lot::{Condvar, Mutex},
     prelude::*,
+    RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use jni::{objects::JObject, sys::jobject, JavaVM};
@@ -13,9 +15,17 @@ use ndk::{
         },
     },
 };
-use std::{ffi::c_void, sync::Arc, time::Duration};
+use std::{
+    collections::VecDeque,
+    ffi::c_void,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
+const IMAGE_READER_DEADLOCK_TIMEOUT: Duration = Duration::from_millis(100);
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
@@ -74,8 +84,26 @@ pub fn device_name() -> String {
     device_name_raw.to_string_lossy().as_ref().to_owned()
 }
 
+struct FakeThreadSafe<T>(T);
+unsafe impl<T> Send for FakeThreadSafe<T> {}
+unsafe impl<T> Sync for FakeThreadSafe<T> {}
+
+impl<T> Deref for FakeThreadSafe<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for FakeThreadSafe<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+}
+
 pub struct VideoDecoderEnqueuer {
-    inner: Arc<MediaCodec>,
+    inner: Arc<FakeThreadSafe<MediaCodec>>,
 }
 
 unsafe impl Send for VideoDecoderEnqueuer {}
@@ -110,113 +138,96 @@ impl VideoDecoderEnqueuer {
     }
 }
 
-#[derive(Debug)]
-pub enum DecoderDequeuedData {
-    Frame {
-        buffer_ptr: *mut c_void,
-        timestamp: Duration,
-    },
-    TryAgainLater,
-    OtherNonFatal,
+pub struct DequeuedFrame {
+    pub timestamp: Duration,
+    pub buffer_ptr: *mut c_void,
 }
 
+struct QueuedImage {
+    timestamp: Duration,
+    image: Image,
+    in_use: bool,
+}
+unsafe impl Send for QueuedImage {}
+
+// Access the image queue synchronously.
 pub struct VideoDecoderDequeuer {
-    inner: Option<Arc<MediaCodec>>,
-    image_reader: Option<ImageReader>,
-    acquired_image: Arc<Mutex<StrResult<Option<Image>>>>,
-    image_acquired_notifier: Arc<Condvar>,
+    running: Arc<RelaxedAtomic>,
+    dequeue_thread: Option<JoinHandle<()>>,
+    image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
+    max_images: usize,
+    buffering_running_average: f32,
 }
 
 unsafe impl Send for VideoDecoderDequeuer {}
 
 impl VideoDecoderDequeuer {
-    // dequeue_timeout: Should be small.
-    // deadlock_timeout: Should be not too small, not too large. When this timeout is reached an
-    // error is returned and the client should be disconnected
-    pub fn dequeue_frame(
-        &self,
-        dequeue_timeout: Duration,  // should be small
-        deadlock_timeout: Duration, // should be not too small not too large
-    ) -> StrResult<DecoderDequeuedData> {
-        let mut acquired_image_ref = self.acquired_image.lock();
+    // The application MUST finish using the returned buffer before calling this function again
+    pub fn dequeue_frame(&mut self) -> Option<DequeuedFrame> {
+        let mut image_queue_lock = self.image_queue.lock();
 
-        match self
-            .inner
-            .as_ref()
-            .unwrap()
-            .dequeue_output_buffer(dequeue_timeout)
-        {
-            MediaCodecResult::Ok(buffer) => {
-                // The buffer timestamp is actually nanoseconds
-                let timestamp = Duration::from_nanos(buffer.presentation_time_us() as _);
+        if let Some(queued_image) = image_queue_lock.front() {
+            if queued_image.in_use {
+                // image is released and ready to be reused by the decoder
+                image_queue_lock.pop_front();
+            }
+        }
 
-                self.inner
-                    .as_ref()
+        const HISTORY_WEIGHT: f32 = 0.99;
+
+        // use running average to give more weight to recent samples
+        self.buffering_running_average = self.buffering_running_average as f32 * HISTORY_WEIGHT
+            + image_queue_lock.len() as f32 * (1. - HISTORY_WEIGHT);
+        if self.buffering_running_average > self.max_images as f32 {
+            image_queue_lock.pop_front();
+        }
+
+        if let Some(queued_image) = image_queue_lock.front_mut() {
+            queued_image.in_use = true;
+
+            Some(DequeuedFrame {
+                timestamp: queued_image.timestamp,
+                buffer_ptr: queued_image
+                    .image
+                    .get_hardware_buffer()
                     .unwrap()
-                    .release_output_buffer(buffer, true)
-                    .map_err(err!())?;
+                    .as_ptr()
+                    .cast(),
+            })
+        } else {
+            warn!("Video frame queue underflow!");
 
-                // Note: parking_lot::Condvar has no spurious wakeups
-                if self
-                    .image_acquired_notifier
-                    .wait_for(&mut acquired_image_ref, deadlock_timeout)
-                    .timed_out()
-                {
-                    return fmt_e!("ImageReader stalled");
-                }
-
-                match &*acquired_image_ref {
-                    Ok(Some(image)) => Ok(DecoderDequeuedData::Frame {
-                        buffer_ptr: image.get_hardware_buffer().map_err(err!())?.as_ptr().cast(),
-                        timestamp,
-                    }),
-                    Ok(None) => fmt_e!("No buffer available"),
-                    Err(e) => fmt_e!("{e}"),
-                }
-            }
-            MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => {
-                Ok(DecoderDequeuedData::TryAgainLater)
-            }
-            MediaCodecResult::Info(_) => Ok(DecoderDequeuedData::OtherNonFatal),
-            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+            None
         }
     }
 }
 
 impl Drop for VideoDecoderDequeuer {
     fn drop(&mut self) {
-        // Make sure the ImageReader surface is not used anymore. Destroy the decoder
-        drop(self.inner.take());
+        self.running.set(false);
 
-        // Make sure there is no lingering image form the ImageReader
-        *self.acquired_image.lock() = Ok(None);
-
-        // Finally destroy the ImageReader
-        // FIXME: it still crashes!
-        // drop(self.image_reader.take());
-
-        // Since I cannot destroy the ImageReader, leak its memory
-        // THIS IS VERY WRONG. todo: find solution ASAP
-        error!("Leaking ImageReader. FIXME");
-        Box::leak(Box::new(self.image_reader.take()));
+        // Destruction of decoder, buffered images and ImageReader
+        self.dequeue_thread.take().map(|t| t.join());
     }
 }
 
 pub fn video_decoder_split(
-    codec_type: CodecType,
+    config: DecoderInitConfig,
     csd_0: &[u8],
-    extra_options: &[(String, MediacodecDataType)],
+    dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
 ) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
-    let mut image_reader = ImageReader::new_with_usage(
+    let image_reader = ImageReader::new_with_usage(
         1,
         1,
         ImageFormat::PRIVATE,
         HardwareBufferUsage::GPU_SAMPLED_IMAGE,
-        5,
+        2 * config.max_buffering_frames as i32 + 2,
+        // 2x: keep the target buffering in the middle of the max amount of queuable frames
+        // + 1 for decoder (internal) + 1 for rendering (in_use == true)
     )
     .unwrap();
 
-    let mime = match codec_type {
+    let mime = match config.codec {
         CodecType::H264 => "video/avc",
         CodecType::HEVC => "video/hevc",
     };
@@ -227,16 +238,18 @@ pub fn video_decoder_split(
     format.set_i32("height", 1024);
     format.set_buffer("csd-0", csd_0);
 
-    for (key, value) in extra_options {
+    for (key, value) in config.options {
         match value {
-            MediacodecDataType::Float(value) => format.set_f32(key, *value),
-            MediacodecDataType::Int32(value) => format.set_i32(key, *value),
-            MediacodecDataType::Int64(value) => format.set_i64(key, *value),
-            MediacodecDataType::String(value) => format.set_str(key, value),
+            MediacodecDataType::Float(value) => format.set_f32(&key, value),
+            MediacodecDataType::Int32(value) => format.set_i32(&key, value),
+            MediacodecDataType::Int64(value) => format.set_i64(&key, value),
+            MediacodecDataType::String(value) => format.set_str(&key, &value),
         }
     }
 
-    let decoder = Arc::new(MediaCodec::from_decoder_type(mime).ok_or_else(enone!())?);
+    let decoder = Arc::new(FakeThreadSafe(
+        MediaCodec::from_decoder_type(mime).ok_or_else(enone!())?,
+    ));
     decoder
         .configure(
             &format,
@@ -246,36 +259,137 @@ pub fn video_decoder_split(
         .map_err(err!())?;
     decoder.start().map_err(err!())?;
 
-    let acquired_image = Arc::new(Mutex::new(Ok(None)));
-    let image_acquired_notifier = Arc::new(Condvar::new());
+    let mut image_reader = FakeThreadSafe(image_reader);
+    let running = Arc::new(RelaxedAtomic::new(true));
+    let image_queue = Arc::new(Mutex::new(VecDeque::<QueuedImage>::new()));
 
-    image_reader
-        .set_image_listener(Box::new({
-            let acquired_image = Arc::clone(&acquired_image);
-            let image_acquired_notifier = Arc::clone(&image_acquired_notifier);
-            move |image_reader| {
-                let mut acquired_image_lock = acquired_image.lock();
-                *acquired_image_lock = image_reader.acquire_latest_image().map_err(err!());
-                image_acquired_notifier.notify_one();
+    let dequeue_thread = thread::spawn({
+        let running = Arc::clone(&running);
+        let decoder = Arc::clone(&decoder);
+        let image_queue = Arc::clone(&image_queue);
+        move || {
+            let acquired_image = Arc::new(Mutex::new(Ok(None)));
+            let image_acquired_notifier = Arc::new(Condvar::new());
+
+            image_reader
+                .set_image_listener(Box::new({
+                    let acquired_image = Arc::clone(&acquired_image);
+                    let image_acquired_notifier = Arc::clone(&image_acquired_notifier);
+                    move |image_reader| {
+                        let mut acquired_image_lock = acquired_image.lock();
+                        *acquired_image_lock = image_reader.acquire_next_image().map_err(err!());
+                        image_acquired_notifier.notify_one();
+                    }
+                }))
+                .unwrap();
+
+            // Documentation says that this call is necessary to properly dispose acquired buffers.
+            // todo: find out how to use it and avoid leaking the ImageReader
+            image_reader
+                .set_buffer_removed_listener(Box::new(|_, _| ()))
+                .unwrap();
+
+            let mut overflow_logged = false;
+            while running.value() {
+                // Check if there is any image ready to be used by the decoder, ie the queue is not
+                // full. in this case use a simple loop, no need for anything fancier since this is
+                // an exceptional situation.
+                // Note: max_frames + 3 is the max amount of frames that the queue can hold (+ 1 for
+                // rendering + 2 for leeway)
+                if image_queue.lock().len() > 2 * config.max_buffering_frames {
+                    // use a flag to avoid flooding the logcat
+                    if !overflow_logged {
+                        warn!("Video frame queue overflow!");
+                        overflow_logged = true;
+                    }
+
+                    thread::sleep(Duration::from_millis(1));
+
+                    continue;
+                } else {
+                    overflow_logged = false;
+                }
+
+                let mut acquired_image_ref = acquired_image.lock();
+
+                match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
+                    MediaCodecResult::Ok(buffer) => {
+                        // The buffer timestamp is actually nanoseconds
+                        let timestamp = Duration::from_nanos(buffer.presentation_time_us() as _);
+
+                        if let Err(e) = decoder.release_output_buffer(buffer, true) {
+                            error!("Decoder dequeue error: {e}");
+
+                            break;
+                        }
+
+                        dequeued_frame_callback(timestamp);
+
+                        // Note: parking_lot::Condvar has no spurious wakeups
+                        if image_acquired_notifier
+                            .wait_for(&mut acquired_image_ref, IMAGE_READER_DEADLOCK_TIMEOUT)
+                            .timed_out()
+                        {
+                            error!("ImageReader stalled");
+
+                            break;
+                        }
+
+                        match &mut *acquired_image_ref {
+                            Ok(image @ Some(_)) => {
+                                image_queue.lock().push_back(QueuedImage {
+                                    timestamp,
+                                    image: image.take().unwrap(),
+                                    in_use: false,
+                                });
+                            }
+                            Ok(None) => {
+                                error!("ImageReader error: No buffer available");
+                                break;
+                            }
+                            Err(e) => {
+                                error!("ImageReader error: {e}");
+                                break;
+                            }
+                        }
+                    }
+                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => (),
+                    MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
+                    MediaCodecResult::Err(e) => {
+                        error!("Decoder dequeue error: {e}");
+
+                        // lessen logcat flood (just in case)
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                }
             }
-        }))
-        .map_err(err!())?;
 
-    // Documentation says that this call is necessary to properly dispose acquired buffers.
-    // todo: find out how to use it and avoid leaking the ImageReader
-    image_reader
-        .set_buffer_removed_listener(Box::new(|_, _| ()))
-        .map_err(err!())?;
+            // Make sure the ImageReader surface is not used anymore. Destroy the decoder
+            // Supposes that VideoDecoderEnqueuer has already been destroyed.
+            drop(decoder);
+
+            // Make sure there is no lingering image from the ImageReader
+            image_queue.lock().clear();
+
+            // Finally destroy the ImageReader
+            // FIXME: it still crashes!
+            // drop(self.image_reader.take());
+
+            // Since I cannot destroy the ImageReader, leak its memory
+            // THIS IS VERY WRONG. todo: find solution ASAP
+            error!("Leaking ImageReader. FIXME");
+            Box::leak(Box::new(image_reader));
+        }
+    });
 
     Ok((
-        VideoDecoderEnqueuer {
-            inner: Arc::clone(&decoder),
-        },
+        VideoDecoderEnqueuer { inner: decoder },
         VideoDecoderDequeuer {
-            inner: Some(Arc::clone(&decoder)),
-            image_reader: Some(image_reader),
-            acquired_image,
-            image_acquired_notifier,
+            running,
+            dequeue_thread: Some(dequeue_thread),
+            image_queue,
+            max_images: config.max_buffering_frames,
+            buffering_running_average: 0.0,
         },
     ))
 }

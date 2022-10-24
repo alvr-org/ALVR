@@ -977,7 +977,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
 
     if (CTX.streaming) {
         void *streamHardwareBuffer = nullptr;
-        auto timestampNs = alvr_wait_for_frame(&streamHardwareBuffer);
+        auto timestampNs = alvr_get_frame(&streamHardwareBuffer);
         displayTime = (double) timestampNs / 1e9;
 
         if (timestampNs == -1) {

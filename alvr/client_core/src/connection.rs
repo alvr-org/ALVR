@@ -306,7 +306,8 @@ async fn stream_pipeline(
         let config = &mut *DECODER_INIT_CONFIG.lock();
 
         config.codec = settings.video.codec;
-        config.max_buffering_frames = settings.video.max_buffering_frames as usize;
+        config.max_buffering_frames = settings.video.max_buffering_frames;
+        config.buffering_history_weight = settings.video.buffering_history_weight;
         config.options = settings
             .video
             .advanced_codec_options

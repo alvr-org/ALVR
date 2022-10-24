@@ -9,14 +9,16 @@ use alvr_common::prelude::*;
 #[derive(Clone)]
 pub struct DecoderInitConfig {
     pub codec: CodecType,
-    pub max_buffering_frames: usize,
+    pub max_buffering_frames: f32,
+    pub buffering_history_weight: f32,
     pub options: Vec<(String, MediacodecDataType)>,
 }
 
 pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     Mutex::new(DecoderInitConfig {
         codec: CodecType::H264,
-        max_buffering_frames: 1,
+        max_buffering_frames: 1.0,
+        buffering_history_weight: 0.9,
         options: vec![],
     })
 });

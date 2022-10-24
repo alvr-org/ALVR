@@ -189,8 +189,11 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub preferred_fps: f32,
 
-    #[schema(advanced)]
-    pub max_buffering_frames: u64,
+    #[schema(advanced, min = 1., max = 3.0, step = 0.1)]
+    pub max_buffering_frames: f32,
+
+    #[schema(advanced, min = 0.50, max = 0.99, step = 0.01)]
+    pub buffering_history_weight: f32,
 
     pub codec: CodecType,
 
@@ -591,7 +594,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             preferred_fps: 72.,
-            max_buffering_frames: 2,
+            max_buffering_frames: 1.5,
+            buffering_history_weight: 0.90,
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },

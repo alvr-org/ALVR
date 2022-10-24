@@ -155,7 +155,8 @@ pub struct VideoDecoderDequeuer {
     running: Arc<RelaxedAtomic>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
-    max_images: usize,
+    target_buffering_frames: f32,
+    buffering_history_weight: f32,
     buffering_running_average: f32,
 }
 
@@ -173,12 +174,11 @@ impl VideoDecoderDequeuer {
             }
         }
 
-        const HISTORY_WEIGHT: f32 = 0.99;
-
         // use running average to give more weight to recent samples
-        self.buffering_running_average = self.buffering_running_average as f32 * HISTORY_WEIGHT
-            + image_queue_lock.len() as f32 * (1. - HISTORY_WEIGHT);
-        if self.buffering_running_average > self.max_images as f32 {
+        self.buffering_running_average = self.buffering_running_average
+            * self.buffering_history_weight
+            + image_queue_lock.len() as f32 * (1. - self.buffering_history_weight);
+        if self.buffering_running_average > self.target_buffering_frames as f32 {
             image_queue_lock.pop_front();
         }
 
@@ -216,13 +216,15 @@ pub fn video_decoder_split(
     csd_0: &[u8],
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
 ) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
+    // 2x: keep the target buffering in the middle of the max amount of queuable frames
+    let available_buffering_frames = (2. * config.max_buffering_frames).ceil() as usize;
+
     let image_reader = ImageReader::new_with_usage(
         1,
         1,
         ImageFormat::PRIVATE,
         HardwareBufferUsage::GPU_SAMPLED_IMAGE,
-        2 * config.max_buffering_frames as i32 + 2,
-        // 2x: keep the target buffering in the middle of the max amount of queuable frames
+        available_buffering_frames as i32 + 1 + 1,
         // + 1 for decoder (internal) + 1 for rendering (in_use == true)
     )
     .unwrap();
@@ -294,9 +296,7 @@ pub fn video_decoder_split(
                 // Check if there is any image ready to be used by the decoder, ie the queue is not
                 // full. in this case use a simple loop, no need for anything fancier since this is
                 // an exceptional situation.
-                // Note: max_frames + 3 is the max amount of frames that the queue can hold (+ 1 for
-                // rendering + 2 for leeway)
-                if image_queue.lock().len() > 2 * config.max_buffering_frames {
+                if image_queue.lock().len() > available_buffering_frames {
                     // use a flag to avoid flooding the logcat
                     if !overflow_logged {
                         warn!("Video frame queue overflow!");
@@ -373,7 +373,7 @@ pub fn video_decoder_split(
 
             // Finally destroy the ImageReader
             // FIXME: it still crashes!
-            // drop(self.image_reader.take());
+            // drop(image_reader);
 
             // Since I cannot destroy the ImageReader, leak its memory
             // THIS IS VERY WRONG. todo: find solution ASAP
@@ -388,7 +388,8 @@ pub fn video_decoder_split(
             running,
             dequeue_thread: Some(dequeue_thread),
             image_queue,
-            max_images: config.max_buffering_frames,
+            target_buffering_frames: config.max_buffering_frames,
+            buffering_history_weight: config.buffering_history_weight,
             buffering_running_average: 0.0,
         },
     ))

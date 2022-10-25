@@ -151,6 +151,7 @@ pub struct ClientStatistics {
     pub target_timestamp: Duration, // identifies the frame
     pub frame_interval: Duration,
     pub video_decode: Duration,
+    pub video_decoder_queue: Duration,
     pub rendering: Duration,
     pub vsync_queue: Duration,
     pub total_pipeline_latency: Duration,

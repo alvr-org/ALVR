@@ -41,6 +41,7 @@ pub struct GraphStatistics {
     pub encoder_s: f32,
     pub network_s: f32,
     pub decoder_s: f32,
+    pub decoder_queue_s: f32,
     pub client_compositor_s: f32,
     pub vsync_queue_s: f32,
     pub client_fps: f32,

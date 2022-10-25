@@ -165,6 +165,7 @@ impl StatisticsManager {
                     + server_compositor_latency
                     + encoder_latency
                     + client_stats.video_decode
+                    + client_stats.video_decoder_queue
                     + client_stats.rendering
                     + client_stats.vsync_queue,
             );
@@ -224,6 +225,7 @@ impl StatisticsManager {
                 encoder_s: encoder_latency.as_secs_f32(),
                 network_s: network_latency.as_secs_f32(),
                 decoder_s: client_stats.video_decode.as_secs_f32(),
+                decoder_queue_s: client_stats.video_decoder_queue.as_secs_f32(),
                 client_compositor_s: client_stats.rendering.as_secs_f32(),
                 vsync_queue_s: client_stats.vsync_queue.as_secs_f32(),
                 client_fps: 1. / client_stats.frame_interval.as_secs_f32(),

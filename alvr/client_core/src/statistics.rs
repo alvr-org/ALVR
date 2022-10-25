@@ -70,6 +70,18 @@ impl StatisticsManager {
         }
     }
 
+    pub fn report_compositor_start(&mut self, target_timestamp: Duration) {
+        if let Some(frame) = self
+            .history_buffer
+            .iter_mut()
+            .find(|frame| frame.intervals.target_timestamp == target_timestamp)
+        {
+            frame.intervals.video_decoder_queue = Instant::now().saturating_duration_since(
+                frame.video_packet_received + frame.intervals.video_decode,
+            );
+        }
+    }
+
     // vsync_queue is the latency between this call and the vsync. it cannot be measured by ALVR and
     // should be reported by the VR runtime
     pub fn report_submit(&mut self, target_timestamp: Duration, vsync_queue: Duration) {
@@ -81,7 +93,9 @@ impl StatisticsManager {
             .find(|frame| frame.intervals.target_timestamp == target_timestamp)
         {
             frame.intervals.rendering = now.saturating_duration_since(
-                frame.video_packet_received + frame.intervals.video_decode,
+                frame.video_packet_received
+                    + frame.intervals.video_decode
+                    + frame.intervals.video_decoder_queue,
             );
             frame.intervals.vsync_queue = vsync_queue;
             frame.intervals.total_pipeline_latency =

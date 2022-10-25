@@ -651,7 +651,7 @@ define([
 
         let latencyGraphData = [
             Array(length + 1).fill(now),
-            ...Array(8)
+            ...Array(9)
                 .fill(null)
                 .map((x) => Array(length).fill(null)),
         ];
@@ -660,7 +660,7 @@ define([
         latencyGraphData[0].unshift(now - duration);
 
         // Network, Rendering, Idle, Transcode
-        const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4"];
+        const graphColors = ["#7f7f7f", "#d62728", "#ff7f0e", "#1f77b4", "#d64d27"];
 
         let latencyGraphOptions = {
             series: [
@@ -671,8 +671,8 @@ define([
                 },
                 getSeries(
                     i18n["performanceGameRender"],
-                    graphColors[1],
-                    graphColors[1],
+                    graphColors[4],
+                    graphColors[4],
                     latencyGraphData,
                     " ms"
                 ),
@@ -701,6 +701,13 @@ define([
                     i18n["performanceDecode"],
                     graphColors[3],
                     graphColors[3],
+                    latencyGraphData,
+                    " ms"
+                ),
+                getSeries(
+                    i18n["performanceDecoderQueue"],
+                    graphColors[2],
+                    graphColors[2],
                     latencyGraphData,
                     " ms"
                 ),
@@ -796,9 +803,10 @@ define([
                 latencyGraphData[3].push(statistics.encoderS * 1000);
                 latencyGraphData[4].push(statistics.networkS * 1000);
                 latencyGraphData[5].push(statistics.decoderS * 1000);
-                latencyGraphData[6].push(statistics.clientCompositorS * 1000);
-                latencyGraphData[7].push(statistics.vsyncQueueS * 1000);
-                latencyGraphData[8].push(statistics.totalPipelineLatencyS * 1000);
+                latencyGraphData[6].push(statistics.decoderQueueS * 1000);
+                latencyGraphData[7].push(statistics.clientCompositorS * 1000);
+                latencyGraphData[8].push(statistics.vsyncQueueS * 1000);
+                latencyGraphData[9].push(statistics.totalPipelineLatencyS * 1000);
             } else {
                 for (let i = 1; i < latencyGraphData.length; i++) {
                     latencyGraphData[i].push(null);

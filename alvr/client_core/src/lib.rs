@@ -406,6 +406,14 @@ pub extern "C" fn alvr_report_frame_decoded(timestamp_ns: u64) {
     }
 }
 
+/// Call only with external decoder
+#[no_mangle]
+pub extern "C" fn alvr_report_compositor_start(timestamp_ns: u64) {
+    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        stats.report_compositor_start(Duration::from_nanos(timestamp_ns as _));
+    }
+}
+
 /// Can be called before or after `alvr_initialize()`
 #[cfg(target_os = "android")]
 #[no_mangle]

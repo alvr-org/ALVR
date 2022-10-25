@@ -1,4 +1,4 @@
-use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE};
+use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE, STATISTICS_MANAGER};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{collections::VecDeque, ffi::c_char, ptr, time::Duration};
@@ -64,8 +64,12 @@ pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
             let (enqueuer, dequeuer) =
-                crate::platform::video_decoder_split(config.clone(), &csd_0, |timestamp| {})
-                    .unwrap();
+                crate::platform::video_decoder_split(config.clone(), &csd_0, |target_timestamp| {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_frame_decoded(target_timestamp);
+                    }
+                })
+                .unwrap();
 
             *DECODER_ENQUEUER.lock() = Some(enqueuer);
             *DECODER_DEQUEUER.lock() = Some(dequeuer);
@@ -135,14 +139,14 @@ pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) 
     };
 
     if let Some(timestamp) = timestamp {
-        if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
-            stats.report_frame_decoded(timestamp);
-        }
-
         if !LAST_ENQUEUED_TIMESTAMPS.lock().contains(&timestamp) {
             error!("Detected late decoder, recreating decoder...");
             *DECODER_ENQUEUER.lock() = None;
             *DECODER_DEQUEUER.lock() = None;
+        }
+
+        if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
+            stats.report_compositor_start(timestamp);
         }
 
         timestamp.as_nanos() as i64

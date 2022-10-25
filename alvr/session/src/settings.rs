@@ -669,10 +669,10 @@ pub fn session_settings_default() -> SettingsDefault {
                     preproc_sigma: 4,
                     preproc_tor: 7,
                     h264_quality_preset: H264QualityPresetDefault {
-                        variant: H264QualityPresetDefaultVariant::Quality
+                        variant: H264QualityPresetDefaultVariant::Quality,
                     },
                     h265_quality_preset: H265QualityPresetDefault {
-                        variant: H265QualityPresetDefaultVariant::Quality
+                        variant: H265QualityPresetDefaultVariant::Quality,
                     },
                 },
                 mediacodec_extra_options: DictionaryDefault {

@@ -82,12 +82,10 @@ define({
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":
             "Enables Pre-Processor component (RX 5000+ models only).  Removing bit-expensive high frequency details that are deemed not important for the human visual system.",
-        "_root_video_advancedCodecOptions_amfControls_preprocSigma.name":
-            "Pre-Processor strength",
+        "_root_video_advancedCodecOptions_amfControls_preprocSigma.name": "Pre-Processor strength",
         "_root_video_advancedCodecOptions_amfControls_preprocSigma.description":
             "Strength of the pre-processing filter. The higher the strength, the stronger the filtering.",
-        "_root_video_advancedCodecOptions_amfControls_preprocTor.name":
-            "Pre-Processor sensitivity",
+        "_root_video_advancedCodecOptions_amfControls_preprocTor.name": "Pre-Processor sensitivity",
         "_root_video_advancedCodecOptions_amfControls_preprocTor.description":
             "Sensitivity to edges. The higher the value, the more likely edges will be detected, and hence the less likely filtering will occur.",
         "_root_video_advancedCodecOptions_amfControls_h264QualityPreset.name":

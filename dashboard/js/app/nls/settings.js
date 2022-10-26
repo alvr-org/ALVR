@@ -81,7 +81,7 @@ define({
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":
-            "Enables Pre-Processor component (RX 5000+ models only).  Removing bit-expensive high frequency details that are deemed not important for the human visual system.",
+            "Enables Pre-Processor component (RX 5000+ models with 8-bit encoding only).  Removing bit-expensive high frequency details that are deemed not important for the human visual system.",
         "_root_video_advancedCodecOptions_amfControls_preprocSigma.name": "Pre-Processor strength",
         "_root_video_advancedCodecOptions_amfControls_preprocSigma.description":
             "Strength of the pre-processing filter. The higher the strength, the stronger the filtering.",

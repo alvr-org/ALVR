@@ -27,6 +27,15 @@ pub enum NvencPreset {
     LowLatencyHighPerformance = 2,
 }
 
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum EncoderQualityPreset {
+    Quality = 0,
+    Balanced = 1,
+    Speed = 2,
+}
+
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +56,17 @@ pub struct NvencOverrides {
     pub enable_aq: i64,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AmfControls {
+    pub use_preproc: bool,
+    #[schema(min = 0, max = 10)]
+    pub preproc_sigma: u32,
+    #[schema(min = 0, max = 10)]
+    pub preproc_tor: u32,
+    pub encoder_quality_preset: EncoderQualityPreset,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum MediacodecDataType {
@@ -60,6 +80,7 @@ pub enum MediacodecDataType {
 #[serde(rename_all = "camelCase")]
 pub struct AdvancedCodecOptions {
     pub nvenc_overrides: NvencOverrides,
+    pub amf_controls: AmfControls,
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 }
 
@@ -640,6 +661,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_max_bitrate: -1,
                     rc_average_bitrate: -1,
                     enable_aq: -1,
+                },
+                amf_controls: AmfControlsDefault {
+                    use_preproc: false,
+                    preproc_sigma: 4,
+                    preproc_tor: 7,
+                    encoder_quality_preset: EncoderQualityPresetDefault {
+                        variant: EncoderQualityPresetDefaultVariant::Quality,
+                    },
                 },
                 mediacodec_extra_options: DictionaryDefault {
                     key: "".into(),

@@ -165,8 +165,20 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, m_h264QualityPreset);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
+
+		switch (m_encoderQualityPreset) {
+			case SPEED:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
+				break;
+			case BALANCED:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_BALANCED);
+				break;
+			case QUALITY:
+			default:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
+				break;
+		}
 
 		if (m_use10bit) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_10);
@@ -186,8 +198,20 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TIER, AMF_VIDEO_ENCODER_HEVC_TIER_HIGH);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));	
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, m_h265QualityPreset);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
+
+		switch (m_encoderQualityPreset) {
+			case SPEED:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
+				break;
+			case BALANCED:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_BALANCED);
+				break;
+			case QUALITY:
+			default:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
+				break;
+		}
 
 		if (m_use10bit) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_10);
@@ -269,8 +293,7 @@ void VideoEncoderVCE::Initialize()
 
 	m_use10bit = settings.m_use10bitEncoder;
 	m_usePreProc = settings.m_usePreproc;
-	m_h264QualityPreset = settings.m_h264QualityPreset;
-	m_h265QualityPreset = settings.m_h265QualityPreset;
+	m_encoderQualityPreset = static_cast<EncoderQualityPreset>(settings.m_encoderQualityPreset);
 	m_preProcSigma = settings.m_preProcSigma;
 	m_preProcTor = settings.m_preProcTor;
 

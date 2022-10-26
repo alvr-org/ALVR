@@ -30,19 +30,10 @@ pub enum NvencPreset {
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum H264QualityPreset {
-    Quality = 2,
-    Balanced = 0,
-    Speed = 1,
-}
-
-#[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum H265QualityPreset {
+pub enum EncoderQualityPreset {
     Quality = 0,
-    Balanced = 5,
-    Speed = 10,
+    Balanced = 1,
+    Speed = 2,
 }
 
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
@@ -73,8 +64,7 @@ pub struct AmfControls {
     pub preproc_sigma: u32,
     #[schema(min = 0, max = 10)]
     pub preproc_tor: u32,
-    pub h264_quality_preset: H264QualityPreset,
-    pub h265_quality_preset: H265QualityPreset,
+    pub encoder_quality_preset: EncoderQualityPreset,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
@@ -668,11 +658,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,
-                    h264_quality_preset: H264QualityPresetDefault {
-                        variant: H264QualityPresetDefaultVariant::Quality,
-                    },
-                    h265_quality_preset: H265QualityPresetDefault {
-                        variant: H265QualityPresetDefaultVariant::Quality,
+                    encoder_quality_preset: EncoderQualityPresetDefault {
+                        variant: EncoderQualityPresetDefaultVariant::Quality,
                     },
                 },
                 mediacodec_extra_options: DictionaryDefault {

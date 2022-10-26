@@ -101,8 +101,7 @@ void Settings::Load()
 		m_usePreproc = config.get("use_preproc").get<bool>();
 		m_preProcSigma = (uint32_t)config.get("preproc_sigma").get<int64_t>();
 		m_preProcTor = (uint32_t)config.get("preproc_tor").get<int64_t>();
-		m_h264QualityPreset = (uint32_t)config.get("h264_quality_preset").get<int64_t>();
-		m_h265QualityPreset = (uint32_t)config.get("h265_quality_preset").get<int64_t>();
+		m_encoderQualityPreset = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
 		m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();
 		m_swThreadCount = (int32_t)config.get("sw_thread_count").get<int64_t>();
 

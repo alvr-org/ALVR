@@ -88,14 +88,10 @@ define({
         "_root_video_advancedCodecOptions_amfControls_preprocTor.name": "Pre-Processor sensitivity",
         "_root_video_advancedCodecOptions_amfControls_preprocTor.description":
             "Sensitivity to edges. The higher the value, the more likely edges will be detected, and hence the less likely filtering will occur.",
-        "_root_video_advancedCodecOptions_amfControls_h264QualityPreset.name":
-            "H.264 quality preset",
-        "_root_video_advancedCodecOptions_amfControls_h264QualityPreset.description":
-            "Controls the quality of H.264 encoding.",
-        "_root_video_advancedCodecOptions_amfControls_h265QualityPreset.name":
-            "H.265 quality preset",
-        "_root_video_advancedCodecOptions_amfControls_h265QualityPreset.description":
-            "Controls the quality of H.265 encoding.",
+        "_root_video_advancedCodecOptions_amfControls_encoderQualityPreset.name":
+            "Encoder quality preset",
+        "_root_video_advancedCodecOptions_amfControls_encoderQualityPreset.description":
+            "Controls the encoder quality.",
         "_root_video_forceSwEncoding.name": "Force Software Encoding",
         "_root_video_forceSwEncoding.description":
             "This forces the Encoder to use CPU(Software Encoding) instead of GPU(Hardware Encoding).",

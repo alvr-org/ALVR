@@ -257,13 +257,6 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeConverter(
 	AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_FORMAT, outputFormat));
 	AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_OUTPUT_SIZE, ::AMFConstructSize(width, height)));
 
-	if (m_use10bit) { 
-		AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_INPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA28));
-		AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_INPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT709));
-		AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_INPUT_COLOR_RANGE, AMF_COLOR_RANGE_FULL));
-		AMF_THROW_IF(amfConverter->SetProperty(AMF_VIDEO_CONVERTER_INPUT_TONEMAPPING, AMF_VIDEO_CONVERTER_TONEMAPPING_COPY));
-	}
-
 	AMF_THROW_IF(amfConverter->Init(inputFormat, width, height));
 
 	Debug("Initialized amfConverter.\n");
@@ -306,7 +299,7 @@ void VideoEncoderVCE::Initialize()
 
 	amf::AMF_SURFACE_FORMAT inFormat = amf::AMF_SURFACE_RGBA;
 	if (m_use10bit) {
-		inFormat = amf::AMF_SURFACE_P010;
+		inFormat = amf::AMF_SURFACE_R10G10B10A2;
 		m_amfComponents.emplace_back(MakeConverter(
 			amf::AMF_SURFACE_RGBA, m_renderWidth, m_renderHeight, inFormat
 		));

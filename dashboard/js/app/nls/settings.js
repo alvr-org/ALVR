@@ -74,10 +74,9 @@ define({
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
         "_root_video_clientRequestRealtimeDecoder.name":
             "Request realtime decoder priority (client)", // adv
-        "_root_video_use10bitEncoder.name":
-            "Reduce color banding (newer nVidia cards or SW encoding only)",
+        "_root_video_use10bitEncoder.name": "Reduce color banding",
         "_root_video_use10bitEncoder.description":
-            "This increases visual quality by streaming 10 bit per color channel instead of 8",
+            "This increases visual quality by streaming 10 bits per color channel instead of 8. Works on Windows with newer nVidia and AMD cards and software encoding.",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":

@@ -876,10 +876,7 @@ async fn connection_pipeline(
                 *LAST_AVERAGE_TOTAL_LATENCY.lock() = client_stats.average_total_pipeline_latency;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    let game_frame_interval =
-                        Duration::from_nanos(unsafe { crate::GetGameFrameIntervalNs() });
-                    let network_latency =
-                        stats.report_statistics(client_stats, game_frame_interval);
+                    let network_latency = stats.report_statistics(client_stats);
                     unsafe { crate::ReportNetworkLatency(network_latency.as_micros() as _) };
                 }
             }

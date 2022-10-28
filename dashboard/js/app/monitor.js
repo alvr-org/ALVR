@@ -845,13 +845,10 @@ define([
                     .concat(latencyGraphData[latencyGraphData.length - 1])
                     .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
                     .filter(Boolean);
-                const lq1 = quantile(ldata, 0.25);
-                const lq3 = quantile(ldata, 0.75);
-                //const lq1 = 0;
-                //const lq3 = quantile(ldata,0.5);
+                const lq1 = quantile(ldata, 0.1);
+                const lq3 = quantile(ldata, 0.9);
                 latencyGraph.batch(() => {
-                    latencyGraph.setScale("y", { min: 0, max: lq3 + (lq3 - lq1) * 3 });
-                    //latencyGraph.setScale("y", {min: 0, max: lq3+(lq3-lq1)*1.5});
+                    latencyGraph.setScale("y", { min: 0, max: lq3 + (lq3 - lq1) });
                     latencyGraph.setData(stack(latencyGraphData, (i) => false).data);
                 });
                 const fdata1 = []
@@ -863,12 +860,12 @@ define([
                     .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
                     .filter(Boolean);
                 const fdata = fdata1.concat(fdata2);
-                const fq1 = quantile(fdata, 0.25);
-                const fq3 = quantile(fdata, 0.75);
+                const fq1 = quantile(fdata, 0.1);
+                const fq3 = quantile(fdata, 0.9);
                 latencyGraph.batch(() => {
                     framerateGraph.setScale("y", {
-                        min: fq1 - (fq3 - fq1) * 1.5,
-                        max: fq3 + (fq3 - fq1) * 1.5,
+                        min: fq1 - (fq3 - fq1),
+                        max: fq3 + (fq3 - fq1),
                     });
                     framerateGraph.setData(framerateGraphData);
                 });

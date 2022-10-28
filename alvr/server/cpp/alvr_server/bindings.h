@@ -135,7 +135,6 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             OculusHand leftHand,
                             OculusHand rightHand);
 extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
-extern "C" unsigned long long GetGameFrameIntervalNs();
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 

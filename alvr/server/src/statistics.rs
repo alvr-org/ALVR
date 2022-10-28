@@ -35,6 +35,8 @@ pub struct StatisticsManager {
     history_buffer: VecDeque<HistoryFrame>,
     max_history_size: usize,
     last_full_report_instant: Instant,
+    last_frame_present_instant: Instant,
+    last_frame_present_interval: Duration,
     video_packets_total: usize,
     video_packets_partial_sum: usize,
     video_bytes_total: usize,
@@ -52,6 +54,8 @@ impl StatisticsManager {
             history_buffer: VecDeque::new(),
             max_history_size: history_size,
             last_full_report_instant: Instant::now(),
+            last_frame_present_instant: Instant::now(),
+            last_frame_present_interval: Duration::ZERO,
             video_packets_total: 0,
             video_packets_partial_sum: 0,
             video_bytes_total: 0,
@@ -87,7 +91,13 @@ impl StatisticsManager {
             .iter_mut()
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.frame_present = Instant::now();
+            let now = Instant::now();
+
+            self.last_frame_present_interval =
+                now.saturating_duration_since(self.last_frame_present_instant);
+            self.last_frame_present_instant = now;
+
+            frame.frame_present = now;
         }
     }
 
@@ -130,11 +140,7 @@ impl StatisticsManager {
 
     // Called every frame. Some statistics are reported once every frame
     // Returns network latency
-    pub fn report_statistics(
-        &mut self,
-        client_stats: ClientStatistics,
-        game_frame_interval: Duration,
-    ) -> Duration {
+    pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> Duration {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -190,7 +196,7 @@ impl StatisticsManager {
                     fec_errors_total: self.fec_errors_total,
                     fec_errors_per_sec: (self.fec_failures_partial_sum as f32 / interval_secs) as _,
                     client_fps: (1. / client_stats.frame_interval.as_secs_f32()) as _,
-                    server_fps: (1. / game_frame_interval.as_secs_f32()) as _,
+                    server_fps: (1. / self.last_frame_present_interval.as_secs_f32()) as _,
                     battery_hmd: (self
                         .battery_gauges
                         .get(&HEAD_ID)
@@ -229,7 +235,7 @@ impl StatisticsManager {
                 client_compositor_s: client_stats.rendering.as_secs_f32(),
                 vsync_queue_s: client_stats.vsync_queue.as_secs_f32(),
                 client_fps: 1. / client_stats.frame_interval.as_secs_f32(),
-                server_fps: 1. / game_frame_interval.as_secs_f32(),
+                server_fps: 1. / self.last_frame_present_interval.as_secs_f32(),
             }));
 
             network_latency

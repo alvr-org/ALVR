@@ -9,12 +9,17 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    Headset     |                        Support                         |
-| :------------: | :----------------------------------------------------: |
-|  Oculus Quest  |                   :heavy_check_mark:                   |
-| Oculus Quest 2 |                   :heavy_check_mark:                   |
-|   Oculus Go    |                   :heavy_check_mark:                   |
-|     GearVR     | :x: (use [this](https://github.com/polygraphene/ALVR)) |
+|     Headset      |      Support       |
+| :--------------: | :----------------: |
+|      Quest       | :heavy_check_mark: |
+|     Quest 2      | :heavy_check_mark: |
+|    Quest Pro     | :heavy_check_mark: |
+|    Oculus Go     |       :x: *        |
+|      GearVR      | :construction: **  |
+| Google Cardboard | :construction: **  |
+
+\* : Oculus Go support was dropped on v19. the last supported version is v18.2.3.
+\** : Coming soon
 
 ## Requirements
 

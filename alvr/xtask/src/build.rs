@@ -286,7 +286,7 @@ pub fn build_quest_client(profile: Profile) {
 
     let client_dir = afs::workspace_dir().join("android");
 
-    const ARTIFACT_NAME: &str = "alvr_client_oculus_quest";
+    const ARTIFACT_NAME: &str = "alvr_client_quest";
 
     let _push_guard = sh.push_dir(&client_dir);
     if cfg!(windows) {

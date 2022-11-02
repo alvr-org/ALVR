@@ -104,6 +104,7 @@ private:
 	uint32_t m_preProcSigma;
 	uint32_t m_preProcTor;
 	EncoderQualityPreset m_encoderQualityPreset;
+	amf::AMF_SURFACE_FORMAT m_surfaceFormat;
 
 	int m_codec;
 	int m_refreshRate;

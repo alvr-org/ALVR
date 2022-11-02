@@ -151,6 +151,12 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_renderWidth(width)
 	, m_renderHeight(height)
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
+	, m_use10bit(Settings::Instance().m_use10bitEncoder)
+	, m_usePreProc(Settings::Instance().m_usePreproc)
+	, m_preProcTor(Settings::Instance().m_preProcTor)
+	, m_preProcSigma(Settings::Instance().m_preProcSigma)
+	, m_encoderQualityPreset(static_cast<EncoderQualityPreset>(Settings::Instance().m_encoderQualityPreset))
 {}
 
 VideoEncoderVCE::~VideoEncoderVCE() {}
@@ -289,14 +295,6 @@ amf::AMFComponentPtr VideoEncoderVCE::MakePreprocessor(
 
 void VideoEncoderVCE::Initialize()
 {
-	const auto &settings = Settings::Instance();
-
-	m_use10bit = settings.m_use10bitEncoder;
-	m_usePreProc = settings.m_usePreproc;
-	m_encoderQualityPreset = static_cast<EncoderQualityPreset>(settings.m_encoderQualityPreset);
-	m_preProcSigma = settings.m_preProcSigma;
-	m_preProcTor = settings.m_preProcTor;
-
 	Debug("Initializing VideoEncoderVCE.\n");
 	AMF_THROW_IF(g_AMFFactory.Init());
 
@@ -305,17 +303,17 @@ void VideoEncoderVCE::Initialize()
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&m_amfContext));
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
-	amf::AMF_SURFACE_FORMAT inFormat = amf::AMF_SURFACE_RGBA;
+	amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
 	if (m_use10bit) {
 		inFormat = amf::AMF_SURFACE_R10G10B10A2;
 		m_amfComponents.emplace_back(MakeConverter(
-			amf::AMF_SURFACE_RGBA, m_renderWidth, m_renderHeight, inFormat
+			m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat
 		));
 	} else {
 		if (m_usePreProc) {
 			inFormat = amf::AMF_SURFACE_NV12;
 			m_amfComponents.emplace_back(MakeConverter(
-				amf::AMF_SURFACE_RGBA, m_renderWidth, m_renderHeight, inFormat
+				m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat
 			));
 			m_amfComponents.emplace_back(MakePreprocessor(
 				inFormat, m_renderWidth, m_renderHeight
@@ -381,7 +379,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 		}
 	}
 
-	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, amf::AMF_SURFACE_RGBA, m_renderWidth, m_renderHeight, &surface));
+	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, m_surfaceFormat, m_renderWidth, m_renderHeight, &surface));
 	ID3D11Texture2D *textureDX11 = (ID3D11Texture2D*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()
 	m_d3dRender->GetContext()->CopyResource(textureDX11, pTexture);
 

@@ -253,10 +253,10 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_QP_I, 30);
 	}
 
-	Debug("Configured amfEncoder.\n");
+	Debug("Configured %s.\n", pCodec);
 	AMF_THROW_IF(amfEncoder->Init(inputFormat, width, height));
 
-	Debug("Initialized amfEncoder.\n");
+	Debug("Initialized %s.\n", pCodec);
 
 	return amfEncoder;
 }
@@ -273,7 +273,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeConverter(
 
 	AMF_THROW_IF(amfConverter->Init(inputFormat, width, height));
 
-	Debug("Initialized amfConverter.\n");
+	Debug("Initialized %s.\n", AMFVideoConverter);
 	return amfConverter;
 }
 
@@ -289,7 +289,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakePreprocessor(
 
 	AMF_THROW_IF(amfPreprocessor->Init(inputFormat, width, height));
 
-	Debug("Initialized amfPreprocessor.\n");
+	Debug("Initialized %s.\n", AMFPreProcessing);
 	return amfPreprocessor;
 }
 

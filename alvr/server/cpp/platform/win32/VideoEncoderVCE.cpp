@@ -166,6 +166,9 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 	switch (codec) {
 	case ALVR_CODEC_H264:
+		if (m_use10bit) {
+			throw MakeException("H.264 10-bit encoding is not supported");
+		}
 		pCodec = AMFVideoEncoderVCE_AVC;
 		break;
 	case ALVR_CODEC_H265:
@@ -200,12 +203,6 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 			default:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
 				break;
-		}
-
-		if (m_use10bit) {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_10);
-		} else {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_8);
 		}
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas

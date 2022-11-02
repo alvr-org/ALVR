@@ -71,20 +71,28 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 
 AMFPipeline::AMFPipeline() 
 	: m_thread(nullptr)
+	, m_receiveThread(nullptr)
 	, m_pipes()
 	, isRunning(false) 
 {}
 
 AMFPipeline::~AMFPipeline() 
 {
+	isRunning = false;
 	if (m_thread) 
 	{
-		isRunning = false;
 		Debug("AMFPipeline::~AMFPipeline() m_thread->join\n");
 		m_thread->join();
 		Debug("AMFPipeline::~AMFPipeline() m_thread joined.\n");
 		delete m_thread;
 		m_thread = nullptr;
+	}
+	if (m_receiveThread) {
+		Debug("AMFPipeline::~AMFPipeline() m_receiveThread->join\n");
+		m_receiveThread->join();
+		Debug("AMFPipeline::~AMFPipeline() m_receiveThread joined.\n");
+		delete m_receiveThread;
+		m_receiveThread = nullptr;
 	}
 	for (auto &pipe : m_pipes) 
 	{
@@ -99,13 +107,24 @@ void AMFPipeline::Connect(AMFPipePtr pipe)
 
 void AMFPipeline::Run()
 {
-	Debug("Start AMFPipeline thread. Thread Id=%d\n", GetCurrentThreadId());
+	Debug("Start AMFPipeline Run() thread. Thread Id=%d\n", GetCurrentThreadId());
+	auto it = m_pipes.begin();
+	auto itEnd = std::prev(m_pipes.end());
 	while (isRunning)
 	{
-		for (auto &pipe : m_pipes) 
+		for (it = m_pipes.begin(); it != itEnd; it++)
 		{
-			pipe->doPassthrough();
+			(*it)->doPassthrough();
 		}
+	}
+}
+
+void AMFPipeline::RunReceive()
+{
+	Debug("Start AMFPipeline RunReceive() thread. Thread Id=%d\n", GetCurrentThreadId());
+	while (isRunning)
+	{
+		m_pipes.back()->doPassthrough();
 	}
 }
 
@@ -113,6 +132,7 @@ void AMFPipeline::Start()
 {
 	isRunning = true;
 	m_thread = new std::thread(&AMFPipeline::Run, this);
+	m_receiveThread = new std::thread(&AMFPipeline::RunReceive, this);
 }
 
 //

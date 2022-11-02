@@ -116,6 +116,7 @@ void AMFPipeline::Run()
 		{
 			(*it)->doPassthrough();
 		}
+		amf_sleep(1);
 	}
 }
 
@@ -125,6 +126,7 @@ void AMFPipeline::RunReceive()
 	while (isRunning)
 	{
 		m_pipes.back()->doPassthrough();
+		amf_sleep(1);
 	}
 }
 

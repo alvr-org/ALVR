@@ -246,18 +246,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		//Fixes rythmic pixelation. I-frames were overcompressed on default settings
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_QP_I, 30);
 	}
-	amf::AMFCapsPtr caps;
-	amfEncoder->GetCaps(&caps);
-	amf::AMFIOCapsPtr iocaps;
-	caps->GetOutputCaps(&iocaps);
-	amf_int32 formats = iocaps->GetNumOfFormats();
-	Debug("Supported formats num: %d\n", formats);
-	for (int i = 0; i < formats; i++) {
-		amf::AMF_SURFACE_FORMAT format;
-		bool isNative;
-		iocaps->GetFormatAt(i, &format, &isNative);
-		Debug("Accepts format: %d, native: %d", format, isNative);
-	}
+
 	Debug("Configured amfEncoder.\n");
 	AMF_THROW_IF(amfEncoder->Init(inputFormat, width, height));
 

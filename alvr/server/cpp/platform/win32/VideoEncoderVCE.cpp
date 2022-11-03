@@ -253,10 +253,11 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, true);
 
 		//Fixes rythmic pixelation.
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_QP, 30);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_QP_I, 30);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_QP_P, 30);
 		
 		//Turns Off IDR/I Frames
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_IDR_PERIOD, 0);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NUM_GOPS_PER_IDR, 0);
 	}
 
 	Debug("Configured %s.\n", pCodec);

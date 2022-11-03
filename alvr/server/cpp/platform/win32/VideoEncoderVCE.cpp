@@ -260,6 +260,8 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NUM_GOPS_PER_IDR, 0);
+		//Set infinite GOP length
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_GOP_SIZE, 0);
 		
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / frameRateIn);
 	}

@@ -2,9 +2,9 @@ use crate::{
     buttons::BUTTON_PATH_FROM_ID, sockets::WelcomeSocket, statistics::StatisticsManager,
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
-    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER,
-    IS_ALIVE, LAST_AVERAGE_TOTAL_LATENCY, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CONTROL_CHANNEL_SENDER,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, LAST_AVERAGE_TOTAL_LATENCY,
+    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -925,6 +925,20 @@ async fn connection_pipeline(
         }
     };
 
+    let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
+    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
+
+    let control_send_loop = {
+        let control_sender = Arc::clone(&control_sender);
+        async move {
+            while let Some(packet) = control_channel_receiver.recv().await {
+                control_sender.lock().await.send(&packet).await?;
+            }
+
+            Ok(())
+        }
+    };
+
     let control_loop = async move {
         loop {
             match control_receiver.recv().await {
@@ -1022,6 +1036,7 @@ async fn connection_pipeline(
         // Leave these loops on the current task
         res = keepalive_loop => res,
         res = control_loop => res,
+        res = control_send_loop => res,
 
         _ = RESTART_NOTIFIER.notified() => {
             control_sender

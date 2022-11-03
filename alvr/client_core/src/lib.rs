@@ -184,7 +184,6 @@ pub unsafe extern "C" fn alvr_initialize(
 
     logging_backend::init_logging();
 
-    createDecoder = Some(decoder::create_decoder);
     pushNal = Some(decoder::push_nal);
 
     // Make sure to reset config in case of version compat mismatch.

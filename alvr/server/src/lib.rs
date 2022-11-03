@@ -30,7 +30,9 @@ use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
+use alvr_sockets::{
+    ClientListAction, GpuVendor, Haptics, ServerControlPacket, VideoFrameHeaderPacket,
+};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -60,6 +62,8 @@ static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(No
 static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
+static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
 static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
@@ -289,6 +293,20 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
+    extern "C" fn initialize_decoder(buffer_ptr: *const u8, len: i32) {
+        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+            let mut config_buffer = vec![0; len as usize];
+
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize)
+            };
+
+            sender
+                .send(ServerControlPacket::InitializeDecoder { config_buffer })
+                .ok();
+        }
+    }
+
     extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
             let header = VideoFrameHeaderPacket {
@@ -388,6 +406,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     LogPeriodically = Some(log_periodically);
     DriverReadyIdle = Some(driver_ready_idle);
+    InitializeDecoder = Some(initialize_decoder);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);
     ShutdownRuntime = Some(_shutdown_runtime);

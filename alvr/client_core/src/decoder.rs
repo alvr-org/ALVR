@@ -1,4 +1,4 @@
-use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE, STATISTICS_MANAGER};
+use crate::{AlvrCodec, AlvrEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{collections::VecDeque, ffi::c_char, ptr, time::Duration};
@@ -41,17 +41,14 @@ static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
 static LAST_ENQUEUED_TIMESTAMPS: Lazy<Mutex<VecDeque<Duration>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
-pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
-    let mut csd_0 = vec![0; length as _];
-    unsafe { ptr::copy_nonoverlapping(buffer, csd_0.as_mut_ptr() as _, length as _) };
-
+pub fn create_decoder(config_buffer: Vec<u8>) {
     let config = DECODER_INIT_CONFIG.lock();
 
     if EXTERNAL_DECODER.value() {
         // duration == 0 is the flag to identify the config NALS
         NAL_QUEUE.lock().push_back(ReconstructedNal {
             timestamp: Duration::ZERO,
-            data: csd_0,
+            data: config_buffer,
         });
         EVENT_QUEUE.lock().push_back(AlvrEvent::CreateDecoder {
             codec: if matches!(config.codec, CodecType::H264) {
@@ -63,13 +60,16 @@ pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
     } else {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
-            let (enqueuer, dequeuer) =
-                crate::platform::video_decoder_split(config.clone(), &csd_0, |target_timestamp| {
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            let (enqueuer, dequeuer) = crate::platform::video_decoder_split(
+                config.clone(),
+                &config_buffer,
+                |target_timestamp| {
+                    if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
                         stats.report_frame_decoded(target_timestamp);
                     }
-                })
-                .unwrap();
+                },
+            )
+            .unwrap();
 
             *DECODER_ENQUEUER.lock() = Some(enqueuer);
             *DECODER_DEQUEUER.lock() = Some(dequeuer);
@@ -79,6 +79,8 @@ pub extern "C" fn create_decoder(buffer: *const c_char, length: i32) {
                     .send(alvr_sockets::ClientControlPacket::RequestIdr)
                     .ok();
             }
+
+            unsafe { crate::notifyNewDecoder() };
         }
     }
 }

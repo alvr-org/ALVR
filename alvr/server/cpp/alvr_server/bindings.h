@@ -111,6 +111,7 @@ extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
+extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
 extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,

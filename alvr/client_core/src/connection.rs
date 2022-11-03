@@ -1,10 +1,13 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::DECODER_INIT_CONFIG, platform, sockets::AnnouncerSocket,
-    statistics::StatisticsManager, storage::Config, AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER,
-    DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
-    STATISTICS_SENDER, TRACKING_SENDER,
+    decoder::{self, DECODER_INIT_CONFIG},
+    platform,
+    sockets::AnnouncerSocket,
+    statistics::StatisticsManager,
+    storage::Config,
+    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
@@ -587,6 +590,9 @@ async fn stream_pipeline(
     let control_receive_loop = async move {
         loop {
             match control_receiver.recv().await {
+                Ok(ServerControlPacket::InitializeDecoder { config_buffer }) => {
+                    decoder::create_decoder(config_buffer);
+                }
                 Ok(ServerControlPacket::Restarting) => {
                     info!("{SERVER_RESTART_MESSAGE}");
                     set_hud_message(SERVER_RESTART_MESSAGE);

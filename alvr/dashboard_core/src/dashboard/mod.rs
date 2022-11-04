@@ -2,7 +2,8 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    AboutTab, ConnectionsTab, InstallationTab, LogsTab, SettingsTab, StatusBar,
+    AboutTab, ConnectionsResponse, ConnectionsTab, InstallationResponse, InstallationTab, LogsTab,
+    SettingsTab, StatusBar,
 };
 use crate::{
     dashboard::components::StatisticsTab,
@@ -19,19 +20,6 @@ use std::{
     sync::Arc,
 };
 
-pub enum ClientListAction {
-    AddOrUpdate {
-        name: String,
-        client_desc: ClientConnectionDesc,
-    },
-    RemoveEntry(String),
-}
-
-pub struct ConnectionsResponse {
-    pub hostname: String,
-    pub action: ClientListAction,
-}
-
 pub enum FirewallRulesResponse {
     Add,
     Remove,
@@ -47,7 +35,7 @@ pub enum DashboardResponse {
     SessionUpdated(Box<SessionDesc>),
     PresetInvocation(String),
     Driver(DriverResponse),
-    FirewallRules(FirewallRulesResponse),
+    Installation(InstallationResponse),
     RestartSteamVR,
     UpdateServer { url: String },
 }
@@ -156,6 +144,7 @@ impl Dashboard {
         ctx: &Context,
         session: &SessionDesc,
         new_events: &[Event],
+        drivers: &Vec<String>,
     ) -> Option<DashboardResponse> {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.status_bar.ui(ui);
@@ -204,6 +193,8 @@ impl Dashboard {
                 EventType::Statistics(statistics) => {
                     self.statistics_tab.update_statistics(statistics.clone())
                 }
+                EventType::Log(log) => self.logs_tab.update_logs(log.clone()),
+
                 _ => (),
             }
         }
@@ -216,9 +207,9 @@ impl Dashboard {
                         Tab::Connections => self.connections_tab.ui(ui, session),
                         Tab::Statistics => self.statistics_tab.ui(ui),
                         Tab::Settings => self.settings_tab.ui(ui, session),
-                        Tab::Installation => self.installation_tab.ui(ui),
+                        Tab::Installation => self.installation_tab.ui(ui, drivers),
                         Tab::Logs => self.logs_tab.ui(ui),
-                        Tab::About => self.about_tab.ui(ui),
+                        Tab::About => self.about_tab.ui(ui, session),
                     })
                 })
                 .inner

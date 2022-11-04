@@ -310,43 +310,49 @@ impl StatisticsTab {
 
     fn draw_statistics_overview(&self, ui: &mut Ui) {
         let statistics = self.last_statistics.clone().unwrap_or_default();
-        ui.horizontal(|ui| {
-            ui.vertical(|ui| {
-                ui.label("Total packets:");
-                //ui.label("Total packets lost:");
-                ui.label("Total sent:");
-                ui.label("Total sent:");
-                ui.label("Bitrate:");
-                //ui.label("Ping:");
-                ui.label("Total latency:");
-                ui.label("Encoder latency:");
-                ui.label("Transport latency:");
-                ui.label("Decoder latency:");
-                ui.label("Fec percentage:");
-                ui.label("Fec failure total:");
-                ui.label("Client FPS:");
-                ui.label("Server FPS:");
-            });
-            ui.vertical(|ui| {
-                ui.label(&format!(
-                    "{} packets ({} packets/s)",
-                    statistics.video_packets_total, statistics.video_packets_per_sec
-                ));
-                ui.label(&format!("{} packets", statistics.video_packets_total));
-                ui.label(&format!("{} MB", statistics.video_mbytes_total));
-                ui.label(&format!("{} Mbps", statistics.video_mbits_per_sec));
-                ui.label(&format!("{} ms", statistics.total_latency_ms));
-                ui.label(&format!("{} ms", statistics.encode_latency_ms));
-                ui.label(&format!("{} ms", statistics.network_latency_ms));
-                ui.label(&format!("{} ms", statistics.decode_latency_ms));
-                ui.label(&format!("{} %", statistics.fec_percentage));
-                ui.label(&format!(
-                    "{} packets ({} packets/s)",
-                    statistics.fec_errors_total, statistics.fec_errors_per_sec
-                ));
-                ui.label(&format!("{} FPS", statistics.client_fps));
-                ui.label(&format!("{} FPS", statistics.server_fps));
-            });
+        ui.columns(2, |ui| {
+            ui[0].label("Total packets:");
+            ui[1].label(&format!(
+                "{} packets ({} packets/s)",
+                statistics.video_packets_total, statistics.video_packets_per_sec
+            ));
+            //ui[0].label("Total packets lost:");
+            ui[0].label("Total sent:");
+            ui[1].label(&format!("{} packets", statistics.video_packets_total));
+
+            ui[0].label("Total sent:");
+            ui[1].label(&format!("{} MB", statistics.video_mbytes_total));
+
+            ui[0].label("Bitrate:");
+            ui[1].label(&format!("{} Mbps", statistics.video_mbits_per_sec));
+
+            //ui[0].label("Ping:");
+            ui[0].label("Total latency:");
+            ui[1].label(&format!("{} ms", statistics.total_latency_ms));
+
+            ui[0].label("Encoder latency:");
+            ui[1].label(&format!("{} ms", statistics.encode_latency_ms));
+
+            ui[0].label("Transport latency:");
+            ui[1].label(&format!("{} ms", statistics.network_latency_ms));
+
+            ui[0].label("Decoder latency:");
+            ui[1].label(&format!("{} ms", statistics.decode_latency_ms));
+
+            ui[0].label("Fec percentage:");
+            ui[1].label(&format!("{} %", statistics.fec_percentage));
+
+            ui[0].label("Fec failure total:");
+            ui[1].label(&format!(
+                "{} packets ({} packets/s)",
+                statistics.fec_errors_total, statistics.fec_errors_per_sec
+            ));
+
+            ui[0].label("Client FPS:");
+            ui[1].label(&format!("{} FPS", statistics.client_fps));
+
+            ui[0].label("Server FPS:");
+            ui[1].label(&format!("{} FPS", statistics.server_fps));
         });
     }
 }

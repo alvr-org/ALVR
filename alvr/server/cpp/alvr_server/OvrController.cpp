@@ -843,7 +843,7 @@ bool OvrController::onPoseUpdate(float predictionS,
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_SYSTEM_CLICK], false, 0.0);
             vr::VRDriverInput()->UpdateBooleanComponent(
-                m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.75f, 0.0);
+                m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_GRIP_FORCE], grip - 1.0, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], grip, 0.0);

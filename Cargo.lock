@@ -1203,6 +1203,7 @@ dependencies = [
  "dashboard_core",
  "eframe",
  "rand",
+ "reqwest",
  "serde",
 ]
 
@@ -4021,6 +4022,7 @@ dependencies = [
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
+ "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",

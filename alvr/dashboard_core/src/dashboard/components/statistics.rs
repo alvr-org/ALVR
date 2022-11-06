@@ -1,9 +1,6 @@
 use std::{collections::VecDeque, sync::Arc};
 
-use crate::{
-    dashboard::DashboardResponse,
-    translation::{SharedTranslation, TranslationBundle},
-};
+use crate::{dashboard::theme::graph_colors, dashboard::DashboardResponse};
 use alvr_events::{GraphStatistics, Statistics};
 use egui::{
     emath,
@@ -16,25 +13,14 @@ pub struct StatisticsTab {
     history: VecDeque<GraphStatistics>,
     last_statistics: Option<Statistics>,
     max_history_length: usize,
-    trans: Arc<TranslationBundle>,
-}
-
-mod graph_colors {
-    pub const RENDER: egui::Color32 = egui::Color32::RED;
-    pub const NETWORK: egui::Color32 = egui::Color32::DARK_GRAY;
-    pub const TRANSCODE: egui::Color32 = egui::Color32::BLUE;
-    pub const IDLE: egui::Color32 = egui::Color32::GOLD;
-    pub const SERVER_FPS: egui::Color32 = egui::Color32::GOLD;
-    pub const CLIENT_FPS: egui::Color32 = egui::Color32::BLUE;
 }
 
 impl StatisticsTab {
-    pub fn new(trans: Arc<TranslationBundle>) -> Self {
+    pub fn new() -> Self {
         Self {
             history: VecDeque::new(),
             max_history_length: 1000,
             last_statistics: None,
-            trans,
         }
     }
 
@@ -63,7 +49,7 @@ impl StatisticsTab {
     fn draw_latency_graph(&self, ui: &mut Ui) {
         let mut from_screen = None;
         ui.add_space(10.0);
-        ui.label(RichText::new(self.trans.get("latency")).size(20.0));
+        ui.label(RichText::new("Latency").size(20.0));
         match Frame::canvas(ui.style())
             .show(ui, |ui| {
                 ui.ctx().request_repaint();

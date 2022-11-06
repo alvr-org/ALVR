@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
+use crate::dashboard::DashboardResponse;
 use alvr_events::LogEvent;
 use egui::{ScrollArea, Ui};
 
@@ -10,7 +10,7 @@ pub struct LogsTab {
 }
 
 impl LogsTab {
-    pub fn new(trans: &TranslationBundle) -> Self {
+    pub fn new() -> Self {
         Self {
             logs: VecDeque::new(),
             log_limit: 1000,

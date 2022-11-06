@@ -1,40 +1,10 @@
-use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
-use alvr_session::{ClientConnectionDesc, ConnectionDesc, SessionDesc};
-use egui::{Align, Color32, Frame, Layout, Resize, RichText, Style, Ui, Window};
+use crate::{dashboard::ConnectionsResponse, dashboard::DashboardResponse, theme};
+use alvr_session::{ClientConnectionDesc, SessionDesc};
+use egui::{Align, Frame, Layout, Resize, RichText, Ui, Window};
 use std::{
-    cmp,
     collections::HashSet,
     net::{IpAddr, Ipv4Addr},
 };
-
-const MIN_CLIENT_CARD_WIDTH: f32 = 200_f32;
-
-fn client_card(ui: &mut Ui, trusted: bool) -> Option<DashboardResponse> {
-    ui.group(|ui| {
-        Resize::default()
-            .fixed_size((MIN_CLIENT_CARD_WIDTH, MIN_CLIENT_CARD_WIDTH))
-            .resizable(false)
-            .show(ui, |ui| {
-                let trusted_text = if trusted { "Trusted" } else { "New" };
-                ui.label(trusted_text);
-
-                ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-                    let action_text = if trusted { "Configure" } else { "Trust" };
-                    ui.button(action_text);
-                });
-            });
-    });
-
-    None
-}
-
-pub enum ConnectionsResponse {
-    AddOrUpdate {
-        name: String,
-        client_desc: ClientConnectionDesc,
-    },
-    RemoveEntry(String),
-}
 
 struct EditPopupState {
     hostname: String,
@@ -47,7 +17,7 @@ pub struct ConnectionsTab {
 }
 
 impl ConnectionsTab {
-    pub fn new(trans: &TranslationBundle) -> Self {
+    pub fn new() -> Self {
         Self {
             edit_popup_state: None,
         }
@@ -81,9 +51,9 @@ impl ConnectionsTab {
             .collect();
 
         Frame::group(ui.style())
-            .fill(Color32::DARK_GRAY.linear_multiply(0.2))
+            .fill(theme::LIGHTER_BG)
             .show(ui, |ui| {
-                ui.label(RichText::new("New clients").size(20.0));
+                ui.label(RichText::new("New clients").size(18.0));
                 for (name, client_desc) in trusted {
                     ui.horizontal(|ui| {
                         ui.label(name);
@@ -108,9 +78,9 @@ impl ConnectionsTab {
             });
         ui.add_space(10.0);
         Frame::group(ui.style())
-            .fill(Color32::DARK_GRAY.linear_multiply(0.2))
+            .fill(theme::LIGHTER_BG)
             .show(ui, |ui| {
-                ui.label(RichText::new("Trusted clients").size(20.0));
+                ui.label(RichText::new("Trusted clients").size(18.0));
                 for (name, client_desc) in new {
                     ui.horizontal(|ui| {
                         ui.label(name);

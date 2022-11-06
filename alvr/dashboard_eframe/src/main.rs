@@ -10,23 +10,27 @@ impl ALVRDashboard {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let dir = PathBuf::from(env::var("DIR").unwrap());
 
-        Self {
-            dashboard: dashboard_core::dashboard::Dashboard::new(
-                &alvr_session::SessionDesc::default(),
-                Arc::new(
-                    dashboard_core::translation::TranslationBundle::new(
-                        Some("en".to_string()),
-                        &std::fs::read_to_string(dir.join("languages").join("list.json")).unwrap(),
-                        |language_id| {
-                            fs::read_to_string(
-                                dir.join("languages").join(format!("{}.ftl", language_id)),
-                            )
-                            .unwrap()
-                        },
-                    )
-                    .unwrap(),
-                ),
+        let mut dashboard = dashboard_core::dashboard::Dashboard::new(
+            &alvr_session::SessionDesc::default(),
+            Arc::new(
+                dashboard_core::translation::TranslationBundle::new(
+                    Some("en".to_string()),
+                    &std::fs::read_to_string(dir.join("languages").join("list.json")).unwrap(),
+                    |language_id| {
+                        fs::read_to_string(
+                            dir.join("languages").join(format!("{}.ftl", language_id)),
+                        )
+                        .unwrap()
+                    },
+                )
+                .unwrap(),
             ),
+        );
+
+        dashboard.setup(&cc.egui_ctx);
+
+        Self {
+            dashboard,
             counter: 0,
             last_vals: (0.0, 0.0),
         }
@@ -58,6 +62,7 @@ impl eframe::App for ALVRDashboard {
                     server_fps: self.last_vals.1,
                 }),
             }],
+            &Vec::new(),
         );
     }
 }

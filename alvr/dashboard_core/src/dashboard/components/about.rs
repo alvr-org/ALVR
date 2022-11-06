@@ -1,11 +1,11 @@
-use crate::{dashboard::DashboardResponse, translation::TranslationBundle};
+use crate::dashboard::DashboardResponse;
 use alvr_session::SessionDesc;
 use egui::{RichText, Ui};
 
 pub struct AboutTab {}
 
 impl AboutTab {
-    pub fn new(trans_bundle: &TranslationBundle) -> Self {
+    pub fn new() -> Self {
         Self {}
     }
 

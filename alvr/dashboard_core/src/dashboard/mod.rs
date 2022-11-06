@@ -2,23 +2,25 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    AboutTab, ConnectionsResponse, ConnectionsTab, InstallationResponse, InstallationTab, LogsTab,
-    SettingsTab, StatusBar,
+    AboutTab, ConnectionsTab, InstallationTab, LogsTab, SettingsTab, SetupWizard,
 };
 use crate::{
     dashboard::components::StatisticsTab,
     theme,
-    translation::{self, SharedTranslation, TranslationBundle},
+    translation::{self, TranslationBundle},
 };
-use alvr_events::{Event, EventType};
-use alvr_session::{ClientConnectionDesc, ConnectionDesc, SessionDesc, Theme};
-use basic_components::ModalResponse;
-use egui::{Align, CentralPanel, ComboBox, Context, Layout, ScrollArea, SidePanel, Ui};
+use alvr_events::{Event, EventSeverity, EventType, LogEvent};
+use alvr_session::{ClientConnectionDesc, LogLevel, SessionDesc};
+use egui::{
+    style::Margin, Align, CentralPanel, Context, Frame, Label, Layout, RichText,
+    ScrollArea, SidePanel, Stroke,
+};
 use std::{
-    collections::{BTreeMap, VecDeque},
-    net::IpAddr,
+    collections::BTreeMap,
     sync::Arc,
 };
+
+const NOTIFICATION_BAR_HEIGHT: f32 = 30.0;
 
 pub enum FirewallRulesResponse {
     Add,
@@ -30,13 +32,27 @@ pub enum DriverResponse {
     Unregister(String),
 }
 
+pub enum ConnectionsResponse {
+    AddOrUpdate {
+        name: String,
+        client_desc: ClientConnectionDesc,
+    },
+    RemoveEntry(String),
+}
+
+pub enum SetupWizardResponse {
+    Start,
+    Close,
+}
+
 pub enum DashboardResponse {
     Connections(ConnectionsResponse),
     SessionUpdated(Box<SessionDesc>),
     PresetInvocation(String),
     Driver(DriverResponse),
-    Installation(InstallationResponse),
+    Firewall(FirewallRulesResponse),
     RestartSteamVR,
+    SetupWizard(SetupWizardResponse),
     UpdateServer { url: String },
 }
 
@@ -50,93 +66,57 @@ enum Tab {
     About,
 }
 
-struct LanguageModalState {
-    visible: bool,
-    selection: Option<String>,
-}
-
 pub struct Dashboard {
     selected_tab: Tab,
-    language_modal_state: LanguageModalState,
-    tab_labels: BTreeMap<Tab, String>,
-    language_label: String,
+    tab_labels: BTreeMap<Tab, &'static str>,
     connections_tab: ConnectionsTab,
     statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
     installation_tab: InstallationTab,
     logs_tab: LogsTab,
     about_tab: AboutTab,
-    status_bar: StatusBar,
-    last_theme: Theme,
-    t: Arc<SharedTranslation>,
-    language_prompt_trans: String,
-    system_language_trans: String,
-    trans_bundle: Arc<TranslationBundle>,
+    notification: Option<LogEvent>,
+    setup_wizard: Option<SetupWizard>,
 }
 
 impl Dashboard {
     pub fn new(session: &SessionDesc, translation_bundle: Arc<TranslationBundle>) -> Self {
-        let language = if session.locale == "system" {
-            None
-        } else {
-            Some(session.locale.clone())
-        };
-
-        let theme = session.to_settings().extra.theme;
-
         let t = translation::get_shared_translation(&translation_bundle);
 
         Self {
             selected_tab: Tab::Connections,
-            language_modal_state: LanguageModalState {
-                visible: false,
-                selection: language,
-            },
             tab_labels: [
-                (
-                    Tab::Connections,
-                    format!("🔌 {}", translation_bundle.get("connections")),
-                ),
-                (
-                    Tab::Statistics,
-                    format!("📈 {}", translation_bundle.get("statistics")),
-                ),
-                (
-                    Tab::Settings,
-                    format!("⚙ {}", translation_bundle.get("settings")),
-                ),
-                (
-                    Tab::Installation,
-                    format!("💾 {}", translation_bundle.get("installation")),
-                ),
-                (Tab::Logs, format!("📝 {}", translation_bundle.get("logs"))),
-                (Tab::About, format!("ℹ {}", translation_bundle.get("about"))),
+                (Tab::Connections, "🔌 Connections",),
+                (Tab::Statistics, "📈 Statistics"),
+                (Tab::Settings, "⚙ Settings"),
+                (Tab::Installation, "💾 Installation",),
+                (Tab::Logs, "📝 Logs"),
+                (Tab::About, "ℹ About"),
             ]
             .into_iter()
             .map(|val| val.clone())
             .collect(),
-            language_label: format!("🌐 {}", translation_bundle.get("language")),
-            connections_tab: ConnectionsTab::new(&translation_bundle),
-            statistics_tab: StatisticsTab::new(Arc::clone(&translation_bundle)),
+            connections_tab: ConnectionsTab::new(),
+            statistics_tab: StatisticsTab::new(),
             settings_tab: SettingsTab::new(
                 &session.session_settings,
                 Arc::clone(&t),
                 &translation_bundle,
             ),
-            installation_tab: InstallationTab::new(&translation_bundle),
-            logs_tab: LogsTab::new(&translation_bundle),
-            about_tab: AboutTab::new(&translation_bundle),
-            status_bar: StatusBar::new(&translation_bundle),
-            last_theme: theme,
-            t,
-            language_prompt_trans: translation_bundle.attribute("language", "prompt"),
-            system_language_trans: translation_bundle.attribute("language", "system"),
-            trans_bundle: translation_bundle,
+            installation_tab: InstallationTab::new(),
+            logs_tab: LogsTab::new(),
+            about_tab: AboutTab::new(),
+            notification: None,
+            setup_wizard: if session.setup_wizard {
+                Some(SetupWizard::new())
+            } else {
+                None
+            }
         }
     }
 
     pub fn setup(&mut self, ctx: &Context) {
-        theme::set_theme(ctx, self.last_theme);
+        theme::set_theme(ctx);
     }
 
     pub fn update(
@@ -146,45 +126,6 @@ impl Dashboard {
         new_events: &[Event],
         drivers: &Vec<String>,
     ) -> Option<DashboardResponse> {
-        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            self.status_bar.ui(ui);
-        });
-
-        let response = SidePanel::left("side_panel")
-            .resizable(false)
-            .show(ctx, |ui| {
-                ui.heading("ALVR");
-                egui::warn_if_debug_build(ui);
-
-                for (tab, label) in &self.tab_labels {
-                    ui.selectable_value(&mut self.selected_tab, *tab, label);
-                }
-
-                ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-                    if ui.selectable_label(false, &self.language_label).clicked() {
-                        self.language_modal_state = LanguageModalState {
-                            visible: true,
-                            selection: if session.locale == "system" {
-                                None
-                            } else {
-                                Some(session.locale.clone())
-                            },
-                        };
-                    }
-                });
-
-                language_modal(
-                    ui,
-                    &mut self.language_modal_state,
-                    self.trans_bundle.languages(),
-                    session,
-                    &self.t,
-                    &self.language_prompt_trans,
-                    &self.system_language_trans,
-                )
-            })
-            .inner;
-
         for event in new_events {
             match &event.event_type {
                 EventType::GraphStatistics(graph_statistics) => self
@@ -193,96 +134,155 @@ impl Dashboard {
                 EventType::Statistics(statistics) => {
                     self.statistics_tab.update_statistics(statistics.clone())
                 }
-                EventType::Log(log) => self.logs_tab.update_logs(log.clone()),
+                EventType::Log(log) => {
+                    self.logs_tab.update_logs(log.clone());
+                    // Create a notification based on the notification level in the settings
+                    match session.to_settings().extra.notification_level {
+                        LogLevel::Debug => self.notification = Some(log.to_owned()),
+                        LogLevel::Info => match log.severity {
+                            EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
+                                self.notification = Some(log.to_owned())
+                            }
+                            _ => (),
+                        },
+                        LogLevel::Warning => match log.severity {
+                            EventSeverity::Warning | EventSeverity::Error => {
+                                self.notification = Some(log.to_owned())
+                            }
+                            _ => (),
+                        },
+                        LogLevel::Error => match log.severity {
+                            EventSeverity::Error => self.notification = Some(log.to_owned()),
+                            _ => (),
+                        },
+                    }
+                }
 
                 _ => (),
             }
         }
 
-        let response = CentralPanel::default()
-            .show(ctx, |ui| {
-                ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                    ui.heading(self.tab_labels.get(&self.selected_tab).unwrap());
-                    ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
-                        Tab::Connections => self.connections_tab.ui(ui, session),
-                        Tab::Statistics => self.statistics_tab.ui(ui),
-                        Tab::Settings => self.settings_tab.ui(ui, session),
-                        Tab::Installation => self.installation_tab.ui(ui, drivers),
-                        Tab::Logs => self.logs_tab.ui(ui),
-                        Tab::About => self.about_tab.ui(ui, session),
+        let mut response = match &mut self.setup_wizard {
+            Some(setup_wizard) => {
+                egui::CentralPanel::default()
+                    .show(ctx, |ui| setup_wizard.ui(ui))
+                    .inner
+            }
+            None => {
+                if match &self.notification {
+                    Some(log) => {
+                        let (fg, bg) = match log.severity {
+                            EventSeverity::Debug => (theme::FG, theme::DEBUG),
+                            EventSeverity::Info => (theme::BG, theme::INFO),
+                            EventSeverity::Warning => (theme::BG, theme::WARNING),
+                            EventSeverity::Error => (theme::FG, theme::ERROR),
+                        };
+                        egui::TopBottomPanel::bottom("bottom_panel")
+                            .default_height(NOTIFICATION_BAR_HEIGHT)
+                            .min_height(NOTIFICATION_BAR_HEIGHT)
+                            .frame(
+                                Frame::default()
+                                    .inner_margin(Margin::same(5.0))
+                                    .fill(bg)
+                                    .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
+                            )
+                            .show(ctx, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.add(
+                                        Label::new(RichText::new(&log.content).color(fg))
+                                            .wrap(true),
+                                    );
+                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                        if ui.button("❌").clicked() {
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    })
+                                    .inner
+                                })
+                                .inner
+                            })
+                            .inner
+                    }
+                    None => {
+                        egui::TopBottomPanel::bottom("bottom_panel")
+                            .default_height(NOTIFICATION_BAR_HEIGHT)
+                            .min_height(NOTIFICATION_BAR_HEIGHT)
+                            .frame(
+                                Frame::default()
+                                    .inner_margin(Margin::same(5.0))
+                                    .fill(theme::BG)
+                                    .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
+                            )
+                            .show(ctx, |ui| ui.label("No new notifications"));
+                        false
+                    }
+                } {
+                    self.notification = None;
+                }
+
+                let response = SidePanel::left("side_panel")
+                    .resizable(false)
+                    .max_width(150.0)
+                    .show(ctx, |ui| {
+                        ui.heading("ALVR");
+                        egui::warn_if_debug_build(ui);
+
+                        ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                            for (tab, label) in &self.tab_labels {
+                                ui.selectable_value(&mut self.selected_tab, *tab, *label);
+                            }
+                        });
+
+                        ui.with_layout(
+                            Layout::bottom_up(Align::Min).with_cross_justify(true),
+                            |ui| {
+                                ui.add_space(5.0);
+                                if ui.button("Restart SteamVR").clicked() {
+                                    Some(DashboardResponse::RestartSteamVR)
+                                } else {
+                                    None
+                                }
+                            },
+                        )
+                        .inner
                     })
-                })
-                .inner
-            })
-            .inner
-            .inner
-            .or(response);
+                    .inner;
 
-        if let Some(DashboardResponse::SessionUpdated(session)) = &response {
-            let settings = session.to_settings();
+                let response = CentralPanel::default()
+                    .show(ctx, |ui| {
+                        ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
+                            ui.heading(*self.tab_labels.get(&self.selected_tab).unwrap());
+                            ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
+                                Tab::Connections => self.connections_tab.ui(ui, session),
+                                Tab::Statistics => self.statistics_tab.ui(ui),
+                                Tab::Settings => self.settings_tab.ui(ui, session),
+                                Tab::Installation => self.installation_tab.ui(ui, drivers),
+                                Tab::Logs => self.logs_tab.ui(ui),
+                                Tab::About => self.about_tab.ui(ui, session),
+                            })
+                        })
+                        .inner
+                    })
+                    .inner
+                    .inner
+                    .or(response);
+                response
+            }
+        };
 
-            let theme = settings.extra.theme;
-            if theme != self.last_theme {
-                self.last_theme = theme;
-
-                theme::set_theme(ctx, theme);
+        if let Some(DashboardResponse::SetupWizard(_response)) = &response {
+            match _response {
+                SetupWizardResponse::Close => {
+                    self.setup_wizard = None;
+                    let mut session = session.to_owned();
+                    session.setup_wizard = false;
+                    response = Some(DashboardResponse::SessionUpdated(Box::new(session)));
+                }
+                SetupWizardResponse::Start => self.setup_wizard = Some(SetupWizard::new()),
             }
         }
-
         response
-    }
-}
-
-fn language_modal(
-    ctx: &mut Ui,
-    state: &mut LanguageModalState,
-    languages: &BTreeMap<String, String>,
-    session: &SessionDesc,
-    t: &SharedTranslation,
-    prompt_trans: &str,
-    system_trans: &str,
-) -> Option<DashboardResponse> {
-    let LanguageModalState { visible, selection } = state;
-
-    let maybe_response = basic_components::modal(
-        ctx,
-        prompt_trans,
-        |ui, available_width| {
-            const COMBO_WIDTH: f32 = 100_f32;
-
-            // comboboxes do not respoect parent layout, use manual spaces
-
-            ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
-                ui.add_space((available_width - COMBO_WIDTH) / 2_f32);
-
-                let selection_text = match selection {
-                    Some(language) => languages.get(language).unwrap(),
-                    None => system_trans,
-                };
-
-                ComboBox::from_id_source("language_select")
-                    .width(COMBO_WIDTH)
-                    .selected_text(selection_text)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(selection, None, system_trans);
-
-                        for (name, trans) in languages {
-                            ui.selectable_value(selection, Some(name.clone()), trans);
-                        }
-                    });
-            });
-        },
-        None,
-        visible,
-        t,
-    );
-
-    if matches!(maybe_response, Some(ModalResponse::Ok)) {
-        let mut session = session.clone();
-        session.locale = selection.clone().unwrap_or_else(|| "system".into());
-
-        Some(DashboardResponse::SessionUpdated(Box::new(session)))
-    } else {
-        None
     }
 }

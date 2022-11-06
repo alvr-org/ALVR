@@ -2,7 +2,7 @@ use crate::{
     buttons::BUTTON_PATH_FROM_ID, sockets::WelcomeSocket, statistics::StatisticsManager,
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
-    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, CONTROL_CHANNEL_SENDER,
+    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, VideoPacket, CONTROL_CHANNEL_SENDER,
     DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, LAST_AVERAGE_TOTAL_LATENCY,
     RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
@@ -137,8 +137,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         display_name,
-        server_ip: _,
         streaming_capabilities,
+        ..
     } = runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
     {
         SERVER_DATA_MANAGER.write().update_client_list(
@@ -719,9 +719,9 @@ async fn connection_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *VIDEO_SENDER.lock() = Some(data_sender);
 
-            while let Some((header, data)) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&header, data.len())?;
-                buffer.get_mut().extend(data);
+            while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
+                let mut buffer = socket_sender.new_buffer(&header, payload.len())?;
+                buffer.get_mut().extend(payload);
                 socket_sender.send_buffer(buffer).await.ok();
             }
 
@@ -790,6 +790,7 @@ async fn connection_pipeline(
                     } else if let Some(motion) = tracking_manager.map_controller(motion) {
                         motion
                     } else {
+                        warn!("Unrecognized device ID. Trackers are not supported");
                         continue;
                     };
                     device_motions.push((id, motion));

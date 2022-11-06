@@ -26,10 +26,6 @@ impl TrackingManager {
 
     // todo: move here more modifiers from C++
     pub fn map_controller(&self, device_motion: DeviceMotion) -> Option<DeviceMotion> {
-        if let Switch::Enabled(_) = &self.settings.controllers {
-            Some(device_motion)
-        } else {
-            None
-        }
+        matches!(self.settings.controllers, Switch::Enabled(_)).then(|| device_motion)
     }
 }

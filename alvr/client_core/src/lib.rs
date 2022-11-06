@@ -61,8 +61,8 @@ static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mut
 
 #[repr(u8)]
 pub enum AlvrCodec {
-    H264,
-    H265,
+    H264 = 0,
+    H265 = 1,
 }
 
 #[repr(u8)]

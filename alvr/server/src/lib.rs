@@ -62,9 +62,14 @@ static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(No
 static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
+pub struct VideoPacket {
+    pub header: VideoFrameHeaderPacket,
+    pub payload: Vec<u8>,
+}
+
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
+static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -326,7 +331,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
             }
 
-            sender.send((header, vec_buffer)).ok();
+            sender
+                .send(VideoPacket {
+                    header,
+                    payload: vec_buffer,
+                })
+                .ok();
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet(len as _);
@@ -362,8 +372,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             }
 
             if let Err(InterruptibleError::Other(e)) = connection::handshake_loop() {
-                error!("Connection thread closed: {e}");
-                // warn!("Connection thread closed: {e}");
+                warn!("Connection thread closed: {e}");
             }
         });
     }

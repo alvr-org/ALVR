@@ -52,9 +52,9 @@ pub fn maybe_launch_steamvr() {
         == 0
     {
         #[cfg(windows)]
-        spawn_no_window(Command::new("cmd").args(&["/C", "start", "steam://rungameid/250820"]));
+        spawn_no_window(Command::new("cmd").args(["/C", "start", "steam://rungameid/250820"]));
         #[cfg(not(windows))]
-        spawn_no_window(Command::new("steam").args(&["steam://rungameid/250820"]));
+        spawn_no_window(Command::new("steam").args(["steam://rungameid/250820"]));
     }
 }
 

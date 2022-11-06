@@ -35,8 +35,8 @@ pub fn download_and_extract_zip(
     let zip_file = temp_dir_guard.path().join("temp_download.zip");
     download(sh, url, &zip_file)?;
 
-    sh.remove_path(&destination).ok();
-    sh.create_dir(&destination)?;
+    sh.remove_path(destination).ok();
+    sh.create_dir(destination)?;
     unzip(sh, &zip_file, destination)
 }
 

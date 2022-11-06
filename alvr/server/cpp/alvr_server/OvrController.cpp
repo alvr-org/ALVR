@@ -843,7 +843,7 @@ bool OvrController::onPoseUpdate(float predictionS,
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_SYSTEM_CLICK], false, 0.0);
             vr::VRDriverInput()->UpdateBooleanComponent(
-                m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.7f, 0.0);
+                m_handles[ALVR_INPUT_GRIP_TOUCH], grip > 0.75f, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_GRIP_FORCE], grip - 1.0, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(m_handles[ALVR_INPUT_GRIP_VALUE], grip, 0.0);
@@ -1080,9 +1080,9 @@ bool OvrController::onPoseUpdate(float predictionS,
             vr::VRDriverInput()->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_GRIP_TOUCH], m_gripValue > 0.35f, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(
-                m_handles[ALVR_INPUT_GRIP_FORCE], m_gripValue * 2.0 - 1.0, 0.0);
+                m_handles[ALVR_INPUT_GRIP_FORCE], m_gripValue > 0.9f, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(
-                m_handles[ALVR_INPUT_GRIP_VALUE], m_gripValue * 2.0, 0.0);
+                m_handles[ALVR_INPUT_GRIP_VALUE], m_gripValue * 1.1f, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_TRACKPAD_X], m_joystickX, 0.0);
             vr::VRDriverInput()->UpdateScalarComponent(

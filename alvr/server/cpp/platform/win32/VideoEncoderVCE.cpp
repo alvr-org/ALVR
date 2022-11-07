@@ -168,7 +168,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 	const wchar_t *pCodec;
 
 	amf_int32 frameRateIn = refreshRate;
-	amf_int64 bitRateIn = bitrateInMbits * 1000000L; // in bits
+	amf_int64 bitRateIn = bitrateInMbits * 1'000'000L; // in bits
 
 	switch (codec) {
 	case ALVR_CODEC_H264:
@@ -380,7 +380,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	if (m_Listener) {
 		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
 			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
-			amf_int64 bitRateIn = m_bitrateInMBits * 1000000L; // in bits
+			amf_int64 bitRateIn = m_bitrateInMBits * 1'000'000L; // in bits
 			if (m_codec == ALVR_CODEC_H264)
 			{
 				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);

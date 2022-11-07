@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-<!-- Note: If the bug affects multiple games, please open an issue for each game with the game in the title. -->
+<!-- Note: If the bug affects multiple games, please open an issue for each game with the name of the game in the title. -->
 
 
 ## Description
@@ -17,7 +17,7 @@ assignees: ''
 - [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and successfully completed the setup wizard
 - [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/alvr-org/ALVR/wiki)
 
-## Environement
+## Environment
 
 ### Hardware
 **Note**: for Linux, an upload to the [`hw-probe`](https://linux-hardware.org/) database is preferred: `hw-probe -all -upload`

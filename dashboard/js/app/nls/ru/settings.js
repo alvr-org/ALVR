@@ -157,8 +157,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "Системная",
     "_root_extra_theme_classic-choice-.name": "Классическая",
     "_root_extra_theme_darkly-choice-.name": "Темная",
-    // "_root_extra_clientDarkMode.name": "",
-    // "_root_extra_clientDarkMode.description": "",
     "_root_extra_revertConfirmDialog.name": "Подтверждать восстановление",
     "_root_extra_revertConfirmDialog.description":
         "Запрашивать подтверждение перед откатом параметра к стандартному значению.",

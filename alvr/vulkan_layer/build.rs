@@ -1,6 +1,7 @@
-use std::{env, path::PathBuf};
-
+#[cfg(target_os = "linux")]
 fn main() {
+    use std::{env, path::PathBuf};
+
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let server_cpp_dir =
@@ -55,3 +56,6 @@ fn main() {
         println!("cargo:rerun-if-changed={}", path.to_string_lossy());
     }
 }
+
+#[cfg(not(target_os = "linux"))]
+fn main() {}

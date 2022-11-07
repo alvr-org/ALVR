@@ -1,3 +1,7 @@
+#![cfg(target_os = "linux")]
+
+use std::ffi::{c_char, CString};
+
 #[allow(
     non_camel_case_types,
     non_snake_case,
@@ -8,9 +12,6 @@ mod bindings {
     include!(concat!(env!("OUT_DIR"), "/layer_bindings.rs"));
 }
 use bindings::*;
-
-use std::ffi::CString;
-use std::os::raw::c_char;
 
 #[no_mangle]
 pub unsafe extern "C" fn vkGetInstanceProcAddr(

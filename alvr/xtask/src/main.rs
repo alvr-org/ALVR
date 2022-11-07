@@ -4,6 +4,7 @@ mod dependencies;
 mod packaging;
 mod version;
 
+use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
 use pico_args::Arguments;
@@ -33,9 +34,12 @@ SUBCOMMANDS:
 FLAGS:
     --help              Print this text
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
-    --release           Optimized build without debug info. For build subcommands
+    --release           Optimized build with less debug checks. For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
     --experiments       Build unfinished features. For build subcommands
+    --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
+    --appimage          Package as AppImage. For package-server subcommand
+    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
     --no-rebuild        Do not rebuild the server with run-server
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
@@ -46,25 +50,6 @@ ARGS:
     --root <PATH>       Installation root. By default no root is set and paths are calculated using
                         relative paths, which requires conforming to FHS on Linux.
 "#;
-
-// Crates at "alvr/" level that are prefixed with "alvr_"
-pub fn crate_dir_names() -> Vec<String> {
-    let sh = Shell::new().unwrap();
-
-    // NB: macOS might create a .DS_Store file. Filter to only directories
-    sh.read_dir(afs::workspace_dir().join("alvr"))
-        .unwrap()
-        .into_iter()
-        .filter(|path| path.is_dir())
-        .map(|path| {
-            path.file_name()
-                .unwrap()
-                .to_string_lossy()
-                .as_ref()
-                .to_owned()
-        })
-        .collect()
-}
 
 pub fn run_server() {
     let sh = Shell::new().unwrap();
@@ -84,14 +69,9 @@ pub fn clean() {
 }
 
 fn clippy() {
-    let crate_flags = crate_dir_names()
-        .into_iter()
-        .filter(|name| name != "client" && name != "vulkan_layer")
-        .flat_map(|name| ["-p".into(), format!("alvr_{name}")]);
-
     // lints updated for Rust 1.59
     let restriction_lints = [
-        // "allow_attributes_without_reason", // Rust 1.61
+        "allow_attributes_without_reason",
         "clone_on_ref_ptr",
         "create_dir",
         "decimal_literal_representation",
@@ -106,9 +86,9 @@ fn clippy() {
         "mem_forget",
         "multiple_inherent_impl",
         "rest_pat_in_fully_bound_structs",
-        "self_named_module_files",
+        // "self_named_module_files",
         "str_to_string",
-        "string_slice",
+        // "string_slice",
         "string_to_string",
         "try_err",
         "unnecessary_self_imports",
@@ -118,7 +98,7 @@ fn clippy() {
         "wildcard_enum_match_arm",
     ];
     let pedantic_lints = [
-        // "borrow_as_ptr", // Rust 1.60
+        "borrow_as_ptr",
         "enum_glob_use",
         "explicit_deref_methods",
         "explicit_into_iter_loop",
@@ -135,9 +115,7 @@ fn clippy() {
         .flat_map(|name| ["-W".to_owned(), format!("clippy::{name}")]);
 
     let sh = Shell::new().unwrap();
-    cmd!(sh, "cargo clippy {crate_flags...} -- {flags...}")
-        .run()
-        .unwrap();
+    cmd!(sh, "cargo clippy -- {flags...}").run().unwrap();
 }
 
 // Avoid Oculus link popups when debugging the client
@@ -161,11 +139,21 @@ fn main() {
     } else if let Ok(Some(subcommand)) = args.subcommand() {
         let no_nvidia = args.contains("--no-nvidia");
         let is_release = args.contains("--release");
+        let profile = if is_release {
+            Profile::Release
+        } else {
+            Profile::Debug
+        };
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
+
+        let appimage = args.contains("--appimage");
+        let zsync = args.contains("--zsync");
+
+        let local_ffmpeg = args.contains("--local-ffmpeg");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -191,17 +179,21 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(is_release, gpl, None, false, experiments),
-                "build-client" => build::build_quest_client(is_release),
-                "build-client-lib" => build::build_client_lib(is_release),
+                "build-server" => {
+                    build::build_server(profile, gpl, None, false, experiments, local_ffmpeg)
+                }
+                "build-client" => build::build_quest_client(profile),
+                "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(is_release, gpl, None, false, experiments);
+                        build::build_server(profile, gpl, None, false, experiments, local_ffmpeg);
                     }
                     run_server();
                 }
-                "package-server" => packaging::package_server(root, gpl),
-                "package-client" => build::build_quest_client(true),
+                "package-server" => {
+                    packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
+                }
+                "package-client" => build::build_quest_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

@@ -9,12 +9,17 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 All games that work with an Oculus Rift (s) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    Headset     |                        Support                         |
-| :------------: | :----------------------------------------------------: |
-|  Oculus Quest  |                   :heavy_check_mark:                   |
-| Oculus Quest 2 |                   :heavy_check_mark:                   |
-|   Oculus Go    |                   :heavy_check_mark:                   |
-|     GearVR     | :x: (use [this](https://github.com/polygraphene/ALVR)) |
+|     Headset      |      Support       |
+| :--------------: | :----------------: |
+|      Quest       | :heavy_check_mark: |
+|     Quest 2      | :heavy_check_mark: |
+|    Quest Pro     | :heavy_check_mark: |
+|    Oculus Go     |       :x: *        |
+|      GearVR      | :construction: **  |
+| Google Cardboard | :construction: **  |
+
+\* : Oculus Go support was dropped on v19. the last supported version is v18.2.3.
+\** : Coming soon
 
 ## Requirements
 
@@ -25,7 +30,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 -   High-end gaming PC
     -   Windows 10 May 2020 update is recommended. If you are on an older version, you need to install Chrome or another Chromium based browser.  
     -   Minimum supported OS version is Windows 8.  
-    -   NVIDIA GPU that supports NVENC ([Supported GPUs](https://github.com/polygraphene/ALVR/wiki/Supported-GPU)) (or with an AMD GPU that supports AMF VCE) with the latest driver.  
+    -   NVIDIA GPU that supports NVENC (1000 GTX Series or higher) (or with an AMD GPU that supports AMF VCE) with the latest driver.  
     -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way) 
 
 -   802.11ac 5Ghz wireless or ethernet wired connection  

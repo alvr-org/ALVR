@@ -74,10 +74,23 @@ define({
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
         "_root_video_clientRequestRealtimeDecoder.name":
             "Request realtime decoder priority (client)", // adv
-        "_root_video_use10bitEncoder.name":
-            "Reduce color banding (newer nVidia cards or SW encoding only)",
+        "_root_video_use10bitEncoder.name": "Reduce color banding",
         "_root_video_use10bitEncoder.description":
-            "This increases visual quality by streaming 10 bit per color channel instead of 8",
+            "This increases visual quality by streaming 10 bits per color channel instead of 8. Works on Windows with newer nVidia and AMD cards and software encoding.",
+        "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
+            "Enable Pre-Processor component",
+        "_root_video_advancedCodecOptions_amfControls_usePreproc.description":
+            "Enables Pre-Processor component (RX 5000+ models with 8-bit encoding only).  Removing bit-expensive high frequency details that are deemed not important for the human visual system.",
+        "_root_video_advancedCodecOptions_amfControls_preprocSigma.name": "Pre-Processor strength",
+        "_root_video_advancedCodecOptions_amfControls_preprocSigma.description":
+            "Strength of the pre-processing filter. The higher the strength, the stronger the filtering.",
+        "_root_video_advancedCodecOptions_amfControls_preprocTor.name": "Pre-Processor sensitivity",
+        "_root_video_advancedCodecOptions_amfControls_preprocTor.description":
+            "Sensitivity to edges. The higher the value, the more likely edges will be detected, and hence the less likely filtering will occur.",
+        "_root_video_advancedCodecOptions_amfControls_encoderQualityPreset.name":
+            "Encoder quality preset",
+        "_root_video_advancedCodecOptions_amfControls_encoderQualityPreset.description":
+            "Controls the encoder quality.",
         "_root_video_forceSwEncoding.name": "Force Software Encoding",
         "_root_video_forceSwEncoding.description":
             "This forces the Encoder to use CPU(Software Encoding) instead of GPU(Hardware Encoding).",
@@ -325,8 +338,6 @@ define({
         "_root_extra_theme_systemDefault-choice-.name": "System",
         "_root_extra_theme_classic-choice-.name": "Classic",
         "_root_extra_theme_darkly-choice-.name": "Darkly",
-        "_root_extra_clientDarkMode.name": "Client dark mode",
-        "_root_extra_clientDarkMode.description": "Applied after connection and sleep-wake cycle",
         "_root_extra_revertConfirmDialog.name": "Confirm revert",
         "_root_extra_revertConfirmDialog.description":
             "Ask for confirmation before reverting settings to default value",

@@ -1,13 +1,13 @@
 [package]
 name = "alvr_session"
-version = "19.0.0-dev01"
-authors = ["alvr-org", "Riccardo Zaglia <riccardo.zaglia5@gmail.com>"]
-license = "MIT"
-edition = "2021"
-rust-version = "1.58"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
-alvr_common = { path = "../common" }
+alvr_common.workspace = true
 
 bytemuck = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

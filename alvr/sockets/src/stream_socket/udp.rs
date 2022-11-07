@@ -1,5 +1,6 @@
 use crate::{Ldc, LOCAL_IP};
 use alvr_common::prelude::*;
+use alvr_session::SocketBufferSize;
 use bytes::{Buf, Bytes, BytesMut};
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -30,8 +31,55 @@ pub struct UdpStreamReceiveSocket {
     pub inner: SplitStream<UdpFramed<Ldc>>,
 }
 
-pub async fn bind(port: u16) -> StrResult<UdpSocket> {
-    UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())
+// Create tokio socket, convert to socket2, apply settings, convert back to tokio. This is done to
+// let tokio set all the internal parameters it needs from the start.
+pub async fn bind(
+    port: u16,
+    send_buffer_bytes: SocketBufferSize,
+    recv_buffer_bytes: SocketBufferSize,
+) -> StrResult<UdpSocket> {
+    let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
+    let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
+
+    info!(
+        "Initial UDP buffer size: send: {}B, recv: {}B",
+        socket.send_buffer_size().map_err(err!())?,
+        socket.recv_buffer_size().map_err(err!())?
+    );
+
+    {
+        let maybe_size = match send_buffer_bytes {
+            SocketBufferSize::Default => None,
+            SocketBufferSize::Maximum => Some(u32::MAX),
+            SocketBufferSize::Custom(size) => Some(size),
+        };
+
+        if let Some(size) = maybe_size {
+            socket.set_send_buffer_size(size as usize).map_err(err!())?;
+            info!(
+                "New UDP buffer send size: {}B",
+                socket.send_buffer_size().map_err(err!())?
+            );
+        }
+    }
+
+    {
+        let maybe_size = match recv_buffer_bytes {
+            SocketBufferSize::Default => None,
+            SocketBufferSize::Maximum => Some(u32::MAX),
+            SocketBufferSize::Custom(size) => Some(size),
+        };
+
+        if let Some(size) = maybe_size {
+            socket.set_recv_buffer_size(size as usize).map_err(err!())?;
+            info!(
+                "New UDP buffer recv size: {}B",
+                socket.recv_buffer_size().map_err(err!())?
+            );
+        }
+    }
+
+    UdpSocket::from_std(socket.into()).map_err(err!())
 }
 
 pub async fn connect(

@@ -182,8 +182,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "System",
     "_root_extra_theme_classic-choice-.name": "Hell",
     "_root_extra_theme_darkly-choice-.name": "Dunkel",
-    "_root_extra_clientDarkMode.name": "Client Nachtmodus",
-    "_root_extra_clientDarkMode.description": "Wird nach der Verbindung angewendet",
     "_root_extra_revertConfirmDialog.name": "Reset bestätigen",
     "_root_extra_revertConfirmDialog.description":
         "Nach einer Bestätigung fragen, bevor alle Werte auf den Standard zurückgesetzt werden",

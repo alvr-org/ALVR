@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use std::{
     env::{
         self,
-        consts::{DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX},
+        consts::{DLL_EXTENSION, DLL_PREFIX, DLL_SUFFIX, EXE_SUFFIX, OS},
     },
     path::{Path, PathBuf},
 };
@@ -54,17 +54,7 @@ pub fn build_dir() -> PathBuf {
 }
 
 pub fn server_build_dir() -> PathBuf {
-    let server_build_dir = if cfg!(windows) {
-        "alvr_server_windows"
-    } else if cfg!(target_os = "linux") {
-        "alvr_server_linux"
-    } else if cfg!(target_os = "macos") {
-        "alvr_server_macos"
-    } else {
-        unimplemented!()
-    };
-
-    build_dir().join(server_build_dir)
+    build_dir().join(format!("alvr_server_{OS}"))
 }
 
 pub fn installer_path() -> PathBuf {
@@ -94,18 +84,7 @@ pub struct Layout {
 
 impl Layout {
     pub fn new(root: &Path) -> Self {
-        if cfg!(any(windows, target_os = "macos")) {
-            Self {
-                executables_dir: root.to_owned(),
-                libraries_dir: root.to_owned(),
-                static_resources_dir: root.to_owned(),
-                config_dir: root.to_owned(),
-                log_dir: root.to_owned(),
-                openvr_driver_root_dir: root.to_owned(),
-                vrcompositor_wrapper_dir: root.to_owned(),
-                vulkan_layer_manifest_dir: root.to_owned(),
-            }
-        } else if cfg!(target_os = "linux") {
+        if cfg!(target_os = "linux") {
             // Get paths from environment or use FHS compliant paths
             let executables_dir = if !env!("executables_dir").is_empty() {
                 PathBuf::from(env!("executables_dir"))
@@ -159,17 +138,24 @@ impl Layout {
                 vulkan_layer_manifest_dir,
             }
         } else {
-            unimplemented!()
+            Self {
+                executables_dir: root.to_owned(),
+                libraries_dir: root.to_owned(),
+                static_resources_dir: root.to_owned(),
+                config_dir: root.to_owned(),
+                log_dir: root.to_owned(),
+                openvr_driver_root_dir: root.to_owned(),
+                vrcompositor_wrapper_dir: root.to_owned(),
+                vulkan_layer_manifest_dir: root.to_owned(),
+            }
         }
     }
 
     pub fn launcher_exe(&self) -> PathBuf {
         let exe = if cfg!(windows) {
             "ALVR Launcher.exe"
-        } else if cfg!(any(target_os = "linux", target_os = "macos")) {
-            "alvr_launcher"
         } else {
-            unimplemented!()
+            "alvr_launcher"
         };
         self.executables_dir.join(exe)
     }
@@ -191,10 +177,10 @@ impl Layout {
     }
 
     pub fn session_log(&self) -> PathBuf {
-        if cfg!(windows) {
-            self.log_dir.join("session_log.txt")
-        } else {
+        if cfg!(target_os = "linux") {
             self.log_dir.join("alvr_session_log.txt")
+        } else {
+            self.log_dir.join("session_log.txt")
         }
     }
 
@@ -218,18 +204,8 @@ impl Layout {
 
     // path to the shared library to be loaded by openVR
     pub fn openvr_driver_lib(&self) -> PathBuf {
-        let ext = if cfg!(windows) {
-            "dll"
-        } else if cfg!(target_os = "linux") {
-            "so"
-        } else if cfg!(target_os = "macos") {
-            "dylib"
-        } else {
-            unimplemented!()
-        };
-
         self.openvr_driver_lib_dir()
-            .join(format!("driver_alvr_server.{ext}"))
+            .join(format!("driver_alvr_server.{DLL_EXTENSION}"))
     }
 
     // path to the manifest file for openVR
@@ -257,13 +233,11 @@ static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
 // The path argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
     LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
-        let root = if cfg!(any(windows, target_os = "macos")) {
-            path.parent().unwrap().to_owned()
-        } else if cfg!(target_os = "linux") {
+        let root = if cfg!(target_os = "linux") {
             // FHS path is expected
             path.parent().unwrap().parent().unwrap().to_owned()
         } else {
-            unimplemented!()
+            path.parent().unwrap().to_owned()
         };
 
         Layout::new(&root)
@@ -273,13 +247,11 @@ pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
 // The dir argument is used only if ALVR is built as portable
 pub fn filesystem_layout_from_openvr_driver_root_dir(dir: &Path) -> Layout {
     LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
-        let root = if cfg!(any(windows, target_os = "macos")) {
-            dir.to_owned()
-        } else if cfg!(target_os = "linux") {
+        let root = if cfg!(target_os = "linux") {
             // FHS path is expected
             dir.parent().unwrap().parent().unwrap().to_owned()
         } else {
-            unimplemented!()
+            dir.to_owned()
         };
 
         Layout::new(&root)

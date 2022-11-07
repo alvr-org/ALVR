@@ -174,8 +174,6 @@ define({
     "_root_extra_theme_systemDefault-choice-.name": "系统",
     "_root_extra_theme_classic-choice-.name": "亮白",
     "_root_extra_theme_darkly-choice-.name": "暗黑",
-    // "_root_extra_clientDarkMode.name": "",
-    // "_root_extra_clientDarkMode.description": "",
     "_root_extra_revertConfirmDialog.name": "确认还原",
     "_root_extra_revertConfirmDialog.description": "在将设置恢复为默认值之前弹出用户确认对话框。",
     "_root_extra_restartConfirmDialog.name": "确认重启",

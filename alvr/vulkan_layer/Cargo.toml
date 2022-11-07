@@ -1,19 +1,19 @@
 [package]
 name = "alvr_vulkan_layer"
-version = "19.0.0-dev01"
-authors = ["alvr-org", "ARM", "Patrick Nicolas <patricknicolas@laposte.net>"]
-license = "MIT"
-edition = "2021"
-rust-version = "1.58"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-alvr_filesystem = { path = "../filesystem" }
+alvr_filesystem.workspace = true
 
 [build-dependencies]
-bindgen = "0.60"
+bindgen = "0.61"
 cc = { version = "1", features = ["parallel"] }
 pkg-config = "0.3.9"
 walkdir = "2"

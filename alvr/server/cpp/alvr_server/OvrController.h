@@ -7,7 +7,7 @@
 
 class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
   public:
-    OvrController(uint64_t devicePath);
+    OvrController(uint64_t deviceID);
 
     virtual ~OvrController(){};
 

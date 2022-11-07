@@ -244,7 +244,7 @@ void CEncoder::Run() {
 
         auto encode_end = std::chrono::steady_clock::now();
 
-        m_listener->GetStatistics()->EncodeOutput(std::chrono::duration_cast<std::chrono::microseconds>(encode_end - encode_start).count());
+        m_listener->GetStatistics()->EncodeOutput();
 
       }
     }

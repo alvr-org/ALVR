@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
@@ -18,20 +18,71 @@ pub enum FrameSize {
     },
 }
 
+#[repr(i64)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum NvencPreset {
+    LowLatencyDefault = 0,
+    LowLatencyHighQuality = 1,
+    LowLatencyHighPerformance = 2,
+}
+
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum EncoderQualityPreset {
+    Quality = 0,
+    Balanced = 1,
+    Speed = 2,
+}
+
+/// Except for preset, the value of these fields is not applied if == -1 (flag)
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NvencOverrides {
+    pub preset: NvencPreset,
+    pub refresh_rate: i64,
+    pub enable_intra_refresh: i64,
+    pub intra_refresh_period: i64,
+    pub intra_refresh_count: i64,
+    pub max_num_ref_frames: i64,
+    pub gop_length: i64,
+    pub p_frame_strategy: i64,
+    pub rate_control_mode: i64,
+    pub rc_buffer_size: i64,
+    pub rc_initial_delay: i64,
+    pub rc_max_bitrate: i64,
+    pub rc_average_bitrate: i64,
+    pub enable_aq: i64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AmfControls {
+    pub use_preproc: bool,
+    #[schema(min = 0, max = 10)]
+    pub preproc_sigma: u32,
+    #[schema(min = 0, max = 10)]
+    pub preproc_tor: u32,
+    pub encoder_quality_preset: EncoderQualityPreset,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum MediacodecDataType {
     Float(f32),
     Int32(i32),
     Int64(i64),
-    String(String), // Note: Double, Rect and Size are for level 28 and not compatible with the Oculus Go
+    String(String),
 }
 
-// #[derive(SettingsSchema, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct VideoCoding {
-//     codec: CodecType,
-//     mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
-// }
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedCodecOptions {
+    pub nvenc_overrides: NvencOverrides,
+    pub amf_controls: AmfControls,
+    pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
+}
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -159,6 +210,12 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub preferred_fps: f32,
 
+    #[schema(advanced, min = 1., max = 3.0, step = 0.1)]
+    pub max_buffering_frames: f32,
+
+    #[schema(advanced, min = 0.50, max = 0.99, step = 0.01)]
+    pub buffering_history_weight: f32,
+
     pub codec: CodecType,
 
     // #[schema(advanced)]
@@ -178,6 +235,9 @@ pub struct VideoDesc {
     pub encode_bitrate_mbs: u64,
 
     pub adaptive_bitrate: Switch<AdaptiveBitrateDesc>,
+
+    #[schema(advanced)]
+    pub advanced_codec_options: AdvancedCodecOptions,
 
     #[schema(advanced)]
     pub seconds_from_vsync_to_photons: f32,
@@ -309,15 +369,6 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(advanced, min = 0.0, max = 1.0, step = 0.01)]
-    pub prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_hmd_prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_ctrl_prediction_multiplier: f32,
-
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
@@ -389,8 +440,17 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub registered_device_type: String,
 
-    #[schema(advanced)]
-    pub tracking_frame_offset: i32,
+    #[schema(advanced, min = 0.0, max = 1.0, step = 0.05)]
+    pub clientside_controller_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -20, max = 20)]
+    pub tracking_latency_offset_ms: i64,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_hmd_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_ctrl_prediction_multiplier: f32,
 
     #[schema(advanced)]
     pub position_offset: [f32; 3],
@@ -433,14 +493,34 @@ pub struct DiscoveryConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum SocketBufferSize {
+    Default,
+    Maximum,
+    Custom(u32),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
-    #[schema(advanced, min = 1024, max = 65535)]
+    #[schema(advanced, min = 1024, max = 0xFFFF)]
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,
+
+    #[schema(advanced)]
+    pub server_send_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub server_recv_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub client_send_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub client_recv_buffer_bytes: SocketBufferSize,
 
     #[schema(advanced)]
     pub stream_port: u16,
@@ -490,7 +570,6 @@ pub enum LogLevel {
 #[serde(rename_all = "camelCase")]
 pub struct ExtraDesc {
     pub theme: Theme,
-    pub client_dark_mode: bool,
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
     pub prompt_before_update: bool,
@@ -536,35 +615,11 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             preferred_fps: 72.,
+            max_buffering_frames: 1.5,
+            buffering_history_weight: 0.90,
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
-            // video_coding: VideoCodingDefault {
-            //     codec: CodecTypeDefault {
-            //         variant: CodecTypeDefaultVariant::H264,
-            //     },
-            //     mediacodec_extra_options: DictionaryDefault {
-            //         key: "".into(),
-            //         value: MediacodecDataTypeDefault {
-            //             variant: MediacodecDataTypeDefaultVariant::String,
-            //             Float: 0.0,
-            //             Int32: 0,
-            //             Int64: 0,
-            //             String: "".into(),
-            //         },
-            //         content: vec![
-            //             ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
-            //             ("priority".into(), MediacodecDataType::Int32(0)),
-            //             // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-            //             // cabable, since they are on level 29.
-            //             ("low-latency".into(), MediacodecDataType::Int32(1)),
-            //             (
-            //                 "vendor.qti-ext-dec-low-latency.enable".into(),
-            //                 MediacodecDataType::Int32(1),
-            //             ),
-            //         ],
-            //     },
-            // },
             client_request_realtime_decoder: true,
             use_10bit_encoder: false,
             force_sw_encoding: false,
@@ -586,6 +641,55 @@ pub fn session_settings_default() -> SettingsDefault {
                     bitrate_up_rate: 1,
                     bitrate_down_rate: 3,
                     bitrate_light_load_threshold: 0.7,
+                },
+            },
+            advanced_codec_options: AdvancedCodecOptionsDefault {
+                nvenc_overrides: NvencOverridesDefault {
+                    preset: NvencPresetDefault {
+                        variant: NvencPresetDefaultVariant::LowLatencyHighQuality,
+                    },
+                    refresh_rate: -1,
+                    enable_intra_refresh: -1,
+                    intra_refresh_period: -1,
+                    intra_refresh_count: -1,
+                    max_num_ref_frames: -1,
+                    gop_length: -1,
+                    p_frame_strategy: -1,
+                    rate_control_mode: -1,
+                    rc_buffer_size: -1,
+                    rc_initial_delay: -1,
+                    rc_max_bitrate: -1,
+                    rc_average_bitrate: -1,
+                    enable_aq: -1,
+                },
+                amf_controls: AmfControlsDefault {
+                    use_preproc: false,
+                    preproc_sigma: 4,
+                    preproc_tor: 7,
+                    encoder_quality_preset: EncoderQualityPresetDefault {
+                        variant: EncoderQualityPresetDefaultVariant::Quality,
+                    },
+                },
+                mediacodec_extra_options: DictionaryDefault {
+                    key: "".into(),
+                    value: MediacodecDataTypeDefault {
+                        variant: MediacodecDataTypeDefaultVariant::String,
+                        Float: 0.0,
+                        Int32: 0,
+                        Int64: 0,
+                        String: "".into(),
+                    },
+                    content: vec![
+                        ("operating-rate".into(), MediacodecDataType::Int32(i32::MAX)),
+                        ("priority".into(), MediacodecDataType::Int32(0)),
+                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                        // cabable, since they are on level 29.
+                        ("low-latency".into(), MediacodecDataType::Int32(1)),
+                        (
+                            "vendor.qti-ext-dec-low-latency.enable".into(),
+                            MediacodecDataType::Int32(1),
+                        ),
+                    ],
                 },
             },
             seconds_from_vsync_to_photons: 0.005,
@@ -665,7 +769,10 @@ pub fn session_settings_default() -> SettingsDefault {
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
-            tracking_frame_offset: 0,
+            clientside_controller_prediction_multiplier: 0.5,
+            tracking_latency_offset_ms: -3,
+            steamvr_hmd_prediction_multiplier: 0.5,
+            steamvr_ctrl_prediction_multiplier: 0.5,
             position_offset: [0., 0., 0.],
             force_3dof: false,
             tracking_ref_only: false,
@@ -684,9 +791,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    prediction_multiplier: 1.0,
-                    steamvr_hmd_prediction_multiplier: 1.0,
-                    steamvr_ctrl_prediction_multiplier: 0.0,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],
@@ -719,6 +823,22 @@ pub fn session_settings_default() -> SettingsDefault {
                     bitrate_multiplier: 1.5,
                 },
             },
+            server_send_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            server_recv_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            client_send_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            client_recv_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
             stream_port: 9944,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
@@ -730,7 +850,6 @@ pub fn session_settings_default() -> SettingsDefault {
             theme: ThemeDefault {
                 variant: ThemeDefaultVariant::SystemDefault,
             },
-            client_dark_mode: false,
             revert_confirm_dialog: true,
             restart_confirm_dialog: true,
             prompt_before_update: true,

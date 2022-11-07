@@ -20,7 +20,6 @@ struct VideoFrame {
     unsigned int frameByteSize;
     unsigned int fecIndex;
     unsigned short fecPercentage;
-    // char frameBuffer[];
 };
 
 struct OnCreateResult {
@@ -29,8 +28,8 @@ struct OnCreateResult {
 };
 
 struct StreamConfigInput {
-    unsigned int eyeWidth;
-    unsigned int eyeHeight;
+    unsigned int viewWidth;
+    unsigned int viewHeight;
     bool enableFoveation;
     float foveationCenterSizeX;
     float foveationCenterSizeY;
@@ -40,27 +39,31 @@ struct StreamConfigInput {
     float foveationEdgeRatioY;
 };
 
-extern "C" OnCreateResult initNative(void *g_vm, void *g_context, void *assetManager);
-extern "C" void prepareLoadingRoom(int eyeWidth,
-                                   int eyeHeight,
-                                   bool darkMode,
-                                   const int *swapchainTextures[2],
-                                   int swapchainLength);
-extern "C" void renderNative(const int swapchainIndices[2]);
-extern "C" void updateLoadingTexuture(const unsigned char *data);
-extern "C" void renderLoadingNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
-extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
-extern "C" void setStreamConfig(StreamConfigInput config);
+// gltf_model.h
+extern "C" const unsigned char *LOBBY_ROOM_GLTF_PTR;
+extern "C" unsigned int LOBBY_ROOM_GLTF_LEN;
+extern "C" const unsigned char *LOBBY_ROOM_BIN_PTR;
+extern "C" unsigned int LOBBY_ROOM_BIN_LEN;
+
+// graphics.h
+extern "C" void initGraphicsNative();
+extern "C" void destroyGraphicsNative();
+extern "C" void prepareLobbyRoom(int viewWidth,
+                                 int viewHeight,
+                                 const int *swapchainTextures[2],
+                                 int swapchainLength);
 extern "C" void destroyRenderers();
-extern "C" void batteryChangedNative(int battery, int plugged);
-extern "C" void destroyNative();
+extern "C" void setStreamConfig(StreamConfigInput config);
+extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
+extern "C" void updateLobbyHudTexture(const unsigned char *data);
+extern "C" void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
+extern "C" void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]);
 
-extern "C" void initializeSocket(unsigned int codec, bool enableFEC);
-extern "C" void legacyReceive(const unsigned char *packet, unsigned int packetSize);
-extern "C" bool isConnectedNative();
-extern "C" void closeSocket();
-
-extern "C" unsigned long long (*pathStringToHash)(const char *path);
-
-extern "C" void (*videoErrorReportSend)();
+// nal.h
+extern "C" void initializeNalParser(int codec, bool enableFec);
+extern "C" void notifyNewDecoder();
+extern "C" bool processNalPacket(VideoFrame header,
+                                 const unsigned char *payload,
+                                 int payloadSize,
+                                 bool &outHadFecFailure);
 extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

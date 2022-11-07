@@ -72,12 +72,12 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         this->left_controller = this->hmd->m_leftController;
         this->right_controller = this->hmd->m_rightController;
 
-        this->tracked_devices.insert({HEAD_PATH, (TrackedDevice *)&*this->hmd});
+        this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)&*this->hmd});
         if (this->left_controller && this->right_controller) {
             this->tracked_devices.insert(
-                {LEFT_HAND_PATH, (TrackedDevice *)&*this->left_controller});
+                {LEFT_HAND_ID, (TrackedDevice *)&*this->left_controller});
             this->tracked_devices.insert(
-                {RIGHT_HAND_PATH, (TrackedDevice *)&*this->right_controller});
+                {RIGHT_HAND_ID, (TrackedDevice *)&*this->right_controller});
         }
 
         return vr::VRInitError_None;
@@ -130,11 +130,11 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (this->left_controller &&
                     haptics_info.containerHandle == this->left_controller->prop_container) {
                     HapticsSend(
-                        LEFT_CONTROLLER_HAPTIC_PATH, duration, haptics_info.fFrequency, amplitude);
+                        LEFT_CONTROLLER_HAPTIC_ID, duration, haptics_info.fFrequency, amplitude);
                 } else if (this->right_controller &&
                            haptics_info.containerHandle == this->right_controller->prop_container) {
                     HapticsSend(
-                        RIGHT_CONTROLLER_HAPTIC_PATH, duration, haptics_info.fFrequency, amplitude);
+                        RIGHT_CONTROLLER_HAPTIC_ID, duration, haptics_info.fFrequency, amplitude);
                 }
             }
         }
@@ -166,6 +166,7 @@ void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
+void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
@@ -219,14 +220,14 @@ void SetTracking(unsigned long long targetTimestampNs,
                  OculusHand leftHand,
                  OculusHand rightHand) {
     for (int i = 0; i < motionsCount; i++) {
-        if (deviceMotions[i].deviceID == HEAD_PATH && g_driver_provider.hmd) {
+        if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(
                 targetTimestampNs, headPredictionS, deviceMotions[i]);
         } else {
-            if (deviceMotions[i].deviceID == LEFT_HAND_PATH && g_driver_provider.left_controller) {
+            if (deviceMotions[i].deviceID == LEFT_HAND_ID && g_driver_provider.left_controller) {
                 g_driver_provider.left_controller->onPoseUpdate(
                     controllerPredictionS, deviceMotions[i], leftHand);
-            } else if (deviceMotions[i].deviceID == RIGHT_HAND_PATH &&
+            } else if (deviceMotions[i].deviceID == RIGHT_HAND_ID &&
                        g_driver_provider.right_controller) {
                 g_driver_provider.right_controller->onPoseUpdate(
                     controllerPredictionS, deviceMotions[i], rightHand);
@@ -240,34 +241,6 @@ void ReportNetworkLatency(unsigned long long latencyUs) {
     }
 }
 
-unsigned long long GetGameFrameIntervalNs() {
-    vr::Compositor_FrameTiming timings[2];
-    timings[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
-    timings[1].m_nSize = sizeof(vr::Compositor_FrameTiming);
-    vr::VRServerDriverHost()->GetFrameTimings(timings, 2);
-    auto t = timings[0];
-    // Warn("%f, %f, %f, %f, %f, %f, %f, %f, %f, %f",
-    //     t.m_flClientFrameIntervalMs,
-    //     t.m_flPresentCallCpuMs,
-    //     t.m_flWaitForPresentCpuMs,
-    //     t.m_flSubmitFrameMs,
-    //     t.m_flPreSubmitGpuMs,
-    //     t.m_flPostSubmitGpuMs,
-    //     t.m_flTotalRenderGpuMs,
-    //     t.m_flCompositorRenderGpuMs,
-    //     t.m_flCompositorRenderCpuMs,
-    //     t.m_flCompositorIdleCpuMs);
-    return (t.m_flClientFrameIntervalMs + t.m_flPresentCallCpuMs +
-            t.m_flWaitForPresentCpuMs // fixme: this should be near zero but it takes the whole
-                                      // frame time!
-            + t.m_flSubmitFrameMs
-            // + t.m_flPreSubmitGpuMs
-            // + t.m_flPostSubmitGpuMs
-            // + t.m_flTotalRenderGpuMs
-            + t.m_flCompositorRenderGpuMs + t.m_flCompositorRenderCpuMs +
-            t.m_flCompositorIdleCpuMs) *
-           1e6;
-}
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
         g_driver_provider.hmd->m_Listener->OnFecFailure();
@@ -308,11 +281,11 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
 }
 
 void SetButton(unsigned long long path, AlvrButtonValue value) {
-    if (std::find(LEFT_CONTROLLER_BUTTONS.begin(), LEFT_CONTROLLER_BUTTONS.end(), path) !=
-        LEFT_CONTROLLER_BUTTONS.end()) {
+    if (std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
+        LEFT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.left_controller->SetButton(path, value);
-    } else if (std::find(RIGHT_CONTROLLER_BUTTONS.begin(), RIGHT_CONTROLLER_BUTTONS.end(), path) !=
-               RIGHT_CONTROLLER_BUTTONS.end()) {
+    } else if (std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(), RIGHT_CONTROLLER_BUTTON_IDS.end(), path) !=
+               RIGHT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.right_controller->SetButton(path, value);
     }
 }

@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build_windows:
+  check-windows:
     runs-on: windows-2019
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
@@ -18,28 +18,30 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           override: true
+          components: clippy
       - uses: Swatinem/rust-cache@v1
 
       - uses: crazy-max/ghaction-chocolatey@v1
         with:
           args: install vulkan-sdk
 
-      - name: Build crates
-        uses: actions-rs/cargo@v1
+      - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
-          command: build
-          args: -p alvr_xtask -p alvr_server -p alvr_launcher --verbose
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-  build_linux:
+  check-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           override: true
+          components: clippy
       - uses: Swatinem/rust-cache@v1
 
       - name: Build and install dependencies
@@ -47,25 +49,26 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libgtk-3-dev libunwind-dev
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev
           cargo xtask prepare-deps --platform linux --no-nvidia
 
-      - name: Build crates
-        uses: actions-rs/cargo@v1
+      - uses: actions-rs/clippy-check@v1
         with:
-          command: build
-          args: -p alvr_xtask -p alvr_launcher -p alvr_server --features gpl -p alvr_vulkan_layer -p alvr_vrcompositor_wrapper --verbose
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --features gpl
 
-  build_client_core:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           override: true
       - uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
           target: aarch64-linux-android
           override: true
@@ -102,7 +105,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: -p alvr_session --verbose
+          args: -p alvr_session
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -118,22 +121,3 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-
-  clippy:
-    runs-on: windows-2019
-    env:
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: clippy
-      - uses: Swatinem/rust-cache@v1
-
-      - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: -p alvr_xtask -p alvr_common -p alvr_server -p alvr_launcher

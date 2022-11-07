@@ -1,22 +1,22 @@
 #ifndef ALVRCLIENT_FEC_H
 #define ALVRCLIENT_FEC_H
 
-#include <list>
-#include <vector>
-#include "packet_types.h"
+#include "bindings.h"
 #include "reedsolomon/rs.h"
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 class FECQueue {
 public:
     FECQueue();
     ~FECQueue();
 
-    void addVideoPacket(const VideoFrame *packet, int packetSize, bool &fecFailure);
+    void addVideoPacket(VideoFrame header, const unsigned char *payload, int payloadSize, bool &fecFailure);
     bool reconstruct();
     const std::byte *getFrameBuffer();
     int getFrameByteSize();
 
-    bool fecFailure();
     void clearFecFailure();
 private:
 

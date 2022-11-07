@@ -74,6 +74,10 @@ public:
 	uint64_t m_adaptiveBitrateDownRate;
 	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
+	bool m_usePreproc;
+	uint32_t m_preProcSigma;
+	uint32_t m_preProcTor;
+	uint32_t m_encoderQualityPreset;
 	bool m_force_sw_encoding;
 	uint32_t m_swThreadCount;
 
@@ -128,4 +132,19 @@ public:
 	bool m_enableFec;
 
 	bool m_enableLinuxVulkanAsync;
+
+	int64_t m_nvencPreset;
+	int64_t m_nvencRefreshRate;
+	int64_t m_nvencEnableIntraRefresh;
+	int64_t m_nvencIntraRefreshPeriod;
+	int64_t m_nvencIntraRefreshCount;
+	int64_t m_nvencMaxNumRefFrames;
+	int64_t m_nvencGopLength;
+	int64_t m_nvencPFrameStrategy;
+	int64_t m_nvencRateControlMode;
+	int64_t m_nvencRcBufferSize;
+	int64_t m_nvencRcInitialDelay;
+	int64_t m_nvencRcMaxBitrate;
+	int64_t m_nvencRcAverageBitrate;
+	int64_t m_nvencEnableAQ;
 };

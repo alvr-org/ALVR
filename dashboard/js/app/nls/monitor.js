@@ -69,6 +69,7 @@ define({
         performanceEncode: "Encode",
         performanceSend: "Send (+ Receive)",
         performanceDecode: "Decode",
+        performanceDecoderQueue: "Decoder queue",
         performanceClientCompositor: "Client Compositor",
         performanceClientVsync: "Client Vsync",
         performanceLatency: "Latency",

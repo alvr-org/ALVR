@@ -13,9 +13,6 @@ use std::{
 };
 use tokio::sync::mpsc as tmpsc;
 
-#[cfg(windows)]
-use windows::Win32::Media::Audio::IMMDevice;
-
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
     vec![
         ("CABLE Input".into(), "CABLE Output".into()),
@@ -81,13 +78,13 @@ impl AudioDevice {
                     .output_devices()
                     .map_err(err!())?
                     .find(|d| {
-                        if let Ok(name) = d.name() {
-                            VIRTUAL_MICROPHONE_PAIRS
-                                .iter()
-                                .any(|(input_name, _)| name.contains(input_name))
-                        } else {
-                            false
-                        }
+                        d.name()
+                            .map(|name| {
+                                VIRTUAL_MICROPHONE_PAIRS
+                                    .iter()
+                                    .any(|(input_name, _)| name.contains(input_name))
+                            })
+                            .unwrap_or(false)
                     })
                     .ok_or_else(|| {
                         "VB-CABLE or Voice Meeter not found. Please install or reinstall either one"
@@ -96,41 +93,36 @@ impl AudioDevice {
                 AudioDeviceType::VirtualMicrophoneOutput {
                     matching_input_device_name,
                 } => {
-                    let maybe_output_name = VIRTUAL_MICROPHONE_PAIRS
+                    let output_name = VIRTUAL_MICROPHONE_PAIRS
                         .iter()
                         .find(|(input_name, _)| matching_input_device_name.contains(input_name))
-                        .map(|(_, output_name)| output_name);
-                    if let Some(output_name) = maybe_output_name {
-                        host.input_devices()
-                            .map_err(err!())?
-                            .find(|d| {
-                                if let Ok(name) = d.name() {
-                                    name.contains(output_name)
-                                } else {
-                                    false
-                                }
-                            })
-                            .ok_or_else(|| {
-                                "Matching output microphone not found. Did you rename it?"
-                                    .to_owned()
-                            })?
-                    } else {
-                        return fmt_e!(
-                            "Selected input microphone device is unknown. {}",
-                            "Please manually select the matching output microphone device."
-                        );
-                    }
+                        .map(|(_, output_name)| output_name)
+                        .ok_or_else(|| {
+                            format!(
+                                "Selected input microphone device is unknown. {}",
+                                "Please manually select the matching output microphone device."
+                            )
+                        })?;
+
+                    host.input_devices()
+                        .map_err(err!())?
+                        .find(|d| {
+                            d.name()
+                                .map(|name| name.contains(output_name))
+                                .unwrap_or(false)
+                        })
+                        .ok_or_else(|| {
+                            "Matching output microphone not found. Did you rename it?".to_owned()
+                        })?
                 }
             },
             AudioDeviceId::Name(name_substring) => host
                 .devices()
                 .map_err(err!())?
                 .find(|d| {
-                    if let Ok(name) = d.name() {
-                        name.to_lowercase().contains(&name_substring.to_lowercase())
-                    } else {
-                        false
-                    }
+                    d.name()
+                        .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
+                        .unwrap_or(false)
                 })
                 .ok_or_else(|| {
                     format!("Cannot find audio device which name contains \"{name_substring}\"")
@@ -153,12 +145,12 @@ impl AudioDevice {
     }
 
     pub fn input_sample_rate(&self) -> StrResult<u32> {
-        let config = if let Ok(config) = self.inner.default_input_config() {
-            config
-        } else {
+        let config = self
+            .inner
+            .default_input_config()
             // On Windows, loopback devices are not recognized as input devices. Use output config.
-            self.inner.default_output_config().map_err(err!())?
-        };
+            .or_else(|_| self.inner.default_output_config())
+            .map_err(err!())?;
 
         Ok(config.sample_rate().0)
     }
@@ -173,20 +165,19 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
 }
 
 #[cfg(windows)]
-fn get_windows_device(device: &AudioDevice) -> StrResult<IMMDevice> {
-    use std::ptr;
+fn get_windows_device(device: &AudioDevice) -> StrResult<windows::Win32::Media::Audio::IMMDevice> {
     use widestring::U16CStr;
     use windows::Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{eAll, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE},
-        System::Com::{self, StructuredStorage::STGM_READ, CLSCTX_ALL, COINIT_MULTITHREADED},
+        System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     };
 
     let device_name = device.inner.name().map_err(err!())?;
 
     unsafe {
-        // This will fail the second time is called, ignore it
-        Com::CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED).ok();
+        // This will fail the second time is called, ignore the error
+        Com::CoInitializeEx(None, COINIT_MULTITHREADED).ok();
 
         let imm_device_enumerator: IMMDeviceEnumerator =
             Com::CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(err!())?;
@@ -231,7 +222,7 @@ pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
         let id_str = U16CStr::from_ptr_str(id_str_ptr.0)
             .to_string()
             .map_err(err!())?;
-        Com::CoTaskMemFree(id_str_ptr.0 as _);
+        Com::CoTaskMemFree(Some(id_str_ptr.0 as _));
 
         Ok(id_str)
     }
@@ -240,18 +231,20 @@ pub fn get_windows_device_id(device: &AudioDevice) -> StrResult<String> {
 // device must be an output device
 #[cfg(windows)]
 fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> StrResult {
-    use std::ptr;
-    use windows::Win32::{Media::Audio::Endpoints::IAudioEndpointVolume, System::Com::CLSCTX_ALL};
+    use windows::{
+        core::GUID,
+        Win32::{Media::Audio::Endpoints::IAudioEndpointVolume, System::Com::CLSCTX_ALL},
+    };
 
     unsafe {
         let imm_device = get_windows_device(device)?;
 
         let endpoint_volume = imm_device
-            .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, ptr::null_mut())
+            .Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
             .map_err(err!())?;
 
         endpoint_volume
-            .SetMute(mute, ptr::null_mut())
+            .SetMute(mute, &GUID::zeroed())
             .map_err(err!())?;
     }
 
@@ -265,12 +258,12 @@ pub async fn record_audio_loop(
     mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let config = if let Ok(config) = device.inner.default_input_config() {
-        config
-    } else {
+    let config = device
+        .inner
+        .default_input_config()
         // On Windows, loopback devices are not recognized as input devices. Use output config.
-        device.inner.default_output_config().map_err(err!())?
-    };
+        .or_else(|_| device.inner.default_output_config())
+        .map_err(err!())?;
 
     if config.channels() > 2 {
         // todo: handle more than 2 channels
@@ -539,7 +532,7 @@ impl Iterator for StreamingSource {
     fn next(&mut self) -> Option<f32> {
         if self.current_batch_cursor == 0 {
             self.current_batch = get_next_frame_batch(
-                &mut *self.sample_buffer.lock(),
+                &mut self.sample_buffer.lock(),
                 self.channels_count,
                 self.batch_frames_count,
             );

@@ -71,9 +71,14 @@ build_debian_server() {
 
     cd "${repoDir}" > /dev/null || return 4
     log info 'Building ALVR server ...'
+    if [ -n ${kwArgs['--no-nvidia']} ]; then
+        cargo xtask prepare-deps --platform linux
+    else
+        cargo xtask prepare-deps --platform linux --no-nvidia
+    fi
     # Cargo does NOT like quotes
     # shellcheck disable=SC2086
-    if cargo xtask build-server ${kwArgs['--server-args']:---release --bundle-ffmpeg}; then
+    if cargo xtask build-server ${kwArgs['--server-args']:---release --gpl}; then
         cd - > /dev/null || return 4
     else
         cd - > /dev/null && return 4
@@ -125,7 +130,7 @@ transform_control() {
 
     if [ "${kwArgs['--no-nvidia']}" != '' ]; then
         log info 'Removing unused nvidia build dependency ...'
-        sed -i 's/nvidia-cuda-toolkit,//' "${tmpDir}/control"
+        sed -i 's/\nnvidia-cuda-toolkit,//' "${tmpDir}/control"
     fi
 
 }

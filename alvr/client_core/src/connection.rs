@@ -1,20 +1,22 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    connection_utils::{self, ConnectionError},
+    decoder::{self, DECODER_INIT_CONFIG},
     platform,
+    sockets::AnnouncerSocket,
     statistics::StatisticsManager,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DECODER_REF, EVENT_BUFFER, IDR_PARSED,
-    IS_RESUMED, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    storage::Config,
+    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{parking_lot, prelude::*, ALVR_NAME, ALVR_VERSION};
+use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
 use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, ClientConfigPacket, ClientConnectionResult, ClientControlPacket,
-    ClientHandshakePacket, Haptics, HeadsetInfoPacket, PeerType, ProtoControlSocket,
-    ServerControlPacket, ServerHandshakePacket, StreamSocketBuilder, VideoFrameHeaderPacket, AUDIO,
-    HAPTICS, STATISTICS, TRACKING, VIDEO,
+    spawn_cancelable, ClientConnectionResult, ClientControlPacket, Haptics, PeerType,
+    ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
+    VideoFrameHeaderPacket, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
+    VIDEO,
 };
 use futures::future::BoxFuture;
 use glyph_brush_layout::{
@@ -23,18 +25,11 @@ use glyph_brush_layout::{
 };
 use serde_json as json;
 use settings_schema::Switch;
-use std::{
-    future, mem,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc as smpsc, Arc,
-    },
-    time::Duration,
-};
+use std::{future, net::IpAddr, sync::Arc, thread, time::Duration};
 use tokio::{
+    runtime::Runtime,
     sync::{mpsc as tmpsc, Mutex},
-    task,
-    time::{self, Instant},
+    time,
 };
 
 #[cfg(target_os = "android")]
@@ -42,41 +37,33 @@ use crate::audio;
 #[cfg(not(target_os = "android"))]
 use alvr_audio as audio;
 
-const INITIAL_MESSAGE: &str = "Searching for server...\n(open ALVR on your PC)";
+const INITIAL_MESSAGE: &str = concat!(
+    "Searching for server...\n",
+    "Open ALVR on your PC then click \"Trust\"\n",
+    "next to the client entry",
+);
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
-const CLIENT_UNTRUSTED_MESSAGE: &str = "On the PC, click \"Trust\"\nnext to the client entry";
 const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
     "Server and client have\n",
     "incompatible types.\n",
     "Please update either the app\n",
-    "on the PC or on the headset"
+    "on the PC or on the headset",
 );
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 
-const CONTROL_CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(500);
+const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
-const CLEANUP_PAUSE: Duration = Duration::from_millis(500);
+const CONNECTION_ERROR_PAUSE: Duration = Duration::from_millis(500);
 
-const LOADING_TEXTURE_WIDTH: usize = 1280;
-const LOADING_TEXTURE_HEIGHT: usize = 720;
+const HUD_TEXTURE_WIDTH: usize = 1280;
+const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
 
-// close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard {
-    is_connected: Arc<AtomicBool>,
-}
-
-impl Drop for StreamCloseGuard {
-    fn drop(&mut self) {
-        self.is_connected.store(false, Ordering::Relaxed);
-    }
-}
-
-fn set_loading_message(message: &str) {
-    let hostname = platform::load_config().hostname;
+fn set_hud_message(message: &str) {
+    let hostname = Config::load().hostname;
 
     let message = format!(
         "ALVR v{}\nhostname: {hostname}\n \n{message}",
@@ -93,8 +80,8 @@ fn set_loading_message(message: &str) {
             &[&ubuntu_font],
             &SectionGeometry {
                 screen_position: (
-                    LOADING_TEXTURE_WIDTH as f32 / 2_f32,
-                    LOADING_TEXTURE_HEIGHT as f32 / 2_f32,
+                    HUD_TEXTURE_WIDTH as f32 / 2_f32,
+                    HUD_TEXTURE_HEIGHT as f32 / 2_f32,
                 ),
                 ..Default::default()
             },
@@ -107,7 +94,7 @@ fn set_loading_message(message: &str) {
 
     let scaled_font = ubuntu_font.as_scaled(FONT_SIZE);
 
-    let mut buffer = vec![0_u8; LOADING_TEXTURE_WIDTH * LOADING_TEXTURE_HEIGHT * 4];
+    let mut buffer = vec![0_u8; HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4];
 
     for section_glyph in section_glyphs {
         if let Some(outlined) = scaled_font.outline_glyph(section_glyph.glyph) {
@@ -115,144 +102,158 @@ fn set_loading_message(message: &str) {
             outlined.draw(|x, y, alpha| {
                 let x = x as usize + bounds.min.x as usize;
                 let y = y as usize + bounds.min.y as usize;
-                buffer[(y * LOADING_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
+                buffer[(y * HUD_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
             });
         }
     }
 
-    unsafe { crate::updateLoadingTexuture(buffer.as_ptr()) };
-}
-
-fn on_server_connected(
-    eye_width: i32,
-    eye_height: i32,
-    fps: f32,
-    codec: CodecType,
-    realtime_decoder: bool,
-    oculus_foveation_level: OculusFovetionLevel,
-    dynamic_oculus_foveation: bool,
-    extra_latency: bool,
-    controller_prediction_multiplier: f32,
-) {
-    let vm = platform::vm();
-    let env = vm.attach_current_thread().unwrap();
-
-    env.call_method(
-        platform::context(),
-        "onServerConnected",
-        "(IIFIZIZZF)V",
-        &[
-            eye_width.into(),
-            eye_height.into(),
-            fps.into(),
-            (matches!(codec, CodecType::HEVC) as i32).into(),
-            realtime_decoder.into(),
-            (oculus_foveation_level as i32).into(),
-            dynamic_oculus_foveation.into(),
-            extra_latency.into(),
-            controller_prediction_multiplier.into(),
-        ],
-    )
-    .unwrap();
-}
-async fn connection_pipeline(
-    headset_info: HeadsetInfoPacket,
-    decoder_guard: Arc<parking_lot::Mutex<()>>,
-) -> StrResult {
-    let device_name = platform::device_name();
-    let hostname = platform::load_config().hostname;
-
-    let handshake_packet = ClientHandshakePacket {
-        alvr_name: ALVR_NAME.into(),
-        version: ALVR_VERSION.clone(),
-        device_name,
-        hostname,
-        reserved1: "".into(),
-        reserved2: "".into(),
+    #[cfg(target_os = "android")]
+    unsafe {
+        crate::updateLobbyHudTexture(buffer.as_ptr())
     };
+}
 
-    let (mut proto_socket, server_ip) = tokio::select! {
-        res = connection_utils::announce_client_loop(handshake_packet) => {
-            match res? {
-                ConnectionError::ServerMessage(message) => {
-                    info!("Server response: {message:?}");
-                    let message_str = match message {
-                        ServerHandshakePacket::ClientUntrusted => CLIENT_UNTRUSTED_MESSAGE,
-                        ServerHandshakePacket::IncompatibleVersions =>
-                            INCOMPATIBLE_VERSIONS_MESSAGE,
-                    };
-                    set_loading_message(message_str);
-                    return Ok(());
-                }
-                ConnectionError::NetworkUnreachable => {
-                    info!("Network unreachable");
-                    set_loading_message(
-                        NETWORK_UNREACHABLE_MESSAGE,
-                    );
+pub fn connection_lifecycle_loop(
+    recommended_view_resolution: UVec2,
+    supported_refresh_rates: Vec<f32>,
+) -> IntResult {
+    set_hud_message(INITIAL_MESSAGE);
 
-                    time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
+    let decoder_guard = Arc::new(Mutex::new(()));
 
-                    set_loading_message(
-                        INITIAL_MESSAGE,
-                    );
+    loop {
+        check_interrupt!(IS_ALIVE.value());
 
-                    return Ok(());
-                }
+        match connection_pipeline(
+            recommended_view_resolution,
+            supported_refresh_rates.clone(),
+            Arc::clone(&decoder_guard),
+        ) {
+            Ok(()) => continue,
+            Err(InterruptibleError::Interrupted) => return Ok(()),
+            Err(InterruptibleError::Other(e)) => {
+                let message = format!("Connection error:\n{e}\nCheck the PC for more details");
+                error!("{message}");
+                set_hud_message(&message);
+
+                // avoid spamming error messages
+                thread::sleep(CONNECTION_ERROR_PAUSE);
             }
-        },
-        pair = async {
-            loop {
-                if let Ok(pair) = ProtoControlSocket::connect_to(PeerType::Server).await {
-                    break pair;
-                }
+        }
+    }
+}
 
-                time::sleep(CONTROL_CONNECT_RETRY_PAUSE).await;
+fn connection_pipeline(
+    recommended_view_resolution: UVec2,
+    supported_refresh_rates: Vec<f32>,
+    decoder_guard: Arc<Mutex<()>>,
+) -> IntResult {
+    let runtime = Runtime::new().map_err(to_int_e!())?;
+
+    let (mut proto_control_socket, server_ip) = {
+        let config = Config::load();
+        let announcer_socket = AnnouncerSocket::new(&config.hostname).map_err(to_int_e!())?;
+        let listener_socket = runtime
+            .block_on(alvr_sockets::get_server_listener())
+            .map_err(to_int_e!())?;
+
+        loop {
+            check_interrupt!(IS_ALIVE.value());
+
+            if let Err(e) = announcer_socket.broadcast() {
+                warn!("Broadcast error: {e}");
+
+                set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
+
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+
+                set_hud_message(INITIAL_MESSAGE);
+
+                return Ok(());
             }
-        } => pair
+
+            let maybe_pair = runtime.block_on(async {
+                tokio::select! {
+                    maybe_pair = ProtoControlSocket::connect_to(PeerType::Server(&listener_socket)) => {
+                        maybe_pair.map_err(to_int_e!())
+                    },
+                    _ = time::sleep(DISCOVERY_RETRY_PAUSE) => Err(InterruptibleError::Interrupted)
+                }
+            });
+
+            if let Ok(pair) = maybe_pair {
+                break pair;
+            }
+        }
     };
 
     if !IS_RESUMED.value() {
         info!("Not streaming because not resumed");
-        proto_socket
-            .send(&ClientConnectionResult::ClientStandby)
-            .await
-            .map_err(err!())?;
-        return Ok(());
+        return runtime
+            .block_on(proto_control_socket.send(&ClientConnectionResult::ClientStandby))
+            .map_err(to_int_e!());
     }
 
-    proto_socket
-        .send(&ClientConnectionResult::ServerAccepted {
-            headset_info,
-            server_ip,
-        })
-        .await
-        .map_err(err!())?;
-    let config_packet = proto_socket
-        .recv::<ClientConfigPacket>()
-        .await
-        .map_err(err!())?;
+    let microphone_sample_rate =
+        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
+            .unwrap()
+            .input_sample_rate()
+            .unwrap();
 
+    runtime
+        .block_on(
+            proto_control_socket.send(&ClientConnectionResult::ConnectionAccepted {
+                display_name: platform::device_name(),
+                server_ip,
+                streaming_capabilities: Some(VideoStreamingCapabilities {
+                    default_view_resolution: recommended_view_resolution,
+                    supported_refresh_rates,
+                    microphone_sample_rate,
+                }),
+            }),
+        )
+        .map_err(to_int_e!())?;
+    let config_packet = runtime
+        .block_on(proto_control_socket.recv::<StreamConfigPacket>())
+        .map_err(to_int_e!())?;
+
+    runtime
+        .block_on(stream_pipeline(
+            proto_control_socket,
+            config_packet,
+            server_ip,
+            decoder_guard,
+        ))
+        .map_err(to_int_e!())
+}
+
+async fn stream_pipeline(
+    proto_socket: ProtoControlSocket,
+    stream_config: StreamConfigPacket,
+    server_ip: IpAddr,
+    decoder_guard: Arc<Mutex<()>>,
+) -> StrResult {
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
 
     match control_receiver.recv().await {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
-            set_loading_message(STREAM_STARTING_MESSAGE);
+            set_hud_message(STREAM_STARTING_MESSAGE);
         }
         Ok(ServerControlPacket::Restarting) => {
             info!("Server restarting");
-            set_loading_message(SERVER_RESTART_MESSAGE);
+            set_hud_message(SERVER_RESTART_MESSAGE);
             return Ok(());
         }
         Err(e) => {
             info!("Server disconnected. Cause: {e}");
-            set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+            set_hud_message(SERVER_DISCONNECTED_MESSAGE);
             return Ok(());
         }
         _ => {
             info!("Unexpected packet");
-            set_loading_message("Unexpected packet");
+            set_hud_message("Unexpected packet");
             return Ok(());
         }
     }
@@ -260,7 +261,7 @@ async fn connection_pipeline(
     let settings = {
         let mut session_desc = SessionDesc::default();
         session_desc
-            .merge_from_json(&json::from_str(&config_packet.session_desc).map_err(err!())?)?;
+            .merge_from_json(&json::from_str(&stream_config.session_desc).map_err(err!())?)?;
         session_desc.to_settings()
     };
 
@@ -271,6 +272,8 @@ async fn connection_pipeline(
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         settings.connection.stream_port,
         settings.connection.stream_protocol,
+        settings.connection.client_send_buffer_bytes,
+        settings.connection.client_recv_buffer_bytes,
     )
     .await?;
 
@@ -281,7 +284,7 @@ async fn connection_pipeline(
         .await
     {
         info!("Server disconnected. Cause: {e}");
-        set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+        set_hud_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
 
@@ -298,25 +301,27 @@ async fn connection_pipeline(
 
     info!("Connected to server");
 
-    let is_connected = Arc::new(AtomicBool::new(true));
-    let _stream_guard = StreamCloseGuard {
-        is_connected: Arc::clone(&is_connected),
-    };
-
-    {
-        let mut config = platform::load_config();
-        config.dark_mode = settings.extra.client_dark_mode;
-        platform::store_config(&config);
-    }
-
     // create this before initializing the stream on cpp side
     let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
     *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
+    {
+        let config = &mut *DECODER_INIT_CONFIG.lock();
+
+        config.codec = settings.video.codec;
+        config.max_buffering_frames = settings.video.max_buffering_frames;
+        config.buffering_history_weight = settings.video.buffering_history_weight;
+        config.options = settings
+            .video
+            .advanced_codec_options
+            .mediacodec_extra_options;
+    }
+
+    #[cfg(target_os = "android")]
     unsafe {
         crate::setStreamConfig(crate::StreamConfigInput {
-            eyeWidth: config_packet.eye_resolution_width,
-            eyeHeight: config_packet.eye_resolution_height,
+            viewWidth: stream_config.view_resolution.x,
+            viewHeight: stream_config.view_resolution.y,
             enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
             foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
                 &settings.video.foveated_rendering
@@ -363,50 +368,6 @@ async fn connection_pipeline(
         });
     }
 
-    on_server_connected(
-        config_packet.eye_resolution_width as _,
-        config_packet.eye_resolution_height as _,
-        config_packet.fps,
-        settings.video.codec,
-        settings.video.client_request_realtime_decoder,
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.oculus_foveation_level
-        } else {
-            OculusFovetionLevel::None
-        },
-        if let Switch::Enabled(foveation_vars) = &settings.video.foveated_rendering {
-            foveation_vars.dynamic_oculus_foveation
-        } else {
-            false
-        },
-        settings.headset.extra_latency_mode,
-        settings
-            .headset
-            .controllers
-            .into_option()
-            .map(|c| c.prediction_multiplier)
-            .unwrap_or_default(),
-    );
-
-    // setup stream loops
-
-    // let (debug_sender, mut debug_receiver) = tmpsc::unbounded_channel();
-    // let debug_loop = {
-    //     let control_sender = Arc::clone(&control_sender);
-    //     async move {
-    //         while let Some(data) = debug_receiver.recv().await {
-    //             control_sender
-    //                 .lock()
-    //                 .await
-    //                 .send(&ClientControlPacket::Reserved(data))
-    //                 .await
-    //                 .ok();
-    //         }
-
-    //         Ok(())
-    //     }
-    // };
-
     let tracking_send_loop = {
         let mut socket_sender = stream_socket.request_stream(TRACKING).await?;
         async move {
@@ -448,19 +409,73 @@ async fn connection_pipeline(
         }
     };
 
-    let (legacy_receive_data_sender, legacy_receive_data_receiver) = smpsc::channel();
-    let legacy_receive_data_sender = Arc::new(Mutex::new(legacy_receive_data_sender));
+    let streaming_start_event = AlvrEvent::StreamingStarted {
+        view_width: stream_config.view_resolution.x,
+        view_height: stream_config.view_resolution.y,
+        fps: stream_config.fps,
+        oculus_foveation_level: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.oculus_foveation_level
+        } else {
+            OculusFovetionLevel::None
+        } as i32,
+        dynamic_oculus_foveation: if let Switch::Enabled(foveation_vars) =
+            &settings.video.foveated_rendering
+        {
+            foveation_vars.dynamic_oculus_foveation
+        } else {
+            false
+        },
+        extra_latency: settings.headset.extra_latency_mode,
+        controller_prediction_multiplier: settings
+            .headset
+            .clientside_controller_prediction_multiplier,
+    };
 
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
-        let legacy_receive_data_sender = legacy_receive_data_sender.clone();
+        let codec = settings.video.codec;
+        let enable_fec = settings.connection.enable_fec;
         async move {
+            let _decoder_guard = decoder_guard.lock().await;
+
+            // close stream on Drop (manual disconnection or execution canceling)
+            struct StreamCloseGuard;
+
+            impl Drop for StreamCloseGuard {
+                fn drop(&mut self) {
+                    EVENT_QUEUE.lock().push_back(AlvrEvent::StreamingStopped);
+
+                    IS_STREAMING.set(false);
+
+                    #[cfg(target_os = "android")]
+                    {
+                        *crate::decoder::DECODER_ENQUEUER.lock() = None;
+                        *crate::decoder::DECODER_DEQUEUER.lock() = None;
+                    }
+                }
+            }
+
+            let _stream_guard = StreamCloseGuard;
+
+            unsafe {
+                crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
+            };
+
+            IS_STREAMING.set(true);
+
+            EVENT_QUEUE.lock().push_back(streaming_start_event);
+
             loop {
                 let packet = receiver.recv().await?;
 
-                let mut buffer = vec![0_u8; mem::size_of::<VideoFrame>() + packet.buffer.len()];
+                if !IS_RESUMED.value() {
+                    break Ok(());
+                }
+
                 let header = VideoFrame {
                     packetCounter: packet.header.packet_counter,
                     trackingFrameIndex: packet.header.tracking_frame_index,
@@ -471,18 +486,26 @@ async fn connection_pipeline(
                     fecPercentage: packet.header.fec_percentage,
                 };
 
-                buffer[..mem::size_of::<VideoFrame>()].copy_from_slice(unsafe {
-                    &mem::transmute::<_, [u8; mem::size_of::<VideoFrame>()]>(header)
-                });
-                buffer[mem::size_of::<VideoFrame>()..].copy_from_slice(&packet.buffer);
-
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_video_packet_received(Duration::from_nanos(
                         packet.header.tracking_frame_index,
                     ));
                 }
 
-                legacy_receive_data_sender.lock().await.send(buffer).ok();
+                let mut fec_failure = false;
+                unsafe {
+                    crate::processNalPacket(
+                        header,
+                        packet.buffer.as_ptr(),
+                        packet.buffer.len() as _,
+                        &mut fec_failure,
+                    )
+                };
+                if fec_failure {
+                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                        sender.send(ClientControlPacket::VideoErrorReport).ok();
+                    }
+                }
             }
         }
     };
@@ -495,7 +518,7 @@ async fn connection_pipeline(
             loop {
                 let packet = receiver.recv().await?.header;
 
-                EVENT_BUFFER.lock().push_back(AlvrEvent::Haptics {
+                EVENT_QUEUE.lock().push_back(AlvrEvent::Haptics {
                     device_id: packet.path,
                     duration_s: packet.duration.as_secs_f32(),
                     frequency: packet.frequency,
@@ -505,68 +528,6 @@ async fn connection_pipeline(
         }
     };
 
-    // The main stream loop must be run in a normal thread, because it needs to access the JNI env
-    // many times per second. If using a future I'm forced to attach and detach the env continuously.
-    // When the parent function exits or gets canceled, this loop will run to finish.
-    let legacy_stream_socket_loop = task::spawn_blocking({
-        let codec = settings.video.codec;
-        let enable_fec = settings.connection.enable_fec;
-        let decoder_guard = Arc::clone(&decoder_guard);
-        move || -> StrResult {
-            unsafe {
-                let _guard = decoder_guard.lock();
-
-                // Note: legacyReceive() requires the java context to be attached to the current thread
-                // todo: investigate why
-                let vm = platform::vm();
-                let env = vm.attach_current_thread().unwrap();
-
-                crate::initializeSocket(matches!(codec, CodecType::HEVC) as _, enable_fec);
-
-                let mut idr_request_deadline = None;
-
-                while let Ok(mut data) = legacy_receive_data_receiver.recv() {
-                    if !IS_RESUMED.value() {
-                        break;
-                    }
-
-                    // Send again IDR packet every 2s in case it is missed
-                    // (due to dropped burst of packets at the start of the stream or otherwise).
-                    if !IDR_PARSED.load(Ordering::Relaxed) {
-                        if let Some(deadline) = idr_request_deadline {
-                            if deadline < Instant::now() {
-                                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                                    sender.send(ClientControlPacket::RequestIdr).ok();
-                                }
-                                idr_request_deadline = None;
-                            }
-                        } else {
-                            idr_request_deadline = Some(Instant::now() + Duration::from_secs(2));
-                        }
-                    }
-
-                    crate::legacyReceive(data.as_mut_ptr(), data.len() as _);
-                }
-
-                crate::closeSocket();
-
-                let mut decoder = DECODER_REF.lock();
-
-                if let Some(decoder) = &*decoder {
-                    env.call_method(decoder.as_obj(), "onDisconnect", "()V", &[])
-                        .unwrap();
-
-                    env.call_method(decoder.as_obj(), "stopAndWait", "()V", &[])
-                        .unwrap();
-                }
-
-                *decoder = None;
-            }
-
-            Ok(())
-        }
-    });
-
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Output)
             .map_err(err!())?;
@@ -575,7 +536,7 @@ async fn connection_pipeline(
         Box::pin(audio::play_audio_loop(
             device,
             2,
-            config_packet.game_audio_sample_rate,
+            stream_config.game_audio_sample_rate,
             desc.buffering_config,
             game_audio_receiver,
         ))
@@ -609,7 +570,7 @@ async fn connection_pipeline(
                     .await;
                 if let Err(e) = res {
                     info!("Server disconnected. Cause: {e}");
-                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
 
@@ -629,15 +590,18 @@ async fn connection_pipeline(
     let control_receive_loop = async move {
         loop {
             match control_receiver.recv().await {
+                Ok(ServerControlPacket::InitializeDecoder { config_buffer }) => {
+                    decoder::create_decoder(config_buffer);
+                }
                 Ok(ServerControlPacket::Restarting) => {
                     info!("{SERVER_RESTART_MESSAGE}");
-                    set_loading_message(SERVER_RESTART_MESSAGE);
+                    set_hud_message(SERVER_RESTART_MESSAGE);
                     break Ok(());
                 }
                 Ok(_) => (),
                 Err(e) => {
                     info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
-                    set_loading_message(SERVER_DISCONNECTED_MESSAGE);
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     break Ok(());
                 }
             }
@@ -652,7 +616,7 @@ async fn connection_pipeline(
             if let Err(e) = res {
                 info!("Server disconnected. Cause: {e}");
             }
-            set_loading_message(
+            set_hud_message(
                 SERVER_DISCONNECTED_MESSAGE
             );
 
@@ -665,36 +629,11 @@ async fn connection_pipeline(
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = spawn_cancelable(control_send_loop) => res,
-        res = legacy_stream_socket_loop => res.map_err(err!())?,
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,
         res = control_receive_loop => res,
-        // res = debug_loop => res,
-    }
-}
 
-pub async fn connection_lifecycle_loop(headset_info: HeadsetInfoPacket) {
-    set_loading_message(INITIAL_MESSAGE);
-
-    let decoder_guard = Arc::new(parking_lot::Mutex::new(()));
-
-    loop {
-        tokio::join!(
-            async {
-                let maybe_error =
-                    connection_pipeline(headset_info.clone(), Arc::clone(&decoder_guard)).await;
-
-                if let Err(e) = maybe_error {
-                    let message = format!("Connection error:\n{e}\nCheck the PC for more details");
-                    error!("{message}");
-                    set_loading_message(&message);
-                }
-
-                // let any running task or socket shutdown
-                time::sleep(CLEANUP_PAUSE).await;
-            },
-            time::sleep(RETRY_CONNECT_MIN_INTERVAL),
-        );
+        _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
     }
 }

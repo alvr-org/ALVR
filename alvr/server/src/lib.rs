@@ -1,8 +1,8 @@
 mod buttons;
 mod connection;
-mod connection_utils;
 mod dashboard;
 mod logging_backend;
+mod sockets;
 mod statistics;
 mod tracking;
 mod web_server;
@@ -11,7 +11,8 @@ mod web_server;
     non_camel_case_types,
     non_upper_case_globals,
     dead_code,
-    non_snake_case
+    non_snake_case,
+    clippy::unseparated_literal_suffix
 )]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -22,18 +23,20 @@ use alvr_common::{
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
-    ALVR_VERSION,
+    prelude::*,
+    RelaxedAtomic, ALVR_VERSION,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{ClientListAction, GpuVendor, Haptics, VideoFrameHeaderPacket};
+use alvr_sockets::{
+    ClientListAction, GpuVendor, Haptics, ServerControlPacket, VideoFrameHeaderPacket,
+};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
-    ffi::{c_void, CStr, CString},
-    os::raw::c_char,
+    ffi::{c_char, c_void, CStr, CString},
     ptr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -52,33 +55,42 @@ static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
-static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
-static WINDOW: Lazy<Mutex<Option<Arc<alcro::UI>>>> = Lazy::new(|| Mutex::new(None));
+static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
+    Lazy::new(|| Mutex::new(Runtime::new().ok()));
+static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
-static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<(VideoFrameHeaderPacket, Vec<u8>)>>>> =
+pub struct VideoPacket {
+    pub header: VideoFrameHeaderPacket,
+    pub payload: Vec<u8>,
+}
+
+static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
+static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 
-static CLIENTS_UPDATED_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-static FRAME_RENDER_VS_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderVS.cso").to_vec());
-static FRAME_RENDER_PS_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/FrameRenderPS.cso").to_vec());
-static QUAD_SHADER_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/QuadVertexShader.cso").to_vec());
-static COMPRESS_AXIS_ALIGNED_CSO: Lazy<Vec<u8>> = Lazy::new(|| {
-    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso").to_vec()
-});
-static COLOR_CORRECTION_CSO: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso").to_vec());
+static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
+static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
+static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/QuadVertexShader.cso");
+static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
+static COLOR_CORRECTION_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
+
+static IS_ALIVE: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
+
+pub enum WindowType {
+    Alcro(alcro::UI),
+    Browser,
+}
 
 pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
     let type_ = match value {
@@ -121,22 +133,20 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
     }
 }
 
-pub fn shutdown_runtime() {
+pub fn shutdown_runtimes() {
     alvr_events::send_event(EventType::ServerQuitting);
 
-    if let Some(window) = WINDOW.lock().take() {
-        window.close();
+    // Shutsdown all connection runtimes
+    IS_ALIVE.set(false);
+
+    if let Some(window_type) = WINDOW.lock().take() {
+        match window_type.as_ref() {
+            WindowType::Alcro(window) => window.close(),
+            WindowType::Browser => (),
+        }
     }
 
-    SHUTDOWN_NOTIFIER.notify_waiters();
-
-    if let Some(runtime) = RUNTIME.lock().take() {
-        runtime.shutdown_background();
-        // shutdown_background() is non blocking and it does not guarantee that every internal
-        // thread is terminated in a timely manner. Using shutdown_background() instead of just
-        // dropping the runtime has the benefit of giving SteamVR a chance to clean itself as
-        // much as possible before the process is killed because of alvr_launcher timeout.
-    }
+    WEBSERVER_RUNTIME.lock().take();
 }
 
 pub fn notify_shutdown_driver() {
@@ -146,7 +156,7 @@ pub fn notify_shutdown_driver() {
         // give time to the control loop to send the restart packet (not crucial)
         thread::sleep(Duration::from_millis(100));
 
-        shutdown_runtime();
+        shutdown_runtimes();
 
         unsafe { ShutdownSteamvr() };
     });
@@ -169,37 +179,28 @@ fn init() {
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
-    if let Some(runtime) = RUNTIME.lock().as_mut() {
+    if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
         // Acquire and drop the data manager lock to create session.json if not present
         // this is needed until Settings.cpp is replaced with Rust. todo: remove
         SERVER_DATA_MANAGER.write().session_mut();
 
-        runtime.spawn(async move {
-            let connections = SERVER_DATA_MANAGER
-                .read()
-                .session()
-                .client_connections
-                .clone();
-            for (hostname, connection) in connections {
-                if !connection.trusted {
-                    SERVER_DATA_MANAGER.write().update_client_list(
-                        hostname,
-                        ClientListAction::RemoveIpOrEntry(None),
-                        Some(&CLIENTS_UPDATED_NOTIFIER),
-                    );
-                }
+        let connections = SERVER_DATA_MANAGER
+            .read()
+            .session()
+            .client_connections
+            .clone();
+        for (hostname, connection) in connections {
+            if !connection.trusted {
+                SERVER_DATA_MANAGER
+                    .write()
+                    .update_client_list(hostname, ClientListAction::RemoveEntry);
             }
+        }
 
-            let web_server = alvr_common::show_err_async(web_server::web_server(
-                log_sender,
-                events_sender.clone(),
-            ));
-
-            tokio::select! {
-                _ = web_server => (),
-                _ = SHUTDOWN_NOTIFIER.notified() => (),
-            }
-        });
+        runtime.spawn(alvr_common::show_err_async(web_server::web_server(
+            log_sender,
+            events_sender,
+        )));
 
         thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
@@ -297,6 +298,20 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
+    extern "C" fn initialize_decoder(buffer_ptr: *const u8, len: i32) {
+        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+            let mut config_buffer = vec![0; len as usize];
+
+            unsafe {
+                ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize)
+            };
+
+            sender
+                .send(ServerControlPacket::InitializeDecoder { config_buffer })
+                .ok();
+        }
+    }
+
     extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
             let header = VideoFrameHeaderPacket {
@@ -316,7 +331,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
             }
 
-            sender.send((header, vec_buffer)).ok();
+            sender
+                .send(VideoPacket {
+                    header,
+                    payload: vec_buffer,
+                })
+                .ok();
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet(len as _);
@@ -342,23 +362,23 @@ pub unsafe extern "C" fn HmdDriverFactory(
             FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
         ));
 
-        if let Some(runtime) = &mut *RUNTIME.lock() {
-            runtime.spawn(async move {
-                if set_default_chap {
-                    // call this when inside a new tokio thread. Calling this on the parent thread will
-                    // crash SteamVR
-                    unsafe { SetChaperone(2.0, 2.0) };
-                }
-                tokio::select! {
-                    _ = connection::connection_lifecycle_loop() => (),
-                    _ = SHUTDOWN_NOTIFIER.notified() => (),
-                }
-            });
-        }
+        IS_ALIVE.set(true);
+
+        thread::spawn(move || {
+            if set_default_chap {
+                // call this when inside a new tokio thread. Calling this on the parent thread will
+                // crash SteamVR
+                unsafe { SetChaperone(2.0, 2.0) };
+            }
+
+            if let Err(InterruptibleError::Other(e)) = connection::handshake_loop() {
+                warn!("Connection thread closed: {e}");
+            }
+        });
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtime();
+        shutdown_runtimes();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
@@ -395,6 +415,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     LogPeriodically = Some(log_periodically);
     DriverReadyIdle = Some(driver_ready_idle);
+    InitializeDecoder = Some(initialize_decoder);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);
     ShutdownRuntime = Some(_shutdown_runtime);

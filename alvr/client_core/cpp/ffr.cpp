@@ -84,8 +84,8 @@ namespace {
     };
 
     FoveationVars CalculateFoveationVars(FFRData data) {
-        float targetEyeWidth = data.eyeWidth;
-        float targetEyeHeight = data.eyeHeight;
+        float targetEyeWidth = data.viewWidth;
+        float targetEyeHeight = data.viewHeight;
 
 		float centerSizeX = data.centerSizeX;
 		float centerSizeY = data.centerSizeY;
@@ -119,7 +119,7 @@ namespace {
 		float eyeWidthRatioAligned = optimizedEyeWidth/optimizedEyeWidthAligned;
 		float eyeHeightRatioAligned = optimizedEyeHeight/optimizedEyeHeightAligned;
 
-        return {data.eyeWidth, data.eyeHeight, optimizedEyeWidthAligned, optimizedEyeHeightAligned,
+        return {data.viewWidth, data.viewHeight, optimizedEyeWidthAligned, optimizedEyeHeightAligned,
 			eyeWidthRatioAligned, eyeHeightRatioAligned,
 			centerSizeXAligned, centerSizeYAligned, centerShiftXAligned, centerShiftYAligned, edgeRatioX, edgeRatioY };
     }
@@ -141,7 +141,7 @@ void FFR::Initialize(FFRData ffrData) {
                                             fv.edgeRatioX, fv.edgeRatioY);
 
     mExpandedTexture.reset(
-            new Texture(false, ffrData.eyeWidth * 2, ffrData.eyeHeight, GL_RGB8));
+            new Texture(false, ffrData.viewWidth * 2, ffrData.viewHeight, GL_RGB8));
     mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
 
     auto decompressAxisAlignedShaderStr = ffrCommonShaderStr + DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER;

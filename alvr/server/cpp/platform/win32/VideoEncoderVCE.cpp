@@ -157,9 +157,17 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_preProcTor(Settings::Instance().m_preProcTor)
 	, m_preProcSigma(Settings::Instance().m_preProcSigma)
 	, m_encoderQualityPreset(static_cast<EncoderQualityPreset>(Settings::Instance().m_encoderQualityPreset))
+	, m_audByteSequence(nullptr)
+	, m_audNalSize(0)
+	, m_audHeaderSize(0)
 {}
 
-VideoEncoderVCE::~VideoEncoderVCE() {}
+VideoEncoderVCE::~VideoEncoderVCE() {
+	if (m_audByteSequence) {
+		delete[] m_audByteSequence;
+		m_audByteSequence = nullptr;
+	}
+}
 
 amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
@@ -220,6 +228,10 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_IDR_PERIOD, 0);
 
+		// Disable AUD to produce the same stream format as VideoEncoderNVENC.
+		// FIXME: This option doesn't work in 22.10.3, but works in versions prior 22.5.1
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
+
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / frameRateIn);
 	}
 	else
@@ -263,6 +275,10 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		//Set infinite GOP length
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_GOP_SIZE, 0);
 		
+		// Disable AUD to produce the same stream format as VideoEncoderNVENC.
+		// FIXME: This option doesn't work in 22.10.3, but works in versions prior 22.5.1
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
+
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / frameRateIn);
 	}
 
@@ -310,6 +326,8 @@ void VideoEncoderVCE::Initialize()
 {
 	Debug("Initializing VideoEncoderVCE.\n");
 	AMF_THROW_IF(g_AMFFactory.Init());
+
+	LoadAUDByteSequence();
 
 	::amf_increase_timer_precision();
 
@@ -424,6 +442,7 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = static_cast<int>(buffer->GetSize());
 
+	//Fallback in case AUD was not removed by the encoder
 	SkipAUD(&p, &length);
 
 	if (fpOut) {
@@ -437,7 +456,7 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {
 	switch (m_codec) {
 	case ALVR_CODEC_H264:
-		// Disable AUD (NAL Type 9) to produce the same stream format as VideoEncoderNVENC.
+		// FIXME: This option doesn't work in drivers 22.3.1 - 22.5.1, but works in 22.10.3
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
 		if (insertIDR) {
 			Debug("Inserting IDR frame for H.264.\n");
@@ -447,7 +466,7 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		}
 		break;
 	case ALVR_CODEC_H265:
-		// This option is ignored. Maybe a bug on AMD driver.
+		// FIXME: This option works with 22.10.3, but may not work with older drivers
 		surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
 		if (insertIDR) {
 			Debug("Inserting IDR frame for H.265.\n");
@@ -458,29 +477,50 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_IDR);
 		}
 		break;
+	default:
+		throw MakeException("Invalid video codec");
+	}
+}
+
+void VideoEncoderVCE::LoadAUDByteSequence() {
+	const char H264_AUD_HEADER[] = {0x00, 0x00, 0x00, 0x01, 0x09};
+	const char H265_AUD_HEADER[] = {0x00, 0x00, 0x00, 0x01, 0x46};
+
+	switch (m_codec) {
+	case ALVR_CODEC_H264:
+		m_audHeaderSize = sizeof(H264_AUD_HEADER);
+		m_audByteSequence = new char[m_audHeaderSize];
+		m_audNalSize = 6;
+		std::copy(std::begin(H264_AUD_HEADER), std::end(H264_AUD_HEADER), m_audByteSequence);
+		break;
+	case ALVR_CODEC_H265:
+		m_audHeaderSize = sizeof(H265_AUD_HEADER);
+		m_audByteSequence = new char[m_audHeaderSize];
+		m_audNalSize = 7;
+		std::copy(std::begin(H265_AUD_HEADER), std::end(H265_AUD_HEADER), m_audByteSequence);
+		break;
+	default:
+		throw MakeException("Invalid video codec");
 	}
 }
 
 void VideoEncoderVCE::SkipAUD(char **buffer, int *length) {
-	// H.265 encoder always produces AUD NAL even if AMF_VIDEO_ENCODER_HEVC_INSERT_AUD is set. But it is not needed.
-	static const int AUD_NAL_SIZE = 7;
+	static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
 
-	if (m_codec != ALVR_CODEC_H265) {
-		return;
-	}
-
-	if (*length < AUD_NAL_SIZE + 4) {
+	if (*length < m_audNalSize + sizeof(NAL_HEADER)) {
 		return;
 	}
 
 	// Check if start with AUD NAL.
-	if (memcmp(*buffer, "\x00\x00\x00\x01\x46", 5) != 0) {
+	if (memcmp(*buffer, m_audByteSequence, m_audHeaderSize) != 0) {
 		return;
 	}
-	// Check if AUD NAL size is AUD_NAL_SIZE bytes.
-	if (memcmp(*buffer + AUD_NAL_SIZE, "\x00\x00\x00\x01", 4) != 0) {
+
+	// Check if AUD NAL size is m_audNalSize bytes.
+	if (memcmp(*buffer + m_audNalSize, NAL_HEADER, sizeof(NAL_HEADER)) != 0) {
 		return;
 	}
-	*buffer += AUD_NAL_SIZE;
-	*length -= AUD_NAL_SIZE;
+
+	*buffer += m_audNalSize;
+	*length -= m_audNalSize;
 }

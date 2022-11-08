@@ -1,15 +1,21 @@
 use std::{
     env, fs,
     path::PathBuf,
-    sync::{mpsc, Arc},
-    task::Poll,
+    sync::{
+        mpsc::{self},
+        Arc,
+    },
     thread,
     time::Duration,
 };
 
 use dashboard::dashboard::DashboardResponse;
-use futures_util::{StreamExt, TryStreamExt};
-use tokio_tungstenite::connect_async;
+use futures_util::StreamExt;
+use tokio::sync::mpsc::error::TryRecvError;
+use tokio_tungstenite::{connect_async, tungstenite};
+
+const BASE_URL: &str = "http://localhost:8082";
+const BASE_WS_URL: &str = "ws://localhost:8082";
 
 struct ALVRDashboard {
     dashboard: dashboard::dashboard::Dashboard,
@@ -25,9 +31,11 @@ enum GuiMsg {
 }
 
 enum WorkerMsg {
-    Event(Vec<alvr_events::Event>),
+    Event(alvr_events::EventType),
     SessionResponse(alvr_session::SessionDesc),
     DriverResponse(Vec<String>),
+    LostConnection(String),
+    Connected,
 }
 
 impl ALVRDashboard {
@@ -42,13 +50,15 @@ impl ALVRDashboard {
         let session = loop {
             match rx1.recv().unwrap() {
                 WorkerMsg::SessionResponse(session) => break session,
+                WorkerMsg::LostConnection(_) => break alvr_session::SessionDesc::default(),
                 _ => (),
             }
         };
         tx2.send(GuiMsg::GetDrivers).unwrap();
-        let drivers = loop {
+        let (drivers, connected) = loop {
             match rx1.recv().unwrap() {
-                WorkerMsg::DriverResponse(drivers) => break drivers,
+                WorkerMsg::DriverResponse(drivers) => break (drivers, None),
+                WorkerMsg::LostConnection(why) => break (Vec::new(), Some(why)),
                 _ => (),
             }
         };
@@ -69,6 +79,7 @@ impl ALVRDashboard {
                 )
                 .unwrap(),
             ),
+            connected,
         );
         dashboard.setup(&cc.egui_ctx);
 
@@ -81,14 +92,31 @@ impl ALVRDashboard {
 }
 
 impl eframe::App for ALVRDashboard {
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         for msg in self.rx1.try_iter() {
             match msg {
-                _ => (),
+                WorkerMsg::Event(event) => {
+                    self.dashboard.new_event(event);
+                }
+                WorkerMsg::DriverResponse(drivers) => {
+                    self.dashboard.new_drivers(drivers);
+                }
+                WorkerMsg::LostConnection(why) => {
+                    self.dashboard.connection_status(Some(why));
+                }
+                WorkerMsg::Connected => {
+                    self.dashboard.connection_status(None);
+                    self.tx2.send(GuiMsg::GetSession).unwrap();
+                    self.tx2.send(GuiMsg::GetDrivers).unwrap();
+                }
+                WorkerMsg::SessionResponse(session) => {
+                    self.dashboard
+                        .new_event(alvr_events::EventType::Session(Box::new(session)));
+                }
             }
         }
 
-        match self.dashboard.update(ctx, &[]) {
+        match self.dashboard.update(ctx) {
             Some(response) => {
                 match response {
                     // These are the responses we don't want to pass to the worker thread
@@ -127,53 +155,121 @@ fn main() {
     handle.join().unwrap();
 }
 
+async fn websocket_task<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+    url: url::Url,
+    sender: tokio::sync::mpsc::Sender<T>,
+    mut recv: tokio::sync::broadcast::Receiver<()>,
+) {
+    let (event_stream, _) = connect_async(url).await.unwrap();
+    let (_, event_read) = event_stream.split();
+
+    tokio::select! {
+        _ = event_read.for_each(|msg| async {
+            match msg {
+                Ok(
+                tungstenite::Message::Text(text)) => {
+                    let event = serde_json::from_str::<T>(&text).unwrap();
+
+                    sender.send(event).await.unwrap();
+                }
+                Ok(_) => (),
+                Err(_why) => (),
+            }
+        }) => {},
+        _ = recv.recv() => {},
+    };
+}
+
 fn http_thread(tx1: mpsc::Sender<WorkerMsg>, rx2: mpsc::Receiver<GuiMsg>) {
+    use tokio::sync::{broadcast, mpsc};
     tokio::runtime::Runtime::new().unwrap().block_on(async {
         let client = reqwest::Client::builder().build().unwrap();
-        let (event_stream, _) =
-            connect_async(url::Url::parse("ws://localhost:8082/api/events").unwrap())
-                .await
-                .unwrap();
-        let (log_stream, _) =
-            connect_async(url::Url::parse("ws://localhost:8082/api/log").unwrap())
-                .await
-                .unwrap();
 
-        let (_, event_read) = event_stream.split();
+        // Communication with the event thread
+        let (broadcast_tx, _) = broadcast::channel(1);
+        let mut event_rx = None;
+
+        let mut connected = false;
 
         'main: loop {
+            match client.get(BASE_URL).send().await {
+                Ok(_) => {
+                    if !connected {
+                        let (event_tx, _event_rx) = mpsc::channel::<alvr_events::EventType>(1);
+                        tokio::task::spawn(websocket_task(
+                            url::Url::parse(&format!("{}/api/events", BASE_WS_URL)).unwrap(),
+                            event_tx,
+                            broadcast_tx.subscribe(),
+                        ));
+                        event_rx = Some(_event_rx);
+                        tx1.send(WorkerMsg::Connected).unwrap();
+                        connected = true;
+                    }
+                }
+                Err(why) => {
+                    let _ = broadcast_tx.send(());
+                    connected = false;
+
+                    // We still check for the exit signal from the Gui thread
+                    for msg in rx2.try_iter() {
+                        if let GuiMsg::Quit = msg {
+                            break 'main;
+                        }
+                    }
+
+                    tx1.send(WorkerMsg::LostConnection(format!("{}", why)))
+                        .unwrap();
+                }
+            }
+
+            // If we are not connected, don't even attempt to continue normal working order
+            if !connected {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                continue;
+            }
+
+            loop {
+                match event_rx.as_mut().unwrap().try_recv() {
+                    Ok(event) => {
+                        tx1.send(WorkerMsg::Event(event)).unwrap();
+                    }
+                    Err(TryRecvError::Empty) => break,
+                    Err(_) => break,
+                }
+            }
+
             for msg in rx2.try_iter() {
-                println!("Received MSG");
                 match msg {
                     GuiMsg::Quit => break 'main,
                     GuiMsg::GetSession => {
                         let response = client
-                            .get("http://localhost:8082/api/session/load")
+                            .get(format!("{}/api/session/load", BASE_URL))
                             .send()
                             .await
                             .unwrap();
 
-                        let text = response.text().await.unwrap();
-
-                        println!("{}", text);
-
                         tx1.send(WorkerMsg::SessionResponse(
-                            serde_json::from_str::<alvr_session::SessionDesc>(&text).unwrap(),
+                            response.json::<alvr_session::SessionDesc>().await.unwrap(),
                         ))
                         .unwrap();
                     }
                     GuiMsg::GetDrivers => {
-                        tx1.send(WorkerMsg::DriverResponse(Vec::new())).unwrap();
+                        let response = client
+                            .get(format!("{}/api/driver/list", BASE_URL))
+                            .send()
+                            .await
+                            .unwrap();
+
+                        let vec: Vec<String> = response.json().await.unwrap();
+
+                        tx1.send(WorkerMsg::DriverResponse(vec)).unwrap();
                     }
                     GuiMsg::Dashboard(response) => match response {
                         DashboardResponse::SessionUpdated(session) => {
-                            let text =
-                                serde_json::to_string(&serde_json::json!({ "session": session }))
-                                    .unwrap();
-                            println!("{}", text);
+                            let text = serde_json::to_string(&session).unwrap();
                             let response = client
-                                .get("http://localhost:8082/api/session/store")
-                                .body(text)
+                                .get(format!("{}/api/session/store", BASE_URL))
+                                .body(format!("{{\"session\": {}}}", text))
                                 .send()
                                 .await
                                 .unwrap();
@@ -186,7 +282,7 @@ fn http_thread(tx1: mpsc::Sender<WorkerMsg>, rx2: mpsc::Receiver<GuiMsg>) {
                         }
                         DashboardResponse::RestartSteamVR => {
                             client
-                                .get("http://localhost:8082/restart-steamvr")
+                                .get(format!("{}/restart-steamvr", BASE_URL))
                                 .send()
                                 .await
                                 .unwrap();
@@ -198,5 +294,7 @@ fn http_thread(tx1: mpsc::Sender<WorkerMsg>, rx2: mpsc::Receiver<GuiMsg>) {
             // With each iteration we should sleep to not consume a thread fully
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
+        // Shutdown the event thread if needed, an error would only mean that the event thread is already dead so we ignore it
+        let _ = broadcast_tx.send(());
     });
 }

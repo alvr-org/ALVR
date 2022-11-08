@@ -9,7 +9,7 @@ use crate::{
     theme,
     translation::{self, TranslationBundle},
 };
-use alvr_events::{Event, EventSeverity, EventType, LogEvent};
+use alvr_events::{EventSeverity, EventType, LogEvent};
 use alvr_session::{ClientConnectionDesc, LogLevel, SessionDesc};
 use egui::{
     style::Margin, Align, CentralPanel, Context, Frame, Label, Layout, RichText, ScrollArea,
@@ -79,8 +79,9 @@ pub struct Dashboard {
     about_tab: AboutTab,
     notification: Option<LogEvent>,
     setup_wizard: Option<SetupWizard>,
-    session: SessionDesc,
+    session: Box<SessionDesc>,
     drivers: Vec<String>,
+    connected: Option<String>,
 }
 
 impl Dashboard {
@@ -88,6 +89,7 @@ impl Dashboard {
         session: SessionDesc,
         drivers: Vec<String>,
         translation_bundle: Arc<TranslationBundle>,
+        connected: Option<String>,
     ) -> Self {
         let t = translation::get_shared_translation(&translation_bundle);
 
@@ -120,8 +122,9 @@ impl Dashboard {
             } else {
                 None
             },
-            session,
+            session: Box::new(session),
             drivers,
+            connected,
         }
     }
 
@@ -129,40 +132,60 @@ impl Dashboard {
         theme::set_theme(ctx);
     }
 
-    pub fn update(&mut self, ctx: &Context, new_events: &[Event]) -> Option<DashboardResponse> {
-        for event in new_events {
-            match &event.event_type {
-                EventType::GraphStatistics(graph_statistics) => self
-                    .statistics_tab
-                    .update_graph_statistics(graph_statistics.clone()),
-                EventType::Statistics(statistics) => {
-                    self.statistics_tab.update_statistics(statistics.clone())
-                }
-                EventType::Log(log) => {
-                    self.logs_tab.update_logs(log.clone());
-                    // Create a notification based on the notification level in the settings
-                    match self.session.to_settings().extra.notification_level {
-                        LogLevel::Debug => self.notification = Some(log.to_owned()),
-                        LogLevel::Info => match log.severity {
-                            EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
-                                self.notification = Some(log.to_owned())
-                            }
-                            _ => (),
-                        },
-                        LogLevel::Warning => match log.severity {
-                            EventSeverity::Warning | EventSeverity::Error => {
-                                self.notification = Some(log.to_owned())
-                            }
-                            _ => (),
-                        },
-                        LogLevel::Error => match log.severity {
-                            EventSeverity::Error => self.notification = Some(log.to_owned()),
-                            _ => (),
-                        },
-                    }
-                }
-                _ => (),
+    pub fn new_event(&mut self, event: EventType) {
+        match &event {
+            EventType::GraphStatistics(graph_statistics) => self
+                .statistics_tab
+                .update_graph_statistics(graph_statistics.clone()),
+            EventType::Statistics(statistics) => {
+                self.statistics_tab.update_statistics(statistics.clone())
             }
+            EventType::Log(log) => {
+                self.logs_tab.update_logs(log.clone());
+                // Create a notification based on the notification level in the settings
+                match self.session.to_settings().extra.notification_level {
+                    LogLevel::Debug => self.notification = Some(log.to_owned()),
+                    LogLevel::Info => match log.severity {
+                        EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
+                            self.notification = Some(log.to_owned())
+                        }
+                        _ => (),
+                    },
+                    LogLevel::Warning => match log.severity {
+                        EventSeverity::Warning | EventSeverity::Error => {
+                            self.notification = Some(log.to_owned())
+                        }
+                        _ => (),
+                    },
+                    LogLevel::Error => match log.severity {
+                        EventSeverity::Error => self.notification = Some(log.to_owned()),
+                        _ => (),
+                    },
+                }
+            }
+            EventType::Session(session) => {
+                self.session = session.to_owned();
+            }
+            _ => (),
+        }
+    }
+
+    pub fn new_drivers(&mut self, drivers: Vec<String>) {
+        self.drivers = drivers;
+    }
+
+    pub fn connection_status(&mut self, status: Option<String>) {
+        self.connected = status;
+    }
+
+    pub fn update(&mut self, ctx: &Context) -> Option<DashboardResponse> {
+        if let Some(status) = &self.connected {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                    ui.label(format!("Not connected!\n\n{}", status));
+                });
+            });
+            return None;
         }
 
         let mut response = match &mut self.setup_wizard {
@@ -275,15 +298,19 @@ impl Dashboard {
             }
         };
 
-        if let Some(DashboardResponse::SetupWizard(_response)) = &response {
+        if let Some(_response) = &response {
             match _response {
-                SetupWizardResponse::Close => {
+                DashboardResponse::SetupWizard(SetupWizardResponse::Close) => {
                     self.setup_wizard = None;
                     let mut session = self.session.to_owned();
                     session.setup_wizard = false;
-                    response = Some(DashboardResponse::SessionUpdated(Box::new(session)));
+                    response = Some(DashboardResponse::SessionUpdated(session));
                 }
-                SetupWizardResponse::Start => self.setup_wizard = Some(SetupWizard::new()),
+                DashboardResponse::SetupWizard(SetupWizardResponse::Start) => {
+                    self.setup_wizard = Some(SetupWizard::new())
+                }
+                DashboardResponse::SessionUpdated(session) => self.session = session.to_owned(),
+                _ => (),
             }
         }
         response

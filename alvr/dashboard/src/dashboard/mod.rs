@@ -309,7 +309,21 @@ impl Dashboard {
                 DashboardResponse::SetupWizard(SetupWizardResponse::Start) => {
                     self.setup_wizard = Some(SetupWizard::new())
                 }
+                DashboardResponse::Connections(conn) => match conn {
+                    ConnectionsResponse::AddOrUpdate { name, client_desc } => {
+                        self.session
+                            .client_connections
+                            .insert(name.to_owned(), client_desc.to_owned());
+                        response = Some(DashboardResponse::SessionUpdated(self.session.to_owned()));
+                    }
+                    ConnectionsResponse::RemoveEntry(name) => {
+                        self.session.client_connections.remove(name);
+                        response = Some(DashboardResponse::SessionUpdated(self.session.to_owned()));
+                    }
+                },
+
                 DashboardResponse::SessionUpdated(session) => self.session = session.to_owned(),
+
                 _ => (),
             }
         }

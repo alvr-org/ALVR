@@ -53,7 +53,7 @@ impl ConnectionsTab {
         Frame::group(ui.style())
             .fill(theme::LIGHTER_BG)
             .show(ui, |ui| {
-                ui.label(RichText::new("New clients").size(18.0));
+                ui.label(RichText::new("Trusted clients").size(18.0));
                 for (name, client_desc) in trusted {
                     ui.horizontal(|ui| {
                         ui.label(name);
@@ -80,7 +80,7 @@ impl ConnectionsTab {
         Frame::group(ui.style())
             .fill(theme::LIGHTER_BG)
             .show(ui, |ui| {
-                ui.label(RichText::new("Trusted clients").size(18.0));
+                ui.label(RichText::new("New clients").size(18.0));
                 for (name, client_desc) in new {
                     ui.horizontal(|ui| {
                         ui.label(name);

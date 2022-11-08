@@ -25,13 +25,15 @@ impl LogsTab {
     }
 
     pub fn ui(&self, ui: &mut Ui) -> Option<DashboardResponse> {
-        ScrollArea::vertical().show(ui, |ui| {
-            for log in &self.logs {
-                ui.horizontal(|ui| {
-                    ui.monospace(&log.timestamp);
-                    ui.monospace(&log.content);
-                });
-            }
+        ui.centered_and_justified(|ui| {
+            ScrollArea::both().show(ui, |ui| {
+                for log in &self.logs {
+                    ui.horizontal(|ui| {
+                        ui.monospace(&log.timestamp);
+                        ui.monospace(&log.content);
+                    });
+                }
+            });
         });
 
         None

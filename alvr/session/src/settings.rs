@@ -27,6 +27,15 @@ pub enum NvencPreset {
     LowLatencyHighPerformance = 2,
 }
 
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum EncoderQualityPreset {
+    Quality = 0,
+    Balanced = 1,
+    Speed = 2,
+}
+
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +56,17 @@ pub struct NvencOverrides {
     pub enable_aq: i64,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AmfControls {
+    pub use_preproc: bool,
+    #[schema(min = 0, max = 10)]
+    pub preproc_sigma: u32,
+    #[schema(min = 0, max = 10)]
+    pub preproc_tor: u32,
+    pub encoder_quality_preset: EncoderQualityPreset,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum MediacodecDataType {
@@ -60,6 +80,7 @@ pub enum MediacodecDataType {
 #[serde(rename_all = "camelCase")]
 pub struct AdvancedCodecOptions {
     pub nvenc_overrides: NvencOverrides,
+    pub amf_controls: AmfControls,
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 }
 
@@ -188,6 +209,12 @@ pub struct VideoDesc {
     //
     #[schema(advanced)]
     pub preferred_fps: f32,
+
+    #[schema(advanced, min = 1., max = 3.0, step = 0.1)]
+    pub max_buffering_frames: f32,
+
+    #[schema(advanced, min = 0.50, max = 0.99, step = 0.01)]
+    pub buffering_history_weight: f32,
 
     pub codec: CodecType,
 
@@ -342,15 +369,6 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub input_profile_path: String,
 
-    #[schema(advanced, min = 0.0, max = 1.0, step = 0.01)]
-    pub prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_hmd_prediction_multiplier: f32,
-
-    #[schema(advanced, min = -2.0, max = 2.0, step = 0.01)]
-    pub steamvr_ctrl_prediction_multiplier: f32,
-
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
@@ -422,8 +440,17 @@ pub struct HeadsetDesc {
     #[schema(advanced)]
     pub registered_device_type: String,
 
-    #[schema(advanced)]
-    pub tracking_frame_offset: i32,
+    #[schema(advanced, min = 0.0, max = 1.0, step = 0.05)]
+    pub clientside_controller_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -20, max = 20)]
+    pub tracking_latency_offset_ms: i64,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_hmd_prediction_multiplier: f32,
+
+    #[schema(advanced, min = -2.0, max = 2.0, step = 0.05)]
+    pub steamvr_ctrl_prediction_multiplier: f32,
 
     #[schema(advanced)]
     pub position_offset: [f32; 3],
@@ -466,6 +493,14 @@ pub struct DiscoveryConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum SocketBufferSize {
+    Default,
+    Maximum,
+    Custom(u32),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
@@ -474,6 +509,18 @@ pub struct ConnectionDesc {
     pub web_server_port: u16,
 
     pub stream_protocol: SocketProtocol,
+
+    #[schema(advanced)]
+    pub server_send_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub server_recv_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub client_send_buffer_bytes: SocketBufferSize,
+
+    #[schema(advanced)]
+    pub client_recv_buffer_bytes: SocketBufferSize,
 
     #[schema(advanced)]
     pub stream_port: u16,
@@ -568,6 +615,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             preferred_fps: 72.,
+            max_buffering_frames: 1.5,
+            buffering_history_weight: 0.90,
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
@@ -612,6 +661,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_max_bitrate: -1,
                     rc_average_bitrate: -1,
                     enable_aq: -1,
+                },
+                amf_controls: AmfControlsDefault {
+                    use_preproc: false,
+                    preproc_sigma: 4,
+                    preproc_tor: 7,
+                    encoder_quality_preset: EncoderQualityPresetDefault {
+                        variant: EncoderQualityPresetDefaultVariant::Quality,
+                    },
                 },
                 mediacodec_extra_options: DictionaryDefault {
                     key: "".into(),
@@ -712,7 +769,10 @@ pub fn session_settings_default() -> SettingsDefault {
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
-            tracking_frame_offset: 0,
+            clientside_controller_prediction_multiplier: 0.5,
+            tracking_latency_offset_ms: -3,
+            steamvr_hmd_prediction_multiplier: 0.5,
+            steamvr_ctrl_prediction_multiplier: 0.5,
             position_offset: [0., 0., 0.],
             force_3dof: false,
             tracking_ref_only: false,
@@ -731,9 +791,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ctrl_type_right: "oculus_touch".into(),
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
-                    prediction_multiplier: 1.0,
-                    steamvr_hmd_prediction_multiplier: 1.0,
-                    steamvr_ctrl_prediction_multiplier: 0.0,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],
@@ -765,6 +822,22 @@ pub fn session_settings_default() -> SettingsDefault {
                 ThrottledUdp: SocketProtocolThrottledUdpDefault {
                     bitrate_multiplier: 1.5,
                 },
+            },
+            server_send_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            server_recv_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            client_send_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
+            },
+            client_recv_buffer_bytes: SocketBufferSizeDefault {
+                Custom: 100000,
+                variant: SocketBufferSizeDefaultVariant::Maximum,
             },
             stream_port: 9944,
             aggressive_keyframe_resend: false,

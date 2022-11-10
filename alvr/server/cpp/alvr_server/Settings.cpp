@@ -98,6 +98,10 @@ void Settings::Load()
 		m_adaptiveBitrateDownRate = (int)config.get("bitrate_down_rate").get<int64_t>();
 		m_adaptiveBitrateLightLoadThreshold = config.get("bitrate_light_load_threshold").get<double>();
 		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
+		m_usePreproc = config.get("use_preproc").get<bool>();
+		m_preProcSigma = (uint32_t)config.get("preproc_sigma").get<int64_t>();
+		m_preProcTor = (uint32_t)config.get("preproc_tor").get<int64_t>();
+		m_encoderQualityPreset = (uint32_t)config.get("encoder_quality_preset").get<int64_t>();
 		m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();
 		m_swThreadCount = (int32_t)config.get("sw_thread_count").get<int64_t>();
 

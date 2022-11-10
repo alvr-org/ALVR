@@ -62,8 +62,8 @@ build_generic_client() {
     if cargo xtask prepare-deps --platform android && cargo xtask build-client ${kwArgs['--client-args']:---release}; then
         # Move and rename the files at the top of the build directory
         mv "${repoDir}/build/alvr_client_oculus_go/"* "${repoDir}/build/alvr_client_oculus_go${apkVer}.apk"
-        mv "${repoDir}/build/alvr_client_oculus_quest/"* "${repoDir}/build/alvr_client_oculus_quest${apkVer}.apk"
-        rmdir "${repoDir}/build/"{'alvr_client_oculus_quest','alvr_client_oculus_go'}
+        mv "${repoDir}/build/alvr_client_quest/"* "${repoDir}/build/alvr_client_quest${apkVer}.apk"
+        rmdir "${repoDir}/build/"{'alvr_client_quest','alvr_client_oculus_go'}
         cd - > /dev/null || return 2
     else
         cd - > /dev/null && return 2

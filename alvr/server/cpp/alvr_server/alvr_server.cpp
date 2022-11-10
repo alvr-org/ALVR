@@ -166,6 +166,7 @@ void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
+void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
 void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
@@ -240,34 +241,6 @@ void ReportNetworkLatency(unsigned long long latencyUs) {
     }
 }
 
-unsigned long long GetGameFrameIntervalNs() {
-    vr::Compositor_FrameTiming timings[2];
-    timings[0].m_nSize = sizeof(vr::Compositor_FrameTiming);
-    timings[1].m_nSize = sizeof(vr::Compositor_FrameTiming);
-    vr::VRServerDriverHost()->GetFrameTimings(timings, 2);
-    auto t = timings[0];
-    // Warn("%f, %f, %f, %f, %f, %f, %f, %f, %f, %f",
-    //     t.m_flClientFrameIntervalMs,
-    //     t.m_flPresentCallCpuMs,
-    //     t.m_flWaitForPresentCpuMs,
-    //     t.m_flSubmitFrameMs,
-    //     t.m_flPreSubmitGpuMs,
-    //     t.m_flPostSubmitGpuMs,
-    //     t.m_flTotalRenderGpuMs,
-    //     t.m_flCompositorRenderGpuMs,
-    //     t.m_flCompositorRenderCpuMs,
-    //     t.m_flCompositorIdleCpuMs);
-    return (t.m_flClientFrameIntervalMs + t.m_flPresentCallCpuMs +
-            t.m_flWaitForPresentCpuMs // fixme: this should be near zero but it takes the whole
-                                      // frame time!
-            + t.m_flSubmitFrameMs
-            // + t.m_flPreSubmitGpuMs
-            // + t.m_flPostSubmitGpuMs
-            // + t.m_flTotalRenderGpuMs
-            + t.m_flCompositorRenderGpuMs + t.m_flCompositorRenderCpuMs +
-            t.m_flCompositorIdleCpuMs) *
-           1e6;
-}
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
         g_driver_provider.hmd->m_Listener->OnFecFailure();

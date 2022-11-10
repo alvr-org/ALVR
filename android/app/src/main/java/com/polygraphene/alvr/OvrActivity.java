@@ -23,7 +23,6 @@ import java.util.concurrent.Semaphore;
 public class OvrActivity extends Activity {
     static {
         System.loadLibrary("native_lib");
-        System.loadLibrary("alvr_client_core");
     }
 
     final static String TAG = "OvrActivity";

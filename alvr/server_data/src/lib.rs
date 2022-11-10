@@ -10,7 +10,6 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-use tokio::sync::Notify;
 use wgpu::Adapter;
 
 fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
@@ -64,7 +63,7 @@ impl ServerDataManager {
         let config_dir = session_path.parent().unwrap();
         fs::create_dir_all(config_dir).ok();
 
-        let session_desc = match fs::read_to_string(&session_path) {
+        let session_desc = match fs::read_to_string(session_path) {
             Ok(session_string) => {
                 let json_value = json::from_str::<json::Value>(&session_string).unwrap();
                 match json::from_value(json_value.clone()) {
@@ -217,49 +216,56 @@ impl ServerDataManager {
         Ok(AudioDevicesList { output, input })
     }
 
-    pub fn update_client_list(
-        &mut self,
-        hostname: String,
-        action: ClientListAction,
-        update_notifier: Option<&Notify>,
-    ) {
+    pub fn update_client_list(&mut self, hostname: String, action: ClientListAction) {
         let mut client_connections = self.session.client_connections.clone();
 
         let maybe_client_entry = client_connections.entry(hostname);
 
         let mut updated = false;
         match action {
-            ClientListAction::AddIfMissing { display_name } => {
+            ClientListAction::AddIfMissing => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionDesc {
                         trusted: false,
                         manual_ips: HashSet::new(),
-                        display_name,
+                        display_name: "Unknown".into(),
                     };
                     new_entry.insert(client_connection_desc);
 
                     updated = true;
                 }
             }
-            ClientListAction::TrustAndMaybeAddIp(maybe_ip) => {
+            ClientListAction::SetDisplayName(name) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    let client_connection_ref = entry.get_mut();
-                    client_connection_ref.trusted = true;
-                    if let Some(ip) = maybe_ip {
-                        client_connection_ref.manual_ips.insert(ip);
-                    }
+                    entry.get_mut().display_name = name;
 
                     updated = true;
                 }
-                // else: never happens. The function must be called with AddIfMissing{} first
             }
-            ClientListAction::RemoveIpOrEntry(maybe_ip) => {
+            ClientListAction::Trust => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    if let Some(ip) = maybe_ip {
-                        entry.get_mut().manual_ips.remove(&ip);
-                    } else {
-                        entry.remove_entry();
-                    }
+                    entry.get_mut().trusted = true;
+
+                    updated = true;
+                }
+            }
+            ClientListAction::AddIp(ip) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    entry.get_mut().manual_ips.insert(ip);
+
+                    updated = true;
+                }
+            }
+            ClientListAction::RemoveIp(ip) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    entry.get_mut().manual_ips.remove(&ip);
+
+                    updated = true;
+                }
+            }
+            ClientListAction::RemoveEntry => {
+                if let Entry::Occupied(entry) = maybe_client_entry {
+                    entry.remove_entry();
 
                     updated = true;
                 }
@@ -272,10 +278,6 @@ impl ServerDataManager {
             save_session(&self.session, &self.session_path).unwrap();
             alvr_events::send_event(EventType::SessionUpdated); // deprecated
             alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
-
-            if let Some(notifier) = update_notifier {
-                notifier.notify_waiters();
-            }
         }
     }
 }

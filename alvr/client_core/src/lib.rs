@@ -6,10 +6,10 @@
 )]
 
 mod connection;
-mod connection_utils;
 mod decoder;
 mod logging_backend;
 mod platform;
+mod sockets;
 mod statistics;
 mod storage;
 
@@ -18,35 +18,31 @@ mod audio;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
-use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
-    RelaxedAtomic, ALVR_VERSION,
+    RelaxedAtomic,
 };
 use alvr_events::ButtonValue;
-use alvr_session::AudioDeviceId;
 use alvr_sockets::{
-    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, HeadsetInfoPacket,
-    Tracking, ViewsConfig,
+    BatteryPacket, ClientControlPacket, ClientStatistics, DeviceMotion, Fov, Tracking, ViewsConfig,
 };
 use decoder::EXTERNAL_DECODER;
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
-    ffi::{c_void, CStr},
-    os::raw::c_char,
+    ffi::{c_char, c_void, CStr},
     ptr, slice,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 use storage::Config;
-use tokio::{runtime::Runtime, sync::mpsc, sync::Notify};
+use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
-static RUNTIME: Lazy<Mutex<Option<Runtime>>> = Lazy::new(|| Mutex::new(None));
 static TRACKING_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
@@ -54,17 +50,19 @@ static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatisti
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static ON_DESTROY_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<AlvrEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 
+static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
+static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
+
 #[repr(u8)]
 pub enum AlvrCodec {
-    H264,
-    H265,
+    H264 = 0,
+    H265 = 1,
 }
 
 #[repr(u8)]
@@ -186,7 +184,6 @@ pub unsafe extern "C" fn alvr_initialize(
 
     logging_backend::init_logging();
 
-    createDecoder = Some(decoder::create_decoder);
     pushNal = Some(decoder::push_nal);
 
     // Make sure to reset config in case of version compat mismatch.
@@ -200,45 +197,24 @@ pub unsafe extern "C" fn alvr_initialize(
 
     EXTERNAL_DECODER.set(external_decoder);
 
-    let available_refresh_rates =
+    let recommended_view_resolution = UVec2::new(recommended_view_width, recommended_view_height);
+
+    let supported_refresh_rates =
         slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
-    let preferred_refresh_rate = available_refresh_rates.last().cloned().unwrap_or(60_f32);
 
-    let microphone_sample_rate =
-        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
-            .unwrap()
-            .input_sample_rate()
-            .unwrap();
-
-    let headset_info = HeadsetInfoPacket {
-        recommended_eye_width: recommended_view_width as _,
-        recommended_eye_height: recommended_view_height as _,
-        available_refresh_rates,
-        preferred_refresh_rate,
-        microphone_sample_rate,
-        reserved: format!("{}", *ALVR_VERSION),
-    };
-
-    let runtime = Runtime::new().unwrap();
-
-    runtime.spawn(async move {
-        let connection_loop = connection::connection_lifecycle_loop(headset_info);
-
-        tokio::select! {
-            _ = connection_loop => (),
-            _ = ON_DESTROY_NOTIFIER.notified() => ()
-        };
-    });
-
-    *RUNTIME.lock() = Some(runtime);
+    *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
+        connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
+            .ok();
+    }));
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_destroy() {
-    ON_DESTROY_NOTIFIER.notify_waiters();
+    IS_ALIVE.set(false);
 
-    // shutdown and wait for tasks to finish
-    drop(RUNTIME.lock().take());
+    if let Some(thread) = CONNECTION_THREAD.lock().take() {
+        thread.join().ok();
+    }
 }
 
 #[no_mangle]
@@ -426,6 +402,14 @@ pub extern "C" fn alvr_request_idr() {
 pub extern "C" fn alvr_report_frame_decoded(timestamp_ns: u64) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_frame_decoded(Duration::from_nanos(timestamp_ns as _));
+    }
+}
+
+/// Call only with external decoder
+#[no_mangle]
+pub extern "C" fn alvr_report_compositor_start(timestamp_ns: u64) {
+    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        stats.report_compositor_start(Duration::from_nanos(timestamp_ns as _));
     }
 }
 

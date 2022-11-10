@@ -30,7 +30,7 @@ fn build_windows_installer() {
     let main_object = wix_target_dir.join("main.wixobj");
     let harvested_source = wix_target_dir.join("harvested.wxs");
     let harvested_object = wix_target_dir.join("harvested.wixobj");
-    let alvr_msi = afs::build_dir().join("alvr_server.msi");
+    let alvr_msi = afs::build_dir().join("alvr_server_windows.msi");
     let bundle_source = wix_source_dir.join("bundle.wxs");
     let bundle_object = wix_target_dir.join("bundle.wixobj");
     let installer = afs::build_dir().join(format!("ALVR_Installer_v{version}.exe"));
@@ -118,8 +118,8 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
     }
     cmd!(&sh, "chmod a+x {linuxdeploy}").run().ok();
 
-    if sh.path_exists(&appdir) {
-        sh.remove_path(&appdir).ok();
+    if sh.path_exists(appdir) {
+        sh.remove_path(appdir).ok();
     }
 
     cmd!(&sh, "{linuxdeploy} --appdir={appdir}").run().ok();

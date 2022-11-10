@@ -61,9 +61,9 @@ extern "C" void renderStreamNative(void *streamHardwareBuffer, const int swapcha
 
 // nal.h
 extern "C" void initializeNalParser(int codec, bool enableFec);
+extern "C" void notifyNewDecoder();
 extern "C" bool processNalPacket(VideoFrame header,
                                  const unsigned char *payload,
                                  int payloadSize,
                                  bool &outHadFecFailure);
-extern "C" void (*createDecoder)(const char *csd_0, int length);
 extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

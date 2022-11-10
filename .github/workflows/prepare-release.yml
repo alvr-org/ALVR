@@ -69,28 +69,24 @@ jobs:
       # This is specific to the GitHub windows-2019 runner.
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
 
-      - name: Download WiX 3.14 binaries
-        run: |
-          Invoke-WebRequest http://static.wixtoolset.org/releases/v3.14.0.4118/wix314-binaries.zip -OutFile wix314-binaries.zip
-          Expand-Archive -Path wix314-binaries.zip -DestinationPath wix314-binaries/bin
+      - uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install zip unzip vulkan-sdk pkgconfiglite wixtoolset
 
       - name: Build and package ALVR
         id: build
         env:
-          WIX: "wix314-binaries"
           RUST_BACKTRACE: 1
         run: |
-          cargo xtask prepare-deps --platform windows
+          cargo xtask prepare-deps --platform windows --ci
           cargo xtask package-server --gpl
           $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
           echo "::set-output name=exe_filename::$file"
@@ -110,8 +106,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_server.msi
-          asset_name: alvr_server.msi
+          asset_path: ./build/alvr_server_windows.msi
+          asset_name: alvr_server_windows.msi
           asset_content_type: application/octet-stream
       - name: Upload portable server for Windows
         uses: actions/upload-release-asset@v1
@@ -127,8 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [prepare_release]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
       - uses: actions-rs/toolchain@v1
@@ -151,7 +146,6 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo xtask package-server --local-ffmpeg
-
       - name: Upload server for Linux
         uses: actions/upload-release-asset@v1
         env:
@@ -168,7 +162,6 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cargo xtask package-server --gpl --appimage --zsync
-
       - name: Upload portable server for Linux
         uses: actions/upload-release-asset@v1
         env:
@@ -178,7 +171,6 @@ jobs:
           asset_path: ./build/ALVR-x86_64.AppImage
           asset_name: ALVR-x86_64.AppImage
           asset_content_type: application/x-executable
-
       - name: Upload portable server for Linux (zsync)
         uses: actions/upload-release-asset@v1
         env:
@@ -189,84 +181,52 @@ jobs:
           asset_name: ALVR-x86_64.AppImage.zsync
           asset_content_type: application/octet-stream
 
-  build_android_client:
-    # Windows latest has Rust, Android NDK and LLVM already installed.
-    # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2019-Readme.md
-    runs-on: windows-2019
+  build_quest_client:
+    runs-on: ubuntu-latest
     needs: [prepare_release]
-    env:
-      # For bindgen to find libclang.dll, we need to give it the path to the Visual Studio package.
-      # This is specific to the GitHub windows-2019 runner.
-      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           ref: ${{ needs.prepare_release.outputs.release_ref }}
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: aarch64-linux-android
           override: true
-
       - uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
           java-version: '11'
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25b
 
-      - name: Set better Android SDK path (workaround for rust-android-gradle)
-        shell: cmd
-        run: mklink /J "%GITHUB_WORKSPACE%\android-sdk" "%ANDROID_SDK_ROOT%"
-
-      - name: Build dependencies
-        env:
-          RUST_BACKTRACE: 1
-        run: cargo xtask prepare-deps --platform android
-
-      - name: Build and package ALVR (.apk)
+      - name: Build and package ALVR
         id: build
         env:
-          ANDROID_HOME: '${{ github.workspace }}\android-sdk'
-          ANDROID_SDK_ROOT: '${{ github.workspace }}\android-sdk'
           RUST_BACKTRACE: 1
-        run: cargo xtask package-client
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          cargo xtask prepare-deps --platform android --ci
+          cargo xtask package-client
 
-      - name: Sign Oculus Quest APK
+      - name: Sign APK
         uses: r0adkll/sign-android-release@v1
-        id: sign_quest
+        id: sign_apk
         with:
-          releaseDirectory: build/alvr_client_oculus_quest
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-      - name: Sign Oculus Go APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_go
-        with:
-          releaseDirectory: build/alvr_client_oculus_go
+          releaseDirectory: build/alvr_client_quest
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      # Assets upload: 2 * .apk
-      - name: Upload client for Oculus Quest
+      - name: Upload APK
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ${{steps.sign_quest.outputs.signedReleaseFile}}
-          asset_name: alvr_client_oculus_quest.apk
-          asset_content_type: application/vnd.android.package-archive
-      - name: Upload client for Oculus Go
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ${{steps.sign_go.outputs.signedReleaseFile}}
-          asset_name: alvr_client_oculus_go.apk
+          asset_path: ${{steps.sign_apk.outputs.signedReleaseFile}}
+          asset_name: alvr_client_quest.apk
           asset_content_type: application/vnd.android.package-archive

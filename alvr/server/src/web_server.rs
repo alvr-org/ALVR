@@ -1,6 +1,4 @@
-use crate::{
-    CLIENTS_UPDATED_NOTIFIER, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
-};
+use crate::{DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_events::EventType;
 use alvr_sockets::ClientListAction;
@@ -189,17 +187,14 @@ async fn http_api(
             if let Ok((display_name, hostname, ip)) =
                 from_request_body::<(_, String, _)>(request).await
             {
-                let mut data_manager_ref = SERVER_DATA_MANAGER.write();
-                data_manager_ref.update_client_list(
+                let mut data_manager = SERVER_DATA_MANAGER.write();
+                data_manager.update_client_list(hostname.clone(), ClientListAction::AddIfMissing);
+                data_manager.update_client_list(
                     hostname.clone(),
-                    ClientListAction::AddIfMissing { display_name },
-                    Some(&CLIENTS_UPDATED_NOTIFIER),
+                    ClientListAction::SetDisplayName(display_name),
                 );
-                data_manager_ref.update_client_list(
-                    hostname,
-                    ClientListAction::TrustAndMaybeAddIp(Some(ip)),
-                    Some(&CLIENTS_UPDATED_NOTIFIER),
-                );
+                data_manager.update_client_list(hostname.clone(), ClientListAction::Trust);
+                data_manager.update_client_list(hostname, ClientListAction::AddIp(ip));
 
                 reply(StatusCode::OK)?
             } else {
@@ -207,12 +202,12 @@ async fn http_api(
             }
         }
         "/api/client/trust" => {
-            if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                SERVER_DATA_MANAGER.write().update_client_list(
-                    hostname,
-                    ClientListAction::TrustAndMaybeAddIp(maybe_ip),
-                    Some(&CLIENTS_UPDATED_NOTIFIER),
-                );
+            if let Ok((hostname, maybe_ip)) = from_request_body::<(String, _)>(request).await {
+                let mut data_manager = SERVER_DATA_MANAGER.write();
+                data_manager.update_client_list(hostname.clone(), ClientListAction::Trust);
+                if let Some(ip) = maybe_ip {
+                    data_manager.update_client_list(hostname, ClientListAction::AddIp(ip));
+                }
                 reply(StatusCode::OK)?
             } else {
                 reply(StatusCode::BAD_REQUEST)?
@@ -220,11 +215,12 @@ async fn http_api(
         }
         "/api/client/remove" => {
             if let Ok((hostname, maybe_ip)) = from_request_body(request).await {
-                SERVER_DATA_MANAGER.write().update_client_list(
-                    hostname,
-                    ClientListAction::RemoveIpOrEntry(maybe_ip),
-                    Some(&CLIENTS_UPDATED_NOTIFIER),
-                );
+                let mut data_manager = SERVER_DATA_MANAGER.write();
+                if let Some(ip) = maybe_ip {
+                    data_manager.update_client_list(hostname, ClientListAction::RemoveIp(ip));
+                } else {
+                    data_manager.update_client_list(hostname, ClientListAction::RemoveEntry);
+                }
                 DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
 
                 reply(StatusCode::OK)?

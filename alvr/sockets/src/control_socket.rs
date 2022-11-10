@@ -39,19 +39,25 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
     }
 }
 
+pub async fn get_server_listener() -> StrResult<TcpListener> {
+    TcpListener::bind((LOCAL_IP, CONTROL_PORT))
+        .await
+        .map_err(err!())
+}
+
 // Proto-control-socket that can send and receive any packet. After the split, only the packets of
 // the specified types can be exchanged
 pub struct ProtoControlSocket {
     inner: Framed<TcpStream, Ldc>,
 }
 
-pub enum PeerType {
+pub enum PeerType<'a> {
     AnyClient(Vec<IpAddr>),
-    Server,
+    Server(&'a TcpListener),
 }
 
 impl ProtoControlSocket {
-    pub async fn connect_to(peer: PeerType) -> StrResult<(Self, IpAddr)> {
+    pub async fn connect_to(peer: PeerType<'_>) -> StrResult<(Self, IpAddr)> {
         let socket = match peer {
             PeerType::AnyClient(ips) => {
                 let client_addresses = ips
@@ -62,10 +68,7 @@ impl ProtoControlSocket {
                     .await
                     .map_err(err!())?
             }
-            PeerType::Server => {
-                let listener = TcpListener::bind((LOCAL_IP, CONTROL_PORT))
-                    .await
-                    .map_err(err!())?;
+            PeerType::Server(listener) => {
                 let (socket, _) = listener.accept().await.map_err(err!())?;
                 socket
             }

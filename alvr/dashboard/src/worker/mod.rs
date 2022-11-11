@@ -38,7 +38,7 @@ pub fn http_thread(
                             broadcast_tx.subscribe(),
                         ));
                         event_rx = Some(_event_rx);
-                        tx1.send(WorkerMsg::Connected).unwrap();
+                        let _ = tx1.send(WorkerMsg::Connected);
                         connected = true;
                     }
                 }
@@ -53,8 +53,7 @@ pub fn http_thread(
                         }
                     }
 
-                    tx1.send(WorkerMsg::LostConnection(format!("{}", why)))
-                        .unwrap();
+                    let _ = tx1.send(WorkerMsg::LostConnection(format!("{}", why)));
                 }
             }
 
@@ -66,12 +65,14 @@ pub fn http_thread(
 
             loop {
                 match event_rx.as_mut().unwrap().try_recv() {
-                    Ok(event) => match tx1.send(WorkerMsg::Event(event)) {
-                        Ok(_) => (),
-                        Err(why) => println!("Error sending worker event: {}", why),
-                    },
+                    Ok(event) => {
+                        let _ = tx1.send(WorkerMsg::Event(event));
+                    }
                     Err(TryRecvError::Empty) => break,
-                    Err(_) => break,
+                    Err(why) => {
+                        println!("Error receiving event from event worker: {}", why);
+                        break;
+                    }
                 }
             }
 
@@ -85,8 +86,7 @@ pub fn http_thread(
                     Err(why) => {
                         let _ = broadcast_tx.send(());
                         connected = false;
-                        tx1.send(WorkerMsg::LostConnection(format!("{}", why)))
-                            .unwrap();
+                        let _ = tx1.send(WorkerMsg::LostConnection(format!("{}", why)));
                     }
                 }
             }
@@ -102,9 +102,11 @@ async fn websocket_task<T: serde::de::DeserializeOwned + std::fmt::Debug>(
     sender: tokio::sync::mpsc::Sender<T>,
     mut recv: tokio::sync::broadcast::Receiver<()>,
 ) {
+    // Connect to the event stream, and split it so we can get only the read stream
     let (event_stream, _) = connect_async(url).await.unwrap();
     let (_, event_read) = event_stream.split();
 
+    // The select macro is used to cancel the event task if a shutdown signal is received
     tokio::select! {
         _ = event_read.for_each(|msg| async {
             match msg {
@@ -120,7 +122,7 @@ async fn websocket_task<T: serde::de::DeserializeOwned + std::fmt::Debug>(
                     }
                 }
                 Ok(_) => (),
-                Err(_why) => (),
+                Err(why) => println!("Error receiving event: {}", why),
             }
         }) => {},
         _ = recv.recv() => {},

@@ -17,10 +17,17 @@ pub async fn handle_msg(
                 .send()
                 .await?;
 
-            tx1.send(WorkerMsg::SessionResponse(
-                response.json::<alvr_session::SessionDesc>().await.unwrap(),
-            ))
-            .unwrap();
+            let session = match response.json::<alvr_session::SessionDesc>().await {
+                Ok(session) => session,
+                Err(why) => {
+                    println!("Error parsing session JSON: {}", why);
+                    // Err returns are reserved for connectivity errors
+                    return Ok(false);
+                }
+            };
+
+            // Discarded as the receiving end will always be valid, and when it is not the dashboard is shutting down anyway
+            let _ = tx1.send(WorkerMsg::SessionResponse(session));
             false
         }
         GuiMsg::GetDrivers => {
@@ -30,17 +37,11 @@ pub async fn handle_msg(
         GuiMsg::Dashboard(response) => match response {
             DashboardResponse::SessionUpdated(session) => {
                 let text = serde_json::to_string(&session).unwrap();
-                let response = client
+                client
                     .get(format!("{}/api/session/store", BASE_URL))
                     .body(format!("{{\"session\": {}}}", text))
                     .send()
                     .await?;
-                if !response.status().is_success() {
-                    println!(
-                        "HTTP request returned an error: {:?}",
-                        response.error_for_status().unwrap()
-                    );
-                }
                 false
             }
             DashboardResponse::RestartSteamVR => {
@@ -104,9 +105,17 @@ async fn get_drivers(
         .send()
         .await?;
 
-    let vec: Vec<String> = response.json().await.unwrap();
+    let vec: Vec<String> = match response.json().await {
+        Ok(vec) => vec,
+        Err(why) => {
+            println!("Error parsing driver list JSON: {}", why);
+            // We return Ok(()) here as an Err variant is used to signal being offline
+            return Ok(());
+        }
+    };
 
-    tx1.send(WorkerMsg::DriverResponse(vec)).unwrap();
+    // If this errors out, the GUI thread has already exited anyway and the worker will as well so it is safe to discard the error
+    let _ = tx1.send(WorkerMsg::DriverResponse(vec));
 
     Ok(())
 }

@@ -7,16 +7,16 @@ use std::{
 
 mod worker;
 
-use dashboard::dashboard::DashboardResponse;
+use alvr_dashboard::dashboard::DashboardResponse;
 
 struct ALVRDashboard {
-    dashboard: dashboard::dashboard::Dashboard,
+    dashboard: alvr_dashboard::dashboard::Dashboard,
     tx2: mpsc::Sender<GuiMsg>,
     rx1: mpsc::Receiver<WorkerMsg>,
 }
 
 pub enum GuiMsg {
-    Dashboard(dashboard::dashboard::DashboardResponse),
+    Dashboard(alvr_dashboard::dashboard::DashboardResponse),
     GetSession,
     GetDrivers,
     Quit,
@@ -55,11 +55,11 @@ impl ALVRDashboard {
             }
         };
 
-        let mut dashboard = dashboard::dashboard::Dashboard::new(
+        let mut dashboard = alvr_dashboard::dashboard::Dashboard::new(
             session,
             drivers,
             Arc::new(
-                dashboard::translation::TranslationBundle::new(
+                alvr_dashboard::translation::TranslationBundle::new(
                     Some("en".to_string()),
                     &std::fs::read_to_string(dir.join("languages").join("list.json")).unwrap(),
                     |language_id| {

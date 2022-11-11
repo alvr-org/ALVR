@@ -1,4 +1,4 @@
-use dashboard::dashboard::{DashboardResponse, DriverResponse, FirewallRulesResponse};
+use alvr_dashboard::dashboard::{DashboardResponse, DriverResponse, FirewallRulesResponse};
 
 use crate::{GuiMsg, WorkerMsg};
 
@@ -53,23 +53,20 @@ pub async fn handle_msg(
             }
             DashboardResponse::Driver(driver) => match driver {
                 DriverResponse::RegisterAlvr => {
-                    let response = client
+                    client
                         .get(format!("{}/api/driver/register", BASE_URL))
                         .send()
                         .await?;
-
-                    println!("{}", response.status());
 
                     get_drivers(client, tx1).await?;
                     false
                 }
                 DriverResponse::Unregister(path) => {
-                    let response = client
+                    client
                         .get(format!("{}/api/driver/unregister", BASE_URL))
                         .body(format!(r#""{}""#, path))
                         .send()
                         .await?;
-                    println!("{}", response.status());
                     get_drivers(client, tx1).await?;
                     false
                 }

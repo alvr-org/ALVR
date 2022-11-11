@@ -160,6 +160,15 @@ impl Layout {
         self.executables_dir.join(exe)
     }
 
+    pub fn dashboard_exe(&self) -> PathBuf {
+        let exe = if cfg!(windows) {
+            "ALVR Dashboard.exe"
+        } else {
+            "alvr_dashboard"
+        };
+        self.executables_dir.join(exe)
+    }
+
     pub fn resources_dir(&self) -> PathBuf {
         self.openvr_driver_root_dir.join("resources")
     }

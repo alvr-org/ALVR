@@ -185,6 +185,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_dashboard"
+version = "0.1.0"
+dependencies = [
+ "alvr_common",
+ "alvr_events",
+ "alvr_session",
+ "eframe 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fluent",
+ "fluent-langneg",
+ "fluent-syntax",
+ "futures-util",
+ "locale_config",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "settings-schema",
+ "tokio",
+ "tokio-tungstenite",
+ "unic-langid",
+ "url",
+]
+
+[[package]]
 name = "alvr_events"
 version = "20.0.0-dev01"
 dependencies = [
@@ -1091,30 +1115,6 @@ dependencies = [
  "darling_core",
  "quote 1.0.21",
  "syn 1.0.103",
-]
-
-[[package]]
-name = "dashboard"
-version = "0.1.0"
-dependencies = [
- "alvr_common",
- "alvr_events",
- "alvr_session",
- "eframe 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fluent",
- "fluent-langneg",
- "fluent-syntax",
- "futures-util",
- "locale_config",
- "reqwest",
- "serde",
- "serde_json",
- "settings-schema",
- "tokio",
- "tokio-tungstenite",
- "unic-langid",
- "url",
 ]
 
 [[package]]
@@ -3621,7 +3621,6 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "pin-project-lite",
- "rustls",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -3660,21 +3659,6 @@ dependencies = [
  "proc-macro2 1.0.47",
  "quote 1.0.21",
  "syn 1.0.103",
-]
-
-[[package]]
-name = "ring"
-version = "0.16.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
-dependencies = [
- "cc",
- "libc",
- "once_cell",
- "spin",
- "untrusted",
- "web-sys",
- "winapi",
 ]
 
 [[package]]
@@ -3731,18 +3715,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustls"
-version = "0.20.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "539a2bfe908f471bfa933876bd1eb6a19cf2176d375f82ef7f99530a40e48c2c"
-dependencies = [
- "log",
- "ring",
- "sct",
- "webpki",
-]
-
-[[package]]
 name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3793,16 +3765,6 @@ name = "scratch"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8132065adcfd6e02db789d9285a0deb2f3fcb04002865ab67d5fb103533898"
-
-[[package]]
-name = "sct"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d53dcdb7c9f8158937a7981b48accfd39a43af418591a5d008c7b22b5e1b7ca4"
-dependencies = [
- "ring",
- "untrusted",
-]
 
 [[package]]
 name = "sctk-adwaita"
@@ -4139,12 +4101,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spin"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
 name = "spirv"
 version = "0.2.0+1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4431,8 +4387,9 @@ checksum = "f714dd15bead90401d77e04243611caec13726c2408afd5b31901dfcdcb3b181"
 dependencies = [
  "futures-util",
  "log",
- "rustls",
+ "native-tls",
  "tokio",
+ "tokio-native-tls",
  "tungstenite",
 ]
 
@@ -4509,6 +4466,7 @@ dependencies = [
  "http",
  "httparse",
  "log",
+ "native-tls",
  "rand",
  "sha-1",
  "thiserror",
@@ -4608,12 +4566,6 @@ name = "unicode-xid"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
-
-[[package]]
-name = "untrusted"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "ureq"
@@ -4889,16 +4841,6 @@ dependencies = [
  "web-sys",
  "widestring 1.0.2",
  "winapi",
-]
-
-[[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
 ]
 
 [[package]]

@@ -32,3 +32,6 @@ futures-util = "0.3.25"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

@@ -206,6 +206,7 @@ dependencies = [
  "tokio-tungstenite",
  "unic-langid",
  "url",
+ "winres",
 ]
 
 [[package]]

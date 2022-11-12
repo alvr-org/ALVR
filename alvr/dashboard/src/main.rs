@@ -1,8 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use std::{
-    env, fs,
-    path::PathBuf,
     sync::{mpsc, Arc},
     thread,
 };
@@ -38,8 +36,6 @@ impl ALVRDashboard {
         tx2: mpsc::Sender<GuiMsg>,
         rx1: mpsc::Receiver<WorkerMsg>,
     ) -> Self {
-        let dir = PathBuf::from(env::var("DIR").unwrap());
-
         tx2.send(GuiMsg::GetSession).unwrap();
         let session = loop {
             match rx1.recv().unwrap() {
@@ -63,13 +59,8 @@ impl ALVRDashboard {
             Arc::new(
                 alvr_dashboard::translation::TranslationBundle::new(
                     Some("en".to_string()),
-                    &std::fs::read_to_string(dir.join("languages").join("list.json")).unwrap(),
-                    |language_id| {
-                        fs::read_to_string(
-                            dir.join("languages").join(format!("{}.ftl", language_id)),
-                        )
-                        .unwrap()
-                    },
+                    r#"{ "en": "English" }"#,
+                    |_language_id| "".to_string(),
                 )
                 .unwrap(),
             ),

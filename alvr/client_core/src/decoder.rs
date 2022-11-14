@@ -62,7 +62,7 @@ pub fn create_decoder(config_buffer: Vec<u8>) {
         if DECODER_ENQUEUER.lock().is_none() {
             let (enqueuer, dequeuer) = crate::platform::video_decoder_split(
                 config.clone(),
-                &config_buffer,
+                config_buffer,
                 |target_timestamp| {
                     if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
                         stats.report_frame_decoded(target_timestamp);
@@ -143,8 +143,16 @@ pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) 
     if let Some(timestamp) = timestamp {
         if !LAST_ENQUEUED_TIMESTAMPS.lock().contains(&timestamp) {
             error!("Detected late decoder, recreating decoder...");
-            *DECODER_ENQUEUER.lock() = None;
-            *DECODER_DEQUEUER.lock() = None;
+
+            if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
+                decoder.recreate_decoder();
+            }
+
+            if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
+                sender
+                    .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                    .ok();
+            }
         }
 
         if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {

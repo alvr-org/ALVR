@@ -261,14 +261,15 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     // Add one queue to safely submit vsync from our thread
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfo(pCreateInfo->pQueueCreateInfos, pCreateInfo->pQueueCreateInfos + pCreateInfo->queueCreateInfoCount);
     assert(queueCreateInfo.size() > 0);
-    std::vector<VkQueueFamilyProperties> props(queueCreateInfo.size());
-    uint32_t size = props.size();
+    uint32_t size = 0;
+    inst_data.disp.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &size, nullptr);
+    std::vector<VkQueueFamilyProperties> props(size);
     inst_data.disp.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &size, props.data());
     std::vector<float> queuePriorities;
     size_t display_queue = 0;
-    for (; display_queue < size ; ++display_queue)
+    for (; display_queue < queueCreateInfo.size() ; ++display_queue)
     {
-      if (queueCreateInfo[display_queue].queueCount >= props[display_queue].queueCount)
+      if (queueCreateInfo[display_queue].queueCount >= props[queueCreateInfo[display_queue].queueFamilyIndex].queueCount)
         continue;
       queuePriorities = std::vector<float>(queueCreateInfo[display_queue].pQueuePriorities, queueCreateInfo[display_queue].pQueuePriorities + queueCreateInfo[display_queue].queueCount);
       queueCreateInfo[display_queue].queueCount += 1;
@@ -276,7 +277,31 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
       queueCreateInfo[display_queue].pQueuePriorities = queuePriorities.data();
       break;
     }
+    float queue_prio = 1.0;
+    if (display_queue == queueCreateInfo.size()) {
+      for (size_t i = 0; i < props.size(); ++i) {
+        bool used = false;
+        for (const VkDeviceQueueCreateInfo &info : queueCreateInfo) {
+          if (info.queueFamilyIndex == i) {
+            used = true;
+            break;
+          }
+        }
+        if (used)
+          continue;
+        VkDeviceQueueCreateInfo info;
+        info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        info.pNext = nullptr;
+        info.flags = 0;
+        info.queueFamilyIndex = i;
+        info.queueCount = 1;
+        info.pQueuePriorities = &queue_prio;
+        queueCreateInfo.push_back(info);
+        break;
+      }
+    }
     modified_info.pQueueCreateInfos = queueCreateInfo.data();
+    modified_info.queueCreateInfoCount = queueCreateInfo.size();
 
     result = fpCreateDevice(physicalDevice, &modified_info, pAllocator, pDevice);
     if (result != VK_SUCCESS) {

@@ -118,8 +118,8 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
     }
     cmd!(&sh, "chmod a+x {linuxdeploy}").run().ok();
 
-    if sh.path_exists(&appdir) {
-        sh.remove_path(&appdir).ok();
+    if sh.path_exists(appdir) {
+        sh.remove_path(appdir).ok();
     }
 
     cmd!(&sh, "{linuxdeploy} --appdir={appdir}").run().ok();

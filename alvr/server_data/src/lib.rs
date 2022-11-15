@@ -63,7 +63,7 @@ impl ServerDataManager {
         let config_dir = session_path.parent().unwrap();
         fs::create_dir_all(config_dir).ok();
 
-        let session_desc = match fs::read_to_string(&session_path) {
+        let session_desc = match fs::read_to_string(session_path) {
             Ok(session_string) => {
                 let json_value = json::from_str::<json::Value>(&session_string).unwrap();
                 match json::from_value(json_value.clone()) {

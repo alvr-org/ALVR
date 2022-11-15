@@ -61,8 +61,8 @@ static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mut
 
 #[repr(u8)]
 pub enum AlvrCodec {
-    H264,
-    H265,
+    H264 = 0,
+    H265 = 1,
 }
 
 #[repr(u8)]
@@ -184,7 +184,6 @@ pub unsafe extern "C" fn alvr_initialize(
 
     logging_backend::init_logging();
 
-    createDecoder = Some(decoder::create_decoder);
     pushNal = Some(decoder::push_nal);
 
     // Make sure to reset config in case of version compat mismatch.

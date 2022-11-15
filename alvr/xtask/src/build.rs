@@ -111,7 +111,7 @@ pub fn build_server(
         // copy ffmpeg binaries
         if gpl {
             let bin_dir = &build_layout.openvr_driver_lib_dir();
-            sh.create_dir(&bin_dir).unwrap();
+            sh.create_dir(bin_dir).unwrap();
             for lib_path in sh
                 .read_dir(afs::deps_dir().join("windows/ffmpeg/bin"))
                 .unwrap()
@@ -156,8 +156,8 @@ pub fn build_server(
         if gpl {
             let lib_dir = &build_layout.openvr_driver_root_dir;
             let mut libavcodec_so = std::path::PathBuf::new();
-            sh.create_dir(&lib_dir).unwrap();
-            let _push_guard = sh.push_dir(&lib_dir);
+            sh.create_dir(lib_dir).unwrap();
+            let _push_guard = sh.push_dir(lib_dir);
             for lib_path in sh
                 .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
                 .unwrap()
@@ -183,7 +183,7 @@ pub fn build_server(
                 let src_libs = dependencies::find_resolved_so_paths(&libavcodec_so, solib);
                 if !src_libs.is_empty() {
                     let src_lib = src_libs.first().unwrap();
-                    sh.copy_file(&src_lib, ".").unwrap();
+                    sh.copy_file(src_lib, ".").unwrap();
                 }
             }
         }

@@ -47,6 +47,7 @@ pub struct StreamConfigPacket {
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
     StartStream,
+    InitializeDecoder { config_buffer: Vec<u8> },
     Restarting,
     KeepAlive,
     Reserved(String),

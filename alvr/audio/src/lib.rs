@@ -78,13 +78,13 @@ impl AudioDevice {
                     .output_devices()
                     .map_err(err!())?
                     .find(|d| {
-                        if let Ok(name) = d.name() {
-                            VIRTUAL_MICROPHONE_PAIRS
-                                .iter()
-                                .any(|(input_name, _)| name.contains(input_name))
-                        } else {
-                            false
-                        }
+                        d.name()
+                            .map(|name| {
+                                VIRTUAL_MICROPHONE_PAIRS
+                                    .iter()
+                                    .any(|(input_name, _)| name.contains(input_name))
+                            })
+                            .unwrap_or(false)
                     })
                     .ok_or_else(|| {
                         "VB-CABLE or Voice Meeter not found. Please install or reinstall either one"
@@ -93,41 +93,36 @@ impl AudioDevice {
                 AudioDeviceType::VirtualMicrophoneOutput {
                     matching_input_device_name,
                 } => {
-                    let maybe_output_name = VIRTUAL_MICROPHONE_PAIRS
+                    let output_name = VIRTUAL_MICROPHONE_PAIRS
                         .iter()
                         .find(|(input_name, _)| matching_input_device_name.contains(input_name))
-                        .map(|(_, output_name)| output_name);
-                    if let Some(output_name) = maybe_output_name {
-                        host.input_devices()
-                            .map_err(err!())?
-                            .find(|d| {
-                                if let Ok(name) = d.name() {
-                                    name.contains(output_name)
-                                } else {
-                                    false
-                                }
-                            })
-                            .ok_or_else(|| {
-                                "Matching output microphone not found. Did you rename it?"
-                                    .to_owned()
-                            })?
-                    } else {
-                        return fmt_e!(
-                            "Selected input microphone device is unknown. {}",
-                            "Please manually select the matching output microphone device."
-                        );
-                    }
+                        .map(|(_, output_name)| output_name)
+                        .ok_or_else(|| {
+                            format!(
+                                "Selected input microphone device is unknown. {}",
+                                "Please manually select the matching output microphone device."
+                            )
+                        })?;
+
+                    host.input_devices()
+                        .map_err(err!())?
+                        .find(|d| {
+                            d.name()
+                                .map(|name| name.contains(output_name))
+                                .unwrap_or(false)
+                        })
+                        .ok_or_else(|| {
+                            "Matching output microphone not found. Did you rename it?".to_owned()
+                        })?
                 }
             },
             AudioDeviceId::Name(name_substring) => host
                 .devices()
                 .map_err(err!())?
                 .find(|d| {
-                    if let Ok(name) = d.name() {
-                        name.to_lowercase().contains(&name_substring.to_lowercase())
-                    } else {
-                        false
-                    }
+                    d.name()
+                        .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
+                        .unwrap_or(false)
                 })
                 .ok_or_else(|| {
                     format!("Cannot find audio device which name contains \"{name_substring}\"")
@@ -150,12 +145,12 @@ impl AudioDevice {
     }
 
     pub fn input_sample_rate(&self) -> StrResult<u32> {
-        let config = if let Ok(config) = self.inner.default_input_config() {
-            config
-        } else {
+        let config = self
+            .inner
+            .default_input_config()
             // On Windows, loopback devices are not recognized as input devices. Use output config.
-            self.inner.default_output_config().map_err(err!())?
-        };
+            .or_else(|_| self.inner.default_output_config())
+            .map_err(err!())?;
 
         Ok(config.sample_rate().0)
     }
@@ -263,12 +258,12 @@ pub async fn record_audio_loop(
     mute: bool,
     mut sender: StreamSender<()>,
 ) -> StrResult {
-    let config = if let Ok(config) = device.inner.default_input_config() {
-        config
-    } else {
+    let config = device
+        .inner
+        .default_input_config()
         // On Windows, loopback devices are not recognized as input devices. Use output config.
-        device.inner.default_output_config().map_err(err!())?
-    };
+        .or_else(|_| device.inner.default_output_config())
+        .map_err(err!())?;
 
     if config.channels() > 2 {
         // todo: handle more than 2 channels
@@ -537,7 +532,7 @@ impl Iterator for StreamingSource {
     fn next(&mut self) -> Option<f32> {
         if self.current_batch_cursor == 0 {
             self.current_batch = get_next_frame_batch(
-                &mut *self.sample_buffer.lock(),
+                &mut self.sample_buffer.lock(),
                 self.channels_count,
                 self.batch_frames_count,
             );

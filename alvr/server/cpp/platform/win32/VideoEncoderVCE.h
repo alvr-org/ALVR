@@ -44,8 +44,10 @@ public:
 	void Connect(AMFPipePtr pipe);
 	void Start();
 	void Run();
+	void RunReceive();
 protected:
 	std::thread *m_thread;
+	std::thread *m_receiveThread;
 	std::vector<AMFPipePtr> m_pipes;
 	bool isRunning;
 };
@@ -76,9 +78,6 @@ private:
 	static const wchar_t *START_TIME_PROPERTY;
 	static const wchar_t *FRAME_INDEX_PROPERTY;
 
-	const uint64_t MILLISEC_TIME = 10000;
-	const uint64_t MICROSEC_TIME = 10;
-
 	amf::AMFComponentPtr MakeConverter(
 		amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat
 	);
@@ -102,6 +101,7 @@ private:
 	uint32_t m_preProcSigma;
 	uint32_t m_preProcTor;
 	EncoderQualityPreset m_encoderQualityPreset;
+	amf::AMF_SURFACE_FORMAT m_surfaceFormat;
 
 	int m_codec;
 	int m_refreshRate;
@@ -109,7 +109,12 @@ private:
 	int m_renderHeight;
 	int m_bitrateInMBits;
 
+	char *m_audByteSequence;
+	int m_audNalSize;
+	int m_audHeaderSize;
+
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 	void SkipAUD(char **buffer, int *length);
+	void LoadAUDByteSequence();
 };
 

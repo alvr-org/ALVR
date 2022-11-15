@@ -52,9 +52,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
+checksum = "464b3811b747f8f7ebc8849c9c728c39f6ac98a055edad93baf9eb330e3f8f9d"
 dependencies = [
  "cfg-if",
  "getrandom",
@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -130,7 +130,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -160,7 +160,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "backtrace",
  "glam",
@@ -186,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "dirs",
  "once_cell",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -250,13 +250,13 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "walkdir",
- "webbrowser 0.8.0",
+ "webbrowser 0.8.1",
  "winit",
 ]
 
 [[package]]
 name = "alvr_server_data"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -271,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -301,14 +301,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "exec",
 ]
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.61.0",
@@ -319,7 +319,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 dependencies = [
  "alvr_filesystem",
  "pico-args",
@@ -482,7 +482,7 @@ dependencies = [
  "cc",
  "cfg-if",
  "libc",
- "miniz_oxide",
+ "miniz_oxide 0.5.4",
  "object",
  "rustc-demangle",
 ]
@@ -593,9 +593,9 @@ checksum = "572f695136211188308f16ad2ca5c851a712c464060ae6974944458eb83880ba"
 
 [[package]]
 name = "bytemuck"
-version = "1.12.1"
+version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f5715e491b5a1598fc2bef5a606847b5dc1d48ea625bd3c02c00de8285591da"
+checksum = "5aec14f5d4e6e3f927cd0c81f72e5710d95ee9019fbeb4b3021193867491bfd8"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -662,9 +662,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.73"
+version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
+checksum = "581f5dba903aac52ea3feb5ec4810848460ee833876f1f9b0fdeab1f19091574"
 dependencies = [
  "jobserver",
 ]
@@ -765,18 +765,18 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.48"
+version = "0.1.49"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
+checksum = "db34956e100b30725f2eb215f90d4871051239535632f84fea3bc92722c66b7c"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "cocoa"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f63902e9223530efb4e26ccd0cf55ec30d592d3b42e21a28defc42a9586e832"
+checksum = "f425db7937052c684daec3bd6375c8abe2d146dca4b8b143d6db777c39138f3a"
 dependencies = [
  "bitflags",
  "block",
@@ -1236,7 +1236,7 @@ name = "egui"
 version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "epaint",
  "nohash-hasher",
  "tracing",
@@ -1321,7 +1321,7 @@ version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "atomic_refcell",
  "bytemuck",
  "emath",
@@ -1424,7 +1424,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f82b0f4c27ad9f8bfd1f3208d882da2b09c301bc1c828fd3a00d0216d2fbbff6"
 dependencies = [
  "crc32fast",
- "miniz_oxide",
+ "miniz_oxide 0.5.4",
 ]
 
 [[package]]
@@ -2160,9 +2160,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.20"
+version = "0.14.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02c929dc5c39e335a03c405292728118860721b10190d98c2a0f0efd5baafbac"
+checksum = "abfba89e19b959ca163c7752ba59d737c1ceea53a5d31a149c805446fc958064"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2197,9 +2197,9 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.51"
+version = "0.1.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5a6ef98976b22b3b7f2f3a806f858cb862044cfa66805aa3ad84cb3d3b785ed"
+checksum = "64c122667b287044802d6ce17ee2ddf13207ed924c712de9a66a5814d5b64765"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
@@ -2537,6 +2537,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "miniz_oxide"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
+dependencies = [
+ "adler",
+]
+
+[[package]]
 name = "mio"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2604,9 +2613,9 @@ dependencies = [
 
 [[package]]
 name = "native-tls"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd7e2f3618557f980e0b17e8856252eee3c97fa12c54dff0ca290fb6266ca4a9"
+checksum = "07226173c32f2926027b63cce4bcd8076c3552846cbe7925f3aaffeac0a3b92e"
 dependencies = [
  "lazy_static",
  "libc",
@@ -2866,9 +2875,9 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.13.1"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
+checksum = "f6058e64324c71e02bc2b150e4f3bc8286db6c83092132ffa3f6b1eab0f9def5"
 dependencies = [
  "hermit-abi",
  "libc",
@@ -2977,9 +2986,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.15.0"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e82dad04139b71a90c080c8463fe0dc7902db5192d939bd0950f074d014339e1"
+checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
 
 [[package]]
 name = "openssl"
@@ -3028,9 +3037,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.3.0"
+version = "6.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ff7415e9ae3fff1225851df9e0d9e4e5479f947619774677a63572e55e80eff"
+checksum = "3baf96e39c5359d2eb0dd6ccb42c62b91d9678aa68160d261b9e0ccbf9e9dea9"
 dependencies = [
  "memchr",
 ]
@@ -3174,14 +3183,14 @@ checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
 
 [[package]]
 name = "png"
-version = "0.17.6"
+version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f0e7f4c94ec26ff209cee506314212639d6c91b80afb82984819fafce9df01c"
+checksum = "5d708eaf860a19b19ce538740d2b4bdeeb8337fa53f7738455e706623ad5c638"
 dependencies = [
  "bitflags",
  "crc32fast",
  "flate2",
- "miniz_oxide",
+ "miniz_oxide 0.6.2",
 ]
 
 [[package]]
@@ -3432,7 +3441,7 @@ version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6eec3a3db30f591ece18c66b3db4c9fa26f3bce20bc821c50550968361f84333"
 dependencies = [
- "ahash 0.8.0",
+ "ahash 0.8.1",
  "bitflags",
  "instant",
  "num-traits",
@@ -3542,9 +3551,9 @@ dependencies = [
 
 [[package]]
 name = "scoped-tls"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
+checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scopeguard"
@@ -3987,9 +3996,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.26.6"
+version = "0.26.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6d0dedf2e65d25b365c588382be9dc3a3ee4b0ed792366cf722d174c359d948"
+checksum = "c375d5fd899e32847b8566e10598d6e9f1d9b55ec6de3cdf9e7da4bdc51371bc"
 dependencies = [
  "cfg-if",
  "core-foundation-sys",
@@ -4576,12 +4585,12 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01d62aa75495ab67cdc273d0b95cc76bcedfea2ba28338a4cf9b4137949dfac5"
+checksum = "8f7aa8c655ad0b020787afb0b8f0656b2cfbef3452d619ea930e6b1aa1c5c1e9"
 dependencies = [
- "jni 0.19.0",
- "ndk-glue 0.7.0",
+ "jni 0.20.0",
+ "ndk-context",
  "objc",
  "raw-window-handle 0.5.0",
  "url",
@@ -4629,8 +4638,8 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "wgpu-core 0.14.0",
- "wgpu-hal 0.14.0",
- "wgpu-types 0.14.0",
+ "wgpu-hal 0.14.1",
+ "wgpu-types 0.14.1",
 ]
 
 [[package]]
@@ -4678,8 +4687,8 @@ dependencies = [
  "smallvec",
  "thiserror",
  "web-sys",
- "wgpu-hal 0.14.0",
- "wgpu-types 0.14.0",
+ "wgpu-hal 0.14.1",
+ "wgpu-types 0.14.1",
 ]
 
 [[package]]
@@ -4723,9 +4732,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdae6a80dbc725343f02f854b310b37190be946aeea65e9d83afaa7d840ebaac"
+checksum = "3cc320a61acb26be4f549c9b1b53405c10a223fbfea363ec39474c32c348d12f"
 dependencies = [
  "android_system_properties",
  "arrayvec 0.7.2",
@@ -4756,7 +4765,7 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types 0.14.0",
+ "wgpu-types 0.14.1",
  "winapi",
 ]
 
@@ -4771,9 +4780,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28fb86c1909233c804aa79b7dd1ad06ebd979b2a465e3e980582db0ea9e69f3f"
+checksum = "fb6b28ef22cac17b9109b25b3bf8c9a103eeb293d7c5f78653979b09140375f6"
 dependencies = [
  "bitflags",
 ]

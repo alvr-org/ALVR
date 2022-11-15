@@ -3,9 +3,9 @@ resolver = "2"
 members = ["alvr/*"]
 
 [workspace.package]
-version = "20.0.0-dev00"
+version = "20.0.0-dev01"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 authors = ["alvr-org"]
 license = "MIT"
 

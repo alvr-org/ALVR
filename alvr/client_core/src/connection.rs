@@ -66,8 +66,9 @@ fn set_hud_message(message: &str) {
     let hostname = Config::load().hostname;
 
     let message = format!(
-        "ALVR v{}\nhostname: {hostname}\n \n{message}",
+        "ALVR v{}\nhostname: {hostname}\nIP: {}\n\n{message}",
         *ALVR_VERSION,
+        platform::local_ip(),
     );
 
     let ubuntu_font =
@@ -203,7 +204,7 @@ fn connection_pipeline(
     runtime
         .block_on(
             proto_control_socket.send(&ClientConnectionResult::ConnectionAccepted {
-                display_name: platform::device_name(),
+                display_name: platform::device_model(),
                 server_ip,
                 streaming_capabilities: Some(VideoStreamingCapabilities {
                     default_view_resolution: recommended_view_resolution,

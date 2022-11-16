@@ -5,7 +5,11 @@ use alvr_common::{
     RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
-use jni::{objects::JObject, sys::jobject, JavaVM};
+use jni::{
+    objects::{JObject, JString},
+    sys::jobject,
+    JavaVM,
+};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
@@ -17,7 +21,8 @@ use ndk::{
 };
 use std::{
     collections::VecDeque,
-    ffi::c_void,
+    ffi::{c_void, CStr},
+    net::{IpAddr, Ipv4Addr},
     ops::{Deref, DerefMut},
     sync::Arc,
     thread::{self, JoinHandle},
@@ -70,7 +75,7 @@ pub fn try_get_microphone_permission() {
     }
 }
 
-pub fn device_name() -> String {
+pub fn device_model() -> String {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
@@ -100,6 +105,43 @@ impl<T> DerefMut for FakeThreadSafe<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
+}
+
+// Note: tried and failed to use libc
+pub fn local_ip() -> IpAddr {
+    let vm = vm();
+    let env = vm.attach_current_thread().unwrap();
+
+    let wifi_service_str = env.new_string("wifi").unwrap();
+    let wifi_manager = env
+        .call_method(
+            unsafe { JObject::from_raw(context()) },
+            "getSystemService",
+            "(Ljava/lang/String;)Ljava/lang/Object;",
+            &[wifi_service_str.into()],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    let wifi_info = env
+        .call_method(
+            wifi_manager,
+            "getConnectionInfo",
+            "()Landroid/net/wifi/WifiInfo;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    let ip_addr_i32 = env
+        .call_method(wifi_info, "getIpAddress", "()I", &[])
+        .unwrap()
+        .i()
+        .unwrap();
+
+    let ip = ip_addr_i32.to_le_bytes();
+
+    IpAddr::V4(Ipv4Addr::new(ip[0], ip[1], ip[2], ip[3]))
 }
 
 pub struct VideoDecoderEnqueuer {

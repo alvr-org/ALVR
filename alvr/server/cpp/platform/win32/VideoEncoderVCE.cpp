@@ -381,6 +381,11 @@ void VideoEncoderVCE::Shutdown()
 		delete component;
 	}
 
+	m_amfContext->Terminate();
+	m_amfContext = NULL;
+
+	g_AMFFactory.Terminate();
+
 	amf_restore_timer_precision();
 
 	if (fpOut) {

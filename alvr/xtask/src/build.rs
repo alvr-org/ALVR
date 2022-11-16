@@ -1,6 +1,9 @@
 use crate::{command, dependencies, version};
 use alvr_filesystem::{self as afs, Layout};
-use std::fmt::{self, Display, Formatter};
+use std::{
+    fmt::{self, Display, Formatter},
+    fs,
+};
 use xshell::{cmd, Shell};
 
 #[derive(Clone, Copy)]
@@ -28,6 +31,7 @@ pub fn build_server(
     reproducible: bool,
     experiments: bool,
     local_ffmpeg: bool,
+    keep_config: bool,
 ) {
     let sh = Shell::new().unwrap();
 
@@ -53,11 +57,21 @@ pub fn build_server(
 
     let artifacts_dir = afs::target_dir().join(profile.to_string());
 
+    let maybe_config = if keep_config {
+        fs::read_to_string(build_layout.session()).ok()
+    } else {
+        None
+    };
+
     sh.remove_path(&afs::server_build_dir()).unwrap();
     sh.create_dir(&afs::server_build_dir()).unwrap();
     sh.create_dir(&build_layout.openvr_driver_lib_dir())
         .unwrap();
     sh.create_dir(&build_layout.executables_dir).unwrap();
+
+    if let Some(config) = maybe_config {
+        fs::write(build_layout.session(), config).ok();
+    }
 
     if let Some(root) = root {
         sh.set_var("ALVR_ROOT_DIR", root);

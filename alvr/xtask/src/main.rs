@@ -33,6 +33,7 @@ SUBCOMMANDS:
 
 FLAGS:
     --help              Print this text
+    --keep-config       Preserve the configuration file between rebuilds (session.json)
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
     --gpl               Bundle GPL libraries. For build subcommands
@@ -149,6 +150,7 @@ fn main() {
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
+        let keep_config = args.contains("--keep-config");
 
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
@@ -179,14 +181,28 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => {
-                    build::build_server(profile, gpl, None, false, experiments, local_ffmpeg)
-                }
+                "build-server" => build::build_server(
+                    profile,
+                    gpl,
+                    None,
+                    false,
+                    experiments,
+                    local_ffmpeg,
+                    keep_config,
+                ),
                 "build-client" => build::build_quest_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(profile, gpl, None, false, experiments, local_ffmpeg);
+                        build::build_server(
+                            profile,
+                            gpl,
+                            None,
+                            false,
+                            experiments,
+                            local_ffmpeg,
+                            keep_config,
+                        );
                     }
                     run_server();
                 }

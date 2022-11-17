@@ -1,7 +1,7 @@
 use std::{net::IpAddr, time::Duration};
 
 use alvr_common::glam::{Quat, UVec2, Vec2, Vec3};
-use alvr_events::ButtonValue;
+use alvr_events::{ButtonValue, EventSeverity};
 use serde::{Deserialize, Serialize};
 
 pub const TRACKING: u16 = 0;
@@ -77,8 +77,18 @@ pub enum ClientControlPacket {
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
     VideoErrorReport, // legacy
-    Button { path_id: u64, value: ButtonValue },
-    ActiveInteractionProfile { device_id: u64, profile_id: u64 },
+    Button {
+        path_id: u64,
+        value: ButtonValue,
+    },
+    ActiveInteractionProfile {
+        device_id: u64,
+        profile_id: u64,
+    },
+    Log {
+        level: EventSeverity,
+        message: String,
+    },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

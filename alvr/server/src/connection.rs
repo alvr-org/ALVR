@@ -479,26 +479,30 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     *STREAMING_CLIENT_HOSTNAME.lock() = Some(client_hostname.clone());
 
     thread::spawn(move || {
-        runtime.block_on(async move {
-            // this is a bridge between sync and async, skips the needs for a notifier
-            let shutdown_detector = async {
-                while IS_ALIVE.value() {
-                    time::sleep(Duration::from_secs(1)).await;
-                }
-            };
+        runtime.block_on({
+            let client_hostname = client_hostname.clone();
+            async move {
+                // this is a bridge between sync and async, skips the needs for a notifier
+                let shutdown_detector = async {
+                    while IS_ALIVE.value() {
+                        time::sleep(Duration::from_secs(1)).await;
+                    }
+                };
 
-            tokio::select! {
-                res = connection_pipeline(
-                    client_ip,
-                    control_sender,
-                    control_receiver,
-                    streaming_caps.microphone_sample_rate,
-                ) => {
-                    show_warn(res);
-                },
-                _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
-                _ = shutdown_detector => (),
-            };
+                tokio::select! {
+                    res = connection_pipeline(
+                        client_hostname,
+                        client_ip,
+                        control_sender,
+                        control_receiver,
+                        streaming_caps.microphone_sample_rate,
+                    ) => {
+                        show_warn(res);
+                    },
+                    _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
+                    _ = shutdown_detector => (),
+                };
+            }
         });
 
         {
@@ -542,6 +546,7 @@ impl Drop for StreamCloseGuard {
 }
 
 async fn connection_pipeline(
+    client_hostname: String,
     client_ip: IpAddr,
     control_sender: ControlSocketSender<ServerControlPacket>,
     mut control_receiver: ControlSocketReceiver<ClientControlPacket>,
@@ -1003,6 +1008,9 @@ async fn connection_pipeline(
                     };
 
                     unsafe { crate::SetButton(path_id, value) };
+                }
+                Ok(ClientControlPacket::Log { level, message }) => {
+                    info!("Client {client_hostname}: [{level:?}] {message}")
                 }
                 Ok(_) => (),
                 Err(e) => {

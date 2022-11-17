@@ -147,7 +147,7 @@ define([
             const elem = document.getElementById("progressBar");
 
             // Create WebSocket connection.
-            const webSocket = new WebSocket("ws://" + window.location.host + "/api/events");
+            const webSocket = new WebSocket("ws://" + window.location.host + "/api/events-legacy");
 
             $.ajax({
                 type: "POST",

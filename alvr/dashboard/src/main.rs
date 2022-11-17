@@ -23,7 +23,7 @@ pub enum GuiMsg {
 }
 
 pub enum WorkerMsg {
-    Event(alvr_events::EventType),
+    Event(alvr_events::Event),
     SessionResponse(alvr_session::SessionDesc),
     DriverResponse(Vec<String>),
     LostConnection(String),
@@ -95,8 +95,10 @@ impl eframe::App for ALVRDashboard {
                     self.tx2.send(GuiMsg::GetDrivers).unwrap();
                 }
                 WorkerMsg::SessionResponse(session) => {
-                    self.dashboard
-                        .new_event(alvr_events::EventType::Session(Box::new(session)));
+                    self.dashboard.new_event(alvr_events::Event {
+                        timestamp: "".to_owned(),
+                        event_type: alvr_events::EventType::Session(Box::new(session)),
+                    });
                 }
             }
         }

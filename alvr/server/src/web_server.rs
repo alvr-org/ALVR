@@ -96,6 +96,7 @@ async fn text_websocket(
 async fn http_api(
     request: Request<Body>,
     log_sender: broadcast::Sender<String>,
+    legacy_events_sender: broadcast::Sender<String>,
     events_sender: broadcast::Sender<String>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
@@ -142,6 +143,7 @@ async fn http_api(
             }
         }
         "/api/log" => text_websocket(request, log_sender).await?,
+        "/api/events-legacy" => text_websocket(request, legacy_events_sender).await?,
         "/api/events" => text_websocket(request, events_sender).await?,
         "/api/driver/register" => {
             if alvr_commands::driver_registration(
@@ -310,6 +312,7 @@ async fn http_api(
 
 pub async fn web_server(
     log_sender: broadcast::Sender<String>,
+    legacy_events_sender: broadcast::Sender<String>,
     events_sender: broadcast::Sender<String>,
 ) -> StrResult {
     let web_server_port = SERVER_DATA_MANAGER
@@ -320,13 +323,16 @@ pub async fn web_server(
 
     let service = service::make_service_fn(|_| {
         let log_sender = log_sender.clone();
+        let legacy_events_sender = legacy_events_sender.clone();
         let events_sender = events_sender.clone();
         async move {
             StrResult::Ok(service::service_fn(move |request| {
                 let log_sender = log_sender.clone();
+                let legacy_events_sender = legacy_events_sender.clone();
                 let events_sender = events_sender.clone();
                 async move {
-                    let res = http_api(request, log_sender, events_sender).await;
+                    let res =
+                        http_api(request, log_sender, legacy_events_sender, events_sender).await;
                     if let Err(e) = &res {
                         alvr_common::show_e(e);
                     }

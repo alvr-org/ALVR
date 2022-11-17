@@ -48,10 +48,8 @@ pub struct GraphStatistics {
     pub server_fps: f32,
 }
 
-// This struct is temporary, until we switch to the new event system
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LogEvent {
-    pub timestamp: String,
     pub severity: EventSeverity,
     pub content: String,
 }
@@ -96,5 +94,5 @@ pub struct Event {
 }
 
 pub fn send_event(event_type: EventType) {
-    info!("#{}#", serde_json::to_string(&event_type).unwrap());
+    info!("{}", serde_json::to_string(&event_type).unwrap());
 }

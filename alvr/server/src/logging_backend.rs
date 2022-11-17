@@ -1,16 +1,21 @@
 use crate::{FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
 use alvr_common::log::{self, LevelFilter};
-use alvr_events::{EventSeverity, EventType, LogEvent};
+use alvr_events::{Event, EventSeverity, EventType, LogEvent};
+use chrono::Local;
 use fern::Dispatch;
 use std::fs;
 use tokio::sync::broadcast::Sender;
 
-pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
+// todo: don't stringify events immediately, use Sender<Event>
+pub fn init_logging(
+    log_sender: Sender<String>,
+    legacy_events_sender: Sender<String>,
+    events_sender: Sender<String>,
+) {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
         let maybe_event = format!("{message}");
-        if maybe_event.contains("#{") {
-            let event_data = maybe_event.replace("#{", "{").replace("}#", "}");
-            events_sender.send(event_data).ok();
+        if maybe_event.starts_with('{') {
+            legacy_events_sender.send(maybe_event.clone()).ok();
         } else {
             let severity = match record.level() {
                 log::Level::Error => EventSeverity::Error,
@@ -20,22 +25,51 @@ pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<String>) {
             };
 
             let event = EventType::Log(LogEvent {
-                timestamp: chrono::Local::now().format("%H:%M:%S.%f").to_string(),
                 severity,
                 content: message.to_string(),
             });
 
-            events_sender
+            legacy_events_sender
                 .send(serde_json::to_string(&event).unwrap())
                 .ok();
         }
-        let log_line = format!(
-            "{} [{}] {message}",
-            chrono::Local::now().format("%H:%M:%S.%f"),
-            record.level()
-        );
-        log_sender.send(log_line.clone()).ok();
-        out.finish(format_args!("{}", log_line));
+        let log_message = if maybe_event.starts_with('{') {
+            format!("#{}#", maybe_event)
+        } else {
+            maybe_event.clone()
+        };
+        log_sender
+            .send(format!(
+                "{} [{}] {log_message}",
+                chrono::Local::now().format("%H:%M:%S.%f"),
+                record.level()
+            ))
+            .ok();
+
+        let event_type = if maybe_event.starts_with('{') {
+            serde_json::from_str(&maybe_event).unwrap()
+        } else {
+            let severity = match record.level() {
+                log::Level::Error => EventSeverity::Error,
+                log::Level::Warn => EventSeverity::Warning,
+                log::Level::Info => EventSeverity::Info,
+                log::Level::Debug | log::Level::Trace => EventSeverity::Debug,
+            };
+
+            EventType::Log(LogEvent {
+                severity,
+                content: message.to_string(),
+            })
+        };
+        let event = Event {
+            timestamp: Local::now().format("%H:%M:%S.%f").to_string(),
+            event_type,
+        };
+        out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
+        // todo: don't stringify event
+        events_sender
+            .send(serde_json::to_string(&event).unwrap())
+            .ok();
     });
 
     if cfg!(debug_assertions) {

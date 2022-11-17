@@ -9,7 +9,7 @@ use crate::{
     theme,
     translation::{self, TranslationBundle},
 };
-use alvr_events::{EventSeverity, EventType, LogEvent};
+use alvr_events::{Event, EventSeverity, EventType, LogEvent};
 use alvr_session::{ClientConnectionDesc, LogLevel, SessionDesc};
 use egui::{
     style::Margin, Align, CentralPanel, Context, Frame, Label, Layout, RichText, ScrollArea,
@@ -132,41 +132,40 @@ impl Dashboard {
         theme::set_theme(ctx);
     }
 
-    pub fn new_event(&mut self, event: EventType) {
-        match &event {
+    pub fn new_event(&mut self, event: Event) {
+        match &event.event_type {
             EventType::GraphStatistics(graph_statistics) => self
                 .statistics_tab
                 .update_graph_statistics(graph_statistics.clone()),
             EventType::Statistics(statistics) => {
                 self.statistics_tab.update_statistics(statistics.clone())
             }
-            EventType::Log(log) => {
-                self.logs_tab.update_logs(log.clone());
-                // Create a notification based on the notification level in the settings
-                match self.session.to_settings().extra.notification_level {
-                    LogLevel::Debug => self.notification = Some(log.to_owned()),
-                    LogLevel::Info => match log.severity {
-                        EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
-                            self.notification = Some(log.to_owned())
-                        }
-                        _ => (),
-                    },
-                    LogLevel::Warning => match log.severity {
-                        EventSeverity::Warning | EventSeverity::Error => {
-                            self.notification = Some(log.to_owned())
-                        }
-                        _ => (),
-                    },
-                    LogLevel::Error => match log.severity {
-                        EventSeverity::Error => self.notification = Some(log.to_owned()),
-                        _ => (),
-                    },
-                }
-            }
             EventType::Session(session) => {
                 self.session = session.to_owned();
             }
-            _ => (),
+            _ => {
+                self.logs_tab.update_logs(event.clone());
+                // Create a notification based on the notification level in the settings
+                // match self.session.to_settings().extra.notification_level {
+                //     LogLevel::Debug => self.notification = Some(log.to_owned()),
+                //     LogLevel::Info => match log.severity {
+                //         EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
+                //             self.notification = Some(log.to_owned())
+                //         }
+                //         _ => (),
+                //     },
+                //     LogLevel::Warning => match log.severity {
+                //         EventSeverity::Warning | EventSeverity::Error => {
+                //             self.notification = Some(log.to_owned())
+                //         }
+                //         _ => (),
+                //     },
+                //     LogLevel::Error => match log.severity {
+                //         EventSeverity::Error => self.notification = Some(log.to_owned()),
+                //         _ => (),
+                //     },
+                // }
+            }
         }
     }
 

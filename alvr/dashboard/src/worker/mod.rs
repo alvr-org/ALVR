@@ -31,7 +31,7 @@ pub fn http_thread(
                 Ok(_) => {
                     // When successfully connected let's (re)create the event stream
                     if !connected {
-                        let (event_tx, _event_rx) = mpsc::channel::<alvr_events::EventType>(1);
+                        let (event_tx, _event_rx) = mpsc::channel::<alvr_events::Event>(1);
                         tokio::task::spawn(websocket_task(
                             url::Url::parse(&format!("{}/api/events", BASE_WS_URL)).unwrap(),
                             event_tx,

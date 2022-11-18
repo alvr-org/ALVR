@@ -99,6 +99,18 @@ pub fn build_server(
         .unwrap();
     }
 
+    // Build dashboard
+    {
+        let _push_guard = sh.push_dir(afs::crate_dir("dashboard"));
+        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
+
+        sh.copy_file(
+            artifacts_dir.join(afs::exec_fname("alvr_dashboard")),
+            build_layout.dashboard_exe(),
+        )
+        .unwrap();
+    }
+
     // copy dependencies
     if cfg!(windows) {
         command::copy_recursive(

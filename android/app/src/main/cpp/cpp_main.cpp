@@ -630,14 +630,17 @@ void eventsThread() {
                                                     capabilities.Header.DeviceID,
                                                     controllerDisplayTimeS,
                                                     &tracking) == ovrSuccess) {
-                        AlvrDeviceMotion motion = {};
-                        motion.device_id = handID;
-                        memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
-                        memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
-                        memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
-                        memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
+                        if(((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_VALID) && (tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_VALID)) ||
+                            (capabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo)) {
+                            AlvrDeviceMotion motion = {};
+                            motion.device_id = handID;
+                            memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
+                            memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
+                            memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
+                            memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
 
-                        motionVec.push_back(motion);
+                            motionVec.push_back(motion);
+                        }
                     }
                 } else if (capabilitiesHeader.Type == ovrControllerType_Hand) {
                     ovrInputHandCapabilities capabilities;

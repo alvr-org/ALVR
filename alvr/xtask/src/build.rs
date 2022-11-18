@@ -89,11 +89,11 @@ pub fn build_server(
 
     // build launcher
     {
-        let _push_guard = sh.push_dir(afs::crate_dir("dashboard"));
+        let _push_guard = sh.push_dir(afs::crate_dir("launcher"));
         cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
 
         sh.copy_file(
-            artifacts_dir.join(afs::exec_fname("alvr_dashboard")),
+            artifacts_dir.join(afs::exec_fname("alvr_launcher")),
             build_layout.launcher_exe(),
         )
         .unwrap();
@@ -101,7 +101,7 @@ pub fn build_server(
 
     // Build dashboard
     {
-        let _push_guard = sh.push_dir(afs::crate_dir("launcher"));
+        let _push_guard = sh.push_dir(afs::crate_dir("dashboard"));
         cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
 
         sh.copy_file(

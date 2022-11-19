@@ -75,7 +75,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
     encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
     encoder_ctx->max_b_frames = 0;
-    encoder_ctx->gop_size = 30;
+    encoder_ctx->gop_size = 128;
     encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
 
     err = AVCODEC.avcodec_open2(encoder_ctx, codec, NULL);

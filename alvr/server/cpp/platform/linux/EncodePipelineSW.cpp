@@ -108,8 +108,11 @@ alvr::EncodePipelineSW::~EncodePipelineSW()
   AVUTIL.av_frame_free(&encoder_frame);
 }
 
-void alvr::EncodePipelineSW::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr)
+void alvr::EncodePipelineSW::PushFrame(uint32_t frame_index, uint64_t waitValue, uint64_t targetTimestampNs, bool idr)
 {
+  AVVkFrame* av_vkframe = (AVVkFrame*)vk_frames[frame_index]->data;
+  av_vkframe->sem_value[0] = waitValue;
+
   int err = AVUTIL.av_hwframe_transfer_data(transferred_frame, vk_frames[frame_index], 0);
   if (err)
     throw alvr::AvException("av_hwframe_transfer_data", err);

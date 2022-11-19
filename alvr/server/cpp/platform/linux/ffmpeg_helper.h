@@ -52,6 +52,10 @@ public:
   VkContext(const char* device, AVDictionary* opt = nullptr);
   ~VkContext();
   vk::Device get_vk_device() const;
+  vk::Instance get_vk_instance() const;
+  vk::PhysicalDevice get_vk_phys_device() const;
+  std::vector<uint32_t> get_vk_queue_families() const;
+  std::vector<std::string> get_vk_device_extensions() const;
 
   AVBufferRef *ctx;
   dispatch d;
@@ -71,10 +75,11 @@ class VkFrame
 public:
   VkFrame(
       const VkContext& vk_ctx,
-      vk::ImageCreateInfo image_create_info,
-      size_t memory_index,
-      int image_fd,
-      int semaphore_fd);
+      VkImage image,
+      VkImageCreateInfo image_info,
+      VkDeviceSize size,
+      VkDeviceMemory memory,
+      VkSemaphore semaphore);
   ~VkFrame();
   operator AVVkFrame*() const { return av_vkframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);

@@ -68,6 +68,48 @@ vk::Device alvr::VkContext::get_vk_device() const
   return vkctx->act_dev;
 }
 
+vk::Instance alvr::VkContext::get_vk_instance() const
+{
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
+  AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
+  return vkctx->inst;
+}
+
+vk::PhysicalDevice alvr::VkContext::get_vk_phys_device() const
+{
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
+  AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
+  return vkctx->phys_dev;
+}
+
+std::vector<uint32_t> alvr::VkContext::get_vk_queue_families() const
+{
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
+  AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
+
+  std::vector<uint32_t> out;
+  out.push_back(vkctx->queue_family_index);
+  if (std::find(out.begin(), out.end(), vkctx->queue_family_comp_index) == out.end()) {
+    out.push_back(vkctx->queue_family_comp_index);
+  }
+  if (std::find(out.begin(), out.end(), vkctx->queue_family_tx_index) == out.end()) {
+    out.push_back(vkctx->queue_family_tx_index);
+  }
+  return out;
+}
+
+std::vector<std::string> alvr::VkContext::get_vk_device_extensions() const
+{
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
+  AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
+
+  std::vector<std::string> out;
+  for (size_t i = 0; i < vkctx->nb_enabled_dev_extensions; ++i) {
+    out.push_back(vkctx->enabled_dev_extensions[i]);
+  }
+  return out;
+}
+
 alvr::VkContext::~VkContext()
 {
   AVUTIL.av_buffer_unref(&ctx);
@@ -100,62 +142,27 @@ alvr::VkFrameCtx::~VkFrameCtx()
 
 alvr::VkFrame::VkFrame(
     const VkContext& vk_ctx,
-    vk::ImageCreateInfo image_create_info,
-    size_t memory_index,
-    int image_fd, int semaphore_fd):
-  width(image_create_info.extent.width),
-  height(image_create_info.extent.height)
+    VkImage image,
+    VkImageCreateInfo image_info,
+    VkDeviceSize size,
+    VkDeviceMemory memory,
+    VkSemaphore semaphore):
+  width(image_info.extent.width),
+  height(image_info.extent.height)
 {
   device = vk_ctx.get_vk_device();
 
-  vk::ExternalMemoryImageCreateInfo extMemImageInfo;
-  extMemImageInfo.handleTypes = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-  image_create_info.pNext = &extMemImageInfo;
-  image_create_info.initialLayout = vk::ImageLayout::eUndefined;// VUID-VkImageCreateInfo-pNext-01443
-  vk::Image image = device.createImage(image_create_info);
-
-  auto req = device.getImageMemoryRequirements(image);
-
-  vk::MemoryDedicatedAllocateInfo dedicatedMemInfo;
-  dedicatedMemInfo.image = image;
-
-  vk::ImportMemoryFdInfoKHR importMemInfo;
-  importMemInfo.pNext = &dedicatedMemInfo;
-  importMemInfo.handleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
-  importMemInfo.fd = image_fd;
-
-  vk::MemoryAllocateInfo memAllocInfo;
-  memAllocInfo.pNext = &importMemInfo;
-  memAllocInfo.allocationSize = req.size;
-  memAllocInfo.memoryTypeIndex = memory_index;
-
-  vk::DeviceMemory mem = device.allocateMemory(memAllocInfo);
-  device.bindImageMemory(image, mem, 0);
-
-  vk::SemaphoreCreateInfo semInfo;
-  vk::Semaphore semaphore = device.createSemaphore(semInfo);
-
-  vk::ImportSemaphoreFdInfoKHR impSemInfo;
-  impSemInfo.semaphore = semaphore;
-  impSemInfo.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd;
-  impSemInfo.fd = semaphore_fd;
-
-  device.importSemaphoreFdKHR(impSemInfo, vk_ctx.d);
-
   av_vkframe = AVUTIL.av_vk_frame_alloc();
   av_vkframe->img[0] = image;
-  av_vkframe->tiling = (VkImageTiling)image_create_info.tiling;
-  av_vkframe->mem[0] = mem;
-  av_vkframe->size[0] = req.size;
+  av_vkframe->tiling = image_info.tiling;
+  av_vkframe->mem[0] = memory;
+  av_vkframe->size[0] = size;
   av_vkframe->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
   av_vkframe->sem[0] = semaphore;
 }
 
 alvr::VkFrame::~VkFrame()
 {
-  device.destroySemaphore(av_vkframe->sem[0]);
-  device.destroyImage(av_vkframe->img[0]);
-  device.freeMemory(av_vkframe->mem[0]);
   AVUTIL.av_free(av_vkframe);
 }
 

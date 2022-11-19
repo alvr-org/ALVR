@@ -12,12 +12,10 @@ public:
         VkImageCreateInfo imageInfo;
         VkDeviceSize size;
         VkDeviceMemory memory;
-        VkSemaphore semaphore;
 
         // ---
         VkImageView view;
         VkFramebuffer framebuffer;
-        uint64_t semaphoreValue = 0;
     };
 
     FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<std::string> &devExtensions);
@@ -29,7 +27,7 @@ public:
 
     Output GetOutput() const { return m_output; }
 
-    uint64_t Render(uint32_t index);
+    void Render(uint32_t index, uint64_t waitValue);
 
 private:
     struct InImage {
@@ -68,4 +66,5 @@ private:
     VkPipeline m_pipeline;
     VkPipelineLayout m_pipelineLayout;
     VkCommandBuffer m_commandBuffer;
+    VkFence m_fence;
 };

@@ -217,13 +217,9 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
   AVUTIL.av_buffer_unref(&hw_ctx);
 }
 
-void alvr::EncodePipelineVAAPI::PushFrame(uint32_t frame_index, uint64_t waitValue, uint64_t targetTimestampNs, bool idr)
+void alvr::EncodePipelineVAAPI::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr)
 {
   assert(frame_index < mapped_frames.size());
-
-  AVVkFrame* av_vkframe = (AVVkFrame*)mapped_frames[frame_index]->data;
-  av_vkframe->sem_value[0] = waitValue;
-
   AVFrame *encoder_frame = AVUTIL.av_frame_alloc();
   int err = AVFILTER.av_buffersrc_add_frame_flags(filter_in, mapped_frames[frame_index], AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
   if (err != 0)

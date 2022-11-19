@@ -498,14 +498,9 @@ void FrameRender::Startup(uint32_t width, uint32_t height, VkFormat format, std:
     framebufferInfo.height = m_output.imageInfo.extent.height;
     VK_CHECK(vkCreateFramebuffer(m_dev, &framebufferInfo, nullptr, &m_output.framebuffer));
 
-    VkSemaphoreTypeCreateInfo timelineInfo = {};
-    timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-    timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-
-    VkSemaphoreCreateInfo semaphoreInfo = {};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    semaphoreInfo.pNext = &timelineInfo;
-    VK_CHECK(vkCreateSemaphore(m_dev, &semaphoreInfo, nullptr, &m_output.semaphore));
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VK_CHECK(vkCreateFence(m_dev, &fenceInfo, nullptr, &m_fence));
 }
 
 void FrameRender::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int imageFd, int semaphoreFd)
@@ -553,9 +548,13 @@ void FrameRender::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int 
     VK_CHECK(vkAllocateMemory(m_dev, &memAllocInfo, nullptr, &mem));
     VK_CHECK(vkBindImageMemory(m_dev, image, mem, 0));
 
-#if 0
+    VkSemaphoreTypeCreateInfo timelineInfo = {};
+    timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
     VkSemaphoreCreateInfo semInfo = {};
     semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    semInfo.pNext = &timelineInfo;
     VkSemaphore semaphore;
     VK_CHECK(vkCreateSemaphore(m_dev, &semInfo, nullptr, &semaphore));
 
@@ -564,9 +563,7 @@ void FrameRender::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int 
     impSemInfo.semaphore = semaphore;
     impSemInfo.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
     impSemInfo.fd = semaphoreFd;
-
     VK_CHECK(d.vkImportSemaphoreFdKHR(m_dev, &impSemInfo));
-#endif
 
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -621,23 +618,11 @@ void FrameRender::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int 
     VK_CHECK(vkEndCommandBuffer(copyCmd));
     submitWork(copyCmd);
 
-    m_images.push_back({image, mem, nullptr, view, descriptor});
+    m_images.push_back({image, mem, semaphore, view, descriptor});
 }
 
-uint64_t FrameRender::Render(uint32_t index)
+void FrameRender::Render(uint32_t index, uint64_t waitValue)
 {
-    if (m_output.semaphoreValue) {
-        VkSemaphoreWaitInfo waitInfo = {};
-        waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-        waitInfo.semaphoreCount = 1;
-        waitInfo.pSemaphores = &m_output.semaphore;
-        waitInfo.pValues = &m_output.semaphoreValue;
-        VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
-    } else {
-        // ffmpeg will signal it once when creating encoder
-        vkGetSemaphoreCounterValue(m_dev, m_output.semaphore, &m_output.semaphoreValue);
-    }
-
     VkCommandBufferBeginInfo commandBufferBegin = {};
     commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
@@ -673,23 +658,25 @@ uint64_t FrameRender::Render(uint32_t index)
 
     VK_CHECK(vkEndCommandBuffer(m_commandBuffer));
 
-    uint64_t signalValue = ++m_output.semaphoreValue;
-
     VkTimelineSemaphoreSubmitInfo timelineInfo = {};
     timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-    timelineInfo.signalSemaphoreValueCount = 1;
-    timelineInfo.pSignalSemaphoreValues = &signalValue;
+    timelineInfo.waitSemaphoreValueCount = 1;
+    timelineInfo.pWaitSemaphoreValues = &waitValue;
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.pNext = &timelineInfo;
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &m_output.semaphore;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &m_images[index].semaphore;
+    submitInfo.pWaitDstStageMask = &waitStage;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
-    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, nullptr));
+    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, m_fence));
 
-    return signalValue;
+    VK_CHECK(vkWaitForFences(m_dev, 1, &m_fence, VK_TRUE, UINT64_MAX));
+    VK_CHECK(vkResetFences(m_dev, 1, &m_fence));
 }
 
 uint32_t FrameRender::memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t type_bits) const

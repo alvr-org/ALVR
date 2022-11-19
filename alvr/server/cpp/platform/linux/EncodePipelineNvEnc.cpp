@@ -91,11 +91,8 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
     AVUTIL.av_frame_free(&hw_frame);
 }
 
-void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, uint64_t waitValue, uint64_t targetTimestampNs, bool idr) {
+void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) {
     assert(frame_index < vk_frames.size());
-
-    AVVkFrame* av_vkframe = (AVVkFrame*)vk_frames[frame_index]->data;
-    av_vkframe->sem_value[0] = waitValue;
 
     int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frames[frame_index].get(), 0);
     if (err) {

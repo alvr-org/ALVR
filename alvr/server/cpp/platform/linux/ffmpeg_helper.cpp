@@ -145,8 +145,8 @@ alvr::VkFrame::VkFrame(
     VkImage image,
     VkImageCreateInfo image_info,
     VkDeviceSize size,
-    VkDeviceMemory memory,
-    VkSemaphore semaphore):
+    VkDeviceMemory memory
+    ):
   width(image_info.extent.width),
   height(image_info.extent.height)
 {
@@ -158,11 +158,20 @@ alvr::VkFrame::VkFrame(
   av_vkframe->mem[0] = memory;
   av_vkframe->size[0] = size;
   av_vkframe->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
-  av_vkframe->sem[0] = semaphore;
+
+  VkSemaphoreTypeCreateInfo timelineInfo = {};
+  timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+  timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+  VkSemaphoreCreateInfo semInfo = {};
+  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  semInfo.pNext = &timelineInfo;
+  vkCreateSemaphore(device, &semInfo, nullptr, &av_vkframe->sem[0]);
 }
 
 alvr::VkFrame::~VkFrame()
 {
+  vkDestroySemaphore(device, av_vkframe->sem[0], nullptr);
   AVUTIL.av_free(av_vkframe);
 }
 

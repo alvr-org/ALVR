@@ -143,11 +143,11 @@ VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
     /* Advance the link info for the next element on the chain. */
     layerCreateInfo->u.pLayerInfo = layerCreateInfo->u.pLayerInfo->pNext;
 
-    /* The layer needs some Vulkan 1.1 functionality in order to operate correctly.
+    /* The layer needs some Vulkan 1.2 functionality in order to operate correctly.
      * We thus change the application info to require this API version, if necessary.
      * This may have consequences for ICDs whose behaviour depends on apiVersion.
      */
-    const uint32_t minimum_required_vulkan_version = VK_API_VERSION_1_1;
+    const uint32_t minimum_required_vulkan_version = VK_API_VERSION_1_2;
     VkApplicationInfo modified_app_info{};
     if (nullptr != pCreateInfo->pApplicationInfo) {
         modified_app_info = *pCreateInfo->pApplicationInfo;

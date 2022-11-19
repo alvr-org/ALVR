@@ -78,8 +78,7 @@ public:
       VkImage image,
       VkImageCreateInfo image_info,
       VkDeviceSize size,
-      VkDeviceMemory memory,
-      VkSemaphore semaphore);
+      VkDeviceMemory memory);
   ~VkFrame();
   operator AVVkFrame*() const { return av_vkframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);

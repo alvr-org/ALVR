@@ -211,7 +211,7 @@ void CEncoder::Run() {
 
       std::vector<alvr::VkFrame> images;
       images.reserve(1);
-      images.emplace_back(vk_ctx, output.image, output.imageInfo, output.size, output.memory, output.semaphore);
+      images.emplace_back(vk_ctx, output.image, output.imageInfo, output.size, output.memory);
 
       auto encode_pipeline = alvr::EncodePipeline::Create(images, vk_frame_ctx);
 
@@ -234,13 +234,13 @@ void CEncoder::Run() {
         // Linux does not really have a present event. This place is the closest one.
         ReportPresent(pose->targetTimestampNs);
 
-        uint64_t signalValue = render.Render(frame_info.image);
+        render.Render(frame_info.image, frame_info.semaphore_value);
 
         // Linux has currently no compositor. Report frame has been composed right away
         ReportComposed(pose->targetTimestampNs);
 
         auto encode_start = std::chrono::steady_clock::now();
-        encode_pipeline->PushFrame(0, signalValue, pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
+        encode_pipeline->PushFrame(0, pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 

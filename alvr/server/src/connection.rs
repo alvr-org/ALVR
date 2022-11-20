@@ -231,11 +231,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let client_config = StreamConfigPacket {
         session_desc: {
-            let mut session = SERVER_DATA_MANAGER.read().session().clone();
-            if cfg!(target_os = "linux") {
-                session.session_settings.video.foveated_rendering.enabled = false;
-            }
-
+            let session = SERVER_DATA_MANAGER.read().session().clone();
             serde_json::to_string(&session).map_err(to_int_e!())?
         },
         view_resolution: stream_view_resolution,

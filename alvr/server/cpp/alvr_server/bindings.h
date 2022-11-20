@@ -108,6 +108,8 @@ extern "C" const unsigned char *QUAD_SHADER_FRAG_SPV_PTR;
 extern "C" unsigned int QUAD_SHADER_FRAG_SPV_LEN;
 extern "C" const unsigned char *COLOR_SHADER_FRAG_SPV_PTR;
 extern "C" unsigned int COLOR_SHADER_FRAG_SPV_LEN;
+extern "C" const unsigned char *FFR_SHADER_FRAG_SPV_PTR;
+extern "C" unsigned int FFR_SHADER_FRAG_SPV_LEN;
 
 extern "C" const char *g_sessionPath;
 extern "C" const char *g_driverRootDir;

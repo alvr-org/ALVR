@@ -200,21 +200,19 @@ void CEncoder::Run() {
       alvr::VkContext vk_ctx(init.device_name.data(), d);
 
       FrameRender render(vk_ctx.get_vk_instance(), vk_ctx.get_vk_device(), vk_ctx.get_vk_phys_device(), vk_ctx.get_vk_device_extensions());
+      RenderPipeline quad(&render);
+      RenderPipeline color(&render);
+      RenderPipeline ffr(&render);
 
       render.Startup(init.image_create_info.extent.width, init.image_create_info.extent.height, init.image_create_info.format, vk_ctx.get_vk_queue_families());
       for (size_t i = 0; i < 3; ++i) {
           render.AddImage(init.image_create_info, init.mem_index, m_fds[2*i], m_fds[2*i+1]);
       }
 
+      uint32_t pipelines = 0;
       uint32_t width = Settings::Instance().m_renderWidth;
       uint32_t height = Settings::Instance().m_renderHeight;
 
-      RenderPipeline quad(&render);
-      quad.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-      quad.SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
-      render.AddPipeline(&quad);
-
-      RenderPipeline color(&render);
       if (Settings::Instance().m_enableColorCorrection) {
           struct ColorCorrection {
               float renderWidth;
@@ -239,6 +237,90 @@ void CEncoder::Run() {
           color.SetShader(RenderPipeline::FragmentShader, COLOR_SHADER_FRAG_SPV_PTR, COLOR_SHADER_FRAG_SPV_LEN);
           color.SetPushConstant(RenderPipeline::FragmentShader, cc, sizeof(ColorCorrection));
           render.AddPipeline(&color);
+          pipelines++;
+      }
+
+      if (Settings::Instance().m_enableFoveatedRendering) {
+          struct FoveationVars {
+              int32_t targetEyeWidth;
+              int32_t targetEyeHeight;
+              int32_t optimizedEyeWidth;
+              int32_t optimizedEyeHeight;
+
+              float eyeWidthRatio;
+              float eyeHeightRatio;
+
+              float centerSizeX;
+              float centerSizeY;
+              float centerShiftX;
+              float centerShiftY;
+              float edgeRatioX;
+              float edgeRatioY;
+          };
+          FoveationVars *fv = new FoveationVars;
+
+          float targetEyeWidth = (float)Settings::Instance().m_renderWidth / 2;
+          float targetEyeHeight = (float)Settings::Instance().m_renderHeight;
+
+          float centerSizeX = (float)Settings::Instance().m_foveationCenterSizeX;
+          float centerSizeY = (float)Settings::Instance().m_foveationCenterSizeY;
+          float centerShiftX = (float)Settings::Instance().m_foveationCenterShiftX;
+          float centerShiftY = (float)Settings::Instance().m_foveationCenterShiftY;
+          float edgeRatioX = (float)Settings::Instance().m_foveationEdgeRatioX;
+          float edgeRatioY = (float)Settings::Instance().m_foveationEdgeRatioY;
+
+          float edgeSizeX = targetEyeWidth-centerSizeX*targetEyeWidth;
+          float edgeSizeY = targetEyeHeight-centerSizeY*targetEyeHeight;
+
+          float centerSizeXAligned = 1.-ceil(edgeSizeX/(edgeRatioX*2.))*(edgeRatioX*2.)/targetEyeWidth;
+          float centerSizeYAligned = 1.-ceil(edgeSizeY/(edgeRatioY*2.))*(edgeRatioY*2.)/targetEyeHeight;
+
+          float edgeSizeXAligned = targetEyeWidth-centerSizeXAligned*targetEyeWidth;
+          float edgeSizeYAligned = targetEyeHeight-centerSizeYAligned*targetEyeHeight;
+
+          float centerShiftXAligned = ceil(centerShiftX*edgeSizeXAligned/(edgeRatioX*2.))*(edgeRatioX*2.)/edgeSizeXAligned;
+          float centerShiftYAligned = ceil(centerShiftY*edgeSizeYAligned/(edgeRatioY*2.))*(edgeRatioY*2.)/edgeSizeYAligned;
+
+          float foveationScaleX = (centerSizeXAligned+(1.-centerSizeXAligned)/edgeRatioX);
+          float foveationScaleY = (centerSizeYAligned+(1.-centerSizeYAligned)/edgeRatioY);
+
+          float optimizedEyeWidth = foveationScaleX*targetEyeWidth;
+          float optimizedEyeHeight = foveationScaleY*targetEyeHeight;
+
+          // round the frame dimensions to a number of pixel multiple of 32 for the encoder
+          auto optimizedEyeWidthAligned = (uint32_t)ceil(optimizedEyeWidth / 32.f) * 32;
+          auto optimizedEyeHeightAligned = (uint32_t)ceil(optimizedEyeHeight / 32.f) * 32;
+
+          float eyeWidthRatioAligned = optimizedEyeWidth/optimizedEyeWidthAligned;
+          float eyeHeightRatioAligned = optimizedEyeHeight/optimizedEyeHeightAligned;
+
+          fv->targetEyeWidth = targetEyeWidth;
+          fv->targetEyeHeight = targetEyeHeight;
+          fv->optimizedEyeWidth = optimizedEyeWidthAligned;
+          fv->optimizedEyeHeight = optimizedEyeHeightAligned;
+          fv->eyeWidthRatio = eyeWidthRatioAligned;
+          fv->eyeHeightRatio = eyeHeightRatioAligned;
+          fv->centerSizeX = centerSizeXAligned;
+          fv->centerSizeY = centerSizeYAligned;
+          fv->centerShiftX = centerShiftXAligned;
+          fv->centerShiftY = centerShiftYAligned;
+          fv->edgeRatioX = edgeRatioX;
+          fv->edgeRatioY = edgeRatioY;
+
+          ffr.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
+          ffr.SetShader(RenderPipeline::FragmentShader, FFR_SHADER_FRAG_SPV_PTR, FFR_SHADER_FRAG_SPV_LEN);
+          ffr.SetPushConstant(RenderPipeline::FragmentShader, fv, sizeof(FoveationVars));
+          render.AddPipeline(&ffr);
+          pipelines++;
+
+          width = fv->optimizedEyeWidth * 2;
+          height = fv->optimizedEyeHeight;
+      }
+
+      if (!pipelines) {
+          quad.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
+          quad.SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
+          render.AddPipeline(&quad);
       }
 
       auto output = render.CreateOutput(width, height);

@@ -163,6 +163,8 @@ const unsigned char *QUAD_SHADER_FRAG_SPV_PTR;
 unsigned int QUAD_SHADER_FRAG_SPV_LEN;
 const unsigned char *COLOR_SHADER_FRAG_SPV_PTR;
 unsigned int COLOR_SHADER_FRAG_SPV_LEN;
+const unsigned char *FFR_SHADER_FRAG_SPV_PTR;
+unsigned int FFR_SHADER_FRAG_SPV_LEN;
 
 const char *g_sessionPath;
 const char *g_driverRootDir;

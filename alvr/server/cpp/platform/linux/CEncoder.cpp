@@ -21,6 +21,7 @@
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Statistics.h"
+#include "alvr_server/bindings.h"
 #include "protocol.h"
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
@@ -205,7 +206,12 @@ void CEncoder::Run() {
           render.AddImage(init.image_create_info, init.mem_index, m_fds[2*i], m_fds[2*i+1]);
       }
 
-      auto output = render.GetOutput();
+      RenderPipeline quad(&render);
+      quad.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
+      quad.SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
+      render.AddPipeline(&quad);
+
+      auto output = render.CreateOutput(init.image_create_info.extent.width, init.image_create_info.extent.height);
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);
 

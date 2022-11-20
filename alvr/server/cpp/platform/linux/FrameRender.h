@@ -4,6 +4,8 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
+class RenderPipeline;
+
 class FrameRender
 {
 public:
@@ -12,25 +14,26 @@ public:
         VkImageCreateInfo imageInfo;
         VkDeviceSize size;
         VkDeviceMemory memory;
-
         // ---
         VkImageView view;
         VkFramebuffer framebuffer;
     };
 
-    FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<std::string> &devExtensions);
-    virtual ~FrameRender();
+    explicit FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<std::string> &devExtensions);
+    ~FrameRender();
 
     void Startup(uint32_t width, uint32_t height, VkFormat format, std::vector<uint32_t> queueFamilies);
 
     void AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int imageFd, int semaphoreFd);
 
-    Output GetOutput() const { return m_output; }
+    void AddPipeline(RenderPipeline *pipeline);
+
+    Output CreateOutput(uint32_t width, uint32_t height);
 
     void Render(uint32_t index, uint64_t waitValue);
 
 private:
-    struct InImage {
+    struct InputImage {
         VkImage image;
         VkDeviceMemory memory;
         VkSemaphore semaphore;
@@ -38,10 +41,18 @@ private:
         VkDescriptorSet descriptor;
     };
 
-    uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t type_bits) const;
-    VkResult createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer *buffer, VkDeviceMemory *memory, VkDeviceSize size, void *data = nullptr);
-    void submitWork(VkCommandBuffer cmdBuffer);
-    VkShaderModule loadShader(const unsigned char *data, unsigned len);
+    struct StagingImage {
+        VkImage image;
+        VkDeviceMemory memory;
+        VkImageView view;
+        VkFramebuffer framebuffer;
+        VkDescriptorSet descriptor;
+    };
+
+    void commandBufferBegin();
+    void commandBufferSubmit();
+    void addStagingImage(uint32_t width, uint32_t height);
+    uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const;
 
     struct {
         PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
@@ -49,13 +60,17 @@ private:
     } d;
 
     Output m_output;
-    std::vector<InImage> m_images;
+    std::vector<InputImage> m_images;
+    std::vector<StagingImage> m_stagingImages;
+    std::vector<RenderPipeline*> m_pipelines;
 
     VkInstance m_inst;
     VkDevice m_dev;
     VkPhysicalDevice m_physDev;
     VkQueue m_queue;
+    std::vector<uint32_t> m_queueFamilies;
     VkFormat m_format;
+    VkExtent2D m_imageSize;
     VkCommandPool m_commandPool;
     VkSampler m_sampler;
     VkBuffer m_vertexBuffer;
@@ -63,8 +78,40 @@ private:
     VkRenderPass m_renderPass;
     VkDescriptorPool m_descriptorPool;
     VkDescriptorSetLayout m_descriptorLayout;
-    VkPipeline m_pipeline;
-    VkPipelineLayout m_pipelineLayout;
     VkCommandBuffer m_commandBuffer;
     VkFence m_fence;
+
+    friend class RenderPipeline;
+};
+
+class RenderPipeline
+{
+public:
+    enum ShaderType {
+        VertexShader,
+        FragmentShader
+    };
+
+    explicit RenderPipeline(FrameRender *render);
+    ~RenderPipeline();
+
+    void SetShader(ShaderType type, const char *filename);
+    void SetShader(ShaderType type, const unsigned char *data, unsigned len);
+    void SetPushConstant(ShaderType type, const void *data, uint32_t size);
+
+private:
+    void Build();
+    void Render(VkDescriptorSet in, VkFramebuffer out, VkRect2D outSize);
+
+    FrameRender *r;
+    VkShaderModule m_vertexShader = VK_NULL_HANDLE;
+    VkShaderModule m_fragmentShader = VK_NULL_HANDLE;
+    const void *m_vertexConstant = nullptr;
+    uint32_t m_vertexConstantSize = 0;
+    const void *m_fragmentConstant = nullptr;
+    uint32_t m_fragmentConstantSize = 0;
+    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+
+    friend class FrameRender;
 };

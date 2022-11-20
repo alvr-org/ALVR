@@ -15,13 +15,13 @@ class EncodePipelineVAAPI: public EncodePipeline
 {
 public:
   ~EncodePipelineVAAPI();
-  EncodePipelineVAAPI(std::vector<VkFrame> &input_frames, VkFrameCtx& vk_frame_ctx);
+  EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height);
 
-  void PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) override;
+  void PushFrame(uint64_t targetTimestampNs, bool idr) override;
 
 private:
   AVBufferRef *hw_ctx = nullptr;
-  std::vector<AVFrame *> mapped_frames;
+  AVFrame *mapped_frame;
   AVFilterGraph *filter_graph = nullptr;
   AVFilterContext *filter_in = nullptr;
   AVFilterContext *filter_out = nullptr;

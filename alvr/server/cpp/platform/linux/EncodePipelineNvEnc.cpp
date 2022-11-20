@@ -23,15 +23,16 @@ const char *encoder(ALVR_CODEC codec) {
 }
 
 } // namespace
-alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frames,
-                                               VkFrameCtx &vk_frame_ctx) {
+alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
+                                               VkFrameCtx &vk_frame_ctx,
+                                               uint32_t width,
+                                               uint32_t height) {
     auto input_frame_ctx = (AVHWFramesContext *)vk_frame_ctx.ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
+
     int err;
-    for (auto &input_frame : input_frames) {
-        vk_frames.push_back(std::move(input_frame.make_av_frame(vk_frame_ctx)));
-    }
+    vk_frame = std::move(input_frame.make_av_frame(vk_frame_ctx));
 
     const auto &settings = Settings::Instance();
 
@@ -69,8 +70,8 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(std::vector<VkFrame> &input_frame
      * We just to ignore the alpha channel and it's done
      */
     encoder_ctx->pix_fmt = AV_PIX_FMT_BGR0;
-    encoder_ctx->width = settings.m_renderWidth;
-    encoder_ctx->height = settings.m_renderHeight;
+    encoder_ctx->width = width;
+    encoder_ctx->height = height;
     encoder_ctx->time_base = {1, (int)1e9};
     encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
@@ -91,10 +92,8 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
     AVUTIL.av_frame_free(&hw_frame);
 }
 
-void alvr::EncodePipelineNvEnc::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr) {
-    assert(frame_index < vk_frames.size());
-
-    int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frames[frame_index].get(), 0);
+void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {
+    int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
     if (err) {
         throw alvr::AvException("av_hwframe_transfer_data", err);
     }

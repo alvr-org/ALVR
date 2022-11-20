@@ -206,6 +206,9 @@ void CEncoder::Run() {
           render.AddImage(init.image_create_info, init.mem_index, m_fds[2*i], m_fds[2*i+1]);
       }
 
+      uint32_t width = Settings::Instance().m_renderWidth;
+      uint32_t height = Settings::Instance().m_renderHeight;
+
       RenderPipeline quad(&render);
       quad.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
       quad.SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
@@ -238,15 +241,12 @@ void CEncoder::Run() {
           render.AddPipeline(&color);
       }
 
-      auto output = render.CreateOutput(init.image_create_info.extent.width, init.image_create_info.extent.height);
+      auto output = render.CreateOutput(width, height);
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);
 
-      std::vector<alvr::VkFrame> images;
-      images.reserve(1);
-      images.emplace_back(vk_ctx, output.image, output.imageInfo, output.size, output.memory);
-
-      auto encode_pipeline = alvr::EncodePipeline::Create(images, vk_frame_ctx);
+      alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory);
+      auto encode_pipeline = alvr::EncodePipeline::Create(frame, vk_frame_ctx, width, height);
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
@@ -273,7 +273,7 @@ void CEncoder::Run() {
         ReportComposed(pose->targetTimestampNs);
 
         auto encode_start = std::chrono::steady_clock::now();
-        encode_pipeline->PushFrame(0, pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
+        encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 

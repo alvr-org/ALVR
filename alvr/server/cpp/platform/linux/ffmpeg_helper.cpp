@@ -87,11 +87,11 @@ alvr::VkContext::VkContext(const char *deviceName)
   instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   instanceInfo.pApplicationInfo = &appInfo;
 
-// #if DEBUG
+#ifdef DEBUG
   const char *validationLayers[] = { "VK_LAYER_KHRONOS_validation" };
   instanceInfo.ppEnabledLayerNames = validationLayers;
   instanceInfo.enabledLayerCount = 1;
-// #endif
+#endif
 
   instanceInfo.enabledExtensionCount = instanceExtensions.size();
   instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();

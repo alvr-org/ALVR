@@ -166,7 +166,6 @@ alvr::VkContext::VkContext(const char *deviceName)
   AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
 
   vkctx->alloc = nullptr;
-  vkctx->get_proc_addr = vkGetInstanceProcAddr;
   vkctx->inst = instance;
   vkctx->phys_dev = physicalDevice;
   vkctx->act_dev = device;
@@ -177,10 +176,13 @@ alvr::VkContext::VkContext(const char *deviceName)
   vkctx->nb_tx_queues = 1;
   vkctx->queue_family_comp_index = queueFamilyIndex;
   vkctx->nb_comp_queues = 1;
+#if LIBAVUTIL_VERSION_MAJOR >= 57
+  vkctx->get_proc_addr = vkGetInstanceProcAddr;
   vkctx->queue_family_encode_index = -1;
   vkctx->nb_encode_queues = 0;
   vkctx->queue_family_decode_index = -1;
   vkctx->nb_decode_queues = 0;
+#endif
 
   char **inst_extensions = (char**)malloc(sizeof(char*) * instanceExtensions.size());
   for (uint32_t i = 0; i < instanceExtensions.size(); ++i) {
@@ -258,7 +260,9 @@ alvr::VkFrame::VkFrame(
 
   VkSemaphoreCreateInfo semInfo = {};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+#if LIBAVUTIL_VERSION_MAJOR >= 57
   semInfo.pNext = &timelineInfo;
+#endif
   vkCreateSemaphore(device, &semInfo, nullptr, &av_vkframe->sem[0]);
 }
 

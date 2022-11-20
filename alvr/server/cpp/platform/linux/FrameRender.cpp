@@ -59,7 +59,7 @@ static const char *result_to_str(VkResult result)
     } \
 }
 
-FrameRender::FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<std::string> &devExtensions)
+FrameRender::FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<const char*> &devExtensions)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
@@ -105,20 +105,19 @@ FrameRender::~FrameRender()
     vkDestroyFence(m_dev, m_fence, nullptr);
 }
 
-void FrameRender::Startup(uint32_t width, uint32_t height, VkFormat format, std::vector<uint32_t> queueFamilies)
+void FrameRender::Startup(uint32_t width, uint32_t height, VkFormat format, uint32_t queueFamilyIndex)
 {
-    m_format = format; // VK_FORMAT_R8G8B8A8_SRGB ?
-
+    m_format = format;
     m_imageSize.width = width;
     m_imageSize.height = height;
-    m_queueFamilies = queueFamilies;
+    m_queueFamilyIndex = queueFamilyIndex;
 
-    vkGetDeviceQueue(m_dev, m_queueFamilies[0], 0, &m_queue);
+    vkGetDeviceQueue(m_dev, m_queueFamilyIndex, 0, &m_queue);
 
     // Command buffer
     VkCommandPoolCreateInfo cmdPoolInfo = {};
     cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmdPoolInfo.queueFamilyIndex = m_queueFamilies[0];
+    cmdPoolInfo.queueFamilyIndex = m_queueFamilyIndex;
     cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     VK_CHECK(vkCreateCommandPool(m_dev, &cmdPoolInfo, nullptr, &m_commandPool));
 
@@ -401,13 +400,7 @@ FrameRender::Output FrameRender::CreateOutput(uint32_t width, uint32_t height)
     m_output.imageInfo.arrayLayers = 1;
     m_output.imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     m_output.imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (m_queueFamilies.size() == 1) {
-        m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    } else {
-        m_output.imageInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-        m_output.imageInfo.queueFamilyIndexCount = m_queueFamilies.size();
-        m_output.imageInfo.pQueueFamilyIndices = m_queueFamilies.data();
-    }
+    m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_output.imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     if (d.haveDrmModifiers) {

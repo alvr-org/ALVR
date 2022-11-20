@@ -29,6 +29,7 @@ vec3 blendLighten(vec3 base, vec3 blend)
     return vec3(max(base.r, blend.r), max(base.g, blend.g), max(base.b, blend.b));
 }
 
+// https://forum.unity.com/threads/hue-saturation-brightness-contrast-shader.260649/
 void main()
 {
     const float DX = 1. / ColorCorrectionParams.renderWidth;

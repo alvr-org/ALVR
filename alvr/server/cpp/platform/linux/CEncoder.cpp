@@ -195,16 +195,14 @@ void CEncoder::Run() {
       AVUTIL.av_log_set_callback(logfn);
 #endif
 
-      AVDictionary *d = NULL; // "create" an empty dictionary
-      //av_dict_set(&d, "debug", "1", 0); // add an entry
-      alvr::VkContext vk_ctx(init.device_name.data(), d);
+      alvr::VkContext vk_ctx(init.device_name.data());
 
       FrameRender render(vk_ctx.get_vk_instance(), vk_ctx.get_vk_device(), vk_ctx.get_vk_phys_device(), vk_ctx.get_vk_device_extensions());
       RenderPipeline quad(&render);
       RenderPipeline color(&render);
       RenderPipeline ffr(&render);
 
-      render.Startup(init.image_create_info.extent.width, init.image_create_info.extent.height, init.image_create_info.format, vk_ctx.get_vk_queue_families());
+      render.Startup(init.image_create_info.extent.width, init.image_create_info.extent.height, init.image_create_info.format, vk_ctx.get_vk_queue_family_index());
       for (size_t i = 0; i < 3; ++i) {
           render.AddImage(init.image_create_info, init.mem_index, m_fds[2*i], m_fds[2*i+1]);
       }

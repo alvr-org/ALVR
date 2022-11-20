@@ -19,10 +19,10 @@ public:
         VkFramebuffer framebuffer;
     };
 
-    explicit FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<std::string> &devExtensions);
+    explicit FrameRender(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, const std::vector<const char *> &devExtensions);
     ~FrameRender();
 
-    void Startup(uint32_t width, uint32_t height, VkFormat format, std::vector<uint32_t> queueFamilies);
+    void Startup(uint32_t width, uint32_t height, VkFormat format, uint32_t queueFamilyIndex);
 
     void AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int imageFd, int semaphoreFd);
 
@@ -68,7 +68,7 @@ private:
     VkDevice m_dev;
     VkPhysicalDevice m_physDev;
     VkQueue m_queue;
-    std::vector<uint32_t> m_queueFamilies;
+    uint32_t m_queueFamilyIndex;
     VkFormat m_format;
     VkExtent2D m_imageSize;
     VkCommandPool m_commandPool;

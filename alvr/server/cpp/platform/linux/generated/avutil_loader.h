@@ -36,6 +36,8 @@ class avutil {
   decltype(&::av_frame_get_buffer) av_frame_get_buffer;
   decltype(&::av_frame_unref) av_frame_unref;
   decltype(&::av_free) av_free;
+  decltype(&::av_hwdevice_ctx_alloc) av_hwdevice_ctx_alloc;
+  decltype(&::av_hwdevice_ctx_init) av_hwdevice_ctx_init;
   decltype(&::av_hwdevice_ctx_create) av_hwdevice_ctx_create;
   decltype(&::av_hwframe_ctx_alloc) av_hwframe_ctx_alloc;
   decltype(&::av_hwframe_ctx_init) av_hwframe_ctx_init;

@@ -42,23 +42,22 @@ private:
 class VkContext
 {
 public:
-  // structure that holds extensions methods
-  struct dispatch
-  {
-    PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
-    int getVkHeaderVersion() const { return VK_HEADER_VERSION; }
-  };
-
-  VkContext(const char* device, AVDictionary* opt = nullptr);
+  VkContext(const char* device);
   ~VkContext();
-  vk::Device get_vk_device() const;
-  vk::Instance get_vk_instance() const;
-  vk::PhysicalDevice get_vk_phys_device() const;
-  std::vector<uint32_t> get_vk_queue_families() const;
-  std::vector<std::string> get_vk_device_extensions() const;
+  VkDevice get_vk_device() const { return device;}
+  VkInstance get_vk_instance() const { return instance;}
+  VkPhysicalDevice get_vk_phys_device() const { return physicalDevice;}
+  uint32_t get_vk_queue_family_index() const { return queueFamilyIndex;}
+  std::vector<const char*> get_vk_instance_extensions() const { return instanceExtensions;}
+  std::vector<const char*> get_vk_device_extensions() const { return deviceExtensions;}
 
   AVBufferRef *ctx;
-  dispatch d;
+  VkInstance instance;
+  VkPhysicalDevice physicalDevice;
+  VkDevice device;
+  uint32_t queueFamilyIndex;
+  std::vector<const char*> instanceExtensions;
+  std::vector<const char*> deviceExtensions;
 };
 
 class VkFrameCtx

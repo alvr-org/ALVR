@@ -42,7 +42,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
   frames_ctx->sw_format = AV_PIX_FMT_NV12;
   frames_ctx->width = ctx->width;
   frames_ctx->height = ctx->height;
-  frames_ctx->initial_pool_size = 1;
+  frames_ctx->initial_pool_size = 3;
   if ((err = AVUTIL.av_hwframe_ctx_init(hw_frames_ref)) < 0) {
     AVUTIL.av_buffer_unref(&hw_frames_ref);
     throw alvr::AvException("Failed to initialize VAAPI frame context:", err);

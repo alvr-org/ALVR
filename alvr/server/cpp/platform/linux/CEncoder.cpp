@@ -211,6 +211,33 @@ void CEncoder::Run() {
       quad.SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
       render.AddPipeline(&quad);
 
+      RenderPipeline color(&render);
+      if (Settings::Instance().m_enableColorCorrection) {
+          struct ColorCorrection {
+              float renderWidth;
+              float renderHeight;
+              float brightness;
+              float contrast;
+              float saturation;
+              float gamma;
+              float sharpening;
+              float _align;
+          };
+          ColorCorrection *cc = new ColorCorrection;
+          cc->renderWidth = Settings::Instance().m_renderWidth;
+          cc->renderHeight = Settings::Instance().m_renderHeight;
+          cc->brightness = Settings::Instance().m_brightness;
+          cc->contrast = Settings::Instance().m_contrast + 1.f;
+          cc->saturation = Settings::Instance().m_saturation + 1.f;
+          cc->gamma = Settings::Instance().m_gamma;
+          cc->sharpening = Settings::Instance().m_sharpening;
+
+          color.SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
+          color.SetShader(RenderPipeline::FragmentShader, COLOR_SHADER_FRAG_SPV_PTR, COLOR_SHADER_FRAG_SPV_LEN);
+          color.SetPushConstant(RenderPipeline::FragmentShader, cc, sizeof(ColorCorrection));
+          render.AddPipeline(&color);
+      }
+
       auto output = render.CreateOutput(init.image_create_info.extent.width, init.image_create_info.extent.height);
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);

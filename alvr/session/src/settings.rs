@@ -874,7 +874,7 @@ pub fn session_settings_default() -> SettingsDefault {
             exclude_notifications_without_id: false,
             patches: PatchesDefault {
                 remove_sync_popup: false,
-                linux_async_reprojection: true,
+                linux_async_reprojection: false,
             },
         },
     }

@@ -219,12 +219,11 @@ void CEncoder::Run() {
           continue;
         }
 
-        // Linux does not really have a present event. This place is the closest one.
+        // Close enough to present
         ReportPresent(pose->targetTimestampNs);
 
         render.Render(frame_info.image, frame_info.semaphore_value);
 
-        // Linux has currently no compositor. Report frame has been composed right away
         ReportComposed(pose->targetTimestampNs);
 
         auto encode_start = std::chrono::steady_clock::now();

@@ -278,6 +278,37 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     }
     modified_info.pQueueCreateInfos = queueCreateInfo.data();
 
+    // Enable timeline semaphores
+    VkPhysicalDeviceFeatures2 features = {};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    VkPhysicalDeviceVulkan12Features features12 = {};
+    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+    VkPhysicalDeviceFeatures2 *features_ptr = nullptr;
+    VkPhysicalDeviceVulkan12Features *features12_ptr = nullptr;
+
+    VkDeviceCreateInfo *next = &modified_info;
+    while (next->pNext) {
+        if (next->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2) {
+            features_ptr = (VkPhysicalDeviceFeatures2*)next;
+        } else if (next->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES) {
+            features12_ptr = (VkPhysicalDeviceVulkan12Features*)next;
+        }
+        next = (VkDeviceCreateInfo*)next->pNext;
+    }
+    if (!features_ptr) {
+        features_ptr = &features;
+        next->pNext = features_ptr;
+        next = (VkDeviceCreateInfo*)features_ptr;
+    }
+    if (!features12_ptr) {
+        features12_ptr = &features12;
+        next->pNext = features12_ptr;
+        next = (VkDeviceCreateInfo*)features12_ptr;
+    }
+    features12_ptr->timelineSemaphore = true;
+
     result = fpCreateDevice(physicalDevice, &modified_info, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
         return result;

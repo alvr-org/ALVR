@@ -143,11 +143,11 @@ VKAPI_ATTR VkResult create_instance(const VkInstanceCreateInfo *pCreateInfo,
     /* Advance the link info for the next element on the chain. */
     layerCreateInfo->u.pLayerInfo = layerCreateInfo->u.pLayerInfo->pNext;
 
-    /* The layer needs some Vulkan 1.1 functionality in order to operate correctly.
+    /* The layer needs some Vulkan 1.2 functionality in order to operate correctly.
      * We thus change the application info to require this API version, if necessary.
      * This may have consequences for ICDs whose behaviour depends on apiVersion.
      */
-    const uint32_t minimum_required_vulkan_version = VK_API_VERSION_1_1;
+    const uint32_t minimum_required_vulkan_version = VK_API_VERSION_1_2;
     VkApplicationInfo modified_app_info{};
     if (nullptr != pCreateInfo->pApplicationInfo) {
         modified_app_info = *pCreateInfo->pApplicationInfo;
@@ -302,6 +302,37 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     }
     modified_info.pQueueCreateInfos = queueCreateInfo.data();
     modified_info.queueCreateInfoCount = queueCreateInfo.size();
+
+    // Enable timeline semaphores
+    VkPhysicalDeviceFeatures2 features = {};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    VkPhysicalDeviceVulkan12Features features12 = {};
+    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+    VkPhysicalDeviceFeatures2 *features_ptr = nullptr;
+    VkPhysicalDeviceVulkan12Features *features12_ptr = nullptr;
+
+    VkDeviceCreateInfo *next = &modified_info;
+    while (next->pNext) {
+        if (next->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2) {
+            features_ptr = (VkPhysicalDeviceFeatures2*)next;
+        } else if (next->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES) {
+            features12_ptr = (VkPhysicalDeviceVulkan12Features*)next;
+        }
+        next = (VkDeviceCreateInfo*)next->pNext;
+    }
+    if (!features_ptr) {
+        features_ptr = &features;
+        next->pNext = features_ptr;
+        next = (VkDeviceCreateInfo*)features_ptr;
+    }
+    if (!features12_ptr) {
+        features12_ptr = &features12;
+        next->pNext = features12_ptr;
+        next = (VkDeviceCreateInfo*)features12_ptr;
+    }
+    features12_ptr->timelineSemaphore = true;
 
     result = fpCreateDevice(physicalDevice, &modified_info, pAllocator, pDevice);
     if (result != VK_SUCCESS) {

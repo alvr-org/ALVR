@@ -42,19 +42,22 @@ private:
 class VkContext
 {
 public:
-  // structure that holds extensions methods
-  struct dispatch
-  {
-    PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
-    int getVkHeaderVersion() const { return VK_HEADER_VERSION; }
-  };
-
-  VkContext(const char* device, AVDictionary* opt = nullptr);
+  VkContext(const char* device);
   ~VkContext();
-  vk::Device get_vk_device() const;
+  VkDevice get_vk_device() const { return device;}
+  VkInstance get_vk_instance() const { return instance;}
+  VkPhysicalDevice get_vk_phys_device() const { return physicalDevice;}
+  uint32_t get_vk_queue_family_index() const { return queueFamilyIndex;}
+  std::vector<const char*> get_vk_instance_extensions() const { return instanceExtensions;}
+  std::vector<const char*> get_vk_device_extensions() const { return deviceExtensions;}
 
   AVBufferRef *ctx;
-  dispatch d;
+  VkInstance instance;
+  VkPhysicalDevice physicalDevice;
+  VkDevice device;
+  uint32_t queueFamilyIndex;
+  std::vector<const char*> instanceExtensions;
+  std::vector<const char*> deviceExtensions;
 };
 
 class VkFrameCtx
@@ -71,10 +74,10 @@ class VkFrame
 public:
   VkFrame(
       const VkContext& vk_ctx,
-      vk::ImageCreateInfo image_create_info,
-      size_t memory_index,
-      int image_fd,
-      int semaphore_fd);
+      VkImage image,
+      VkImageCreateInfo image_info,
+      VkDeviceSize size,
+      VkDeviceMemory memory);
   ~VkFrame();
   operator AVVkFrame*() const { return av_vkframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);

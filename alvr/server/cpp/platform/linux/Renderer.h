@@ -2,7 +2,17 @@
 
 #include <vector>
 #include <string>
+#include <array>
 #include <vulkan/vulkan.h>
+
+struct DrmImage {
+    int fd = -1;
+    uint32_t format = 0;
+    uint64_t modifier = 0;
+    uint32_t planes = 0;
+    std::array<uint32_t, 4> strides;
+    std::array<uint32_t, 4> offsets;
+};
 
 class RenderPipeline;
 
@@ -17,6 +27,8 @@ public:
         // ---
         VkImageView view;
         VkFramebuffer framebuffer;
+        // ---
+        DrmImage drm;
     };
 
     explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueFamilyIndex, const std::vector<const char *> &devExtensions);
@@ -56,6 +68,8 @@ private:
 
     struct {
         PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
+        PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
+        PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT;
         bool haveDrmModifiers = false;
     } d;
 

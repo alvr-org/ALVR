@@ -186,6 +186,8 @@ void CEncoder::Run() {
     try {
         GetFds(client.fd, &m_fds);
 
+        m_connected = true;
+
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
 #ifdef DEBUG

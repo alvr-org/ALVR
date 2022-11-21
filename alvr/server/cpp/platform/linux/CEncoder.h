@@ -20,6 +20,7 @@ class CEncoder : public CThread {
     void Stop();
     void OnPacketLoss();
     void InsertIDR();
+    bool IsConnected() { return m_connected; }
 
   private:
     void GetFds(int client, int (*fds)[6]);
@@ -30,4 +31,5 @@ class CEncoder : public CThread {
     pollfd m_socket;
     std::string m_socketPath;
     int m_fds[6];
+    bool m_connected = false;
 };

@@ -341,6 +341,18 @@ void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDe
 
         if (m_viveTrackerProxy != nullptr)
             m_viveTrackerProxy->update();
+
+#ifndef _WIN32
+        // This has to be set after initialization is done, because something in vrcompositor is
+        // setting it to 90Hz in the meantime
+        if (!m_refreshRateSet && m_encoder && m_encoder->IsConnected()) {
+            m_refreshRateSet = true;
+            vr::VRProperties()->SetFloatProperty(
+                this->prop_container,
+                vr::Prop_DisplayFrequency_Float,
+                static_cast<float>(Settings::Instance().m_refreshRate));
+        }
+#endif
     }
 }
 
@@ -373,12 +385,6 @@ void OvrHmd::StartStreaming() {
 #elif __APPLE__
         m_encoder = std::make_shared<CEncoder>();
 #else
-        // This has to be set after initialization is done, because something in vrcompositor is
-        // setting it to 90Hz in the meantime
-        vr::VRProperties()->SetFloatProperty(
-            this->prop_container,
-            vr::Prop_DisplayFrequency_Float,
-            static_cast<float>(Settings::Instance().m_refreshRate));
         m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
         m_encoder->Start();
 #endif

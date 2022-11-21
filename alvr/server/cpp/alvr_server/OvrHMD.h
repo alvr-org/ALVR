@@ -94,4 +94,8 @@ class OvrHmd : public TrackedDevice,
     std::shared_ptr<OvrViveTrackerProxy> m_viveTrackerProxy;
 
     vr::DriverPose_t m_pose = {};
+
+#ifndef _WIN32
+    bool m_refreshRateSet = false;
+#endif
 };

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::collections::VecDeque;
 
 use crate::{dashboard::theme::graph_colors, dashboard::DashboardResponse};
 use alvr_events::{GraphStatistics, Statistics};

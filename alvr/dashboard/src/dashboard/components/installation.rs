@@ -26,7 +26,7 @@ impl InstallationTab {
                 }
             });
             Frame::group(ui.style())
-                .fill(theme::LIGHTER_BG)
+                .fill(theme::SECTION_BG)
                 .show(ui, |ui| {
                     ui.label(RichText::new("Registered drivers").size(18.0));
                     for driver in drivers {

@@ -23,7 +23,7 @@ impl SettingControl for Text {
         session_fragment: json::Value,
         ctx: &SettingsContext,
     ) -> Option<SettingsResponse> {
-        let textbox = TextEdit::singleline(&mut self.value).desired_width(50_f32);
+        let textbox = TextEdit::singleline(&mut self.value).desired_width(150.0);
         let res = ui.add(textbox);
 
         let response = if res.lost_focus() {

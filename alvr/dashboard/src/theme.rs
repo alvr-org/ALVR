@@ -1,10 +1,11 @@
-use egui::{vec2, Color32, Context, Stroke, Visuals};
+use egui::{vec2, Color32, Context, Rounding, Stroke, Visuals};
 
 pub const ACCENT: Color32 = Color32::from_rgb(53, 132, 228);
-pub const BG: Color32 = Color32::from_rgb(36, 36, 36);
-pub const LIGHTER_BG: Color32 = Color32::from_rgb(48, 48, 48);
-pub const DARKER_BG: Color32 = Color32::from_rgb(32, 32, 32);
-pub const SEPARATOR_BG: Color32 = Color32::from_rgb(56, 56, 56);
+pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
+pub const LIGHTER_BG: Color32 = Color32::from_rgb(36, 36, 36);
+pub const SECTION_BG: Color32 = Color32::from_rgb(36, 36, 36);
+pub const DARKER_BG: Color32 = Color32::from_rgb(26, 26, 26);
+pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const SELECTED: Color32 = Color32::from_rgb(120, 174, 237);
 pub const FG: Color32 = Color32::WHITE;
 
@@ -36,12 +37,19 @@ pub fn set_theme(ctx: &Context) {
 
     let mut visuals = Visuals::dark();
 
+    let rounding = Rounding::same(10.0);
+
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, FG);
+    visuals.widgets.active.rounding = rounding;
 
     visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, FG);
+    visuals.widgets.inactive.rounding = rounding;
+
+    visuals.widgets.hovered.rounding = rounding;
 
     visuals.widgets.open.bg_fill = SEPARATOR_BG;
+    visuals.widgets.open.rounding = rounding;
 
     visuals.selection.bg_fill = SELECTED;
     visuals.selection.stroke = Stroke::new(1.0, BG);
@@ -49,7 +57,8 @@ pub fn set_theme(ctx: &Context) {
     visuals.widgets.noninteractive.bg_fill = BG;
     visuals.faint_bg_color = DARKER_BG;
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, FG);
-    visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, SEPARATOR_BG);
+    visuals.widgets.noninteractive.bg_stroke = Stroke::new(0.5, SEPARATOR_BG);
+    visuals.widgets.noninteractive.rounding = rounding;
 
     ctx.set_visuals(visuals);
 }

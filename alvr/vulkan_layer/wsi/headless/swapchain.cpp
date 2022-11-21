@@ -157,9 +157,14 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     exp_info.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
     exp_info.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
 
+    VkSemaphoreTypeCreateInfo tim_info = {};
+    tim_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    tim_info.pNext = &exp_info;
+    tim_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
     VkSemaphoreCreateInfo sem_info = {};
     sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    sem_info.pNext = &exp_info;
+    sem_info.pNext = &tim_info;
 
     res = m_device_data.disp.CreateSemaphore(m_device, &sem_info, nullptr, &image.semaphore);
     if (res != VK_SUCCESS) {
@@ -167,12 +172,6 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
         destroy_image(image);
         return res;
     }
-
-    VkSubmitInfo submit = {};
-    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit.signalSemaphoreCount = 1;
-    submit.pSignalSemaphores = &image.semaphore;
-    m_device_data.disp.QueueSubmit(m_queue, 1, &submit, VK_NULL_HANDLE);
 
     VkSemaphoreGetFdInfoKHR sem_fd_info = {};
     sem_fd_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR;
@@ -288,12 +287,8 @@ bool swapchain::try_connect() {
     return true;
 }
 
-void swapchain::present_image(uint32_t pending_index) {
+void swapchain::submit_image(uint32_t pending_index) {
     const auto & pose = m_swapchain_images[pending_index].pose.mDeviceToAbsoluteTracking.m;
-
-    if (in_flight_index != UINT32_MAX)
-        unpresent_image(in_flight_index);
-    in_flight_index = pending_index;
     if (!m_connected) {
         m_connected = try_connect();
     }
@@ -302,12 +297,19 @@ void swapchain::present_image(uint32_t pending_index) {
         present_packet packet;
         packet.image = pending_index;
         packet.frame = m_display.m_vsync_count;
+        packet.semaphore_value = m_swapchain_images[pending_index].semaphore_value;
         memcpy(&packet.pose, pose, sizeof(packet.pose));
         ret = write(m_socket, &packet, sizeof(packet));
         if (ret == -1) {
             //FIXME: try to reconnect?
         }
     }
+}
+
+void swapchain::present_image(uint32_t pending_index) {
+    if (in_flight_index != UINT32_MAX)
+        unpresent_image(in_flight_index);
+    in_flight_index = pending_index;
 }
 
 void swapchain::destroy_image(wsi::swapchain_image &image) {

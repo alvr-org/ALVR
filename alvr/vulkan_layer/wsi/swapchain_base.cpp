@@ -76,6 +76,8 @@ void swapchain_base::page_flip_thread() {
         uint32_t pending_index = m_pending_buffer_pool.ring[m_pending_buffer_pool.head];
         m_pending_buffer_pool.head = (m_pending_buffer_pool.head + 1) % m_pending_buffer_pool.size;
 
+        submit_image(pending_index);
+
         /* We wait for the fence of the oldest pending image to be signalled. */
         vk_res = m_device_data.disp.WaitForFences(
             m_device, 1, &sc_images[pending_index].present_fence, VK_TRUE, timeout);
@@ -431,15 +433,22 @@ VkResult swapchain_base::queue_present(VkQueue queue, const VkPresentInfoKHR *pr
      */
     VkPipelineStageFlags pipeline_stage_flags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
+    uint64_t signal_value = ++m_swapchain_images[image_index].semaphore_value;
+
+    VkTimelineSemaphoreSubmitInfo timeline_info = {};
+    timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    timeline_info.signalSemaphoreValueCount = 1;
+    timeline_info.pSignalSemaphoreValues = &signal_value;
+
     VkSubmitInfo submit_info = {VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                NULL,
+                                &timeline_info,
                                 present_info->waitSemaphoreCount,
                                 present_info->pWaitSemaphores,
                                 &pipeline_stage_flags,
                                 0,
                                 NULL,
-                                0,
-                                NULL};
+                                1,
+                                &m_swapchain_images[image_index].semaphore};
 
     assert(m_swapchain_images[image_index].status == swapchain_image::ACQUIRED);
     result =

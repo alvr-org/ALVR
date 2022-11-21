@@ -30,12 +30,9 @@ const char * encoder(ALVR_CODEC codec)
 
 }
 
-alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkFrameCtx& vk_frame_ctx)
+alvr::EncodePipelineSW::EncodePipelineSW(VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height)
 {
-  for (auto& input_frame: input_frames)
-  {
-    vk_frames.push_back(input_frame.make_av_frame(vk_frame_ctx).release());
-  }
+  vk_frame = input_frame.make_av_frame(vk_frame_ctx).release();
 
   const auto& settings = Settings::Instance();
 
@@ -71,8 +68,8 @@ alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkF
   }
 
 
-  encoder_ctx->width = settings.m_renderWidth;
-  encoder_ctx->height = settings.m_renderHeight;
+  encoder_ctx->width = width;
+  encoder_ctx->height = height;
   encoder_ctx->time_base = {1, (int)1e9};
   encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
@@ -94,7 +91,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkF
   AVUTIL.av_frame_get_buffer(encoder_frame, 0);
 
   scaler_ctx = SWSCALE.sws_getContext(
-          vk_frames[0]->width, vk_frames[0]->height, ((AVHWFramesContext*)vk_frames[0]->hw_frames_ctx->data)->sw_format,
+          vk_frame->width, vk_frame->height, ((AVHWFramesContext*)vk_frame->hw_frames_ctx->data)->sw_format,
           encoder_ctx->width, encoder_ctx->height, encoder_ctx->pix_fmt,
           SWS_BILINEAR,
           NULL, NULL, NULL);
@@ -102,15 +99,14 @@ alvr::EncodePipelineSW::EncodePipelineSW(std::vector<VkFrame>& input_frames, VkF
 
 alvr::EncodePipelineSW::~EncodePipelineSW()
 {
-  for (auto &vk_frame: vk_frames)
-    AVUTIL.av_frame_free(&vk_frame);
+  AVUTIL.av_frame_free(&vk_frame);
   AVUTIL.av_frame_free(&transferred_frame);
   AVUTIL.av_frame_free(&encoder_frame);
 }
 
-void alvr::EncodePipelineSW::PushFrame(uint32_t frame_index, uint64_t targetTimestampNs, bool idr)
+void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-  int err = AVUTIL.av_hwframe_transfer_data(transferred_frame, vk_frames[frame_index], 0);
+  int err = AVUTIL.av_hwframe_transfer_data(transferred_frame, vk_frame, 0);
   if (err)
     throw alvr::AvException("av_hwframe_transfer_data", err);
 

@@ -134,6 +134,30 @@ bool avutil::Load(const std::string& library_name) {
   }
 
 #if defined(LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN)
+  av_hwdevice_ctx_alloc =
+      reinterpret_cast<decltype(this->av_hwdevice_ctx_alloc)>(
+          dlsym(library_, "av_hwdevice_ctx_alloc"));
+#else
+  av_hwdevice_ctx_alloc = &::av_hwdevice_ctx_alloc;
+#endif
+  if (!av_hwdevice_ctx_alloc) {
+    CleanUp(true);
+    return false;
+  }
+
+#if defined(LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN)
+  av_hwdevice_ctx_init =
+      reinterpret_cast<decltype(this->av_hwdevice_ctx_init)>(
+          dlsym(library_, "av_hwdevice_ctx_init"));
+#else
+  av_hwdevice_ctx_init = &::av_hwdevice_ctx_init;
+#endif
+  if (!av_hwdevice_ctx_init) {
+    CleanUp(true);
+    return false;
+  }
+
+#if defined(LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN)
   av_hwdevice_ctx_create =
       reinterpret_cast<decltype(this->av_hwdevice_ctx_create)>(
           dlsym(library_, "av_hwdevice_ctx_create"));
@@ -313,6 +337,8 @@ void avutil::CleanUp(bool unload) {
   av_frame_get_buffer = NULL;
   av_frame_unref = NULL;
   av_free = NULL;
+  av_hwdevice_ctx_alloc = NULL;
+  av_hwdevice_ctx_init = NULL;
   av_hwdevice_ctx_create = NULL;
   av_hwframe_ctx_alloc = NULL;
   av_hwframe_ctx_init = NULL;

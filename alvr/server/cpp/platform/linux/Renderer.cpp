@@ -22,7 +22,7 @@ struct Vertex {
     float position[2];
 };
 
-static const char *result_to_str(VkResult result)
+static std::string result_to_str(VkResult result)
 {
     switch (result) {
 #define VAL(x) case x: return #x
@@ -65,8 +65,8 @@ static const char *result_to_str(VkResult result)
 { \
     VkResult res = (f); \
     if (res != VK_SUCCESS) { \
-        std::cout << "Fatal : VkResult is \"" << result_to_str(res) << "\" in " << __FILE__ << " at line " << __LINE__ << std::endl; \
-        assert(res == VK_SUCCESS); \
+        std::cerr << result_to_str(res) << "at" << __FILE__ << ":" << __LINE__ << std::endl; \
+        throw std::runtime_error("Vulkan: " + result_to_str(res) + "at " __FILE__ ":" + std::to_string(__LINE__)); \
     } \
 }
 

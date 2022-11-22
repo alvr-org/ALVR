@@ -152,6 +152,9 @@ alvr::VkContext::VkContext(const char *deviceName)
   features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   features.pNext = &features12;
 
+  VkPhysicalDeviceFeatures deviceFeatures = {};
+  deviceFeatures.samplerAnisotropy = VK_TRUE;
+
   VkDeviceCreateInfo deviceInfo = {};
   deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceInfo.pNext = &features;
@@ -159,6 +162,7 @@ alvr::VkContext::VkContext(const char *deviceName)
   deviceInfo.pQueueCreateInfos = &queueCreateInfo;
   deviceInfo.enabledExtensionCount = deviceExtensions.size();
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+  deviceInfo.pEnabledFeatures = &deviceFeatures;
   vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
 
   ctx = AVUTIL.av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VULKAN);

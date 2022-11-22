@@ -232,11 +232,19 @@ void CEncoder::Run() {
         // Close enough to present
         ReportPresent(pose->targetTimestampNs);
 
+        if (access("/tmp/alvr-capture-input", F_OK) == 0) {
+          unlink("/tmp/alvr-capture-input");
+          render.CaptureInputFrame("/tmp/alvr-capture-input.ppm");
+        }
+        if (access("/tmp/alvr-capture-output", F_OK) == 0) {
+          unlink("/tmp/alvr-capture-output");
+          render.CaptureOutputFrame("/tmp/alvr-capture-output.ppm");
+        }
+
         render.Render(frame_info.image, frame_info.semaphore_value);
 
         ReportComposed(pose->targetTimestampNs);
 
-        auto encode_start = std::chrono::steady_clock::now();
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
@@ -249,8 +257,6 @@ void CEncoder::Run() {
         }
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
-
-        auto encode_end = std::chrono::steady_clock::now();
 
         m_listener->GetStatistics()->EncodeOutput();
 

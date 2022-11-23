@@ -228,7 +228,6 @@ void CEncoder::Run() {
 
         ReportComposed(pose->targetTimestampNs);
 
-        auto encode_start = std::chrono::steady_clock::now();
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
@@ -242,10 +241,7 @@ void CEncoder::Run() {
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
 
-        auto encode_end = std::chrono::steady_clock::now();
-
         m_listener->GetStatistics()->EncodeOutput();
-
       }
     }
     catch (std::exception &e) {

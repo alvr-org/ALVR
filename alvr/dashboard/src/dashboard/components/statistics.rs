@@ -50,7 +50,7 @@ impl StatisticsTab {
         let mut from_screen = None;
         ui.add_space(10.0);
         ui.label(RichText::new("Latency").size(20.0));
-        match Frame::canvas(ui.style())
+        let response = Frame::canvas(ui.style())
             .show(ui, |ui| {
                 ui.ctx().request_repaint();
                 let size = ui.available_width() * vec2(1.0, 0.3);
@@ -74,45 +74,42 @@ impl StatisticsTab {
                     Rect::from_x_y_ranges(0.0..=self.max_history_length as f32, max as f32..=0.0),
                 ));
 
-                for i in 0..self.max_history_length {
-                    match self.history.get(i) {
-                        Some(graph) => {
-                            let mut offset = 0.0;
-                            for (value, color) in &[
-                                (graph.game_time_s, graph_colors::RENDER),
-                                (graph.server_compositor_s, graph_colors::IDLE),
-                                (graph.encoder_s, graph_colors::TRANSCODE),
-                                (graph.network_s, graph_colors::NETWORK),
-                                (graph.decoder_s, graph_colors::TRANSCODE),
-                                (graph.client_compositor_s, graph_colors::IDLE),
-                            ] {
-                                ui.painter().rect_filled(
-                                    Rect {
-                                        min: to_screen
-                                            * pos2(
-                                                (self.max_history_length - i) as f32,
-                                                offset + value * 1000.0,
-                                            ),
-                                        max: to_screen
-                                            * pos2(
-                                                (self.max_history_length - i) as f32 + 2.0,
-                                                offset,
-                                            ),
-                                    },
-                                    Rounding::none(),
-                                    *color,
-                                );
-                                offset += value * 1000.0;
-                            }
-                        }
-                        None => (),
+                for (i, graph) in self
+                    .history
+                    .iter()
+                    .take(self.max_history_length)
+                    .enumerate()
+                {
+                    let mut offset = 0.0;
+                    for (value, color) in &[
+                        (graph.game_time_s, graph_colors::RENDER),
+                        (graph.server_compositor_s, graph_colors::IDLE),
+                        (graph.encoder_s, graph_colors::TRANSCODE),
+                        (graph.network_s, graph_colors::NETWORK),
+                        (graph.decoder_s, graph_colors::TRANSCODE),
+                        (graph.client_compositor_s, graph_colors::IDLE),
+                    ] {
+                        ui.painter().rect_filled(
+                            Rect {
+                                min: to_screen
+                                    * pos2(
+                                        (self.max_history_length - i) as f32,
+                                        offset + value * 1000.0,
+                                    ),
+                                max: to_screen
+                                    * pos2((self.max_history_length - i) as f32 + 2.0, offset),
+                            },
+                            Rounding::none(),
+                            *color,
+                        );
+                        offset += value * 1000.0;
                     }
                 }
 
                 ui.painter().text(
                     to_screen * pos2(0.0, 0.0),
                     Align2::LEFT_BOTTOM,
-                    format!("0"),
+                    "0".to_owned(),
                     FontId::monospace(20.0),
                     Color32::GRAY,
                 );
@@ -124,59 +121,53 @@ impl StatisticsTab {
                     Color32::GRAY,
                 );
             })
-            .response
-            .hover_pos()
-        {
-            Some(pos) => {
-                popup::show_tooltip(ui.ctx(), Id::new("latency_graph_popup"), |ui| {
-                    let mut graph_pos = from_screen.unwrap() * pos;
-                    graph_pos.x = graph_pos.x.min(self.max_history_length as f32);
+            .response;
 
-                    match self
-                        .history
-                        .get(self.max_history_length - graph_pos.x as usize)
-                    {
-                        Some(graph) => {
-                            ui.label(&format!(
-                                "Total latency: {:.2}ms",
-                                graph.total_pipeline_latency_s * 1000.0
-                            ));
-                            ui.colored_label(
-                                graph_colors::IDLE,
-                                &format!(
-                                    "Client compositor: {:.2}ms",
-                                    graph.client_compositor_s * 1000.0
-                                ),
-                            );
-                            ui.colored_label(
-                                graph_colors::TRANSCODE,
-                                &format!("Decode: {:.2}ms", graph.decoder_s * 1000.0),
-                            );
-                            ui.colored_label(
-                                graph_colors::NETWORK,
-                                &format!("Network: {:.2}ms", graph.network_s * 1000.0),
-                            );
-                            ui.colored_label(
-                                graph_colors::TRANSCODE,
-                                &format!("Encode: {:.2}ms", graph.encoder_s * 1000.0),
-                            );
-                            ui.colored_label(
-                                graph_colors::IDLE,
-                                &format!(
-                                    "Server compositor: {:.2}ms",
-                                    graph.server_compositor_s * 1000.0
-                                ),
-                            );
-                            ui.colored_label(
-                                graph_colors::RENDER,
-                                &format!("Render: {:.2}ms", graph.game_time_s * 1000.0),
-                            );
-                        }
-                        None => {}
-                    }
-                });
-            }
-            None => (),
+        if let Some(pos) = response.hover_pos() {
+            popup::show_tooltip(ui.ctx(), Id::new("latency_graph_popup"), |ui| {
+                let mut graph_pos = from_screen.unwrap() * pos;
+                graph_pos.x = graph_pos.x.min(self.max_history_length as f32);
+
+                if let Some(graph) = self
+                    .history
+                    .get(self.max_history_length - graph_pos.x as usize)
+                {
+                    ui.label(&format!(
+                        "Total latency: {:.2}ms",
+                        graph.total_pipeline_latency_s * 1000.0
+                    ));
+                    ui.colored_label(
+                        graph_colors::IDLE,
+                        &format!(
+                            "Client compositor: {:.2}ms",
+                            graph.client_compositor_s * 1000.0
+                        ),
+                    );
+                    ui.colored_label(
+                        graph_colors::TRANSCODE,
+                        &format!("Decode: {:.2}ms", graph.decoder_s * 1000.0),
+                    );
+                    ui.colored_label(
+                        graph_colors::NETWORK,
+                        &format!("Network: {:.2}ms", graph.network_s * 1000.0),
+                    );
+                    ui.colored_label(
+                        graph_colors::TRANSCODE,
+                        &format!("Encode: {:.2}ms", graph.encoder_s * 1000.0),
+                    );
+                    ui.colored_label(
+                        graph_colors::IDLE,
+                        &format!(
+                            "Server compositor: {:.2}ms",
+                            graph.server_compositor_s * 1000.0
+                        ),
+                    );
+                    ui.colored_label(
+                        graph_colors::RENDER,
+                        &format!("Render: {:.2}ms", graph.game_time_s * 1000.0),
+                    );
+                }
+            });
         }
         ui.horizontal(|ui| {
             ui.colored_label(graph_colors::IDLE, "Client compositor");
@@ -193,7 +184,7 @@ impl StatisticsTab {
 
         ui.add_space(10.0);
         ui.label(RichText::new("FPS").size(20.0));
-        match Frame::canvas(ui.style())
+        let response = Frame::canvas(ui.style())
             .show(ui, |ui| {
                 ui.ctx().request_repaint();
                 let size = ui.available_width() * vec2(1.0, 0.3);
@@ -268,33 +259,27 @@ impl StatisticsTab {
                     Color32::GRAY,
                 );
             })
-            .response
-            .hover_pos()
-        {
-            Some(pos) => {
-                popup::show_tooltip(ui.ctx(), Id::new("client_server_fps_popup"), |ui| {
-                    let mut graph_pos = from_screen.unwrap() * pos;
-                    graph_pos.x = graph_pos.x.min(self.max_history_length as f32);
+            .response;
 
-                    match self
-                        .history
-                        .get(self.max_history_length - graph_pos.x as usize)
-                    {
-                        Some(graph) => {
-                            ui.colored_label(
-                                graph_colors::CLIENT_FPS,
-                                format!("Client FPS: {:.2}", graph.client_fps),
-                            );
-                            ui.colored_label(
-                                graph_colors::SERVER_FPS,
-                                format!("Server FPS: {:.2}", graph.server_fps),
-                            );
-                        }
-                        None => (),
-                    }
-                });
-            }
-            None => (),
+        if let Some(pos) = response.hover_pos() {
+            popup::show_tooltip(ui.ctx(), Id::new("client_server_fps_popup"), |ui| {
+                let mut graph_pos = from_screen.unwrap() * pos;
+                graph_pos.x = graph_pos.x.min(self.max_history_length as f32);
+
+                if let Some(graph) = self
+                    .history
+                    .get(self.max_history_length - graph_pos.x as usize)
+                {
+                    ui.colored_label(
+                        graph_colors::CLIENT_FPS,
+                        format!("Client FPS: {:.2}", graph.client_fps),
+                    );
+                    ui.colored_label(
+                        graph_colors::SERVER_FPS,
+                        format!("Server FPS: {:.2}", graph.server_fps),
+                    );
+                }
+            });
         }
         ui.horizontal(|ui| {
             ui.colored_label(graph_colors::CLIENT_FPS, "Client FPS");

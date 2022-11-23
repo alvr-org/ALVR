@@ -71,7 +71,7 @@ impl SettingsTab {
         let content = self
             .tab_contents
             .iter_mut()
-            .find_map(|(id, section)| (**id == *selected_tab).then(|| section))
+            .find_map(|(id, section)| (**id == *selected_tab).then_some(section))
             .unwrap();
 
         let mut session_tabs = json::from_value::<HashMap<String, json::Value>>(

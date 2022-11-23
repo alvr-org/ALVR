@@ -42,12 +42,11 @@ fn get_message_value(
 ) -> Option<String> {
     bundle
         .get_message(message_id)
-        .map(|message| {
+        .and_then(|message| {
             message
                 .value()
                 .map(|pattern| format_pattern(bundle, pattern, args))
         })
-        .flatten()
 }
 
 fn get_attribute(
@@ -58,12 +57,11 @@ fn get_attribute(
 ) -> Option<String> {
     bundle
         .get_message(message_id)
-        .map(|message| {
+        .and_then(|message| {
             message
                 .get_attribute(attribute_id)
                 .map(|attribute| format_pattern(bundle, attribute.value(), args))
         })
-        .flatten()
 }
 
 pub struct TranslationBundle {

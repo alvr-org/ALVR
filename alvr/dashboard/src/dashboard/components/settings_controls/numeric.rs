@@ -36,7 +36,7 @@ impl<T: DeserializeOwned + Copy + Numeric> NumericWidget<T> {
         let step = if let Some(step) = step {
             Some(step.to_f64())
         } else {
-            integer.then(|| 1_f64)
+            integer.then_some(1_f64)
         };
 
         let initial_value = json::from_value::<T>(session_fragment).unwrap();

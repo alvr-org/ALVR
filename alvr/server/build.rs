@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use pkg_config;
 use std::{env, path::PathBuf};
 
 fn get_ffmpeg_path() -> PathBuf {
@@ -86,7 +84,7 @@ fn do_ffmpeg_config_post() {
     } else {
         #[cfg(target_os = "linux")]
         {
-            let pkg = pkg_config::Config::new().to_owned();
+            let pkg = pkg_config::Config::new();
 
             pkg.probe("libavutil").unwrap();
             pkg.probe("libavfilter").unwrap();

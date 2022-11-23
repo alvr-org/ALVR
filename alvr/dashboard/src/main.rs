@@ -101,19 +101,14 @@ impl eframe::App for ALVRDashboard {
             }
         }
 
-        match self.dashboard.update(ctx) {
-            Some(response) => {
-                match response {
-                    // These are the responses we don't want to pass to the worker thread
-                    DashboardResponse::PresetInvocation(_) | DashboardResponse::SetupWizard(_) => {
-                        ()
-                    }
-                    _ => {
-                        self.tx2.send(GuiMsg::Dashboard(response)).unwrap();
-                    }
+        if let Some(response) = self.dashboard.update(ctx) {
+            match response {
+                // These are the responses we don't want to pass to the worker thread
+                DashboardResponse::PresetInvocation(_) | DashboardResponse::SetupWizard(_) => {}
+                _ => {
+                    self.tx2.send(GuiMsg::Dashboard(response)).unwrap();
                 }
             }
-            None => (),
         }
     }
 

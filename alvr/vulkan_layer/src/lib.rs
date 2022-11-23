@@ -6,7 +6,8 @@ use std::ffi::{c_char, CString};
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
-    dead_code
+    dead_code,
+    clippy::all
 )]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/layer_bindings.rs"));

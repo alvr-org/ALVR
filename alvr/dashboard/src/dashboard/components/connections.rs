@@ -90,7 +90,7 @@ impl ConnectionsTab {
                             response = Some(DashboardResponse::Connections(
                                 ConnectionsResponse::AddOrUpdate {
                                     name: name.clone(),
-                                    client_desc: client_desc.clone(),
+                                    client_desc,
                                 },
                             ));
                         };
@@ -109,68 +109,62 @@ impl ConnectionsTab {
         // We use this to close the popup if that is needed
         let mut close_popup = false;
 
-        match self.edit_popup_state.as_mut() {
-            Some(state) => {
-                Window::new("Edit connection")
-                    .anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0))
-                    .resizable(false)
-                    .collapsible(false)
-                    .show(ui.ctx(), |ui| {
-                        ui.columns(2, |ui| {
-                            ui[0].label("Hostname:");
-                            ui[1].text_edit_singleline(&mut state.hostname);
-                            ui[0].label("Display name:");
-                            ui[1].text_edit_singleline(&mut state.display_name);
-                            ui[0].label("IP Addresses");
-                            if ui[1].button("Add new").clicked() {
-                                state.ip_addresses.push("127.0.0.1".to_string());
-                            }
-                        });
-                        for address in &mut state.ip_addresses {
-                            ui.text_edit_singleline(address);
+        if let Some(state) = self.edit_popup_state.as_mut() {
+            Window::new("Edit connection")
+                .anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0))
+                .resizable(false)
+                .collapsible(false)
+                .show(ui.ctx(), |ui| {
+                    ui.columns(2, |ui| {
+                        ui[0].label("Hostname:");
+                        ui[1].text_edit_singleline(&mut state.hostname);
+                        ui[0].label("Display name:");
+                        ui[1].text_edit_singleline(&mut state.display_name);
+                        ui[0].label("IP Addresses");
+                        if ui[1].button("Add new").clicked() {
+                            state.ip_addresses.push("127.0.0.1".to_string());
                         }
-                        ui.columns(2, |ui| {
-                            if ui[0].button("Ok").clicked() {
-                                let mut ip_addresses = HashSet::new();
+                    });
+                    for address in &mut state.ip_addresses {
+                        ui.text_edit_singleline(address);
+                    }
+                    ui.columns(2, |ui| {
+                        if ui[0].button("Ok").clicked() {
+                            let mut ip_addresses = HashSet::new();
 
-                                for address in &state.ip_addresses {
-                                    let parts: Vec<&str> = address.splitn(4, ".").collect();
-                                    let mut raw_addr: [u8; 4] = [0, 0, 0, 0];
+                            for address in &state.ip_addresses {
+                                let parts: Vec<&str> = address.splitn(4, '.').collect();
+                                let mut raw_addr: [u8; 4] = [0, 0, 0, 0];
 
-                                    for i in 0..4 {
-                                        match parts.get(i) {
-                                            Some(num) => {
-                                                raw_addr[i] = num.parse::<u8>().unwrap_or(0);
-                                            }
-                                            None => (),
-                                        }
+                                for (i, part) in raw_addr.iter_mut().enumerate() {
+                                    if let Some(num) = parts.get(i) {
+                                        *part = num.parse::<u8>().unwrap_or(0);
                                     }
-
-                                    let addr = IpAddr::V4(Ipv4Addr::from(raw_addr));
-
-                                    ip_addresses.insert(addr);
                                 }
 
-                                response = Some(DashboardResponse::Connections(
-                                    ConnectionsResponse::AddOrUpdate {
-                                        name: state.hostname.clone(),
-                                        client_desc: ClientConnectionDesc {
-                                            display_name: state.display_name.clone(),
-                                            manual_ips: ip_addresses,
-                                            trusted: true,
-                                        },
-                                    },
-                                ));
+                                let addr = IpAddr::V4(Ipv4Addr::from(raw_addr));
 
-                                close_popup = true;
+                                ip_addresses.insert(addr);
                             }
-                            if ui[1].button("Cancel").clicked() {
-                                close_popup = true;
-                            }
-                        })
-                    });
-            }
-            None => (),
+
+                            response = Some(DashboardResponse::Connections(
+                                ConnectionsResponse::AddOrUpdate {
+                                    name: state.hostname.clone(),
+                                    client_desc: ClientConnectionDesc {
+                                        display_name: state.display_name.clone(),
+                                        manual_ips: ip_addresses,
+                                        trusted: true,
+                                    },
+                                },
+                            ));
+
+                            close_popup = true;
+                        }
+                        if ui[1].button("Cancel").clicked() {
+                            close_popup = true;
+                        }
+                    })
+                });
         }
 
         if close_popup {

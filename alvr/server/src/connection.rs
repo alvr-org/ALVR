@@ -211,16 +211,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         )
         .map_err(to_int_e!())?;
 
-        if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
-            let microphone_device = AudioDevice::new(
-                Some(settings.audio.linux_backend),
-                &microphone_desc.input_device_id,
-                AudioDeviceType::VirtualMicrophoneInput,
-            )
-            .map_err(to_int_e!())?;
-            #[cfg(not(target_os = "linux"))]
-            if alvr_audio::is_same_device(&game_audio_device, &microphone_device) {
-                return int_fmt_e!("Game audio and microphone cannot point to the same device!");
+        #[cfg(not(target_os = "linux"))]
+        {
+            if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
+                let microphone_device = AudioDevice::new(
+                    Some(settings.audio.linux_backend),
+                    &microphone_desc.input_device_id,
+                    AudioDeviceType::VirtualMicrophoneInput,
+                )
+                .map_err(to_int_e!())?;
+                if alvr_audio::is_same_device(&game_audio_device, &microphone_device) {
+                    return int_fmt_e!("Game audio and microphone cannot point to the same device!");
+                }
             }
         }
 

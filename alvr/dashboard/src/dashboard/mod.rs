@@ -104,7 +104,6 @@ impl Dashboard {
                 (Tab::About, "ℹ About"),
             ]
             .into_iter()
-            .map(|val| val.clone())
             .collect(),
             connections_tab: ConnectionsTab::new(),
             statistics_tab: StatisticsTab::new(),
@@ -145,22 +144,24 @@ impl Dashboard {
                 // Create a notification based on the notification level in the settings
                 match self.session.to_settings().extra.notification_level {
                     LogLevel::Debug => self.notification = Some(log.to_owned()),
-                    LogLevel::Info => match log.severity {
-                        EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
+                    LogLevel::Info => {
+                        if matches!(
+                            log.severity,
+                            EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error
+                        ) {
                             self.notification = Some(log.to_owned())
                         }
-                        _ => (),
-                    },
-                    LogLevel::Warning => match log.severity {
-                        EventSeverity::Warning | EventSeverity::Error => {
+                    }
+                    LogLevel::Warning => {
+                        if matches!(log.severity, EventSeverity::Warning | EventSeverity::Error) {
                             self.notification = Some(log.to_owned())
                         }
-                        _ => (),
-                    },
-                    LogLevel::Error => match log.severity {
-                        EventSeverity::Error => self.notification = Some(log.to_owned()),
-                        _ => (),
-                    },
+                    }
+                    LogLevel::Error => {
+                        if matches!(log.severity, EventSeverity::Error) {
+                            self.notification = Some(log.to_owned())
+                        }
+                    }
                 }
             }
             EventType::Session(session) => {
@@ -219,11 +220,7 @@ impl Dashboard {
                                             .wrap(true),
                                     );
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("❌").clicked() {
-                                            true
-                                        } else {
-                                            false
-                                        }
+                                        ui.button("❌").clicked()
                                     })
                                     .inner
                                 })
@@ -276,7 +273,7 @@ impl Dashboard {
                     })
                     .inner;
 
-                let response = CentralPanel::default()
+                CentralPanel::default()
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                             ui.heading(*self.tab_labels.get(&self.selected_tab).unwrap());
@@ -293,8 +290,7 @@ impl Dashboard {
                     })
                     .inner
                     .inner
-                    .or(response);
-                response
+                    .or(response)
             }
         };
 

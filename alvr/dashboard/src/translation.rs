@@ -40,13 +40,11 @@ fn get_message_value(
     message_id: &str,
     args: Option<&FluentArgs>,
 ) -> Option<String> {
-    bundle
-        .get_message(message_id)
-        .and_then(|message| {
-            message
-                .value()
-                .map(|pattern| format_pattern(bundle, pattern, args))
-        })
+    bundle.get_message(message_id).and_then(|message| {
+        message
+            .value()
+            .map(|pattern| format_pattern(bundle, pattern, args))
+    })
 }
 
 fn get_attribute(
@@ -55,13 +53,11 @@ fn get_attribute(
     attribute_id: &str,
     args: Option<&FluentArgs>,
 ) -> Option<String> {
-    bundle
-        .get_message(message_id)
-        .and_then(|message| {
-            message
-                .get_attribute(attribute_id)
-                .map(|attribute| format_pattern(bundle, attribute.value(), args))
-        })
+    bundle.get_message(message_id).and_then(|message| {
+        message
+            .get_attribute(attribute_id)
+            .map(|attribute| format_pattern(bundle, attribute.value(), args))
+    })
 }
 
 pub struct TranslationBundle {

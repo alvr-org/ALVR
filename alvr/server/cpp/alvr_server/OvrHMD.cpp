@@ -143,56 +143,58 @@ std::string OvrHmd::GetSerialNumber() const { return Settings::Instance().mSeria
 vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     Debug("CRemoteHmd Activate %d\n", unObjectId);
 
-    this->object_id = unObjectId;
-    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->object_id);
+    auto vr_properties = vr::VRProperties();
 
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    this->object_id = unObjectId;
+    this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
+
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_TrackingSystemName_String,
                                           Settings::Instance().mTrackingSystemName.c_str());
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_ModelNumber_String,
                                           Settings::Instance().mModelNumber.c_str());
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_ManufacturerName_String,
                                           Settings::Instance().mManufacturerName.c_str());
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_RenderModelName_String,
                                           Settings::Instance().mRenderModelName.c_str());
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_RegisteredDeviceType_String,
                                           Settings::Instance().mRegisteredDeviceType.c_str());
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_DriverVersion_String,
                                           Settings::Instance().mDriverVersion.c_str());
-    vr::VRProperties()->SetFloatProperty(
+    vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
-    vr::VRProperties()->SetFloatProperty(
+    vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
-    vr::VRProperties()->SetFloatProperty(this->prop_container,
+    vr_properties->SetFloatProperty(this->prop_container,
                                          vr::Prop_DisplayFrequency_Float,
                                          static_cast<float>(Settings::Instance().m_refreshRate));
-    vr::VRProperties()->SetFloatProperty(
+    vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_SecondsFromVsyncToPhotons_Float, 0.);
-    // vr::VRProperties()->SetFloatProperty(this->prop_container,
+    // vr_properties->SetFloatProperty(this->prop_container,
     // vr::Prop_SecondsFromVsyncToPhotons_Float,
     // Settings::Instance().m_flSecondsFromVsyncToPhotons);
 
     // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(
+    vr_properties->SetUint64Property(
         this->prop_container, vr::Prop_CurrentUniverseId_Uint64, Settings::Instance().m_universeId);
 
 #ifdef _WIN32
     // avoid "not fullscreen" warnings from vrmonitor
-    vr::VRProperties()->SetBoolProperty(this->prop_container, vr::Prop_IsOnDesktop_Bool, false);
+    vr_properties->SetBoolProperty(this->prop_container, vr::Prop_IsOnDesktop_Bool, false);
 
     // Manually send VSync events on direct mode.
     // ref:https://github.com/ValveSoftware/virtual_display/issues/1
-    vr::VRProperties()->SetBoolProperty(
+    vr_properties->SetBoolProperty(
         this->prop_container, vr::Prop_DriverDirectModeSendsVsyncEvents_Bool, true);
 #endif
 
     // Set battery as true
-    vr::VRProperties()->SetBoolProperty(
+    vr_properties->SetBoolProperty(
         this->prop_container, vr::Prop_DeviceProvidesBatteryStatus_Bool, true);
 
 #ifdef _WIN32
@@ -206,22 +208,22 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     HmdMatrix_SetIdentity(&m_eyeToHeadRight);
 
     // set the icons in steamvr to the default icons used for Oculus Link
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceOff_String,
                                           "{oculus}/icons/quest_headset_off.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceSearching_String,
                                           "{oculus}/icons/quest_headset_searching.gif");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceSearchingAlert_String,
                                           "{oculus}/icons/quest_headset_alert_searching.gif");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceReady_String,
                                           "{oculus}/icons/quest_headset_ready.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceReadyAlert_String,
                                           "{oculus}/icons/quest_headset_ready_alert.png");
-    vr::VRProperties()->SetStringProperty(this->prop_container,
+    vr_properties->SetStringProperty(this->prop_container,
                                           vr::Prop_NamedIconPathDeviceStandby_String,
                                           "{oculus}/icons/quest_headset_standby.png");
 

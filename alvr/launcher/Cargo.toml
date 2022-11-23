@@ -18,6 +18,7 @@ serde_json = "1"
 single-instance = "0.3"
 sysinfo = { version = "0.26", default-features = false }
 ureq = { version = "2", default-features = false }
+which = "4.3.0"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

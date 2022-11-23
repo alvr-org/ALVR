@@ -146,6 +146,8 @@ pub fn maybe_register_alvr_driver() -> StrResult {
 
     #[cfg(target_os = "linux")]
     maybe_wrap_vrcompositor_launcher()?;
+    #[cfg(target_os = "linux")]
+    maybe_fix_vrenv_dylib_path()?;
 
     Ok(())
 }
@@ -175,6 +177,90 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
         &launcher_path,
     )
     .map_err(err!())?;
+
+    Ok(())
+}
+
+// On nixpkgs (and hence NixOS) Steam is packaged in a
+// container with various Valve-provided libraries.
+//
+// Their ffmpeg lacks vulkan support and we have to force
+// our way out of it by modifying the `vrenv.sh` script.
+//
+// (And luckily, nixpkgs' container is very loose, so
+// we can get out of it by simply using /nix/store)
+#[cfg(target_os = "linux")]
+pub fn maybe_fix_vrenv_dylib_path() -> StrResult {
+    use std::{
+        fs::File, io::Write, os::unix::prelude::PermissionsExt, path::PathBuf, str::FromStr,
+    };
+
+    // Is this system weird?
+    {
+        let steam_path = which::which("steam").map_err(err!())?;
+        let steam_path_s = steam_path
+            .canonicalize()
+            .map_err(err!())?
+            .to_str()
+            .ok_or("steam binary path wasn't valid. non-unicode?")?
+            .to_string();
+
+        if !["/nix/store", "/gnu/store"]
+            .iter()
+            .any(|p| steam_path_s.starts_with(p))
+        {
+            return Ok(());
+        }
+    }
+
+    // defined in xtask
+    let ffmpeg_path = PathBuf::from_str(env!("ALVR_FFMPEG_PATH")).unwrap();
+
+    // Modifying our file handling the various edge cases
+    // from steam updates and previous runs.
+    {
+        // ACHTUNG! changing this may brick existing installations!
+        let watermark = "# automatically patched by ALVR! be careful (:\n";
+
+        let vrenv_path = alvr_commands::steamvr_root_dir()?
+            .join("bin")
+            .join("vrenv.sh");
+        assert!(vrenv_path.is_file());
+        let mut work = fs::read_to_string(&vrenv_path).map_err(err!())?;
+
+        let vrenv_backup_path = vrenv_path.with_file_name("vrenv.sh.bak");
+        let has_watermark = work.contains(watermark);
+
+        let copy_replacing = |src: &PathBuf, dest: &PathBuf| -> StrResult {
+            if dest.exists() {
+                fs::remove_file(dest).map_err(err!())?;
+            }
+            fs::copy(src, dest).map_err(err!())?;
+            Ok(())
+        };
+        if has_watermark {
+            // Restore from the backup before we modify it again..
+            copy_replacing(&vrenv_backup_path, &vrenv_path)?;
+            work = fs::read_to_string(&vrenv_path).map_err(err!())?;
+        } else {
+            // It's unmodified, we can create a backup..
+            copy_replacing(&vrenv_path, &vrenv_backup_path)?;
+        }
+
+        // Please forgive me..
+        work = work.replace(
+            r#"export LD_LIBRARY_PATH=""#,
+            &format!(r#"export LD_LIBRARY_PATH="{}/lib:"#, ffmpeg_path.display()),
+        );
+        work = work.replace("#!/bin/bash\n", &format!("#!/bin/bash\n{watermark}"));
+        fs::remove_file(&vrenv_path).map_err(err!())?;
+        let mut f = File::create(&vrenv_path).map_err(err!())?;
+        f.write_all(work.as_bytes()).map_err(err!())?;
+        // Last minute fixup fixup: make it executable again..
+        let mut m = f.metadata().map_err(err!())?.permissions();
+        m.set_mode(&m.mode() | 0o110);
+        f.set_permissions(m).map_err(err!())?;
+    }
 
     Ok(())
 }

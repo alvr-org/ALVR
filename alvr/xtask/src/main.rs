@@ -7,6 +7,7 @@ mod version;
 use crate::build::Profile;
 use afs::Layout;
 use alvr_filesystem as afs;
+use dependencies::get_ffmpeg_path;
 use pico_args::Arguments;
 use std::{fs, time::Instant};
 use xshell::{cmd, Shell};
@@ -115,6 +116,7 @@ fn clippy() {
         .flat_map(|name| ["-W".to_owned(), format!("clippy::{name}")]);
 
     let sh = Shell::new().unwrap();
+    sh.set_var("ALVR_FFMPEG_PATH", get_ffmpeg_path());
     cmd!(sh, "cargo clippy -- {flags...}").run().unwrap();
 }
 

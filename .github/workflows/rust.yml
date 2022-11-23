@@ -29,6 +29,8 @@ jobs:
           args: install vulkan-sdk
 
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
+        env:
+          ALVR_FFMPEG_PATH: placeholder
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -51,8 +53,9 @@ jobs:
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev
           cargo xtask prepare-deps --platform linux --no-nvidia
-
       - uses: actions-rs/clippy-check@v1
+        env:
+          ALVR_FFMPEG_PATH: placeholder
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --features gpl

@@ -274,3 +274,34 @@ pub fn find_resolved_so_paths(bin_or_so: &Path, depends_so: &str) -> Vec<PathBuf
             result
         })
 }
+
+pub fn get_ffmpeg_path() -> PathBuf {
+    let base_ffmpeg_path = alvr_filesystem::deps_dir()
+        .join(if cfg!(target_os = "linux") {
+            "linux"
+        } else {
+            "windows"
+        })
+        .join("ffmpeg");
+
+    #[cfg(target_os = "linux")]
+    {
+        let primary = base_ffmpeg_path.join("alvr_build");
+        if primary.exists() {
+            primary
+        } else {
+            // As a fallback, assume libavutil is a part of the same
+            // file structure as the rest of ffmpeg:
+            let lib_path = PathBuf::from(
+                pkg_config::probe_library("libavutil")
+                    .unwrap()
+                    .link_paths
+                    .first()
+                    .unwrap(),
+            );
+            lib_path.parent().unwrap().to_path_buf()
+        }
+    }
+    #[cfg(windows)]
+    base_ffmpeg_path
+}

@@ -1,5 +1,4 @@
 #[cfg(target_os = "linux")]
-use pkg_config;
 use std::{env, path::PathBuf};
 
 fn get_ffmpeg_path() -> PathBuf {

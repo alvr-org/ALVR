@@ -11,6 +11,7 @@ extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/hwcontext_vulkan.h>
+#include <libavutil/hwcontext_drm.h>
 
 }
 

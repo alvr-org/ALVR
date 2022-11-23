@@ -7,6 +7,17 @@
 #include <cstring>
 #include <algorithm>
 
+#ifndef DRM_FORMAT_INVALID
+#define DRM_FORMAT_INVALID 0
+#define fourcc_code(a, b, c, d) ((uint32_t)(a) | ((uint32_t)(b) << 8) | \
+        ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
+#define DRM_FORMAT_ARGB8888 fourcc_code('A', 'R', '2', '4')
+#define DRM_FORMAT_ABGR8888 fourcc_code('A', 'B', '2', '4')
+#define fourcc_mod_code(vendor, val) ((((uint64_t)vendor) << 56) | ((val) & 0x00ffffffffffffffULL))
+#define DRM_FORMAT_MOD_INVALID fourcc_mod_code(0, ((1ULL << 56) - 1))
+#define DRM_FORMAT_MOD_LINEAR fourcc_mod_code(0, 0)
+#endif
+
 struct Vertex {
     float position[2];
 };
@@ -59,6 +70,19 @@ static const char *result_to_str(VkResult result)
     } \
 }
 
+static uint32_t to_drm_format(VkFormat format)
+{
+    switch (format) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+        return DRM_FORMAT_ARGB8888;
+    case VK_FORMAT_R8G8B8A8_UNORM:
+        return DRM_FORMAT_ABGR8888;
+    default:
+        std::cerr << "Unsupported format " << format << std::endl;
+        return DRM_FORMAT_INVALID;
+    }
+}
+
 Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueFamilyIndex, const std::vector<const char*> &devExtensions)
     : m_inst(inst)
     , m_dev(dev)
@@ -70,8 +94,10 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     };
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
 
-#define VK_LOAD_PFN(inst, name) (PFN_##name) vkGetInstanceProcAddr(inst, #name)
-    d.vkImportSemaphoreFdKHR = VK_LOAD_PFN(m_inst, vkImportSemaphoreFdKHR);
+#define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
+    VK_LOAD_PFN(vkImportSemaphoreFdKHR);
+    VK_LOAD_PFN(vkGetMemoryFdKHR);
+    VK_LOAD_PFN(vkGetImageDrmFormatModifierPropertiesEXT);
 #undef VK_LOAD_PFN
 }
 
@@ -403,6 +429,8 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
     m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_output.imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+    std::vector<VkDrmFormatModifierPropertiesEXT> modifierProps;
+
     if (d.haveDrmModifiers) {
         VkImageDrmFormatModifierListCreateInfoEXT modifierListInfo = {};
         modifierListInfo.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT;
@@ -418,7 +446,7 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
         formatProps.pNext = &modifierPropsList;
         vkGetPhysicalDeviceFormatProperties2(m_physDev, m_output.imageInfo.format, &formatProps);
 
-        std::vector<VkDrmFormatModifierPropertiesEXT> modifierProps(modifierPropsList.drmFormatModifierCount);
+        modifierProps.resize(modifierPropsList.drmFormatModifierCount);
         modifierPropsList.pDrmFormatModifierProperties = modifierProps.data();
         vkGetPhysicalDeviceFormatProperties2(m_physDev, m_output.imageInfo.format, &formatProps);
 
@@ -497,7 +525,7 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
         bimi.memoryOffset = 0;
         VK_CHECK(vkBindImageMemory2(m_dev, 1, &bimi));
     } else {
-        m_output.imageInfo.tiling = VK_IMAGE_TILING_LINEAR; // Doesn't seem to work with optimal tiling
+        m_output.imageInfo.tiling = VK_IMAGE_TILING_LINEAR; // Needs to be linear for VAAPI
         VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
 
         VkMemoryRequirements memoryReqs;
@@ -510,6 +538,49 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
         VK_CHECK(vkAllocateMemory(m_dev, &memoryAllocInfo, nullptr, &m_output.memory));
         VK_CHECK(vkBindImageMemory(m_dev, m_output.image, m_output.memory, 0));
     }
+
+    // DRM export
+    VkMemoryGetFdInfoKHR memoryGetFdInfo = {};
+    memoryGetFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+    memoryGetFdInfo.memory = m_output.memory;
+    memoryGetFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+    VkResult res = d.vkGetMemoryFdKHR(m_dev, &memoryGetFdInfo, &m_output.drm.fd);
+    if (res != VK_SUCCESS) {
+        std::cout << "vkGetMemoryFdKHR " << result_to_str(res) << std::endl;
+    } else {
+        if (d.haveDrmModifiers) {
+            VkImageDrmFormatModifierPropertiesEXT imageDrmProps = {};
+            imageDrmProps.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+            d.vkGetImageDrmFormatModifierPropertiesEXT(m_dev, m_output.image, &imageDrmProps);
+            if (res != VK_SUCCESS) {
+                std::cout << "vkGetImageDrmFormatModifierPropertiesEXT " << result_to_str(res) << std::endl;
+            } else {
+                m_output.drm.modifier = imageDrmProps.drmFormatModifier;
+                for (VkDrmFormatModifierPropertiesEXT prop : modifierProps) {
+                    if (prop.drmFormatModifier == m_output.drm.modifier) {
+                        m_output.drm.planes = prop.drmFormatModifierPlaneCount;
+                    }
+                }
+            }
+        } else {
+            m_output.drm.modifier = DRM_FORMAT_MOD_INVALID;
+            m_output.drm.planes = 1;
+        }
+
+        for (uint32_t i = 0; i < m_output.drm.planes; i++) {
+            VkImageSubresource subresource = {};
+            if (d.haveDrmModifiers) {
+                subresource.aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << i;
+            } else {
+                subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            VkSubresourceLayout layout;
+            vkGetImageSubresourceLayout(m_dev, m_output.image, &subresource, &layout);
+            m_output.drm.strides[i] = layout.rowPitch;
+            m_output.drm.offsets[i] = layout.offset;
+        }
+    }
+    m_output.drm.format = to_drm_format(m_output.imageInfo.format);
 
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

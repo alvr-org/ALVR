@@ -202,7 +202,7 @@ void CEncoder::Run() {
       auto output = render.CreateOutput();
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);
-      alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory);
+      alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory, output.drm);
       auto encode_pipeline = alvr::EncodePipeline::Create(frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
 
       fprintf(stderr, "CEncoder starting to read present packets");

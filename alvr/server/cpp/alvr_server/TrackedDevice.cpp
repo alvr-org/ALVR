@@ -4,29 +4,31 @@
 void TrackedDevice::set_prop(OpenvrProperty prop) {
     auto key = (vr::ETrackedDeviceProperty)prop.key;
 
+    auto vr_properties = vr::VRProperties();
+
     vr::ETrackedPropertyError result;
 
     if (prop.type == OpenvrPropertyType::Bool) {
-        result = vr::VRProperties()->SetBoolProperty(this->prop_container, key, prop.value.bool_);
+        result = vr_properties->SetBoolProperty(this->prop_container, key, prop.value.bool_);
     } else if (prop.type == OpenvrPropertyType::Float) {
-        result = vr::VRProperties()->SetFloatProperty(this->prop_container, key, prop.value.float_);
+        result = vr_properties->SetFloatProperty(this->prop_container, key, prop.value.float_);
     } else if (prop.type == OpenvrPropertyType::Int32) {
-        result = vr::VRProperties()->SetInt32Property(this->prop_container, key, prop.value.int32);
+        result = vr_properties->SetInt32Property(this->prop_container, key, prop.value.int32);
     } else if (prop.type == OpenvrPropertyType::Uint64) {
         result =
-            vr::VRProperties()->SetUint64Property(this->prop_container, key, prop.value.uint64);
+            vr_properties->SetUint64Property(this->prop_container, key, prop.value.uint64);
     } else if (prop.type == OpenvrPropertyType::Vector3) {
         auto vec3 = vr::HmdVector3_t{};
         vec3.v[0] = prop.value.vector3[0];
         vec3.v[1] = prop.value.vector3[1];
         vec3.v[2] = prop.value.vector3[2];
-        result = vr::VRProperties()->SetVec3Property(this->prop_container, key, vec3);
+        result = vr_properties->SetVec3Property(this->prop_container, key, vec3);
     } else if (prop.type == OpenvrPropertyType::Double) {
         result =
-            vr::VRProperties()->SetDoubleProperty(this->prop_container, key, prop.value.double_);
+            vr_properties->SetDoubleProperty(this->prop_container, key, prop.value.double_);
     } else if (prop.type == OpenvrPropertyType::String) {
         result =
-            vr::VRProperties()->SetStringProperty(this->prop_container, key, prop.value.string);
+            vr_properties->SetStringProperty(this->prop_container, key, prop.value.string);
     } else {
         Error("Unreachable");
         result = vr::TrackedProp_Success;

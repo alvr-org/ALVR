@@ -392,7 +392,7 @@ void Renderer::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int ima
     imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrier.subresourceRange.layerCount = 1;
     imageBarrier.subresourceRange.levelCount = 1;
-    imageBarrier.srcAccessMask = VK_ACCESS_NONE;
+    imageBarrier.srcAccessMask = 0;
     imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
     commandBufferBegin();

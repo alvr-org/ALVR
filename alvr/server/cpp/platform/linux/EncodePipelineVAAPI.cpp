@@ -39,7 +39,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
   }
   frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
   frames_ctx->format = AV_PIX_FMT_VAAPI;
-  frames_ctx->sw_format = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_P010 : AV_PIX_FMT_NV12;
+  frames_ctx->sw_format = Settings::Instance().m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_P010 : AV_PIX_FMT_NV12;
   frames_ctx->width = ctx->width;
   frames_ctx->height = ctx->height;
   frames_ctx->initial_pool_size = 3;
@@ -185,7 +185,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   inputs->next = NULL;
 
   std::string filters = "scale_vaapi=format=";
-  if (Settings::Instance().m_use10bitEncoder) {
+  if (Settings::Instance().m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder) {
     filters += "p010";
   } else {
     filters += "nv12";

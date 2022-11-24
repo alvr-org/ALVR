@@ -63,7 +63,6 @@ alvr::VkContext::VkContext(const char *deviceName)
       VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
-      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
   };
 
   uint32_t instanceExtensionCount = 0;

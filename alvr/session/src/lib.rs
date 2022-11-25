@@ -121,6 +121,7 @@ pub struct OpenvrConfig {
 #[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
     pub display_name: String,
+    pub current_ip: Option<IpAddr>,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
 }

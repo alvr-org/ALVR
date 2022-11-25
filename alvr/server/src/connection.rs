@@ -135,6 +135,11 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     // Safety: this never panics because client_ip is picked from client_ips keys
     let client_hostname = client_ips.remove(&client_ip).unwrap();
 
+    SERVER_DATA_MANAGER.write().update_client_list(
+        client_hostname.clone(),
+        ClientListAction::UpdateCurrentIp(Some(client_ip)),
+    );
+
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         display_name,
         server_ip: _,

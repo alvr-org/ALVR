@@ -144,6 +144,7 @@ pub enum ClientListAction {
     AddIp(IpAddr),
     RemoveIp(IpAddr),
     RemoveEntry,
+    UpdateCurrentIp(Option<IpAddr>),
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

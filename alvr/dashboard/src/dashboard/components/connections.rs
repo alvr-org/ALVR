@@ -156,6 +156,7 @@ impl ConnectionsTab {
                                         name: state.hostname.clone(),
                                         client_desc: ClientConnectionDesc {
                                             display_name: state.display_name.clone(),
+                                            current_ip: None,
                                             manual_ips: ip_addresses,
                                             trusted: true,
                                         },

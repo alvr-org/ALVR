@@ -227,6 +227,7 @@ impl ServerDataManager {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionDesc {
                         trusted: false,
+                        current_ip: None,
                         manual_ips: HashSet::new(),
                         display_name: "Unknown".into(),
                     };
@@ -266,6 +267,13 @@ impl ServerDataManager {
             ClientListAction::RemoveEntry => {
                 if let Entry::Occupied(entry) = maybe_client_entry {
                     entry.remove_entry();
+
+                    updated = true;
+                }
+            }
+            ClientListAction::UpdateCurrentIp(current_ip) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    entry.get_mut().current_ip = current_ip;
 
                     updated = true;
                 }

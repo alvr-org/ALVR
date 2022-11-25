@@ -80,15 +80,14 @@ define([
             $("#newClientsDiv" + " table").empty();
             $("#trustedClientsDiv" + " table").empty();
 
-            Object.entries(session.clientConnections).forEach((pair) => {
+             Object.entries(session.clientConnections).forEach((pair) => {
                 const hostname = pair[0];
                 const connection = pair[1];
-                const displayName = connection.displayName;
 
                 if (connection.trusted) {
-                    addTrustedClient(displayName, hostname);
+                    addTrustedClient(connection.displayName, hostname, connection.currentIp);
                 } else {
-                    addNewClient(displayName, hostname);
+                    addNewClient(connection.displayName, hostname, connection.currentIp);
                 }
             });
         }
@@ -125,7 +124,6 @@ define([
                         keyboard: false,
                     });
                     $("#clientAddButton").click(() => {
-                        const deviceName = $("#deviceName").val();
                         const clientHostname = $("#clientHostname").val();
                         const ip = $("#clientIP").val();
 
@@ -157,7 +155,7 @@ define([
                             type: "POST",
                             url: "api/client/add",
                             contentType: "application/json;charset=UTF-8",
-                            data: JSON.stringify([deviceName, clientHostname, ip]),
+                            data: JSON.stringify([clientHostname, ip]),
                         });
 
                         $("#addClientModal").modal("hide");
@@ -250,13 +248,17 @@ define([
             });
         }
 
-        function addNewClient(displayName, hostname) {
+        function addNewClient(displayName, hostname, ip) {
             if (!validateHostname(hostname)) return;
 
             const id = hostname.replace(/\./g, "");
 
+            if (ip == null) {
+                ip = "Not connected"
+            }
+
             $("#newClientsDiv" + " table")
-                .append(`<tr><td type="${displayName}" hostname="${hostname}" id="newClient_${id}">${displayName} (${hostname}) </td>
+            .append(`<tr><td type="${displayName}" hostname="${hostname}" ip="${ip}" id="newClient_${id}">${displayName} | ${hostname} | ${ip}  </td>
             <td><button type="button" id="btnAddTrustedClient_${id}" class="btn btn-primary">${i18n["addTrustedClient"]}</button>
             </td></tr>`);
 
@@ -274,13 +276,17 @@ define([
             });
         }
 
-        function addTrustedClient(displayName, hostname) {
+        function addTrustedClient(displayName, hostname, ip) {
             if (!validateHostname(hostname)) return;
 
             const id = hostname.replace(/\./g, "");
 
+            if (ip == null) {
+                ip = "Not connected"
+            }
+
             $("#trustedClientsDiv" + " table")
-                .append(`<tr><td type="${displayName}" hostname="${hostname}" id="trustedClient_${id}">${displayName} (${hostname}) </td>
+            .append(`<tr><td type="${displayName}" hostname="${hostname}" ip="${ip}" id="trustedClient_${id}">${displayName} | ${hostname} | ${ip} </td>
             <td><button type="button" id="btnConfigureClient_${id}" class="btn btn-primary ml-auto">${i18n["configureClientButton"]}</button>
             <button type="button" id="btnRemoveTrustedClient_${id}" class="btn btn-primary">${i18n["removeTrustedClient"]}</button>
             </td></tr>`);

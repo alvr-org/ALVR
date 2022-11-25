@@ -226,6 +226,10 @@ fn init() {
             session_ref.server_version = ALVR_VERSION.clone();
             session_ref.client_connections.clear();
         }
+
+        for conn in data_manager.session_mut().client_connections.values_mut() {
+            conn.current_ip = None;
+        }
     }
 
     unsafe {

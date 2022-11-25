@@ -184,15 +184,9 @@ async fn http_api(
             reply(StatusCode::OK)?
         }
         "/api/client/add" => {
-            if let Ok((display_name, hostname, ip)) =
-                from_request_body::<(_, String, _)>(request).await
-            {
+            if let Ok((hostname, ip)) = from_request_body::<(String, _)>(request).await {
                 let mut data_manager = SERVER_DATA_MANAGER.write();
                 data_manager.update_client_list(hostname.clone(), ClientListAction::AddIfMissing);
-                data_manager.update_client_list(
-                    hostname.clone(),
-                    ClientListAction::SetDisplayName(display_name),
-                );
                 data_manager.update_client_list(hostname.clone(), ClientListAction::Trust);
                 data_manager.update_client_list(hostname, ClientListAction::AddIp(ip));
 

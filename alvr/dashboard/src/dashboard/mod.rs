@@ -238,7 +238,7 @@ impl Dashboard {
                             .frame(
                                 Frame::default()
                                     .inner_margin(Margin::same(5.0))
-                                    .fill(theme::BG)
+                                    .fill(theme::LIGHTER_BG)
                                     .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                             )
                             .show(ctx, |ui| ui.label("No new notifications"));
@@ -248,8 +248,16 @@ impl Dashboard {
                     self.notification = None;
                 }
 
+                let mut outer_margin = Margin::default();
+
                 let response = SidePanel::left("side_panel")
                     .resizable(false)
+                    .frame(
+                        Frame::none()
+                            .fill(theme::LIGHTER_BG)
+                            .inner_margin(Margin::same(7.0))
+                            .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
+                    )
                     .max_width(150.0)
                     .show(ctx, |ui| {
                         ui.heading("ALVR");
@@ -277,10 +285,15 @@ impl Dashboard {
                     .inner;
 
                 let response = CentralPanel::default()
+                    .frame(
+                        Frame::none()
+                            .inner_margin(Margin::same(20.0))
+                            .fill(theme::BG),
+                    )
                     .show(ctx, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                             ui.heading(*self.tab_labels.get(&self.selected_tab).unwrap());
-                            ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
+                            ScrollArea::new([true, true]).show(ui, |ui| match self.selected_tab {
                                 Tab::Connections => self.connections_tab.ui(ui, &self.session),
                                 Tab::Statistics => self.statistics_tab.ui(ui),
                                 Tab::Settings => self.settings_tab.ui(ui, &self.session),

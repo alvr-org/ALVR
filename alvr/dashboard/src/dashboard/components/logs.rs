@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::dashboard::DashboardResponse;
 use alvr_events::LogEvent;
-use egui::{ScrollArea, Ui};
+use egui::Ui;
 
 pub struct LogsTab {
     logs: VecDeque<LogEvent>,
@@ -26,14 +26,12 @@ impl LogsTab {
 
     pub fn ui(&self, ui: &mut Ui) -> Option<DashboardResponse> {
         ui.centered_and_justified(|ui| {
-            ScrollArea::both().show(ui, |ui| {
-                for log in &self.logs {
-                    ui.horizontal(|ui| {
-                        ui.monospace(&log.timestamp);
-                        ui.monospace(&log.content);
-                    });
-                }
-            });
+            for log in &self.logs {
+                ui.horizontal(|ui| {
+                    ui.monospace(&log.timestamp);
+                    ui.monospace(&log.content);
+                });
+            }
         });
 
         None

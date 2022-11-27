@@ -655,6 +655,90 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     VK_CHECK(vkResetFences(m_dev, 1, &m_fence));
 }
 
+void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore)
+{
+    std::array<VkImageMemoryBarrier, 2> imageBarrierIn;
+    imageBarrierIn[0] = {};
+    imageBarrierIn[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrierIn[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageBarrierIn[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrierIn[0].image = m_output.image;
+    imageBarrierIn[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarrierIn[0].subresourceRange.layerCount = 1;
+    imageBarrierIn[0].subresourceRange.levelCount = 1;
+    imageBarrierIn[0].srcAccessMask = VK_ACCESS_NONE;
+    imageBarrierIn[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrierIn[1] = {};
+    imageBarrierIn[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrierIn[1].oldLayout = layout;
+    imageBarrierIn[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarrierIn[1].image = image;
+    imageBarrierIn[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarrierIn[1].subresourceRange.layerCount = 1;
+    imageBarrierIn[1].subresourceRange.levelCount = 1;
+    imageBarrierIn[1].srcAccessMask = VK_ACCESS_NONE;
+    imageBarrierIn[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    commandBufferBegin();
+
+    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierIn.size(), imageBarrierIn.data());
+
+    if (m_format == format) {
+        VkImageCopy imageCopy;
+        imageCopy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageCopy.srcSubresource.mipLevel = 0;
+        imageCopy.srcSubresource.baseArrayLayer = 0;
+        imageCopy.srcSubresource.layerCount = 1;
+        imageCopy.srcOffset.x = 0;
+        imageCopy.srcOffset.y = 0;
+        imageCopy.srcOffset.z = 0;
+        imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageCopy.dstSubresource.mipLevel = 0;
+        imageCopy.dstSubresource.baseArrayLayer = 0;
+        imageCopy.dstSubresource.layerCount = 1;
+        imageCopy.dstOffset.x = 0;
+        imageCopy.dstOffset.y = 0;
+        imageCopy.dstOffset.z = 0;
+        imageCopy.extent.width = m_imageSize.width;
+        imageCopy.extent.height = m_imageSize.height;
+        imageCopy.extent.depth = 1;
+        vkCmdCopyImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+    } else {
+        VkImageBlit imageBlit;
+        imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageBlit.srcSubresource.mipLevel = 0;
+        imageBlit.srcSubresource.baseArrayLayer = 0;
+        imageBlit.srcSubresource.layerCount = 1;
+        imageBlit.srcOffsets[0].x = 0;
+        imageBlit.srcOffsets[0].y = 0;
+        imageBlit.srcOffsets[0].z = 0;
+        imageBlit.srcOffsets[1].x = m_imageSize.width;
+        imageBlit.srcOffsets[1].y = m_imageSize.height;
+        imageBlit.srcOffsets[1].z = 1;
+        imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageBlit.dstSubresource.mipLevel = 0;
+        imageBlit.dstSubresource.baseArrayLayer = 0;
+        imageBlit.dstSubresource.layerCount = 1;
+        imageBlit.dstOffsets[0].x = 0;
+        imageBlit.dstOffsets[0].y = 0;
+        imageBlit.dstOffsets[0].z = 0;
+        imageBlit.dstOffsets[1].x = m_imageSize.width;
+        imageBlit.dstOffsets[1].y = m_imageSize.height;
+        imageBlit.dstOffsets[1].z = 1;
+        vkCmdBlitImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_NEAREST);
+    }
+
+    VK_CHECK(vkEndCommandBuffer(m_commandBuffer));
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = semaphore;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &m_commandBuffer;
+    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, nullptr));
+}
+
 void Renderer::commandBufferBegin()
 {
     VkCommandBufferBeginInfo commandBufferBegin = {};

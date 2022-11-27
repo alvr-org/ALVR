@@ -68,7 +68,7 @@ void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
   encoder_ctx->bit_rate = bitrate;
 }
 
-std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)
+std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)
 {
   if(Settings::Instance().m_force_sw_encoding == false) {
     try {

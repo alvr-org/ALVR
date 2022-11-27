@@ -47,7 +47,6 @@ public:
 	void RunReceive();
 protected:
 	std::thread *m_thread;
-	std::thread *m_receiveThread;
 	std::vector<AMFPipePtr> m_pipes;
 	bool isRunning;
 };

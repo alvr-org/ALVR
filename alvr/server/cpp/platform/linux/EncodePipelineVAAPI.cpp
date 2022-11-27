@@ -140,7 +140,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
   encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
   encoder_ctx->max_b_frames = 0;
-  encoder_ctx->gop_size = 128;
+  encoder_ctx->gop_size = INT16_MAX;
   encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
 
   set_hwframe_ctx(encoder_ctx, hw_ctx);

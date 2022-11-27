@@ -10,9 +10,15 @@ fn main() {
         Err(err) => panic!("Failed to read vrcompositor symlink: {err}"),
     };
     std::env::set_var("VK_LAYER_PATH", layer_path);
+    // Vulkan < 1.3.234
     std::env::set_var("VK_INSTANCE_LAYERS", "VK_LAYER_ALVR_capture");
-    // fossilize breaks the ALVR vulkan layer
     std::env::set_var("DISABLE_VK_LAYER_VALVE_steam_fossilize_1", "1");
+    std::env::set_var("DISABLE_MANGOHUD", "1");
+    std::env::set_var("DISABLE_VKBASALT", "1");
+    std::env::set_var("DISABLE_OBS_VKCAPTURE", "1");
+    // Vulkan >= 1.3.234
+    std::env::set_var("VK_LOADER_LAYERS_ENABLE", "VK_LAYER_ALVR_capture,VK_LAYER_MESA_device_select");
+    std::env::set_var("VK_LOADER_LAYERS_DISABLE", "*");
 
     let err = exec::execvp(argv0 + ".real", std::env::args());
     println!("Failed to run vrcompositor {err}");

@@ -666,7 +666,7 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
     imageBarrierIn[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierIn[0].subresourceRange.layerCount = 1;
     imageBarrierIn[0].subresourceRange.levelCount = 1;
-    imageBarrierIn[0].srcAccessMask = VK_ACCESS_NONE;
+    imageBarrierIn[0].srcAccessMask = 0;
     imageBarrierIn[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
     imageBarrierIn[1] = {};
     imageBarrierIn[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -676,7 +676,7 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
     imageBarrierIn[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierIn[1].subresourceRange.layerCount = 1;
     imageBarrierIn[1].subresourceRange.levelCount = 1;
-    imageBarrierIn[1].srcAccessMask = VK_ACCESS_NONE;
+    imageBarrierIn[1].srcAccessMask = 0;
     imageBarrierIn[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
     commandBufferBegin();

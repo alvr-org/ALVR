@@ -488,55 +488,50 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
         modifierListInfo.pNext = &extMemImageInfo;
 
         VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
-
-        VkMemoryDedicatedRequirements mdr = {};
-        mdr.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-
-        VkMemoryRequirements2 memoryReqs = {};
-        memoryReqs.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-        memoryReqs.pNext = &mdr;
-
-        VkImageMemoryRequirementsInfo2 memoryReqsInfo = {};
-        memoryReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
-        memoryReqsInfo.image = m_output.image;
-        vkGetImageMemoryRequirements2(m_dev, &memoryReqsInfo, &memoryReqs);
-
-        VkExportMemoryAllocateInfo memory_export_info = {};
-        memory_export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
-        memory_export_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-
-        VkMemoryDedicatedAllocateInfo memory_dedicated_info = {};
-        memory_dedicated_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-        memory_dedicated_info.pNext = &memory_export_info;
-        memory_dedicated_info.image = m_output.image;
-
-        VkMemoryAllocateInfo memi = {};
-        memi.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memi.pNext = &memory_dedicated_info;
-        memi.allocationSize = memoryReqs.memoryRequirements.size;
-        memi.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits);
-        VK_CHECK(vkAllocateMemory(m_dev, &memi, nullptr, &m_output.memory));
-
-        VkBindImageMemoryInfo bimi = {};
-        bimi.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-        bimi.image = m_output.image;
-        bimi.memory = m_output.memory;
-        bimi.memoryOffset = 0;
-        VK_CHECK(vkBindImageMemory2(m_dev, 1, &bimi));
     } else {
-        m_output.imageInfo.tiling = VK_IMAGE_TILING_LINEAR; // Needs to be linear for VAAPI
-        VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
+        VkExternalMemoryImageCreateInfo extMemImageInfo = {};
+        extMemImageInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+        extMemImageInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+        m_output.imageInfo.pNext = &extMemImageInfo;
 
-        VkMemoryRequirements memoryReqs;
-        vkGetImageMemoryRequirements(m_dev, m_output.image, &memoryReqs);
-        m_output.size = memoryReqs.size;
-        VkMemoryAllocateInfo memoryAllocInfo = {};
-        memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memoryAllocInfo.allocationSize = m_output.size;
-        memoryAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryTypeBits);
-        VK_CHECK(vkAllocateMemory(m_dev, &memoryAllocInfo, nullptr, &m_output.memory));
-        VK_CHECK(vkBindImageMemory(m_dev, m_output.image, m_output.memory, 0));
+        m_output.imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+        VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
     }
+
+    VkMemoryDedicatedRequirements mdr = {};
+    mdr.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+
+    VkMemoryRequirements2 memoryReqs = {};
+    memoryReqs.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+    memoryReqs.pNext = &mdr;
+
+    VkImageMemoryRequirementsInfo2 memoryReqsInfo = {};
+    memoryReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+    memoryReqsInfo.image = m_output.image;
+    vkGetImageMemoryRequirements2(m_dev, &memoryReqsInfo, &memoryReqs);
+
+    VkExportMemoryAllocateInfo memory_export_info = {};
+    memory_export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+    memory_export_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+
+    VkMemoryDedicatedAllocateInfo memory_dedicated_info = {};
+    memory_dedicated_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+    memory_dedicated_info.pNext = &memory_export_info;
+    memory_dedicated_info.image = m_output.image;
+
+    VkMemoryAllocateInfo memi = {};
+    memi.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memi.pNext = &memory_dedicated_info;
+    memi.allocationSize = memoryReqs.memoryRequirements.size;
+    memi.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits);
+    VK_CHECK(vkAllocateMemory(m_dev, &memi, nullptr, &m_output.memory));
+
+    VkBindImageMemoryInfo bimi = {};
+    bimi.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+    bimi.image = m_output.image;
+    bimi.memory = m_output.memory;
+    bimi.memoryOffset = 0;
+    VK_CHECK(vkBindImageMemory2(m_dev, 1, &bimi));
 
     // DRM export
     VkMemoryGetFdInfoKHR memoryGetFdInfo = {};

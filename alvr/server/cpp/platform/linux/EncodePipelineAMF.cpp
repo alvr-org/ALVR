@@ -236,6 +236,8 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE, AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN);
 		}
 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL);
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, true);
 		

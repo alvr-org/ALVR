@@ -42,11 +42,14 @@ std::vector<const char*> AMFContext::requiredDeviceExtensions() const
 void AMFContext::initialize(amf::AMFVulkanDevice *dev)
 {
     if (!m_context1) {
-        printf("no context\n");
         throw "No Context1";
     }
-    if (m_context1->InitVulkan(dev) != AMF_OK) {
-        printf("init fail\n");
+
+    bool ok = m_context1->InitVulkan(dev) == AMF_OK;
+
+    unsetenv("VK_ICD_FILENAMES");
+
+    if (!ok) {
         throw "Failed to initialize Vulkan AMF";
     }
 }

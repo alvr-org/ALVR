@@ -71,7 +71,6 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 
 AMFPipeline::AMFPipeline() 
 	: m_thread(nullptr)
-	, m_receiveThread(nullptr)
 	, m_pipes()
 	, isRunning(false) 
 {}
@@ -87,13 +86,6 @@ AMFPipeline::~AMFPipeline()
 		delete m_thread;
 		m_thread = nullptr;
 	}
-	if (m_receiveThread) {
-		Debug("AMFPipeline::~AMFPipeline() m_receiveThread->join\n");
-		m_receiveThread->join();
-		Debug("AMFPipeline::~AMFPipeline() m_receiveThread joined.\n");
-		delete m_receiveThread;
-		m_receiveThread = nullptr;
-	}
 	for (auto &pipe : m_pipes) 
 	{
 		delete pipe;
@@ -108,24 +100,12 @@ void AMFPipeline::Connect(AMFPipePtr pipe)
 void AMFPipeline::Run()
 {
 	Debug("Start AMFPipeline Run() thread. Thread Id=%d\n", GetCurrentThreadId());
-	auto it = m_pipes.begin();
-	auto itEnd = std::prev(m_pipes.end());
 	while (isRunning)
 	{
-		for (it = m_pipes.begin(); it != itEnd; it++)
+		for (auto &pipe : m_pipes)
 		{
-			(*it)->doPassthrough();
+			pipe->doPassthrough();
 		}
-		amf_sleep(1);
-	}
-}
-
-void AMFPipeline::RunReceive()
-{
-	Debug("Start AMFPipeline RunReceive() thread. Thread Id=%d\n", GetCurrentThreadId());
-	while (isRunning)
-	{
-		m_pipes.back()->doPassthrough();
 		amf_sleep(1);
 	}
 }
@@ -134,7 +114,6 @@ void AMFPipeline::Start()
 {
 	isRunning = true;
 	m_thread = new std::thread(&AMFPipeline::Run, this);
-	m_receiveThread = new std::thread(&AMFPipeline::RunReceive, this);
 }
 
 //
@@ -210,15 +189,15 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
 		switch (m_encoderQualityPreset) {
-			case SPEED:
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
+			case QUALITY:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
 				break;
 			case BALANCED:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_BALANCED);
 				break;
-			case QUALITY:
+			case SPEED:
 			default:
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
 				break;
 		}
 
@@ -240,21 +219,20 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
 		// Required for CBR to work correctly
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TIER, AMF_VIDEO_ENCODER_HEVC_TIER_HIGH);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
 		switch (m_encoderQualityPreset) {
-			case SPEED:
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
+			case QUALITY:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
 				break;
 			case BALANCED:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_BALANCED);
 				break;
-			case QUALITY:
+			case SPEED:
 			default:
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
 				break;
 		}
 

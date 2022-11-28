@@ -667,7 +667,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     preproc_sigma: 4,
                     preproc_tor: 7,
                     encoder_quality_preset: EncoderQualityPresetDefault {
-                        variant: EncoderQualityPresetDefaultVariant::Quality,
+                        variant: EncoderQualityPresetDefaultVariant::Speed,
                     },
                 },
                 mediacodec_extra_options: DictionaryDefault {

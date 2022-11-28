@@ -8,7 +8,6 @@
 #define AMF_THROW_IF(expr) {AMF_RESULT res = expr;\
 if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, #expr);}}
 
-const wchar_t *alvr::EncodePipelineAMF::START_TIME_PROPERTY = L"StartTimeProperty";
 const wchar_t *alvr::EncodePipelineAMF::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 
 static amf::AMF_SURFACE_FORMAT from_vk_format(VkFormat format)
@@ -83,22 +82,10 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 }
 
 AMFPipeline::AMFPipeline() 
-	: m_thread(nullptr)
-	, m_pipes()
-	, isRunning(false) 
 {}
 
 AMFPipeline::~AMFPipeline() 
 {
-	isRunning = false;
-	if (m_thread) 
-	{
-		Debug("AMFPipeline::~AMFPipeline() m_thread->join\n");
-		m_thread->join();
-		Debug("AMFPipeline::~AMFPipeline() m_thread joined.\n");
-		delete m_thread;
-		m_thread = nullptr;
-	}
 	for (auto &pipe : m_pipes) 
 	{
 		delete pipe;
@@ -116,12 +103,6 @@ void AMFPipeline::Run()
 		{
 			pipe->doPassthrough();
 		}
-}
-
-void AMFPipeline::Start()
-{
-	isRunning = true;
-	// m_thread = new std::thread(&AMFPipeline::Run, this);
 }
 
 //
@@ -164,7 +145,7 @@ EncodePipelineAMF::~EncodePipelineAMF()
 }
 
 amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(
-	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
+	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate
 ) 
 {
 	const wchar_t *pCodec;
@@ -343,12 +324,12 @@ void EncodePipelineAMF::Initialize()
 		}
 	}
 	m_amfComponents.emplace_back(MakeEncoder(
-		inFormat, m_renderWidth, m_renderHeight, m_codec, m_refreshRate, m_bitrateInMBits
+		inFormat, m_renderWidth, m_renderHeight, m_codec, m_refreshRate
 	));
     SetBitrate(m_bitrateInMBits * 1'000'000L); // in bits
 
 	m_pipeline = new AMFPipeline();
-	for (int i = 0; i < m_amfComponents.size() - 1; i++) {
+	for (size_t i = 0; i < m_amfComponents.size() - 1; i++) {
 		m_pipeline->Connect(new AMFSolidPipe(
 			m_amfComponents[i], m_amfComponents[i + 1]
 		));
@@ -358,24 +339,16 @@ void EncodePipelineAMF::Initialize()
 		m_amfComponents.back(), std::bind(&EncodePipelineAMF::Receive, this, std::placeholders::_1)
 	));
 
-	m_pipeline->Start();
-
 	Debug("Successfully initialized EncodePipelineAMF.\n");
 }
 
 void EncodePipelineAMF::Shutdown()
 {
-#if 0
 	Debug("Shutting down EncodePipelineAMF.\n");
 
 	delete m_pipeline;
 
-	for (auto &component : m_amfComponents) {
-		component->Release();
-	}
-
 	Debug("Successfully shutdown EncodePipelineAMF.\n");
-#endif
 }
 
 void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
@@ -389,8 +362,6 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
 
     m_render->CopyOutput(surfaceVk->hImage, (VkFormat)surfaceVk->eFormat, (VkImageLayout)surfaceVk->eCurrentLayout, &surfaceVk->Sync.hSemaphore);
 
-	amf_pts start_time = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-	surface->SetProperty(START_TIME_PROPERTY, start_time);
 	surface->SetProperty(FRAME_INDEX_PROPERTY, targetTimestampNs);
 
 	ApplyFrameProperties(surface, idr);
@@ -430,9 +401,7 @@ void EncodePipelineAMF::SetBitrate(int64_t bitrate)
 
 void EncodePipelineAMF::Receive(AMFDataPtr data)
 {
-	amf_pts start_time = 0;
-	uint64_t targetTimestampNs;
-	data->GetProperty(START_TIME_PROPERTY, &start_time);
+	uint64_t targetTimestampNs = 0;
 	data->GetProperty(FRAME_INDEX_PROPERTY, &targetTimestampNs);
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
@@ -501,7 +470,7 @@ void EncodePipelineAMF::LoadAUDByteSequence() {
 void EncodePipelineAMF::SkipAUD(char **buffer, int *length) {
 	static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
 
-	if (*length < m_audNalSize + sizeof(NAL_HEADER)) {
+	if (*length < m_audNalSize + (int)sizeof(NAL_HEADER)) {
 		return;
 	}
 

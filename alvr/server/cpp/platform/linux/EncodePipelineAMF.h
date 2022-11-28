@@ -48,13 +48,9 @@ public:
 	~AMFPipeline();
 
 	void Connect(AMFPipePtr pipe);
-	void Start();
 	void Run();
-	void RunReceive();
 protected:
-	std::thread *m_thread = nullptr;
 	std::vector<AMFPipePtr> m_pipes;
-	bool isRunning;
 };
 
 typedef AMFPipeline* AMFPipelinePtr;
@@ -94,7 +90,7 @@ private:
 		amf::AMF_SURFACE_FORMAT inputFormat, int width, int height
 	);
 	amf::AMFComponentPtr MakeEncoder(
-		amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
+		amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate
 	);
     amf::AMFFactory *m_amfFactory = nullptr;
 	amf::AMFContextPtr m_amfContext;

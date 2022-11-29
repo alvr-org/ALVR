@@ -104,10 +104,6 @@ void AMFPipeline::Run()
     }
 }
 
-//
-// EncodePipelineAMF
-//
-
 namespace alvr
 {
 
@@ -226,6 +222,14 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
 
         // Disable AUD to produce the same stream format as VideoEncoderNVENC.
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
+
+        amf::AMFCapsPtr caps;
+        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+        }
+        if (m_hasQueryTimeout) {
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
+        }
     } else {
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
@@ -267,6 +271,14 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
 
         // Disable AUD to produce the same stream format as VideoEncoderNVENC.
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
+
+        amf::AMFCapsPtr caps;
+        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+        }
+        if (m_hasQueryTimeout) {
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
+        }
     }
 
     Debug("Configured %s.\n", pCodec);
@@ -327,14 +339,17 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
 
 bool EncodePipelineAMF::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
 {
-    uint32_t timeout = 4 * 1000; // 1 second
-
-    while (m_outBuffer.empty() && --timeout != 0) {
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
+    if (m_hasQueryTimeout) {
         m_pipeline->Run();
+    } else {
+        uint32_t timeout = 4 * 1000; // 1 second
+        while (m_outBuffer.empty() && --timeout != 0) {
+            std::this_thread::sleep_for(std::chrono::microseconds(250));
+            m_pipeline->Run();
+        }
     }
 
-    if (!timeout) {
+    if (m_outBuffer.empty()) {
         Error("Timed out waiting for encoder data");
         return false;
     }

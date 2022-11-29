@@ -61,7 +61,6 @@ enum EncoderQualityPreset {
 namespace alvr
 {
 
-// Video encoder for AMD VCE.
 class EncodePipelineAMF : public EncodePipeline
 {
 public:
@@ -75,6 +74,9 @@ private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);
     amf::AMFComponentPtr MakePreprocessor(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height);
     amf::AMFComponentPtr MakeEncoder(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate);
+    void Receive(amf::AMFDataPtr data);
+    void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
+
     amf::AMFFactory *m_amfFactory = nullptr;
     amf::AMFContextPtr m_amfContext;
     std::unique_ptr<AMFPipeline> m_pipeline;
@@ -99,9 +101,7 @@ private:
     int m_renderHeight;
     int m_bitrateInMBits;
 
-    void Receive(amf::AMFDataPtr data);
-    void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
-
+    bool m_hasQueryTimeout = false;
     std::vector<uint8_t> m_outBuffer;
     uint64_t m_targetTimestampNs;
 };

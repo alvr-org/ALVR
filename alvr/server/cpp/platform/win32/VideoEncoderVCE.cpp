@@ -132,10 +132,6 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
 	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
 	, m_use10bit(Settings::Instance().m_use10bitEncoder)
-	, m_usePreProc(Settings::Instance().m_usePreproc)
-	, m_preProcTor(Settings::Instance().m_preProcTor)
-	, m_preProcSigma(Settings::Instance().m_preProcSigma)
-	, m_encoderQualityPreset(static_cast<EncoderQualityPreset>(Settings::Instance().m_encoderQualityPreset))
 	, m_audByteSequence(nullptr)
 	, m_audNalSize(0)
 	, m_audHeaderSize(0)
@@ -180,15 +176,23 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
-		// Required for CBR to work correctly
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, true);
+		switch (Settings::Instance().m_rateControlMode) {
+			case ALVR_CBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
+				// Required for CBR to work correctly
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, true);
+				break;
+			case ALVR_VBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
+				break;
+		}
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, Settings::Instance().m_enableAdaptiveBitrate ? Settings::Instance().m_adaptiveBitrateMaximum : bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
-		switch (m_encoderQualityPreset) {
+		switch (Settings::Instance().m_encoderQualityPreset) {
 			case QUALITY:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
 				break;
@@ -216,14 +220,22 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 	else
 	{
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
-		// Required for CBR to work correctly
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
+		switch (Settings::Instance().m_rateControlMode) {
+			case ALVR_CBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
+				// Required for CBR to work correctly
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
+				break;
+			case ALVR_VBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
+				break;
+		}
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, Settings::Instance().m_enableAdaptiveBitrate ? Settings::Instance().m_adaptiveBitrateMaximum : bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
-		switch (m_encoderQualityPreset) {
+		switch (Settings::Instance().m_encoderQualityPreset) {
 			case QUALITY:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
 				break;
@@ -290,8 +302,8 @@ amf::AMFComponentPtr VideoEncoderVCE::MakePreprocessor(
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(m_amfContext, AMFPreProcessing, &amfPreprocessor));
 
 	AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ENGINE_TYPE, amf::AMF_MEMORY_DX11));
-	AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_STRENGTH, m_preProcSigma));
-	AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, m_preProcTor));
+	AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings::Instance().m_preProcSigma));
+	AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings::Instance().m_preProcTor));
 
 	AMF_THROW_IF(amfPreprocessor->Init(inputFormat, width, height));
 
@@ -318,7 +330,7 @@ void VideoEncoderVCE::Initialize()
 			m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat
 		));
 	} else {
-		if (m_usePreProc) {
+		if (Settings::Instance().m_usePreproc) {
 			inFormat = amf::AMF_SURFACE_NV12;
 			m_amfComponents.emplace_back(MakeConverter(
 				m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat

@@ -36,6 +36,14 @@ pub enum EncoderQualityPreset {
     Speed = 2,
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "content")]
+pub enum RateControlMode {
+    CBR = 0,
+    VBR = 1,
+}
+
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -217,6 +225,8 @@ pub struct VideoDesc {
     pub buffering_history_weight: f32,
 
     pub codec: CodecType,
+
+    pub rate_control_mode: RateControlMode,
 
     // #[schema(advanced)]
     // pub video_coding: VideoCoding,
@@ -619,6 +629,9 @@ pub fn session_settings_default() -> SettingsDefault {
             buffering_history_weight: 0.90,
             codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
+            },
+            rate_control_mode: RateControlModeDefault {
+                variant: RateControlModeDefaultVariant::CBR,
             },
             client_request_realtime_decoder: true,
             use_10bit_encoder: false,

@@ -253,7 +253,15 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
 	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
-	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+	switch (Settings::Instance().m_rateControlMode) {
+		case ALVR_CBR:
+			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+			break;
+		case ALVR_VBR:
+			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR;
+			break;
+	}
+	
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;

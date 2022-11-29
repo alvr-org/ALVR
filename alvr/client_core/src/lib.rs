@@ -195,6 +195,8 @@ pub unsafe extern "C" fn alvr_initialize(
 
     #[cfg(target_os = "android")]
     platform::try_get_microphone_permission();
+    #[cfg(target_os = "android")]
+    platform::acquire_wifi_lock();
 
     EXTERNAL_DECODER.set(external_decoder);
 
@@ -216,6 +218,9 @@ pub extern "C" fn alvr_destroy() {
     if let Some(thread) = CONNECTION_THREAD.lock().take() {
         thread.join().ok();
     }
+
+    #[cfg(target_os = "android")]
+    platform::release_wifi_lock();
 }
 
 #[no_mangle]

@@ -1,14 +1,15 @@
 use crate::decoder::DecoderInitConfig;
 use alvr_common::{
+    once_cell::sync::Lazy,
     parking_lot::{Condvar, Mutex},
     prelude::*,
     RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use jni::{
-    objects::{JObject, JString},
+    objects::{GlobalRef, JObject, JString},
     sys::jobject,
-    JavaVM,
+    JNIEnv, JavaVM,
 };
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
@@ -29,8 +30,8 @@ use std::{
     time::Duration,
 };
 
-const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 const IMAGE_READER_DEADLOCK_TIMEOUT: Duration = Duration::from_millis(100);
+static WIFI_LOCK: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
@@ -40,11 +41,21 @@ pub fn context() -> jobject {
     ndk_context::android_context().context().cast()
 }
 
+fn get_api_level() -> i32 {
+    let vm = vm();
+    let env = vm.attach_current_thread().unwrap();
+
+    env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")
+        .unwrap()
+        .i()
+        .unwrap()
+}
+
 pub fn try_get_microphone_permission() {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let mic_perm_jstring = env.new_string(MICROPHONE_PERMISSION).unwrap();
+    let mic_perm_jstring = env.new_string("android.permission.RECORD_AUDIO").unwrap();
 
     let permission_status = env
         .call_method(
@@ -107,22 +118,26 @@ impl<T> DerefMut for FakeThreadSafe<T> {
     }
 }
 
+fn get_wifi_manager<'a>(env: &JNIEnv<'a>) -> JObject<'a> {
+    let wifi_service_str = env.new_string("wifi").unwrap();
+
+    env.call_method(
+        unsafe { JObject::from_raw(context()) },
+        "getSystemService",
+        "(Ljava/lang/String;)Ljava/lang/Object;",
+        &[wifi_service_str.into()],
+    )
+    .unwrap()
+    .l()
+    .unwrap()
+}
+
 // Note: tried and failed to use libc
 pub fn local_ip() -> IpAddr {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let wifi_service_str = env.new_string("wifi").unwrap();
-    let wifi_manager = env
-        .call_method(
-            unsafe { JObject::from_raw(context()) },
-            "getSystemService",
-            "(Ljava/lang/String;)Ljava/lang/Object;",
-            &[wifi_service_str.into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
+    let wifi_manager = get_wifi_manager(&env);
     let wifi_info = env
         .call_method(
             wifi_manager,
@@ -133,15 +148,70 @@ pub fn local_ip() -> IpAddr {
         .unwrap()
         .l()
         .unwrap();
-    let ip_addr_i32 = env
+    let ip_i32 = env
         .call_method(wifi_info, "getIpAddress", "()I", &[])
         .unwrap()
         .i()
         .unwrap();
 
-    let ip = ip_addr_i32.to_le_bytes();
+    let ip_arr = ip_i32.to_le_bytes();
 
-    IpAddr::V4(Ipv4Addr::new(ip[0], ip[1], ip[2], ip[3]))
+    IpAddr::V4(Ipv4Addr::new(ip_arr[0], ip_arr[1], ip_arr[2], ip_arr[3]))
+}
+
+// This is needed to avoid wifi scans that disrupt streaming.
+pub fn acquire_wifi_lock() {
+    let mut maybe_wifi_lock = WIFI_LOCK.lock();
+
+    if maybe_wifi_lock.is_none() {
+        let vm = vm();
+        let env = vm.attach_current_thread().unwrap();
+
+        let wifi_manager = get_wifi_manager(&env);
+
+        let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
+
+        let wifi_lock = if get_api_level() >= 29 {
+            // Recommended for virtual reality since it disables WIFI scans
+            const WIFI_MODE_FULL_LOW_LATENCY: i32 = 4;
+
+            env.call_method(
+                wifi_manager,
+                "createWifiLock",
+                "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
+                &[WIFI_MODE_FULL_LOW_LATENCY.into(), wifi_lock_jstring.into()],
+            )
+            .unwrap()
+            .l()
+            .unwrap()
+        } else {
+            env.call_method(
+                wifi_manager,
+                "createWifiLock",
+                "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
+                &[wifi_lock_jstring.into()],
+            )
+            .unwrap()
+            .l()
+            .unwrap()
+        };
+
+        env.call_method(wifi_lock, "acquire", "()V", &[]).unwrap();
+
+        *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());
+    }
+}
+
+pub fn release_wifi_lock() {
+    if let Some(wifi_lock) = WIFI_LOCK.lock().take() {
+        let vm = vm();
+        let env = vm.attach_current_thread().unwrap();
+
+        env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
+            .unwrap();
+
+        // wifi_lock is dropped here
+    }
 }
 
 pub struct VideoDecoderEnqueuer {

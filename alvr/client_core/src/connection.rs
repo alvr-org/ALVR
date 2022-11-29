@@ -40,12 +40,12 @@ const INITIAL_MESSAGE: &str = concat!(
     "next to the client entry",
 );
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
-const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
-    "Server and client have\n",
-    "incompatible types.\n",
-    "Please update either the app\n",
-    "on the PC or on the headset",
-);
+// const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
+//     "Server and client have\n",
+//     "incompatible types.\n",
+//     "Please update either the app\n",
+//     "on the PC or on the headset",
+// );
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The server is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";

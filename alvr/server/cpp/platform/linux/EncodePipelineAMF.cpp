@@ -142,7 +142,7 @@ EncodePipelineAMF::EncodePipelineAMF(VkContext &context, Renderer *render, VkFor
     m_amfContext = AMFContext::get()->context();
 
     amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
-    if (m_use10bit) {
+    if (m_codec == ALVR_CODEC_H265 && m_use10bit) {
         inFormat = amf::AMF_SURFACE_R10G10B10A2;
         m_amfComponents.emplace_back(MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat));
     } else {
@@ -173,9 +173,6 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
 
     switch (codec) {
     case ALVR_CODEC_H264:
-        if (m_use10bit) {
-            throw MakeException("H.264 10-bit encoding is not supported");
-        }
         pCodec = AMFVideoEncoderVCE_AVC;
         break;
     case ALVR_CODEC_H265:
@@ -366,11 +363,11 @@ void EncodePipelineAMF::SetBitrate(int64_t bitrate)
     if (m_codec == ALVR_CODEC_H264) {
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitrate);
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitrate);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitrate / m_refreshRate);
     } else {
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitrate);
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitrate);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitrate / m_refreshRate);
     }
 }
 

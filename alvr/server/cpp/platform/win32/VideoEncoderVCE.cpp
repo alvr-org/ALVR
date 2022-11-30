@@ -187,7 +187,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 				break;
 		}
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, Settings::Instance().m_enableAdaptiveBitrate ? Settings::Instance().m_adaptiveBitrateMaximum : bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
@@ -231,7 +231,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 				break;
 		}
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
-		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, Settings::Instance().m_enableAdaptiveBitrate ? Settings::Instance().m_adaptiveBitrateMaximum : bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
@@ -396,11 +396,13 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 			if (m_codec == ALVR_CODEC_H264)
 			{
 				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
 				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate);
 			}
 			else
 			{
 				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
 				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate);
 			}
 		}

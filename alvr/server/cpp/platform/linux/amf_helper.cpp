@@ -47,6 +47,7 @@ void AMFContext::initialize(amf::AMFVulkanDevice *dev)
 
     bool ok = m_context1->InitVulkan(dev) == AMF_OK;
 
+    unsetenv("VK_DRIVER_FILES");
     unsetenv("VK_ICD_FILENAMES");
 
     if (!ok) {
@@ -89,6 +90,8 @@ void AMFContext::init()
     if (!vk_icd_file || access(vk_icd_file, F_OK) != 0) {
         return;
     }
+
+    setenv("VK_DRIVER_FILES", vk_icd_file, 1);
     setenv("VK_ICD_FILENAMES", vk_icd_file, 1);
 
     m_valid = true;

@@ -7,7 +7,7 @@ use alvr_common::{
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use jni::{
-    objects::{GlobalRef, JObject, JString},
+    objects::{GlobalRef, JObject},
     sys::jobject,
     JNIEnv, JavaVM,
 };
@@ -22,7 +22,7 @@ use ndk::{
 };
 use std::{
     collections::VecDeque,
-    ffi::{c_void, CStr},
+    ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
     sync::Arc,
@@ -210,11 +210,7 @@ pub fn release_wifi_lock() {
 }
 
 pub struct VideoDecoderEnqueuer {
-    decoder_enqueuer: Arc<Mutex<Option<SharedMediaCodec>>>,
-    decoder_dequeuer: Arc<Mutex<Option<SharedMediaCodec>>>,
-    image_reader: Arc<Mutex<Option<FakeThreadSafe<ImageReader>>>>,
-    mime: String,
-    format: MediaFormat,
+    inner: Arc<Mutex<Option<SharedMediaCodec>>>,
 }
 
 unsafe impl Send for VideoDecoderEnqueuer {}
@@ -227,7 +223,8 @@ impl VideoDecoderEnqueuer {
         data: &[u8],
         timeout: Duration,
     ) -> StrResult<bool> {
-        let Some(decoder) = &*self.decoder_enqueuer.lock() else {
+        let Some(decoder) = &*self.inner.lock() else {
+            // This might happen only during destruction
             return Ok(false);
         };
 
@@ -250,39 +247,6 @@ impl VideoDecoderEnqueuer {
             }
             MediaCodecResult::Err(e) => fmt_e!("{e}"),
         }
-    }
-
-    // Recrearte decoder, preserving the ImageReader (swapchain) and other internal variables
-    pub fn recreate_decoder(&self) {
-        let image_reader_lock = self.image_reader.lock();
-
-        let Some(image_reader) = &*image_reader_lock else {
-            // This should never happen, except when shutting down.
-            return;
-        };
-
-        let mut decoder_enqueuer_lock = self.decoder_enqueuer.lock();
-        let mut decoder_dequeuer_lock = self.decoder_dequeuer.lock();
-
-        if let Some(decoder) = &*decoder_enqueuer_lock {
-            decoder.stop().unwrap();
-        }
-
-        let new_decoder = Arc::new(FakeThreadSafe(
-            MediaCodec::from_decoder_type(&self.mime).unwrap(),
-        ));
-
-        new_decoder
-            .configure(
-                &self.format,
-                Some(&image_reader_lock.as_ref().unwrap().get_window().unwrap()),
-                MediaCodecDirection::Decoder,
-            )
-            .unwrap();
-        new_decoder.start().unwrap();
-
-        *decoder_enqueuer_lock = Some(Arc::clone(&new_decoder));
-        *decoder_dequeuer_lock = Some(new_decoder);
     }
 }
 
@@ -365,52 +329,47 @@ pub fn video_decoder_split(
     csd_0: Vec<u8>,
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
 ) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
-    const MAX_BUFFERING_FRAMES: usize = 10;
-
-    let mime = match config.codec {
-        CodecType::H264 => "video/avc",
-        CodecType::HEVC => "video/hevc",
-    };
-
-    let format = MediaFormat::new();
-    format.set_str("mime", mime);
-    format.set_i32("width", 512);
-    format.set_i32("height", 1024);
-    format.set_buffer("csd-0", &csd_0);
-
-    for (key, value) in &config.options {
-        match value {
-            MediacodecDataType::Float(value) => format.set_f32(key, *value),
-            MediacodecDataType::Int32(value) => format.set_i32(key, *value),
-            MediacodecDataType::Int64(value) => format.set_i64(key, *value),
-            MediacodecDataType::String(value) => format.set_str(key, value),
-        }
-    }
-
     let running = Arc::new(RelaxedAtomic::new(true));
     let decoder_enqueuer = Arc::new(Mutex::new(None::<SharedMediaCodec>));
-    let decoder_dequeuer = Arc::new(Mutex::new(None));
-    let image_reader = Arc::new(Mutex::new(None));
-    let image_reader_ready_notifier = Arc::new(Condvar::new());
+    let decoder_ready_notifier = Arc::new(Condvar::new());
     let image_queue = Arc::new(Mutex::new(VecDeque::<QueuedImage>::new()));
 
-    error!("video_decoder_split");
-
     let dequeue_thread = thread::spawn({
+        let config = config.clone();
         let running = Arc::clone(&running);
         let decoder_enqueuer = Arc::clone(&decoder_enqueuer);
-        let decoder_dequeuer = Arc::clone(&decoder_enqueuer);
-        let image_reader = Arc::clone(&image_reader);
-        let image_reader_ready_notifier = Arc::clone(&image_reader_ready_notifier);
+        let decoder_ready_notifier = Arc::clone(&decoder_ready_notifier);
         let image_queue = Arc::clone(&image_queue);
         move || {
+            const MAX_BUFFERING_FRAMES: usize = 10;
+
             // 2x: keep the target buffering in the middle of the max amount of queuable frames
             let available_buffering_frames = (2. * config.max_buffering_frames).ceil() as usize;
+
+            let mime = match config.codec {
+                CodecType::H264 => "video/avc",
+                CodecType::HEVC => "video/hevc",
+            };
+
+            let format = MediaFormat::new();
+            format.set_str("mime", mime);
+            format.set_i32("width", 512);
+            format.set_i32("height", 1024);
+            format.set_buffer("csd-0", &csd_0);
+
+            for (key, value) in &config.options {
+                match value {
+                    MediacodecDataType::Float(value) => format.set_f32(key, *value),
+                    MediacodecDataType::Int32(value) => format.set_i32(key, *value),
+                    MediacodecDataType::Int64(value) => format.set_i64(key, *value),
+                    MediacodecDataType::String(value) => format.set_str(key, value),
+                }
+            }
 
             let acquired_image = Arc::new(Mutex::new(Ok(None)));
             let image_acquired_notifier = Arc::new(Condvar::new());
 
-            let mut new_image_reader = ImageReader::new_with_usage(
+            let mut image_reader = ImageReader::new_with_usage(
                 1,
                 1,
                 ImageFormat::PRIVATE,
@@ -419,7 +378,7 @@ pub fn video_decoder_split(
             )
             .unwrap();
 
-            new_image_reader
+            image_reader
                 .set_image_listener(Box::new({
                     let acquired_image = Arc::clone(&acquired_image);
                     let image_acquired_notifier = Arc::clone(&image_acquired_notifier);
@@ -433,32 +392,31 @@ pub fn video_decoder_split(
 
             // Documentation says that this call is necessary to properly dispose acquired buffers.
             // todo: find out how to use it and avoid leaking the ImageReader
-            new_image_reader
+            image_reader
                 .set_buffer_removed_listener(Box::new(|_, _| ()))
                 .unwrap();
 
+            let decoder = Arc::new(FakeThreadSafe(
+                MediaCodec::from_decoder_type(&mime).unwrap(),
+            ));
+            decoder
+                .configure(
+                    &format,
+                    Some(&image_reader.get_window().unwrap()),
+                    MediaCodecDirection::Decoder,
+                )
+                .unwrap();
+            decoder.start().unwrap();
+
             {
-                let mut image_reader_lock = image_reader.lock();
+                let mut decoder_lock = decoder_enqueuer.lock();
 
-                image_queue.lock().clear();
+                *decoder_lock = Some(Arc::clone(&decoder));
 
-                if let Some(decoder) = &*decoder_enqueuer.lock() {
-                    decoder
-                        .set_output_surface(&new_image_reader.get_window().unwrap())
-                        .unwrap();
-                }
-
-                *image_reader_lock = Some(FakeThreadSafe(new_image_reader));
-                image_reader_ready_notifier.notify_one();
+                decoder_ready_notifier.notify_one();
             }
 
             while running.value() {
-                let Some(decoder_lock) = &*decoder_dequeuer.lock() else {
-                    thread::sleep(Duration::from_millis(10));
-
-                    continue
-                };
-
                 if image_queue.lock().len() > available_buffering_frames {
                     warn!("Video frame queue overflow!");
 
@@ -469,18 +427,16 @@ pub fn video_decoder_split(
 
                 let mut acquired_image_ref = acquired_image.lock();
 
-                match decoder_lock.dequeue_output_buffer(Duration::from_millis(1)) {
+                match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
                     MediaCodecResult::Ok(buffer) => {
                         // The buffer timestamp is actually nanoseconds
                         let timestamp = Duration::from_nanos(buffer.presentation_time_us() as _);
 
-                        if let Err(e) = decoder_lock.release_output_buffer(buffer, true) {
+                        if let Err(e) = decoder.release_output_buffer(buffer, true) {
                             error!("Decoder dequeue error: {e}");
 
                             continue;
                         }
-
-                        drop(decoder_lock);
 
                         dequeued_frame_callback(timestamp);
 
@@ -516,28 +472,36 @@ pub fn video_decoder_split(
                     MediaCodecResult::Err(e) => {
                         error!("Decoder dequeue error: {e}");
 
-                        // Don't lock more than needed
-                        drop(decoder_lock);
-
                         // lessen logcat flood (just in case)
                         thread::sleep(Duration::from_millis(50));
                     }
                 }
             }
 
-            let mut image_reader_lock = image_reader.lock();
+            // Destroy all resources
+            decoder_enqueuer.lock().take(); // Make sure the shared ref is deleted first
+            decoder.stop().unwrap();
+            drop(decoder);
 
             image_queue.lock().clear();
-            Box::leak(Box::new(image_reader_lock.take()));
+            error!("FIXME: Leaking Imagereader!");
+            Box::leak(Box::new(image_reader));
         }
     });
 
+    // Make sure the decoder is ready: we don't want to try to enqueue frame and lose them, to avoid
+    // image corruption.
+    {
+        let mut decoder_lock = decoder_enqueuer.lock();
+
+        if decoder_lock.is_none() {
+            // No spurious wakeups
+            decoder_ready_notifier.wait(&mut decoder_lock);
+        }
+    }
+
     let enqueuer = VideoDecoderEnqueuer {
-        decoder_enqueuer,
-        decoder_dequeuer,
-        image_reader: Arc::clone(&image_reader),
-        mime: mime.to_owned(),
-        format,
+        inner: decoder_enqueuer,
     };
     let dequeuer = VideoDecoderDequeuer {
         running,
@@ -546,20 +510,6 @@ pub fn video_decoder_split(
         config,
         buffering_running_average: 0.0,
     };
-
-    error!("checking imagereader");
-
-    // Make sure the ImageReader is created before creating the decoder
-    {
-        let mut image_reader_lock = image_reader.lock();
-
-        if image_reader_lock.is_none() {
-            image_reader_ready_notifier.wait(&mut image_reader_lock);
-        }
-    }
-    error!("creating decoder");
-    enqueuer.recreate_decoder();
-    error!("decoder created");
 
     Ok((enqueuer, dequeuer))
 }

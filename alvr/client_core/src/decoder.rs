@@ -38,9 +38,6 @@ pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
 static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
-static LAST_ENQUEUED_TIMESTAMPS: Lazy<Mutex<VecDeque<Duration>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
-
 pub fn create_decoder(config_buffer: Vec<u8>) {
     let config = DECODER_INIT_CONFIG.lock();
 
@@ -88,15 +85,6 @@ pub fn create_decoder(config_buffer: Vec<u8>) {
 pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64) {
     let timestamp = Duration::from_nanos(timestamp_ns);
 
-    {
-        let mut timestamps_lock = LAST_ENQUEUED_TIMESTAMPS.lock();
-
-        timestamps_lock.push_back(timestamp);
-        if timestamps_lock.len() > 20 {
-            timestamps_lock.pop_front();
-        }
-    }
-
     let mut data = vec![0; length as _];
     unsafe { ptr::copy_nonoverlapping(buffer, data.as_mut_ptr() as _, length as _) }
 
@@ -141,20 +129,6 @@ pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) 
     };
 
     if let Some(timestamp) = timestamp {
-        if !LAST_ENQUEUED_TIMESTAMPS.lock().contains(&timestamp) {
-            error!("Detected late decoder, recreating decoder...");
-
-            if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-                decoder.recreate_decoder();
-            }
-
-            if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
-                sender
-                    .send(alvr_sockets::ClientControlPacket::RequestIdr)
-                    .ok();
-            }
-        }
-
         if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
             stats.report_compositor_start(timestamp);
         }

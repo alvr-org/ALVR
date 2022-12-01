@@ -44,6 +44,8 @@ public:
 
     void Render(uint32_t index, uint64_t waitValue);
 
+    void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore);
+
 private:
     struct InputImage {
         VkImage image;

@@ -44,7 +44,7 @@ private:
 class VkContext
 {
 public:
-  VkContext(const char* device);
+  VkContext(const char* device, const std::vector<const char*> &requiredDeviceExtensions);
   ~VkContext();
   VkDevice get_vk_device() const { return device;}
   VkInstance get_vk_instance() const { return instance;}
@@ -83,6 +83,7 @@ public:
       VkDeviceMemory memory,
       DrmImage drm);
   ~VkFrame();
+  VkFormat format() { return vkformat;}
   operator AVVkFrame*() const { return av_vkframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);
 private:
@@ -91,6 +92,7 @@ private:
   const uint32_t width;
   const uint32_t height;
   vk::Device device;
+  VkFormat vkformat;
 };
 
 }

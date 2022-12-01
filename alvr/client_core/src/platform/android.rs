@@ -167,35 +167,25 @@ pub fn acquire_wifi_lock() {
         let vm = vm();
         let env = vm.attach_current_thread().unwrap();
 
-        let wifi_manager = get_wifi_manager(&env);
-
-        let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
-
-        let wifi_lock = if get_api_level() >= 29 {
+        let wifi_mode = if get_api_level() >= 29 {
             // Recommended for virtual reality since it disables WIFI scans
-            const WIFI_MODE_FULL_LOW_LATENCY: i32 = 4;
+            4 // WIFI_MODE_FULL_LOW_LATENCY
+        } else {
+            3 // WIFI_MODE_FULL_HIGH_PERF
+        };
 
-            env.call_method(
+        let wifi_manager = get_wifi_manager(&env);
+        let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
+        let wifi_lock = env
+            .call_method(
                 wifi_manager,
                 "createWifiLock",
                 "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[WIFI_MODE_FULL_LOW_LATENCY.into(), wifi_lock_jstring.into()],
+                &[wifi_mode.into(), wifi_lock_jstring.into()],
             )
             .unwrap()
             .l()
-            .unwrap()
-        } else {
-            env.call_method(
-                wifi_manager,
-                "createWifiLock",
-                "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[wifi_lock_jstring.into()],
-            )
-            .unwrap()
-            .l()
-            .unwrap()
-        };
-
+            .unwrap();
         env.call_method(wifi_lock, "acquire", "()V", &[]).unwrap();
 
         *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());

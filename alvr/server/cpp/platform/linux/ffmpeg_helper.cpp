@@ -49,9 +49,11 @@ std::string alvr::AvException::makemsg(const std::string & msg, int averror)
   return msg + " " + av_msg;
 }
 
-alvr::VkContext::VkContext(const char *deviceName)
+alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*> &requiredDeviceExtensions)
 {
   std::vector<const char*> instance_extensions = {
+      VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+      VK_KHR_SURFACE_EXTENSION_NAME,
   };
 
   std::vector<const char*> device_extensions = {
@@ -64,6 +66,7 @@ alvr::VkContext::VkContext(const char *deviceName)
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
   };
+  device_extensions.insert(device_extensions.end(), requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 
   uint32_t instanceExtensionCount = 0;
   vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, nullptr);
@@ -104,7 +107,7 @@ alvr::VkContext::VkContext(const char *deviceName)
   for (VkPhysicalDevice dev : physicalDevices) {
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(dev, &props);
-    if (strcmp(props.deviceName, deviceName) == 0) {
+    if (!deviceName || strcmp(props.deviceName, deviceName) == 0) {
       physicalDevice = dev;
       drmContext = props.vendorID != 0x10de; // nvidia
       break;
@@ -127,6 +130,9 @@ alvr::VkContext::VkContext(const char *deviceName)
     }
   }
 
+  float queuePriority = 1.0;
+  std::vector<VkDeviceQueueCreateInfo> queueInfos;
+
   uint32_t queueFamilyCount;
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
   std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
@@ -134,16 +140,14 @@ alvr::VkContext::VkContext(const char *deviceName)
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
     if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       queueFamilyIndex = i;
-      break;
     }
+    VkDeviceQueueCreateInfo queueInfo = {};
+    queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueInfo.queueFamilyIndex = i;
+    queueInfo.queueCount = 1;
+    queueInfo.pQueuePriorities = &queuePriority;
+    queueInfos.push_back(queueInfo);
   }
-
-  float queuePriority = 1.0;
-  VkDeviceQueueCreateInfo queueCreateInfo = {};
-  queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-  queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
-  queueCreateInfo.queueCount = 1;
-  queueCreateInfo.pQueuePriorities = &queuePriority;
 
   VkPhysicalDeviceVulkan12Features features12 = {};
   features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -152,18 +156,15 @@ alvr::VkContext::VkContext(const char *deviceName)
   VkPhysicalDeviceFeatures2 features = {};
   features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   features.pNext = &features12;
-
-  VkPhysicalDeviceFeatures deviceFeatures = {};
-  deviceFeatures.samplerAnisotropy = VK_TRUE;
+  features.features.samplerAnisotropy = VK_TRUE;
 
   VkDeviceCreateInfo deviceInfo = {};
   deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
   deviceInfo.pNext = &features;
-  deviceInfo.queueCreateInfoCount = 1;
-  deviceInfo.pQueueCreateInfos = &queueCreateInfo;
+  deviceInfo.queueCreateInfoCount = queueInfos.size();
+  deviceInfo.pQueueCreateInfos = queueInfos.data();
   deviceInfo.enabledExtensionCount = deviceExtensions.size();
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
-  deviceInfo.pEnabledFeatures = &deviceFeatures;
   vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
 
   // AV_HWDEVICE_TYPE_DRM doesn't work with SW encoder
@@ -262,7 +263,8 @@ alvr::VkFrame::VkFrame(
     DrmImage drm
     ):
   width(image_info.extent.width),
-  height(image_info.extent.height)
+  height(image_info.extent.height),
+  vkformat(image_info.format)
 {
   device = vk_ctx.get_vk_device();
 

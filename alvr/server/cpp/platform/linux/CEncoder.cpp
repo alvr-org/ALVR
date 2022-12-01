@@ -25,6 +25,7 @@
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
 #include "FrameRender.h"
+#include "amf_helper.h"
 
 extern "C" {
 #include <libavutil/avutil.h>
@@ -196,14 +197,21 @@ void CEncoder::Run() {
       AVUTIL.av_log_set_callback(logfn);
 #endif
 
-      alvr::VkContext vk_ctx(init.device_name.data());
+      bool useAmf = alvr::AMFContext::get()->isValid();
+      std::vector<const char*> deviceExtensions;
+
+      if (useAmf) {
+          deviceExtensions = alvr::AMFContext::get()->requiredDeviceExtensions();
+      }
+
+      alvr::VkContext vk_ctx(useAmf ? nullptr : init.device_name.data(), deviceExtensions);
 
       FrameRender render(vk_ctx, init, m_fds);
       auto output = render.CreateOutput();
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);
       alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory, output.drm);
-      auto encode_pipeline = alvr::EncodePipeline::Create(frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
+      auto encode_pipeline = alvr::EncodePipeline::Create(&render, vk_ctx, frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;

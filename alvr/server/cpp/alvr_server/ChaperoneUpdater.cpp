@@ -4,10 +4,13 @@
 #include <mutex>
 
 #ifndef __APPLE__
+// Workaround symbol clash in openvr.h / openvr_driver.h
+namespace alvr_chaperone {
 #include <openvr.h>
+}
 #endif
 
-using namespace std;
+using namespace alvr_chaperone;
 
 static std::mutex chaperone_mutex;
 

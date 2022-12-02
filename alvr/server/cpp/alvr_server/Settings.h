@@ -78,6 +78,7 @@ public:
 	uint32_t m_preProcSigma;
 	uint32_t m_preProcTor;
 	uint32_t m_encoderQualityPreset;
+	uint32_t m_rateControlMode;
 	bool m_force_sw_encoding;
 	uint32_t m_swThreadCount;
 

@@ -77,6 +77,12 @@ define({
         "_root_video_use10bitEncoder.name": "Reduce color banding",
         "_root_video_use10bitEncoder.description":
             "This increases visual quality by streaming 10 bits per color channel instead of 8. Works on all supported platforms except nvidia on linux.",
+        "_root_video_rateControlMode-choice-.name":
+            "Rate control mode",
+        "_root_video_rateControlMode-choice-.description":
+            "Specifies the bitrate control method (Windows with AMD and nVidia cards only). CBR - constant bitrate, VBR - variable bitrate.",
+        "_root_video_rateControlMode_cbr-choice-.name": "CBR",
+        "_root_video_rateControlMode_vbr-choice-.name": "VBR",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":

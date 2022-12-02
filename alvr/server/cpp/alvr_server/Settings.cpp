@@ -85,6 +85,7 @@ void Settings::Load()
 		m_nAdapterIndex = (int32_t)config.get("adapter_index").get<int64_t>();
 
 		m_codec = (int32_t)config.get("codec").get<int64_t>();
+		m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
 		mEncodeBitrateMBs = (int)config.get("encode_bitrate_mbs").get<int64_t>();
 		m_enableAdaptiveBitrate = config.get("enable_adaptive_bitrate").get<bool>();
@@ -174,7 +175,7 @@ void Settings::Load()
 		m_nvencMaxNumRefFrames = config.get("max_num_ref_frames").get<int64_t>();
 		m_nvencGopLength = config.get("gop_length").get<int64_t>();
 		m_nvencPFrameStrategy = config.get("p_frame_strategy").get<int64_t>();
-		m_nvencRateControlMode = config.get("rate_control_mode").get<int64_t>();
+		m_nvencRateControlMode = config.get("nvenc_rate_control_mode").get<int64_t>();
 		m_nvencRcBufferSize = config.get("rc_buffer_size").get<int64_t>();
 		m_nvencRcInitialDelay = config.get("rc_initial_delay").get<int64_t>();
 		m_nvencRcMaxBitrate = config.get("rc_max_bitrate").get<int64_t>();

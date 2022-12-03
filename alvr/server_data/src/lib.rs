@@ -273,9 +273,11 @@ impl ServerDataManager {
             }
             ClientListAction::UpdateCurrentIp(current_ip) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().current_ip = current_ip;
+                    if entry.get().current_ip != current_ip {
+                        entry.get_mut().current_ip = current_ip;
 
-                    updated = true;
+                        updated = true;
+                    }
                 }
             }
         }

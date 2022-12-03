@@ -267,6 +267,12 @@ async fn http_api(
             }
             reply(StatusCode::BAD_REQUEST)?
         }
+        "/api/capture-frame" => {
+            unsafe {
+                crate::CaptureFrame();
+            };
+            return reply(StatusCode::OK);
+        }
         other_uri => {
             if other_uri.contains("..") {
                 // Attempted tree traversal

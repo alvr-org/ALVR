@@ -461,6 +461,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
         rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
         enable_aq: nvenc_overrides.enable_aq,
+        capture_frame_dir: settings.extra.capture_frame_dir,
     };
 
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {

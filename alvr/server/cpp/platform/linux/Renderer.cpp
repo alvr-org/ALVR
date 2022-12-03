@@ -675,12 +675,12 @@ void Renderer::Wait(uint32_t index, uint64_t waitValue)
     VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
 }
 
-void Renderer::CaptureInputFrame(const char *filename)
+void Renderer::CaptureInputFrame(const std::string &filename)
 {
     m_inputImageCapture = filename;
 }
 
-void Renderer::CaptureOutputFrame(const char *filename)
+void Renderer::CaptureOutputFrame(const std::string &filename)
 {
     m_outputImageCapture = filename;
 }
@@ -991,7 +991,7 @@ void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t widt
 
     // PPM binary pixel data
     for (uint32_t y = 0; y < height; y++) {
-        unsigned int *row = (unsigned int*)imageData;
+        uint32_t *row = (uint32_t*)imageData;
         for (uint32_t x = 0; x < width; x++) {
             file.write((char*)row++, 3);
         }

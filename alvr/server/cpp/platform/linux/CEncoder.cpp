@@ -232,13 +232,11 @@ void CEncoder::Run() {
         // Close enough to present
         ReportPresent(pose->targetTimestampNs);
 
-        if (access("/tmp/alvr-capture-input", F_OK) == 0) {
-          unlink("/tmp/alvr-capture-input");
-          render.CaptureInputFrame("/tmp/alvr-capture-input.ppm");
-        }
-        if (access("/tmp/alvr-capture-output", F_OK) == 0) {
-          unlink("/tmp/alvr-capture-output");
-          render.CaptureOutputFrame("/tmp/alvr-capture-output.ppm");
+        if (m_captureFrame) {
+          m_captureFrame = false;
+          render.Wait(frame_info.image, frame_info.semaphore_value);
+          render.CaptureInputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_input.ppm");
+          render.CaptureOutputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_output.ppm");
         }
 
         render.Render(frame_info.image, frame_info.semaphore_value);
@@ -282,3 +280,5 @@ void CEncoder::Stop() {
 void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
+
+void CEncoder::CaptureFrame() { m_captureFrame = true; }

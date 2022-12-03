@@ -47,8 +47,8 @@ public:
     void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore);
 
     void Wait(uint32_t index, uint64_t waitValue);
-    void CaptureInputFrame(const char *filename);
-    void CaptureOutputFrame(const char *filename);
+    void CaptureInputFrame(const std::string &filename);
+    void CaptureOutputFrame(const std::string &filename);
 
 private:
     struct InputImage {

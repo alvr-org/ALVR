@@ -285,6 +285,10 @@ define([
                 });
             });
 
+            $("#captureFrame").click(() => {
+                $.get("api/capture-frame");
+            });
+
             $("#checkForUpdates").click(() => {
                 checkForUpdate(settings, 5000);
             });

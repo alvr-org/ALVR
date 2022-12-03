@@ -124,3 +124,6 @@
 		void CEncoder::InsertIDR() {
 			m_scheduler.InsertIDR();
 		}
+
+		void CEncoder::CaptureFrame() {
+		}

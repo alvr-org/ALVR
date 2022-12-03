@@ -181,7 +181,9 @@ void Settings::Load()
 		m_nvencRcMaxBitrate = config.get("rc_max_bitrate").get<int64_t>();
 		m_nvencRcAverageBitrate = config.get("rc_average_bitrate").get<int64_t>();
 		m_nvencEnableAQ = config.get("enable_aq").get<int64_t>();
-		
+
+		m_captureFrameDir = config.get("capture_frame_dir").get<std::string>();
+
 		Debug("Config JSON: %hs\n", json.c_str());
 		Info("Serial Number: %hs\n", mSerialNumber.c_str());
 		Info("Model Number: %hs\n", mModelNumber.c_str());

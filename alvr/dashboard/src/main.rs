@@ -57,7 +57,7 @@ impl ALVRDashboard {
         if connected.is_some() {
             launcher::launch();
         }
-        
+
         let mut dashboard = alvr_dashboard::dashboard::Dashboard::new(
             session,
             drivers,

@@ -85,17 +85,24 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
 
     /* Find a memory type */
     size_t mem_type_idx = 0;
-    for (; mem_type_idx < 8 * sizeof(memory_requirements.memoryTypeBits); ++mem_type_idx) {
-        if (memory_requirements.memoryTypeBits & (1u << mem_type_idx)) {
+    VkMemoryPropertyFlags memFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    VkPhysicalDeviceMemoryProperties prop;
+    m_device_data.instance_data.disp.GetPhysicalDeviceMemoryProperties(m_device_data.physical_device, &prop);
+    for (; mem_type_idx < prop.memoryTypeCount; ++mem_type_idx) {
+        if ((prop.memoryTypes[mem_type_idx].propertyFlags & memFlags) == memFlags && memory_requirements.memoryTypeBits & (1 << mem_type_idx)) {
             break;
         }
     }
+    assert(mem_type_idx < prop.memoryTypeCount);
 
-    assert(mem_type_idx <= 8 * sizeof(memory_requirements.memoryTypeBits) - 1);
+    VkExportMemoryAllocateInfo export_info = {};
+    export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+    export_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
 
     VkMemoryDedicatedAllocateInfo ded_info = {};
     ded_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
     ded_info.image = image.image;
+    ded_info.pNext = &export_info;
 
     VkMemoryAllocateInfo mem_info = {};
     mem_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

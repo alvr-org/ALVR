@@ -50,6 +50,7 @@ namespace layer {
     REQUIRED(GetInstanceProcAddr)                                                                  \
     REQUIRED(DestroyInstance)                                                                      \
     REQUIRED(GetPhysicalDeviceProperties)                                                          \
+    REQUIRED(GetPhysicalDeviceMemoryProperties)                                                    \
     REQUIRED(GetPhysicalDeviceImageFormatProperties)                                               \
     REQUIRED(EnumerateDeviceExtensionProperties)                                                   \
     OPTIONAL(GetPhysicalDeviceSurfaceCapabilitiesKHR)                                              \

@@ -5,6 +5,7 @@ use std::{
     thread,
 };
 
+mod launcher;
 mod worker;
 
 use alvr_dashboard::dashboard::DashboardResponse;
@@ -22,6 +23,7 @@ pub enum GuiMsg {
     Quit,
 }
 
+#[derive(Clone)]
 pub enum WorkerMsg {
     Event(alvr_events::Event),
     SessionResponse(alvr_session::SessionDesc),
@@ -35,10 +37,13 @@ impl ALVRDashboard {
         cc: &eframe::CreationContext<'_>,
         tx2: mpsc::Sender<GuiMsg>,
         rx1: mpsc::Receiver<WorkerMsg>,
+        tx3: mpsc::Sender<WorkerMsg>,
     ) -> Self {
         tx2.send(GuiMsg::GetSession).unwrap();
         let session = loop {
-            match rx1.recv().unwrap() {
+            let msg = rx1.recv().unwrap();
+            tx3.send(msg.clone()).unwrap();
+            match msg {
                 WorkerMsg::SessionResponse(session) => break session,
                 WorkerMsg::LostConnection(_) => break alvr_session::SessionDesc::default(),
                 _ => (),
@@ -126,18 +131,23 @@ impl eframe::App for ALVRDashboard {
 }
 
 fn main() {
+    env_logger::init();
     let native_options = eframe::NativeOptions::default();
 
     let (tx1, rx1) = mpsc::channel::<WorkerMsg>();
     let (tx2, rx2) = mpsc::channel::<GuiMsg>();
 
+    let (tx3, rx3) = mpsc::channel::<WorkerMsg>();
+
     let handle = thread::spawn(|| worker::http_thread(tx1, rx2));
+    let handle2 = thread::spawn(|| launcher::launcher_thread(rx3));
 
     eframe::run_native(
         "ALVR Dashboard",
         native_options,
-        Box::new(|cc| Box::new(ALVRDashboard::new(cc, tx2, rx1))),
+        Box::new(|cc| Box::new(ALVRDashboard::new(cc, tx2, rx1, tx3))),
     );
 
     handle.join().unwrap();
+    handle2.join().unwrap();
 }

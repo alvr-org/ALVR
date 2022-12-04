@@ -188,13 +188,16 @@ dependencies = [
 
 [[package]]
 name = "alvr_dashboard"
-version = "0.1.0"
+version = "20.0.0-dev02"
 dependencies = [
+ "alvr_commands",
  "alvr_common",
  "alvr_events",
+ "alvr_filesystem",
  "alvr_session",
- "eframe 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "eframe",
+ "egui",
+ "env_logger",
  "fluent",
  "fluent-langneg",
  "fluent-syntax",
@@ -204,6 +207,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
+ "sysinfo",
  "tokio",
  "tokio-tungstenite",
  "unic-langid",
@@ -227,22 +231,6 @@ version = "20.0.0-dev02"
 dependencies = [
  "dirs",
  "once_cell",
-]
-
-[[package]]
-name = "alvr_launcher"
-version = "20.0.0-dev02"
-dependencies = [
- "alvr_commands",
- "alvr_common",
- "alvr_filesystem",
- "eframe 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
- "env_logger",
- "serde_json",
- "single-instance",
- "sysinfo",
- "ureq",
- "winres",
 ]
 
 [[package]]
@@ -736,12 +724,6 @@ dependencies = [
  "wasm-bindgen",
  "winapi",
 ]
-
-[[package]]
-name = "chunked_transfer"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fff857943da45f546682664a79488be82e69e43c1a7a2307679ab9afb3a66d2e"
 
 [[package]]
 name = "clang-sys"
@@ -1264,30 +1246,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0d49426c3e72a6728b0c790d22db8bf7bbcff10d83b8b6f3a01295be982302e"
 dependencies = [
  "bytemuck",
- "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "egui-winit 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "egui_glow",
- "getrandom",
- "glow",
- "glutin",
- "js-sys",
- "percent-encoding",
- "tracing",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "winit",
-]
-
-[[package]]
-name = "eframe"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
-dependencies = [
- "bytemuck",
- "egui 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
+ "egui",
  "egui-wgpu",
- "egui-winit 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
+ "egui-winit",
  "getrandom",
  "glutin",
  "js-sys",
@@ -1307,18 +1268,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc9fcd393c3daaaf5909008a1d948319d538b79c51871e4df0993260260a94e4"
 dependencies = [
  "ahash 0.8.2",
- "epaint 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "nohash-hasher",
- "tracing",
-]
-
-[[package]]
-name = "egui"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
-dependencies = [
- "ahash 0.8.2",
- "epaint 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
+ "epaint",
  "nohash-hasher",
  "tracing",
 ]
@@ -1326,10 +1276,11 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f12a8d8f92a429e2e9399003bc01d48f54aefa6fec126cbd3462e313c0ee0e91"
 dependencies = [
  "bytemuck",
- "egui 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
+ "egui",
  "pollster",
  "tracing",
  "type-map 0.5.0",
@@ -1344,41 +1295,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07ddc525334c416e11580123e147b970f738507f427c9fb1cd09ea2dd7416a3a"
 dependencies = [
  "arboard",
- "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "egui",
  "instant",
  "smithay-clipboard",
  "tracing",
  "webbrowser 0.7.1",
  "winit",
-]
-
-[[package]]
-name = "egui-winit"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
-dependencies = [
- "arboard",
- "egui 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
- "instant",
- "smithay-clipboard",
- "tracing",
- "webbrowser 0.7.1",
- "winit",
-]
-
-[[package]]
-name = "egui_glow"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad77d4a00402bae9658ee64be148f4b2a0b38e4fc7874970575ca01ed1c5b75d"
-dependencies = [
- "bytemuck",
- "egui 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "glow",
- "memoffset",
- "tracing",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
@@ -1392,14 +1314,6 @@ name = "emath"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9542a40106fdba943a055f418d1746a050e1a903a049b030c2b097d4686a33cf"
-dependencies = [
- "bytemuck",
-]
-
-[[package]]
-name = "emath"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
 dependencies = [
  "bytemuck",
 ]
@@ -1445,21 +1359,7 @@ dependencies = [
  "ahash 0.8.2",
  "atomic_refcell",
  "bytemuck",
- "emath 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "nohash-hasher",
- "parking_lot 0.12.1",
-]
-
-[[package]]
-name = "epaint"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=311eb66#311eb66cae5d0a029e2f19dc60b9010872aa25db"
-dependencies = [
- "ab_glyph",
- "ahash 0.8.2",
- "atomic_refcell",
- "bytemuck",
- "emath 0.19.0 (git+https://github.com/emilk/egui?rev=311eb66)",
+ "emath",
  "nohash-hasher",
  "parking_lot 0.12.1",
 ]
@@ -4039,19 +3939,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "single-instance"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4637485391f8545c9d3dbf60f9d9aab27a90c789a700999677583bcb17c8795d"
-dependencies = [
- "libc",
- "nix 0.23.1",
- "thiserror",
- "widestring 0.4.3",
- "winapi",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4617,19 +4504,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
-name = "ureq"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97acb4c28a254fd7a4aeec976c46a7fa404eac4d7c134b30c75144846d7cb8f"
-dependencies = [
- "base64",
- "chunked_transfer",
- "log",
- "once_cell",
- "url",
-]
-
-[[package]]
 name = "url"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5100,12 +4974,6 @@ dependencies = [
  "libc",
  "once_cell",
 ]
-
-[[package]]
-name = "widestring"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
 
 [[package]]
 name = "widestring"

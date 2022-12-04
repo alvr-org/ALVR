@@ -1,17 +1,22 @@
 [package]
 name = "alvr_dashboard"
-version = "0.1.0"
-authors = ["alvr-org"]
-license = "MIT"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
-alvr_common = { path = "../common" }
-alvr_session = { path = "../session" }
-alvr_events = { path = "../events" }
+alvr_common.workspace = true
+alvr_session.workspace = true
+alvr_events.workspace = true
+alvr_commands.workspace = true
+alvr_filesystem.workspace = true
+
+env_logger = "0.9"
 
 egui = "0.19"
-eframe = "0.19.0"
+eframe = { version = "0.19.0", default-features = false, features = ["wgpu", "default_fonts"] }
 
 reqwest = { version = "0.11", features = ["native-tls", "json"] }
 tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros"] }
@@ -29,6 +34,8 @@ settings-schema = { version = "*", features = [
 unic-langid = "0.9"
 url = "2.3.1"
 futures-util = "0.3.25"
+
+sysinfo = { version = "0.26", default-features = false }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"

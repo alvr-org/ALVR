@@ -334,6 +334,11 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     }
     features12_ptr->timelineSemaphore = true;
 
+    if (modified_info.pEnabledFeatures) {
+        features_ptr->features = *modified_info.pEnabledFeatures;
+        modified_info.pEnabledFeatures = nullptr;
+    }
+
     result = fpCreateDevice(physicalDevice, &modified_info, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
         return result;

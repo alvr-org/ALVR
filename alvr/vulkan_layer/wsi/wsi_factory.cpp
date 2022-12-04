@@ -56,10 +56,8 @@ static surface_properties *get_surface_properties(VkIcdWsiPlatform platform) {
     }
 }
 
-surface_properties *get_surface_properties(VkSurfaceKHR surface) {
-    VkIcdSurfaceBase *surface_base = reinterpret_cast<VkIcdSurfaceBase *>(surface);
-
-    return get_surface_properties(surface_base->platform);
+surface_properties *get_surface_properties(VkSurfaceKHR) {
+    return get_surface_properties(VK_ICD_WSI_PLATFORM_HEADLESS);
 }
 
 template <typename swapchain_type>
@@ -74,17 +72,10 @@ static swapchain_base *allocate_swapchain(layer::device_private_data &dev_data,
     return new (memory) swapchain_type(dev_data, pAllocator);
 }
 
-swapchain_base *allocate_surface_swapchain(VkSurfaceKHR surface,
+swapchain_base *allocate_surface_swapchain(VkSurfaceKHR,
                                            layer::device_private_data &dev_data,
                                            const VkAllocationCallbacks *pAllocator) {
-    VkIcdSurfaceBase *surface_base = reinterpret_cast<VkIcdSurfaceBase *>(surface);
-
-    switch (surface_base->platform) {
-    case VK_ICD_WSI_PLATFORM_HEADLESS:
-        return allocate_swapchain<wsi::headless::swapchain>(dev_data, pAllocator);
-    default:
-        return nullptr;
-    }
+    return allocate_swapchain<wsi::headless::swapchain>(dev_data, pAllocator);
 }
 
 util::wsi_platform_set find_enabled_layer_platforms(const VkInstanceCreateInfo *pCreateInfo) {

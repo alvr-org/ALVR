@@ -95,9 +95,14 @@ VkResult swapchain::create_image(const VkImageCreateInfo &image_create,
     }
     assert(mem_type_idx < prop.memoryTypeCount);
 
+    VkExportMemoryAllocateInfo export_info = {};
+    export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+    export_info.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
     VkMemoryDedicatedAllocateInfo ded_info = {};
     ded_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
     ded_info.image = image.image;
+    ded_info.pNext = &export_info;
 
     VkMemoryAllocateInfo mem_info = {};
     mem_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

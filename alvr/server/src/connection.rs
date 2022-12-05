@@ -322,12 +322,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         angular_velocity_cutoff = config.angular_velocity_cutoff;
         position_offset_left = config.position_offset_left;
         rotation_offset_left = config.rotation_offset_left;
-        override_trigger_threshold = if let Switch::Enabled(config) = config.override_trigger_threshold {
-            trigger_threshold = config.trigger_threshold;
-            true
-        } else {
-            false
-        };
+        override_trigger_threshold =
+            if let Switch::Enabled(config) = config.override_trigger_threshold {
+                trigger_threshold = config.trigger_threshold;
+                true
+            } else {
+                false
+            };
         override_grip_threshold = if let Switch::Enabled(config) = config.override_grip_threshold {
             grip_threshold = config.grip_threshold;
             true

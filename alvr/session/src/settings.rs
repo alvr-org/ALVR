@@ -338,6 +338,20 @@ pub enum OpenvrPropValue {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ControllersTriggerOverrideDesc {
+    #[schema(advanced, min = 0.01, max = 1., step = 0.01)]
+    pub trigger_threshold: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ControllersGripOverrideDesc {
+    #[schema(advanced, min = 0.01, max = 1., step = 0.01)]
+    pub grip_threshold: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
     // Dropdown:
     // Oculus Rift S
@@ -391,6 +405,12 @@ pub struct ControllersDesc {
 
     #[schema(advanced)]
     pub rotation_offset_left: [f32; 3],
+
+    #[schema(advanced)]
+    pub override_trigger_threshold: Switch<ControllersTriggerOverrideDesc>,
+
+    #[schema(advanced)]
+    pub override_grip_threshold: Switch<ControllersGripOverrideDesc>,
 
     #[schema(min = 0., max = 5., step = 0.1)]
     pub haptics_intensity: f32,
@@ -809,6 +829,18 @@ pub fn session_settings_default() -> SettingsDefault {
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [-0.0065, 0.002, -0.051],
                     rotation_offset_left: [40., 0., 0.],
+                    override_trigger_threshold: SwitchDefault {
+                        enabled: false,
+                        content: ControllersTriggerOverrideDescDefault {
+                            trigger_threshold: 0.1,
+                        },
+                    },
+                    override_grip_threshold: SwitchDefault {
+                        enabled: false,
+                        content: ControllersGripOverrideDescDefault {
+                            grip_threshold: 0.1,
+                        },
+                    },
                     haptics_intensity: 1.,
                     haptics_amplitude_curve: 0.4,
                     haptics_min_duration: 0.01,

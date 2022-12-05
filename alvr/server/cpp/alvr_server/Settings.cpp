@@ -140,6 +140,11 @@ void Settings::Load()
 		m_leftControllerRotationOffset[1] = leftControllerRotationOffset[1].get<double>();
 		m_leftControllerRotationOffset[2] = leftControllerRotationOffset[2].get<double>();
 
+		m_overrideTriggerThreshold = config.get("override_trigger_threshold").get<bool>();
+		m_triggerThreshold = config.get("trigger_threshold").get<double>();
+		m_overrideGripThreshold = config.get("override_grip_threshold").get<bool>();
+		m_gripThreshold = config.get("grip_threshold").get<double>();
+
 		m_hapticsIntensity = config.get("haptics_intensity").get<double>();
 		m_hapticsAmplitudeCurve = config.get("haptics_amplitude_curve").get<double>();
 		m_hapticsMinDuration = config.get("haptics_min_duration").get<double>();

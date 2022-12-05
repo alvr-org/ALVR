@@ -296,6 +296,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut angular_velocity_cutoff = 0.0;
     let mut position_offset_left = [0.0; 3];
     let mut rotation_offset_left = [0.0; 3];
+    let mut override_trigger_threshold = false;
+    let mut trigger_threshold = 0.0;
+    let mut override_grip_threshold = false;
+    let mut grip_threshold = 0.0;
     let mut haptics_intensity = 0.0;
     let mut haptics_amplitude_curve = 0.0;
     let mut haptics_min_duration = 0.0;
@@ -318,6 +322,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         angular_velocity_cutoff = config.angular_velocity_cutoff;
         position_offset_left = config.position_offset_left;
         rotation_offset_left = config.rotation_offset_left;
+        override_trigger_threshold = if let Switch::Enabled(config) = config.override_trigger_threshold {
+            trigger_threshold = config.trigger_threshold;
+            true
+        } else {
+            false
+        };
+        override_grip_threshold = if let Switch::Enabled(config) = config.override_grip_threshold {
+            grip_threshold = config.grip_threshold;
+            true
+        } else {
+            false
+        };
         haptics_intensity = config.haptics_intensity;
         haptics_amplitude_curve = config.haptics_amplitude_curve;
         haptics_min_duration = config.haptics_min_duration;
@@ -426,6 +442,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         angular_velocity_cutoff,
         position_offset_left,
         rotation_offset_left,
+        override_trigger_threshold,
+        trigger_threshold,
+        override_grip_threshold,
+        grip_threshold,
         haptics_intensity,
         haptics_amplitude_curve,
         haptics_min_duration,

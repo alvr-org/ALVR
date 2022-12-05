@@ -1146,7 +1146,9 @@ bool OvrController::onPoseUpdate(float predictionS,
             }
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_TRIGGER_CLICK],
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
+                Settings::Instance().m_overrideTriggerThreshold ?
+                    m_triggerValue >= Settings::Instance().m_triggerThreshold :
+                    (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
                 0.0);
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_TRIGGER_TOUCH],
@@ -1193,13 +1195,17 @@ bool OvrController::onPoseUpdate(float predictionS,
                 m_handles[ALVR_INPUT_TRACKPAD_Y], m_joystickY, 0.0);
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_TRIGGER_CLICK],
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
+                Settings::Instance().m_overrideTriggerThreshold ?
+                    m_triggerValue >= Settings::Instance().m_triggerThreshold :
+                    (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
                 0.0);
             vr_driver_input->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_TRIGGER_VALUE], m_triggerValue, 0.0);
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_GRIP_CLICK],
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0,
+                Settings::Instance().m_overrideGripThreshold ?
+                    m_gripValue >= Settings::Instance().m_gripThreshold :
+                    (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0,
                 0.0);
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_SYSTEM_CLICK],
@@ -1230,7 +1236,9 @@ bool OvrController::onPoseUpdate(float predictionS,
                 0.0);
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_GRIP_CLICK],
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0,
+                Settings::Instance().m_overrideGripThreshold ?
+                    m_gripValue >= Settings::Instance().m_gripThreshold :
+                    (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_GRIP_CLICK)) != 0,
                 0.0);
             vr_driver_input->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_GRIP_VALUE], m_gripValue, 0.0);
@@ -1310,7 +1318,9 @@ bool OvrController::onPoseUpdate(float predictionS,
 
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_TRIGGER_CLICK],
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
+                Settings::Instance().m_overrideTriggerThreshold ?
+                    m_triggerValue >= Settings::Instance().m_triggerThreshold :
+                    (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_CLICK)) != 0,
                 0.0);
             vr_driver_input->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_TRIGGER_VALUE], m_triggerValue, 0.0);

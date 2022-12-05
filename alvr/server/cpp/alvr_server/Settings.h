@@ -104,6 +104,11 @@ public:
 	double m_leftControllerPositionOffset[3];
 	double m_leftControllerRotationOffset[3];
 
+	bool m_overrideTriggerThreshold;
+	float m_triggerThreshold;
+	bool m_overrideGripThreshold;
+	float m_gripThreshold;
+
 	float m_hapticsIntensity;
 	float m_hapticsAmplitudeCurve;
 	float m_hapticsMinDuration;

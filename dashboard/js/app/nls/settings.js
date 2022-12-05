@@ -298,6 +298,18 @@ define({
         "_root_headset_controllers_content_rotationOffsetLeft_0.name": "X", // adv
         "_root_headset_controllers_content_rotationOffsetLeft_1.name": "Y", // adv
         "_root_headset_controllers_content_rotationOffsetLeft_2.name": "Z", // adv
+        "_root_headset_controllers_content_overrideTriggerThreshold.name": "Override trigger click activation ", // adv
+        "_root_headset_controllers_content_overrideTriggerThreshold_enabled.description":
+            "Use custom activation point for controller trigger click", // adv
+        "_root_headset_controllers_content_overrideTriggerThreshold_content_triggerThreshold.name": "Trigger click activation point", // adv
+        "_root_headset_controllers_content_overrideTriggerThreshold_content_triggerThreshold.description":
+            "Trigger threshold to register as a click", // adv
+        "_root_headset_controllers_content_overrideGripThreshold.name": "Override grip click activation", // adv
+        "_root_headset_controllers_content_overrideGripThreshold_enabled.description":
+            "Use custom activation point for controller grip click", // adv
+        "_root_headset_controllers_content_overrideGripThreshold_content_gripThreshold.name": "Grip click activation point", // adv
+        "_root_headset_controllers_content_overrideGripThreshold_content_gripThreshold.description":
+            "Grip threshold to register as a click", // adv
         "_root_headset_controllers_content_hapticsIntensity.name": "Haptics intensity",
         "_root_headset_controllers_content_hapticsIntensity.description":
             "Factor to reduce or increase the intensity of the vibration of the controls.",

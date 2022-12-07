@@ -57,6 +57,22 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --features gpl
 
+  check-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
+      - uses: Swatinem/rust-cache@v1
+
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   build-android:
     runs-on: ubuntu-latest
     steps:

@@ -1,5 +1,6 @@
 mod gui_handler;
 
+use alvr_events::Event;
 use futures_util::StreamExt;
 use std::time::Duration;
 use tokio::sync::{
@@ -97,9 +98,9 @@ pub fn http_thread(
         let _ = broadcast_tx.send(());
     });
 }
-async fn websocket_task<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+async fn websocket_task(
     url: url::Url,
-    sender: tokio::sync::mpsc::Sender<T>,
+    sender: tokio::sync::mpsc::Sender<Event>,
     mut recv: tokio::sync::broadcast::Receiver<()>,
 ) {
     // Connect to the event stream, and split it so we can get only the read stream
@@ -111,8 +112,8 @@ async fn websocket_task<T: serde::de::DeserializeOwned + std::fmt::Debug>(
         _ = event_read.for_each(|msg| async {
             match msg {
                 Ok(
-                tungstenite::Message::Text(text)) => {
-                    let event = serde_json::from_str::<T>(&text).unwrap();
+                tungstenite::Message::Binary(data)) => {
+                    let event = bincode::deserialize(&data).unwrap();
 
                     match sender.send(event).await {
                         Ok(_) => (),

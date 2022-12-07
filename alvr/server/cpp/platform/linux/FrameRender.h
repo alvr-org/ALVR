@@ -45,6 +45,7 @@ private:
 
     void setupColorCorrection();
     void setupFoveatedRendering();
+    void setupCustomShaders(const std::string &stage);
 
     uint32_t m_width;
     uint32_t m_height;

@@ -344,7 +344,7 @@ void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDe
         if (m_viveTrackerProxy != nullptr)
             m_viveTrackerProxy->update();
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
         // This has to be set after initialization is done, because something in vrcompositor is
         // setting it to 90Hz in the meantime
         if (!m_refreshRateSet && m_encoder && m_encoder->IsConnected()) {

@@ -158,9 +158,6 @@ pub struct FoveatedRenderingDesc {
 
     #[schema(min = 1., max = 10., step = 1.)]
     pub edge_ratio_y: f32,
-
-    pub oculus_foveation_level: OculusFovetionLevel,
-    pub dynamic_oculus_foveation: bool,
 }
 
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
@@ -254,6 +251,8 @@ pub struct VideoDesc {
     pub seconds_from_vsync_to_photons: f32,
 
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub oculus_foveation_level: OculusFovetionLevel,
+    pub dynamic_oculus_foveation: bool,
     pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
@@ -736,12 +735,12 @@ pub fn session_settings_default() -> SettingsDefault {
                     center_shift_y: 0.1,
                     edge_ratio_x: 4.,
                     edge_ratio_y: 5.,
-                    oculus_foveation_level: OculusFovetionLevelDefault {
-                        variant: OculusFovetionLevelDefaultVariant::HighTop,
-                    },
-                    dynamic_oculus_foveation: true,
                 },
             },
+            oculus_foveation_level: OculusFovetionLevelDefault {
+                variant: OculusFovetionLevelDefaultVariant::HighTop,
+            },
+            dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionDescDefault {

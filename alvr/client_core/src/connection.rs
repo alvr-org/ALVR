@@ -6,12 +6,12 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    AlvrEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    ClientEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
-use alvr_session::{AudioDeviceId, CodecType, OculusFovetionLevel, SessionDesc};
+use alvr_session::{AudioDeviceId, CodecType, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, Haptics, PeerType,
     ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
@@ -410,24 +410,11 @@ async fn stream_pipeline(
         }
     };
 
-    let streaming_start_event = AlvrEvent::StreamingStarted {
-        view_width: stream_config.view_resolution.x,
-        view_height: stream_config.view_resolution.y,
+    let streaming_start_event = ClientEvent::StreamingStarted {
+        view_resolution: stream_config.view_resolution,
         fps: stream_config.fps,
-        oculus_foveation_level: if let Switch::Enabled(foveation_vars) =
-            &settings.video.foveated_rendering
-        {
-            foveation_vars.oculus_foveation_level
-        } else {
-            OculusFovetionLevel::None
-        } as i32,
-        dynamic_oculus_foveation: if let Switch::Enabled(foveation_vars) =
-            &settings.video.foveated_rendering
-        {
-            foveation_vars.dynamic_oculus_foveation
-        } else {
-            false
-        },
+        oculus_foveation_level: settings.video.oculus_foveation_level,
+        dynamic_oculus_foveation: settings.video.dynamic_oculus_foveation,
         extra_latency: settings.headset.extra_latency_mode,
         controller_prediction_multiplier: settings
             .headset
@@ -448,7 +435,7 @@ async fn stream_pipeline(
 
             impl Drop for StreamCloseGuard {
                 fn drop(&mut self) {
-                    EVENT_QUEUE.lock().push_back(AlvrEvent::StreamingStopped);
+                    EVENT_QUEUE.lock().push_back(ClientEvent::StreamingStopped);
 
                     IS_STREAMING.set(false);
 
@@ -519,9 +506,9 @@ async fn stream_pipeline(
             loop {
                 let packet = receiver.recv().await?.header;
 
-                EVENT_QUEUE.lock().push_back(AlvrEvent::Haptics {
+                EVENT_QUEUE.lock().push_back(ClientEvent::Haptics {
                     device_id: packet.path,
-                    duration_s: packet.duration.as_secs_f32(),
+                    duration: packet.duration,
                     frequency: packet.frequency,
                     amplitude: packet.amplitude,
                 });

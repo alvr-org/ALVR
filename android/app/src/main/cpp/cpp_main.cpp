@@ -743,8 +743,6 @@ void eventsThread() {
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStartMethod);
             } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStopMethod);
-            } else if (event.tag == ALVR_EVENT_NAL_READY) {
-                // unused and unreachable
             }
         }
 

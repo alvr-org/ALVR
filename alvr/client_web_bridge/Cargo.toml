@@ -1,0 +1,33 @@
+[package]
+name = "alvr_client_web_bridge"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_common.workspace = true
+alvr_client_core.workspace = true
+
+serde = "1"
+serde_json = "1"
+futures = "0.3"
+headers = "0.3"
+hyper = { version = "0.14", features = [
+    "http2",
+    "server",
+    "stream",
+    "runtime",
+    "tcp",
+] }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "process",
+    "io-util",
+    "net",
+    "fs",
+] }
+tokio-tungstenite = "0.17"
+tokio-util = { version = "0.7", features = ["codec"] }

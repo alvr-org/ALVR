@@ -162,6 +162,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_client_web_bridge"
+version = "20.0.0-dev02"
+dependencies = [
+ "alvr_client_core",
+ "alvr_common",
+ "futures",
+ "headers",
+ "hyper",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tokio-util",
+]
+
+[[package]]
 name = "alvr_commands"
 version = "20.0.0-dev02"
 dependencies = [
@@ -326,6 +342,17 @@ dependencies = [
  "socket2",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "alvr_test"
+version = "20.0.0-dev02"
+dependencies = [
+ "alvr_client_core",
+ "alvr_events",
+ "alvr_session",
+ "alvr_sockets",
+ "serde_json",
 ]
 
 [[package]]

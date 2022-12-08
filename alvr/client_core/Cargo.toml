@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 
 [lib]
-crate_type = ["staticlib", "cdylib"]
+crate_type = ["rlib", "staticlib", "cdylib"]
 
 [dependencies]
 alvr_audio.workspace = true
@@ -37,6 +37,9 @@ ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0", featu
 ndk-context = "0.1"
 ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0" }
 oboe = "0.4" # todo: remove once AudioThread shutdown crash is fixed
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+env_logger = "0.10"
 
 [target.'cfg(not(any(target_os = "android", target_os = "macos")))'.dependencies]
 local-ip-address = "0.4"

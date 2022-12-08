@@ -111,7 +111,7 @@ pub enum AlvrLogLevel {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_path_string_to_hash(path: *const c_char) -> u64 {
+pub unsafe extern "C" fn alvr_path_string_to_id(path: *const c_char) -> u64 {
     alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
 }
 

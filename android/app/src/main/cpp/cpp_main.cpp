@@ -32,46 +32,46 @@ void log(AlvrLogLevel level, const char *format, ...) {
 #define error(...) log(ALVR_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define info(...) log(ALVR_LOG_LEVEL_INFO, __VA_ARGS__)
 
-uint64_t HEAD_ID = alvr_path_string_to_hash("/user/head");
-uint64_t LEFT_HAND_ID = alvr_path_string_to_hash("/user/hand/left");
-uint64_t RIGHT_HAND_ID = alvr_path_string_to_hash("/user/hand/right");
-uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/left/output/haptic");
-uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/right/output/haptic");
+uint64_t HEAD_ID = alvr_path_string_to_id("/user/head");
+uint64_t LEFT_HAND_ID = alvr_path_string_to_id("/user/hand/left");
+uint64_t RIGHT_HAND_ID = alvr_path_string_to_id("/user/hand/right");
+uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/left/output/haptic");
+uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/right/output/haptic");
 
-uint64_t MENU_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/menu/click");
-uint64_t A_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/a/click");
-uint64_t A_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/a/touch");
-uint64_t B_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/b/click");
-uint64_t B_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/b/touch");
-uint64_t X_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/x/click");
-uint64_t X_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
-uint64_t Y_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/y/click");
-uint64_t Y_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/y/touch");
-uint64_t LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/click");
-uint64_t LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
-uint64_t LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/click");
-uint64_t LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
-uint64_t LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");
-uint64_t LEFT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/x");
-uint64_t LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/y");
-uint64_t LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+uint64_t MENU_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/menu/click");
+uint64_t A_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/a/click");
+uint64_t A_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/a/touch");
+uint64_t B_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/b/click");
+uint64_t B_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/b/touch");
+uint64_t X_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/x/click");
+uint64_t X_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/x/touch");
+uint64_t Y_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/y/click");
+uint64_t Y_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/y/touch");
+uint64_t LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/squeeze/click");
+uint64_t LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_id("/user/hand/left/input/squeeze/value");
+uint64_t LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/click");
+uint64_t LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/value");
+uint64_t LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/touch");
+uint64_t LEFT_THUMBSTICK_X_ID = alvr_path_string_to_id("/user/hand/left/input/thumbstick/x");
+uint64_t LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_id("/user/hand/left/input/thumbstick/y");
+uint64_t LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbstick/click");
-uint64_t LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbstick/touch");
-uint64_t LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbrest/touch");
-uint64_t RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/click");
-uint64_t RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/value");
-uint64_t RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/click");
-uint64_t RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/value");
-uint64_t RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/touch");
-uint64_t RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/x");
-uint64_t RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/y");
-uint64_t RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/squeeze/click");
+uint64_t RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_id("/user/hand/right/input/squeeze/value");
+uint64_t RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/click");
+uint64_t RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/value");
+uint64_t RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/touch");
+uint64_t RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_id("/user/hand/right/input/thumbstick/x");
+uint64_t RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_id("/user/hand/right/input/thumbstick/y");
+uint64_t RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbstick/click");
-uint64_t RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbstick/touch");
-uint64_t RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbrest/touch");
 
 const int MAXIMUM_TRACKING_FRAMES = 360;

@@ -17,6 +17,8 @@ mod storage;
 #[cfg(target_os = "android")]
 mod audio;
 
+pub use logging_backend::init_logging;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{
@@ -32,6 +34,7 @@ use alvr_sockets::{
     BatteryPacket, ClientControlPacket, ClientStatistics, Fov, Tracking, ViewsConfig,
 };
 use decoder::EXTERNAL_DECODER;
+use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
@@ -59,6 +62,7 @@ static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
 static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 
+#[derive(Serialize, Deserialize)]
 pub enum ClientEvent {
     StreamingStarted {
         view_resolution: UVec2,

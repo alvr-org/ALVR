@@ -59,7 +59,6 @@ static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
     Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
-static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 pub struct VideoPacket {

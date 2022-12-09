@@ -8,7 +8,6 @@
 #include "PoseHistory.h"
 #include "Settings.h"
 #include "Utils.h"
-#include "VSyncThread.h"
 #include "bindings.h"
 #include <cfloat>
 
@@ -65,7 +64,7 @@ OvrHmd::OvrHmd()
     m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    
+
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
@@ -125,11 +124,6 @@ OvrHmd::~OvrHmd() {
         m_Listener.reset();
     }
 
-    if (m_VSyncThread) {
-        m_VSyncThread->Shutdown();
-        m_VSyncThread.reset();
-    }
-
 #ifdef _WIN32
     if (m_D3DRender) {
         m_D3DRender->Shutdown();
@@ -149,30 +143,30 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
 
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_TrackingSystemName_String,
-                                          Settings::Instance().mTrackingSystemName.c_str());
+                                     vr::Prop_TrackingSystemName_String,
+                                     Settings::Instance().mTrackingSystemName.c_str());
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_ModelNumber_String,
-                                          Settings::Instance().mModelNumber.c_str());
+                                     vr::Prop_ModelNumber_String,
+                                     Settings::Instance().mModelNumber.c_str());
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_ManufacturerName_String,
-                                          Settings::Instance().mManufacturerName.c_str());
+                                     vr::Prop_ManufacturerName_String,
+                                     Settings::Instance().mManufacturerName.c_str());
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_RenderModelName_String,
-                                          Settings::Instance().mRenderModelName.c_str());
+                                     vr::Prop_RenderModelName_String,
+                                     Settings::Instance().mRenderModelName.c_str());
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_RegisteredDeviceType_String,
-                                          Settings::Instance().mRegisteredDeviceType.c_str());
+                                     vr::Prop_RegisteredDeviceType_String,
+                                     Settings::Instance().mRegisteredDeviceType.c_str());
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_DriverVersion_String,
-                                          Settings::Instance().mDriverVersion.c_str());
+                                     vr::Prop_DriverVersion_String,
+                                     Settings::Instance().mDriverVersion.c_str());
     vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_UserIpdMeters_Float, Settings::Instance().m_flIPD);
     vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_UserHeadToEyeDepthMeters_Float, 0.f);
     vr_properties->SetFloatProperty(this->prop_container,
-                                         vr::Prop_DisplayFrequency_Float,
-                                         static_cast<float>(Settings::Instance().m_refreshRate));
+                                    vr::Prop_DisplayFrequency_Float,
+                                    static_cast<float>(Settings::Instance().m_refreshRate));
     vr_properties->SetFloatProperty(
         this->prop_container, vr::Prop_SecondsFromVsyncToPhotons_Float, 0.);
     // vr_properties->SetFloatProperty(this->prop_container,
@@ -209,23 +203,23 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
     // set the icons in steamvr to the default icons used for Oculus Link
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceOff_String,
-                                          "{oculus}/icons/quest_headset_off.png");
+                                     vr::Prop_NamedIconPathDeviceOff_String,
+                                     "{oculus}/icons/quest_headset_off.png");
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceSearching_String,
-                                          "{oculus}/icons/quest_headset_searching.gif");
+                                     vr::Prop_NamedIconPathDeviceSearching_String,
+                                     "{oculus}/icons/quest_headset_searching.gif");
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceSearchingAlert_String,
-                                          "{oculus}/icons/quest_headset_alert_searching.gif");
+                                     vr::Prop_NamedIconPathDeviceSearchingAlert_String,
+                                     "{oculus}/icons/quest_headset_alert_searching.gif");
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceReady_String,
-                                          "{oculus}/icons/quest_headset_ready.png");
+                                     vr::Prop_NamedIconPathDeviceReady_String,
+                                     "{oculus}/icons/quest_headset_ready.png");
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceReadyAlert_String,
-                                          "{oculus}/icons/quest_headset_ready_alert.png");
+                                     vr::Prop_NamedIconPathDeviceReadyAlert_String,
+                                     "{oculus}/icons/quest_headset_ready_alert.png");
     vr_properties->SetStringProperty(this->prop_container,
-                                          vr::Prop_NamedIconPathDeviceStandby_String,
-                                          "{oculus}/icons/quest_headset_standby.png");
+                                     vr::Prop_NamedIconPathDeviceStandby_String,
+                                     "{oculus}/icons/quest_headset_standby.png");
 
 // Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
 // which never applies reprojection
@@ -267,9 +261,6 @@ vr::EVRInitError OvrHmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
             Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
             Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
-
-            m_VSyncThread = std::make_shared<VSyncThread>(Settings::Instance().m_refreshRate);
-            m_VSyncThread->Start();
 
             m_directModeComponent =
                 std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
@@ -313,7 +304,7 @@ void *OvrHmd::GetComponent(const char *component_name_and_version) {
 
 vr::DriverPose_t OvrHmd::GetPose() { return m_pose; }
 
-void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDeviceMotion motion) {
+void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion) {
     if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
         auto pose = vr::DriverPose_t{};
         pose.poseIsValid = true;
@@ -329,10 +320,6 @@ void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDe
         pose.vecPosition[0] = motion.position[0];
         pose.vecPosition[1] = motion.position[1];
         pose.vecPosition[2] = motion.position[2];
-
-        // This value is ignored on Windows (since it uses a direct mode driver), but necessary on
-        // Linux for correct controllers tracking.
-        pose.poseTimeOffset = predictionS;
 
         m_pose = pose;
 

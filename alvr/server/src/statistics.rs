@@ -1,4 +1,4 @@
-use alvr_common::{HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
+use alvr_common::{SlidingWindowAverage, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_events::{EventType, GraphStatistics, Statistics};
 use alvr_sockets::ClientStatistics;
 use std::{
@@ -34,6 +34,7 @@ impl Default for HistoryFrame {
 pub struct StatisticsManager {
     history_buffer: VecDeque<HistoryFrame>,
     max_history_size: usize,
+    nominal_server_frame_interval: Duration,
     last_full_report_instant: Instant,
     last_frame_present_instant: Instant,
     last_frame_present_interval: Duration,
@@ -45,14 +46,16 @@ pub struct StatisticsManager {
     fec_failures_partial_sum: usize,
     fec_percentage: u32,
     battery_gauges: HashMap<u64, f32>,
+    game_render_latency_average: SlidingWindowAverage<Duration>,
 }
 
 impl StatisticsManager {
     // history size used to calculate average total pipeline latency
-    pub fn new(history_size: usize) -> Self {
+    pub fn new(history_size: usize, nominal_server_frame_interval: Duration) -> Self {
         Self {
             history_buffer: VecDeque::new(),
             max_history_size: history_size,
+            nominal_server_frame_interval,
             last_full_report_instant: Instant::now(),
             last_frame_present_instant: Instant::now(),
             last_frame_present_interval: Duration::ZERO,
@@ -64,6 +67,7 @@ impl StatisticsManager {
             fec_failures_partial_sum: 0,
             fec_percentage: 0,
             battery_gauges: HashMap::new(),
+            game_render_latency_average: SlidingWindowAverage::new(history_size),
         }
     }
 
@@ -151,6 +155,8 @@ impl StatisticsManager {
             let game_time_latency = frame
                 .frame_present
                 .saturating_duration_since(frame.tracking_received);
+            self.game_render_latency_average
+                .submit_sample(game_time_latency);
 
             let server_compositor_latency = frame
                 .frame_composed
@@ -242,5 +248,11 @@ impl StatisticsManager {
         } else {
             Duration::ZERO
         }
+    }
+
+    // Used for controllers/trackers prediction calculation. The head prediction uses a different
+    // pathway
+    pub fn get_server_prediction_average(&self) -> Duration {
+        self.game_render_latency_average.get_average() + self.nominal_server_frame_interval
     }
 }

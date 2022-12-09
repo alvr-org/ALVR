@@ -9,7 +9,6 @@
 #endif
 
 class ClientConnection;
-class VSyncThread;
 
 class OvrController;
 class OvrController;
@@ -38,7 +37,7 @@ class OvrHmd : public TrackedDevice,
     virtual void DebugRequest(const char *, char *, uint32_t) {}
     virtual vr::DriverPose_t GetPose();
 
-    void OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDeviceMotion motion);
+    void OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion);
 
     void StartStreaming();
 
@@ -67,6 +66,7 @@ class OvrHmd : public TrackedDevice,
     std::shared_ptr<OvrController> m_rightController;
 
     std::shared_ptr<CEncoder> m_encoder;
+
   private:
     ViewsConfigData views_config;
 
@@ -84,7 +84,6 @@ class OvrHmd : public TrackedDevice,
 #ifdef _WIN32
     std::shared_ptr<CD3DRender> m_D3DRender;
 #endif
-    std::shared_ptr<VSyncThread> m_VSyncThread;
 
 #ifdef _WIN32
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;

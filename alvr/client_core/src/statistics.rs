@@ -16,6 +16,7 @@ pub struct StatisticsManager {
     max_history_size: usize,
     prev_vsync: Instant,
     total_pipeline_latency_average: SlidingWindowAverage<Duration>,
+    server_prediction_average: Duration,
 }
 
 impl StatisticsManager {
@@ -25,6 +26,7 @@ impl StatisticsManager {
             history_buffer: VecDeque::new(),
             prev_vsync: Instant::now(),
             total_pipeline_latency_average: SlidingWindowAverage::new(max_history_size),
+            server_prediction_average: Duration::ZERO,
         }
     }
 
@@ -108,15 +110,11 @@ impl StatisticsManager {
             frame.client_stats.frame_interval = vsync.saturating_duration_since(self.prev_vsync);
             self.prev_vsync = vsync;
         }
+    }
 
-        if let Some(frame) = self
-            .history_buffer
-            .iter_mut()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
-        {
-            frame.client_stats.average_total_pipeline_latency =
-                self.total_pipeline_latency_average.get_average();
-        }
+    // The interval between the pose sent to SteamVR and the corresponding virtual server vsync.
+    pub fn report_server_prediction_average(&mut self, interval: Duration) {
+        self.server_prediction_average = interval;
     }
 
     pub fn summary(&self, target_timestamp: Duration) -> Option<ClientStatistics> {
@@ -126,8 +124,15 @@ impl StatisticsManager {
             .map(|frame| frame.client_stats.clone())
     }
 
-    // latency used for prediction
+    // latency used for head prediction
     pub fn average_total_pipeline_latency(&self) -> Duration {
         self.total_pipeline_latency_average.get_average()
+    }
+
+    // latency used for controllers/trackers prediction
+    pub fn get_tracker_prediction_offset(&self) -> Duration {
+        self.total_pipeline_latency_average
+            .get_average()
+            .saturating_sub(self.server_prediction_average)
     }
 }

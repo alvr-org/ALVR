@@ -416,9 +416,6 @@ async fn stream_pipeline(
         oculus_foveation_level: settings.video.oculus_foveation_level,
         dynamic_oculus_foveation: settings.video.dynamic_oculus_foveation,
         extra_latency: settings.headset.extra_latency_mode,
-        controller_prediction_multiplier: settings
-            .headset
-            .clientside_controller_prediction_multiplier,
     };
 
     let video_receive_loop = {
@@ -585,6 +582,11 @@ async fn stream_pipeline(
                     info!("{SERVER_RESTART_MESSAGE}");
                     set_hud_message(SERVER_RESTART_MESSAGE);
                     break Ok(());
+                }
+                Ok(ServerControlPacket::ServerPredictionAverage(interval)) => {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_server_prediction_average(interval);
+                    }
                 }
                 Ok(_) => (),
                 Err(e) => {

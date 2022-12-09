@@ -37,7 +37,6 @@ pub enum AlvrEvent {
         oculus_foveation_level: i32,
         dynamic_oculus_foveation: bool,
         extra_latency: bool,
-        controller_prediction_multiplier: f32,
     },
     StreamingStopped,
     Haptics {
@@ -186,7 +185,6 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 oculus_foveation_level,
                 dynamic_oculus_foveation,
                 extra_latency,
-                controller_prediction_multiplier,
             } => AlvrEvent::StreamingStarted {
                 view_width: view_resolution.x,
                 view_height: view_resolution.y,
@@ -194,7 +192,6 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 oculus_foveation_level: oculus_foveation_level as i32,
                 dynamic_oculus_foveation,
                 extra_latency,
-                controller_prediction_multiplier,
             },
             ClientEvent::StreamingStopped => AlvrEvent::StreamingStopped,
             ClientEvent::Haptics {
@@ -368,8 +365,13 @@ pub extern "C" fn alvr_send_tracking(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_get_prediction_offset_ns() -> u64 {
-    crate::get_prediction_offset().as_nanos() as _
+pub extern "C" fn alvr_get_head_prediction_offset_ns() -> u64 {
+    crate::get_head_prediction_offset().as_nanos() as _
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_get_tracker_prediction_offset_ns() -> u64 {
+    crate::get_tracker_prediction_offset().as_nanos() as _
 }
 
 #[no_mangle]

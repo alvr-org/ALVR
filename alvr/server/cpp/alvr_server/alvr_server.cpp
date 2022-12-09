@@ -74,8 +74,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 
         this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)&*this->hmd});
         if (this->left_controller && this->right_controller) {
-            this->tracked_devices.insert(
-                {LEFT_HAND_ID, (TrackedDevice *)&*this->left_controller});
+            this->tracked_devices.insert({LEFT_HAND_ID, (TrackedDevice *)&*this->left_controller});
             this->tracked_devices.insert(
                 {RIGHT_HAND_ID, (TrackedDevice *)&*this->right_controller});
         }
@@ -215,6 +214,14 @@ void DeinitializeStreaming() {
     // nothing to do
 }
 
+void SendVSync(float frameIntervalS) {
+    vr::Compositor_FrameTiming timings = {sizeof(vr::Compositor_FrameTiming)};
+    vr::VRServerDriverHost()->GetFrameTimings(&timings, 1);
+
+    // Warning: if the vsync offset deviates too much from 0, the latency starts to increase.
+    vr::VRServerDriverHost()->VsyncEvent(-frameIntervalS * timings.m_nNumVSyncsReadyForUse);
+}
+
 void RequestIDR() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
         g_driver_provider.hmd->m_encoder->InsertIDR();
@@ -222,24 +229,22 @@ void RequestIDR() {
 }
 
 void SetTracking(unsigned long long targetTimestampNs,
-                 float headPredictionS,
-                 float controllerPredictionS,
+                 float controllerPoseTimeOffsetS,
                  const AlvrDeviceMotion *deviceMotions,
                  int motionsCount,
                  OculusHand leftHand,
                  OculusHand rightHand) {
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
-            g_driver_provider.hmd->OnPoseUpdated(
-                targetTimestampNs, headPredictionS, deviceMotions[i]);
+            g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
             if (deviceMotions[i].deviceID == LEFT_HAND_ID && g_driver_provider.left_controller) {
                 g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPredictionS, deviceMotions[i], leftHand);
+                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand);
             } else if (deviceMotions[i].deviceID == RIGHT_HAND_ID &&
                        g_driver_provider.right_controller) {
                 g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPredictionS, deviceMotions[i], rightHand);
+                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand);
             }
         }
     }
@@ -293,8 +298,9 @@ void SetButton(unsigned long long path, AlvrButtonValue value) {
     if (std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
         LEFT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.left_controller->SetButton(path, value);
-    } else if (std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(), RIGHT_CONTROLLER_BUTTON_IDS.end(), path) !=
-               RIGHT_CONTROLLER_BUTTON_IDS.end()) {
+    } else if (std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(),
+                         RIGHT_CONTROLLER_BUTTON_IDS.end(),
+                         path) != RIGHT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.right_controller->SetButton(path, value);
     }
 }

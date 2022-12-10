@@ -15,25 +15,26 @@ alvr_filesystem.workspace = true
 
 env_logger = "0.9"
 
-egui = "0.19"
-eframe = { version = "0.19.0", default-features = false, features = ["wgpu", "default_fonts"] }
+egui = "0.20"
+eframe = { version = "0.20", default-features = false, features = ["wgpu", "default_fonts"] }
 
 reqwest = { version = "0.11", features = ["native-tls", "json"] }
-tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros"] }
-tokio-tungstenite =  { version = "0.17.2", features = ["native-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio-tungstenite =  { version = "0.18", features = ["native-tls"] }
 
 fluent = "0.16"
 fluent-syntax = "0.11"
 fluent-langneg = "0.13"
 
+bincode = "1"
 serde = { version = "1" }
 serde_json = "1"
 settings-schema = { version = "*", features = [
     "rename_camel_case",
 ] }
 unic-langid = "0.9"
-url = "2.3.1"
-futures-util = "0.3.25"
+url = "2"
+futures-util = "0.3"
 
 sysinfo = { version = "0.26", default-features = false }
 

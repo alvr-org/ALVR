@@ -1,6 +1,8 @@
-use crate::{DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
+use crate::{
+    DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
+};
 use alvr_common::{prelude::*, ALVR_VERSION};
-use alvr_events::EventType;
+use alvr_events::{Event, EventType};
 use alvr_sockets::ClientListAction;
 use bytes::Buf;
 use futures::SinkExt;
@@ -42,24 +44,25 @@ async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrRe
     .map_err(err!())
 }
 
-async fn text_websocket(
+async fn websocket<T: Clone + Send + 'static>(
     request: Request<Body>,
-    sender: broadcast::Sender<String>,
+    sender: broadcast::Sender<T>,
+    message_builder: impl Fn(T) -> protocol::Message + Send + Sync + 'static,
 ) -> StrResult<Response<Body>> {
     if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
         tokio::spawn(async move {
             match hyper::upgrade::on(request).await {
                 Ok(upgraded) => {
-                    let mut log_receiver = sender.subscribe();
+                    let mut data_receiver = sender.subscribe();
 
                     let mut ws =
                         WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None)
                             .await;
 
                     loop {
-                        match log_receiver.recv().await {
-                            Ok(line) => {
-                                if let Err(e) = ws.send(protocol::Message::text(line)).await {
+                        match data_receiver.recv().await {
+                            Ok(data) => {
+                                if let Err(e) = ws.send(message_builder(data)).await {
                                     info!("Failed to send log with websocket: {e}");
                                     break;
                                 }
@@ -97,7 +100,7 @@ async fn http_api(
     request: Request<Body>,
     log_sender: broadcast::Sender<String>,
     legacy_events_sender: broadcast::Sender<String>,
-    events_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<Event>,
 ) -> StrResult<Response<Body>> {
     let mut response = match request.uri().path() {
         "/api/settings-schema" => reply_json(&alvr_session::settings_schema(
@@ -142,9 +145,31 @@ async fn http_api(
                 reply(StatusCode::BAD_REQUEST)?
             }
         }
-        "/api/log" => text_websocket(request, log_sender).await?,
-        "/api/events-legacy" => text_websocket(request, legacy_events_sender).await?,
-        "/api/events" => text_websocket(request, events_sender).await?,
+        "/api/log" => websocket(request, log_sender, protocol::Message::Text).await?,
+        "/api/events-legacy" => {
+            websocket(request, legacy_events_sender, protocol::Message::Text).await?
+        }
+        "/api/events" => {
+            websocket(request, events_sender, |e| {
+                protocol::Message::Binary(bincode::serialize(&e).unwrap())
+            })
+            .await?
+        }
+        "/api/video-mirror" => {
+            let sender = {
+                let mut sender_lock = VIDEO_MIRROR_SENDER.lock();
+                if let Some(sender) = &mut *sender_lock {
+                    sender.clone()
+                } else {
+                    let (sender, _) = broadcast::channel(WS_BROADCAST_CAPACITY);
+                    *sender_lock = Some(sender.clone());
+
+                    sender
+                }
+            };
+
+            websocket(request, sender, protocol::Message::Binary).await?
+        }
         "/api/driver/register" => {
             if alvr_commands::driver_registration(
                 &[FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone()],
@@ -313,7 +338,7 @@ async fn http_api(
 pub async fn web_server(
     log_sender: broadcast::Sender<String>,
     legacy_events_sender: broadcast::Sender<String>,
-    events_sender: broadcast::Sender<String>,
+    events_sender: broadcast::Sender<Event>,
 ) -> StrResult {
     let web_server_port = SERVER_DATA_MANAGER
         .read()

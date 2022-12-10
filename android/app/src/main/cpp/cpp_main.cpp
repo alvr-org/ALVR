@@ -32,46 +32,46 @@ void log(AlvrLogLevel level, const char *format, ...) {
 #define error(...) log(ALVR_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define info(...) log(ALVR_LOG_LEVEL_INFO, __VA_ARGS__)
 
-uint64_t HEAD_ID = alvr_path_string_to_hash("/user/head");
-uint64_t LEFT_HAND_ID = alvr_path_string_to_hash("/user/hand/left");
-uint64_t RIGHT_HAND_ID = alvr_path_string_to_hash("/user/hand/right");
-uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/left/output/haptic");
-uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_hash("/user/hand/right/output/haptic");
+uint64_t HEAD_ID = alvr_path_string_to_id("/user/head");
+uint64_t LEFT_HAND_ID = alvr_path_string_to_id("/user/hand/left");
+uint64_t RIGHT_HAND_ID = alvr_path_string_to_id("/user/hand/right");
+uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/left/output/haptic");
+uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/right/output/haptic");
 
-uint64_t MENU_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/menu/click");
-uint64_t A_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/a/click");
-uint64_t A_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/a/touch");
-uint64_t B_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/b/click");
-uint64_t B_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/b/touch");
-uint64_t X_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/x/click");
-uint64_t X_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/x/touch");
-uint64_t Y_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/y/click");
-uint64_t Y_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/y/touch");
-uint64_t LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/click");
-uint64_t LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/squeeze/value");
-uint64_t LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/click");
-uint64_t LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/value");
-uint64_t LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/left/input/trigger/touch");
-uint64_t LEFT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/x");
-uint64_t LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/left/input/thumbstick/y");
-uint64_t LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+uint64_t MENU_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/menu/click");
+uint64_t A_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/a/click");
+uint64_t A_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/a/touch");
+uint64_t B_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/b/click");
+uint64_t B_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/b/touch");
+uint64_t X_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/x/click");
+uint64_t X_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/x/touch");
+uint64_t Y_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/y/click");
+uint64_t Y_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/y/touch");
+uint64_t LEFT_SQUEEZE_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/squeeze/click");
+uint64_t LEFT_SQUEEZE_VALUE_ID = alvr_path_string_to_id("/user/hand/left/input/squeeze/value");
+uint64_t LEFT_TRIGGER_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/click");
+uint64_t LEFT_TRIGGER_VALUE_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/value");
+uint64_t LEFT_TRIGGER_TOUCH_ID = alvr_path_string_to_id("/user/hand/left/input/trigger/touch");
+uint64_t LEFT_THUMBSTICK_X_ID = alvr_path_string_to_id("/user/hand/left/input/thumbstick/x");
+uint64_t LEFT_THUMBSTICK_Y_ID = alvr_path_string_to_id("/user/hand/left/input/thumbstick/y");
+uint64_t LEFT_THUMBSTICK_CLICK_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbstick/click");
-uint64_t LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t LEFT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbstick/touch");
-uint64_t LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t LEFT_THUMBREST_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/left/input/thumbrest/touch");
-uint64_t RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/click");
-uint64_t RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/squeeze/value");
-uint64_t RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/click");
-uint64_t RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/value");
-uint64_t RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_hash("/user/hand/right/input/trigger/touch");
-uint64_t RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/x");
-uint64_t RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_hash("/user/hand/right/input/thumbstick/y");
-uint64_t RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_SQUEEZE_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/squeeze/click");
+uint64_t RIGHT_SQUEEZE_VALUE_ID = alvr_path_string_to_id("/user/hand/right/input/squeeze/value");
+uint64_t RIGHT_TRIGGER_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/click");
+uint64_t RIGHT_TRIGGER_VALUE_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/value");
+uint64_t RIGHT_TRIGGER_TOUCH_ID = alvr_path_string_to_id("/user/hand/right/input/trigger/touch");
+uint64_t RIGHT_THUMBSTICK_X_ID = alvr_path_string_to_id("/user/hand/right/input/thumbstick/x");
+uint64_t RIGHT_THUMBSTICK_Y_ID = alvr_path_string_to_id("/user/hand/right/input/thumbstick/y");
+uint64_t RIGHT_THUMBSTICK_CLICK_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbstick/click");
-uint64_t RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_THUMBSTICK_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbstick/touch");
-uint64_t RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_hash(
+uint64_t RIGHT_THUMBREST_TOUCH_ID = alvr_path_string_to_id(
         "/user/hand/right/input/thumbrest/touch");
 
 const int MAXIMUM_TRACKING_FRAMES = 360;
@@ -581,8 +581,8 @@ void eventsThread() {
             OculusHand rightHand = {false};
 
             AlvrDeviceMotion headMotion = {};
-            uint64_t targetTimestampNs =
-                    vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
+            uint64_t targetTimestampNs = (uint64_t) (vrapi_GetTimeInSeconds() * 1e9) +
+                                         alvr_get_head_prediction_offset_ns();
             auto headTracking =
                     vrapi_GetPredictedTracking2(CTX.ovrContext, (double) targetTimestampNs / 1e9);
             headMotion.device_id = HEAD_ID;
@@ -602,9 +602,8 @@ void eventsThread() {
 
             updateButtons();
 
-            double controllerDisplayTimeS =
-                    vrapi_GetTimeInSeconds() + (double) alvr_get_prediction_offset_ns() / 1e9 *
-                                               CTX.streamingConfig.controller_prediction_multiplier;
+            double controllerDisplayTimeS = vrapi_GetTimeInSeconds() +
+                                            (double) alvr_get_tracker_prediction_offset_ns() / 1e9;
 
             ovrInputCapabilityHeader capabilitiesHeader;
             uint32_t deviceIndex = 0;
@@ -630,14 +629,18 @@ void eventsThread() {
                                                     capabilities.Header.DeviceID,
                                                     controllerDisplayTimeS,
                                                     &tracking) == ovrSuccess) {
-                        if(((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_VALID) && (tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_VALID)) ||
-                            (capabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo)) {
+                        if (((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_VALID) &&
+                             (tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_VALID)) ||
+                            (capabilities.ControllerCapabilities &
+                             ovrControllerCaps_ModelOculusGo)) {
                             AlvrDeviceMotion motion = {};
                             motion.device_id = handID;
                             memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
                             memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
-                            memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
-                            memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
+                            memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity,
+                                   4 * 3);
+                            memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity,
+                                   4 * 3);
 
                             motionVec.push_back(motion);
                         }
@@ -743,8 +746,6 @@ void eventsThread() {
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStartMethod);
             } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
                 java.Env->CallVoidMethod(java.ActivityObject, onStreamStopMethod);
-            } else if (event.tag == ALVR_EVENT_NAL_READY) {
-                // unused and unreachable
             }
         }
 
@@ -754,7 +755,7 @@ void eventsThread() {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject context) {
+Java_alvr_client_VRActivity_initializeNative(JNIEnv *env, jobject context) {
     env->GetJavaVM(&CTX.vm);
     CTX.context = env->NewGlobalRef(context);
 
@@ -790,7 +791,7 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_destroyNative(JNIEnv *_env, jobject _context) {
     vrapi_Shutdown();
 
     alvr_destroy();
@@ -802,7 +803,7 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
     java.Env->DeleteGlobalRef(CTX.context);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
+extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
         JNIEnv *_env, jobject _context, jobject surface) {
     auto java = getOvrJava();
 
@@ -866,7 +867,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
     auto java = getOvrJava();
 
     CTX.refreshRate = CTX.streamingConfig.fps;
@@ -932,7 +933,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
     CTX.streaming = false;
 
     if (CTX.streamSwapchains[0].inner != nullptr) {
@@ -944,8 +945,8 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject 
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _context) {
-    Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(_env, _context);
+Java_alvr_client_VRActivity_onPauseNative(JNIEnv *_env, jobject _context) {
+    Java_alvr_client_VRActivity_onStreamStopNative(_env, _context);
 
     alvr_pause();
     alvr_pause_opengl();
@@ -972,7 +973,7 @@ Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _cont
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
     ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
 
     double displayTime;
@@ -1064,7 +1065,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     CTX.ovrFrameIndex++;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
+extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onBatteryChangedNative(
         JNIEnv *_env, jobject _context, jint battery, jboolean plugged) {
     alvr_send_battery(HEAD_ID, (float) battery / 100.f, (bool) plugged);
     CTX.hmdBattery = battery;

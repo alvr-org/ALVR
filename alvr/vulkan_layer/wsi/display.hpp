@@ -3,21 +3,20 @@
 #include <atomic>
 #include <vulkan/vulkan.h>
 #include <thread>
-
-namespace layer
-{
-class device_private_data;
-}
+#include <condition_variable>
 
 namespace wsi {
 
 class display {
   public:
-    display(layer::device_private_data& device_data, uint32_t queue_family_index, uint32_t queue_index);
+    display();
     ~display();
 
     VkFence get_vsync_fence();
     VkFence peek_vsync_fence() { return vsync_fence;};
+
+    bool is_signaled() const { return m_signaled; }
+    bool wait_for_vsync(uint64_t timeoutNs);
 
     std::atomic<uint64_t> m_vsync_count{0};
 
@@ -26,9 +25,9 @@ class display {
     std::atomic_bool m_exiting{false};
     std::thread m_vsync_thread;
     VkFence vsync_fence = VK_NULL_HANDLE;
-    uint32_t m_queue_family_index;
-    uint32_t m_queue_index;
-    layer::device_private_data& m_device_data;
+    std::mutex m_mutex;
+    std::condition_variable m_cond;
+    std::atomic_bool m_signaled = false;
 };
 
 } // namespace wsi

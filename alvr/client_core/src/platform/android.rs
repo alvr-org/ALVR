@@ -240,11 +240,6 @@ impl VideoDecoderEnqueuer {
     }
 }
 
-pub struct DequeuedFrame {
-    pub timestamp: Duration,
-    pub buffer_ptr: *mut c_void,
-}
-
 struct QueuedImage {
     timestamp: Duration,
     image: Image,
@@ -265,7 +260,7 @@ unsafe impl Send for VideoDecoderDequeuer {}
 
 impl VideoDecoderDequeuer {
     // The application MUST finish using the returned buffer before calling this function again
-    pub fn dequeue_frame(&mut self) -> Option<DequeuedFrame> {
+    pub fn dequeue_frame(&mut self) -> Option<(Duration, *mut c_void)> {
         let mut image_queue_lock = self.image_queue.lock();
 
         if let Some(queued_image) = image_queue_lock.front() {
@@ -286,15 +281,15 @@ impl VideoDecoderDequeuer {
         if let Some(queued_image) = image_queue_lock.front_mut() {
             queued_image.in_use = true;
 
-            Some(DequeuedFrame {
-                timestamp: queued_image.timestamp,
-                buffer_ptr: queued_image
+            Some((
+                queued_image.timestamp,
+                queued_image
                     .image
                     .get_hardware_buffer()
                     .unwrap()
                     .as_ptr()
                     .cast(),
-            })
+            ))
         } else {
             warn!("Video frame queue underflow!");
 

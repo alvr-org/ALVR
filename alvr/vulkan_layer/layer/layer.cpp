@@ -258,51 +258,6 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     modified_info.ppEnabledExtensionNames = modified_enabled_extensions.data();
     modified_info.enabledExtensionCount = modified_enabled_extensions.size();
 
-    // Add one queue to safely submit vsync from our thread
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfo(pCreateInfo->pQueueCreateInfos, pCreateInfo->pQueueCreateInfos + pCreateInfo->queueCreateInfoCount);
-    assert(queueCreateInfo.size() > 0);
-    uint32_t size = 0;
-    inst_data.disp.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &size, nullptr);
-    std::vector<VkQueueFamilyProperties> props(size);
-    inst_data.disp.GetPhysicalDeviceQueueFamilyProperties(physicalDevice, &size, props.data());
-    std::vector<float> queuePriorities;
-    size_t display_queue = 0;
-    for (; display_queue < queueCreateInfo.size() ; ++display_queue)
-    {
-      if (queueCreateInfo[display_queue].queueCount >= props[queueCreateInfo[display_queue].queueFamilyIndex].queueCount)
-        continue;
-      queuePriorities = std::vector<float>(queueCreateInfo[display_queue].pQueuePriorities, queueCreateInfo[display_queue].pQueuePriorities + queueCreateInfo[display_queue].queueCount);
-      queueCreateInfo[display_queue].queueCount += 1;
-      queuePriorities.push_back(1);
-      queueCreateInfo[display_queue].pQueuePriorities = queuePriorities.data();
-      break;
-    }
-    float queue_prio = 1.0;
-    if (display_queue == queueCreateInfo.size()) {
-      for (size_t i = 0; i < props.size(); ++i) {
-        bool used = false;
-        for (const VkDeviceQueueCreateInfo &info : queueCreateInfo) {
-          if (info.queueFamilyIndex == i) {
-            used = true;
-            break;
-          }
-        }
-        if (used)
-          continue;
-        VkDeviceQueueCreateInfo info;
-        info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        info.pNext = nullptr;
-        info.flags = 0;
-        info.queueFamilyIndex = i;
-        info.queueCount = 1;
-        info.pQueuePriorities = &queue_prio;
-        queueCreateInfo.push_back(info);
-        break;
-      }
-    }
-    modified_info.pQueueCreateInfos = queueCreateInfo.data();
-    modified_info.queueCreateInfoCount = queueCreateInfo.size();
-
     // Enable timeline semaphores
     VkPhysicalDeviceFeatures2 features = {};
     features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -334,6 +289,11 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     }
     features12_ptr->timelineSemaphore = true;
 
+    if (modified_info.pEnabledFeatures) {
+        features_ptr->features = *modified_info.pEnabledFeatures;
+        modified_info.pEnabledFeatures = nullptr;
+    }
+
     result = fpCreateDevice(physicalDevice, &modified_info, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
         return result;
@@ -347,7 +307,7 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
 
     std::unique_ptr<device_private_data> device{
         new device_private_data{inst_data, physicalDevice, *pDevice, table, loader_callback}};
-    device->display = std::make_unique<wsi::display>(*device, queueCreateInfo[display_queue].queueFamilyIndex, queueCreateInfo[display_queue].queueCount - 1);
+    device->display = std::make_unique<wsi::display>();
     device_private_data::set(*pDevice, std::move(device));
     return VK_SUCCESS;
 }
@@ -446,6 +406,8 @@ VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDe
     GET_PROC_ADDR(vkGetSwapchainCounterEXT);
     GET_PROC_ADDR(vkRegisterDisplayEventEXT);
     GET_PROC_ADDR(vkDestroyFence);
+    GET_PROC_ADDR(vkWaitForFences);
+    GET_PROC_ADDR(vkGetFenceStatus);
 
     return layer::device_private_data::get(device).disp.GetDeviceProcAddr(device, funcName);
 }

@@ -8,9 +8,8 @@
 namespace alvr_chaperone {
 #include <openvr.h>
 }
-#endif
-
 using namespace alvr_chaperone;
+#endif
 
 static std::mutex chaperone_mutex;
 

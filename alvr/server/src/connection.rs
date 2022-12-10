@@ -3,8 +3,8 @@ use crate::{
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
     AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, VideoPacket, CONTROL_CHANNEL_SENDER,
-    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, LAST_AVERAGE_TOTAL_LATENCY,
-    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -12,7 +12,7 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    HEAD_ID,
+    RelaxedAtomic, HEAD_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
@@ -31,7 +31,7 @@ use std::{
     process::Command,
     sync::{mpsc as smpsc, Arc},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::{
     runtime::Runtime,
@@ -296,6 +296,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut angular_velocity_cutoff = 0.0;
     let mut position_offset_left = [0.0; 3];
     let mut rotation_offset_left = [0.0; 3];
+    let mut override_trigger_threshold = false;
+    let mut trigger_threshold = 0.0;
+    let mut override_grip_threshold = false;
+    let mut grip_threshold = 0.0;
     let mut haptics_intensity = 0.0;
     let mut haptics_amplitude_curve = 0.0;
     let mut haptics_min_duration = 0.0;
@@ -318,6 +322,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         angular_velocity_cutoff = config.angular_velocity_cutoff;
         position_offset_left = config.position_offset_left;
         rotation_offset_left = config.rotation_offset_left;
+        override_trigger_threshold =
+            if let Switch::Enabled(config) = config.override_trigger_threshold {
+                trigger_threshold = config.trigger_threshold;
+                true
+            } else {
+                false
+            };
+        override_grip_threshold = if let Switch::Enabled(config) = config.override_grip_threshold {
+            grip_threshold = config.grip_threshold;
+            true
+        } else {
+            false
+        };
         haptics_intensity = config.haptics_intensity;
         haptics_amplitude_curve = config.haptics_amplitude_curve;
         haptics_min_duration = config.haptics_min_duration;
@@ -426,6 +443,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         angular_velocity_cutoff,
         position_offset_left,
         rotation_offset_left,
+        override_trigger_threshold,
+        trigger_threshold,
+        override_grip_threshold,
+        grip_threshold,
         haptics_intensity,
         haptics_amplitude_curve,
         haptics_min_duration,
@@ -497,6 +518,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         control_sender,
                         control_receiver,
                         streaming_caps.microphone_sample_rate,
+                        fps,
                     ) => {
                         show_warn(res);
                     },
@@ -522,10 +544,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 }
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard;
+struct StreamCloseGuard(Arc<RelaxedAtomic>);
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
+        self.0.set(false);
+
         unsafe { crate::DeinitializeStreaming() };
 
         let on_disconnect_script = SERVER_DATA_MANAGER
@@ -552,6 +576,7 @@ async fn connection_pipeline(
     control_sender: ControlSocketSender<ServerControlPacket>,
     mut control_receiver: ControlSocketReceiver<ClientControlPacket>,
     microphone_sample_rate: u32,
+    refresh_rate: f32,
 ) -> StrResult {
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -590,6 +615,7 @@ async fn connection_pipeline(
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size as _,
+        Duration::from_secs_f32(1.0 / refresh_rate),
     ));
 
     alvr_events::send_event(EventType::ClientConnected);
@@ -609,7 +635,10 @@ async fn connection_pipeline(
     }
 
     unsafe { crate::InitializeStreaming() };
-    let _stream_guard = StreamCloseGuard;
+
+    let is_streaming = Arc::new(RelaxedAtomic::new(true));
+    let _stream_guard = StreamCloseGuard(Arc::clone(&is_streaming));
+
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO).await?;
         Box::pin(async move {
@@ -736,6 +765,21 @@ async fn connection_pipeline(
         }
     };
 
+    // Vsync thread
+    if cfg!(windows) {
+        let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
+        thread::spawn(move || {
+            let mut deadline = Instant::now();
+
+            while is_streaming.value() {
+                unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
+
+                deadline += frame_interval;
+                std::thread::sleep(deadline.saturating_duration_since(Instant::now()));
+            }
+        });
+    }
+
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
         async move {
@@ -780,11 +824,15 @@ async fn connection_pipeline(
         let mut receiver = stream_socket
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
+        let control_sender = Arc::clone(&control_sender);
         async move {
             let tracking_latency_offset_s =
-                settings.headset.tracking_latency_offset_ms as f32 / 1000.;
-            let hmd_multiplier = settings.headset.steamvr_hmd_prediction_multiplier;
-            let controller_multiplier = settings.headset.steamvr_ctrl_prediction_multiplier;
+                if let Switch::Enabled(controllers) = &settings.headset.controllers {
+                    controllers.pose_time_offset_ms
+                } else {
+                    0
+                } as f32
+                    / 1000.;
 
             let tracking_manager = TrackingManager::new(settings.headset);
             loop {
@@ -846,29 +894,35 @@ async fn connection_pipeline(
                     }
                 };
 
-                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_tracking_received(tracking.target_timestamp);
+                let maybe_server_prediction_average =
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_tracking_received(tracking.target_timestamp);
 
-                    let head_prediction_s = tracking_latency_offset_s
-                        + (LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32()
-                            + tracking_latency_offset_s)
-                            * hmd_multiplier;
-                    let controllers_prediction_s = tracking_latency_offset_s
-                        + (LAST_AVERAGE_TOTAL_LATENCY.lock().as_secs_f32()
-                            + tracking_latency_offset_s)
-                            * controller_multiplier;
+                        unsafe {
+                            crate::SetTracking(
+                                tracking.target_timestamp.as_nanos() as _,
+                                tracking_latency_offset_s,
+                                raw_motions.as_ptr(),
+                                raw_motions.len() as _,
+                                left_oculus_hand,
+                                right_oculus_hand,
+                            )
+                        };
 
-                    unsafe {
-                        crate::SetTracking(
-                            tracking.target_timestamp.as_nanos() as _,
-                            head_prediction_s,
-                            controllers_prediction_s,
-                            raw_motions.as_ptr(),
-                            raw_motions.len() as _,
-                            left_oculus_hand,
-                            right_oculus_hand,
-                        )
+                        Some(stats.get_server_prediction_average())
+                    } else {
+                        None
                     };
+
+                if let Some(server_prediction_average) = maybe_server_prediction_average {
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::ServerPredictionAverage(
+                            server_prediction_average,
+                        ))
+                        .await
+                        .ok();
                 }
             }
         }
@@ -881,7 +935,6 @@ async fn connection_pipeline(
         async move {
             loop {
                 let client_stats = receiver.recv().await?.header;
-                *LAST_AVERAGE_TOTAL_LATENCY.lock() = client_stats.average_total_pipeline_latency;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let network_latency = stats.report_statistics(client_stats);

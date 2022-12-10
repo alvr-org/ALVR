@@ -10,7 +10,7 @@ use tokio::sync::broadcast::Sender;
 pub fn init_logging(
     log_sender: Sender<String>,
     legacy_events_sender: Sender<String>,
-    events_sender: Sender<String>,
+    events_sender: Sender<Event>,
 ) {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
         let maybe_event = format!("{message}");
@@ -66,10 +66,8 @@ pub fn init_logging(
             event_type,
         };
         out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
-        // todo: don't stringify event
-        events_sender
-            .send(serde_json::to_string(&event).unwrap())
-            .ok();
+
+        events_sender.send(event).ok();
     });
 
     if cfg!(debug_assertions) {

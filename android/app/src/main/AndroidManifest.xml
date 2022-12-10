@@ -45,7 +45,7 @@
             android:value="V2.0"/>
 
         <activity
-            android:name="com.polygraphene.alvr.OvrActivity"
+            android:name="alvr.client.VRActivity"
             android:configChanges="density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
             android:excludeFromRecents="true"
             android:icon="@drawable/ic_launcher"

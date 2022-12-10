@@ -59,7 +59,6 @@ static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
     Lazy::new(|| Mutex::new(Runtime::new().ok()));
 static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
-static LAST_AVERAGE_TOTAL_LATENCY: Lazy<Mutex<Duration>> = Lazy::new(|| Mutex::new(Duration::ZERO));
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 pub struct VideoPacket {
@@ -72,6 +71,8 @@ static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerCon
 static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
+    Lazy::new(|| Mutex::new(None));
+static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
@@ -329,6 +330,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize)
             };
 
+            if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+                sender.send(config_buffer.clone()).ok();
+            }
+
             sender
                 .send(ServerControlPacket::InitializeDecoder { config_buffer })
                 .ok();
@@ -352,6 +357,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
             // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
             unsafe {
                 ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+            }
+
+            if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+                sender.send(vec_buffer.clone()).ok();
             }
 
             sender

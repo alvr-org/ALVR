@@ -266,18 +266,9 @@ define({
             "Use Headset Tracking System",
         "_root_headset_controllers_content_useHeadsetTrackingSystem.description":
             "Overrides the current controller profile's tracking system name with the current ALVR HMD's tracking system. Enable this in cases such as space calibration with OpenVR space calibrator.",
-        "_root_headset_controllers_content_predictionMultiplier.name":
-            "Client controller prediction multiplier", // adv
-        "_root_headset_controllers_content_predictionMultiplier.description":
-            "Interpolates between prediction on the client-side controllers", // adv
-        "_root_headset_controllers_content_steamvrHmdPredictionMultiplier.name":
-            "SteamVR headset prediction multiplier", // adv
-        "_root_headset_controllers_content_steamvrHmdPredictionMultiplier.description":
-            "Interpolates between prediction on the server-side headset, zero is off, negative values applies smoothing but adds lag",
-        "_root_headset_controllers_content_steamvrCtrlPredictionMultiplier.name":
-            "SteamVR controller prediction multiplier", // adv
-        "_root_headset_controllers_content_steamvrCtrlPredictionMultiplier.description":
-            "Interpolates between prediction on the server-side controllers, zero is off, negative values applies smoothing but adds lag",
+        "_root_headset_controllers_content_poseTimeOffsetMs.name": "Pose time offset (ms)", // adv
+        "_root_headset_controllers_content_poseTimeOffsetMs.description":
+            "Extra latency used in the controller prediction", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.name":
             "Linear velocity cutoff (m/s)", // adv
         "_root_headset_controllers_content_linearVelocityCutoff.description":

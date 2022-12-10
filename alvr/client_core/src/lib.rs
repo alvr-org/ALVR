@@ -70,7 +70,6 @@ pub enum ClientEvent {
         oculus_foveation_level: OculusFovetionLevel,
         dynamic_oculus_foveation: bool,
         extra_latency: bool,
-        controller_prediction_multiplier: f32,
     },
     StreamingStopped,
     Haptics {
@@ -182,9 +181,17 @@ pub fn send_tracking(tracking: Tracking) {
     }
 }
 
-pub fn get_prediction_offset() -> Duration {
+pub fn get_head_prediction_offset() -> Duration {
     if let Some(stats) = &*STATISTICS_MANAGER.lock() {
         stats.average_total_pipeline_latency()
+    } else {
+        Duration::ZERO
+    }
+}
+
+pub fn get_tracker_prediction_offset() -> Duration {
+    if let Some(stats) = &*STATISTICS_MANAGER.lock() {
+        stats.get_tracker_prediction_offset()
     } else {
         Duration::ZERO
     }

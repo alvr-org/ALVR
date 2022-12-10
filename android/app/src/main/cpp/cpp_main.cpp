@@ -581,8 +581,8 @@ void eventsThread() {
             OculusHand rightHand = {false};
 
             AlvrDeviceMotion headMotion = {};
-            uint64_t targetTimestampNs =
-                    vrapi_GetTimeInSeconds() * 1e9 + alvr_get_prediction_offset_ns();
+            uint64_t targetTimestampNs = (uint64_t) (vrapi_GetTimeInSeconds() * 1e9) +
+                                         alvr_get_head_prediction_offset_ns();
             auto headTracking =
                     vrapi_GetPredictedTracking2(CTX.ovrContext, (double) targetTimestampNs / 1e9);
             headMotion.device_id = HEAD_ID;
@@ -602,9 +602,8 @@ void eventsThread() {
 
             updateButtons();
 
-            double controllerDisplayTimeS =
-                    vrapi_GetTimeInSeconds() + (double) alvr_get_prediction_offset_ns() / 1e9 *
-                                               CTX.streamingConfig.controller_prediction_multiplier;
+            double controllerDisplayTimeS = vrapi_GetTimeInSeconds() +
+                                            (double) alvr_get_tracker_prediction_offset_ns() / 1e9;
 
             ovrInputCapabilityHeader capabilitiesHeader;
             uint32_t deviceIndex = 0;
@@ -630,14 +629,18 @@ void eventsThread() {
                                                     capabilities.Header.DeviceID,
                                                     controllerDisplayTimeS,
                                                     &tracking) == ovrSuccess) {
-                        if(((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_VALID) && (tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_VALID)) ||
-                            (capabilities.ControllerCapabilities & ovrControllerCaps_ModelOculusGo)) {
+                        if (((tracking.Status & VRAPI_TRACKING_STATUS_POSITION_VALID) &&
+                             (tracking.Status & VRAPI_TRACKING_STATUS_ORIENTATION_VALID)) ||
+                            (capabilities.ControllerCapabilities &
+                             ovrControllerCaps_ModelOculusGo)) {
                             AlvrDeviceMotion motion = {};
                             motion.device_id = handID;
                             memcpy(&motion.orientation, &tracking.HeadPose.Pose.Orientation, 4 * 4);
                             memcpy(motion.position, &tracking.HeadPose.Pose.Position, 4 * 3);
-                            memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity, 4 * 3);
-                            memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity, 4 * 3);
+                            memcpy(motion.linear_velocity, &tracking.HeadPose.LinearVelocity,
+                                   4 * 3);
+                            memcpy(motion.angular_velocity, &tracking.HeadPose.AngularVelocity,
+                                   4 * 3);
 
                             motionVec.push_back(motion);
                         }

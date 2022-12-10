@@ -136,10 +136,10 @@ extern "C" void (*ReportFecFailure)(int percentage);
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
+extern "C" void SendVSync(float frameIntervalS);
 extern "C" void RequestIDR();
 extern "C" void SetTracking(unsigned long long targetTimestampNs,
-                            float headPredictionS,
-                            float controllerPredictionS,
+                            float controllerPoseTimeOffsetS,
                             const AlvrDeviceMotion *deviceMotions,
                             int motionsCount,
                             OculusHand leftHand,

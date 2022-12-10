@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace 'com.polygraphene.alvr'
+    namespace 'alvr.client'
     buildToolsVersion = "33.0.0"
     compileSdkVersion 33
     ndkVersion "25.1.8937393"

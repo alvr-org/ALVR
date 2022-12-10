@@ -1,4 +1,4 @@
-package com.polygraphene.alvr;
+package alvr.client;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -20,12 +20,12 @@ import androidx.annotation.NonNull;
 
 import java.util.concurrent.Semaphore;
 
-public class OvrActivity extends Activity {
+public class VRActivity extends Activity {
     static {
         System.loadLibrary("native_lib");
     }
 
-    final static String TAG = "OvrActivity";
+    final static String TAG = "VRActivity";
 
     class RenderingCallbacks implements SurfaceHolder.Callback {
         @Override

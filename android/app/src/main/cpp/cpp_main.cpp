@@ -752,7 +752,7 @@ void eventsThread() {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject context) {
+Java_alvr_client_VRActivity_initializeNative(JNIEnv *env, jobject context) {
     env->GetJavaVM(&CTX.vm);
     CTX.context = env->NewGlobalRef(context);
 
@@ -788,7 +788,7 @@ Java_com_polygraphene_alvr_OvrActivity_initializeNative(JNIEnv *env, jobject con
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_destroyNative(JNIEnv *_env, jobject _context) {
     vrapi_Shutdown();
 
     alvr_destroy();
@@ -800,7 +800,7 @@ Java_com_polygraphene_alvr_OvrActivity_destroyNative(JNIEnv *_env, jobject _cont
     java.Env->DeleteGlobalRef(CTX.context);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResumeNative(
+extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
         JNIEnv *_env, jobject _context, jobject surface) {
     auto java = getOvrJava();
 
@@ -864,7 +864,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onResum
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
     auto java = getOvrJava();
 
     CTX.refreshRate = CTX.streamingConfig.fps;
@@ -930,7 +930,7 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStartNative(JNIEnv *_env, jobject
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
     CTX.streaming = false;
 
     if (CTX.streamSwapchains[0].inner != nullptr) {
@@ -942,8 +942,8 @@ Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(JNIEnv *_env, jobject 
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _context) {
-    Java_com_polygraphene_alvr_OvrActivity_onStreamStopNative(_env, _context);
+Java_alvr_client_VRActivity_onPauseNative(JNIEnv *_env, jobject _context) {
+    Java_alvr_client_VRActivity_onStreamStopNative(_env, _context);
 
     alvr_pause();
     alvr_pause_opengl();
@@ -970,7 +970,7 @@ Java_com_polygraphene_alvr_OvrActivity_onPauseNative(JNIEnv *_env, jobject _cont
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
     ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
 
     double displayTime;
@@ -1062,7 +1062,7 @@ Java_com_polygraphene_alvr_OvrActivity_renderNative(JNIEnv *_env, jobject _conte
     CTX.ovrFrameIndex++;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_polygraphene_alvr_OvrActivity_onBatteryChangedNative(
+extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onBatteryChangedNative(
         JNIEnv *_env, jobject _context, jint battery, jboolean plugged) {
     alvr_send_battery(HEAD_ID, (float) battery / 100.f, (bool) plugged);
     CTX.hmdBattery = battery;

@@ -10,12 +10,12 @@ alvr_common = { path = "../common" }
 alvr_session = { path = "../session" }
 alvr_events = { path = "../events" }
 
-egui = "0.19"
-eframe = "0.19.0"
+egui = "0.20"
+eframe = "0.20"
 
 reqwest = { version = "0.11", features = ["native-tls", "json"] }
-tokio = { version = "1.21.2", features = ["rt-multi-thread", "macros"] }
-tokio-tungstenite =  { version = "0.17.2", features = ["native-tls"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio-tungstenite =  { version = "0.18", features = ["native-tls"] }
 
 fluent = "0.16"
 fluent-syntax = "0.11"
@@ -28,8 +28,8 @@ settings-schema = { version = "*", features = [
     "rename_camel_case",
 ] }
 unic-langid = "0.9"
-url = "2.3.1"
-futures-util = "0.3.25"
+url = "2"
+futures-util = "0.3"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"

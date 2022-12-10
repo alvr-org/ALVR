@@ -1,0 +1,23 @@
+[package]
+name = "alvr_launcher"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_commands.workspace = true
+alvr_common.workspace = true
+alvr_filesystem.workspace = true
+
+env_logger = "0.9"
+# eframe = "0.19" # Change back after next release (0.19.1)
+eframe = { git = "https://github.com/emilk/egui", rev = "311eb66", default-features = false, features = ["wgpu", "default_fonts"]}
+serde_json = "1"
+single-instance = "0.3"
+sysinfo = { version = "0.26", default-features = false }
+ureq = { version = "2", default-features = false }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

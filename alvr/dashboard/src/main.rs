@@ -5,6 +5,7 @@ use std::{
     thread,
 };
 
+mod launcher;
 mod worker;
 
 use alvr_dashboard::dashboard::DashboardResponse;
@@ -52,6 +53,10 @@ impl ALVRDashboard {
                 _ => (),
             }
         };
+
+        if connected.is_some() {
+            launcher::launch();
+        }
 
         let mut dashboard = alvr_dashboard::dashboard::Dashboard::new(
             session,
@@ -126,13 +131,13 @@ impl eframe::App for ALVRDashboard {
 }
 
 fn main() {
+    env_logger::init();
     let native_options = eframe::NativeOptions::default();
 
     let (tx1, rx1) = mpsc::channel::<WorkerMsg>();
     let (tx2, rx2) = mpsc::channel::<GuiMsg>();
 
     let handle = thread::spawn(|| worker::http_thread(tx1, rx2));
-
     eframe::run_native(
         "ALVR Dashboard",
         native_options,

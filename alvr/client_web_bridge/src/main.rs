@@ -1,4 +1,7 @@
-use alvr_common::prelude::*;
+use alvr_client_core::ClientEvent;
+use alvr_common::{once_cell::sync::Lazy, prelude::*};
+use futures::SinkExt;
+use headers::HeaderMapExt;
 use hyper::{
     body::Buf,
     header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
@@ -6,7 +9,12 @@ use hyper::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json as json;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
+use tokio::sync::broadcast::{self, error::RecvError};
+use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
+
+static NAL_SENDER: Lazy<broadcast::Sender<(Duration, Vec<u8>)>> =
+    Lazy::new(|| broadcast::channel(256).0);
 
 fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     Response::builder()
@@ -30,6 +38,58 @@ async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrRe
             .reader(),
     )
     .map_err(err!())
+}
+
+async fn websocket<T: Clone + Send + 'static>(
+    request: Request<Body>,
+    sender: broadcast::Sender<T>,
+    message_builder: impl Fn(T) -> protocol::Message + Send + Sync + 'static,
+) -> StrResult<Response<Body>> {
+    if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
+        tokio::spawn(async move {
+            match hyper::upgrade::on(request).await {
+                Ok(upgraded) => {
+                    let mut data_receiver = sender.subscribe();
+
+                    let mut ws =
+                        WebSocketStream::from_raw_socket(upgraded, protocol::Role::Server, None)
+                            .await;
+
+                    loop {
+                        match data_receiver.recv().await {
+                            Ok(data) => {
+                                if let Err(e) = ws.send(message_builder(data)).await {
+                                    info!("Failed to send log with websocket: {e}");
+                                    break;
+                                }
+                            }
+                            Err(RecvError::Lagged(_)) => {
+                                warn!("Some nals have been lost because the buffer is full");
+                            }
+                            Err(RecvError::Closed) => break,
+                        }
+                    }
+
+                    ws.close(None).await.ok();
+                }
+                Err(e) => error!("{e}"),
+            }
+        });
+
+        let mut response = Response::builder()
+            .status(StatusCode::SWITCHING_PROTOCOLS)
+            .body(Body::empty())
+            .map_err(err!())?;
+
+        let h = response.headers_mut();
+        h.typed_insert(headers::Upgrade::websocket());
+        h.typed_insert(headers::SecWebsocketAccept::from(key));
+        h.typed_insert(headers::Connection::upgrade());
+
+        Ok(response)
+    } else {
+        reply(StatusCode::BAD_REQUEST)
+    }
 }
 
 async fn http_api(request: Request<Body>) -> StrResult<Response<Body>> {
@@ -73,8 +133,24 @@ async fn http_api(request: Request<Body>) -> StrResult<Response<Body>> {
             alvr_client_core::resume();
             reply(StatusCode::OK)?
         }
-        // response: ClientEvent or null
-        "/api/poll-event" => reply_json(&alvr_client_core::poll_event())?,
+        // response: ClientEvent or null. The FrameReady variant only returns the timestamp, get the
+        // nal stream through /api/nal-stream
+        "/api/poll-event" => match alvr_client_core::poll_event() {
+            Some(ClientEvent::FrameReady { timestamp, nal }) => {
+                NAL_SENDER.send((timestamp, nal)).ok();
+
+                reply_json(&json::json!({ "FrameReady": timestamp }))?
+            }
+            Some(event) => reply_json(&event)?,
+            None => reply_json(&None::<()>)?,
+        },
+        // packet: [ timestamp (8 bytes secs, 4 bytes nanos) | payload length (8 bytes) | payload ]
+        "/api/nal-stream" => {
+            websocket(request, NAL_SENDER.clone(), |e| {
+                protocol::Message::Binary(bincode::serialize(&e).unwrap())
+            })
+            .await?
+        }
         // request body: { fov: [Fov, Fov], ipd_m: float }
         "/api/send-views-config" => {
             let data = from_request_body::<json::Value>(request).await.unwrap();
@@ -121,7 +197,7 @@ async fn http_api(request: Request<Body>) -> StrResult<Response<Body>> {
         // response: Duration
         "/api/get-prediction-offset" => reply_json(&alvr_client_core::get_prediction_offset())?,
         // request body: { target_timestamp: Duration, vsync_queue: Duration }
-        "api/report-submit" => {
+        "/api/report-submit" => {
             let data = from_request_body::<json::Value>(request).await.unwrap();
             alvr_client_core::report_submit(
                 json::from_value(data["target_timestamp"].clone()).unwrap(),

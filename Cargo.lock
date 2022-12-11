@@ -167,12 +167,14 @@ version = "20.0.0-dev02"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
+ "bincode",
  "futures",
  "headers",
  "hyper",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-tungstenite 0.18.0",
 ]
 
 [[package]]
@@ -221,7 +223,7 @@ dependencies = [
  "serde_json",
  "settings-schema",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.17.2",
  "unic-langid",
  "url",
  "winres",
@@ -290,7 +292,7 @@ dependencies = [
  "settings-schema",
  "tempfile",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.17.2",
  "tokio-util",
  "walkdir",
  "webbrowser 0.8.2",
@@ -2521,9 +2523,9 @@ dependencies = [
 
 [[package]]
 name = "ipnet"
-version = "2.6.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec947b7a4ce12e3b87e353abae7ce124d025b6c7d6c5aea5cc0bcf92e9510ded"
+checksum = "11b0d96e660696543b251e58030cf9787df56da39dab19ad60eae7353040917e"
 
 [[package]]
 name = "is-terminal"
@@ -4529,7 +4531,19 @@ dependencies = [
  "native-tls",
  "tokio",
  "tokio-native-tls",
- "tungstenite",
+ "tungstenite 0.17.3",
+]
+
+[[package]]
+name = "tokio-tungstenite"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54319c93411147bced34cb5609a80e0a8e44c5999c93903a81cd866630ec0bfd"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite 0.18.0",
 ]
 
 [[package]]
@@ -4608,6 +4622,25 @@ dependencies = [
  "native-tls",
  "rand",
  "sha-1",
+ "thiserror",
+ "url",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30ee6ab729cd4cf0fd55218530c4522ed30b7b6081752839b68fcec8d0960788"
+dependencies = [
+ "base64",
+ "byteorder",
+ "bytes",
+ "http",
+ "httparse",
+ "log",
+ "rand",
+ "sha1 0.10.5",
  "thiserror",
  "url",
  "utf-8",

@@ -28,7 +28,19 @@
 			Exception nvencException;
 #ifdef ALVR_GPL
 			Exception swException;
+			if (Settings::Instance().m_force_sw_encoding) {
+				try {
+					Debug("Try to use VideoEncoderSW.\n");
+					m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, listener, encoderWidth, encoderHeight);
+					m_videoEncoder->Initialize();
+					return;
+				}
+				catch (Exception e) {
+					swException = e;
+				}
+			}
 #endif
+			
 			try {
 				Debug("Try to use VideoEncoderVCE.\n");
 				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener, encoderWidth, encoderHeight);

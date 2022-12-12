@@ -198,7 +198,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
 		
-		amf::AMFCapsPtr caps;
+	amf::AMFCapsPtr caps;
         if (amfEncoder->GetCaps(&caps) == AMF_OK) {
             caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
         }
@@ -261,7 +261,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
 		
-		amf::AMFCapsPtr caps;
+	amf::AMFCapsPtr caps;
         if (amfEncoder->GetCaps(&caps) == AMF_OK) {
             caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
         }

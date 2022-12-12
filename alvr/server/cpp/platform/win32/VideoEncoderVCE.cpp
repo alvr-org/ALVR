@@ -21,28 +21,28 @@ AMFPipe::~AMFPipe()
 	m_amfComponentSrc->Drain();
 }
 
-void AMFPipe::doPassthrough() 
+void AMFPipe::doPassthrough(bool hasQueryTimeout) 
 {
-	amf::AMFDataPtr data;
-	auto res = m_amfComponentSrc->QueryOutput(&data);
-	switch (res) {
-		case AMF_OK:
-			if (data) 
-			{
-				m_receiver(data);
-			}
-			break;
-		case AMF_NO_DEVICE:
-			Debug("m_amfComponentSrc->QueryOutput returns AMF_NO_DEVICE.\n");
-			return;
-		case AMF_REPEAT:
-			break;
-		case AMF_EOF:
-			Debug("m_amfComponentSrc->QueryOutput returns AMF_EOF.\n");
-			return;
-		default:
-			Debug("m_amfComponentSrc->QueryOutput returns unknown status.\n");
-			return;
+	amf::AMFDataPtr data = nullptr;
+	if (hasQueryTimeout) {
+		AMF_RESULT res = m_amfComponentSrc->QueryOutput(&data);
+		if (res == AMF_OK && data) {
+			m_receiver(data);
+		} else {
+			Debug("Failed to get AMF component data. Last status: %d.\n", res);
+		}
+	} else {
+		uint8_t timeout = 1000; // 1s timeout
+		AMF_RESULT res = m_amfComponentSrc->QueryOutput(&data);
+		while (!data && --timeout != 0) {
+			amf_sleep(1);
+			res = m_amfComponentSrc->QueryOutput(&data);
+		}
+		if (data) {
+			m_receiver(data);
+		} else {
+			Debug("Failed to get AMF component data. Last status: %d.\n", res);
+		}
 	}
 }
 
@@ -70,22 +70,11 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 }
 
 AMFPipeline::AMFPipeline() 
-	: m_thread(nullptr)
-	, m_pipes()
-	, isRunning(false) 
+	: m_pipes()
 {}
 
 AMFPipeline::~AMFPipeline() 
 {
-	isRunning = false;
-	if (m_thread) 
-	{
-		Debug("AMFPipeline::~AMFPipeline() m_thread->join\n");
-		m_thread->join();
-		Debug("AMFPipeline::~AMFPipeline() m_thread joined.\n");
-		delete m_thread;
-		m_thread = nullptr;
-	}
 	for (auto &pipe : m_pipes) 
 	{
 		delete pipe;
@@ -97,23 +86,12 @@ void AMFPipeline::Connect(AMFPipePtr pipe)
 	m_pipes.emplace_back(pipe);
 }
 
-void AMFPipeline::Run()
+void AMFPipeline::Run(bool hasQueryTimeout)
 {
-	Debug("Start AMFPipeline Run() thread. Thread Id=%d\n", GetCurrentThreadId());
-	while (isRunning)
+	for (auto &pipe : m_pipes)
 	{
-		for (auto &pipe : m_pipes)
-		{
-			pipe->doPassthrough();
-		}
-		amf_sleep(1);
+		pipe->doPassthrough(hasQueryTimeout);
 	}
-}
-
-void AMFPipeline::Start()
-{
-	isRunning = true;
-	m_thread = new std::thread(&AMFPipeline::Run, this);
 }
 
 //
@@ -135,6 +113,7 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_audByteSequence(nullptr)
 	, m_audNalSize(0)
 	, m_audHeaderSize(0)
+	, m_hasQueryTimeout(false)
 {}
 
 VideoEncoderVCE::~VideoEncoderVCE() {
@@ -218,6 +197,14 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / frameRateIn);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
+		
+	amf::AMFCapsPtr caps;
+        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+        }
+        if (m_hasQueryTimeout) {
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
+        }
 	}
 	else
 	{
@@ -273,6 +260,14 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / frameRateIn);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
+		
+	amf::AMFCapsPtr caps;
+        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+        }
+        if (m_hasQueryTimeout) {
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
+        }
 	}
 
 	Debug("Configured %s.\n", pCodec);
@@ -359,8 +354,6 @@ void VideoEncoderVCE::Initialize()
 		m_amfComponents.back(), std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1)
 	));
 
-	m_pipeline->Start();
-
 	Debug("Successfully initialized VideoEncoderVCE.\n");
 }
 
@@ -423,6 +416,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	ApplyFrameProperties(surface, insertIDR);
 
 	m_amfComponents.front()->SubmitInput(surface);
+	m_pipeline->Run(m_hasQueryTimeout);
 }
 
 void VideoEncoderVCE::Receive(AMFDataPtr data)

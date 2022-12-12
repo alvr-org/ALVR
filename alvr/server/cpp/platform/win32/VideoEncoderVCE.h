@@ -19,7 +19,7 @@ public:
 	AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver);
 	virtual ~AMFPipe();
 
-	void doPassthrough();
+	void doPassthrough(bool hasQueryTimeout);
 protected:
 	amf::AMFComponentPtr m_amfComponentSrc;
 	AMFDataReceiver m_receiver;
@@ -42,13 +42,9 @@ public:
 	~AMFPipeline();
 
 	void Connect(AMFPipePtr pipe);
-	void Start();
-	void Run();
-	void RunReceive();
+	void Run(bool hasQueryTimeout);
 protected:
-	std::thread *m_thread;
 	std::vector<AMFPipePtr> m_pipes;
-	bool isRunning;
 };
 
 typedef AMFPipeline* AMFPipelinePtr;
@@ -107,6 +103,8 @@ private:
 	char *m_audByteSequence;
 	int m_audNalSize;
 	int m_audHeaderSize;
+
+	bool m_hasQueryTimeout;
 
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 	void SkipAUD(char **buffer, int *length);

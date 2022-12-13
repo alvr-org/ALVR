@@ -24,6 +24,12 @@
             </li>
 
             <li>
+                <a href="#debug" data-toggle="tab">
+                    <i class="fa fa-bug fa-lg"></i> <%= debug%>
+                </a>
+            </li>
+
+            <li>
                 <a href="#about" data-toggle="tab">
                     <i class="fa fa-info-circle fa-lg"></i> <%= about%>
                 </a>
@@ -89,6 +95,11 @@
                 <button id="removeFirewallRules" type="button" class="btn btn-primary"> <%= removeFirewallRules%>
                 </button>
                 <div id="registeredDriversInst"></div>
+            </div>
+
+            <div class="tab-pane alvrSection fade" id="debug">
+                <br />
+                <button id="captureFrame" type="button" class="btn btn-primary"> <%= captureFrame%> </button>
             </div>
 
             <div class="tab-pane alvrSection fade" id="about">

@@ -120,6 +120,7 @@ pub struct OpenvrConfig {
     pub rc_max_bitrate: i64,
     pub rc_average_bitrate: i64,
     pub enable_aq: i64,
+    pub capture_frame_dir: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -174,6 +175,7 @@ impl Default for SessionDesc {
                 enable_foveated_rendering: false,
                 enable_color_correction: false,
                 linux_async_reprojection: false,
+                capture_frame_dir: "/tmp".into(),
                 ..<_>::default()
             },
             client_connections: HashMap::new(),

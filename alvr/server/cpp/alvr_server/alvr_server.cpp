@@ -311,3 +311,9 @@ void SetBitrateParameters(unsigned long long bitrate_mbs,
         }
     }
 }
+
+void CaptureFrame() {
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
+        g_driver_provider.hmd->m_encoder->CaptureFrame();
+    }
+}

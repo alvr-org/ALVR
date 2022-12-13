@@ -63,7 +63,6 @@ define({
         "使用的视频编解码器 \n如果可能,请选择HEVC以在较低比特率下获得更好的视觉质量",
     "_root_video_codec_H264-choice-.name": "H.264（性能优先）",
     "_root_video_codec_HEVC-choice-.name": "HEVC（画质优先）",
-    "_root_video_clientRequestRealtimeDecoder.name": "请求实时解码器优先级（客户端）", // adv
     "_root_video_encodeBitrateMbs.name": "视频比特率",
     "_root_video_encodeBitrateMbs.description": "视频流的比特率。建议30Mbps",
     // Audio tab

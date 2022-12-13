@@ -50,7 +50,6 @@ define({
         "HEVC предпочитаем для получения более качественного изображения на низком битрейте. Лучше всего с HEVC с видеокартами AMD.",
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "Битрейт видео",
     "_root_video_encodeBitrateMbs.description":
         "Битрейт трансляции видео. 30Мб/с - рекомендуемый. \nБолее высокий битрейт обеспечивает более качественное изображение, но при этом повышается задержка и кол-во сетевого трафика.",

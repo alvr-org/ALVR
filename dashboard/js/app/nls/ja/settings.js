@@ -56,7 +56,6 @@ define({
     "_root_video_codec_H264-choice-.description": "H.264コーデックを使用する",
     "_root_video_codec_HEVC-choice-.name": "HEVC (H.265)",
     "_root_video_codec_HEVC-choice-.description": "HEVC (H.265)コーデックを使用する",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "映像ビットレート",
     "_root_video_encodeBitrateMbs.description":
         "映像ストリーミングのビットレート. 30Mbpsを推奨. \nビットレートを高くすると画質が良くなるが, レイテンシと通信量が多くなる",

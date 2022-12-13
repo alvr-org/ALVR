@@ -54,7 +54,6 @@ define({
         "HEVC은 낮은 비트레이트에서 좋은 품질을 유지합니다. AMD 그래픽카드는 HEVC와 알맞습니다.",
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-    "_root_video_clientRequestRealtimeDecoder.name": "최우선 실시간 디코더 요청 (클라이언트)", // adv
     "_root_video_use10bitEncoder.name": "10비트 인코더 사용하기 (최신 엔비디아 그래픽 카드만)", // adv
     "_root_video_use10bitEncoder.description": "컬러 밴딩을 줄여 비디오 품질을 향상시킵니다",
     "_root_video_encodeBitrateMbs.name": "비디오 비트레이트",

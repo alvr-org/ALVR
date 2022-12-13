@@ -60,7 +60,6 @@ define({
         "HEVC wird aufgrund besserer Videoqualität bei niedrigen Datenraten bevorzugt. AMD GPUs funktionieren am besten mit HEVC.",
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-    "_root_video_clientRequestRealtimeDecoder.name": "Echtzeit-decoder-Berechtigungen anfordern", // adv
     "_root_video_encodeBitrateMbs.name": "Video Bitrate",
     "_root_video_encodeBitrateMbs.description":
         "Streaming-Bitrate. 30Mbps ist empfohlen. \nHöhere Bitraten ergeben ein besseres Bild aber auch mehr Latenz und Netzwerkauslastung",

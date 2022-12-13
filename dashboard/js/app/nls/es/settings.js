@@ -59,7 +59,6 @@ define({
     "_root_video_codec_H264-choice-.description": "Usar el códec h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
     "_root_video_codec_HEVC-choice-.description": "Usar el códec HEVC (h265)",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "Bitrate de video",
     "_root_video_encodeBitrateMbs.description":
         "Transmisión de video a velocidad de bits. Se recomiendan 30Mbps.\nUna mayor tasa de bits resulta en una mejor calidad de imagen pero a costa de una mayor latencia y tráfico de red.",

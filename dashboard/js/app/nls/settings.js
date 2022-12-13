@@ -72,8 +72,6 @@ define({
             "HEVC is preferred to achieve better visual quality on lower bitrates. AMD video cards work best with HEVC.",
         "_root_video_codec_H264-choice-.name": "h264",
         "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-        "_root_video_clientRequestRealtimeDecoder.name":
-            "Request realtime decoder priority (client)", // adv
         "_root_video_use10bitEncoder.name": "Reduce color banding",
         "_root_video_use10bitEncoder.description":
             "This increases visual quality by streaming 10 bits per color channel instead of 8. Works on all supported platforms except nvidia on linux.",

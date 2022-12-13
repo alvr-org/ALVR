@@ -54,8 +54,6 @@ define({
     "_root_video_codec-choice-.description": "H.265 omogoča boljšo sliko z manjšim tokom podatkov.",
     "_root_video_codec_H264-choice-.name": "H.264",
     "_root_video_codec_HEVC-choice-.name": "H.265",
-    "_root_video_clientRequestRealtimeDecoder.name":
-        "Zahtevaj najhitrejšo različico razlagovalca (naprava)", // adv
     "_root_video_encodeBitrateMbs.name": "Podatkovni tok videa",
     "_root_video_encodeBitrateMbs.description":
         "Podatkovni tok video prenosa. Predlagana vsota je 10% zmožnosti brezžične povezave.(Naprava>Nastavitve>Omrežja>Trenutno omrežje>Podrobnosti) \nVišji tok izboljša sliko a podlaša zaostanek in obratno.",

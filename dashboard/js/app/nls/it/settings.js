@@ -51,7 +51,6 @@ define({
         "Usa h265 se possibile per una migliore qualità video a bitrate più bassi",
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "Bitrate per il video",
     "_root_video_encodeBitrateMbs.description":
         "Bitrate della trasmissione video. È consigliato 30Mbps. \nUn bitrate più alto comporta una qualità migliore dell'immagine ma al costo di una maggiore latenza e traffico di rete.",

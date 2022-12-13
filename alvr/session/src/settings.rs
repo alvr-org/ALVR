@@ -228,9 +228,6 @@ pub struct VideoDesc {
 
     // #[schema(advanced)]
     // pub video_coding: VideoCoding,
-    #[schema(advanced)]
-    pub client_request_realtime_decoder: bool,
-
     pub use_10bit_encoder: bool,
 
     #[schema(advanced)]
@@ -644,7 +641,6 @@ pub fn session_settings_default() -> SettingsDefault {
             rate_control_mode: RateControlModeDefault {
                 variant: RateControlModeDefaultVariant::CBR,
             },
-            client_request_realtime_decoder: true,
             use_10bit_encoder: false,
             force_sw_encoding: false,
             sw_thread_count: 0,

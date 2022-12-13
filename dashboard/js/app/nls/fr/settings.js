@@ -55,7 +55,6 @@ define({
     "_root_video_codec_H264-choice-.description": "Utiliser le codec h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
     "_root_video_codec_HEVC-choice-.description": "Utiliser le codec HEVC (h265)",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "Bitrate video",
     "_root_video_encodeBitrateMbs.description":
         "Bitrate du streaming video.30Mbps est recommandé. \nUn bitrate plus élevé donne une meilleure image mais rajoute de la latence ainsi que du traffic réseau.",

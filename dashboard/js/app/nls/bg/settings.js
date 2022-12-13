@@ -50,7 +50,6 @@ define({
         "HEVC се предпочита за постигане на по-добро визуално качество при по-ниски битрейтове. Видеокартите AMD работят най-добре с HEVC.",
     "_root_video_codec_H264-choice-.name": "h264",
     "_root_video_codec_HEVC-choice-.name": "HEVC (h265)",
-    // "_root_video_clientRequestRealtimeDecoder.name": "", // adv
     "_root_video_encodeBitrateMbs.name": "Битрейт на видео",
     "_root_video_encodeBitrateMbs.description":
         "Битрейт на видео излъчване. Препоръчва се 30Mb/сек. \nПо-високата скорост на предаване осигурява по-добро качество на изображението, но увеличава латентността и мрежовия трафик.",

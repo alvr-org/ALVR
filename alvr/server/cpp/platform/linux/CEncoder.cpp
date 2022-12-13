@@ -232,11 +232,17 @@ void CEncoder::Run() {
         // Close enough to present
         ReportPresent(pose->targetTimestampNs);
 
+        if (m_captureFrame) {
+          m_captureFrame = false;
+          render.Wait(frame_info.image, frame_info.semaphore_value);
+          render.CaptureInputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_input.ppm");
+          render.CaptureOutputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_output.ppm");
+        }
+
         render.Render(frame_info.image, frame_info.semaphore_value);
 
         ReportComposed(pose->targetTimestampNs);
 
-        auto encode_start = std::chrono::steady_clock::now();
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
@@ -249,8 +255,6 @@ void CEncoder::Run() {
         }
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
-
-        auto encode_end = std::chrono::steady_clock::now();
 
         m_listener->GetStatistics()->EncodeOutput();
 
@@ -276,3 +280,5 @@ void CEncoder::Stop() {
 void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
+
+void CEncoder::CaptureFrame() { m_captureFrame = true; }

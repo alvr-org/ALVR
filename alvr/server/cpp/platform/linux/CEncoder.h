@@ -21,6 +21,7 @@ class CEncoder : public CThread {
     void OnPacketLoss();
     void InsertIDR();
     bool IsConnected() { return m_connected; }
+    void CaptureFrame();
 
   private:
     void GetFds(int client, int (*fds)[6]);
@@ -32,4 +33,5 @@ class CEncoder : public CThread {
     std::string m_socketPath;
     int m_fds[6];
     bool m_connected = false;
+    std::atomic_bool m_captureFrame = false;
 };

@@ -157,3 +157,5 @@ extern "C" void SetButton(unsigned long long path, AlvrButtonValue value);
 extern "C" void SetBitrateParameters(unsigned long long bitrate_mbs,
                                      bool adaptive_bitrate_enabled,
                                      unsigned long long bitrate_max);
+
+extern "C" void CaptureFrame();

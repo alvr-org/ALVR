@@ -153,4 +153,6 @@ public:
 	int64_t m_nvencRcMaxBitrate;
 	int64_t m_nvencRcAverageBitrate;
 	int64_t m_nvencEnableAQ;
+
+	std::string m_captureFrameDir;
 };

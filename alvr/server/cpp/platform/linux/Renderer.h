@@ -46,6 +46,10 @@ public:
 
     void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore);
 
+    void Wait(uint32_t index, uint64_t waitValue);
+    void CaptureInputFrame(const std::string &filename);
+    void CaptureOutputFrame(const std::string &filename);
+
 private:
     struct InputImage {
         VkImage image;
@@ -66,6 +70,7 @@ private:
     void commandBufferBegin();
     void commandBufferSubmit();
     void addStagingImage(uint32_t width, uint32_t height);
+    void dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename);
     uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const;
 
     struct {
@@ -96,6 +101,9 @@ private:
     VkDescriptorSetLayout m_descriptorLayout;
     VkCommandBuffer m_commandBuffer;
     VkFence m_fence;
+
+    std::string m_inputImageCapture;
+    std::string m_outputImageCapture;
 
     friend class RenderPipeline;
 };

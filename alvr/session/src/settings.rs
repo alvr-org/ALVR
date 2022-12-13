@@ -600,6 +600,8 @@ pub struct ExtraDesc {
     #[schema(advanced)]
     pub exclude_notifications_without_id: bool,
 
+    pub capture_frame_dir: String,
+
     pub patches: Patches,
 }
 
@@ -901,6 +903,11 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             exclude_notifications_without_id: false,
+            capture_frame_dir: if !cfg!(target_os = "linux") {
+                "/tmp".into()
+            } else {
+                "".into()
+            },
             patches: PatchesDefault {
                 remove_sync_popup: false,
                 linux_async_reprojection: false,

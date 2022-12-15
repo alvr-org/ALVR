@@ -1,6 +1,28 @@
 use crate::CONTROL_CHANNEL_SENDER;
-use alvr_common::log::{Level, Record};
+use alvr_common::{
+    log::{Level, Record},
+    once_cell::sync::Lazy,
+    parking_lot::Mutex,
+};
 use alvr_events::EventSeverity;
+use alvr_sockets::ClientControlPacket;
+use std::time::{Duration, Instant};
+
+const LOG_REPEAT_TIMEOUT: Duration = Duration::from_secs(1);
+
+struct RepeatedLogEvent {
+    message: String,
+    repetition_times: usize,
+    initial_timestamp: Instant,
+}
+
+static LAST_LOG_EVENT: Lazy<Mutex<RepeatedLogEvent>> = Lazy::new(|| {
+    Mutex::new(RepeatedLogEvent {
+        message: "".into(),
+        repetition_times: 0,
+        initial_timestamp: Instant::now(),
+    })
+});
 
 pub fn init_logging() {
     fn send_log(record: &Record) {
@@ -12,12 +34,37 @@ pub fn init_logging() {
                 _ => EventSeverity::Debug,
             };
 
-            sender
-                .send(alvr_sockets::ClientControlPacket::Log {
-                    level,
-                    message: format!("{}", record.args()),
-                })
-                .ok();
+            let message = format!("{}", record.args());
+
+            let mut last_log_event_lock = LAST_LOG_EVENT.lock();
+
+            if last_log_event_lock.message == message
+                && last_log_event_lock.initial_timestamp + LOG_REPEAT_TIMEOUT > Instant::now()
+            {
+                last_log_event_lock.repetition_times += 1;
+            } else {
+                if last_log_event_lock.repetition_times > 1 {
+                    sender
+                        .send(ClientControlPacket::Log {
+                            level: EventSeverity::Info,
+                            message: format!(
+                                "Last log line repeated {} times",
+                                last_log_event_lock.repetition_times
+                            ),
+                        })
+                        .ok();
+                }
+
+                *last_log_event_lock = RepeatedLogEvent {
+                    message: message.clone(),
+                    repetition_times: 1,
+                    initial_timestamp: Instant::now(),
+                };
+
+                sender
+                    .send(ClientControlPacket::Log { level, message })
+                    .ok();
+            }
         }
     }
 

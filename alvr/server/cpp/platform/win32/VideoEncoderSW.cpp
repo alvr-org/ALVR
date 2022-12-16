@@ -57,9 +57,10 @@ void VideoEncoderSW::Initialize() {
 	AVDictionary* opt = NULL;
 	av_dict_set(&opt, "preset", "ultrafast", 0);
 	av_dict_set(&opt, "tune", "zerolatency", 0);
+	av_dict_set(&opt, "intra-refresh", "1", 0);
 	switch (m_codec) {
 		case ALVR_CODEC_H264:
-			m_codecContext->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_H264_HIGH_10 : FF_PROFILE_H264_HIGH;
+			m_codecContext->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_H264_HIGH_10_INTRA : (FF_PROFILE_H264_HIGH | FF_PROFILE_H264_INTRA);
 			break;
 		case ALVR_CODEC_H265:
 			m_codecContext->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
@@ -73,7 +74,18 @@ void VideoEncoderSW::Initialize() {
 	m_codecContext->sample_aspect_ratio = AVRational{1, 1};
 	m_codecContext->pix_fmt = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10LE : AV_PIX_FMT_YUV420P;
 	m_codecContext->max_b_frames = 0;
-	m_codecContext->bit_rate = Settings::Instance().mEncodeBitrateMBs * 1000 * 1000;
+	m_codecContext->gop_size = 0;
+	m_codecContext->bit_rate = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
+	m_codecContext->rc_buffer_size = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
+	switch (Settings::Instance().m_rateControlMode) {
+		case ALVR_CBR:
+			av_dict_set(&opt, "nal-hrd", "cbr", 0);
+			break;
+		case ALVR_VBR:
+			av_dict_set(&opt, "nal-hrd", "vbr", 0);
+			break;
+	}
+	m_codecContext->rc_max_rate = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
 	m_codecContext->thread_count = Settings::Instance().m_swThreadCount;
 
 	if((err = avcodec_open2(m_codecContext, codec, &opt))) throw MakeException("Cannot open video encoder codec: %d", err);

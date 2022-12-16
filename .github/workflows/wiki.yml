@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
- 	  - name: Publish to wiki
+      - name: Publish to wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
         with:
           path: "wiki"

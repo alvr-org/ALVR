@@ -113,14 +113,14 @@ pub fn device_model() -> String {
     device_name_raw.to_string_lossy().as_ref().to_owned()
 }
 
-fn get_wifi_manager<'a>(env: &JNIEnv<'a>) -> JObject<'a> {
-    let wifi_service_str = env.new_string("wifi").unwrap();
+fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {
+    let service_str = env.new_string(service_name).unwrap();
 
     env.call_method(
         unsafe { JObject::from_raw(context()) },
         "getSystemService",
         "(Ljava/lang/String;)Ljava/lang/Object;",
-        &[wifi_service_str.into()],
+        &[service_str.into()],
     )
     .unwrap()
     .l()
@@ -132,7 +132,7 @@ pub fn local_ip() -> IpAddr {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let wifi_manager = get_wifi_manager(&env);
+    let wifi_manager = get_system_service(&env, "wifi");
     let wifi_info = env
         .call_method(
             wifi_manager,
@@ -169,7 +169,7 @@ pub fn acquire_wifi_lock() {
             3 // WIFI_MODE_FULL_HIGH_PERF
         };
 
-        let wifi_manager = get_wifi_manager(&env);
+        let wifi_manager = get_system_service(&env, "wifi");
         let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
         let wifi_lock = env
             .call_method(
@@ -197,6 +197,34 @@ pub fn release_wifi_lock() {
 
         // wifi_lock is dropped here
     }
+}
+
+pub fn battery_status() -> (f32, bool) {
+    let vm = vm();
+    let env = vm.attach_current_thread().unwrap();
+
+    const BATTERY_PROPERTY_CAPACITY: i32 = 4;
+
+    let battery_manager = get_system_service(&env, "batterymanager");
+
+    let percentage = env
+        .call_method(
+            battery_manager,
+            "getIntProperty",
+            "(I)I",
+            &[BATTERY_PROPERTY_CAPACITY.into()],
+        )
+        .unwrap()
+        .i()
+        .unwrap();
+
+    let is_charging = env
+        .call_method(battery_manager, "isCharging", "()Z", &[])
+        .unwrap()
+        .z()
+        .unwrap();
+
+    (percentage as f32 / 100.0, is_charging)
 }
 
 pub struct VideoDecoderEnqueuer {

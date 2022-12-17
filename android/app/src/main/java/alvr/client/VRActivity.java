@@ -1,11 +1,6 @@
 package alvr.client;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -48,14 +43,6 @@ public class VRActivity extends Activity {
         }
     }
 
-    final BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context ctxt, Intent intent) {
-            onBatteryChangedNative(intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0),
-                    intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0);
-        }
-    };
-
     boolean mResumed = false;
     Handler mRenderingHandler;
     HandlerThread mRenderingHandlerThread;
@@ -82,8 +69,6 @@ public class VRActivity extends Activity {
 
         SurfaceHolder holder = surfaceView.getHolder();
         holder.addCallback(new RenderingCallbacks());
-
-        this.registerReceiver(this.mBatInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     }
 
     @Override
@@ -168,8 +153,6 @@ public class VRActivity extends Activity {
     native void onStreamStopNative();
 
     native void renderNative();
-
-    native void onBatteryChangedNative(int battery, boolean plugged);
 
     @SuppressWarnings("unused")
     public void onStreamStart() {

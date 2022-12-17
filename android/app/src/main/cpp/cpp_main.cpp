@@ -121,8 +121,6 @@ public:
     Swapchain lobbySwapchains[2] = {};
     Swapchain streamSwapchains[2] = {};
 
-    uint8_t hmdBattery = 0;
-    bool hmdPlugged = false;
     uint8_t lastLeftControllerBattery = 0;
     uint8_t lastRightControllerBattery = 0;
 
@@ -919,7 +917,6 @@ Java_alvr_client_VRActivity_onStreamStartNative(JNIEnv *_env, jobject _context) 
     float ipd = vrapi_GetInterpupillaryDistance(&tracking);
     alvr_send_views_config(fovArr, ipd);
 
-    alvr_send_battery(HEAD_ID, CTX.hmdBattery, CTX.hmdPlugged);
     alvr_send_battery(LEFT_HAND_ID, getControllerBattery(0) / 100.f, false);
     alvr_send_battery(RIGHT_HAND_ID, getControllerBattery(1) / 100.f, false);
 
@@ -1063,11 +1060,4 @@ Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
     vrapi_SubmitFrame2(CTX.ovrContext, &frameDesc);
 
     CTX.ovrFrameIndex++;
-}
-
-extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onBatteryChangedNative(
-        JNIEnv *_env, jobject _context, jint battery, jboolean plugged) {
-    alvr_send_battery(HEAD_ID, (float) battery / 100.f, (bool) plugged);
-    CTX.hmdBattery = battery;
-    CTX.hmdPlugged = plugged;
 }

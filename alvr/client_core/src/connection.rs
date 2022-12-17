@@ -10,11 +10,11 @@ use crate::{
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
-use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
+use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
 use alvr_session::{AudioDeviceId, CodecType, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, ClientConnectionResult, ClientControlPacket, Haptics, PeerType,
-    ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
+    spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
+    PeerType, ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
     VideoFrameHeaderPacket, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
     VIDEO,
 };
@@ -25,7 +25,13 @@ use glyph_brush_layout::{
 };
 use serde_json as json;
 use settings_schema::Switch;
-use std::{future, net::IpAddr, sync::Arc, thread, time::Duration};
+use std::{
+    future,
+    net::IpAddr,
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 use tokio::{
     runtime::Runtime,
     sync::{mpsc as tmpsc, Mutex},
@@ -57,6 +63,7 @@ const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_ERROR_PAUSE: Duration = Duration::from_millis(500);
+const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 const HUD_TEXTURE_WIDTH: usize = 1280;
 const HUD_TEXTURE_HEIGHT: usize = 720;
@@ -418,6 +425,8 @@ async fn stream_pipeline(
         extra_latency: settings.headset.extra_latency_mode,
     };
 
+    IS_STREAMING.set(true);
+
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
@@ -449,8 +458,6 @@ async fn stream_pipeline(
             unsafe {
                 crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
             };
-
-            IS_STREAMING.set(true);
 
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -543,6 +550,41 @@ async fn stream_pipeline(
     } else {
         Box::pin(future::pending())
     };
+
+    // Poll for events that need a constant thread (mainly for the JNI env)
+    thread::spawn(|| {
+        #[cfg(target_os = "android")]
+        let vm = platform::vm();
+        #[cfg(target_os = "android")]
+        let _env = vm.attach_current_thread();
+
+        let mut previous_hmd_battery_status = (0.0, false);
+        let mut battery_poll_deadline = Instant::now();
+
+        while IS_STREAMING.value() {
+            if battery_poll_deadline < Instant::now() {
+                let new_hmd_battery_status = platform::battery_status();
+
+                if new_hmd_battery_status != previous_hmd_battery_status {
+                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                        sender
+                            .send(ClientControlPacket::Battery(BatteryPacket {
+                                device_id: *HEAD_ID,
+                                gauge_value: new_hmd_battery_status.0,
+                                is_plugged: new_hmd_battery_status.1,
+                            }))
+                            .ok();
+
+                        previous_hmd_battery_status = new_hmd_battery_status;
+                    }
+                }
+
+                battery_poll_deadline += BATTERY_POLL_INTERVAL;
+            }
+
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
 
     let keepalive_sender_loop = {
         let control_sender = Arc::clone(&control_sender);

@@ -88,11 +88,6 @@ private:
     VkQueue m_vkQueue;
     Renderer *m_render;
 
-    bool m_use10bit;
-    bool m_usePreProc;
-    uint32_t m_preProcSigma;
-    uint32_t m_preProcTor;
-    EncoderQualityPreset m_encoderQualityPreset;
     amf::AMF_SURFACE_FORMAT m_surfaceFormat;
 
     int m_codec;

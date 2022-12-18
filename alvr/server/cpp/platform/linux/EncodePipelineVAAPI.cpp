@@ -125,11 +125,9 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   {
     case ALVR_CODEC_H264:
       encoder_ctx->profile = FF_PROFILE_H264_MAIN;
-      AVUTIL.av_opt_set(encoder_ctx, "rc_mode", "2", 0); //CBR
       break;
     case ALVR_CODEC_H265:
       encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
-      AVUTIL.av_opt_set(encoder_ctx, "rc_mode", "2", 0);
       break;
   }
 
@@ -142,6 +140,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = INT16_MAX;
   encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
+  encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
+  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
   AVUTIL.av_opt_set_int(encoder_ctx, "idr_interval", INT_MAX, 0);
 

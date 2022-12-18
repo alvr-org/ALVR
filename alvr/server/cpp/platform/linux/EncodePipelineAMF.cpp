@@ -112,11 +112,6 @@ EncodePipelineAMF::EncodePipelineAMF(VkContext &context, Renderer *render, VkFor
     , m_vkPhysicalDevice(context.get_vk_phys_device())
     , m_vkDevice(context.get_vk_device())
     , m_render(render)
-    , m_use10bit(Settings::Instance().m_use10bitEncoder)
-    , m_usePreProc(Settings::Instance().m_usePreproc)
-    , m_preProcSigma(Settings::Instance().m_preProcSigma)
-    , m_preProcTor(Settings::Instance().m_preProcTor)
-    , m_encoderQualityPreset(static_cast<EncoderQualityPreset>(Settings::Instance().m_encoderQualityPreset))
     , m_surfaceFormat(fromVkFormat(format))
     , m_codec(Settings::Instance().m_codec)
     , m_refreshRate(Settings::Instance().m_refreshRate)
@@ -142,11 +137,11 @@ EncodePipelineAMF::EncodePipelineAMF(VkContext &context, Renderer *render, VkFor
     m_amfContext = AMFContext::get()->context();
 
     amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
-    if (m_codec == ALVR_CODEC_H265 && m_use10bit) {
+    if (m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder) {
         inFormat = amf::AMF_SURFACE_R10G10B10A2;
         m_amfComponents.emplace_back(MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat));
     } else {
-        if (m_usePreProc) {
+        if (Settings::Instance().m_usePreproc) {
             inFormat = amf::AMF_SURFACE_NV12;
             m_amfComponents.emplace_back(MakeConverter(m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat));
             m_amfComponents.emplace_back(MakePreprocessor(inFormat, m_renderWidth, m_renderHeight));
@@ -191,14 +186,22 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
-        // Required for CBR to work correctly
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, true);
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_B_PIC_PATTERN, 0);
 
-        switch (m_encoderQualityPreset) {
+        switch (Settings::Instance().m_rateControlMode) {
+        case ALVR_VBR:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
+            break;
+        case ALVR_CBR:
+        default:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, true);
+            break;
+        }
+
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
             break;
@@ -231,13 +234,21 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
     } else {
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
-        // Required for CBR to work correctly
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMESIZE, ::AMFConstructSize(width, height));
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
 
-        switch (m_encoderQualityPreset) {
+        switch (Settings::Instance().m_rateControlMode) {
+        case ALVR_VBR:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
+            break;
+        case ALVR_CBR:
+        default:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
+            break;
+        }
+
+        switch (Settings::Instance().m_encoderQualityPreset) {
         case QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
             break;
@@ -250,7 +261,7 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
             break;
         }
 
-        if (m_use10bit) {
+        if (Settings::Instance().m_use10bitEncoder) {
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_10);
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE, AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN_10);
         } else {
@@ -311,8 +322,8 @@ amf::AMFComponentPtr EncodePipelineAMF::MakePreprocessor(amf::AMF_SURFACE_FORMAT
     AMF_THROW_IF(m_amfFactory->CreateComponent(m_amfContext, AMFPreProcessing, &amfPreprocessor));
 
     AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ENGINE_TYPE, amf::AMF_MEMORY_VULKAN));
-    AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_STRENGTH, m_preProcSigma));
-    AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, m_preProcTor));
+    AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_STRENGTH, Settings::Instance().m_preProcSigma));
+    AMF_THROW_IF(amfPreprocessor->SetProperty(AMF_PP_ADAPTIVE_FILTER_SENSITIVITY, Settings::Instance().m_preProcTor));
 
     AMF_THROW_IF(amfPreprocessor->Init(inputFormat, width, height));
 

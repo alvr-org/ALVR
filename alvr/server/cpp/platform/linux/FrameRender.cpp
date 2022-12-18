@@ -1,6 +1,10 @@
 #include "FrameRender.h"
 #include "alvr_server/Settings.h"
+#include "alvr_server/Logger.h"
 #include "alvr_server/bindings.h"
+
+#include <fstream>
+#include <filesystem>
 
 FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
     : Renderer(ctx.get_vk_instance(), ctx.get_vk_device(), ctx.get_vk_phys_device(), ctx.get_vk_queue_family_index(), ctx.get_vk_device_extensions())
@@ -14,6 +18,10 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
     m_width = Settings::Instance().m_renderWidth;
     m_height = Settings::Instance().m_renderHeight;
 
+    Info("FrameRender: Input size %ux%u", m_width, m_height);
+
+    setupCustomShaders("pre");
+
     if (Settings::Instance().m_enableColorCorrection) {
         setupColorCorrection();
     }
@@ -22,6 +30,8 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
         setupFoveatedRendering();
     }
 
+    setupCustomShaders("post");
+
     if (m_pipelines.empty()) {
         RenderPipeline *pipeline = new RenderPipeline(this);
         pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
@@ -29,6 +39,8 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
         m_pipelines.push_back(pipeline);
         AddPipeline(pipeline);
     }
+
+    Info("FrameRender: Output size %ux%u", m_width, m_height);
 }
 
 FrameRender::~FrameRender()
@@ -130,4 +142,26 @@ void FrameRender::setupFoveatedRendering()
     pipeline->SetPushConstant(RenderPipeline::FragmentShader, &m_foveatedRenderingPushConstants, sizeof(m_foveatedRenderingPushConstants));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
+}
+
+void FrameRender::setupCustomShaders(const std::string &stage)
+{
+    try {
+        const std::filesystem::path shadersDir = std::filesystem::path(g_sessionPath).replace_filename("shaders");
+        for (const auto &entry : std::filesystem::directory_iterator(shadersDir / std::filesystem::path(stage))) {
+            std::ifstream fs(entry.path(), std::ios::binary | std::ios::in);
+            uint32_t magic = 0;
+            fs.read((char*)&magic, sizeof(uint32_t));
+            if (magic != 0x07230203) {
+                Warn("FrameRender: Shader file %s is not a SPIR-V file", entry.path().c_str());
+                continue;
+            }
+            Info("FrameRender: Adding [%s] shader %s", stage.c_str(), entry.path().filename().c_str());
+            RenderPipeline *pipeline = new RenderPipeline(this);
+            pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
+            pipeline->SetShader(RenderPipeline::FragmentShader, entry.path().c_str());
+            m_pipelines.push_back(pipeline);
+            AddPipeline(pipeline);
+        }
+    } catch (...) { }
 }

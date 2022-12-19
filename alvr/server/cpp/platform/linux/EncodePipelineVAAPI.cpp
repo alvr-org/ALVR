@@ -143,6 +143,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
+  encoder_ctx->compression_level = 0x11; // (speed preset, no pre-encoding, vbaq)
   AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
   AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 

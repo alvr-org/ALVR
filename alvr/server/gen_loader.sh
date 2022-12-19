@@ -16,7 +16,7 @@ mkdir -p cpp/platform/linux/generated
 #include <libavutil/hwcontext_vulkan.h>
 #include <libavutil/hwcontext_drm.h>' \
 	--use-extern-c \
-	av_buffer_alloc av_buffer_ref av_buffer_unref av_dict_set av_frame_alloc av_frame_free av_frame_get_buffer av_frame_unref av_free av_hwdevice_ctx_alloc av_hwdevice_ctx_init av_hwdevice_ctx_create av_hwframe_ctx_alloc av_hwframe_ctx_init av_hwframe_get_buffer av_hwframe_map av_hwframe_transfer_data av_log_set_callback av_log_set_level av_opt_set av_strdup av_strerror av_vkfmt_from_pixfmt av_vk_frame_alloc
+	av_buffer_alloc av_buffer_ref av_buffer_unref av_dict_set av_frame_alloc av_frame_free av_frame_get_buffer av_frame_unref av_free av_hwdevice_ctx_alloc av_hwdevice_ctx_init av_hwdevice_ctx_create av_hwframe_ctx_alloc av_hwframe_ctx_init av_hwframe_get_buffer av_hwframe_map av_hwframe_transfer_data av_log_set_callback av_log_set_level av_opt_set av_opt_set_int av_strdup av_strerror av_vkfmt_from_pixfmt av_vk_frame_alloc
 
 ./generate_library_loader.py \
 	--name avcodec \

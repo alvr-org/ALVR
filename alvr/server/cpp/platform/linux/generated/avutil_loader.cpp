@@ -266,6 +266,18 @@ bool avutil::Load(const std::string& library_name) {
   }
 
 #if defined(LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN)
+  av_opt_set_int =
+      reinterpret_cast<decltype(this->av_opt_set_int)>(
+          dlsym(library_, "av_opt_set_int"));
+#else
+  av_opt_set_int = &::av_opt_set_int;
+#endif
+  if (!av_opt_set_int) {
+    CleanUp(true);
+    return false;
+  }
+
+#if defined(LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN)
   av_strdup =
       reinterpret_cast<decltype(this->av_strdup)>(
           dlsym(library_, "av_strdup"));
@@ -348,6 +360,7 @@ void avutil::CleanUp(bool unload) {
   av_log_set_callback = NULL;
   av_log_set_level = NULL;
   av_opt_set = NULL;
+  av_opt_set_int = NULL;
   av_strdup = NULL;
   av_strerror = NULL;
   av_vkfmt_from_pixfmt = NULL;

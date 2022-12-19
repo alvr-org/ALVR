@@ -48,6 +48,7 @@ class avutil {
   decltype(&::av_log_set_callback) av_log_set_callback;
   decltype(&::av_log_set_level) av_log_set_level;
   decltype(&::av_opt_set) av_opt_set;
+  decltype(&::av_opt_set_int) av_opt_set_int;
   decltype(&::av_strdup) av_strdup;
   decltype(&::av_strerror) av_strerror;
   decltype(&::av_vkfmt_from_pixfmt) av_vkfmt_from_pixfmt;

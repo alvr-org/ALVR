@@ -143,7 +143,27 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
-  encoder_ctx->compression_level = 0x11; // (speed preset, no pre-encoding, vbaq)
+  
+  vlVaQualityBits quality = {};
+  quality.valid_setting = 1;
+  quality.vbaq_mode = 1;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
+  switch (settings.m_encoderQualityPreset)
+  {
+    case QUALITY:
+      quality.preset_mode = PRESET_MODE_QUALITY;
+      encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+    break;
+    case BALANCED: 
+      quality.preset_mode = PRESET_MODE_BALANCE;
+      encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+    break;
+    case SPEED:
+      default:
+       quality.preset_mode = PRESET_MODE_SPEED;
+       encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+    break;
+  }
+  
   AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
   AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 

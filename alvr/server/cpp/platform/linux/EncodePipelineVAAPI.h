@@ -10,6 +10,16 @@ extern "C" struct AVFrame;
 
 namespace alvr
 {
+  
+#define PRESET_MODE_SPEED   (0)
+#define PRESET_MODE_BALANCE (1)
+#define PRESET_MODE_QUALITY (2)
+  
+enum EncoderQualityPreset {
+	QUALITY = 0,
+	BALANCED = 1,
+	SPEED = 2
+};
 
 class EncodePipelineVAAPI: public EncodePipeline
 {
@@ -25,5 +35,17 @@ private:
   AVFilterGraph *filter_graph = nullptr;
   AVFilterContext *filter_in = nullptr;
   AVFilterContext *filter_out = nullptr;
-};
+  
+   union vlVaQualityBits {
+      unsigned int quality;
+      struct {
+         unsigned int valid_setting: 1;
+         unsigned int preset_mode: 2;
+         unsigned int pre_encode_mode: 1;
+         unsigned int vbaq_mode: 1;
+         unsigned int reservered: 27;
+      };
+   };
+
+  };;
 }

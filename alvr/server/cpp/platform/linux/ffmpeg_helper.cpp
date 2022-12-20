@@ -4,6 +4,7 @@
 
 #include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
+#include "alvr_server/Logger.h"
 
 #define str(s) #s
 #define LOAD_LIB(LIBNAME, VERSION) \
@@ -99,6 +100,9 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   instanceInfo.enabledExtensionCount = instanceExtensions.size();
   instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
   vkCreateInstance(&instanceInfo, nullptr, &instance);
+  if (!instance) {
+    throw std::runtime_error("Failed to create vulkan instance.");
+  }
 
   uint32_t deviceCount = 0;
   vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -107,15 +111,23 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   for (VkPhysicalDevice dev : physicalDevices) {
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(dev, &props);
-    if (!deviceName || strcmp(props.deviceName, deviceName) == 0) {
+    if (strcmp(props.deviceName, deviceName) == 0) {
       physicalDevice = dev;
-      drmContext = props.vendorID != 0x10de; // nvidia
       break;
     }
+  }
+  if (!physicalDevice && !physicalDevices.empty()) {
+    physicalDevice = physicalDevices[0];
   }
   if (!physicalDevice) {
     throw std::runtime_error("Failed to find vulkan device.");
   }
+
+  VkPhysicalDeviceProperties props;
+  vkGetPhysicalDeviceProperties(physicalDevice, &props);
+  nvidia = props.vendorID == 0x10de;
+  drmContext = !nvidia;
+  Info("Using Vulkan device %s", props.deviceName);
 
   uint32_t deviceExtensionCount = 0;
   vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr);

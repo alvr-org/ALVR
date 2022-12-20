@@ -89,7 +89,16 @@ pub fn init_logging(
         );
     } else {
         // this sink is required to make sure all log gets processed and forwarded to the websocket
-        log_dispatch = log_dispatch.chain(std::io::stdout());
+        if cfg!(target_os = "linux") {
+            log_dispatch = log_dispatch.chain(
+                fs::OpenOptions::new()
+                    .write(true)
+                    .open("/dev/null")
+                    .unwrap(),
+            );
+        } else {
+            log_dispatch = log_dispatch.chain(std::io::stdout());
+        }
     }
 
     log_dispatch

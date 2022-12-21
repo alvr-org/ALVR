@@ -13,6 +13,8 @@ assignees: ''
 ## Description
 <!-- Please add a brief summary of your issue -->
 
+<!-- If this is a regression, please do some bisection testing in the nightly releases history to find the first release that manifests the problem. -->
+
 ## General Troubleshooting
 - [ ] I carefully followed the instructions in the [README](https://github.com/alvr-org/ALVR/blob/master/README.md) and successfully completed the setup wizard
 - [ ] I read the ALVR Wikis [here](https://github.com/polygraphene/ALVR/wiki) and [here](https://github.com/alvr-org/ALVR/wiki)

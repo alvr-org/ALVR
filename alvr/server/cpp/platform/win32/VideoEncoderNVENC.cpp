@@ -208,6 +208,15 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 			config.intraRefreshCnt = Settings::Instance().m_nvencIntraRefreshCount;
 		}
 
+		switch (Settings::Instance().m_entropyCoding) {
+			case ALVR_CABAC:
+				config.entropyCodingMode = NV_ENC_H264_ENTROPY_CODING_MODE_CABAC;
+				break;
+			case ALVR_CAVLC:
+				config.entropyCodingMode = NV_ENC_H264_ENTROPY_CODING_MODE_CAVLC;
+				break;
+		}
+
 		config.maxNumRefFrames = maxNumRefFrames;
 		config.idrPeriod = gopLength;
 	}

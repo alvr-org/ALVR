@@ -86,6 +86,7 @@ void Settings::Load()
 
 		m_codec = (int32_t)config.get("codec").get<int64_t>();
 		m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
+		m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
 		mEncodeBitrateMBs = (int)config.get("encode_bitrate_mbs").get<int64_t>();
 		m_enableAdaptiveBitrate = config.get("enable_adaptive_bitrate").get<bool>();

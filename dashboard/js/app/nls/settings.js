@@ -81,6 +81,11 @@ define({
             "Specifies the bitrate control method (Windows with AMD and nVidia cards only). CBR - constant bitrate, VBR - variable bitrate.",
         "_root_video_rateControlMode_cbr-choice-.name": "CBR",
         "_root_video_rateControlMode_vbr-choice-.name": "VBR",
+        "_root_video_entropyCoding-choice-.name": "Entropy coding method",
+        "_root_video_entropyCoding-choice-.description":
+            "Specifies the entropy coding method (h264 only). CABAC - provides better quality, but may increase the encoder/decoder load, CAVLC - provides worse quality, but may significantly decrease encoder/decoder load.",
+        "_root_video_entropyCoding_cabac-choice-.name": "CABAC",
+        "_root_video_entropyCoding_cavlc-choice-.name": "CAVLC",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":

@@ -61,6 +61,14 @@ void VideoEncoderSW::Initialize() {
 	switch (m_codec) {
 		case ALVR_CODEC_H264:
 			m_codecContext->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_H264_HIGH_10_INTRA : (FF_PROFILE_H264_HIGH | FF_PROFILE_H264_INTRA);
+			switch (Settings::Instance().m_entropyCoding) {
+				case ALVR_CABAC:
+					av_dict_set(&opt, "coder", "ac", 0);
+					break;
+				case ALVR_CAVLC:
+					av_dict_set(&opt, "coder", "vlc", 0);
+					break;
+			}
 			break;
 		case ALVR_CODEC_H265:
 			m_codecContext->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;

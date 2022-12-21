@@ -41,7 +41,7 @@ class OvrHmd : public TrackedDevice,
 
     void StartStreaming();
 
-    void OnStreamStart();
+    void StopStreaming();
 
     void SetViewsConfig(ViewsConfigData config);
 

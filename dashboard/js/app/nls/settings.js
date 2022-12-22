@@ -83,7 +83,7 @@ define({
         "_root_video_rateControlMode_vbr-choice-.name": "VBR",
         "_root_video_entropyCoding-choice-.name": "Entropy coding method",
         "_root_video_entropyCoding-choice-.description":
-            "Specifies the entropy coding method (h264 only). CABAC - provides better quality, but may increase the encoder/decoder load, CAVLC - provides worse quality, but may significantly decrease encoder/decoder load.",
+            "Specifies the entropy coding method (h264 only). CABAC - provides better quality at lower bitrate, but may increase the encoder/decoder latency, CAVLC - provides worse quality that can be compensated with higher bitrate, and may significantly decrease encoder/decoder latency.",
         "_root_video_entropyCoding_cabac-choice-.name": "CABAC",
         "_root_video_entropyCoding_cavlc-choice-.name": "CAVLC",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":

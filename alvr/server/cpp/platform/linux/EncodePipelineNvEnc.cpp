@@ -51,6 +51,14 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
     case ALVR_CODEC_H264:
         AVUTIL.av_opt_set(encoder_ctx, "preset", "llhq", 0);
         AVUTIL.av_opt_set(encoder_ctx, "zerolatency", "1", 0);
+
+        switch (settings.m_entropyCoding) {
+        case ALVR_CABAC:
+            AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
+        case ALVR_CAVLC:
+            AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
+        }
+
         break;
     case ALVR_CODEC_H265:
         AVUTIL.av_opt_set(encoder_ctx, "preset", "llhq", 0);

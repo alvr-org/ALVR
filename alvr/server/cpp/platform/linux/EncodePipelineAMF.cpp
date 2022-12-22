@@ -201,6 +201,15 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
             break;
         }
 
+        switch (Settings::Instance().m_entropyCoding) {
+        case ALVR_CABAC:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CABAC);
+            break;
+        case ALVR_CAVLC:
+            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CALV);
+            break;
+		}
+
         switch (Settings::Instance().m_encoderQualityPreset) {
         case QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);

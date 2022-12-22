@@ -125,6 +125,14 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   {
     case ALVR_CODEC_H264:
       encoder_ctx->profile = FF_PROFILE_H264_MAIN;
+
+      switch (settings.m_entropyCoding) {
+      case ALVR_CABAC:
+          AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
+      case ALVR_CAVLC:
+          AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
+      }
+
       break;
     case ALVR_CODEC_H265:
       encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;

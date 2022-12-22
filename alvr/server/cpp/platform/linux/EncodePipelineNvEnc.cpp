@@ -55,8 +55,10 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
         switch (settings.m_entropyCoding) {
         case ALVR_CABAC:
             AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
+            break;
         case ALVR_CAVLC:
             AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
+            break;
         }
 
         break;

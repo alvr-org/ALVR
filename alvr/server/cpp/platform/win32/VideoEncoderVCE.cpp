@@ -208,13 +208,13 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
 		
-	amf::AMFCapsPtr caps;
-        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-        }
-        if (m_hasQueryTimeout) {
-            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
-        }
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasQueryTimeout) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
+		}
 	}
 	else
 	{
@@ -271,13 +271,13 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
 		
-	amf::AMFCapsPtr caps;
-        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-        }
-        if (m_hasQueryTimeout) {
-            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
-        }
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasQueryTimeout) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
+		}
 	}
 
 	Debug("Configured %s.\n", pCodec);

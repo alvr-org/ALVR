@@ -655,7 +655,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: RateControlModeDefaultVariant::CBR,
             },
             entropy_coding: EntropyCodingDefault {
-                variant: EntropyCodingDefaultVariant::CABAC,
+                variant: EntropyCodingDefaultVariant::CAVLC,
             },
             use_10bit_encoder: false,
             force_sw_encoding: false,

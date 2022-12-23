@@ -364,6 +364,8 @@ void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, float predictionS, AlvrDe
 }
 
 void OvrHmd::StartStreaming() {
+    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
+
     if (m_streamComponentsInitialized) {
         return;
     }
@@ -395,8 +397,6 @@ void OvrHmd::StartStreaming() {
         m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
         m_encoder->Start();
 #endif
-
-        vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, true, 0.0);
     }
 
     m_streamComponentsInitialized = true;

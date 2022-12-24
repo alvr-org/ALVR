@@ -22,7 +22,7 @@ pub use logging_backend::init_logging;
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use alvr_common::{
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
@@ -61,6 +61,13 @@ static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 
 static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
+
+pub struct RenderViewInput {
+    pub position: Vec3,
+    pub orientation: Quat,
+    pub fov: Fov,
+    pub swapchain_index: u32,
+}
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientEvent {
@@ -289,9 +296,30 @@ pub fn start_stream_opengl(swapchain_textures: [Vec<i32>; 2]) {
     unsafe { streamStartNative(swapchain_textures.as_mut_ptr(), swapchain_length as _) };
 }
 
-#[cfg(target_os = "android")]
-pub fn render_lobby_opengl(eye_inputs: [EyeInput; 2], swapchain_indices: [i32; 2]) {
-    unsafe { renderLobbyNative(eye_inputs.as_ptr(), swapchain_indices.as_ptr()) };
+// #[cfg(target_os = "android")]
+pub fn render_lobby_opengl(view_inputs: [RenderViewInput; 2]) {
+    let eye_inputs = [
+        EyeInput {
+            position: view_inputs[0].position.to_array(),
+            orientation: view_inputs[0].orientation.to_array(),
+            fovLeft: view_inputs[0].fov.left,
+            fovRight: view_inputs[0].fov.right,
+            fovTop: view_inputs[0].fov.up,
+            fovBottom: view_inputs[0].fov.down,
+            swapchainIndex: view_inputs[0].swapchain_index as _,
+        },
+        EyeInput {
+            position: view_inputs[1].position.to_array(),
+            orientation: view_inputs[1].orientation.to_array(),
+            fovLeft: view_inputs[1].fov.left,
+            fovRight: view_inputs[1].fov.right,
+            fovTop: view_inputs[1].fov.up,
+            fovBottom: view_inputs[1].fov.down,
+            swapchainIndex: view_inputs[1].swapchain_index as _,
+        },
+    ];
+
+    unsafe { renderLobbyNative(eye_inputs.as_ptr()) };
 }
 
 #[cfg(target_os = "android")]

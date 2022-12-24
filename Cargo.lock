@@ -162,6 +162,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_client_openxr"
+version = "20.0.0-dev03"
+dependencies = [
+ "alvr_client_core",
+ "alvr_common",
+ "alvr_session",
+ "alvr_sockets",
+ "glow",
+ "jni 0.20.0",
+ "khronos-egl",
+ "ndk-glue",
+ "openxr",
+]
+
+[[package]]
 name = "alvr_commands"
 version = "20.0.0-dev03"
 dependencies = [
@@ -2634,6 +2649,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mint"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
+
+[[package]]
 name = "mio"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3082,6 +3103,27 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openxr"
+version = "0.17.1"
+source = "git+https://github.com/zarik5/openxrs#69fbb9d2e3fc379b6b5dabf3236a8154cec20154"
+dependencies = [
+ "libc",
+ "libloading",
+ "ndk-context",
+ "openxr-sys",
+]
+
+[[package]]
+name = "openxr-sys"
+version = "0.9.3"
+source = "git+https://github.com/zarik5/openxrs#69fbb9d2e3fc379b6b5dabf3236a8154cec20154"
+dependencies = [
+ "jni 0.19.0",
+ "libc",
+ "mint",
 ]
 
 [[package]]

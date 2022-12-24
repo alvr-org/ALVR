@@ -661,10 +661,7 @@ void renderEye(
     GL(glUseProgram(0));
 }
 
-void ovrRenderer_RenderFrame(ovrRenderer *renderer,
-                             const EyeInput input[2],
-                             const int swapchainIndex[2],
-                             bool isLobby) {
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], bool isLobby) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -679,12 +676,12 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer,
 
         auto tanl = tan(input[eye].fovLeft);
         auto tanr = tan(input[eye].fovRight);
-        auto tant = tan(-input[eye].fovTop);
-        auto tanb = tan(-input[eye].fovBottom);
+        auto tant = tan(input[eye].fovTop);
+        auto tanb = tan(input[eye].fovBottom);
         auto a = 2 / (tanr - tanl);
-        auto b = 2 / (tanb - tant);
+        auto b = 2 / (tant - tanb);
         auto c = (tanr + tanl) / (tanr - tanl);
-        auto d = (tanb + tant) / (tanb - tant);
+        auto d = (tant + tanb) / (tant - tanb);
         auto proj = glm::mat4(
             a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
         proj = glm::transpose(proj);
@@ -695,7 +692,7 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer,
     // Render the eye images.
     for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
-        ovrFramebuffer_SetCurrent(frameBuffer, swapchainIndex[eye]);
+        ovrFramebuffer_SetCurrent(frameBuffer, input[eye].swapchainIndex);
 
         Recti viewport = {0,
                           0,
@@ -806,7 +803,7 @@ void updateLobbyHudTexture(const unsigned char *data) {
     memcpy(&g_ctx.hudTextureBitmap[0], data, HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
 }
 
-void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]) {
+void renderLobbyNative(const EyeInput eyeInputs[2]) {
     // update text image
     {
         std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
@@ -826,7 +823,7 @@ void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2
         g_ctx.hudTextureBitmap.clear();
     }
 
-    ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, swapchainIndices, true);
+    ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, true);
 }
 
 void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]) {
@@ -839,7 +836,9 @@ void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2
     GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
     EyeInput eyeInputs[2] = {};
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
+    eyeInputs[0].swapchainIndex = swapchainIndices[0];
+    eyeInputs[1].swapchainIndex = swapchainIndices[1];
+    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);
 
     GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
 }

@@ -15,8 +15,8 @@ pub const STATISTICS: u16 = 4;
 pub struct Fov {
     pub left: f32,
     pub right: f32,
-    pub top: f32,
-    pub bottom: f32,
+    pub up: f32,
+    pub down: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

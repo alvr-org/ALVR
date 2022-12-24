@@ -63,14 +63,6 @@ void Settings::Load()
 		m_recommendedTargetWidth = config.get("target_eye_resolution_width").get<int64_t>() * 2;
 		m_recommendedTargetHeight = config.get("target_eye_resolution_height").get<int64_t>();
 
-		for (int eye = 0; eye < 2; eye++)
-		{
-			m_eyeFov[eye].left = 45;
-			m_eyeFov[eye].right = 45;
-			m_eyeFov[eye].top = 45;
-			m_eyeFov[eye].bottom = 45;
-		}
-
 		m_flSecondsFromVsyncToPhotons = (float)config.get("seconds_from_vsync_to_photons").get<double>();
 
 		m_flIPD = 0.063;

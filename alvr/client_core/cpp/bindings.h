@@ -7,6 +7,7 @@ struct EyeInput {
     float fovRight;
     float fovTop;
     float fovBottom;
+    int swapchainIndex;
 };
 
 struct VideoFrame {
@@ -56,7 +57,7 @@ extern "C" void destroyRenderers();
 extern "C" void setStreamConfig(StreamConfigInput config);
 extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
 extern "C" void updateLobbyHudTexture(const unsigned char *data);
-extern "C" void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
+extern "C" void renderLobbyNative(const EyeInput eyeInputs[2]);
 extern "C" void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]);
 
 // nal.h

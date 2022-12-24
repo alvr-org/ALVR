@@ -1,4 +1,4 @@
-use crate::ClientEvent;
+use crate::{ClientEvent, RenderViewInput};
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::Lazy,
@@ -53,11 +53,11 @@ pub enum AlvrEvent {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct EyeFov {
+pub struct AlvrFov {
     left: f32,
     right: f32,
-    top: f32,
-    bottom: f32,
+    up: f32,
+    down: f32,
 }
 
 #[repr(C)]
@@ -81,10 +81,11 @@ pub struct AlvrDeviceMotion {
 
 #[cfg(target_os = "android")]
 #[repr(C)]
-pub struct AlvrEyeInput {
+pub struct AlvrViewInput {
     orientation: AlvrQuat,
     position: [f32; 3],
-    fov: EyeFov,
+    fov: AlvrFov,
+    swapchain_index: u32,
 }
 
 #[repr(C)]
@@ -262,20 +263,20 @@ pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_send_views_config(fov: *const EyeFov, ipd_m: f32) {
+pub unsafe extern "C" fn alvr_send_views_config(fov: *const AlvrFov, ipd_m: f32) {
     let fov = slice::from_raw_parts(fov, 2);
     let fov = [
         Fov {
             left: fov[0].left,
             right: fov[0].right,
-            top: fov[0].top,
-            bottom: fov[0].bottom,
+            up: fov[0].up,
+            down: fov[0].down,
         },
         Fov {
             left: fov[1].left,
             right: fov[1].right,
-            top: fov[1].top,
-            bottom: fov[1].bottom,
+            up: fov[1].up,
+            down: fov[1].down,
         },
     ];
 
@@ -472,41 +473,41 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(
 
 #[cfg(target_os = "android")]
 #[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(
-    eye_inputs: *const AlvrEyeInput,
-    swapchain_indices: *const i32,
-) {
-    let eye_inputs = [
+pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewInput) {
+    let view_inputs = [
         {
-            let o = (*eye_inputs).orientation;
-            let f = (*eye_inputs).fov;
-            crate::EyeInput {
-                orientation: [o.x, o.y, o.z, o.w],
-                position: (*eye_inputs).position,
-                fovLeft: f.left,
-                fovRight: f.right,
-                fovTop: f.top,
-                fovBottom: f.bottom,
+            let o = (*view_inputs).orientation;
+            let f = (*view_inputs).fov;
+            RenderViewInput {
+                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                position: Vec3::from_array((*view_inputs).position),
+                fov: Fov {
+                    left: f.left,
+                    right: f.right,
+                    up: f.up,
+                    down: f.down,
+                },
+                swapchain_index: (*view_inputs).swapchain_index,
             }
         },
         {
-            let o = (*eye_inputs.offset(1)).orientation;
-            let f = (*eye_inputs.offset(1)).fov;
-            crate::EyeInput {
-                orientation: [o.x, o.y, o.z, o.w],
-                position: (*eye_inputs.offset(1)).position,
-                fovLeft: f.left,
-                fovRight: f.right,
-                fovTop: f.top,
-                fovBottom: f.bottom,
+            let o = (*view_inputs.offset(1)).orientation;
+            let f = (*view_inputs.offset(1)).fov;
+            RenderViewInput {
+                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                position: Vec3::from_array((*view_inputs).position),
+                fov: Fov {
+                    left: f.left,
+                    right: f.right,
+                    up: f.up,
+                    down: f.down,
+                },
+                swapchain_index: (*view_inputs.offset(1)).swapchain_index,
             }
         },
     ];
 
-    crate::render_lobby_opengl(
-        eye_inputs,
-        [*swapchain_indices, *swapchain_indices.offset(1)],
-    );
+    crate::render_lobby_opengl(view_inputs);
 }
 
 #[cfg(target_os = "android")]

@@ -295,11 +295,23 @@ pub fn build_client_lib(profile: Profile) {
 pub fn build_quest_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
-    build_client_lib(profile);
+    let build_dir = afs::build_dir().join("alvr_client_quest");
+    sh.create_dir(&build_dir).unwrap();
 
-    let is_nightly = version::version().contains("nightly");
+    let mut flags = vec![];
+    match profile {
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution")
+        }
+        Profile::Release => flags.push("--release"),
+        Profile::Debug => (),
+    }
+    let flags_ref = &flags;
 
-    let package_type = if is_nightly { "Nightly" } else { "Stable" };
+    let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));
+
+    cmd!(sh, "cargo apk build {flags_ref...}").run().unwrap();
 
     let build_type = if matches!(profile, Profile::Debug) {
         "debug"
@@ -308,30 +320,19 @@ pub fn build_quest_client(profile: Profile) {
         "release"
     };
 
-    let build_task = format!("assemble{package_type}{build_type}");
-
-    let client_dir = afs::workspace_dir().join("android");
-
     const ARTIFACT_NAME: &str = "alvr_client_quest";
 
-    let _push_guard = sh.push_dir(&client_dir);
-    if cfg!(windows) {
-        cmd!(sh, "cmd /C gradlew.bat {build_task}").run().unwrap();
-    } else {
-        cmd!(sh, "bash ./gradlew {build_task}").run().unwrap();
-    };
-
-    sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
-        .unwrap();
-    sh.copy_file(
-        client_dir
-            .join("app/build/outputs/apk")
-            .join(package_type)
-            .join(build_type)
-            .join(format!("app-{package_type}-{build_type}.apk")),
-        afs::build_dir()
-            .join(ARTIFACT_NAME)
-            .join(format!("{ARTIFACT_NAME}.apk")),
-    )
-    .unwrap();
+    // sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
+    //     .unwrap();
+    // sh.copy_file(
+    //     afs::target_dir()
+    //         .join("app/build/outputs/apk")
+    //         .join(package_type)
+    //         .join(build_type)
+    //         .join(format!("app-{package_type}-{build_type}.apk")),
+    //     afs::build_dir()
+    //         .join(ARTIFACT_NAME)
+    //         .join(format!("{ARTIFACT_NAME}.apk")),
+    // )
+    // .unwrap();
 }

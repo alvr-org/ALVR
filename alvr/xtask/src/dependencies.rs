@@ -226,7 +226,7 @@ fn get_oculus_openxr_mobile_loader() {
     )
     .unwrap();
 
-    let destination_dir = afs::deps_dir().join("android/oculus_openxr/arm64-v8a");
+    let destination_dir = afs::deps_dir().join("quest_openxr/arm64-v8a");
     fs::create_dir_all(&destination_dir).unwrap();
 
     fs::copy(

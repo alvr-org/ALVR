@@ -1,10 +1,10 @@
 #pragma once
 
 struct EyeFov {
-    float left = 49.;
-    float right = 45.;
-    float top = 50.;
-    float bottom = 48.;
+    float left;
+    float right;
+    float up;
+    float down;
 };
 
 struct AlvrQuat {

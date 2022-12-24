@@ -1,4 +1,4 @@
-use crate::{command, dependencies, version};
+use crate::{command, dependencies};
 use alvr_filesystem::{self as afs, Layout};
 use std::{
     fmt::{self, Display, Formatter},
@@ -295,9 +295,6 @@ pub fn build_client_lib(profile: Profile) {
 pub fn build_quest_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
-    let build_dir = afs::build_dir().join("alvr_client_quest");
-    sh.create_dir(&build_dir).unwrap();
-
     let mut flags = vec![];
     match profile {
         Profile::Distribution => {
@@ -309,30 +306,25 @@ pub fn build_quest_client(profile: Profile) {
     }
     let flags_ref = &flags;
 
+    let target_dir = afs::target_dir();
+
     let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));
-
-    cmd!(sh, "cargo apk build {flags_ref...}").run().unwrap();
-
-    let build_type = if matches!(profile, Profile::Debug) {
-        "debug"
-    } else {
-        // Release or Distribution
-        "release"
-    };
+    cmd!(
+        sh,
+        "cargo apk build --target-dir={target_dir} {flags_ref...}"
+    )
+    .run()
+    .unwrap();
 
     const ARTIFACT_NAME: &str = "alvr_client_quest";
 
-    // sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
-    //     .unwrap();
-    // sh.copy_file(
-    //     afs::target_dir()
-    //         .join("app/build/outputs/apk")
-    //         .join(package_type)
-    //         .join(build_type)
-    //         .join(format!("app-{package_type}-{build_type}.apk")),
-    //     afs::build_dir()
-    //         .join(ARTIFACT_NAME)
-    //         .join(format!("{ARTIFACT_NAME}.apk")),
-    // )
-    // .unwrap();
+    let artifacts_dir = afs::target_dir().join(profile.to_string());
+    let build_dir = afs::build_dir().join(ARTIFACT_NAME);
+
+    sh.create_dir(&build_dir).unwrap();
+    sh.copy_file(
+        artifacts_dir.join("apk/alvr_client_openxr.apk"),
+        build_dir.join(format!("{ARTIFACT_NAME}.apk")),
+    )
+    .unwrap();
 }

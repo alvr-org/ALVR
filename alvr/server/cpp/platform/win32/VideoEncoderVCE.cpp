@@ -165,6 +165,16 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
 				break;
 		}
+		
+		switch (Settings::Instance().m_entropyCoding) {
+			case ALVR_CABAC:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CABAC);
+				break;
+			case ALVR_CAVLC:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CALV);
+				break;
+		}
+
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FRAMESIZE, ::AMFConstructSize(width, height));
@@ -198,13 +208,13 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
 		
-	amf::AMFCapsPtr caps;
-        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-        }
-        if (m_hasQueryTimeout) {
-            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
-        }
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasQueryTimeout) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
+		}
 	}
 	else
 	{
@@ -261,13 +271,13 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
 		
-	amf::AMFCapsPtr caps;
-        if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-            caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-        }
-        if (m_hasQueryTimeout) {
-            amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
-        }
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasQueryTimeout) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
+		}
 	}
 
 	Debug("Configured %s.\n", pCodec);

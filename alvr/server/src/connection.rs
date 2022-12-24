@@ -407,6 +407,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         rate_control_mode: settings.video.rate_control_mode as u32,
+        entropy_coding: settings.video.entropy_coding as u32,
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,
         use_preproc: amf_controls.use_preproc,

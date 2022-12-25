@@ -71,6 +71,7 @@ pub async fn bind(
     let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
 
     set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes)?;
+    socket.set_reuse_address(true).ok();
 
     TcpListener::from_std(socket.into()).map_err(err!())
 }

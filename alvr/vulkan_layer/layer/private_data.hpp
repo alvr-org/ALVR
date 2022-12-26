@@ -188,9 +188,6 @@ class instance_private_data {
 
     const instance_dispatch_table disp;
 
-    uint32_t first_plane_index;
-    static const int num_planes = 1;
-
   private:
     /**
      * @brief Check whether the given surface is already supported for presentation without the

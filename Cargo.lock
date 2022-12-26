@@ -146,7 +146,6 @@ dependencies = [
  "cc",
  "env_logger 0.10.0",
  "futures",
- "glyph_brush_layout",
  "jni 0.20.0",
  "local-ip-address",
  "ndk 0.7.0 (git+https://github.com/zarik5/android-ndk-rs?rev=f1d38a0)",
@@ -162,10 +161,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_client_opengl"
+version = "20.0.0-dev03"
+dependencies = [
+ "alvr_common",
+ "alvr_session",
+ "bindgen 0.63.0",
+ "cc",
+ "glyph_brush_layout",
+ "walkdir",
+]
+
+[[package]]
 name = "alvr_client_openxr"
 version = "20.0.0-dev03"
 dependencies = [
  "alvr_client_core",
+ "alvr_client_opengl",
  "alvr_common",
  "alvr_session",
  "alvr_sockets",
@@ -199,6 +211,7 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "semver 1.0.16",
+ "serde",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-use crate::{ClientEvent, EVENT_QUEUE};
+use crate::{ClientCoreEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
 use std::{ffi::c_char, ptr, time::Duration};
@@ -35,10 +35,12 @@ pub fn create_decoder(config_nal: Vec<u8>) {
     let config = DECODER_INIT_CONFIG.lock();
 
     if EXTERNAL_DECODER.value() {
-        EVENT_QUEUE.lock().push_back(ClientEvent::CreateDecoder {
-            codec: config.codec,
-            config_nal,
-        });
+        EVENT_QUEUE
+            .lock()
+            .push_back(ClientCoreEvent::CreateDecoder {
+                codec: config.codec,
+                config_nal,
+            });
     } else {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
@@ -76,7 +78,7 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE
             .lock()
-            .push_back(ClientEvent::FrameReady { timestamp, nal });
+            .push_back(ClientCoreEvent::FrameReady { timestamp, nal });
     } else {
         #[cfg(target_os = "android")]
         if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
@@ -91,8 +93,8 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
 
 /// Call only with internal decoder (Android only)
 /// If a frame is available, return the timestamp and the AHardwareBuffer.
-#[cfg(target_os = "android")]
 pub fn get_frame() -> Option<(Duration, *mut std::ffi::c_void)> {
+    #[cfg(target_os = "android")]
     if let Some(decoder) = &mut *DECODER_DEQUEUER.lock() {
         if let Some((timestamp, buffer_ptr)) = decoder.dequeue_frame() {
             if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
@@ -106,4 +108,6 @@ pub fn get_frame() -> Option<(Duration, *mut std::ffi::c_void)> {
     } else {
         None
     }
+    #[cfg(not(target_os = "android"))]
+    None
 }

@@ -2,7 +2,7 @@
 #define ALVRCLIENT_FEC_H
 
 #include "bindings.h"
-#include "reedsolomon/rs.h"
+#include "rs.h"
 #include <cstddef>
 #include <cstdint>
 #include <vector>

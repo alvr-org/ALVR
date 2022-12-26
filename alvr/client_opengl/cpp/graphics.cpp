@@ -131,7 +131,6 @@ class GraphicsContext {
     std::vector<GLuint> lobbySwapchainTextures[2];
     std::unique_ptr<ovrRenderer> lobbyRenderer;
 
-    StreamConfigInput streamConfig{};
     std::unique_ptr<Texture> streamTexture;
     std::vector<GLuint> streamSwapchainTextures[2];
     std::unique_ptr<ovrRenderer> streamRenderer;
@@ -729,7 +728,7 @@ void destroyGraphicsNative() {
 // on resume
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
-                      const int *swapchainTextures[2],
+                      const unsigned int *swapchainTextures[2],
                       int swapchainLength) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
@@ -761,9 +760,7 @@ void destroyRenderers() {
     }
 }
 
-void setStreamConfig(StreamConfigInput config) { g_ctx.streamConfig = config; }
-
-void streamStartNative(const int *swapchainTextures[2], int swapchainLength) {
+void streamStartNative(StreamConfigInput config) {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.release();
@@ -772,27 +769,27 @@ void streamStartNative(const int *swapchainTextures[2], int swapchainLength) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.streamSwapchainTextures[eye].clear();
 
-        for (int i = 0; i < swapchainLength; i++) {
-            g_ctx.streamSwapchainTextures[eye].push_back(swapchainTextures[eye][i]);
+        for (int i = 0; i < config.swapchainLength; i++) {
+            g_ctx.streamSwapchainTextures[eye].push_back(config.swapchainTextures[eye][i]);
         }
     }
 
     g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.streamRenderer.get(),
-                       g_ctx.streamConfig.viewWidth,
-                       g_ctx.streamConfig.viewHeight,
+                       config.viewWidth,
+                       config.viewHeight,
                        g_ctx.streamTexture.get(),
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.streamSwapchainTextures,
-                       {g_ctx.streamConfig.enableFoveation,
-                        g_ctx.streamConfig.viewWidth,
-                        g_ctx.streamConfig.viewHeight,
-                        g_ctx.streamConfig.foveationCenterSizeX,
-                        g_ctx.streamConfig.foveationCenterSizeY,
-                        g_ctx.streamConfig.foveationCenterShiftX,
-                        g_ctx.streamConfig.foveationCenterShiftY,
-                        g_ctx.streamConfig.foveationEdgeRatioX,
-                        g_ctx.streamConfig.foveationEdgeRatioY});
+                       {config.enableFoveation,
+                        config.viewWidth,
+                        config.viewHeight,
+                        config.foveationCenterSizeX,
+                        config.foveationCenterSizeY,
+                        config.foveationCenterShiftX,
+                        config.foveationCenterShiftY,
+                        config.foveationEdgeRatioX,
+                        config.foveationEdgeRatioY});
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -826,7 +823,7 @@ void renderLobbyNative(const EyeInput eyeInputs[2]) {
     ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, true);
 }
 
-void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]) {
+void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchainIndices[2]) {
     GL(EGLClientBuffer clientBuffer =
            eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
     GL(EGLImageKHR image = eglCreateImageKHR(

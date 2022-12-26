@@ -6,8 +6,8 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
-    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    ClientCoreEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE,
+    IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
@@ -19,10 +19,6 @@ use alvr_sockets::{
     VIDEO,
 };
 use futures::future::BoxFuture;
-use glyph_brush_layout::{
-    ab_glyph::{Font, FontRef, ScaleFont},
-    FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
-};
 use serde_json as json;
 use settings_schema::Switch;
 use std::{
@@ -65,60 +61,17 @@ const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_ERROR_PAUSE: Duration = Duration::from_millis(500);
 const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
-const HUD_TEXTURE_WIDTH: usize = 1280;
-const HUD_TEXTURE_HEIGHT: usize = 720;
-const FONT_SIZE: f32 = 50_f32;
-
 fn set_hud_message(message: &str) {
-    let hostname = Config::load().hostname;
-
     let message = format!(
-        "ALVR v{}\nhostname: {hostname}\nIP: {}\n\n{message}",
+        "ALVR v{}\nhostname: {}\nIP: {}\n\n{message}",
         *ALVR_VERSION,
+        Config::load().hostname,
         platform::local_ip(),
     );
 
-    let ubuntu_font =
-        FontRef::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
-
-    let section_glyphs = Layout::default()
-        .h_align(HorizontalAlign::Center)
-        .v_align(VerticalAlign::Center)
-        .calculate_glyphs(
-            &[&ubuntu_font],
-            &SectionGeometry {
-                screen_position: (
-                    HUD_TEXTURE_WIDTH as f32 / 2_f32,
-                    HUD_TEXTURE_HEIGHT as f32 / 2_f32,
-                ),
-                ..Default::default()
-            },
-            &[SectionText {
-                text: &message,
-                scale: FONT_SIZE.into(),
-                font_id: FontId(0),
-            }],
-        );
-
-    let scaled_font = ubuntu_font.as_scaled(FONT_SIZE);
-
-    let mut buffer = vec![0_u8; HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4];
-
-    for section_glyph in section_glyphs {
-        if let Some(outlined) = scaled_font.outline_glyph(section_glyph.glyph) {
-            let bounds = outlined.px_bounds();
-            outlined.draw(|x, y, alpha| {
-                let x = x as usize + bounds.min.x as usize;
-                let y = y as usize + bounds.min.y as usize;
-                buffer[(y * HUD_TEXTURE_WIDTH + x) * 4 + 3] = (alpha * 255.0) as u8;
-            });
-        }
-    }
-
-    #[cfg(target_os = "android")]
-    unsafe {
-        crate::updateLobbyHudTexture(buffer.as_ptr())
-    };
+    EVENT_QUEUE
+        .lock()
+        .push_back(ClientCoreEvent::UpdateHudMessage(message));
 }
 
 pub fn connection_lifecycle_loop(
@@ -325,57 +278,6 @@ async fn stream_pipeline(
             .mediacodec_extra_options;
     }
 
-    #[cfg(target_os = "android")]
-    unsafe {
-        crate::setStreamConfig(crate::StreamConfigInput {
-            viewWidth: stream_config.view_resolution.x,
-            viewHeight: stream_config.view_resolution.y,
-            enableFoveation: matches!(settings.video.foveated_rendering, Switch::Enabled(_)),
-            foveationCenterSizeX: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.center_size_x
-            } else {
-                3_f32 / 5_f32
-            },
-            foveationCenterSizeY: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.center_size_y
-            } else {
-                2_f32 / 5_f32
-            },
-            foveationCenterShiftX: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.center_shift_x
-            } else {
-                2_f32 / 5_f32
-            },
-            foveationCenterShiftY: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.center_shift_y
-            } else {
-                1_f32 / 10_f32
-            },
-            foveationEdgeRatioX: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.edge_ratio_x
-            } else {
-                2_f32
-            },
-            foveationEdgeRatioY: if let Switch::Enabled(foveation_vars) =
-                &settings.video.foveated_rendering
-            {
-                foveation_vars.edge_ratio_y
-            } else {
-                2_f32
-            },
-        });
-    }
-
     let tracking_send_loop = {
         let mut socket_sender = stream_socket.request_stream(TRACKING).await?;
         async move {
@@ -417,9 +319,10 @@ async fn stream_pipeline(
         }
     };
 
-    let streaming_start_event = ClientEvent::StreamingStarted {
+    let streaming_start_event = ClientCoreEvent::StreamingStarted {
         view_resolution: stream_config.view_resolution,
         fps: stream_config.fps,
+        foveated_rendering: settings.video.foveated_rendering.into_option(),
         oculus_foveation_level: settings.video.oculus_foveation_level,
         dynamic_oculus_foveation: settings.video.dynamic_oculus_foveation,
         extra_latency: settings.headset.extra_latency_mode,
@@ -441,7 +344,9 @@ async fn stream_pipeline(
 
             impl Drop for StreamCloseGuard {
                 fn drop(&mut self) {
-                    EVENT_QUEUE.lock().push_back(ClientEvent::StreamingStopped);
+                    EVENT_QUEUE
+                        .lock()
+                        .push_back(ClientCoreEvent::StreamingStopped);
 
                     IS_STREAMING.set(false);
 
@@ -510,7 +415,7 @@ async fn stream_pipeline(
             loop {
                 let packet = receiver.recv().await?.header;
 
-                EVENT_QUEUE.lock().push_back(ClientEvent::Haptics {
+                EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
                     device_id: packet.path,
                     duration: packet.duration,
                     frequency: packet.frequency,

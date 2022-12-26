@@ -1,16 +1,17 @@
-use crate::{ClientEvent, RenderViewInput};
+use crate::ClientCoreEvent;
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
+    Fov,
 };
 use alvr_events::ButtonValue;
 use alvr_session::CodecType;
-use alvr_sockets::{DeviceMotion, Fov, Tracking};
+use alvr_sockets::{DeviceMotion, Tracking};
 use std::{
     collections::VecDeque,
-    ffi::{c_char, c_void, CStr},
+    ffi::{c_char, c_void, CStr, CString},
     ptr, slice,
     time::{Duration, Instant},
 };
@@ -21,6 +22,7 @@ struct ReconstructedNal {
 }
 static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
+static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 
 #[repr(u8)]
 pub enum AlvrCodec {
@@ -30,10 +32,18 @@ pub enum AlvrCodec {
 
 #[repr(u8)]
 pub enum AlvrEvent {
+    HudMessageUpdated,
     StreamingStarted {
         view_width: u32,
         view_height: u32,
         fps: f32,
+        enable_foveation: bool,
+        foveation_center_size_x: f32,
+        foveation_center_size_y: f32,
+        foveation_center_shift_x: f32,
+        foveation_center_shift_y: f32,
+        foveation_edge_ratio_x: f32,
+        foveation_edge_ratio_y: f32,
         oculus_foveation_level: i32,
         dynamic_oculus_foveation: bool,
         extra_latency: bool,
@@ -77,15 +87,6 @@ pub struct AlvrDeviceMotion {
     position: [f32; 3],
     linear_velocity: [f32; 3],
     angular_velocity: [f32; 3],
-}
-
-#[cfg(target_os = "android")]
-#[repr(C)]
-pub struct AlvrViewInput {
-    orientation: AlvrQuat,
-    position: [f32; 3],
-    fov: AlvrFov,
-    swapchain_index: u32,
 }
 
 #[repr(C)]
@@ -180,9 +181,15 @@ pub extern "C" fn alvr_pause() {
 pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     if let Some(event) = crate::poll_event() {
         let event = match event {
-            ClientEvent::StreamingStarted {
+            ClientCoreEvent::UpdateHudMessage(message) => {
+                *HUD_MESSAGE.lock() = message;
+
+                AlvrEvent::HudMessageUpdated
+            }
+            ClientCoreEvent::StreamingStarted {
                 view_resolution,
                 fps,
+                foveated_rendering,
                 oculus_foveation_level,
                 dynamic_oculus_foveation,
                 extra_latency,
@@ -190,12 +197,37 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 view_width: view_resolution.x,
                 view_height: view_resolution.y,
                 fps,
+                enable_foveation: foveated_rendering.is_some(),
+                foveation_center_size_x: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.center_size_x)
+                    .unwrap_or_default(),
+                foveation_center_size_y: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.center_size_y)
+                    .unwrap_or_default(),
+                foveation_center_shift_x: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.center_shift_x)
+                    .unwrap_or_default(),
+                foveation_center_shift_y: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.center_shift_y)
+                    .unwrap_or_default(),
+                foveation_edge_ratio_x: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.edge_ratio_x)
+                    .unwrap_or_default(),
+                foveation_edge_ratio_y: foveated_rendering
+                    .as_ref()
+                    .map(|f| f.edge_ratio_y)
+                    .unwrap_or_default(),
                 oculus_foveation_level: oculus_foveation_level as i32,
                 dynamic_oculus_foveation,
                 extra_latency,
             },
-            ClientEvent::StreamingStopped => AlvrEvent::StreamingStopped,
-            ClientEvent::Haptics {
+            ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
+            ClientCoreEvent::Haptics {
                 device_id,
                 duration,
                 frequency,
@@ -206,7 +238,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 frequency,
                 amplitude,
             },
-            ClientEvent::CreateDecoder { codec, config_nal } => {
+            ClientCoreEvent::CreateDecoder { codec, config_nal } => {
                 NAL_QUEUE.lock().push_back(ReconstructedNal {
                     timestamp_ns: 0,
                     data: config_nal,
@@ -220,7 +252,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                     },
                 }
             }
-            ClientEvent::FrameReady { timestamp, nal } => {
+            ClientCoreEvent::FrameReady { timestamp, nal } => {
                 NAL_QUEUE.lock().push_back(ReconstructedNal {
                     timestamp_ns: timestamp.as_nanos() as _,
                     data: nal,
@@ -260,6 +292,23 @@ pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64
     } else {
         0
     }
+}
+
+// Returns the length of the message. message_buffer can be null.
+#[no_mangle]
+pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
+    let cstring = CString::new(HUD_MESSAGE.lock().clone()).unwrap();
+    if !message_buffer.is_null() {
+        unsafe {
+            ptr::copy_nonoverlapping(
+                cstring.as_ptr(),
+                message_buffer,
+                cstring.as_bytes_with_nul().len(),
+            );
+        }
+    }
+
+    cstring.as_bytes_with_nul().len() as u64
 }
 
 #[no_mangle]
@@ -401,131 +450,9 @@ pub extern "C" fn alvr_report_compositor_start(target_timestamp_ns: u64) {
     crate::report_compositor_start(Duration::from_nanos(target_timestamp_ns as _));
 }
 
-/// Can be called before or after `alvr_initialize()`
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub extern "C" fn alvr_initialize_opengl() {
-    crate::initialize_opengl();
-}
-
-/// Must be called after `alvr_destroy()`. Can be skipped if the GL context is destroyed before
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub extern "C" fn alvr_destroy_opengl() {
-    crate::destroy_opengl();
-}
-
-#[cfg(target_os = "android")]
-unsafe fn convert_swapchain_array(
-    swapchain_textures: *mut *const i32,
-    swapchain_length: i32,
-) -> [Vec<i32>; 2] {
-    let swapchain_length = swapchain_length as usize;
-    let mut left_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures,
-        left_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-    let mut right_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures.offset(1),
-        right_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-
-    [left_swapchain, right_swapchain]
-}
-
-/// Must be called before `alvr_resume()`
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_resume_opengl(
-    preferred_view_width: u32,
-    preferred_view_height: u32,
-    swapchain_textures: *mut *const i32,
-    swapchain_length: i32,
-) {
-    crate::resume_opengl(
-        UVec2::new(preferred_view_width, preferred_view_height),
-        convert_swapchain_array(swapchain_textures, swapchain_length),
-    );
-}
-
-/// Must be called after `alvr_pause()`
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub extern "C" fn alvr_pause_opengl() {
-    crate::pause_opengl();
-}
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_start_stream_opengl(
-    swapchain_textures: *mut *const i32,
-    swapchain_length: i32,
-) {
-    crate::start_stream_opengl(convert_swapchain_array(
-        swapchain_textures,
-        swapchain_length,
-    ));
-}
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewInput) {
-    let view_inputs = [
-        {
-            let o = (*view_inputs).orientation;
-            let f = (*view_inputs).fov;
-            RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs).position),
-                fov: Fov {
-                    left: f.left,
-                    right: f.right,
-                    up: f.up,
-                    down: f.down,
-                },
-                swapchain_index: (*view_inputs).swapchain_index,
-            }
-        },
-        {
-            let o = (*view_inputs.offset(1)).orientation;
-            let f = (*view_inputs.offset(1)).fov;
-            RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs).position),
-                fov: Fov {
-                    left: f.left,
-                    right: f.right,
-                    up: f.up,
-                    down: f.down,
-                },
-                swapchain_index: (*view_inputs.offset(1)).swapchain_index,
-            }
-        },
-    ];
-
-    crate::render_lobby_opengl(view_inputs);
-}
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream_opengl(
-    hardware_buffer: *mut c_void,
-    swapchain_indices: *const i32,
-) {
-    crate::render_stream_opengl(
-        hardware_buffer,
-        [*swapchain_indices, *swapchain_indices.offset(1)],
-    );
-}
-
 /// Call only with internal decoder (Android only)
 /// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
 /// from out_buffer.
-#[cfg(target_os = "android")]
 #[allow(unused_variables)]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) -> i64 {

@@ -1,10 +1,10 @@
-use alvr_client_core::RenderViewInput;
+use alvr_client_core::ClientCoreEvent;
+use alvr_client_opengl::RenderViewInput;
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     prelude::*,
-    LEFT_CONTROLLER_HAPTIC_ID, LEFT_HAND_ID, LEFT_HAND_PATH,
+    Fov, LEFT_CONTROLLER_HAPTIC_ID, LEFT_HAND_ID, LEFT_HAND_PATH,
 };
-use alvr_sockets::Fov;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 use std::{ptr, thread, time::Duration};
@@ -224,7 +224,7 @@ pub fn entry_point() {
 
     alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
     #[cfg(target_os = "android")]
-    alvr_client_core::initialize_opengl();
+    alvr_client_opengl::initialize();
 
     let action_set = xr_instance
         .create_action_set("alvr_input", "ALVR input", 0)
@@ -287,7 +287,7 @@ pub fn entry_point() {
                         ];
 
                         #[cfg(target_os = "android")]
-                        alvr_client_core::resume_opengl(recommended_resolution, textures);
+                        alvr_client_opengl::resume(recommended_resolution, textures);
 
                         alvr_client_core::resume();
                     }
@@ -295,7 +295,7 @@ pub fn entry_point() {
                         alvr_client_core::pause();
 
                         #[cfg(target_os = "android")]
-                        alvr_client_core::pause_opengl();
+                        alvr_client_opengl::pause();
 
                         lobby_swapchains.take();
 
@@ -348,23 +348,33 @@ pub fn entry_point() {
         };
 
         while let Some(event) = alvr_client_core::poll_event() {
-            // match event {
-            //     ClientEvent::StreamingStarted {
-            //         view_resolution,
-            //         fps,
-            //         oculus_foveation_level,
-            //         dynamic_oculus_foveation,
-            //         extra_latency,
-            //     } => todo!(),
-            //     ClientEvent::StreamingStopped => todo!(),
-            //     ClientEvent::Haptics {
-            //         device_id,
-            //         duration,
-            //         frequency,
-            //         amplitude,
-            //     } => todo!(),
-            //     _ => panic!(),
-            // }
+            match event {
+                ClientCoreEvent::UpdateHudMessage(message) => {
+                    alvr_client_opengl::update_hud_message(&message);
+                }
+                ClientCoreEvent::StreamingStarted {
+                    view_resolution,
+                    fps,
+                    foveated_rendering,
+                    oculus_foveation_level,
+                    dynamic_oculus_foveation,
+                    extra_latency,
+                } => {
+                    // todo
+                }
+                ClientCoreEvent::StreamingStopped => {
+                    // todo
+                }
+                ClientCoreEvent::Haptics {
+                    device_id,
+                    duration,
+                    frequency,
+                    amplitude,
+                } => {
+                    // todo
+                }
+                _ => panic!(),
+            }
         }
 
         let frame_state = match xr_frame_waiter.wait() {
@@ -426,7 +436,7 @@ pub fn entry_point() {
         ];
 
         #[cfg(target_os = "android")]
-        alvr_client_core::render_lobby_opengl(view_inputs);
+        alvr_client_opengl::render_lobby(view_inputs);
 
         lobby_swapchains[0].release_image().unwrap();
         lobby_swapchains[1].release_image().unwrap();
@@ -469,7 +479,7 @@ pub fn entry_point() {
     }
 
     #[cfg(target_os = "android")]
-    alvr_client_core::destroy_opengl();
+    alvr_client_opengl::destroy();
 
     alvr_client_core::destroy();
 

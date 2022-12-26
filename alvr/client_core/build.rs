@@ -10,29 +10,18 @@ fn main() {
         .map(|entry| entry.into_path())
         .collect::<Vec<_>>();
 
-    let source_files_paths = if platform_name == "android" {
-        cpp_paths
-            .iter()
-            .filter_map(|path| {
-                path.extension()
-                    .filter(|ext| ext.to_string_lossy() == "cpp")
-                    .is_some()
-                    .then(|| path.clone())
-            })
-            .collect()
-    } else {
-        vec![
-            PathBuf::new().join("cpp/fec.cpp"),
-            PathBuf::new().join("cpp/nal.cpp"),
-        ]
-    };
+    let source_files_paths = cpp_paths
+        .iter()
+        .filter_map(|path| {
+            path.extension()
+                .filter(|ext| ext.to_string_lossy() == "cpp")
+                .is_some()
+                .then(|| path.clone())
+        })
+        .collect::<Vec<_>>();
 
     let mut builder = &mut cc::Build::new();
-    builder = builder
-        .cpp(true)
-        .files(source_files_paths)
-        .include("cpp")
-        .include("cpp/gl_render_utils");
+    builder = builder.cpp(true).files(&source_files_paths).include("cpp");
     if platform_name == "windows" {
         builder = builder.flag("/std:c++17")
     } else {
@@ -48,7 +37,7 @@ fn main() {
 
     cc::Build::new()
         .cpp(false)
-        .files(&["cpp/reedsolomon/rs.c"])
+        .files(&["cpp/rs.c"])
         .compile("bindings_rs_c");
 
     if platform_name == "android" {

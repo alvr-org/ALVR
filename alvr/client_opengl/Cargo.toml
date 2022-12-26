@@ -1,0 +1,21 @@
+[package]
+name = "alvr_client_opengl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+crate_type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+alvr_common.workspace = true
+alvr_session.workspace = true
+
+glyph_brush_layout = "0.2"
+
+[build-dependencies]
+bindgen = "0.63"
+cc = { version = "1", features = ["parallel"] }
+walkdir = "2"

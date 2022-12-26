@@ -1,6 +1,9 @@
 use std::{net::IpAddr, time::Duration};
 
-use alvr_common::glam::{Quat, UVec2, Vec2, Vec3};
+use alvr_common::{
+    glam::{Quat, UVec2, Vec2, Vec3},
+    Fov,
+};
 use alvr_events::{ButtonValue, EventSeverity};
 use serde::{Deserialize, Serialize};
 
@@ -9,15 +12,6 @@ pub const HAPTICS: u16 = 1;
 pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
 pub const STATISTICS: u16 = 4;
-
-// Field of view in radians
-#[derive(Serialize, Deserialize, PartialEq, Default, Clone, Copy)]
-pub struct Fov {
-    pub left: f32,
-    pub right: f32,
-    pub up: f32,
-    pub down: f32,
-}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {

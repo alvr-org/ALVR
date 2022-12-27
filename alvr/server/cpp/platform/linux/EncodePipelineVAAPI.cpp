@@ -184,6 +184,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
 
+  encoder_frame = AVUTIL.av_frame_alloc();
   mapped_frame = map_frame(hw_ctx, input_frame, vk_frame_ctx);
 
   filter_graph = AVFILTER.avfilter_graph_alloc();
@@ -247,12 +248,12 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 {
   AVFILTER.avfilter_graph_free(&filter_graph);
   AVUTIL.av_frame_free(&mapped_frame);
+  AVUTIL.av_frame_free(&encoder_frame);
   AVUTIL.av_buffer_unref(&hw_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-  AVFrame *encoder_frame = AVUTIL.av_frame_alloc();
   int err = AVFILTER.av_buffersrc_add_frame_flags(filter_in, mapped_frame, AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
   if (err != 0)
   {

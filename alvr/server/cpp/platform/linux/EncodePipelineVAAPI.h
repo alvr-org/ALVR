@@ -31,7 +31,8 @@ public:
 
 private:
   AVBufferRef *hw_ctx = nullptr;
-  AVFrame *mapped_frame;
+  AVFrame *mapped_frame = nullptr;
+  AVFrame *encoder_frame = nullptr;
   AVFilterGraph *filter_graph = nullptr;
   AVFilterContext *filter_in = nullptr;
   AVFilterContext *filter_out = nullptr;

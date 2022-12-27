@@ -60,6 +60,7 @@ public:
   uint32_t queueFamilyIndex;
   std::vector<const char*> instanceExtensions;
   std::vector<const char*> deviceExtensions;
+  bool nvidia = false;
   bool drmContext = false;
 };
 

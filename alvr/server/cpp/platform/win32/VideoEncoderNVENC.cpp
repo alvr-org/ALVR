@@ -212,14 +212,6 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		config.idrPeriod = gopLength;
 	}
 
-	// According to the document, NVIDIA Video Encoder Interface 5.0,
-	// following configrations are recommended for low latency application:
-	// 1. NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP rate control mode.
-	// 2. Set vbvBufferSize and vbvInitialDelay to maxFrameSize.
-	// 3. Inifinite GOP length.
-	// NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP also assures maximum frame size,
-	// which introduces lower transport latency and fewer packet losses.
-
 	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped
 	// if don't use reference frame invalidation.
 	encodeConfig.gopLength = gopLength;
@@ -229,16 +221,16 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		encodeConfig.frameIntervalP = Settings::Instance().m_nvencPFrameStrategy;
 	}
 
-	// NV_ENC_PARAMS_RC_CBR_HQ is equivalent to NV_ENC_PARAMS_RC_2_PASS_FRAMESIZE_CAP.
-	//encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;// NV_ENC_PARAMS_RC_CBR_HQ;
 	switch (Settings::Instance().m_rateControlMode) {
 		case ALVR_CBR:
-			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR_LOWDELAY_HQ;
+			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CBR;
 			break;
 		case ALVR_VBR:
 			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR;
 			break;
 	}
+	encodeConfig.rcParams.multiPass = NV_ENC_TWO_PASS_QUARTER_RESOLUTION;
+	encodeConfig.rcParams.lowDelayKeyFrameScale = 1;
 	
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);

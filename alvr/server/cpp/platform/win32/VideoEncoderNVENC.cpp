@@ -241,6 +241,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		config.maxNumRefFramesInDPB = maxNumRefFrames;
 		config.idrPeriod = gopLength;
+
+		if (Settings::Instance().m_use10bitEncoder) {
+			encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
+		}
 	}
 
 	// According to the document, NVIDIA Video Encoder Interface 5.0,
@@ -277,6 +281,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
 	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
+	encodeConfig.rcParams.enableAQ = 1;
 
 	if (Settings::Instance().m_nvencRateControlMode != -1) {
 		encodeConfig.rcParams.rateControlMode = (NV_ENC_PARAMS_RC_MODE)Settings::Instance().m_nvencRateControlMode;
@@ -293,12 +298,6 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	if (Settings::Instance().m_nvencRcAverageBitrate != -1) {
 		encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
 	}
-
-	if (Settings::Instance().m_use10bitEncoder) {
-		encodeConfig.rcParams.enableAQ = 1;
-		encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
-	}
-
 	if (Settings::Instance().m_nvencEnableAQ != -1) {
 		encodeConfig.rcParams.enableAQ = Settings::Instance().m_nvencEnableAQ;
 	}

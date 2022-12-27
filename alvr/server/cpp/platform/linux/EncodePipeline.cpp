@@ -73,29 +73,32 @@ void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)
 {
   if(Settings::Instance().m_force_sw_encoding == false) {
-    try {
-      auto amf = std::make_unique<alvr::EncodePipelineAMF>(vk_ctx, render, input_frame.format(), width, height);
-      Info("using AMF encoder");
-      return amf;
-    } catch (...)
-    {
-      Info("failed to create AMF encoder");
-    }
-    try {
-      auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frame, vk_frame_ctx, width, height);
-      Info("using NvEnc encoder");
-      return nvenc;
-    } catch (...)
-    {
-      Info("failed to create NvEnc encoder");
-    }  
-    try {
-      auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(input_frame, vk_frame_ctx, width, height);
-      Info("using VAAPI encoder");
-      return vaapi;
-    } catch (...)
-    {
-      Info("failed to create VAAPI encoder");
+    if (vk_ctx.nvidia) {
+      try {
+        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frame, vk_frame_ctx, width, height);
+        Info("using NvEnc encoder");
+        return nvenc;
+      } catch (...)
+      {
+        Info("failed to create NvEnc encoder");
+      }
+    } else {
+      try {
+        auto amf = std::make_unique<alvr::EncodePipelineAMF>(vk_ctx, render, input_frame.format(), width, height);
+        Info("using AMF encoder");
+        return amf;
+      } catch (...)
+      {
+        Info("failed to create AMF encoder");
+      }
+      try {
+        auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(input_frame, vk_frame_ctx, width, height);
+        Info("using VAAPI encoder");
+        return vaapi;
+      } catch (...)
+      {
+        Info("failed to create VAAPI encoder");
+      }
     }
   }
   auto sw = std::make_unique<alvr::EncodePipelineSW>(input_frame, vk_frame_ctx, width, height);

@@ -644,7 +644,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     timelineInfo.waitSemaphoreValueCount = 1;
     timelineInfo.pWaitSemaphoreValues = &waitValue;
 
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

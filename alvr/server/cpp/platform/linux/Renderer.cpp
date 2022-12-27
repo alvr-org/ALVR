@@ -729,8 +729,8 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
         imageCopy.dstOffset.x = 0;
         imageCopy.dstOffset.y = 0;
         imageCopy.dstOffset.z = 0;
-        imageCopy.extent.width = m_imageSize.width;
-        imageCopy.extent.height = m_imageSize.height;
+        imageCopy.extent.width = m_output.imageInfo.extent.width;
+        imageCopy.extent.height = m_output.imageInfo.extent.height;
         imageCopy.extent.depth = 1;
         vkCmdCopyImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
     } else {
@@ -742,8 +742,8 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
         imageBlit.srcOffsets[0].x = 0;
         imageBlit.srcOffsets[0].y = 0;
         imageBlit.srcOffsets[0].z = 0;
-        imageBlit.srcOffsets[1].x = m_imageSize.width;
-        imageBlit.srcOffsets[1].y = m_imageSize.height;
+        imageBlit.srcOffsets[1].x = m_output.imageInfo.extent.width;
+        imageBlit.srcOffsets[1].y = m_output.imageInfo.extent.height;
         imageBlit.srcOffsets[1].z = 1;
         imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         imageBlit.dstSubresource.mipLevel = 0;
@@ -752,8 +752,8 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
         imageBlit.dstOffsets[0].x = 0;
         imageBlit.dstOffsets[0].y = 0;
         imageBlit.dstOffsets[0].z = 0;
-        imageBlit.dstOffsets[1].x = m_imageSize.width;
-        imageBlit.dstOffsets[1].y = m_imageSize.height;
+        imageBlit.dstOffsets[1].x = m_output.imageInfo.extent.width;
+        imageBlit.dstOffsets[1].y = m_output.imageInfo.extent.height;
         imageBlit.dstOffsets[1].z = 1;
         vkCmdBlitImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_NEAREST);
     }

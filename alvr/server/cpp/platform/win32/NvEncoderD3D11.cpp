@@ -1,5 +1,5 @@
 /*
-* Copyright 2017-2018 NVIDIA Corporation.  All rights reserved.
+* Copyright 2017-2022 NVIDIA Corporation.  All rights reserved.
 *
 * Please refer to the NVIDIA end user license agreement (EULA) associated
 * with this source code for terms and conditions that govern your use of
@@ -10,6 +10,9 @@
 */
 
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 #include "NvEncoderD3D11.h"
 #include <D3D9Types.h>
 
@@ -35,8 +38,8 @@ DXGI_FORMAT GetD3D11Format(NV_ENC_BUFFER_FORMAT eBufferFormat)
 }
 
 NvEncoderD3D11::NvEncoderD3D11(ID3D11Device* pD3D11Device, uint32_t nWidth, uint32_t nHeight,
-    NV_ENC_BUFFER_FORMAT eBufferFormat,  uint32_t nExtraOutputDelay, bool bMotionEstimationOnly) :
-    NvEncoder(NV_ENC_DEVICE_TYPE_DIRECTX, pD3D11Device, nWidth, nHeight, eBufferFormat, nExtraOutputDelay, bMotionEstimationOnly)
+    NV_ENC_BUFFER_FORMAT eBufferFormat,  uint32_t nExtraOutputDelay, bool bMotionEstimationOnly, bool bOutputInVideoMemory) :
+    NvEncoder(NV_ENC_DEVICE_TYPE_DIRECTX, pD3D11Device, nWidth, nHeight, eBufferFormat, nExtraOutputDelay, bMotionEstimationOnly, bOutputInVideoMemory)
 {
     if (!pD3D11Device)
     {
@@ -96,7 +99,7 @@ void NvEncoderD3D11::AllocateInputBuffers(int32_t numInputBuffers)
             }
             inputFrames.push_back(pInputTextures);
         }
-        RegisterResources(inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_DIRECTX, 
+        RegisterInputResources(inputFrames, NV_ENC_INPUT_RESOURCE_TYPE_DIRECTX, 
             GetMaxEncodeWidth(), GetMaxEncodeHeight(), 0, GetPixelFormat(), count == 1 ? true : false);
     }
 }
@@ -113,7 +116,7 @@ void NvEncoderD3D11::ReleaseD3D11Resources()
         return;
     }
 
-    UnregisterResources();
+    UnregisterInputResources();
 
     for (uint32_t i = 0; i < m_vInputFrames.size(); ++i)
     {

@@ -134,28 +134,20 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits)
 {
 	auto &encodeConfig = *initializeParams.encodeConfig;
-	GUID EncoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+	GUID encoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
 
-	// According to the docment, NVIDIA Video Encoder (NVENC) Interface 8.1,
-	// following configrations are recommended for low latency application:
-	// 1. Low-latency high quality preset
-	// 2. Rate control mode = CBR
-	// 3. Very low VBV buffer size(single frame)
-	// 4. No B Frames
-	// 5. Infinite GOP length
-	// 6. Long term reference pictures
-	// 7. Intra refresh
-	// 8. Adaptive quantization(AQ) enabled
-
-	GUID preset = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
+	// See recommended NVENC settings for low-latency encoding.
+	// https://docs.nvidia.com/video-technologies/video-codec-sdk/nvenc-video-encoder-api-prog-guide/#recommended-nvenc-settings
+	GUID qualityPreset = NV_ENC_PRESET_P2_GUID;
 	if (Settings::Instance().m_nvencPreset == 0) {
-		preset = NV_ENC_PRESET_LOW_LATENCY_DEFAULT_GUID;
+		qualityPreset = NV_ENC_PRESET_P7_GUID;
 	} else if (Settings::Instance().m_nvencPreset == 1) {
-		preset = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
+		qualityPreset = NV_ENC_PRESET_P5_GUID;
 	} else if (Settings::Instance().m_nvencPreset == 2) {
-		preset = NV_ENC_PRESET_LOW_LATENCY_HP_GUID;
+		qualityPreset = NV_ENC_PRESET_P2_GUID;
 	}
-	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, EncoderGUID, preset);
+	NV_ENC_TUNING_INFO tunePreset = NV_ENC_TUNING_INFO_LOW_LATENCY;
+	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, encoderGUID, qualityPreset, tunePreset);
 
 	initializeParams.encodeWidth = initializeParams.darWidth = renderWidth;
 	initializeParams.encodeHeight = initializeParams.darHeight = renderHeight;

@@ -22,9 +22,9 @@ pub enum FrameSize {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum NvencPreset {
-    LowLatencyDefault = 0,
-    LowLatencyHighQuality = 1,
-    LowLatencyHighPerformance = 2,
+    Quality = 0,
+    Balanced = 1,
+    Speed = 2,
 }
 
 #[repr(u32)]
@@ -682,7 +682,7 @@ pub fn session_settings_default() -> SettingsDefault {
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 nvenc_overrides: NvencOverridesDefault {
                     preset: NvencPresetDefault {
-                        variant: NvencPresetDefaultVariant::LowLatencyHighQuality,
+                        variant: NvencPresetDefaultVariant::Speed,
                     },
                     refresh_rate: -1,
                     enable_intra_refresh: -1,

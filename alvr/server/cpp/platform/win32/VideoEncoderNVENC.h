@@ -27,11 +27,8 @@ private:
 	std::shared_ptr<NvEncoder> m_NvNecoder;
 
 	std::shared_ptr<CD3DRender> m_pD3DRender;
-	int m_nFrame;
 
 	std::shared_ptr<ClientConnection> m_Listener;
-
-	bool mSupportsReferenceFrameInvalidation = false;
 
 	int m_codec;
 	int m_refreshRate;

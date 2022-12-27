@@ -1,7 +1,5 @@
-
 #include "VideoEncoderNVENC.h"
 #include "NvCodecUtils.h"
-#include "alvr_server/nvencoderclioptions.h"
 
 #include "alvr_server/Statistics.h"
 #include "alvr_server/Logger.h"
@@ -12,7 +10,6 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, std::shared_ptr<ClientConnection> listener
 	, int width, int height)
 	: m_pD3DRender(pD3DRender)
-	, m_nFrame(0)
 	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
@@ -53,10 +50,9 @@ void VideoEncoderNVENC::Initialize()
 
 	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
 	   
-
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
-	}
+	} 
 	catch (NVENCException e) {
 		if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
 			throw MakeException("This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
@@ -124,7 +120,6 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		m_Listener->GetStatistics()->EncodeOutput();
 	}
 
-	m_nFrame += (int)vPacket.size();
 	for (std::vector<uint8_t> &packet : vPacket)
 	{
 		if (fpOut) {
@@ -171,12 +166,6 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		initializeParams.frameRateNum = Settings::Instance().m_nvencRefreshRate;
 	}
 
-	// Use reference frame invalidation to faster recovery from frame loss if supported.
-	mSupportsReferenceFrameInvalidation = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_REF_PIC_INVALIDATION);
-	bool supportsIntraRefresh = m_NvNecoder->GetCapabilityValue(EncoderGUID, NV_ENC_CAPS_SUPPORT_INTRA_REFRESH);
-	Debug("VideoEncoderNVENC: SupportsReferenceFrameInvalidation: %d\n", mSupportsReferenceFrameInvalidation);
-	Debug("VideoEncoderNVENC: SupportsIntraRefresh: %d\n", supportsIntraRefresh);
-
 	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
 	// Now, use 0 (use default).
 	uint32_t maxNumRefFrames = 0;
@@ -192,12 +181,6 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	if (m_codec == ALVR_CODEC_H264) {
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;
 		config.repeatSPSPPS = 1;
-		//if (supportsIntraRefresh) {
-		//	config.enableIntraRefresh = 1;
-		//	// Do intra refresh every 10sec.
-		//	config.intraRefreshPeriod = refreshRate * 10;
-		//	config.intraRefreshCnt = refreshRate;
-		//}
 		if (Settings::Instance().m_nvencEnableIntraRefresh != -1) {
 			config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
 		}
@@ -219,16 +202,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		config.maxNumRefFrames = maxNumRefFrames;
 		config.idrPeriod = gopLength;
-	}
+	} 
 	else {
 		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
 		config.repeatSPSPPS = 1;
-		//if (supportsIntraRefresh) {
-		//	config.enableIntraRefresh = 1;
-		//	// Do intra refresh every 10sec.
-		//	config.intraRefreshPeriod = refreshRate * 10;
-		//	config.intraRefreshCnt = refreshRate;
-		//}
 		if (Settings::Instance().m_nvencEnableIntraRefresh != -1) {
 			config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
 		}

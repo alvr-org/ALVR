@@ -78,26 +78,26 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
         auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frame, vk_frame_ctx, width, height);
         Info("using NvEnc encoder");
         return nvenc;
-      } catch (...)
+      } catch (std::exception &e)
       {
-        Info("failed to create NvEnc encoder");
+        Info("failed to create NvEnc encoder: %s", e.what());
       }
     } else {
       try {
         auto amf = std::make_unique<alvr::EncodePipelineAMF>(vk_ctx, render, input_frame.format(), width, height);
         Info("using AMF encoder");
         return amf;
-      } catch (...)
+      } catch (std::exception &e)
       {
-        Info("failed to create AMF encoder");
+        Info("failed to create AMF encoder: %s", e.what());
       }
       try {
         auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(input_frame, vk_frame_ctx, width, height);
         Info("using VAAPI encoder");
         return vaapi;
-      } catch (...)
+      } catch (std::exception &e)
       {
-        Info("failed to create VAAPI encoder");
+        Info("failed to create VAAPI encoder: %s", e.what());
       }
     }
   }

@@ -107,9 +107,12 @@ pub struct OpenvrConfig {
     pub sharpening: f32,
     pub enable_fec: bool,
     pub linux_async_reprojection: bool,
-    pub nvenc_preset: i64,
+    pub nvenc_tuning_preset: u32,
+    pub nvenc_multi_pass: u32,
+    pub nvenc_adaptive_quantization_mode: u32,
+    pub nvenc_low_delay_key_frame_scale: i64,
     pub nvenc_refresh_rate: i64,
-    pub enable_intra_refresh: i64,
+    pub enable_intra_refresh: bool,
     pub intra_refresh_period: i64,
     pub intra_refresh_count: i64,
     pub max_num_ref_frames: i64,
@@ -120,7 +123,7 @@ pub struct OpenvrConfig {
     pub rc_initial_delay: i64,
     pub rc_max_bitrate: i64,
     pub rc_average_bitrate: i64,
-    pub enable_aq: i64,
+    pub nvenc_enable_weighted_prediction: bool,
     pub capture_frame_dir: String,
 }
 

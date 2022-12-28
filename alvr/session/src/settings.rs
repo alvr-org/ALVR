@@ -18,15 +18,6 @@ pub enum FrameSize {
     },
 }
 
-#[repr(i64)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum NvencPreset {
-    LowLatencyDefault = 0,
-    LowLatencyHighQuality = 1,
-    LowLatencyHighPerformance = 2,
-}
-
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
@@ -34,6 +25,34 @@ pub enum EncoderQualityPreset {
     Quality = 0,
     Balanced = 1,
     Speed = 2,
+}
+
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum NvencTuningPreset {
+    HighQuality = 1,
+    LowLatency = 2,
+    UltraLowLatency = 3,
+    Lossless = 4,
+}
+
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum NvencMultiPass {
+    Disabled = 0,
+    QuarterResolution = 1,
+    FullResolution = 2,
+}
+
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum NvencAdaptiveQuantizationMode {
+    Disabled = 0,
+    Spatial = 1,
+    Temporal = 2,
 }
 
 #[repr(u8)]
@@ -56,9 +75,12 @@ pub enum EntropyCoding {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NvencOverrides {
-    pub preset: NvencPreset,
+    pub tuning_preset: NvencTuningPreset,
+    pub multi_pass: NvencMultiPass,
+    pub adaptive_quantization_mode: NvencAdaptiveQuantizationMode,
+    pub low_delay_key_frame_scale: i64,
     pub refresh_rate: i64,
-    pub enable_intra_refresh: i64,
+    pub enable_intra_refresh: bool,
     pub intra_refresh_period: i64,
     pub intra_refresh_count: i64,
     pub max_num_ref_frames: i64,
@@ -69,7 +91,7 @@ pub struct NvencOverrides {
     pub rc_initial_delay: i64,
     pub rc_max_bitrate: i64,
     pub rc_average_bitrate: i64,
-    pub enable_aq: i64,
+    pub enable_weighted_prediction: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -80,7 +102,6 @@ pub struct AmfControls {
     pub preproc_sigma: u32,
     #[schema(min = 0, max = 10)]
     pub preproc_tor: u32,
-    pub encoder_quality_preset: EncoderQualityPreset,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
@@ -95,6 +116,7 @@ pub enum MediacodecDataType {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AdvancedCodecOptions {
+    pub encoder_quality_preset: EncoderQualityPreset,
     pub nvenc_overrides: NvencOverrides,
     pub amf_controls: AmfControls,
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
@@ -690,12 +712,22 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
+                encoder_quality_preset: EncoderQualityPresetDefault {
+                    variant: EncoderQualityPresetDefaultVariant::Speed,
+                },
                 nvenc_overrides: NvencOverridesDefault {
-                    preset: NvencPresetDefault {
-                        variant: NvencPresetDefaultVariant::LowLatencyHighQuality,
+                    tuning_preset: NvencTuningPresetDefault {
+                        variant: NvencTuningPresetDefaultVariant::LowLatency,
                     },
+                    multi_pass: NvencMultiPassDefault {
+                        variant: NvencMultiPassDefaultVariant::QuarterResolution,
+                    },
+                    adaptive_quantization_mode: NvencAdaptiveQuantizationModeDefault {
+                        variant: NvencAdaptiveQuantizationModeDefaultVariant::Spatial,
+                    },
+                    low_delay_key_frame_scale: -1,
                     refresh_rate: -1,
-                    enable_intra_refresh: -1,
+                    enable_intra_refresh: false,
                     intra_refresh_period: -1,
                     intra_refresh_count: -1,
                     max_num_ref_frames: -1,
@@ -706,15 +738,12 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_initial_delay: -1,
                     rc_max_bitrate: -1,
                     rc_average_bitrate: -1,
-                    enable_aq: -1,
+                    enable_weighted_prediction: false,
                 },
                 amf_controls: AmfControlsDefault {
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,
-                    encoder_quality_preset: EncoderQualityPresetDefault {
-                        variant: EncoderQualityPresetDefaultVariant::Speed,
-                    },
                 },
                 mediacodec_extra_options: DictionaryDefault {
                     key: "".into(),

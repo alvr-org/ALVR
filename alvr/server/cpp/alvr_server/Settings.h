@@ -140,9 +140,12 @@ public:
 
 	bool m_enableLinuxVulkanAsync;
 
-	int64_t m_nvencPreset;
+	uint32_t m_nvencTuningPreset;
+	uint32_t m_nvencMultiPass;
+	uint32_t m_nvencAdaptiveQuantizationMode;
+	int64_t m_nvencLowDelayKeyFrameScale;
 	int64_t m_nvencRefreshRate;
-	int64_t m_nvencEnableIntraRefresh;
+	bool m_nvencEnableIntraRefresh;
 	int64_t m_nvencIntraRefreshPeriod;
 	int64_t m_nvencIntraRefreshCount;
 	int64_t m_nvencMaxNumRefFrames;
@@ -153,7 +156,7 @@ public:
 	int64_t m_nvencRcInitialDelay;
 	int64_t m_nvencRcMaxBitrate;
 	int64_t m_nvencRcAverageBitrate;
-	int64_t m_nvencEnableAQ;
+	bool m_nvencEnableWeightedPrediction;
 
 	std::string m_captureFrameDir;
 };

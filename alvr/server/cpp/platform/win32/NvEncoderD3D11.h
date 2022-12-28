@@ -1,5 +1,5 @@
 /*
-* Copyright 2017-2018 NVIDIA Corporation.  All rights reserved.
+* Copyright 2017-2022 NVIDIA Corporation.  All rights reserved.
 *
 * Please refer to the NVIDIA end user license agreement (EULA) associated
 * with this source code for terms and conditions that govern your use of
@@ -22,8 +22,16 @@ class NvEncoderD3D11 : public NvEncoder
 {
 public:
     NvEncoderD3D11(ID3D11Device* pD3D11Device, uint32_t nWidth, uint32_t nHeight, NV_ENC_BUFFER_FORMAT eBufferFormat, 
-        uint32_t nExtraOutputDelay = 3, bool bMotionEstimationOnly = false);
+        uint32_t nExtraOutputDelay = 3, bool bMotionEstimationOnly = false,  bool bOPInVideoMemory = false);
     virtual ~NvEncoderD3D11();
+
+protected:
+    /**
+    *  @brief This function is used to release the input buffers allocated for encoding.
+    *  This function is an override of virtual function NvEncoder::ReleaseInputBuffers().
+    */
+    virtual void ReleaseInputBuffers() override;
+
 private:
     /**
     *  @brief This function is used to allocate input buffers for encoding.
@@ -33,17 +41,15 @@ private:
     */
     virtual void AllocateInputBuffers(int32_t numInputBuffers) override;
 
-    /**
-    *  @brief This function is used to release the input buffers allocated for encoding.
-    *  This function is an override of virtual function NvEncoder::ReleaseInputBuffers().
-    */
-    virtual void ReleaseInputBuffers() override;
 private:
     /**
     *  @brief This is a private function to release ID3D11Texture2D textures used for encoding.
     */
     void ReleaseD3D11Resources();
-private:
+
+protected:
     ID3D11Device *m_pD3D11Device = nullptr;
+
+private:
     ID3D11DeviceContext* m_pD3D11DeviceContext = nullptr;
 };

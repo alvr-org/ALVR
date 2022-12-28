@@ -6,6 +6,11 @@
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
 
+enum AdaptiveQuantizationMode {
+	SpatialAQ = 1,
+	TemporalAQ = 2
+};
+
 // Video encoder for NVIDIA NvEnc.
 class VideoEncoderNVENC : public VideoEncoder
 {
@@ -27,11 +32,8 @@ private:
 	std::shared_ptr<NvEncoder> m_NvNecoder;
 
 	std::shared_ptr<CD3DRender> m_pD3DRender;
-	int m_nFrame;
 
 	std::shared_ptr<ClientConnection> m_Listener;
-
-	bool mSupportsReferenceFrameInvalidation = false;
 
 	int m_codec;
 	int m_refreshRate;

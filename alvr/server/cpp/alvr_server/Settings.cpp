@@ -173,9 +173,12 @@ void Settings::Load()
 
 		m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
 
-		m_nvencPreset = config.get("nvenc_preset").get<int64_t>();
+		m_nvencTuningPreset = (uint32_t)config.get("nvenc_tuning_preset").get<int64_t>();
+		m_nvencMultiPass = (uint32_t)config.get("nvenc_multi_pass").get<int64_t>();
+		m_nvencAdaptiveQuantizationMode = (uint32_t)config.get("nvenc_adaptive_quantization_mode").get<int64_t>();
+		m_nvencLowDelayKeyFrameScale = config.get("nvenc_low_delay_key_frame_scale").get<int64_t>();
 		m_nvencRefreshRate = config.get("nvenc_refresh_rate").get<int64_t>();
-		m_nvencEnableIntraRefresh = config.get("enable_intra_refresh").get<int64_t>();
+		m_nvencEnableIntraRefresh = config.get("enable_intra_refresh").get<bool>();
 		m_nvencIntraRefreshPeriod = config.get("intra_refresh_period").get<int64_t>();
 		m_nvencIntraRefreshCount = config.get("intra_refresh_count").get<int64_t>();
 		m_nvencMaxNumRefFrames = config.get("max_num_ref_frames").get<int64_t>();
@@ -186,7 +189,7 @@ void Settings::Load()
 		m_nvencRcInitialDelay = config.get("rc_initial_delay").get<int64_t>();
 		m_nvencRcMaxBitrate = config.get("rc_max_bitrate").get<int64_t>();
 		m_nvencRcAverageBitrate = config.get("rc_average_bitrate").get<int64_t>();
-		m_nvencEnableAQ = config.get("enable_aq").get<int64_t>();
+		m_nvencEnableWeightedPrediction = config.get("nvenc_enable_weighted_prediction").get<bool>();
 
 		m_captureFrameDir = config.get("capture_frame_dir").get<std::string>();
 

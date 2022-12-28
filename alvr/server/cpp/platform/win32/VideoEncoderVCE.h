@@ -49,12 +49,6 @@ protected:
 
 typedef AMFPipeline* AMFPipelinePtr;
 
-enum EncoderQualityPreset {
-	QUALITY = 0,
-	BALANCED = 1,
-	SPEED = 2
-};
-
 // Video encoder for AMD VCE.
 class VideoEncoderVCE : public VideoEncoder
 {

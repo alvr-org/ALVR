@@ -1,14 +1,10 @@
-use std::{fmt::Display, future::Future};
+use std::{backtrace::Backtrace, fmt::Display, future::Future};
 
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
-        let message = panic_info
-            .payload()
-            .downcast_ref::<&str>()
-            .unwrap_or(&"Unavailable");
         let err_str = format!(
-            "Message: {message:?}\nBacktrace:\n{:?}",
-            backtrace::Backtrace::new()
+            "What happened: {panic_info}\n\nBacktrace:\n{}",
+            Backtrace::force_capture()
         );
 
         log::error!("{err_str}");

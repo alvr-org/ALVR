@@ -6,6 +6,11 @@
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
 
+enum AdaptiveQuantizationMode {
+	SpatialAQ = 1,
+	TemporalAQ = 2
+};
+
 // Video encoder for NVIDIA NvEnc.
 class VideoEncoderNVENC : public VideoEncoder
 {

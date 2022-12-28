@@ -211,13 +211,13 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         }
 
         switch (Settings::Instance().m_encoderQualityPreset) {
-        case QUALITY:
+        case ALVR_QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
             break;
-        case BALANCED:
+        case ALVR_BALANCED:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_BALANCED);
             break;
-        case SPEED:
+        case ALVR_SPEED:
         default:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_SPEED);
             break;
@@ -258,13 +258,13 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         }
 
         switch (Settings::Instance().m_encoderQualityPreset) {
-        case QUALITY:
+        case ALVR_QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
             break;
-        case BALANCED:
+        case ALVR_BALANCED:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_BALANCED);
             break;
-        case SPEED:
+        case ALVR_SPEED:
         default:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_SPEED);
             break;

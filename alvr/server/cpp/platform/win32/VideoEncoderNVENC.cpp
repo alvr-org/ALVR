@@ -139,15 +139,16 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	// See recommended NVENC settings for low-latency encoding.
 	// https://docs.nvidia.com/video-technologies/video-codec-sdk/nvenc-video-encoder-api-prog-guide/#recommended-nvenc-settings
 	GUID qualityPreset = NV_ENC_PRESET_P2_GUID;
-	if (Settings::Instance().m_nvencPreset == 0) {
+	if (Settings::Instance().m_encoderQualityPreset == ALVR_QUALITY) {
 		qualityPreset = NV_ENC_PRESET_P7_GUID;
-	} else if (Settings::Instance().m_nvencPreset == 1) {
+	} else if (Settings::Instance().m_encoderQualityPreset == ALVR_BALANCED) {
 		qualityPreset = NV_ENC_PRESET_P5_GUID;
-	} else if (Settings::Instance().m_nvencPreset == 2) {
+	} else if (Settings::Instance().m_encoderQualityPreset == ALVR_SPEED) {
 		qualityPreset = NV_ENC_PRESET_P2_GUID;
 	}
-	NV_ENC_TUNING_INFO tunePreset = NV_ENC_TUNING_INFO_LOW_LATENCY;
-	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, encoderGUID, qualityPreset, tunePreset);
+	NV_ENC_TUNING_INFO tuningPreset = static_cast<NV_ENC_TUNING_INFO>(Settings::Instance().m_nvencTuningPreset);
+
+	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, encoderGUID, qualityPreset, tuningPreset);
 
 	initializeParams.encodeWidth = initializeParams.darWidth = renderWidth;
 	initializeParams.encodeHeight = initializeParams.darHeight = renderHeight;
@@ -157,6 +158,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	if (Settings::Instance().m_nvencRefreshRate != -1) {
 		initializeParams.frameRateNum = Settings::Instance().m_nvencRefreshRate;
 	}
+
+	initializeParams.enableWeightedPrediction = Settings::Instance().m_nvencEnableWeightedPrediction;
 
 	// 16 is recommended when using reference frame invalidation. But it has caused bad visual quality.
 	// Now, use 0 (use default).
@@ -173,9 +176,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	if (m_codec == ALVR_CODEC_H264) {
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;
 		config.repeatSPSPPS = 1;
-		if (Settings::Instance().m_nvencEnableIntraRefresh != -1) {
-			config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
-		}
+		config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+		
 		if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
 			config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
 		}
@@ -198,9 +200,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	else {
 		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
 		config.repeatSPSPPS = 1;
-		if (Settings::Instance().m_nvencEnableIntraRefresh != -1) {
-			config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
-		}
+		config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
+
 		if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
 			config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
 		}
@@ -210,6 +211,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		config.maxNumRefFramesInDPB = maxNumRefFrames;
 		config.idrPeriod = gopLength;
+
+		if (Settings::Instance().m_use10bitEncoder) {
+			encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
+		}
 	}
 
 	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped
@@ -229,8 +234,12 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 			encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_VBR;
 			break;
 	}
-	encodeConfig.rcParams.multiPass = NV_ENC_TWO_PASS_QUARTER_RESOLUTION;
+	encodeConfig.rcParams.multiPass = static_cast<NV_ENC_MULTI_PASS>(Settings::Instance().m_nvencMultiPass);
 	encodeConfig.rcParams.lowDelayKeyFrameScale = 1;
+	
+	if (Settings::Instance().m_nvencLowDelayKeyFrameScale != -1) {
+		encodeConfig.rcParams.lowDelayKeyFrameScale = Settings::Instance().m_nvencLowDelayKeyFrameScale;
+	}
 	
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
@@ -238,6 +247,11 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
 	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
+	if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
+		encodeConfig.rcParams.enableAQ = 1;
+	} else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {
+		encodeConfig.rcParams.enableTemporalAQ = 1;
+	}
 
 	if (Settings::Instance().m_nvencRateControlMode != -1) {
 		encodeConfig.rcParams.rateControlMode = (NV_ENC_PARAMS_RC_MODE)Settings::Instance().m_nvencRateControlMode;
@@ -253,14 +267,5 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	}
 	if (Settings::Instance().m_nvencRcAverageBitrate != -1) {
 		encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
-	}
-
-	if (Settings::Instance().m_use10bitEncoder) {
-		encodeConfig.rcParams.enableAQ = 1;
-		encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
-	}
-
-	if (Settings::Instance().m_nvencEnableAQ != -1) {
-		encodeConfig.rcParams.enableAQ = Settings::Instance().m_nvencEnableAQ;
 	}
 }

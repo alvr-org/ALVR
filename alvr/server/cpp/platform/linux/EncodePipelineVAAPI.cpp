@@ -159,15 +159,15 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   quality.vbaq_mode = 1;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
   switch (settings.m_encoderQualityPreset)
   {
-    case QUALITY:
+    case ALVR_QUALITY:
       quality.preset_mode = PRESET_MODE_QUALITY;
       encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
     break;
-    case BALANCED: 
+    case ALVR_BALANCED: 
       quality.preset_mode = PRESET_MODE_BALANCE;
       encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
     break;
-    case SPEED:
+    case ALVR_SPEED:
       default:
        quality.preset_mode = PRESET_MODE_SPEED;
        encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)

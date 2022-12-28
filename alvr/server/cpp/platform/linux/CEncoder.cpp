@@ -83,12 +83,24 @@ int accept_timeout(pollfd socket, std::atomic_bool &exiting) {
     return -1;
 }
 
-#ifdef DEBUG
-void logfn(void*, int level, const char* data, va_list va)
+void av_logfn(void*, int level, const char* data, va_list va)
 {
-  vfprintf(stderr, data, va);
-}
+  if (level >
+#ifdef DEBUG
+          AV_LOG_DEBUG)
+#else
+          AV_LOG_VERBOSE)
 #endif
+    return;
+
+  char buf[256];
+  vsnprintf(buf, sizeof(buf), data, va);
+
+  if (level <= AV_LOG_ERROR)
+    Error("Encoder: %s", buf);
+  else
+    Info("Encoder: %s", buf);
+}
 
 } // namespace
 
@@ -192,10 +204,7 @@ void CEncoder::Run() {
 
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
-#ifdef DEBUG
-      AVUTIL.av_log_set_level(AV_LOG_DEBUG);
-      AVUTIL.av_log_set_callback(logfn);
-#endif
+      AVUTIL.av_log_set_callback(av_logfn);
 
       bool useAmf = alvr::AMFContext::get()->isValid();
       std::vector<const char*> deviceExtensions;

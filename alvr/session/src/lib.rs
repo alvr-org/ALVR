@@ -46,6 +46,7 @@ pub struct OpenvrConfig {
     pub codec: u32,
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,
+    pub enable_vbaq: bool,
     pub use_preproc: bool,
     pub preproc_sigma: u32,
     pub preproc_tor: u32,

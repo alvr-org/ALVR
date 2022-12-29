@@ -224,7 +224,7 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         }
 
         // No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, true);
+        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
         // Turns Off IDR/I Frames
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_IDR_PERIOD, 0);
@@ -281,7 +281,7 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL);
 
         // No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
-        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, true);
+        amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
         // Turns Off IDR/I Frames
         amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NUM_GOPS_PER_IDR, 0);

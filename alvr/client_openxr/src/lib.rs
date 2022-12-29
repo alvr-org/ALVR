@@ -42,9 +42,9 @@ fn init_xr_session_egl(
     xr_system: xr::SystemId,
 ) -> (
     EglContext,
-    xr::Session<xr::OpenGL>,
+    xr::Session<xr::OpenGlEs>,
     xr::FrameWaiter,
-    xr::FrameStream<xr::OpenGL>,
+    xr::FrameStream<xr::OpenGlEs>,
 ) {
     let entry = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
 
@@ -104,49 +104,38 @@ fn init_xr_session_egl(
         .unwrap();
 
     #[cfg(target_os = "android")]
-    let (xr_session, xr_frame_waiter, xr_frame_stream) = unsafe {
-        xr_instance.create_session(
-            xr_system,
-            &xr::opengl::SessionCreateInfo::Android {
-                display: display.as_ptr(),
-                config: config.as_ptr(),
-                context: context.as_ptr(),
-            },
-        )
-    }
-    .unwrap();
-    // invalid initialization just to avoid lints
-    #[cfg(not(target_os = "android"))]
-    let (xr_session, xr_frame_waiter, xr_frame_stream) = unsafe {
-        xr_instance.create_session(
-            xr_system,
-            &xr::opengl::SessionCreateInfo::Xlib {
-                x_display: ptr::null_mut(),
-                visualid: 0,
-                glx_fb_config: ptr::null_mut(),
-                glx_drawable: 0,
-                glx_context: ptr::null_mut(),
-            },
-        )
-    }
-    .unwrap();
+    {
+        let (xr_session, xr_frame_waiter, xr_frame_stream) = unsafe {
+            xr_instance.create_session(
+                xr_system,
+                &xr::opengles::SessionCreateInfo::Android {
+                    display: display.as_ptr(),
+                    config: config.as_ptr(),
+                    context: context.as_ptr(),
+                },
+            )
+        }
+        .unwrap();
 
-    (
-        EglContext {
-            entry,
-            context,
-            dummy_surface,
-        },
-        xr_session,
-        xr_frame_waiter,
-        xr_frame_stream,
-    )
+        (
+            EglContext {
+                entry,
+                context,
+                dummy_surface,
+            },
+            xr_session,
+            xr_frame_waiter,
+            xr_frame_stream,
+        )
+    }
+    #[cfg(not(target_os = "android"))]
+    unimplemented!()
 }
 
 pub fn create_swapchain(
-    session: &xr::Session<xr::OpenGL>,
+    session: &xr::Session<xr::OpenGlEs>,
     resolution: UVec2,
-) -> xr::Swapchain<xr::OpenGL> {
+) -> xr::Swapchain<xr::OpenGlEs> {
     session
         .create_swapchain(&xr::SwapchainCreateInfo {
             create_flags: xr::SwapchainCreateFlags::EMPTY,
@@ -206,7 +195,7 @@ pub fn entry_point() {
 
     // mandatory call
     let _ = xr_instance
-        .graphics_requirements::<xr::OpenGL>(xr_system)
+        .graphics_requirements::<xr::OpenGlEs>(xr_system)
         .unwrap();
 
     let (_egl_context, xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
@@ -223,7 +212,6 @@ pub fn entry_point() {
     );
 
     alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
-    #[cfg(target_os = "android")]
     alvr_client_opengl::initialize();
 
     let action_set = xr_instance
@@ -271,30 +259,29 @@ pub fn entry_point() {
                             ]
                         });
 
-                        let textures: [Vec<i32>; 2] = [
-                            swapchains[0]
-                                .enumerate_images()
-                                .unwrap()
-                                .iter()
-                                .map(|i| *i as _)
-                                .collect(),
-                            swapchains[1]
-                                .enumerate_images()
-                                .unwrap()
-                                .iter()
-                                .map(|i| *i as _)
-                                .collect(),
-                        ];
-
-                        #[cfg(target_os = "android")]
-                        alvr_client_opengl::resume(recommended_resolution, textures);
+                        alvr_client_opengl::resume(
+                            recommended_resolution,
+                            [
+                                swapchains[0]
+                                    .enumerate_images()
+                                    .unwrap()
+                                    .iter()
+                                    .map(|i| *i as _)
+                                    .collect(),
+                                swapchains[1]
+                                    .enumerate_images()
+                                    .unwrap()
+                                    .iter()
+                                    .map(|i| *i as _)
+                                    .collect(),
+                            ],
+                        );
 
                         alvr_client_core::resume();
                     }
                     xr::SessionState::STOPPING => {
                         alvr_client_core::pause();
 
-                        #[cfg(target_os = "android")]
                         alvr_client_opengl::pause();
 
                         lobby_swapchains.take();
@@ -435,7 +422,6 @@ pub fn entry_point() {
             },
         ];
 
-        #[cfg(target_os = "android")]
         alvr_client_opengl::render_lobby(view_inputs);
 
         lobby_swapchains[0].release_image().unwrap();
@@ -478,7 +464,6 @@ pub fn entry_point() {
             .unwrap();
     }
 
-    #[cfg(target_os = "android")]
     alvr_client_opengl::destroy();
 
     alvr_client_core::destroy();

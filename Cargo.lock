@@ -2662,12 +2662,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mint"
-version = "0.5.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
-
-[[package]]
 name = "mio"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3121,7 +3115,7 @@ dependencies = [
 [[package]]
 name = "openxr"
 version = "0.17.1"
-source = "git+https://github.com/zarik5/openxrs#69fbb9d2e3fc379b6b5dabf3236a8154cec20154"
+source = "git+https://github.com/Ralith/openxrs#e5fe4164216fcc16189c52ea58e639e85e8e2d6b"
 dependencies = [
  "libc",
  "libloading",
@@ -3132,11 +3126,9 @@ dependencies = [
 [[package]]
 name = "openxr-sys"
 version = "0.9.3"
-source = "git+https://github.com/zarik5/openxrs#69fbb9d2e3fc379b6b5dabf3236a8154cec20154"
+source = "git+https://github.com/Ralith/openxrs#e5fe4164216fcc16189c52ea58e639e85e8e2d6b"
 dependencies = [
- "jni 0.19.0",
  "libc",
- "mint",
 ]
 
 [[package]]

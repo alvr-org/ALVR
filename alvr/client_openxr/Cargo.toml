@@ -18,7 +18,7 @@ alvr_sockets.workspace = true
 
 glow = "0.11"
 khronos-egl = { version = "4", features = ["dynamic"] }
-openxr = { git = "https://github.com/zarik5/openxrs", features = ["mint"] }
+openxr = { git = "https://github.com/Ralith/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.20"

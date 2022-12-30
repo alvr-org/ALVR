@@ -101,7 +101,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
       }
     }
   }
-  auto sw = std::make_unique<alvr::EncodePipelineSW>(input_frame, vk_frame_ctx, width, height);
+  auto sw = std::make_unique<alvr::EncodePipelineSW>(render, input_frame, width, height);
   Info("using SW encoder");
   return sw;
 }

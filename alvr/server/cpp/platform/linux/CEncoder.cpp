@@ -258,8 +258,8 @@ void CEncoder::Run() {
 
         encoded_data.clear();
         uint64_t pts;
-        // Encoders can req more then once frame, need to accumulate more data before sending it to the client
         if (!encode_pipeline->GetEncoded(encoded_data, &pts)) {
+          Error("Failed to get encoded data!");
           continue;
         }
 

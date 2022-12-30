@@ -6,6 +6,8 @@ class FormatConverter
 {
 public:
     struct Output {
+        VkImage image = VK_NULL_HANDLE;
+        VkImageCreateInfo imageInfo;
         VkSemaphore semaphore = VK_NULL_HANDLE;
     };
 
@@ -13,7 +15,7 @@ public:
 
     Output GetOutput();
 
-    void Convert(uint8_t **data, int *linesize);
+    void Convert(uint8_t **data = nullptr, int *linesize = nullptr);
 
     void Sync();
 
@@ -30,7 +32,7 @@ protected:
     };
 
     explicit FormatConverter(Renderer *render);
-    void init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen);
+    void init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, VkFormat outputFormat, bool hostMapped, const unsigned char *shaderData, unsigned shaderLen);
 
     Renderer *r;
     VkSampler m_sampler = VK_NULL_HANDLE;
@@ -52,5 +54,11 @@ protected:
 class RgbToYuv420 : public FormatConverter
 {
 public:
-    explicit RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore);
+    explicit RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore, bool hostMapped = false);
+};
+
+class RgbToNv12 : public FormatConverter
+{
+public:
+    explicit RgbToNv12(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore, bool hostMapped = false);
 };

@@ -1,6 +1,24 @@
 #include "FormatConverter.h"
 #include "alvr_server/bindings.h"
 
+struct FormatInfo {
+    int planes;
+    VkFormat planeFormats[3];
+    int planeDiv[3];
+};
+
+static FormatInfo formatInfo(VkFormat format)
+{
+    switch (format) {
+    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+        return { 3, { VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM, VK_FORMAT_R8_UNORM }, { 1, 2, 2 } };
+    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+        return { 2, { VK_FORMAT_R8_UNORM, VK_FORMAT_R8G8_UNORM }, { 1, 2 } };
+    default:
+        throw std::runtime_error("Unsupported format " + std::to_string(format));
+    }
+}
+
 FormatConverter::FormatConverter(Renderer *render)
     : r(render)
 {
@@ -9,12 +27,15 @@ FormatConverter::FormatConverter(Renderer *render)
 FormatConverter::~FormatConverter()
 {
     for (const OutputImage &image : m_images) {
-        vkUnmapMemory(r->m_dev, image.memory);
+        if (image.mapped) {
+            vkUnmapMemory(r->m_dev, image.memory);
+        }
         vkDestroyImageView(r->m_dev, image.view, nullptr);
         vkDestroyImage(r->m_dev, image.image, nullptr);
         vkFreeMemory(r->m_dev, image.memory, nullptr);
     }
 
+    vkDestroyImage(r->m_dev, m_output.image, nullptr);
     vkDestroySemaphore(r->m_dev, m_output.semaphore, nullptr);
 
     vkDestroySampler(r->m_dev, m_sampler, nullptr);
@@ -26,10 +47,10 @@ FormatConverter::~FormatConverter()
     vkDestroyPipelineLayout(r->m_dev, m_pipelineLayout, nullptr);
 }
 
-void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen)
+void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, VkFormat format, bool hostMapped, const unsigned char *shaderData, unsigned shaderLen)
 {
-    m_images.resize(count);
     m_semaphore = semaphore;
+    auto info = formatInfo(format);
 
     // Sampler
     VkSamplerCreateInfo samplerInfo = {};
@@ -70,7 +91,7 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     descriptorBindings[1].binding = 1;
     descriptorBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     descriptorBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorBindings[1].descriptorCount = count;
+    descriptorBindings[1].descriptorCount = info.planes;
 
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
     descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -117,37 +138,78 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     vkUpdateDescriptorSets(r->m_dev, 1, &descriptorWriteSet, 0, nullptr);
 
     // Output images
-    for (int i = 0; i < count; ++i) {
-        VkImageCreateInfo imageInfo = {};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.format = VK_FORMAT_R8_UNORM;
-        imageInfo.extent.width = imageCreateInfo.extent.width;
-        imageInfo.extent.height = imageCreateInfo.extent.height;
-        imageInfo.extent.depth = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-        imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+    m_images.resize(info.planes);
+
+    m_output.imageInfo = {};
+    m_output.imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    m_output.imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    m_output.imageInfo.format = format;
+    m_output.imageInfo.extent.width = imageCreateInfo.extent.width;
+    m_output.imageInfo.extent.height = imageCreateInfo.extent.height;
+    m_output.imageInfo.extent.depth = 1;
+    m_output.imageInfo.arrayLayers = 1;
+    m_output.imageInfo.mipLevels = 1;
+    m_output.imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    m_output.imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    m_output.imageInfo.tiling = hostMapped ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+    m_output.imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    m_output.imageInfo.flags = VK_IMAGE_CREATE_EXTENDED_USAGE_BIT | VK_IMAGE_CREATE_ALIAS_BIT | VK_IMAGE_CREATE_DISJOINT_BIT | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VK_CHECK(vkCreateImage(r->m_dev, &m_output.imageInfo, nullptr, &m_output.image));
+
+    r->commandBufferBegin();
+
+    for (int i = 0; i < info.planes; ++i) {
+        VkImageCreateInfo imageInfo = m_output.imageInfo;
+        imageInfo.format = info.planeFormats[i];
+        imageInfo.extent.width /= info.planeDiv[i];
+        imageInfo.extent.height /= info.planeDiv[i];
         VK_CHECK(vkCreateImage(r->m_dev, &imageInfo, nullptr, &m_images[i].image));
 
-        VkMemoryRequirements memReqs;
-        VkMemoryAllocateInfo memAllocInfo {};
-        memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        vkGetImageMemoryRequirements(r->m_dev, m_images[i].image, &memReqs);
-        memAllocInfo.allocationSize = memReqs.size;
+        VkImagePlaneMemoryRequirementsInfo planeReqs = {};
+        planeReqs.sType = VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO;
+        planeReqs.planeAspect = static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_PLANE_0_BIT << i);
 
-        VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        memAllocInfo.memoryTypeIndex = r->memoryTypeIndex(memType, memReqs.memoryTypeBits);
-        VK_CHECK(vkAllocateMemory(r->m_dev, &memAllocInfo, nullptr, &m_images[i].memory));
-        VK_CHECK(vkBindImageMemory(r->m_dev, m_images[i].image, m_images[i].memory, 0));
+        VkImageMemoryRequirementsInfo2 imageReqs = {};
+        imageReqs.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+        imageReqs.pNext = &planeReqs;
+        imageReqs.image = m_output.image;
+
+        VkMemoryRequirements2 memoryReqs2 = {};
+        memoryReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+        vkGetImageMemoryRequirements2(r->m_dev, &imageReqs, &memoryReqs2);
+
+        VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        if (hostMapped) {
+            memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
+        VkMemoryAllocateInfo memoryAllocInfo = {};
+        memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memoryAllocInfo.memoryTypeIndex = r->memoryTypeIndex(memType, memoryReqs2.memoryRequirements.memoryTypeBits);
+        memoryAllocInfo.allocationSize = memoryReqs2.memoryRequirements.size;
+        VK_CHECK(vkAllocateMemory(r->m_dev, &memoryAllocInfo, nullptr, &m_images[i].memory));
+
+        VkBindImagePlaneMemoryInfo bindPlaneInfo = {};
+        bindPlaneInfo.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
+        bindPlaneInfo.planeAspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        VkBindImageMemoryInfo bindInfo = {};
+        bindInfo.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindInfo.pNext = &bindPlaneInfo;
+        bindInfo.image = m_images[i].image;
+        bindInfo.memory = m_images[i].memory;
+        bindInfo.memoryOffset = 0;
+        VK_CHECK(vkBindImageMemory2(r->m_dev, 1, &bindInfo));
+
+        VkImageViewUsageCreateInfo viewUsageInfo = {};
+        viewUsageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+        viewUsageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
 
         VkImageViewCreateInfo viewInfo = {};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.pNext = &viewUsageInfo;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = imageInfo.format;
+        viewInfo.format = info.planeFormats[i];
         viewInfo.image = m_images[i].image;
         viewInfo.subresourceRange = {};
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -185,19 +247,48 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
         imageBarrier.subresourceRange.levelCount = 1;
         imageBarrier.srcAccessMask = 0;
         imageBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-
-        r->commandBufferBegin();
         vkCmdPipelineBarrier(r->m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
-        r->commandBufferSubmit();
 
-        VkImageSubresource subresource = {};
-        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        VkSubresourceLayout layout;
-        vkGetImageSubresourceLayout(r->m_dev, m_images[i].image, &subresource, &layout);
+        if (hostMapped) {
+            VkImageSubresource subresource = {};
+            subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            VkSubresourceLayout layout;
+            vkGetImageSubresourceLayout(r->m_dev, m_images[i].image, &subresource, &layout);
 
-        m_images[i].linesize = layout.rowPitch;
-        VK_CHECK(vkMapMemory(r->m_dev, m_images[i].memory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&m_images[i].mapped)));
+            m_images[i].linesize = layout.rowPitch;
+            VK_CHECK(vkMapMemory(r->m_dev, m_images[i].memory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&m_images[i].mapped)));
+        }
     }
+
+    VkBindImageMemoryInfo bindInfos[3];
+    VkBindImagePlaneMemoryInfo bindPlaneInfos[3];
+    for (int i = 0; i < info.planes; ++i) {
+        bindInfos[i] = {};
+        bindInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindInfos[i].pNext = &bindPlaneInfos[i];
+        bindInfos[i].image = m_output.image;
+        bindInfos[i].memory = m_images[i].memory;
+        bindInfos[i].memoryOffset = 0;
+
+        bindPlaneInfos[i] = {};
+        bindPlaneInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
+        bindPlaneInfos[i].planeAspect = static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_PLANE_0_BIT << i);
+    }
+    VK_CHECK(vkBindImageMemory2(r->m_dev, info.planes, bindInfos));
+
+    VkImageMemoryBarrier imageBarrier = {};
+    imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    imageBarrier.image = m_output.image;
+    imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarrier.subresourceRange.layerCount = 1;
+    imageBarrier.subresourceRange.levelCount = 1;
+    imageBarrier.srcAccessMask = 0;
+    imageBarrier.dstAccessMask = 0;
+    vkCmdPipelineBarrier(r->m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
+
+    r->commandBufferSubmit();
 
     VkSemaphoreCreateInfo semInfo = {};
     semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -233,6 +324,11 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     m_groupCountY = (imageCreateInfo.extent.height + (imageCreateInfo.extent.height & 31)) / 32;
 }
 
+FormatConverter::Output FormatConverter::GetOutput()
+{
+    return m_output;
+}
+
 void FormatConverter::Convert(uint8_t **data, int *linesize)
 {
     VkCommandBufferBeginInfo commandBufferBegin = {};
@@ -262,9 +358,11 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     submitInfo.pCommandBuffers = &m_commandBuffer;
     VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
 
-    for (size_t i = 0; i < m_images.size(); ++i) {
-        data[i] = m_images[i].mapped;
-        linesize[i] = m_images[i].linesize;
+    if (data && linesize) {
+        for (size_t i = 0; i < m_images.size(); ++i) {
+            data[i] = m_images[i].mapped;
+            linesize[i] = m_images[i].linesize;
+        }
     }
 }
 
@@ -290,8 +388,14 @@ uint64_t FormatConverter::GetTimestamp()
     return query * r->m_timestampPeriod;
 }
 
-RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore)
+RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore, bool hostMapped)
     : FormatConverter(render)
 {
-    init(image, imageInfo, semaphore, 3, RGBTOYUV420_SHADER_COMP_SPV_PTR, RGBTOYUV420_SHADER_COMP_SPV_LEN);
+    init(image, imageInfo, semaphore, VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, hostMapped, RGBTOYUV420_SHADER_COMP_SPV_PTR, RGBTOYUV420_SHADER_COMP_SPV_LEN);
+}
+
+RgbToNv12::RgbToNv12(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore, bool hostMapped)
+    : FormatConverter(render)
+{
+    init(image, imageInfo, semaphore, VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, hostMapped, RGBTONV12_SHADER_COMP_SPV_PTR, RGBTONV12_SHADER_COMP_SPV_LEN);
 }

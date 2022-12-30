@@ -76,7 +76,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
 
   x264_picture_init(&picture_out);
 
-  rgbtoyuv = new RgbToYuv420(render, render->GetOutput().image, render->GetOutput().imageInfo, render->GetOutput().semaphore);
+  rgbtoyuv = new RgbToYuv420(render, render->GetOutput().image, render->GetOutput().imageInfo, render->GetOutput().semaphore, true);
 }
 
 alvr::EncodePipelineSW::~EncodePipelineSW()

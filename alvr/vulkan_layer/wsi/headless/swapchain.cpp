@@ -251,7 +251,7 @@ bool swapchain::try_connect() {
 
     int ret;
     if (m_socket == -1) {
-        m_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+        m_socket = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
         if (m_socket == -1) {
             perror("socket");
             exit(1);

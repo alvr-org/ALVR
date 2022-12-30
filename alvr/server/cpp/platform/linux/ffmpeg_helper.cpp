@@ -285,7 +285,8 @@ alvr::VkFrame::VkFrame(
     ):
   width(image_info.extent.width),
   height(image_info.extent.height),
-  vkformat(image_info.format)
+  vkimage(image),
+  vkimageinfo(image_info)
 {
   device = vk_ctx.get_vk_device();
 

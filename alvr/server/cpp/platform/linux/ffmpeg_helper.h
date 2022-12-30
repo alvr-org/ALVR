@@ -86,7 +86,9 @@ public:
       VkDeviceMemory memory,
       DrmImage drm);
   ~VkFrame();
-  VkFormat format() { return vkformat;}
+  VkImage image() { return vkimage;}
+  VkImageCreateInfo imageInfo() { return vkimageinfo;}
+  VkFormat format() { return vkimageinfo.format;}
   operator AVVkFrame*() const { return av_vkframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);
 private:
@@ -95,7 +97,8 @@ private:
   const uint32_t width;
   const uint32_t height;
   vk::Device device;
-  VkFormat vkformat;
+  VkImage vkimage;
+  VkImageCreateInfo vkimageinfo;
 };
 
 }

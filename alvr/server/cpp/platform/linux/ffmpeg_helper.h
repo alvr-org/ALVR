@@ -50,6 +50,7 @@ public:
   VkInstance get_vk_instance() const { return instance;}
   VkPhysicalDevice get_vk_phys_device() const { return physicalDevice;}
   uint32_t get_vk_queue_family_index() const { return queueFamilyIndex;}
+  uint32_t get_vk_queue_compute_family_index() const { return queueFamilyIndexCompute;}
   std::vector<const char*> get_vk_instance_extensions() const { return instanceExtensions;}
   std::vector<const char*> get_vk_device_extensions() const { return deviceExtensions;}
 
@@ -58,6 +59,7 @@ public:
   VkPhysicalDevice physicalDevice;
   VkDevice device;
   uint32_t queueFamilyIndex;
+  uint32_t queueFamilyIndexCompute;
   std::vector<const char*> instanceExtensions;
   std::vector<const char*> deviceExtensions;
   bool nvidia = false;

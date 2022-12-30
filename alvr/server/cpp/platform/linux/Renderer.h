@@ -3,7 +3,17 @@
 #include <vector>
 #include <string>
 #include <array>
+#include <iostream>
 #include <vulkan/vulkan.h>
+
+#define VK_CHECK(f) \
+{ \
+    VkResult res = (f); \
+    if (res != VK_SUCCESS) { \
+        std::cerr << Renderer::result_to_str(res) << "at" << __FILE__ << ":" << __LINE__ << std::endl; \
+        throw std::runtime_error("Vulkan: " + Renderer::result_to_str(res) + "at " __FILE__ ":" + std::to_string(__LINE__)); \
+    } \
+}
 
 struct DrmImage {
     int fd = -1;
@@ -31,7 +41,7 @@ public:
         DrmImage drm;
     };
 
-    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueFamilyIndex, const std::vector<const char *> &devExtensions);
+    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t graphicsIdx, uint32_t computeIdx, const std::vector<const char *> &devExtensions);
     virtual ~Renderer();
 
     void Startup(uint32_t width, uint32_t height, VkFormat format);
@@ -44,11 +54,13 @@ public:
 
     void Render(uint32_t index, uint64_t waitValue);
 
-    void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore);
+    void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore = nullptr, VkFence *fence = nullptr);
 
     void Wait(uint32_t index, uint64_t waitValue);
     void CaptureInputFrame(const std::string &filename);
     void CaptureOutputFrame(const std::string &filename);
+
+    static std::string result_to_str(VkResult result);
 
 private:
     struct InputImage {
@@ -90,6 +102,8 @@ private:
     VkPhysicalDevice m_physDev;
     VkQueue m_queue;
     uint32_t m_queueFamilyIndex;
+    VkQueue m_queueCompute;
+    uint32_t m_queueFamilyIndexCompute;
     VkFormat m_format;
     VkExtent2D m_imageSize;
     VkCommandPool m_commandPool;
@@ -106,6 +120,7 @@ private:
     std::string m_outputImageCapture;
 
     friend class RenderPipeline;
+    friend class FormatConverter;
 };
 
 class RenderPipeline

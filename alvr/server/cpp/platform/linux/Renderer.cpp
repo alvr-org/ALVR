@@ -22,54 +22,6 @@ struct Vertex {
     float position[2];
 };
 
-static std::string result_to_str(VkResult result)
-{
-    switch (result) {
-#define VAL(x) case x: return #x
-    VAL(VK_SUCCESS);
-    VAL(VK_NOT_READY);
-    VAL(VK_TIMEOUT);
-    VAL(VK_EVENT_SET);
-    VAL(VK_EVENT_RESET);
-    VAL(VK_INCOMPLETE);
-    VAL(VK_ERROR_OUT_OF_HOST_MEMORY);
-    VAL(VK_ERROR_OUT_OF_DEVICE_MEMORY);
-    VAL(VK_ERROR_INITIALIZATION_FAILED);
-    VAL(VK_ERROR_DEVICE_LOST);
-    VAL(VK_ERROR_MEMORY_MAP_FAILED);
-    VAL(VK_ERROR_LAYER_NOT_PRESENT);
-    VAL(VK_ERROR_EXTENSION_NOT_PRESENT);
-    VAL(VK_ERROR_FEATURE_NOT_PRESENT);
-    VAL(VK_ERROR_INCOMPATIBLE_DRIVER);
-    VAL(VK_ERROR_TOO_MANY_OBJECTS);
-    VAL(VK_ERROR_FORMAT_NOT_SUPPORTED);
-    VAL(VK_ERROR_FRAGMENTED_POOL);
-    VAL(VK_ERROR_OUT_OF_POOL_MEMORY);
-    VAL(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-    VAL(VK_ERROR_SURFACE_LOST_KHR);
-    VAL(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
-    VAL(VK_SUBOPTIMAL_KHR);
-    VAL(VK_ERROR_OUT_OF_DATE_KHR);
-    VAL(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
-    VAL(VK_ERROR_VALIDATION_FAILED_EXT);
-    VAL(VK_ERROR_INVALID_SHADER_NV);
-    VAL(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
-    VAL(VK_ERROR_NOT_PERMITTED_EXT);
-    VAL(VK_RESULT_MAX_ENUM);
-#undef VAL
-    default: return "Unknown VkResult";
-    }
-}
-
-#define VK_CHECK(f) \
-{ \
-    VkResult res = (f); \
-    if (res != VK_SUCCESS) { \
-        std::cerr << result_to_str(res) << "at" << __FILE__ << ":" << __LINE__ << std::endl; \
-        throw std::runtime_error("Vulkan: " + result_to_str(res) + "at " __FILE__ ":" + std::to_string(__LINE__)); \
-    } \
-}
-
 static uint32_t to_drm_format(VkFormat format)
 {
     switch (format) {
@@ -83,11 +35,12 @@ static uint32_t to_drm_format(VkFormat format)
     }
 }
 
-Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueFamilyIndex, const std::vector<const char*> &devExtensions)
+Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t graphicsIdx, uint32_t computeIdx, const std::vector<const char*> &devExtensions)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
-    , m_queueFamilyIndex(queueFamilyIndex)
+    , m_queueFamilyIndex(graphicsIdx)
+    , m_queueFamilyIndexCompute(computeIdx)
 {
     auto checkExtension = [devExtensions](const char *name) {
         return std::find(devExtensions.begin(), devExtensions.end(), name) != devExtensions.end();
@@ -139,6 +92,7 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
     m_imageSize.height = height;
 
     vkGetDeviceQueue(m_dev, m_queueFamilyIndex, 0, &m_queue);
+    vkGetDeviceQueue(m_dev, m_queueFamilyIndexCompute, 0, &m_queueCompute);
 
     // Command buffer
     VkCommandPoolCreateInfo cmdPoolInfo = {};
@@ -685,7 +639,7 @@ void Renderer::CaptureOutputFrame(const std::string &filename)
     m_outputImageCapture = filename;
 }
 
-void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore)
+void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore, VkFence *fence)
 {
     std::array<VkImageMemoryBarrier, 2> imageBarrierIn;
     imageBarrierIn[0] = {};
@@ -762,11 +716,50 @@ void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, 
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.signalSemaphoreCount = semaphore ? 1 : 0;
     submitInfo.pSignalSemaphores = semaphore;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
-    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, nullptr));
+    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, fence ? *fence : nullptr));
+}
+
+std::string Renderer::result_to_str(VkResult result)
+{
+    switch (result) {
+#define VAL(x) case x: return #x
+    VAL(VK_SUCCESS);
+    VAL(VK_NOT_READY);
+    VAL(VK_TIMEOUT);
+    VAL(VK_EVENT_SET);
+    VAL(VK_EVENT_RESET);
+    VAL(VK_INCOMPLETE);
+    VAL(VK_ERROR_OUT_OF_HOST_MEMORY);
+    VAL(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+    VAL(VK_ERROR_INITIALIZATION_FAILED);
+    VAL(VK_ERROR_DEVICE_LOST);
+    VAL(VK_ERROR_MEMORY_MAP_FAILED);
+    VAL(VK_ERROR_LAYER_NOT_PRESENT);
+    VAL(VK_ERROR_EXTENSION_NOT_PRESENT);
+    VAL(VK_ERROR_FEATURE_NOT_PRESENT);
+    VAL(VK_ERROR_INCOMPATIBLE_DRIVER);
+    VAL(VK_ERROR_TOO_MANY_OBJECTS);
+    VAL(VK_ERROR_FORMAT_NOT_SUPPORTED);
+    VAL(VK_ERROR_FRAGMENTED_POOL);
+    VAL(VK_ERROR_OUT_OF_POOL_MEMORY);
+    VAL(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+    VAL(VK_ERROR_SURFACE_LOST_KHR);
+    VAL(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
+    VAL(VK_SUBOPTIMAL_KHR);
+    VAL(VK_ERROR_OUT_OF_DATE_KHR);
+    VAL(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
+    VAL(VK_ERROR_VALIDATION_FAILED_EXT);
+    VAL(VK_ERROR_INVALID_SHADER_NV);
+    VAL(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
+    VAL(VK_ERROR_NOT_PERMITTED_EXT);
+    VAL(VK_RESULT_MAX_ENUM);
+#undef VAL
+    default: return "Unknown VkResult";
+    }
 }
 
 void Renderer::commandBufferBegin()

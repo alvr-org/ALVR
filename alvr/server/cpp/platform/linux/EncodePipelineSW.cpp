@@ -4,12 +4,13 @@
 #include <chrono>
 
 #include "alvr_server/Settings.h"
+#include "alvr_server/Logger.h"
 #include "ffmpeg_helper.h"
+#include "FormatConverter.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
-#include <libswscale/swscale.h>
 }
 
 namespace
@@ -30,11 +31,15 @@ const char * encoder(ALVR_CODEC codec)
 
 }
 
-alvr::EncodePipelineSW::EncodePipelineSW(VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height)
+alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame, uint32_t width, uint32_t height)
 {
-  vk_frame = input_frame.make_av_frame(vk_frame_ctx).release();
-
   const auto& settings = Settings::Instance();
+
+  if (settings.m_codec == ALVR_CODEC_H265)
+  {
+    // TODO: Make it work?
+    throw std::runtime_error("HEVC is not supported by SW encoder");
+  }
 
   auto codec_id = ALVR_CODEC(settings.m_codec);
   const char * encoder_name = encoder(codec_id);
@@ -54,28 +59,37 @@ alvr::EncodePipelineSW::EncodePipelineSW(VkFrame &input_frame, VkFrameCtx& vk_fr
   switch (codec_id)
   {
     case ALVR_CODEC_H264:
-      encoder_ctx->profile = settings.m_use10bitEncoder ? FF_PROFILE_H264_HIGH_10 : FF_PROFILE_H264_HIGH;
-      AVUTIL.av_dict_set(&opt, "preset", "ultrafast", 0);
-      AVUTIL.av_dict_set(&opt, "tune", "zerolatency", 0);
-      encoder_ctx->gop_size = 72;
+      encoder_ctx->profile = FF_PROFILE_H264_HIGH;
       break;
     case ALVR_CODEC_H265:
       encoder_ctx->profile = settings.m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
-      AVUTIL.av_dict_set(&opt, "preset", "ultrafast", 0);
-      AVUTIL.av_dict_set(&opt, "tune", "zerolatency", 0);
-      encoder_ctx->gop_size = 72;
       break;
   }
 
+  switch (Settings::Instance().m_rateControlMode)
+  {
+    case ALVR_CBR:
+      av_dict_set(&opt, "nal-hrd", "cbr", 0);
+      break;
+    case ALVR_VBR:
+      av_dict_set(&opt, "nal-hrd", "vbr", 0);
+      break;
+  }
+
+  AVUTIL.av_dict_set(&opt, "preset", "ultrafast", 0);
+  AVUTIL.av_dict_set(&opt, "tune", "zerolatency", 0);
 
   encoder_ctx->width = width;
   encoder_ctx->height = height;
   encoder_ctx->time_base = {1, (int)1e9};
   encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
-  encoder_ctx->pix_fmt = settings.m_use10bitEncoder ? AV_PIX_FMT_YUV420P10LE : AV_PIX_FMT_YUV420P;
+  encoder_ctx->pix_fmt = settings.m_use10bitEncoder && codec_id == ALVR_CODEC_H265 ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
   encoder_ctx->max_b_frames = 0;
+  encoder_ctx->gop_size = 0;
   encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
+  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+  encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 
   int err = AVCODEC.avcodec_open2(encoder_ctx, codec, &opt);
@@ -83,41 +97,31 @@ alvr::EncodePipelineSW::EncodePipelineSW(VkFrame &input_frame, VkFrameCtx& vk_fr
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
 
-  transferred_frame = AVUTIL.av_frame_alloc();
   encoder_frame = AVUTIL.av_frame_alloc();
-  encoder_frame->width = settings.m_renderWidth;
-  encoder_frame->height = settings.m_renderHeight;
+  encoder_frame->width = width;
+  encoder_frame->height = height;
   encoder_frame->format = encoder_ctx->pix_fmt;
   AVUTIL.av_frame_get_buffer(encoder_frame, 0);
 
-  scaler_ctx = SWSCALE.sws_getContext(
-          vk_frame->width, vk_frame->height, ((AVHWFramesContext*)vk_frame->hw_frames_ctx->data)->sw_format,
-          encoder_ctx->width, encoder_ctx->height, encoder_ctx->pix_fmt,
-          SWS_BILINEAR,
-          NULL, NULL, NULL);
+  rgbtoyuv = new RgbToYuv420(render, input_frame.image(), input_frame.imageInfo());
 }
 
 alvr::EncodePipelineSW::~EncodePipelineSW()
 {
-  AVUTIL.av_frame_free(&vk_frame);
-  AVUTIL.av_frame_free(&transferred_frame);
+  if (rgbtoyuv) {
+    delete rgbtoyuv;
+  }
   AVUTIL.av_frame_free(&encoder_frame);
 }
 
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-  int err = AVUTIL.av_hwframe_transfer_data(transferred_frame, vk_frame, 0);
-  if (err)
-    throw alvr::AvException("av_hwframe_transfer_data", err);
-
-  err = SWSCALE.sws_scale(scaler_ctx, transferred_frame->data, transferred_frame->linesize, 0, transferred_frame->height,
-      encoder_frame->data, encoder_frame->linesize);
-  if (err == 0)
-    throw alvr::AvException("sws_scale failed:", err);
+  rgbtoyuv->Convert(encoder_frame->data, encoder_frame->linesize);
 
   encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
   encoder_frame->pts = targetTimestampNs;
 
+  int err;
   if ((err = AVCODEC.avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed:", err);
   }

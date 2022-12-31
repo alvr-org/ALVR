@@ -90,6 +90,10 @@ pub enum ClientCoreEvent {
     },
 }
 
+pub fn get_device_name() -> String {
+    platform::device_model()
+}
+
 pub fn initialize(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,

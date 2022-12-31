@@ -7,7 +7,7 @@ use alvr_common::{
 };
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
-use std::{ptr, thread, time::Duration};
+use std::{path::Path, ptr, thread, time::Duration};
 
 enum ButtonAction {
     Binary(xr::Action<bool>),
@@ -158,7 +158,16 @@ pub fn events_thread() {}
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let xr_entry = unsafe { xr::Entry::load().unwrap() };
+    let device_name = alvr_client_core::get_device_name();
+    error!("device name: {device_name}");
+
+    let xr_entry = if device_name == "Quest" {
+        unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap() }
+    } else if device_name.contains("Pico") {
+        unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap() }
+    } else {
+        unsafe { xr::Entry::load().unwrap() }
+    };
 
     #[cfg(target_os = "android")]
     xr_entry.initialize_android_loader().unwrap();
@@ -170,7 +179,7 @@ pub fn entry_point() {
 
     let mut enabled_extensions = xr::ExtensionSet::default();
     enabled_extensions.khr_opengl_es_enable = true;
-    enabled_extensions.fb_display_refresh_rate = true;
+    enabled_extensions.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     #[cfg(target_os = "android")]
     {
         enabled_extensions.khr_android_create_instance = true;

@@ -292,7 +292,7 @@ pub fn build_client_lib(profile: Profile) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_quest_client(profile: Profile) {
+pub fn build_android_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
     let mut flags = vec![];
@@ -316,7 +316,7 @@ pub fn build_quest_client(profile: Profile) {
     .run()
     .unwrap();
 
-    const ARTIFACT_NAME: &str = "alvr_client_quest";
+    const ARTIFACT_NAME: &str = "alvr_client_android";
 
     let artifacts_dir = afs::target_dir().join(profile.to_string());
     let build_dir = afs::build_dir().join(ARTIFACT_NAME);

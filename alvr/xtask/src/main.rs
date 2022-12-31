@@ -190,7 +190,7 @@ fn main() {
                     local_ffmpeg,
                     keep_config,
                 ),
-                "build-client" => build::build_quest_client(profile),
+                "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
@@ -209,7 +209,7 @@ fn main() {
                 "package-server" => {
                     packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
                 }
-                "package-client" => build::build_quest_client(Profile::Distribution),
+                "package-client" => build::build_android_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

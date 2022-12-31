@@ -54,6 +54,10 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
       VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
       VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
+      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+      VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+      "VK_KHR_video_encode_queue", // VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME
+      "VK_EXT_video_encode_h264", // VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME
   };
   device_extensions.insert(device_extensions.end(), requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 
@@ -73,7 +77,7 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
   VkApplicationInfo appInfo = {};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = "ALVR";
-  appInfo.apiVersion = VK_API_VERSION_1_2;
+  appInfo.apiVersion = VK_API_VERSION_1_3;
 
   VkInstanceCreateInfo instanceInfo = {};
   instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -147,10 +151,15 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
   std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+  int encodeQueue = -1;
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
     const bool graphics = queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
+    const bool encode = queueFamilyProperties[i].queueFlags & 0x00000040; // VK_QUEUE_VIDEO_ENCODE_BIT_KHR
     if (graphics) {
       queueFamilyIndex = i;
+    }
+    if (encode) {
+      encodeQueue = i;
     }
     VkDeviceQueueCreateInfo queueInfo = {};
     queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -160,13 +169,23 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
     queueInfos.push_back(queueInfo);
   }
 
+  VkPhysicalDeviceVulkan13Features features13 = {};
+  features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  features13.synchronization2 = true;
+
   VkPhysicalDeviceVulkan12Features features12 = {};
   features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  features12.pNext = &features13;
   features12.timelineSemaphore = true;
+
+  VkPhysicalDeviceVulkan11Features features11 = {};
+  features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  features11.pNext = &features12;
+  features11.samplerYcbcrConversion = true;
 
   VkPhysicalDeviceFeatures2 features = {};
   features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  features.pNext = &features12;
+  features.pNext = &features11;
   features.features.samplerAnisotropy = VK_TRUE;
 
   VkDeviceCreateInfo deviceInfo = {};
@@ -219,8 +238,8 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
   vkctx->nb_comp_queues = 1;
 #if LIBAVUTIL_VERSION_MAJOR >= 57
   vkctx->get_proc_addr = vkGetInstanceProcAddr;
-  vkctx->queue_family_encode_index = -1;
-  vkctx->nb_encode_queues = 0;
+  vkctx->queue_family_encode_index = encodeQueue;
+  vkctx->nb_encode_queues = 1;
   vkctx->queue_family_decode_index = -1;
   vkctx->nb_decode_queues = 0;
 #endif

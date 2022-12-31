@@ -6,6 +6,7 @@
 #include "EncodePipelineVAAPI.h"
 #include "EncodePipelineNvEnc.h"
 #include "EncodePipelineAMF.h"
+#include "EncodePipelineVulkan.h"
 #include "ffmpeg_helper.h"
 
 extern "C" {
@@ -25,6 +26,14 @@ void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)
 {
   if(Settings::Instance().m_force_sw_encoding == false) {
+    try {
+      auto vulkan = std::make_unique<alvr::EncodePipelineVulkan>(render, vk_ctx, width, height);
+      Info("using Vulkan encoder");
+      return vulkan;
+    } catch (std::exception &e)
+    {
+      Info("failed to create Vulkan encoder: %s", e.what());
+    }
     if (vk_ctx.nvidia) {
       try {
         auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, input_frame, vk_frame_ctx, width, height);

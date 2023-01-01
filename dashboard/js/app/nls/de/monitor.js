@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Maximale Encodierungsverzögerung",
     transportLatency: "Transportverzögerung",
     decodeLatency: "Entschlüsselungsverzögerung",
-    fecPercentage: "Fec Prozentsatz",
     fecFailureTotal: "Fec Verlust gesamt",
     fecFailureInSecond: "Fec Verlust pro sekunde",
     clientFPS: "Client FPS",

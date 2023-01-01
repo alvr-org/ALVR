@@ -46,11 +46,6 @@ fn main() {
     }
     builder.compile("bindings");
 
-    cc::Build::new()
-        .cpp(false)
-        .files(&["cpp/reedsolomon/rs.c"])
-        .compile("bindings_rs_c");
-
     if platform_name == "android" {
         println!("cargo:rustc-link-lib=log");
         println!("cargo:rustc-link-lib=EGL");

@@ -162,7 +162,7 @@ void Settings::Load()
 		m_gamma = (float)config.get("gamma").get<double>();
 		m_sharpening = (float)config.get("sharpening").get<double>();
 
-		m_enableFec = config.get("enable_fec").get<bool>();
+		m_videoPacketSize = config.get("video_packet_size").get<int64_t>();
 
 		m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
 

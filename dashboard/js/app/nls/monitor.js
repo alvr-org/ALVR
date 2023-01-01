@@ -41,7 +41,6 @@ define({
         encodeLatencyMax: "Encode latency max",
         transportLatency: "Transport latency",
         decodeLatency: "Decoder latency",
-        fecPercentage: "Fec percentage",
         fecFailureTotal: "Fec failure total",
         fecFailureInSecond: "Fec failure / s",
         clientFPS: "Client FPS",

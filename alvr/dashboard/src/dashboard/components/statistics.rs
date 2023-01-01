@@ -333,10 +333,7 @@ impl StatisticsTab {
             ui[0].label("Decoder latency:");
             ui[1].label(&format!("{:.2} ms", statistics.decode_latency_ms));
 
-            ui[0].label("Fec percentage:");
-            ui[1].label(&format!("{} %", statistics.fec_percentage));
-
-            ui[0].label("Fec failure total:");
+            ui[0].label("Total packets lost:");
             ui[1].label(&format!(
                 "{} packets ({} packets/s)",
                 statistics.fec_errors_total, statistics.fec_errors_per_sec

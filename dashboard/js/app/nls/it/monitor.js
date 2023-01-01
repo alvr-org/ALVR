@@ -38,7 +38,6 @@ define({
     encodeLatencyMax: "Latenza massima dell'encoder video",
     transportLatency: "Latenza di trasmissione",
     decodeLatency: "Latenza del decoder video",
-    fecPercentage: "percentuale per correzione errori (FEC)",
     fecFailureTotal: "Totale errori FEC",
     fecFailureInSecond: "Errori FEC al secondo",
     clientFPS: "FPS del client",

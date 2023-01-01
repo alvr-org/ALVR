@@ -38,7 +38,6 @@ define({
     encodeLatencyMax: "최대 인코드 지연시간",
     transportLatency: "전송 지연시간",
     decodeLatency: "디코더 지연시간",
-    fecPercentage: "전진 에러 수정(Fec)률",
     fecFailureTotal: "총 Fec 실패",
     fecFailureInSecond: "Fec 실패 / s",
     clientFPS: "클라이언트 FPS",

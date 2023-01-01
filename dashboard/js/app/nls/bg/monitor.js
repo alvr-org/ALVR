@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Максимално закъснение на енкодера",
     transportLatency: "Закъснение на предаването",
     decodeLatency: "Закъснение на декодера",
-    fecPercentage: "Общ процент на корекция на грешки напред (FEC)",
     fecFailureTotal: "Общо неуспех на FEC",
     fecFailureInSecond: "FEC грешки/сек",
     clientFPS: "FPS на клиента",

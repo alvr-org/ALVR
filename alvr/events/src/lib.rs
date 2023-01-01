@@ -22,7 +22,6 @@ pub struct Statistics {
     pub network_latency_ms: f32,
     pub encode_latency_ms: f32,
     pub decode_latency_ms: f32,
-    pub fec_percentage: u32,
     pub fec_errors_total: usize,
     pub fec_errors_per_sec: usize,
     pub client_fps: u32, // the name will be fixed after the old dashboard is removed

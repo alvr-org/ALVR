@@ -38,7 +38,6 @@ define({
     encodeLatencyMax: "最高编码延迟",
     transportLatency: "传输延迟",
     decodeLatency: "解码延迟",
-    fecPercentage: "Fec 百分比",
     fecFailureTotal: "Fec 总丢失数据包数",
     fecFailureInSecond: "Fec 每秒丢失数据包数",
     clientFPS: "客户端帧数",

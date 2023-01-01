@@ -481,7 +481,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         saturation,
         gamma,
         sharpening,
-        enable_fec: settings.connection.enable_fec,
+        video_packet_size: settings.connection.video_packet_size,
         linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,

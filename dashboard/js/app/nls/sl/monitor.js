@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Najdaljši čas zlaganja",
     transportLatency: "Čas prenašanja",
     decodeLatency: "Čas razlaganja",
-    fecPercentage: "FEC odstotek",
     fecFailureTotal: "Skupno št.FEC napak",
     fecFailureInSecond: "FEC napake/sek",
     clientFPS: "Št. prejetih sličic na skundo",

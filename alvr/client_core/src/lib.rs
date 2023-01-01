@@ -14,6 +14,7 @@ mod platform;
 mod sockets;
 mod statistics;
 mod storage;
+mod packets_queue;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -42,6 +43,7 @@ use std::{
     time::Duration,
 };
 use storage::Config;
+use packets_queue::PacketsQueue;
 use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
@@ -97,10 +99,6 @@ pub fn initialize(
     external_decoder: bool,
 ) {
     logging_backend::init_logging();
-
-    unsafe {
-        pushNal = Some(decoder::push_nal);
-    }
 
     // Make sure to reset config in case of version compat mismatch.
     if Config::load().protocol_id != alvr_common::protocol_id() {

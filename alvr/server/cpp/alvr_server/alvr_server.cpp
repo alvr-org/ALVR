@@ -182,7 +182,7 @@ unsigned long long (*PathStringToHash)(const char *path);
 void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
-void (*ReportFecFailure)(int percentage);
+void (*ReportFecFailure)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants

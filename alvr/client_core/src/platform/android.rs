@@ -25,6 +25,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
+    ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -238,7 +239,8 @@ impl VideoDecoderEnqueuer {
     pub fn push_frame_nal(
         &self,
         timestamp: Duration,
-        data: &[u8],
+        data: *const u8,
+        length: i32,
         timeout: Duration,
     ) -> StrResult<bool> {
         let Some(decoder) = &*self.inner.lock() else {
@@ -248,13 +250,15 @@ impl VideoDecoderEnqueuer {
 
         match decoder.dequeue_input_buffer(timeout) {
             MediaCodecResult::Ok(mut buffer) => {
-                buffer.buffer_mut()[..data.len()].copy_from_slice(data);
+                unsafe {
+                    ptr::copy_nonoverlapping(data, buffer.buffer_mut().as_ptr() as _, length as _)
+                }
 
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
                 // to other Durations
                 decoder
-                    .queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)
+                    .queue_input_buffer(buffer, 0, length as _, timestamp.as_nanos() as _, 0)
                     .map_err(err!())?;
 
                 Ok(true)

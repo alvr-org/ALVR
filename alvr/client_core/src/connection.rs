@@ -1,17 +1,17 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::{self, DECODER_INIT_CONFIG},
+    decoder::{self, DECODER_INIT_CONFIG, push_nal},
     platform,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE,
-    IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    ClientCoreEvent, PacketsQueue, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
-use alvr_session::{AudioDeviceId, CodecType, SessionDesc};
+use alvr_session::{AudioDeviceId, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
     PeerType, ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
@@ -330,8 +330,6 @@ async fn stream_pipeline(
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
             .await?;
-        let codec = settings.video.codec;
-        let enable_fec = settings.connection.enable_fec;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -355,10 +353,8 @@ async fn stream_pipeline(
             }
 
             let _stream_guard = StreamCloseGuard;
-
-            unsafe {
-                crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
-            };
+            
+            let mut packets_queue = PacketsQueue::new(settings.connection.video_packet_size).unwrap();
 
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -369,32 +365,18 @@ async fn stream_pipeline(
                     break Ok(());
                 }
 
-                let header = VideoFrame {
-                    packetCounter: packet.header.packet_counter,
-                    trackingFrameIndex: packet.header.tracking_frame_index,
-                    videoFrameIndex: packet.header.video_frame_index,
-                    sentTime: packet.header.sent_time,
-                    frameByteSize: packet.header.frame_byte_size,
-                    fecIndex: packet.header.fec_index,
-                    fecPercentage: packet.header.fec_percentage,
-                };
-
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_video_packet_received(Duration::from_nanos(
                         packet.header.tracking_frame_index,
                     ));
                 }
-
-                let mut fec_failure = false;
-                unsafe {
-                    crate::processNalPacket(
-                        header,
-                        packet.buffer.as_ptr(),
-                        packet.buffer.len() as _,
-                        &mut fec_failure,
-                    )
-                };
-                if fec_failure {
+                
+                let mut had_packet_loss = false;
+                packets_queue.add_video_packet(packet, &mut had_packet_loss);
+                if packets_queue.reconstruct() {
+                    push_nal(packets_queue.get_frame_buffer(), packets_queue.get_frame_size(), packets_queue.get_tracking_frame_index());
+                }
+                if had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }

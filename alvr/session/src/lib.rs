@@ -106,7 +106,7 @@ pub struct OpenvrConfig {
     pub saturation: f32,
     pub gamma: f32,
     pub sharpening: f32,
-    pub enable_fec: bool,
+    pub video_packet_size: i32,
     pub linux_async_reprojection: bool,
     pub nvenc_tuning_preset: u32,
     pub nvenc_multi_pass: u32,

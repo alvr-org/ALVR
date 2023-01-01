@@ -44,7 +44,6 @@ pub struct StatisticsManager {
     video_bytes_partial_sum: usize,
     fec_errors_total: usize,
     fec_failures_partial_sum: usize,
-    fec_percentage: u32,
     battery_gauges: HashMap<u64, f32>,
     game_render_latency_average: SlidingWindowAverage<Duration>,
 }
@@ -65,7 +64,6 @@ impl StatisticsManager {
             video_bytes_partial_sum: 0,
             fec_errors_total: 0,
             fec_failures_partial_sum: 0,
-            fec_percentage: 0,
             battery_gauges: HashMap::new(),
             game_render_latency_average: SlidingWindowAverage::new(history_size),
         }
@@ -132,8 +130,7 @@ impl StatisticsManager {
         self.video_bytes_partial_sum += bytes_count;
     }
 
-    pub fn report_fec_failure(&mut self, fec_percentage: u32) {
-        self.fec_percentage = fec_percentage;
+    pub fn report_fec_failure(&mut self) {
         self.fec_errors_total += 1;
         self.fec_failures_partial_sum += 1;
     }
@@ -201,7 +198,6 @@ impl StatisticsManager {
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
                     decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
-                    fec_percentage: self.fec_percentage,
                     fec_errors_total: self.fec_errors_total,
                     fec_errors_per_sec: (self.fec_failures_partial_sum as f32 / interval_secs) as _,
                     client_fps: client_fps as _,

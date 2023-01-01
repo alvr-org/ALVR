@@ -586,8 +586,9 @@ pub struct ConnectionDesc {
     #[schema(advanced)]
     pub on_disconnect_script: String,
 
-    #[schema(advanced)]
-    pub enable_fec: bool,
+    // Max UDP packet size is 65507 bytes
+    #[schema(advanced, min = 0, max = 65500)]
+    pub video_packet_size: i32,
 
     #[schema(advanced)]
     pub statistics_history_size: u64,
@@ -919,7 +920,7 @@ pub fn session_settings_default() -> SettingsDefault {
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),
-            enable_fec: true,
+            video_packet_size: 1400,
             statistics_history_size: 256,
         },
         extra: ExtraDescDefault {

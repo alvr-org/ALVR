@@ -10,7 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-use wgpu::Adapter;
+use wgpu::AdapterInfo;
 
 fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
     fs::write(path, json::to_string_pretty(session).map_err(err!())?).map_err(err!())
@@ -55,7 +55,7 @@ pub struct ServerDataManager {
     settings: Settings,
     session_path: PathBuf,
     script_engine: rhai::Engine,
-    gpu_adapters: Vec<Adapter>,
+    gpu_info: Option<AdapterInfo>,
 }
 
 impl ServerDataManager {
@@ -94,12 +94,14 @@ impl ServerDataManager {
             Err(_) => SessionDesc::default(),
         };
 
-        let gpu_adapters = {
-            let instance = wgpu::Instance::new(wgpu::Backends::VULKAN);
+        let vk_adapters: Vec<wgpu::Adapter> = wgpu::Instance::new(wgpu::Backends::VULKAN)
+            .enumerate_adapters(wgpu::Backends::VULKAN)
+            .collect();
 
-            instance
-                .enumerate_adapters(wgpu::Backends::VULKAN)
-                .collect()
+        let gpu_info = if let Some(adapter) = vk_adapters.get(0) {
+            Some(adapter.get_info())
+        } else {
+            None
         };
 
         let script_engine = rhai::Engine::new();
@@ -109,7 +111,7 @@ impl ServerDataManager {
             settings: session_desc.to_settings(),
             session_path: session_path.to_owned(),
             script_engine,
-            gpu_adapters,
+            gpu_info,
         }
     }
 
@@ -173,8 +175,8 @@ impl ServerDataManager {
     }
 
     pub fn get_gpu_vendor(&self) -> GpuVendor {
-        if let Some(adapter) = self.gpu_adapters.get(0) {
-            match adapter.get_info().vendor {
+        if let Some(info) = &self.gpu_info {
+            match info.vendor {
                 0x10de => GpuVendor::Nvidia,
                 0x1002 => GpuVendor::Amd,
                 _ => GpuVendor::Other,
@@ -185,10 +187,11 @@ impl ServerDataManager {
     }
 
     pub fn get_gpu_name(&self) -> String {
-        self.gpu_adapters
-            .get(0)
-            .map(|a| a.get_info().name)
-            .unwrap_or_else(|| "".into())
+        if let Some(info) = &self.gpu_info {
+            info.name.clone()
+        } else {
+            "".into()
+        }
     }
 
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]

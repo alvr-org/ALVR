@@ -20,6 +20,8 @@
 
 * [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/Use-ALVR-through-a-USB-connection)
 
+* [Linux encoders requirements](https://github.com/alvr-org/ALVR/wiki/Linux-encoders-requirements)
+
 ***
 
 **Troubleshooting**

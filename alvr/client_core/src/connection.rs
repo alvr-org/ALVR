@@ -378,7 +378,7 @@ async fn stream_pipeline(
                     push_nal(
                         video_frame_buffer.get_frame_buffer(),
                         video_frame_buffer.get_frame_size(),
-                        tracking_frame_index,
+                        video_frame_buffer.get_tracking_frame_index(),
                     );
                 }
                 if packet.had_packet_loss {

@@ -7,7 +7,7 @@
 #include <thread>
 
 #define AMF_THROW_IF(expr) {AMF_RESULT res = expr;\
-if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, #expr);}}
+if(res != AMF_OK){throw MakeException("AMF Error %ls: %s", AMFContext::get()->resultString(res), #expr);}}
 
 static amf::AMF_SURFACE_FORMAT fromVkFormat(VkFormat format)
 {

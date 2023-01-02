@@ -1,4 +1,5 @@
 #include "amf_helper.h"
+#include "alvr_server/Logger.h"
 
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -6,6 +7,19 @@
 
 namespace alvr
 {
+
+class TraceWriter : public amf::AMFTraceWriter
+{
+public:
+    void AMF_CDECL_CALL Write(const wchar_t *scope, const wchar_t *message) override
+    {
+        Info("AMF: %ls", message);
+    }
+
+    void AMF_CDECL_CALL Flush() override
+    {
+    }
+};
 
 AMFContext::AMFContext()
 {
@@ -55,6 +69,11 @@ void AMFContext::initialize(amf::AMFVulkanDevice *dev)
     }
 }
 
+const wchar_t *AMFContext::resultString(AMF_RESULT res)
+{
+    return m_trace->GetResultText(res);
+}
+
 AMFContext *AMFContext::get()
 {
     static AMFContext *s = nullptr;
@@ -79,6 +98,15 @@ void AMFContext::init()
     if (init(AMF_FULL_VERSION, &m_factory) != AMF_OK) {
         return;
     }
+
+    if (m_factory->GetTrace(&m_trace) != AMF_OK) {
+        return;
+    }
+
+    m_trace->EnableWriter(AMF_TRACE_WRITER_CONSOLE, false);
+    m_trace->EnableWriter(AMF_TRACE_WRITER_DEBUG_OUTPUT, false);
+    m_trace->RegisterWriter(L"alvr-amf-trace", new TraceWriter, true);
+    m_trace->SetWriterLevel(L"alvr-amf-trace", AMF_TRACE_WARNING);
 
     if (m_factory->CreateContext(&m_context) != AMF_OK) {
         return;

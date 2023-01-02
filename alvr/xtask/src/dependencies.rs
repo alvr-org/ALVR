@@ -119,7 +119,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let flags = [
         "--enable-gpl",
         "--enable-version3",
-        "--disable-static",
+        "--enable-static",
         "--enable-shared",
         "--disable-programs",
         "--disable-doc",
@@ -146,7 +146,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--enable-pic",
         "--enable-rpath",
     ];
-    let install_prefix = "--prefix=alvr_build";
+    let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());
     // The reason for 4x$ in LDSOFLAGS var refer to https://stackoverflow.com/a/71429999
     // all varients of --extra-ldsoflags='-Wl,-rpath,$ORIGIN' do not work! don't waste your time trying!
     //

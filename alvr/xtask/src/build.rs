@@ -178,41 +178,41 @@ pub fn build_server(
         )
         .unwrap();
 
-        // copy ffmpeg binaries
-        if gpl {
-            let lib_dir = &build_layout.openvr_driver_root_dir;
-            let mut libavcodec_so = std::path::PathBuf::new();
-            sh.create_dir(lib_dir).unwrap();
-            let _push_guard = sh.push_dir(lib_dir);
-            for lib_path in sh
-                .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
-                .unwrap()
-                .into_iter()
-                .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
-            {
-                let src_so_file = lib_path.canonicalize().unwrap(); // canonicalize resolves symlinks.
-                sh.copy_file(&src_so_file, ".").unwrap();
-                // Shell::copy_file does not handle symlinks so we must recreate them.
-                if lib_path.is_symlink() {
-                    assert!(lib_dir.join(src_so_file.file_name().unwrap()).exists());
-                    let so_file = std::path::Path::new(src_so_file.file_name().unwrap());
-                    let so_file_symlink = std::path::Path::new(lib_path.file_name().unwrap());
-                    command::make_symlink(&sh, so_file, so_file_symlink).unwrap();
-                }
-                let lib_filename = src_so_file.file_name().unwrap();
-                if lib_filename.to_string_lossy().starts_with("libavcodec.so") {
-                    libavcodec_so = src_so_file;
-                }
-            }
-            // copy ffmpeg shared lib dependencies.
-            for solib in ["libx264.so", "libx265.so"] {
-                let src_libs = dependencies::find_resolved_so_paths(&libavcodec_so, solib);
-                if !src_libs.is_empty() {
-                    let src_lib = src_libs.first().unwrap();
-                    sh.copy_file(src_lib, ".").unwrap();
-                }
-            }
-        }
+        // // copy ffmpeg binaries
+        // if gpl {
+        //     let lib_dir = &build_layout.openvr_driver_root_dir;
+        //     let mut libavcodec_so = std::path::PathBuf::new();
+        //     sh.create_dir(lib_dir).unwrap();
+        //     let _push_guard = sh.push_dir(lib_dir);
+        //     for lib_path in sh
+        //         .read_dir(afs::deps_dir().join("linux/ffmpeg/alvr_build/lib"))
+        //         .unwrap()
+        //         .into_iter()
+        //         .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
+        //     {
+        //         let src_so_file = lib_path.canonicalize().unwrap(); // canonicalize resolves symlinks.
+        //         sh.copy_file(&src_so_file, ".").unwrap();
+        //         // Shell::copy_file does not handle symlinks so we must recreate them.
+        //         if lib_path.is_symlink() {
+        //             assert!(lib_dir.join(src_so_file.file_name().unwrap()).exists());
+        //             let so_file = std::path::Path::new(src_so_file.file_name().unwrap());
+        //             let so_file_symlink = std::path::Path::new(lib_path.file_name().unwrap());
+        //             command::make_symlink(&sh, so_file, so_file_symlink).unwrap();
+        //         }
+        //         let lib_filename = src_so_file.file_name().unwrap();
+        //         if lib_filename.to_string_lossy().starts_with("libso") {
+        //             libavcodec_so = src_so_file;
+        //         }
+        //     }
+        //     // copy ffmpeg shared lib dependencies.
+        //     for solib in ["libx264.so", "libx265.so"] {
+        //         let src_libs = dependencies::find_resolved_so_paths(&libavcodec_so, solib);
+        //         if !src_libs.is_empty() {
+        //             let src_lib = src_libs.first().unwrap();
+        //             sh.copy_file(src_lib, ".").unwrap();
+        //         }
+        //     }
+        // }
     }
 
     // copy static resources

@@ -170,21 +170,21 @@ pub fn server_appimage(release: bool, gpl: bool, update: bool) {
     sh.change_dir(&afs::build_dir());
     let mut cmd = cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage");
 
-    if gpl {
-        for lib_path in sh
-            .read_dir(appdir.join("usr/lib64/alvr"))
-            .unwrap()
-            .into_iter()
-            .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
-        {
-            let file_name = lib_path.file_name().unwrap().to_string_lossy();
-            if file_name.contains("libx264.so") || file_name.contains("libx265.so") {
-                sh.remove_path(lib_path).ok();
-            } else {
-                cmd = cmd.arg(format!("--deploy-deps-only={}", lib_path.to_string_lossy()));
-            }
-        }
-    }
+    // if gpl {
+    //     for lib_path in sh
+    //         .read_dir(appdir.join("usr/lib64/alvr"))
+    //         .unwrap()
+    //         .into_iter()
+    //         .filter(|path| path.file_name().unwrap().to_string_lossy().contains(".so."))
+    //     {
+    //         let file_name = lib_path.file_name().unwrap().to_string_lossy();
+    //         if file_name.contains("libx264.so") || file_name.contains("libx265.so") {
+    //             sh.remove_path(lib_path).ok();
+    //         } else {
+    //             cmd = cmd.arg(format!("--deploy-deps-only={}", lib_path.to_string_lossy()));
+    //         }
+    //     }
+    // }
 
     cmd.run().unwrap();
 }

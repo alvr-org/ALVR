@@ -24,54 +24,15 @@ fn do_ffmpeg_config(build: &mut cc::Build) {
 
     assert!(ffmpeg_path.join("include").exists());
     build.include(ffmpeg_path.join("include"));
-
-    #[cfg(all(feature = "gpl", target_os = "linux"))]
-    {
-        let ffmpeg_pkg_path = ffmpeg_path.join("lib").join("pkgconfig");
-        assert!(ffmpeg_pkg_path.exists());
-
-        let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
-        env::set_var(
-            "PKG_CONFIG_PATH",
-            env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
-                format!("{ffmpeg_pkg_path}:{old}")
-            }),
-        );
-
-        let pkg = pkg_config::Config::new().cargo_metadata(false).to_owned();
-
-        let avutil = pkg.probe("libavutil").unwrap();
-        let avfilter = pkg.probe("libavfilter").unwrap();
-        let avcodec = pkg.probe("libavcodec").unwrap();
-        let swscale = pkg.probe("libswscale").unwrap();
-
-        build
-            .define("AVCODEC_MAJOR", avcodec.version.split(".").next().unwrap())
-            .define("AVUTIL_MAJOR", avutil.version.split(".").next().unwrap())
-            .define(
-                "AVFILTER_MAJOR",
-                avfilter.version.split(".").next().unwrap(),
-            )
-            .define("SWSCALE_MAJOR", swscale.version.split(".").next().unwrap());
-
-        // activate dlopen for libav libraries
-        build
-            .define("LIBRARY_LOADER_AVCODEC_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_AVUTIL_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_AVFILTER_LOADER_H_DLOPEN", None)
-            .define("LIBRARY_LOADER_SWSCALE_LOADER_H_DLOPEN", None);
-
-        println!("cargo:rustc-link-lib=dl");
-    }
 }
 
 fn do_ffmpeg_config_post() {
     if cfg!(feature = "local_ffmpeg") {
-        // TODO: cfg!(feature = "gpl") - switch to static linking
-        let kind = if false { "static" } else { "dylib" };
+        let statik = cfg!(all(feature = "gpl", target_os = "linux"));
 
         let ffmpeg_path = get_ffmpeg_path();
         let ffmpeg_lib_path = ffmpeg_path.join("lib");
+
         assert!(ffmpeg_lib_path.exists());
 
         println!(
@@ -79,19 +40,41 @@ fn do_ffmpeg_config_post() {
             ffmpeg_lib_path.to_string_lossy()
         );
 
-        println!("cargo:rustc-link-lib={}=avutil", kind);
-        println!("cargo:rustc-link-lib={}=avfilter", kind);
-        println!("cargo:rustc-link-lib={}=avcodec", kind);
-        println!("cargo:rustc-link-lib={}=swscale", kind);
+        if statik {
+            #[cfg(target_os = "linux")]
+            {
+                let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
+                assert!(ffmpeg_pkg_path.exists());
+
+                let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
+                env::set_var(
+                    "PKG_CONFIG_PATH",
+                    env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
+                        format!("{ffmpeg_pkg_path}:{old}")
+                    }),
+                );
+
+                let pkg = pkg_config::Config::new()
+                    .statik(statik)
+                    .to_owned();
+
+                for lib in ["libavutil", "libavfilter", "libavcodec"] {
+                    let pkg = pkg.probe(lib).unwrap();
+                }
+            }
+        } else {
+            for lib in ["avutil", "avfilter", "avcodec"] {
+                println!("cargo:rustc-link-lib={lib}");
+            }
+        }
     } else {
         #[cfg(target_os = "linux")]
         {
             let pkg = pkg_config::Config::new().to_owned();
 
-            pkg.probe("libavutil").unwrap();
-            pkg.probe("libavfilter").unwrap();
-            pkg.probe("libavcodec").unwrap();
-            pkg.probe("libswscale").unwrap();
+            for lib in ["libavutil", "libavfilter", "libavcodec"] {
+                pkg.probe(lib).unwrap();
+            }
         }
     }
 }

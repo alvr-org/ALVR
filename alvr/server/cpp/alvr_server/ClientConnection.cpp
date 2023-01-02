@@ -14,7 +14,7 @@ static const uint8_t H265_NAL_TYPE_VPS = 32;
 ClientConnection::ClientConnection() {
 	m_Statistics = std::make_shared<Statistics>();
 	
-	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
+	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame) - 12; // 12 bytes - 2 bytes channel id + 4 bytes packet sequence ID + 6 bytes struct alignment(?)
 	if (m_maxPayloadSize < 0) {
 		m_maxPayloadSize = 1400;
 	}

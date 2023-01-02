@@ -14,7 +14,7 @@ pub struct VideoFrameBuffer {
 impl VideoFrameBuffer {
     pub fn new(max_packet_size: i32) -> Result<Self, ()> {
         let mut max_payload_size =
-            max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
+            max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32) - 12; // 12 bytes - 2 bytes channel id + 4 bytes packet sequence ID + 6 bytes struct alignment(?)
         if max_payload_size < 0 {
             max_payload_size = 1400;
         }

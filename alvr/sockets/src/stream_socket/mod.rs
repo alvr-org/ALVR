@@ -177,11 +177,14 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         };
 
         let packet_index = bytes.get_u32();
-        let had_packet_loss = packet_index != self.next_packet_index && self.previous_packet_index != packet_index;
+        let had_packet_loss =
+            packet_index != self.next_packet_index && self.previous_packet_index != packet_index;
         if had_packet_loss {
             let previous_packet = self.previous_packet_index;
             let next_packet = self.next_packet_index;
-            info!("Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}");
+            info!(
+                "Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}"
+            );
         }
         self.previous_packet_index = packet_index;
         self.next_packet_index = packet_index + 1;

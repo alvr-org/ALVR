@@ -34,11 +34,7 @@ impl VideoFrameBuffer {
         })
     }
 
-    pub fn push(
-        &mut self,
-        header: VideoFrameHeaderPacket,
-        buffer: BytesMut,
-    ) {
+    pub fn push(&mut self, header: VideoFrameHeaderPacket, buffer: BytesMut) {
         let fec_index = header.fec_index;
         if self.current_frame.video_frame_index != header.video_frame_index {
             self.frame_lost = false;
@@ -49,8 +45,7 @@ impl VideoFrameBuffer {
                 self.total_shards = header.frame_byte_size / self.max_payload_size + 1;
             }
 
-            self.frame_buffer
-                .resize(header.frame_byte_size as _, 0);
+            self.frame_buffer.resize(header.frame_byte_size as _, 0);
 
             self.received_shards = 0;
             self.current_frame = header;

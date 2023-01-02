@@ -587,7 +587,7 @@ pub struct ConnectionDesc {
     pub on_disconnect_script: String,
 
     // Max UDP packet size is 65507 bytes
-    #[schema(advanced, min = 0, max = 65500)]
+    #[schema(advanced, min = 0, max = 65507)]
     pub video_packet_size: i32,
 
     #[schema(advanced)]

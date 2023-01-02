@@ -351,7 +351,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
             let header = VideoFrameHeaderPacket {
-                packet_counter: header.packetCounter,
                 tracking_frame_index: header.trackingFrameIndex,
                 video_frame_index: header.videoFrameIndex,
                 frame_byte_size: header.frameByteSize,

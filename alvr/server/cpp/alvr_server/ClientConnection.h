@@ -25,7 +25,6 @@ public:
 
 	std::shared_ptr<Statistics> m_Statistics;
 
-	uint32_t videoPacketCounter = 0;
 	int m_maxPayloadSize;
 
 	uint64_t mVideoFrameIndex = 1;

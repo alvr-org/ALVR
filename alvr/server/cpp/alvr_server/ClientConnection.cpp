@@ -14,12 +14,10 @@ static const uint8_t H265_NAL_TYPE_VPS = 32;
 ClientConnection::ClientConnection() {
 	m_Statistics = std::make_shared<Statistics>();
 	
-	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame);
+	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
 	if (m_maxPayloadSize < 0) {
 		m_maxPayloadSize = 0;
 	}
-
-	videoPacketCounter = 0;
 }
 
 int findVPSSPS(const uint8_t *frameBuffer, int frameByteSize) {
@@ -56,8 +54,6 @@ void ClientConnection::Send(uint8_t *buf, int len, uint64_t targetTimestampNs, u
 	if (m_maxPayloadSize == 0) {
 		VideoSend(header, buf, len);
 		m_Statistics->CountPacket(sizeof(VideoFrame) + len);
-		header.packetCounter = videoPacketCounter;
-		videoPacketCounter++;
 		return;
 	}
 
@@ -71,10 +67,8 @@ void ClientConnection::Send(uint8_t *buf, int len, uint64_t targetTimestampNs, u
 		}
 		dataRemain -= m_maxPayloadSize;
 
-		header.packetCounter = videoPacketCounter;
 		VideoSend(header, buf + i * m_maxPayloadSize, copyLength);
 		m_Statistics->CountPacket(sizeof(VideoFrame) + copyLength);
-		videoPacketCounter++;
 		header.fecIndex++;
 	}
 }

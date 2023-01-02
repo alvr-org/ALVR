@@ -35,7 +35,6 @@ struct ClientStats {
     unsigned long long totalPipelineLatencyNs;
 };
 struct VideoFrame {
-    unsigned int packetCounter;
     unsigned long long trackingFrameIndex;
     // FEC decoder needs some value for identify video frame number to detect new frame.
     // trackingFrameIndex becomes sometimes same value as previous video frame (in case of low

@@ -91,7 +91,6 @@ pub enum ClientControlPacket {
 // legacy video packet
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoFrameHeaderPacket {
-    pub packet_counter: u32,
     pub tracking_frame_index: u64,
     pub video_frame_index: u64,
     pub frame_byte_size: u32,

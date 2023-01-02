@@ -111,9 +111,9 @@ void ClientConnection::ReportNetworkLatency(uint64_t latencyUs) {
 	m_Statistics->NetworkSend(latencyUs);
 }
 
-void ClientConnection::OnFecFailure() {
-	Debug("Listener::OnFecFailure()\n");
-	ReportFecFailure();
+void ClientConnection::OnPacketLoss() {
+	Debug("Listener::OnPacketLoss()\n");
+	ReportPacketLoss();
 }
 
 std::shared_ptr<Statistics> ClientConnection::GetStatistics() {

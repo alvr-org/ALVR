@@ -129,7 +129,7 @@ extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
-extern "C" void (*ReportFecFailure)();
+extern "C" void (*ReportPacketLoss)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

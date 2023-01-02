@@ -42,8 +42,8 @@ pub struct StatisticsManager {
     video_packets_partial_sum: usize,
     video_bytes_total: usize,
     video_bytes_partial_sum: usize,
-    fec_errors_total: usize,
-    fec_failures_partial_sum: usize,
+    packets_lost_total: usize,
+    packets_lost_partial_sum: usize,
     battery_gauges: HashMap<u64, f32>,
     game_render_latency_average: SlidingWindowAverage<Duration>,
 }
@@ -62,8 +62,8 @@ impl StatisticsManager {
             video_packets_partial_sum: 0,
             video_bytes_total: 0,
             video_bytes_partial_sum: 0,
-            fec_errors_total: 0,
-            fec_failures_partial_sum: 0,
+            packets_lost_total: 0,
+            packets_lost_partial_sum: 0,
             battery_gauges: HashMap::new(),
             game_render_latency_average: SlidingWindowAverage::new(history_size),
         }
@@ -130,9 +130,9 @@ impl StatisticsManager {
         self.video_bytes_partial_sum += bytes_count;
     }
 
-    pub fn report_fec_failure(&mut self) {
-        self.fec_errors_total += 1;
-        self.fec_failures_partial_sum += 1;
+    pub fn report_packet_loss(&mut self) {
+        self.packets_lost_total += 1;
+        self.packets_lost_partial_sum += 1;
     }
 
     pub fn report_battery(&mut self, device_id: u64, gauge_value: f32) {
@@ -198,8 +198,8 @@ impl StatisticsManager {
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
                     decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
-                    fec_errors_total: self.fec_errors_total,
-                    fec_errors_per_sec: (self.fec_failures_partial_sum as f32 / interval_secs) as _,
+                    packets_lost_total: self.packets_lost_total,
+                    packets_lost_per_sec: (self.packets_lost_partial_sum as f32 / interval_secs) as _,
                     client_fps: client_fps as _,
                     server_fps: server_fps as _,
                     battery_hmd: (self
@@ -224,7 +224,7 @@ impl StatisticsManager {
 
                 self.video_packets_partial_sum = 0;
                 self.video_bytes_partial_sum = 0;
-                self.fec_failures_partial_sum = 0;
+                self.packets_lost_partial_sum = 0;
             }
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first

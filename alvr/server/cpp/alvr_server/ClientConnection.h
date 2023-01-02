@@ -20,7 +20,7 @@ public:
 	void Send(uint8_t *buf, int len, uint64_t targetTimestampNs, uint64_t videoFrameIndex);
 	void SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs);
  	void ReportNetworkLatency(uint64_t latencyUs);
-	void OnFecFailure();
+	void OnPacketLoss();
 	std::shared_ptr<Statistics> GetStatistics();
 
 	std::shared_ptr<Statistics> m_Statistics;

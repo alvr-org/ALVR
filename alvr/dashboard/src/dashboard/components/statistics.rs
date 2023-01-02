@@ -336,7 +336,7 @@ impl StatisticsTab {
             ui[0].label("Total packets lost:");
             ui[1].label(&format!(
                 "{} packets ({} packets/s)",
-                statistics.fec_errors_total, statistics.fec_errors_per_sec
+                statistics.packets_lost_total, statistics.packets_lost_per_sec
             ));
 
             ui[0].label("Client FPS:");

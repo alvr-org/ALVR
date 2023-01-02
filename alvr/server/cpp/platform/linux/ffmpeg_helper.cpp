@@ -6,27 +6,10 @@
 #include "alvr_server/bindings.h"
 #include "alvr_server/Logger.h"
 
-#define str(s) #s
-#define LOAD_LIB(LIBNAME, VERSION) \
-	if (not m_##LIBNAME.Load(g_driverRootDir + std::string("/lib"#LIBNAME".so." str(VERSION)))) {\
-		if (not m_##LIBNAME.Load("lib"#LIBNAME".so." str(VERSION))) {\
-			throw std::runtime_error("failed to load lib"#LIBNAME".so." str(VERSION));\
-		}\
-	}\
-
-alvr::libav::libav()
-{
-	LOAD_LIB(avutil, AVUTIL_MAJOR)
-	LOAD_LIB(avcodec, AVCODEC_MAJOR)
-	LOAD_LIB(swscale, SWSCALE_MAJOR)
-	LOAD_LIB(avfilter, AVFILTER_MAJOR)
-}
-#undef str
-
-alvr::libav& alvr::libav::instance()
-{
-	static libav instance;
-	return instance;
+extern "C" {
+  #include <libavcodec/avcodec.h>
+  #include <libavfilter/avfilter.h>
+  #include <libavutil/avutil.h>
 }
 
 namespace {
@@ -35,7 +18,7 @@ AVPixelFormat vk_format_to_av_format(vk::Format vk_fmt)
 {
   for (int f = AV_PIX_FMT_NONE; f < AV_PIX_FMT_NB; ++f)
   {
-    auto current_fmt = AVUTIL.av_vkfmt_from_pixfmt(AVPixelFormat(f));
+    auto current_fmt = av_vkfmt_from_pixfmt(AVPixelFormat(f));
     if (current_fmt and *current_fmt == (VkFormat)vk_fmt)
       return AVPixelFormat(f);
   }
@@ -46,7 +29,7 @@ AVPixelFormat vk_format_to_av_format(vk::Format vk_fmt)
 std::string alvr::AvException::makemsg(const std::string & msg, int averror)
 {
   char av_msg[AV_ERROR_MAX_STRING_SIZE];
-  AVUTIL.av_strerror(averror, av_msg, sizeof(av_msg));
+  av_strerror(averror, av_msg, sizeof(av_msg));
   return msg + " " + av_msg;
 }
 
@@ -194,13 +177,13 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   }
 
   if (drmContext) {
-    ctx = AVUTIL.av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);
+    ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);
     AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
     AVDRMDeviceContext *drmctx = (AVDRMDeviceContext*)hwctx->hwctx;
 
     drmctx->fd = -1;
   } else {
-    ctx = AVUTIL.av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VULKAN);
+    ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VULKAN);
     AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
     AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
 
@@ -238,14 +221,14 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
     vkctx->nb_enabled_dev_extensions = deviceExtensions.size();
   }
 
-  int ret = AVUTIL.av_hwdevice_ctx_init(ctx);
+  int ret = av_hwdevice_ctx_init(ctx);
   if (ret)
     throw AvException("failed to initialize ffmpeg", ret);
 }
 
 alvr::VkContext::~VkContext()
 {
-  AVUTIL.av_buffer_unref(&ctx);
+  av_buffer_unref(&ctx);
   vkDestroyDevice(device, nullptr);
   vkDestroyInstance(instance, nullptr);
 }
@@ -255,7 +238,7 @@ alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_cr
   AVHWFramesContext *frames_ctx = NULL;
   int err = 0;
 
-  if (!(ctx = AVUTIL.av_hwframe_ctx_alloc(vkContext.ctx))) {
+  if (!(ctx = av_hwframe_ctx_alloc(vkContext.ctx))) {
     throw std::runtime_error("Failed to create vulkan frame context.");
   }
   frames_ctx = (AVHWFramesContext *)(ctx->data);
@@ -264,15 +247,15 @@ alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_cr
   frames_ctx->width = image_create_info.extent.width;
   frames_ctx->height = image_create_info.extent.height;
   frames_ctx->initial_pool_size = 0;
-  if ((err = AVUTIL.av_hwframe_ctx_init(ctx)) < 0) {
-    AVUTIL.av_buffer_unref(&ctx);
+  if ((err = av_hwframe_ctx_init(ctx)) < 0) {
+    av_buffer_unref(&ctx);
     throw alvr::AvException("Failed to initialize vulkan frame context:", err);
   }
 }
 
 alvr::VkFrameCtx::~VkFrameCtx()
 {
-  AVUTIL.av_buffer_unref(&ctx);
+  av_buffer_unref(&ctx);
 }
 
 alvr::VkFrame::VkFrame(
@@ -305,7 +288,7 @@ alvr::VkFrame::VkFrame(
         av_drmframe->layers[0].planes[i].offset = drm.offsets[i];
     }
   } else {
-    av_vkframe = AVUTIL.av_vk_frame_alloc();
+    av_vkframe = av_vk_frame_alloc();
     av_vkframe->img[0] = image;
     av_vkframe->tiling = image_info.tiling;
     av_vkframe->mem[0] = memory;
@@ -328,23 +311,23 @@ alvr::VkFrame::VkFrame(
 alvr::VkFrame::~VkFrame()
 {
   if (av_drmframe) {
-    AVUTIL.av_free(av_drmframe);
+    av_free(av_drmframe);
   }
   if (av_vkframe) {
     vkDestroySemaphore(device, av_vkframe->sem[0], nullptr);
-    AVUTIL.av_free(av_vkframe);
+    av_free(av_vkframe);
   }
 }
 
 std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> alvr::VkFrame::make_av_frame(VkFrameCtx &frame_ctx)
 {
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> frame{
-    AVUTIL.av_frame_alloc(),
-      [](AVFrame *p) {AVUTIL.av_frame_free(&p);}
+    av_frame_alloc(),
+      [](AVFrame *p) {av_frame_free(&p);}
   };
   frame->width = width;
   frame->height = height;
-  frame->hw_frames_ctx = AVUTIL.av_buffer_ref(frame_ctx.ctx);
+  frame->hw_frames_ctx = av_buffer_ref(frame_ctx.ctx);
   if (av_drmframe) {
     frame->data[0] = (uint8_t*)av_drmframe;
     frame->format = AV_PIX_FMT_DRM_PRIME;
@@ -353,7 +336,7 @@ std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> alvr::VkFrame::make_av_f
     frame->data[0] = (uint8_t*)av_vkframe;
     frame->format = AV_PIX_FMT_VULKAN;
   }
-  frame->buf[0] = AVUTIL.av_buffer_alloc(1);
+  frame->buf[0] = av_buffer_alloc(1);
   frame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
 
   return frame;

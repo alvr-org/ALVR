@@ -43,13 +43,13 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame,
 
   auto codec_id = ALVR_CODEC(settings.m_codec);
   const char * encoder_name = encoder(codec_id);
-  const AVCodec *codec = AVCODEC.avcodec_find_encoder_by_name(encoder_name);
+  const AVCodec *codec = avcodec_find_encoder_by_name(encoder_name);
   if (codec == nullptr)
   {
     throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
   }
 
-  encoder_ctx = AVCODEC.avcodec_alloc_context3(codec);
+  encoder_ctx = avcodec_alloc_context3(codec);
   if (not encoder_ctx)
   {
     throw std::runtime_error("failed to allocate " + std::string(encoder_name) + " encoder");
@@ -76,8 +76,8 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame,
       break;
   }
 
-  AVUTIL.av_dict_set(&opt, "preset", "ultrafast", 0);
-  AVUTIL.av_dict_set(&opt, "tune", "zerolatency", 0);
+  av_dict_set(&opt, "preset", "ultrafast", 0);
+  av_dict_set(&opt, "tune", "zerolatency", 0);
 
   encoder_ctx->width = width;
   encoder_ctx->height = height;
@@ -92,17 +92,16 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame,
   encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 
-  int err = AVCODEC.avcodec_open2(encoder_ctx, codec, &opt);
+  int err = avcodec_open2(encoder_ctx, codec, &opt);
   if (err < 0) {
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
 
-  encoder_frame = AVUTIL.av_frame_alloc();
+  encoder_frame = av_frame_alloc();
   encoder_frame->width = width;
   encoder_frame->height = height;
   encoder_frame->format = encoder_ctx->pix_fmt;
-  AVUTIL.av_frame_get_buffer(encoder_frame, 0);
-
+  av_frame_get_buffer(encoder_frame, 0);
   rgbtoyuv = new RgbToYuv420(render, input_frame.image(), input_frame.imageInfo());
 }
 
@@ -111,7 +110,7 @@ alvr::EncodePipelineSW::~EncodePipelineSW()
   if (rgbtoyuv) {
     delete rgbtoyuv;
   }
-  AVUTIL.av_frame_free(&encoder_frame);
+  av_frame_free(&encoder_frame);
 }
 
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
@@ -122,7 +121,7 @@ void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
   encoder_frame->pts = targetTimestampNs;
 
   int err;
-  if ((err = AVCODEC.avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
+  if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed:", err);
   }
 }

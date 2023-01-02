@@ -4,32 +4,29 @@
 #include <functional>
 #include <memory>
 
-#include "generated/avutil_loader.h"
-#include "generated/avcodec_loader.h"
-#include "generated/avfilter_loader.h"
-#include "generated/swscale_loader.h"
+extern "C" {
+  #include <stdint.h>
+  
+  #include <libavcodec/avcodec.h>
+  
+  #include <libavfilter/avfilter.h>
+  #include <libavfilter/buffersink.h>
+  #include <libavfilter/buffersrc.h>
+  
+  #include <libavutil/avutil.h>
+  #include <libavutil/dict.h>
+  #include <libavutil/opt.h>
+  #include <libavutil/hwcontext.h>
+  #include <libavutil/hwcontext_vulkan.h>
+  #include <libavutil/hwcontext_drm.h>
+  
+  #include <libswscale/swscale.h>
+}
 
 #include "Renderer.h"
 
 namespace alvr
 {
-
-class libav
-{
-public:
-	static libav& instance();
-	avutil m_avutil;
-	avcodec m_avcodec;
-	swscale m_swscale;
-	avfilter m_avfilter;
-private:
-	libav();
-};
-
-#define AVUTIL ::alvr::libav::instance().m_avutil
-#define AVCODEC ::alvr::libav::instance().m_avcodec
-#define SWSCALE ::alvr::libav::instance().m_swscale
-#define AVFILTER ::alvr::libav::instance().m_avfilter
 
 // Utility class to build an exception from an ffmpeg return code.
 // Messages are rarely useful however.

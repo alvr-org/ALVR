@@ -34,7 +34,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
   AVHWFramesContext *frames_ctx = NULL;
   int err = 0;
 
-  if (!(hw_frames_ref = AVUTIL.av_hwframe_ctx_alloc(hw_device_ctx))) {
+  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
     throw std::runtime_error("Failed to create VAAPI frame context.");
   }
   frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
@@ -43,15 +43,15 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
   frames_ctx->width = ctx->width;
   frames_ctx->height = ctx->height;
   frames_ctx->initial_pool_size = 3;
-  if ((err = AVUTIL.av_hwframe_ctx_init(hw_frames_ref)) < 0) {
-    AVUTIL.av_buffer_unref(&hw_frames_ref);
+  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+    av_buffer_unref(&hw_frames_ref);
     throw alvr::AvException("Failed to initialize VAAPI frame context:", err);
   }
-  ctx->hw_frames_ctx = AVUTIL.av_buffer_ref(hw_frames_ref);
+  ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
   if (!ctx->hw_frames_ctx)
     err = AVERROR(ENOMEM);
 
-  AVUTIL.av_buffer_unref(&hw_frames_ref);
+  av_buffer_unref(&hw_frames_ref);
 }
 
 // Map the vulkan frames to corresponding vaapi frames
@@ -62,7 +62,7 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr:
 
   auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
 
-  if (!(hw_frames_ref = AVUTIL.av_hwframe_ctx_alloc(hw_device_ctx))) {
+  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
     throw std::runtime_error("Failed to create VAAPI frame context.");
   }
   auto frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
@@ -71,17 +71,17 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr:
   frames_ctx->width = input_frame_ctx->width;
   frames_ctx->height = input_frame_ctx->height;
   frames_ctx->initial_pool_size = 1;
-  if ((err = AVUTIL.av_hwframe_ctx_init(hw_frames_ref)) < 0) {
-    AVUTIL.av_buffer_unref(&hw_frames_ref);
+  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+    av_buffer_unref(&hw_frames_ref);
     throw alvr::AvException("Failed to initialize VAAPI frame context:", err);
   }
 
-  AVFrame * mapped_frame = AVUTIL.av_frame_alloc();
-  AVUTIL.av_hwframe_get_buffer(hw_frames_ref, mapped_frame, 0);
+  AVFrame * mapped_frame = av_frame_alloc();
+  av_hwframe_get_buffer(hw_frames_ref, mapped_frame, 0);
   auto vk_frame = input_frame.make_av_frame(vk_frame_ctx);
-  AVUTIL.av_hwframe_map(mapped_frame, vk_frame.get(), AV_HWFRAME_MAP_READ);
+  av_hwframe_map(mapped_frame, vk_frame.get(), AV_HWFRAME_MAP_READ);
 
-  AVUTIL.av_buffer_unref(&hw_frames_ref);
+  av_buffer_unref(&hw_frames_ref);
 
   return mapped_frame;
 }
@@ -100,7 +100,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
    * The pipeline is simply made of a scale_vaapi object, that does the conversion between formats
    * and the encoder that takes the converted frame and produces packets.
    */
-  int err = AVUTIL.av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
+  int err = av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
   if (err < 0) {
     throw alvr::AvException("Failed to create a VAAPI device:", err);
   }
@@ -109,13 +109,13 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
 
   auto codec_id = ALVR_CODEC(settings.m_codec);
   const char * encoder_name = encoder(codec_id);
-  const AVCodec *codec = AVCODEC.avcodec_find_encoder_by_name(encoder_name);
+  const AVCodec *codec = avcodec_find_encoder_by_name(encoder_name);
   if (codec == nullptr)
   {
     throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
   }
 
-  encoder_ctx = AVCODEC.avcodec_alloc_context3(codec);
+  encoder_ctx = avcodec_alloc_context3(codec);
   if (not encoder_ctx)
   {
     throw std::runtime_error("failed to allocate VAAPI encoder");
@@ -128,10 +128,10 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
 
       switch (settings.m_entropyCoding) {
       case ALVR_CABAC:
-          AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
+          av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
           break;
       case ALVR_CAVLC:
-          AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
+          av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
           break;
       }
 
@@ -179,7 +179,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
 
   set_hwframe_ctx(encoder_ctx, hw_ctx);
 
-  err = AVCODEC.avcodec_open2(encoder_ctx, codec, NULL);
+  err = avcodec_open2(encoder_ctx, codec, NULL);
   if (err < 0) {
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
@@ -187,34 +187,34 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   encoder_frame = AVUTIL.av_frame_alloc();
   mapped_frame = map_frame(hw_ctx, input_frame, vk_frame_ctx);
 
-  filter_graph = AVFILTER.avfilter_graph_alloc();
+  filter_graph = avfilter_graph_alloc();
 
-  AVFilterInOut *outputs = AVFILTER.avfilter_inout_alloc();
-  AVFilterInOut *inputs = AVFILTER.avfilter_inout_alloc();
+  AVFilterInOut *outputs = avfilter_inout_alloc();
+  AVFilterInOut *inputs = avfilter_inout_alloc();
 
-  filter_in = AVFILTER.avfilter_graph_alloc_filter(filter_graph, AVFILTER.avfilter_get_by_name("buffer"), "in");
+  filter_in = avfilter_graph_alloc_filter(filter_graph, avfilter_get_by_name("buffer"), "in");
 
-  AVBufferSrcParameters *par = AVFILTER.av_buffersrc_parameters_alloc();
+  AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
   memset(par, 0, sizeof(*par));
   par->width = mapped_frame->width;
   par->height = mapped_frame->height;
   par->time_base = encoder_ctx->time_base;
   par->format = mapped_frame->format;
-  par->hw_frames_ctx = AVUTIL.av_buffer_ref(mapped_frame->hw_frames_ctx);
-  AVFILTER.av_buffersrc_parameters_set(filter_in, par);
-  AVUTIL.av_free(par);
+  par->hw_frames_ctx = av_buffer_ref(mapped_frame->hw_frames_ctx);
+  av_buffersrc_parameters_set(filter_in, par);
+  av_free(par);
 
-  if ((err = AVFILTER.avfilter_graph_create_filter(&filter_out, AVFILTER.avfilter_get_by_name("buffersink"), "out", NULL, NULL, filter_graph)))
+  if ((err = avfilter_graph_create_filter(&filter_out, avfilter_get_by_name("buffersink"), "out", NULL, NULL, filter_graph)))
   {
     throw alvr::AvException("filter_out creation failed:", err);
   }
 
-  outputs->name = AVUTIL.av_strdup("in");
+  outputs->name = av_strdup("in");
   outputs->filter_ctx = filter_in;
   outputs->pad_idx = 0;
   outputs->next = NULL;
 
-  inputs->name = AVUTIL.av_strdup("out");
+  inputs->name = av_strdup("out");
   inputs->filter_ctx = filter_out;
   inputs->pad_idx = 0;
   inputs->next = NULL;
@@ -225,20 +225,20 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   } else {
     filters += "nv12";
   }
-  if ((err = AVFILTER.avfilter_graph_parse_ptr(filter_graph, filters.c_str(), &inputs, &outputs, NULL)) < 0)
+  if ((err = avfilter_graph_parse_ptr(filter_graph, filters.c_str(), &inputs, &outputs, NULL)) < 0)
   {
     throw alvr::AvException("avfilter_graph_parse_ptr failed:", err);
   }
 
-  AVFILTER.avfilter_inout_free(&outputs);
-  AVFILTER.avfilter_inout_free(&inputs);
+  avfilter_inout_free(&outputs);
+  avfilter_inout_free(&inputs);
 
   for (unsigned i = 0 ; i < filter_graph->nb_filters; ++i)
   {
-    filter_graph->filters[i]->hw_device_ctx = AVUTIL.av_buffer_ref(hw_ctx);
+    filter_graph->filters[i]->hw_device_ctx = av_buffer_ref(hw_ctx);
   }
 
-  if ((err = AVFILTER.avfilter_graph_config(filter_graph, NULL)))
+  if ((err = avfilter_graph_config(filter_graph, NULL)))
   {
     throw alvr::AvException("avfilter_graph_config failed:", err);
   }
@@ -246,20 +246,20 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
 
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 {
-  AVFILTER.avfilter_graph_free(&filter_graph);
-  AVUTIL.av_frame_free(&mapped_frame);
-  AVUTIL.av_frame_free(&encoder_frame);
-  AVUTIL.av_buffer_unref(&hw_ctx);
+  avfilter_graph_free(&filter_graph);
+  av_frame_free(&mapped_frame);
+  av_frame_free(&encoder_frame);
+  av_buffer_unref(&hw_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-  int err = AVFILTER.av_buffersrc_add_frame_flags(filter_in, mapped_frame, AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
+  int err = av_buffersrc_add_frame_flags(filter_in, mapped_frame, AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
   if (err != 0)
   {
     throw alvr::AvException("av_buffersrc_add_frame failed", err);
   }
-  err = AVFILTER.av_buffersink_get_frame(filter_out, encoder_frame);
+  err = av_buffersink_get_frame(filter_out, encoder_frame);
   if (err != 0)
   {
     throw alvr::AvException("av_buffersink_get_frame failed", err);
@@ -268,8 +268,8 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
   encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
   encoder_frame->pts = targetTimestampNs;
 
-  if ((err = AVCODEC.avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
+  if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed: ", err);
   }
-  AVUTIL.av_frame_unref(encoder_frame);
+  av_frame_unref(encoder_frame);
 }

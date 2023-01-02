@@ -58,12 +58,12 @@ fn do_ffmpeg_config_post() {
                     .statik(statik)
                     .to_owned();
 
-                for lib in ["libavutil", "libavfilter", "libavcodec"] {
-                    let pkg = pkg.probe(lib).unwrap();
+                for lib in ["libavutil", "libavfilter", "libavcodec", "libswscale"] {
+                    pkg.probe(lib).unwrap();
                 }
             }
         } else {
-            for lib in ["avutil", "avfilter", "avcodec"] {
+            for lib in ["avutil", "avfilter", "avcodec", "swscale"] {
                 println!("cargo:rustc-link-lib={lib}");
             }
         }
@@ -72,7 +72,7 @@ fn do_ffmpeg_config_post() {
         {
             let pkg = pkg_config::Config::new().to_owned();
 
-            for lib in ["libavutil", "libavfilter", "libavcodec"] {
+            for lib in ["libavutil", "libavfilter", "libavcodec", "libswscale"]{
                 pkg.probe(lib).unwrap();
             }
         }

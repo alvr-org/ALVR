@@ -13,7 +13,7 @@ alvr_events.workspace = true
 alvr_commands.workspace = true
 alvr_filesystem.workspace = true
 
-env_logger = "0.9"
+env_logger = "0.10"
 
 egui = "0.20"
 eframe = { version = "0.20", default-features = false, features = ["wgpu", "default_fonts"] }
@@ -36,7 +36,7 @@ unic-langid = "0.9"
 url = "2"
 futures-util = "0.3"
 
-sysinfo = { version = "0.26", default-features = false }
+sysinfo = { version = "0.27", default-features = false }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 locale_config = "0.3"

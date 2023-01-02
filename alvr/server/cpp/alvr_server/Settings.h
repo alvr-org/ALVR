@@ -135,7 +135,6 @@ public:
 
 	bool m_useHeadsetTrackingSystem = false;
 	
-	bool m_enableFec;
 	int32_t m_videoPacketSize;
 
 	bool m_enableLinuxVulkanAsync;

@@ -1,32 +1,32 @@
-use alvr_sockets::{ReceivedPacket, VideoFrameHeaderPacket};
+use alvr_sockets::VideoFrameHeaderPacket;
+use bytes::BytesMut;
 use std::mem;
 
-pub struct PacketsQueue {
+pub struct VideoFrameBuffer {
     current_frame: VideoFrameHeaderPacket,
-    next_frame_counter: u32,
+    frame_lost: bool,
     received_shards: u32,
     total_shards: u32,
     max_payload_size: u32,
     frame_buffer: Vec<u8>,
 }
 
-impl PacketsQueue {
+impl VideoFrameBuffer {
     pub fn new(max_packet_size: i32) -> Result<Self, ()> {
         let mut max_payload_size =
-            max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32);
+            max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
         if max_payload_size < 0 {
             max_payload_size = 0;
         }
         let current_frame = VideoFrameHeaderPacket {
             video_frame_index: u64::MAX,
-            packet_counter: 0,
             tracking_frame_index: 0,
             frame_byte_size: 0,
             fec_index: 0,
         };
         Ok(Self {
             max_payload_size: max_payload_size as u32,
-            next_frame_counter: 0,
+            frame_lost: false,
             current_frame,
             total_shards: 0,
             received_shards: 0,
@@ -34,37 +34,34 @@ impl PacketsQueue {
         })
     }
 
-    pub fn add_video_packet(
+    pub fn push(
         &mut self,
-        packet: ReceivedPacket<VideoFrameHeaderPacket>,
-        had_packet_loss: &mut bool,
+        header: VideoFrameHeaderPacket,
+        buffer: BytesMut,
     ) {
-        let fec_index = packet.header.fec_index;
-        if self.current_frame.video_frame_index != packet.header.video_frame_index {
+        let fec_index = header.fec_index;
+        if self.current_frame.video_frame_index != header.video_frame_index {
+            self.frame_lost = false;
+
             if self.max_payload_size == 0 {
                 self.total_shards = 1;
             } else {
-                self.total_shards = packet.header.frame_byte_size / self.max_payload_size + 1;
+                self.total_shards = header.frame_byte_size / self.max_payload_size + 1;
             }
 
             self.frame_buffer
-                .resize(packet.header.frame_byte_size as _, 0);
-
-            // Calculate last packet counter of the current frame to detect whole frame packet loss.
-            let received_packet_counter = self.current_frame.packet_counter + self.received_shards;
-            if self.next_frame_counter != 0 && self.next_frame_counter != received_packet_counter {
-                // Whole frame packet loss (or loss due to reordering)
-                *had_packet_loss = true;
-            }
-            self.next_frame_counter = packet.header.packet_counter + self.total_shards;
+                .resize(header.frame_byte_size as _, 0);
 
             self.received_shards = 0;
-            self.current_frame = packet.header;
+            self.current_frame = header;
+        }
+        if self.frame_lost {
+            return;
         }
         self.received_shards += 1;
         let offset = (fec_index * self.max_payload_size) as usize;
-        let max = (offset + packet.buffer.len()) as usize;
-        self.frame_buffer[offset..max].copy_from_slice(&packet.buffer);
+        let max = (offset + buffer.len()) as usize;
+        self.frame_buffer[offset..max].copy_from_slice(&buffer);
     }
 
     pub fn reconstruct(&mut self) -> bool {
@@ -72,6 +69,13 @@ impl PacketsQueue {
             return false;
         }
         return true;
+    }
+
+    pub fn set_frame_lost(&mut self, val: bool) {
+        // Lock the value to discard the rest of the frame
+        if self.frame_lost == false && val == true {
+            self.frame_lost = val;
+        }
     }
 
     pub fn get_tracking_frame_index(&self) -> u64 {

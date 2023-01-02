@@ -6,7 +6,7 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, PacketsQueue, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    ClientCoreEvent, VideoFrameBuffer, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
@@ -354,8 +354,8 @@ async fn stream_pipeline(
 
             let _stream_guard = StreamCloseGuard;
 
-            let mut packets_queue =
-                PacketsQueue::new(settings.connection.video_packet_size).unwrap();
+            let mut video_frame_buffer =
+                VideoFrameBuffer::new(settings.connection.video_packet_size).unwrap();
 
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -372,16 +372,16 @@ async fn stream_pipeline(
                     ));
                 }
 
-                let mut had_packet_loss = false;
-                packets_queue.add_video_packet(packet, &mut had_packet_loss);
-                if packets_queue.reconstruct() {
+                video_frame_buffer.set_frame_lost(packet.had_packet_loss);
+                video_frame_buffer.push(packet.header, packet.buffer);
+                if video_frame_buffer.reconstruct() {
                     push_nal(
-                        packets_queue.get_frame_buffer(),
-                        packets_queue.get_frame_size(),
-                        packets_queue.get_tracking_frame_index(),
+                        video_frame_buffer.get_frame_buffer(),
+                        video_frame_buffer.get_frame_size(),
+                        tracking_frame_index,
                     );
                 }
-                if had_packet_loss {
+                if packet.had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }

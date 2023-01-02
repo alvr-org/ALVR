@@ -10,7 +10,7 @@ mod connection;
 mod decoder;
 mod logging_backend;
 mod opengl;
-mod packets_queue;
+mod video_frame_buffer;
 mod platform;
 mod sockets;
 mod statistics;
@@ -35,7 +35,7 @@ use alvr_events::ButtonValue;
 use alvr_session::{CodecType, FoveatedRenderingDesc, OculusFovetionLevel};
 use alvr_sockets::{BatteryPacket, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig};
 use decoder::EXTERNAL_DECODER;
-use packets_queue::PacketsQueue;
+use video_frame_buffer::VideoFrameBuffer;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{

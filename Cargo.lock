@@ -181,10 +181,9 @@ dependencies = [
  "alvr_common",
  "alvr_session",
  "alvr_sockets",
+ "android-activity",
  "glow",
- "jni 0.20.0",
  "khronos-egl",
- "ndk-glue",
  "openxr",
 ]
 
@@ -386,6 +385,29 @@ dependencies = [
  "pkg-config",
  "xshell",
 ]
+
+[[package]]
+name = "android-activity"
+version = "0.4.0"
+source = "git+https://github.com/rust-mobile/android-activity#6942637c3ccfdb2d02af97fdf174c1aa273c16a8"
+dependencies = [
+ "android-properties",
+ "bitflags",
+ "cc",
+ "jni-sys",
+ "libc",
+ "log",
+ "ndk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-context",
+ "ndk-sys 0.4.1+23.1.7779620",
+ "num_enum",
+]
+
+[[package]]
+name = "android-properties"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc7eb209b1518d6bb87b283c20095f5228ecda460da70b44f0802523dea6da04"
 
 [[package]]
 name = "android_log-sys"

@@ -21,8 +21,10 @@ khronos-egl = { version = "4", features = ["dynamic"] }
 openxr = { git = "https://github.com/Ralith/openxrs" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-jni = "0.20"
-ndk-glue = "0.7"
+# note: git version fixes spammy log. upgrade to registry when a new version comes out
+android-activity = { git = "https://github.com/rust-mobile/android-activity", features = [
+    "native-activity",
+] }
 
 [package.metadata.android]
 package = "alvr.client"

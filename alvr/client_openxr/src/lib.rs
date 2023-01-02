@@ -154,7 +154,6 @@ pub fn create_swapchain(
 
 pub fn events_thread() {}
 
-#[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
@@ -483,4 +482,25 @@ pub fn entry_point() {
         xr_frame_stream,
         lobby_swapchains,
     ));
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+fn android_main(app: android_activity::AndroidApp) {
+    let rendering_thread = thread::spawn(entry_point);
+
+    let mut should_quit = false;
+    while !should_quit {
+        app.poll_events(Some(Duration::from_millis(100)), |event| {
+            if matches!(
+                event,
+                android_activity::PollEvent::Main(android_activity::MainEvent::Destroy)
+            ) {
+                should_quit = true;
+            }
+        });
+    }
+
+    // Note: the quit event is sent from OpenXR too, this will return rather quicly.
+    rendering_thread.join().unwrap();
 }

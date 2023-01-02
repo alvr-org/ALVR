@@ -77,7 +77,7 @@ int accept_timeout(pollfd socket, std::atomic_bool &exiting) {
         if (count < 0) {
             throw MakeException("poll failed: %s", strerror(errno));
         } else if (count == 1) {
-          return accept(socket.fd, NULL, NULL);
+          return accept4(socket.fd, NULL, NULL, SOCK_CLOEXEC);
         }
     }
     return -1;
@@ -152,7 +152,7 @@ void CEncoder::Run() {
     // run
     ret = unlink(m_socketPath.c_str());
 
-    m_socket.fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    m_socket.fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     struct sockaddr_un name;
     if (m_socket.fd == -1) {
         perror("socket");

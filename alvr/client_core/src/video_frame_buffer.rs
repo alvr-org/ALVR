@@ -16,7 +16,7 @@ impl VideoFrameBuffer {
         let mut max_payload_size =
             max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
         if max_payload_size < 0 {
-            max_payload_size = 0;
+            max_payload_size = 1400;
         }
         let current_frame = VideoFrameHeaderPacket {
             video_frame_index: u64::MAX,
@@ -39,11 +39,7 @@ impl VideoFrameBuffer {
         if self.current_frame.video_frame_index != header.video_frame_index {
             self.frame_lost = false;
 
-            if self.max_payload_size == 0 {
-                self.total_shards = 1;
-            } else {
-                self.total_shards = header.frame_byte_size / self.max_payload_size + 1;
-            }
+            self.total_shards = header.frame_byte_size / self.max_payload_size + 1;
 
             self.frame_buffer.resize(header.frame_byte_size as _, 0);
 

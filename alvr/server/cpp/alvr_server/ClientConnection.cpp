@@ -16,7 +16,7 @@ ClientConnection::ClientConnection() {
 	
 	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame) - 6; // 6 bytes - 2 bytes channel id + 4 bytes packet sequence ID
 	if (m_maxPayloadSize < 0) {
-		m_maxPayloadSize = 0;
+		m_maxPayloadSize = 1400;
 	}
 }
 
@@ -51,11 +51,6 @@ void ClientConnection::Send(uint8_t *buf, int len, uint64_t targetTimestampNs, u
 	header.videoFrameIndex = videoFrameIndex;
 	header.frameByteSize = len;
 	header.fecIndex = 0;
-	if (m_maxPayloadSize == 0) {
-		VideoSend(header, buf, len);
-		m_Statistics->CountPacket(sizeof(VideoFrame) + len);
-		return;
-	}
 
 	int dataPackets = len / m_maxPayloadSize + 1;
 	int dataRemain = len;

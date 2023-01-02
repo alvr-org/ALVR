@@ -166,6 +166,7 @@ pub struct ReceivedPacket<T> {
 pub struct StreamReceiver<T> {
     receiver: StreamReceiverType,
     next_packet_index: u32,
+    previous_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
@@ -176,7 +177,13 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         };
 
         let packet_index = bytes.get_u32();
-        let had_packet_loss = packet_index != self.next_packet_index;
+        let had_packet_loss = packet_index != self.next_packet_index && self.previous_packet_index != packet_index;
+        if had_packet_loss {
+            let previous_packet = self.previous_packet_index;
+            let next_packet = self.next_packet_index;
+            info!("Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}");
+        }
+        self.previous_packet_index = packet_index;
         self.next_packet_index = packet_index + 1;
 
         let mut bytes_reader = bytes.reader();
@@ -327,6 +334,7 @@ impl StreamSocket {
         Ok(StreamReceiver {
             receiver: StreamReceiverType::Queue(dequeuer),
             next_packet_index: 0,
+            previous_packet_index: 0,
             _phantom: PhantomData,
         })
     }

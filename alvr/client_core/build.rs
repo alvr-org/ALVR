@@ -21,10 +21,7 @@ fn main() {
             })
             .collect()
     } else {
-        vec![
-            PathBuf::new().join("cpp/fec.cpp"),
-            PathBuf::new().join("cpp/nal.cpp"),
-        ]
+        vec![]
     };
 
     let mut builder = &mut cc::Build::new();

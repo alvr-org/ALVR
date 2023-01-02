@@ -1,7 +1,7 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::{self, DECODER_INIT_CONFIG, push_nal},
+    decoder::{self, push_nal, DECODER_INIT_CONFIG},
     platform,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
@@ -353,8 +353,9 @@ async fn stream_pipeline(
             }
 
             let _stream_guard = StreamCloseGuard;
-            
-            let mut packets_queue = PacketsQueue::new(settings.connection.video_packet_size).unwrap();
+
+            let mut packets_queue =
+                PacketsQueue::new(settings.connection.video_packet_size).unwrap();
 
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -370,11 +371,15 @@ async fn stream_pipeline(
                         packet.header.tracking_frame_index,
                     ));
                 }
-                
+
                 let mut had_packet_loss = false;
                 packets_queue.add_video_packet(packet, &mut had_packet_loss);
                 if packets_queue.reconstruct() {
-                    push_nal(packets_queue.get_frame_buffer(), packets_queue.get_frame_size(), packets_queue.get_tracking_frame_index());
+                    push_nal(
+                        packets_queue.get_frame_buffer(),
+                        packets_queue.get_frame_size(),
+                        packets_queue.get_tracking_frame_index(),
+                    );
                 }
                 if had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {

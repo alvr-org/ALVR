@@ -10,11 +10,11 @@ mod connection;
 mod decoder;
 mod logging_backend;
 mod opengl;
+mod packets_queue;
 mod platform;
 mod sockets;
 mod statistics;
 mod storage;
-mod packets_queue;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -35,6 +35,7 @@ use alvr_events::ButtonValue;
 use alvr_session::{CodecType, FoveatedRenderingDesc, OculusFovetionLevel};
 use alvr_sockets::{BatteryPacket, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig};
 use decoder::EXTERNAL_DECODER;
+use packets_queue::PacketsQueue;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
@@ -43,7 +44,6 @@ use std::{
     time::Duration,
 };
 use storage::Config;
-use packets_queue::PacketsQueue;
 use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));

@@ -12,7 +12,8 @@ pub struct PacketsQueue {
 
 impl PacketsQueue {
     pub fn new(max_packet_size: i32) -> Result<Self, ()> {
-        let mut max_payload_size = max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32);
+        let mut max_payload_size =
+            max_packet_size - (mem::size_of::<VideoFrameHeaderPacket>() as i32);
         if max_payload_size < 0 {
             max_payload_size = 0;
         }
@@ -21,7 +22,7 @@ impl PacketsQueue {
             packet_counter: 0,
             tracking_frame_index: 0,
             frame_byte_size: 0,
-            fec_index: 0
+            fec_index: 0,
         };
         Ok(Self {
             max_payload_size: max_payload_size as u32,
@@ -29,11 +30,15 @@ impl PacketsQueue {
             current_frame,
             total_shards: 0,
             received_shards: 0,
-            frame_buffer: Vec::new()
+            frame_buffer: Vec::new(),
         })
     }
 
-    pub fn add_video_packet(&mut self, packet: ReceivedPacket<VideoFrameHeaderPacket>, had_packet_loss: &mut bool) {
+    pub fn add_video_packet(
+        &mut self,
+        packet: ReceivedPacket<VideoFrameHeaderPacket>,
+        had_packet_loss: &mut bool,
+    ) {
         let fec_index = packet.header.fec_index;
         if self.current_frame.video_frame_index != packet.header.video_frame_index {
             if self.max_payload_size == 0 {
@@ -41,8 +46,9 @@ impl PacketsQueue {
             } else {
                 self.total_shards = packet.header.frame_byte_size / self.max_payload_size + 1;
             }
-            
-            self.frame_buffer.resize(packet.header.frame_byte_size as _, 0);
+
+            self.frame_buffer
+                .resize(packet.header.frame_byte_size as _, 0);
 
             // Calculate last packet counter of the current frame to detect whole frame packet loss.
             let received_packet_counter = self.current_frame.packet_counter + self.received_shards;
@@ -51,7 +57,7 @@ impl PacketsQueue {
                 *had_packet_loss = true;
             }
             self.next_frame_counter = packet.header.packet_counter + self.total_shards;
-            
+
             self.received_shards = 0;
             self.current_frame = packet.header;
         }

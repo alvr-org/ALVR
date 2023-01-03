@@ -174,8 +174,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
     break;
   }
   
-  AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
-  AVUTIL.av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
+  av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
+  av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 
   set_hwframe_ctx(encoder_ctx, hw_ctx);
 
@@ -184,7 +184,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
 
-  encoder_frame = AVUTIL.av_frame_alloc();
+  encoder_frame = av_frame_alloc();
   mapped_frame = map_frame(hw_ctx, input_frame, vk_frame_ctx);
 
   filter_graph = avfilter_graph_alloc();

@@ -3,7 +3,7 @@ use std::{backtrace::Backtrace, fmt::Display, future::Future};
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let err_str = format!(
-            "What happened: {panic_info}\n\nBacktrace:\n{}",
+            "What happened:\n{panic_info}\n\nBacktrace:\n{}",
             Backtrace::force_capture()
         );
 

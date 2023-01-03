@@ -56,7 +56,7 @@ fn do_ffmpeg_config_post() {
 
                 let pkg = pkg_config::Config::new().statik(statik).to_owned();
 
-                for lib in ["libavutil", "libavfilter", "libavcodec", "libswscale"] {
+                for lib in ["libavutil", "libavfilter", "libavcodec"] {
                     pkg.probe(lib).unwrap();
                 }
             }
@@ -68,9 +68,9 @@ fn do_ffmpeg_config_post() {
     } else {
         #[cfg(target_os = "linux")]
         {
-            let pkg = pkg_config::Config::new().to_owned();
+            let pkg = pkg_config::Config::new();
 
-            for lib in ["libavutil", "libavfilter", "libavcodec", "libswscale"] {
+            for lib in ["libavutil", "libavfilter", "libavcodec"] {
                 pkg.probe(lib).unwrap();
             }
         }

@@ -203,6 +203,7 @@ void CEncoder::Run() {
         m_connected = true;
 
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
+
       av_log_set_callback(av_logfn);
 
       bool useAmf = alvr::AMFContext::get()->isValid();

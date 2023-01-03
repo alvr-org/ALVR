@@ -6,20 +6,20 @@
 
 extern "C" {
   #include <stdint.h>
-  
+
   #include <libavcodec/avcodec.h>
-  
+
   #include <libavfilter/avfilter.h>
   #include <libavfilter/buffersink.h>
   #include <libavfilter/buffersrc.h>
-  
+
   #include <libavutil/avutil.h>
   #include <libavutil/dict.h>
   #include <libavutil/opt.h>
   #include <libavutil/hwcontext.h>
   #include <libavutil/hwcontext_vulkan.h>
   #include <libavutil/hwcontext_drm.h>
-  
+
   #include <libswscale/swscale.h>
 }
 

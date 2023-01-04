@@ -410,6 +410,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         entropy_coding: settings.video.entropy_coding as u32,
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,
+        enable_vbaq: amf_controls.enable_vbaq,
         use_preproc: amf_controls.use_preproc,
         preproc_sigma: amf_controls.preproc_sigma,
         preproc_tor: amf_controls.preproc_tor,

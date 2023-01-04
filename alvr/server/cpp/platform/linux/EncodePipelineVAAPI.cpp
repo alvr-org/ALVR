@@ -88,7 +88,7 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr:
 
 }
 
-alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height)
+alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height)
 {
   /* VAAPI Encoding pipeline
    * The encoding pipeline has 3 frame types:
@@ -100,7 +100,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
    * The pipeline is simply made of a scale_vaapi object, that does the conversion between formats
    * and the encoder that takes the converted frame and produces packets.
    */
-  int err = av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
+  int err = av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, vk_ctx.devicePath.c_str(), NULL, 0);
   if (err < 0) {
     throw alvr::AvException("Failed to create a VAAPI device:", err);
   }

@@ -61,6 +61,7 @@ public:
   std::vector<const char*> deviceExtensions;
   bool nvidia = false;
   bool drmContext = false;
+  std::string devicePath;
 };
 
 class VkFrameCtx

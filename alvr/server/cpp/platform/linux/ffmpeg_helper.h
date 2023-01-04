@@ -60,7 +60,6 @@ public:
   std::vector<const char*> instanceExtensions;
   std::vector<const char*> deviceExtensions;
   bool nvidia = false;
-  bool drmContext = false;
   std::string devicePath;
 };
 
@@ -87,16 +86,17 @@ public:
   VkImage image() { return vkimage;}
   VkImageCreateInfo imageInfo() { return vkimageinfo;}
   VkFormat format() { return vkimageinfo.format;}
+  AVPixelFormat avFormat() { return avformat;}
   operator AVVkFrame*() const { return av_vkframe;}
+  operator AVDRMFrameDescriptor*() const { return av_drmframe;}
   std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> make_av_frame(VkFrameCtx & frame_ctx);
 private:
   AVVkFrame* av_vkframe = nullptr;
   AVDRMFrameDescriptor* av_drmframe = nullptr;
-  const uint32_t width;
-  const uint32_t height;
   vk::Device device;
   VkImage vkimage;
   VkImageCreateInfo vkimageinfo;
+  AVPixelFormat avformat;
 };
 
 }

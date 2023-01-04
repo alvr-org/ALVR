@@ -116,7 +116,6 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
   nvidia = deviceProps.properties.vendorID == 0x10de;
-  drmContext = !nvidia;
   Info("Using Vulkan device %s", deviceProps.properties.deviceName);
 
   uint32_t deviceExtensionCount = 0;
@@ -202,50 +201,42 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   }
   Info("Found device path %s", devicePath.c_str());
 
-  if (drmContext) {
-    ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);
-    AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
-    AVDRMDeviceContext *drmctx = (AVDRMDeviceContext*)hwctx->hwctx;
+  ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VULKAN);
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
+  AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
 
-    drmctx->fd = -1;
-  } else {
-    ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VULKAN);
-    AVHWDeviceContext *hwctx = (AVHWDeviceContext *)ctx->data;
-    AVVulkanDeviceContext *vkctx = (AVVulkanDeviceContext *)hwctx->hwctx;
-
-    vkctx->alloc = nullptr;
-    vkctx->inst = instance;
-    vkctx->phys_dev = physicalDevice;
-    vkctx->act_dev = device;
-    vkctx->device_features = features;
-    vkctx->queue_family_index = queueFamilyIndex;
-    vkctx->nb_graphics_queues = 1;
-    vkctx->queue_family_tx_index = queueFamilyIndex;
-    vkctx->nb_tx_queues = 1;
-    vkctx->queue_family_comp_index = queueFamilyIndex;
-    vkctx->nb_comp_queues = 1;
+  vkctx->alloc = nullptr;
+  vkctx->inst = instance;
+  vkctx->phys_dev = physicalDevice;
+  vkctx->act_dev = device;
+  vkctx->device_features = features;
+  vkctx->queue_family_index = queueFamilyIndex;
+  vkctx->nb_graphics_queues = 1;
+  vkctx->queue_family_tx_index = queueFamilyIndex;
+  vkctx->nb_tx_queues = 1;
+  vkctx->queue_family_comp_index = queueFamilyIndex;
+  vkctx->nb_comp_queues = 1;
 #if LIBAVUTIL_VERSION_MAJOR >= 57
-    vkctx->get_proc_addr = vkGetInstanceProcAddr;
-    vkctx->queue_family_encode_index = -1;
-    vkctx->nb_encode_queues = 0;
-    vkctx->queue_family_decode_index = -1;
-    vkctx->nb_decode_queues = 0;
+  vkctx->get_proc_addr = vkGetInstanceProcAddr;
+  vkctx->queue_family_encode_index = -1;
+  vkctx->nb_encode_queues = 0;
+  vkctx->queue_family_decode_index = -1;
+  vkctx->nb_decode_queues = 0;
 #endif
 
-    char **inst_extensions = (char**)malloc(sizeof(char*) * instanceExtensions.size());
-    for (uint32_t i = 0; i < instanceExtensions.size(); ++i) {
-      inst_extensions[i] = strdup(instanceExtensions[i]);
-    }
-    vkctx->enabled_inst_extensions = inst_extensions;
-    vkctx->nb_enabled_inst_extensions = instanceExtensions.size();
-
-    char **dev_extensions = (char**)malloc(sizeof(char*) * deviceExtensions.size());
-    for (uint32_t i = 0; i < deviceExtensions.size(); ++i) {
-      dev_extensions[i] = strdup(deviceExtensions[i]);
-    }
-    vkctx->enabled_dev_extensions = dev_extensions;
-    vkctx->nb_enabled_dev_extensions = deviceExtensions.size();
+  char **inst_extensions = (char**)malloc(sizeof(char*) * instanceExtensions.size());
+  for (uint32_t i = 0; i < instanceExtensions.size(); ++i) {
+    inst_extensions[i] = strdup(instanceExtensions[i]);
   }
+  vkctx->enabled_inst_extensions = inst_extensions;
+  vkctx->nb_enabled_inst_extensions = instanceExtensions.size();
+
+  char **dev_extensions = (char**)malloc(sizeof(char*) * deviceExtensions.size());
+  for (uint32_t i = 0; i < deviceExtensions.size(); ++i) {
+    dev_extensions[i] = strdup(deviceExtensions[i]);
+  }
+  vkctx->enabled_dev_extensions = dev_extensions;
+  vkctx->nb_enabled_dev_extensions = deviceExtensions.size();
 
   int ret = av_hwdevice_ctx_init(ctx);
   if (ret)
@@ -268,7 +259,7 @@ alvr::VkFrameCtx::VkFrameCtx(VkContext & vkContext, vk::ImageCreateInfo image_cr
     throw std::runtime_error("Failed to create vulkan frame context.");
   }
   frames_ctx = (AVHWFramesContext *)(ctx->data);
-  frames_ctx->format = vkContext.drmContext ? AV_PIX_FMT_DRM_PRIME : AV_PIX_FMT_VULKAN;
+  frames_ctx->format = AV_PIX_FMT_VULKAN;
   frames_ctx->sw_format = vk_format_to_av_format(image_create_info.format);
   frames_ctx->width = image_create_info.extent.width;
   frames_ctx->height = image_create_info.extent.height;
@@ -292,53 +283,48 @@ alvr::VkFrame::VkFrame(
     VkDeviceMemory memory,
     DrmImage drm
     ):
-  width(image_info.extent.width),
-  height(image_info.extent.height),
   vkimage(image),
   vkimageinfo(image_info)
 {
   device = vk_ctx.get_vk_device();
+  avformat = vk_format_to_av_format(vk::Format(image_info.format));
 
-  if (vk_ctx.drmContext) {
-    av_drmframe = (AVDRMFrameDescriptor*)malloc(sizeof(AVDRMFrameDescriptor));
-    av_drmframe->nb_objects = 1;
-    av_drmframe->objects[0].fd = drm.fd;
-    av_drmframe->objects[0].size = size;
-    av_drmframe->objects[0].format_modifier = drm.modifier;
-    av_drmframe->nb_layers = 1;
-    av_drmframe->layers[0].format = drm.format;
-    av_drmframe->layers[0].nb_planes = drm.planes;
-    for (uint32_t i = 0; i < drm.planes; ++i) {
-        av_drmframe->layers[0].planes[i].object_index = 0;
-        av_drmframe->layers[0].planes[i].pitch = drm.strides[i];
-        av_drmframe->layers[0].planes[i].offset = drm.offsets[i];
-    }
-  } else {
-    av_vkframe = av_vk_frame_alloc();
-    av_vkframe->img[0] = image;
-    av_vkframe->tiling = image_info.tiling;
-    av_vkframe->mem[0] = memory;
-    av_vkframe->size[0] = size;
-    av_vkframe->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    VkSemaphoreTypeCreateInfo timelineInfo = {};
-    timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-    timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-
-    VkSemaphoreCreateInfo semInfo = {};
-    semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-#if LIBAVUTIL_VERSION_MAJOR >= 57
-    semInfo.pNext = &timelineInfo;
-#endif
-    vkCreateSemaphore(device, &semInfo, nullptr, &av_vkframe->sem[0]);
+  av_drmframe = (AVDRMFrameDescriptor*)malloc(sizeof(AVDRMFrameDescriptor));
+  av_drmframe->nb_objects = 1;
+  av_drmframe->objects[0].fd = drm.fd;
+  av_drmframe->objects[0].size = size;
+  av_drmframe->objects[0].format_modifier = drm.modifier;
+  av_drmframe->nb_layers = 1;
+  av_drmframe->layers[0].format = drm.format;
+  av_drmframe->layers[0].nb_planes = drm.planes;
+  for (uint32_t i = 0; i < drm.planes; ++i) {
+      av_drmframe->layers[0].planes[i].object_index = 0;
+      av_drmframe->layers[0].planes[i].pitch = drm.strides[i];
+      av_drmframe->layers[0].planes[i].offset = drm.offsets[i];
   }
+
+  av_vkframe = av_vk_frame_alloc();
+  av_vkframe->img[0] = image;
+  av_vkframe->tiling = image_info.tiling;
+  av_vkframe->mem[0] = memory;
+  av_vkframe->size[0] = size;
+  av_vkframe->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
+
+  VkSemaphoreTypeCreateInfo timelineInfo = {};
+  timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+  timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+  VkSemaphoreCreateInfo semInfo = {};
+  semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+#if LIBAVUTIL_VERSION_MAJOR >= 57
+  semInfo.pNext = &timelineInfo;
+#endif
+  vkCreateSemaphore(device, &semInfo, nullptr, &av_vkframe->sem[0]);
 }
 
 alvr::VkFrame::~VkFrame()
 {
-  if (av_drmframe) {
-    av_free(av_drmframe);
-  }
+  free(av_drmframe);
   if (av_vkframe) {
     vkDestroySemaphore(device, av_vkframe->sem[0], nullptr);
     av_free(av_vkframe);
@@ -351,17 +337,11 @@ std::unique_ptr<AVFrame, std::function<void(AVFrame*)>> alvr::VkFrame::make_av_f
     av_frame_alloc(),
       [](AVFrame *p) {av_frame_free(&p);}
   };
-  frame->width = width;
-  frame->height = height;
+  frame->width = vkimageinfo.extent.width;
+  frame->height = vkimageinfo.extent.height;
   frame->hw_frames_ctx = av_buffer_ref(frame_ctx.ctx);
-  if (av_drmframe) {
-    frame->data[0] = (uint8_t*)av_drmframe;
-    frame->format = AV_PIX_FMT_DRM_PRIME;
-  }
-  if (av_vkframe) {
-    frame->data[0] = (uint8_t*)av_vkframe;
-    frame->format = AV_PIX_FMT_VULKAN;
-  }
+  frame->data[0] = (uint8_t*)av_vkframe;
+  frame->format = AV_PIX_FMT_VULKAN;
   frame->buf[0] = av_buffer_alloc(1);
   frame->pts = std::chrono::steady_clock::now().time_since_epoch().count();
 

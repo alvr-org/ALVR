@@ -156,7 +156,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx&
   
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;
-  quality.vbaq_mode = 1;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
+  quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
   switch (settings.m_encoderQualityPreset)
   {
     case ALVR_QUALITY:

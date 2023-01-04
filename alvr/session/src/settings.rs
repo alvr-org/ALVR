@@ -97,6 +97,7 @@ pub struct NvencOverrides {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AmfControls {
+    pub enable_vbaq: bool,
     pub use_preproc: bool,
     #[schema(min = 0, max = 10)]
     pub preproc_sigma: u32,
@@ -731,6 +732,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     enable_weighted_prediction: false,
                 },
                 amf_controls: AmfControlsDefault {
+                    enable_vbaq: false,
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,

@@ -86,6 +86,10 @@ define({
             "Specifies the entropy coding method (h264 only). CABAC - provides better quality at lower bitrate, but may increase the encoder/decoder latency, CAVLC - provides worse quality that can be compensated with higher bitrate, and may significantly decrease encoder/decoder latency.",
         "_root_video_entropyCoding_cabac-choice-.name": "CABAC",
         "_root_video_entropyCoding_cavlc-choice-.name": "CAVLC",
+        "_root_video_advancedCodecOptions_amfControls_enableVbaq.name":
+            "Enable VBAQ",
+        "_root_video_advancedCodecOptions_amfControls_enableVbaq.description":
+            "Enables Variance Based Adaptive Quantization (VBAQ) that allocates more bits to smooth areas (gradients, solid colors), but picture details may suffer from compression artifacts.",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.name":
             "Enable Pre-Processor component",
         "_root_video_advancedCodecOptions_amfControls_usePreproc.description":

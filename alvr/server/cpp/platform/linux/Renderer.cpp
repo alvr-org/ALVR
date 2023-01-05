@@ -45,6 +45,7 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     auto checkExtension = [devExtensions](const char *name) {
         return std::find(devExtensions.begin(), devExtensions.end(), name) != devExtensions.end();
     };
+    d.haveDmaBuf = checkExtension(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
 
 #define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
@@ -442,13 +443,16 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
         modifierListInfo.pNext = &extMemImageInfo;
 
         VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
-    } else {
+    } else if (d.haveDmaBuf) {
         VkExternalMemoryImageCreateInfo extMemImageInfo = {};
         extMemImageInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
         extMemImageInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
         m_output.imageInfo.pNext = &extMemImageInfo;
 
         m_output.imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+        VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
+    } else {
+        m_output.imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, nullptr, &m_output.image));
     }
 

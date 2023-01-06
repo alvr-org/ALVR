@@ -135,7 +135,7 @@ public:
 
 	bool m_useHeadsetTrackingSystem = false;
 	
-	int32_t m_videoPacketSize;
+	int32_t m_packetSize;
 
 	bool m_enableLinuxVulkanAsync;
 

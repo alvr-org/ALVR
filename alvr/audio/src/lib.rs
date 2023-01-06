@@ -363,9 +363,7 @@ pub async fn record_audio_loop(
 
     while let Some(maybe_data) = data_receiver.recv().await {
         let data = maybe_data?;
-        let mut buffer = sender.new_buffer(&(), data.len())?;
-        buffer.get_mut().extend(data);
-        sender.send_buffer(buffer).await.ok();
+        sender.send(&(), data).await;
     }
 
     Ok(())

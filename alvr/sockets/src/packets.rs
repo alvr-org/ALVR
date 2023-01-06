@@ -92,9 +92,6 @@ pub enum ClientControlPacket {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoFrameHeaderPacket {
     pub tracking_frame_index: u64,
-    pub video_frame_index: u64,
-    pub frame_byte_size: u32,
-    pub fec_index: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]

@@ -10,12 +10,10 @@ mod connection;
 mod decoder;
 mod logging_backend;
 mod opengl;
-mod video_frame_buffer;
 mod platform;
 mod sockets;
 mod statistics;
 mod storage;
-mod video_frame_buffer;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -45,7 +43,6 @@ use std::{
 };
 use storage::Config;
 use tokio::{sync::mpsc, sync::Notify};
-use video_frame_buffer::VideoFrameBuffer;
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 

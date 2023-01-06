@@ -13,11 +13,6 @@ static const uint8_t H265_NAL_TYPE_VPS = 32;
 
 ClientConnection::ClientConnection() {
 	m_Statistics = std::make_shared<Statistics>();
-	
-	m_maxPayloadSize = Settings::Instance().m_videoPacketSize - sizeof(VideoFrame) - 12; // 12 bytes - 2 bytes channel id + 4 bytes packet sequence ID + 6 bytes struct alignment(?)
-	if (m_maxPayloadSize < 0) {
-		m_maxPayloadSize = 1400;
-	}
 }
 
 int findVPSSPS(const uint8_t *frameBuffer, int frameByteSize) {
@@ -43,29 +38,6 @@ int findVPSSPS(const uint8_t *frameBuffer, int frameByteSize) {
         }
     }
     return -1;
-}
-
-void ClientConnection::Send(uint8_t *buf, int len, uint64_t targetTimestampNs, uint64_t videoFrameIndex) {
-	VideoFrame header = {0};
-	header.trackingFrameIndex = targetTimestampNs;
-	header.videoFrameIndex = videoFrameIndex;
-	header.frameByteSize = len;
-	header.fecIndex = 0;
-
-	int dataPackets = len / m_maxPayloadSize + 1;
-	int dataRemain = len;
-
-	for (int i = 0; i < dataPackets; i++) {
-		int copyLength = std::min(m_maxPayloadSize, dataRemain);
-		if (copyLength <= 0) {
-			break;
-		}
-		dataRemain -= m_maxPayloadSize;
-
-		VideoSend(header, buf + i * m_maxPayloadSize, copyLength);
-		m_Statistics->CountPacket(sizeof(VideoFrame) + copyLength);
-		header.fecIndex++;
-	}
 }
 
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs) {
@@ -97,9 +69,9 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestamp
 		len = len - end;
 	}
 
-	Send(buf, len, targetTimestampNs, mVideoFrameIndex);
-
-	mVideoFrameIndex++;
+	VideoFrame header = {targetTimestampNs};
+	VideoSend(header, buf, len);
+	m_Statistics->CountPacket(sizeof(VideoFrame) + len);
 }
 
 void ClientConnection::ReportNetworkLatency(uint64_t latencyUs) {

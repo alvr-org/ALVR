@@ -19,6 +19,7 @@ use std::{
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
+    cmp,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
 use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};
@@ -64,91 +65,126 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
-pub struct SenderBuffer<T> {
-    inner: BytesMut,
-    offset: usize,
-    _phantom: PhantomData<T>,
-}
+/*#[derive(Serialize, Deserialize)]
+struct PacketControlHeader {
+    stream_id: u16,
+    index: u32,
+    size: u32,
+    shard_index: u32,
+}*/
 
-impl<T> SenderBuffer<T> {
-    // Get the editable part of the buffer (the header part is excluded). The returned buffer can
-    // be grown at zero-cost until `preferred_max_buffer_size` (set with send_buffer()) is reached.
-    // After that a reallocation will be needed but there will be no other side effects.
-    pub fn get_mut(&mut self) -> SendBufferLock {
-        let buffer_bytes = self.inner.split_off(self.offset);
-        SendBufferLock {
-            header_bytes: &mut self.inner,
-            buffer_bytes,
-        }
-    }
-}
 #[derive(Clone)]
 pub struct StreamSender<T> {
     stream_id: u16,
     socket: StreamSendSocket,
     // if the packet index overflows the worst that happens is a false positive packet loss
     next_packet_index: u32,
+    full_packet_index: u32,
     _phantom: PhantomData<T>,
 }
 
-impl<T> StreamSender<T> {
-    // The buffer is moved into the method. There is no way of reusing the same buffer twice without
-    // extra copies/allocations
-    pub async fn send_buffer(&mut self, mut buffer: SenderBuffer<T>) -> StrResult {
-        buffer.inner[2..6].copy_from_slice(&self.next_packet_index.to_be_bytes());
+impl<T: Serialize> StreamSender<T> {
+    async fn send_buffer(&self, buffer: BytesMut) {
+        match &self.socket {
+            StreamSendSocket::Udp(socket) => socket
+                .inner
+                .lock()
+                .await
+                .feed((buffer.freeze(), socket.peer_addr))
+                .await
+                .map_err(err!())
+                .unwrap(),
+            StreamSendSocket::Tcp(socket) => socket
+                .lock()
+                .await
+                .feed(buffer.freeze())
+                .await
+                .map_err(err!())
+                .unwrap(),
+            StreamSendSocket::ThrottledUdp(socket) => {
+                socket.send(buffer.freeze()).await.map_err(err!()).unwrap()
+            }
+        };
+    }
+
+    pub async fn send(
+        &mut self, 
+        data_header: &T, 
+        payload: Vec<u8>,
+    ) {
+        // u16 + u32 + u32 + u32 + u32
+        let offset = (2 + 4 * 4) as usize;
+        
+        let data_header_size = bincode::serialized_size(data_header).map_err(err!()).unwrap() as usize;
+        let payload_size = payload.len();
+        let total_payload_size = data_header_size + payload_size;
+
+        let max_payload_size = 1400 - offset; // TODO: Need to get max allowed buffer size
+        let mut total_shards = 1; // at least 1 header shard
+        if payload_size > 0 {
+            total_shards += payload_size / max_payload_size + (payload_size % max_payload_size != 0) as usize;
+        }
+
+        let mut data_remain = total_payload_size;
+
+        let mut buffer = BytesMut::with_capacity(offset + data_header_size);
+
+        buffer.put_u16(self.stream_id);
+        buffer.put_u32(self.next_packet_index);
+        buffer.put_u32(total_shards as u32); // + 1 header shard
+        buffer.put_u32(total_payload_size as u32);
+        buffer.put_u32(self.full_packet_index);
+
+        let mut buffer_writer = buffer.writer();
+        bincode::serialize_into(&mut buffer_writer, data_header).map_err(err!()).ok();
+        self.send_buffer(buffer_writer.into_inner()).await;
+        data_remain -= data_header_size;
         self.next_packet_index += 1;
+        
+        let mut last_max_index = 0;
+        loop {
+            let shard_size = cmp::min(data_remain, max_payload_size);
+            if shard_size <= 0 {
+                break;
+            }
+            data_remain -= shard_size;
+            let mut buffer = BytesMut::with_capacity(offset + shard_size);
+            
+            buffer.put_u16(self.stream_id);
+            buffer.put_u32(self.next_packet_index);
+            buffer.put_u32(total_shards as u32);
+            buffer.put_u32(total_payload_size as u32);
+            buffer.put_u32(self.full_packet_index);
+
+            let offset = last_max_index;
+            let max = offset + shard_size;
+            //info!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
+            buffer.put_slice(&payload[offset..max]);
+            last_max_index = max;
+
+            self.send_buffer(buffer).await;
+            self.next_packet_index += 1;
+        }
+        self.full_packet_index += 1;
 
         match &self.socket {
             StreamSendSocket::Udp(socket) => socket
                 .inner
                 .lock()
                 .await
-                .send((buffer.inner.freeze(), socket.peer_addr))
+                .flush()
                 .await
-                .map_err(err!()),
+                .map_err(err!())
+                .unwrap(),
             StreamSendSocket::Tcp(socket) => socket
                 .lock()
                 .await
-                .send(buffer.inner.freeze())
+                .flush()
                 .await
-                .map_err(err!()),
-            StreamSendSocket::ThrottledUdp(socket) => {
-                socket.send(buffer.inner.freeze()).await.map_err(err!())
-            }
-        }
-    }
-}
-
-impl<T: Serialize> StreamSender<T> {
-    pub fn new_buffer(
-        &self,
-        header: &T,
-        preferred_max_buffer_size: usize,
-    ) -> StrResult<SenderBuffer<T>> {
-        let header_size = bincode::serialized_size(header).map_err(err!())?;
-        // the first two bytes are for the stream ID
-        let offset = 2 + 4 + header_size as usize;
-
-        let mut buffer = BytesMut::with_capacity(offset + preferred_max_buffer_size);
-
-        buffer.put_u16(self.stream_id);
-
-        // make space for the packet index
-        buffer.put_u32(0);
-
-        let mut buffer_writer = buffer.writer();
-        bincode::serialize_into(&mut buffer_writer, header).map_err(err!())?;
-        let buffer = buffer_writer.into_inner();
-
-        Ok(SenderBuffer {
-            inner: buffer,
-            offset,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub async fn send(&mut self, packet: &T) -> StrResult {
-        self.send_buffer(self.new_buffer(packet, 0)?).await
+                .map_err(err!())
+                .unwrap(),
+            StreamSendSocket::ThrottledUdp(_) => {}
+        };
     }
 }
 
@@ -167,37 +203,97 @@ pub struct StreamReceiver<T> {
     receiver: StreamReceiverType,
     next_packet_index: u32,
     previous_packet_index: u32,
+    full_packet_index: u32,
+    had_packet_loss: bool,
     _phantom: PhantomData<T>,
 }
 
 impl<T: DeserializeOwned> StreamReceiver<T> {
-    pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
-        let mut bytes = match &mut self.receiver {
-            StreamReceiverType::Queue(receiver) => receiver.recv().await.ok_or_else(enone!())?,
-        };
-
-        let packet_index = bytes.get_u32();
-        let had_packet_loss =
-            packet_index != self.next_packet_index && self.previous_packet_index != packet_index;
-        if had_packet_loss {
+    fn check_packet_loss(&mut self, packet_index: u32) {     
+        if packet_index != self.next_packet_index && self.previous_packet_index != packet_index {
             let previous_packet = self.previous_packet_index;
             let next_packet = self.next_packet_index;
             info!(
                 "Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}"
             );
+            if self.had_packet_loss == false {
+                self.had_packet_loss = true;
+            }
         }
-        self.previous_packet_index = packet_index;
-        self.next_packet_index = packet_index + 1;
+    }
 
-        let mut bytes_reader = bytes.reader();
+    pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
+        // TODO: Ideally, receiver should avoid delegating packet loss handling to further code
+        // and implement strategy pattern instead.
+        let mut received_shards = 0;
+        let mut buffer = BytesMut::new();
+        let mut last_max_index = 0;
+        //let mut prev_packet_total_shards = 0;
+        //let mut prev_packet_total_payload_size = 0;
+        loop {
+            let mut bytes = match &mut self.receiver {
+                StreamReceiverType::Queue(receiver) => receiver.recv().await.ok_or_else(enone!())?,
+            };
+
+            let packet_index = bytes.get_u32();
+            let total_shards = bytes.get_u32() as usize;
+            let total_payload_size = bytes.get_u32();
+            let full_packet_index = bytes.get_u32();
+
+            //info!("idx:{packet_index}/p_idx:{full_packet_index}/shrd:{received_shards}/t_shrd:{total_shards}/len:{total_payload_size}");
+
+            self.check_packet_loss(packet_index);
+            if self.previous_packet_index == packet_index {
+                info!("Packet {packet_index} retransmitted");
+                continue;
+            }
+            self.previous_packet_index = packet_index;
+            self.next_packet_index = packet_index + 1;
+
+            if self.full_packet_index != full_packet_index {
+                /*info!("Packet idx: {packet_index}");
+                if received_shards != prev_packet_total_shards {
+                    info!("Prev packet info: size {prev_packet_total_payload_size} total_shards: {prev_packet_total_shards}");
+                    info!("Packet was incomplete! Expected: {prev_packet_total_shards}, received: {received_shards}");
+                }
+                prev_packet_total_shards = total_shards;
+                prev_packet_total_payload_size = total_payload_size;*/
+                self.full_packet_index = full_packet_index;
+
+                self.had_packet_loss = false;
+
+                last_max_index = 0;
+                received_shards = 0;
+
+                buffer.resize(total_payload_size as _, 0);
+            }
+            
+            let len = bytes.len();
+            let max = (last_max_index + len) as usize;
+            //info!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
+            buffer[last_max_index..max].copy_from_slice(&bytes);
+            last_max_index = max;
+
+            received_shards += 1;
+            if received_shards == total_shards || self.had_packet_loss {
+                if max > total_payload_size as _ {
+                    info!("Packet buffer overflow!");
+                } else if max < total_payload_size as _ {
+                    info!("Packet buffer underflow!");
+                }
+                break;
+            }
+        }
+
+        //info!("RX: {t}");
+        let mut bytes_reader = buffer.reader();
         let header = bincode::deserialize_from(&mut bytes_reader).map_err(err!())?;
-        let buffer = bytes_reader.into_inner();
+        buffer = bytes_reader.into_inner();
 
-        // At this point, "buffer" does not include the header anymore
         Ok(ReceivedPacket {
             header,
             buffer,
-            had_packet_loss,
+            had_packet_loss: self.had_packet_loss,
         })
     }
 }
@@ -326,6 +422,7 @@ impl StreamSocket {
             stream_id,
             socket: self.send_socket.clone(),
             next_packet_index: 0,
+            full_packet_index: 0,
             _phantom: PhantomData,
         })
     }
@@ -337,7 +434,9 @@ impl StreamSocket {
         Ok(StreamReceiver {
             receiver: StreamReceiverType::Queue(dequeuer),
             next_packet_index: 0,
-            previous_packet_index: 0,
+            previous_packet_index: u32::MAX,
+            full_packet_index: u32::MAX,
+            had_packet_loss: false,
             _phantom: PhantomData,
         })
     }

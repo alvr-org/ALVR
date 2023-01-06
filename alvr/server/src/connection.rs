@@ -481,7 +481,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         saturation,
         gamma,
         sharpening,
-        video_packet_size: settings.connection.video_packet_size,
+        packet_size: settings.connection.packet_size,
         linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
@@ -775,9 +775,9 @@ async fn connection_pipeline(
             *VIDEO_SENDER.lock() = Some(data_sender);
 
             while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&header, payload.len())?;
-                buffer.get_mut().extend(payload);
-                socket_sender.send_buffer(buffer).await.ok();
+                socket_sender
+                    .send(&header, payload)
+                    .await;
             }
 
             Ok(())
@@ -807,9 +807,8 @@ async fn connection_pipeline(
 
             while let Some(haptics) = data_receiver.recv().await {
                 socket_sender
-                    .send_buffer(socket_sender.new_buffer(&haptics, 0)?)
-                    .await
-                    .ok();
+                    .send(&haptics, vec![])
+                    .await;
             }
 
             Ok(())

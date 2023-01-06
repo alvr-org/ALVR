@@ -36,12 +36,6 @@ struct ClientStats {
 };
 struct VideoFrame {
     unsigned long long trackingFrameIndex;
-    // FEC decoder needs some value for identify video frame number to detect new frame.
-    // trackingFrameIndex becomes sometimes same value as previous video frame (in case of low
-    // tracking rate).
-    unsigned long long videoFrameIndex;
-    unsigned int frameByteSize;
-    unsigned int fecIndex;
 };
 enum OpenvrPropertyType {
     Bool,

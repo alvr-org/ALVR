@@ -6,8 +6,8 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, VideoFrameBuffer, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE,
-    IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE, 
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
@@ -281,9 +281,7 @@ async fn stream_pipeline(
             *TRACKING_SENDER.lock() = Some(data_sender);
             while let Some(tracking) = data_receiver.recv().await {
                 socket_sender
-                    .send_buffer(socket_sender.new_buffer(&tracking, 0)?)
-                    .await
-                    .ok();
+                    .send(&tracking, vec![]).await;
 
                 // Note: this is not the best place to report the acquired input. Instead it should
                 // be done as soon as possible (or even just before polling the input). Instead this
@@ -305,10 +303,7 @@ async fn stream_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *STATISTICS_SENDER.lock() = Some(data_sender);
             while let Some(stats) = data_receiver.recv().await {
-                socket_sender
-                    .send_buffer(socket_sender.new_buffer(&stats, 0)?)
-                    .await
-                    .ok();
+                socket_sender.send(&stats, vec![]).await;
             }
 
             Ok(())
@@ -354,9 +349,6 @@ async fn stream_pipeline(
 
             let _stream_guard = StreamCloseGuard;
 
-            let mut video_frame_buffer =
-                VideoFrameBuffer::new(settings.connection.video_packet_size).unwrap();
-
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
             loop {
@@ -366,25 +358,21 @@ async fn stream_pipeline(
                     break Ok(());
                 }
 
-                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_video_packet_received(Duration::from_nanos(
-                        packet.header.tracking_frame_index,
-                    ));
-                }
-
-                video_frame_buffer.set_frame_lost(packet.had_packet_loss);
-                video_frame_buffer.push(packet.header, packet.buffer);
-                if video_frame_buffer.reconstruct() {
-                    push_nal(
-                        video_frame_buffer.get_frame_buffer(),
-                        video_frame_buffer.get_frame_size(),
-                        video_frame_buffer.get_tracking_frame_index(),
-                    );
-                }
                 if packet.had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }
+                } else {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_video_packet_received(Duration::from_nanos(
+                            packet.header.tracking_frame_index,
+                        ));
+                    }
+                    push_nal(
+                        packet.buffer.as_ptr(),
+                        packet.buffer.len() as i32,
+                        packet.header.tracking_frame_index,
+                    );
                 }
             }
         }
@@ -396,14 +384,16 @@ async fn stream_pipeline(
             .await?;
         async move {
             loop {
-                let packet = receiver.recv().await?.header;
+                let packet = receiver.recv().await?;
 
-                EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-                    device_id: packet.path,
-                    duration: packet.duration,
-                    frequency: packet.frequency,
-                    amplitude: packet.amplitude,
-                });
+                if !packet.had_packet_loss {
+                    EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
+                        device_id: packet.header.path,
+                        duration: packet.header.duration,
+                        frequency: packet.header.frequency,
+                        amplitude: packet.header.amplitude,
+                    });
+                }
             }
         }
     };

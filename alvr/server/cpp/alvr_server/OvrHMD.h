@@ -68,6 +68,7 @@ class OvrHmd : public TrackedDevice,
     std::shared_ptr<OvrController> m_rightController;
 
     std::shared_ptr<CEncoder> m_encoder;
+    std::shared_ptr<PoseHistory> m_poseHistory;
 
   private:
     ViewsConfigData views_config;
@@ -90,7 +91,6 @@ class OvrHmd : public TrackedDevice,
 #ifdef _WIN32
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif
-    std::shared_ptr<PoseHistory> m_poseHistory;
 
     std::shared_ptr<OvrViveTrackerProxy> m_viveTrackerProxy;
 

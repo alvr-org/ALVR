@@ -51,10 +51,10 @@ public:
   std::vector<const char*> get_vk_instance_extensions() const { return instanceExtensions;}
   std::vector<const char*> get_vk_device_extensions() const { return deviceExtensions;}
 
-  AVBufferRef *ctx;
-  VkInstance instance;
-  VkPhysicalDevice physicalDevice;
-  VkDevice device;
+  AVBufferRef *ctx = nullptr;
+  VkInstance instance = VK_NULL_HANDLE;
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+  VkDevice device = VK_NULL_HANDLE;
   uint32_t queueFamilyIndex;
   uint32_t queueFamilyIndexCompute;
   std::vector<const char*> instanceExtensions;

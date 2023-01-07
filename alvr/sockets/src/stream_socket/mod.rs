@@ -188,6 +188,7 @@ pub struct StreamReceiver<T> {
     previous_packet_index: u32,
     full_packet_index: u32,
     had_packet_loss: bool,
+    is_packet_lost: bool,
     _phantom: PhantomData<T>,
 }
 
@@ -199,8 +200,9 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             info!(
                 "Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}"
             );
-            if self.had_packet_loss == false {
+            if self.is_packet_lost == false {
                 self.had_packet_loss = true;
+                self.is_packet_lost = true;
             }
         }
     }
@@ -209,6 +211,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         let mut received_shards = 0;
         let mut buffer = BytesMut::new();
         let mut last_max_index = 0;
+        self.had_packet_loss = false;
         loop {
             let mut bytes = match &mut self.receiver {
                 StreamReceiverType::Queue(receiver) => {
@@ -232,12 +235,15 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             if self.full_packet_index != full_packet_index {
                 self.full_packet_index = full_packet_index;
 
-                self.had_packet_loss = false;
+                self.is_packet_lost = false;
 
                 last_max_index = 0;
                 received_shards = 0;
 
                 buffer.resize(total_payload_size as _, 0);
+            }
+            if self.is_packet_lost {
+                continue;
             }
 
             let len = bytes.len();
@@ -246,7 +252,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             last_max_index = max;
 
             received_shards += 1;
-            if received_shards == total_shards || self.had_packet_loss {
+            if received_shards == total_shards {
                 break;
             }
         }
@@ -258,8 +264,6 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         Ok(ReceivedPacket {
             header,
             buffer,
-            // TODO: Ideally, receiver should avoid delegating packet loss handling to further code
-            // and implement strategy pattern instead.
             had_packet_loss: self.had_packet_loss,
         })
     }
@@ -404,6 +408,7 @@ impl StreamSocket {
             previous_packet_index: u32::MAX,
             full_packet_index: u32::MAX,
             had_packet_loss: false,
+            is_packet_lost: false,
             _phantom: PhantomData,
         })
     }

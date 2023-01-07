@@ -357,17 +357,17 @@ async fn stream_pipeline(
                     break Ok(());
                 }
 
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    stats.report_video_packet_received(Duration::from_nanos(
+                        packet.header.tracking_timestamp,
+                    ));
+                }
+                decoder::push_nal(packet.buffer, packet.header.tracking_timestamp);
+
                 if packet.had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }
-                } else {
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_video_packet_received(Duration::from_nanos(
-                            packet.header.tracking_timestamp,
-                        ));
-                    }
-                    decoder::push_nal(packet.buffer, packet.header.tracking_timestamp);
                 }
             }
         }
@@ -381,14 +381,12 @@ async fn stream_pipeline(
             loop {
                 let packet = receiver.recv().await?;
 
-                if !packet.had_packet_loss {
-                    EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-                        device_id: packet.header.path,
-                        duration: packet.header.duration,
-                        frequency: packet.header.frequency,
-                        amplitude: packet.header.amplitude,
-                    });
-                }
+                EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
+                    device_id: packet.header.path,
+                    duration: packet.header.duration,
+                    frequency: packet.header.frequency,
+                    amplitude: packet.header.amplitude,
+                });
             }
         }
     };

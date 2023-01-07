@@ -2,7 +2,7 @@ use crate::{ClientCoreEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
 use bytes::BytesMut;
-use std::{ptr, time::Duration};
+use std::time::Duration;
 
 #[cfg(target_os = "android")]
 use alvr_common::prelude::*;

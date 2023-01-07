@@ -280,8 +280,7 @@ async fn stream_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *TRACKING_SENDER.lock() = Some(data_sender);
             while let Some(tracking) = data_receiver.recv().await {
-                socket_sender
-                    .send(&tracking, vec![]).await;
+                socket_sender.send(&tracking, vec![]).await;
 
                 // Note: this is not the best place to report the acquired input. Instead it should
                 // be done as soon as possible (or even just before polling the input). Instead this

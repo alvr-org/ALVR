@@ -775,9 +775,7 @@ async fn connection_pipeline(
             *VIDEO_SENDER.lock() = Some(data_sender);
 
             while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
-                socket_sender
-                    .send(&header, payload)
-                    .await;
+                socket_sender.send(&header, payload).await;
             }
 
             Ok(())
@@ -806,9 +804,7 @@ async fn connection_pipeline(
             *HAPTICS_SENDER.lock() = Some(data_sender);
 
             while let Some(haptics) = data_receiver.recv().await {
-                socket_sender
-                    .send(&haptics, vec![])
-                    .await;
+                socket_sender.send(&haptics, vec![]).await;
             }
 
             Ok(())

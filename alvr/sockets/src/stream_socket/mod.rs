@@ -19,7 +19,6 @@ use std::{
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
-    cmp,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
 use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};
@@ -107,21 +106,18 @@ impl<T: Serialize> StreamSender<T> {
         };
     }
 
-    pub async fn send(
-        &mut self, 
-        data_header: &T, 
-        payload: Vec<u8>,
-    ) {
+    pub async fn send(&mut self, data_header: &T, payload: Vec<u8>) {
         // u16 + u32 + u32 + u32 + u32
         let offset = (2 + 4 * 4) as usize;
-        
-        let data_header_size = bincode::serialized_size(data_header).map_err(err!()).unwrap() as usize;
+
+        let data_header_size = bincode::serialized_size(data_header)
+            .map_err(err!())
+            .unwrap() as usize;
         let payload_size = payload.len();
         let total_payload_size = data_header_size + payload_size;
 
         let max_payload_size = 1400 - offset; // TODO: Need to get max allowed buffer size
-        // Total number of shards will be at least 1 because header is sent separately
-        let total_shards = 
+        let total_shards = // Total number of shards will be at least 1 because header is sent separately
             payload_size / max_payload_size + 1 + (payload_size % max_payload_size != 0) as usize;
 
         let mut data_remain = total_payload_size;
@@ -135,18 +131,20 @@ impl<T: Serialize> StreamSender<T> {
         buffer.put_u32(self.full_packet_index);
 
         let mut buffer_writer = buffer.writer();
-        bincode::serialize_into(&mut buffer_writer, data_header).map_err(err!()).ok();
+        bincode::serialize_into(&mut buffer_writer, data_header)
+            .map_err(err!())
+            .ok();
         self.send_buffer(buffer_writer.into_inner()).await;
         data_remain -= data_header_size;
         self.next_packet_index += 1;
-        
+
         let mut last_max_index = 0;
         for _ in 0..total_shards - 1 {
             // If number of total shards is correct, the shard size will be always down to zero
             let shard_size = cmp::min(data_remain, max_payload_size);
             data_remain -= shard_size;
             let mut buffer = BytesMut::with_capacity(offset + shard_size);
-            
+
             buffer.put_u16(self.stream_id);
             buffer.put_u32(self.next_packet_index);
             buffer.put_u32(total_shards as u32);
@@ -173,13 +171,9 @@ impl<T: Serialize> StreamSender<T> {
                 .await
                 .map_err(err!())
                 .unwrap(),
-            StreamSendSocket::Tcp(socket) => socket
-                .lock()
-                .await
-                .flush()
-                .await
-                .map_err(err!())
-                .unwrap(),
+            StreamSendSocket::Tcp(socket) => {
+                socket.lock().await.flush().await.map_err(err!()).unwrap()
+            }
             StreamSendSocket::ThrottledUdp(_) => {}
         };
     }
@@ -206,7 +200,7 @@ pub struct StreamReceiver<T> {
 }
 
 impl<T: DeserializeOwned> StreamReceiver<T> {
-    fn check_packet_loss(&mut self, packet_index: u32) {     
+    fn check_packet_loss(&mut self, packet_index: u32) {
         if packet_index != self.next_packet_index && self.previous_packet_index != packet_index {
             let previous_packet = self.previous_packet_index;
             let next_packet = self.next_packet_index;
@@ -225,7 +219,9 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         let mut last_max_index = 0;
         loop {
             let mut bytes = match &mut self.receiver {
-                StreamReceiverType::Queue(receiver) => receiver.recv().await.ok_or_else(enone!())?,
+                StreamReceiverType::Queue(receiver) => {
+                    receiver.recv().await.ok_or_else(enone!())?
+                }
             };
 
             let packet_index = bytes.get_u32();
@@ -253,7 +249,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
 
                 buffer.resize(total_payload_size as _, 0);
             }
-            
+
             let len = bytes.len();
             let max = (last_max_index + len) as usize;
             //debug!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");

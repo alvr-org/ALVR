@@ -204,7 +204,7 @@ void CEncoder::Run() {
 
       fprintf(stderr, "\n\nWe are initalizing Vulkan in CEncoder thread\n\n\n");
 
-      AVUTIL.av_log_set_callback(av_logfn);
+      av_log_set_callback(av_logfn);
 
       bool useAmf = alvr::AMFContext::get()->isValid();
       std::vector<const char*> deviceExtensions;

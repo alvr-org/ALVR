@@ -108,13 +108,13 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
 
 alvr::EncodePipeline::~EncodePipeline()
 {
-  AVCODEC.avcodec_free_context(&encoder_ctx);
+  avcodec_free_context(&encoder_ctx);
 }
 
 bool alvr::EncodePipeline::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
 {
-  AVPacket * enc_pkt = AVCODEC.av_packet_alloc();
-  int err = AVCODEC.avcodec_receive_packet(encoder_ctx, enc_pkt);
+  AVPacket * enc_pkt = av_packet_alloc();
+  int err = avcodec_receive_packet(encoder_ctx, enc_pkt);
   if (err == AVERROR(EAGAIN)) {
     return false;
   } else if (err) {
@@ -122,6 +122,6 @@ bool alvr::EncodePipeline::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
   }
   filter_NAL(enc_pkt->data, enc_pkt->size, out);
   *pts = enc_pkt->pts;
-  AVCODEC.av_packet_free(&enc_pkt);
+  av_packet_free(&enc_pkt);
   return true;
 }

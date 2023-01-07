@@ -120,14 +120,13 @@ impl<T: Serialize> StreamSender<T> {
         let total_payload_size = data_header_size + payload_size;
 
         let max_payload_size = 1400 - offset; // TODO: Need to get max allowed buffer size
-        let mut total_shards = 1; // at least 1 header shard
-        if payload_size > 0 {
-            total_shards += payload_size / max_payload_size + (payload_size % max_payload_size != 0) as usize;
-        }
+        // Total number of shards will be at least 1 because header is sent separately
+        let total_shards = 
+            payload_size / max_payload_size + 1 + (payload_size % max_payload_size != 0) as usize;
 
         let mut data_remain = total_payload_size;
 
-        let mut buffer = BytesMut::with_capacity(offset + data_header_size);
+        let mut buffer = BytesMut::with_capacity(offset + max_payload_size);
 
         buffer.put_u16(self.stream_id);
         buffer.put_u32(self.next_packet_index);
@@ -142,11 +141,9 @@ impl<T: Serialize> StreamSender<T> {
         self.next_packet_index += 1;
         
         let mut last_max_index = 0;
-        loop {
+        for _ in 0..total_shards - 1 {
+            // If number of total shards is correct, the shard size will be always down to zero
             let shard_size = cmp::min(data_remain, max_payload_size);
-            if shard_size <= 0 {
-                break;
-            }
             data_remain -= shard_size;
             let mut buffer = BytesMut::with_capacity(offset + shard_size);
             
@@ -158,7 +155,7 @@ impl<T: Serialize> StreamSender<T> {
 
             let offset = last_max_index;
             let max = offset + shard_size;
-            //info!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
+            //debug!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
             buffer.put_slice(&payload[offset..max]);
             last_max_index = max;
 
@@ -223,13 +220,9 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
     }
 
     pub async fn recv(&mut self) -> StrResult<ReceivedPacket<T>> {
-        // TODO: Ideally, receiver should avoid delegating packet loss handling to further code
-        // and implement strategy pattern instead.
         let mut received_shards = 0;
         let mut buffer = BytesMut::new();
         let mut last_max_index = 0;
-        //let mut prev_packet_total_shards = 0;
-        //let mut prev_packet_total_payload_size = 0;
         loop {
             let mut bytes = match &mut self.receiver {
                 StreamReceiverType::Queue(receiver) => receiver.recv().await.ok_or_else(enone!())?,
@@ -240,24 +233,17 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             let total_payload_size = bytes.get_u32();
             let full_packet_index = bytes.get_u32();
 
-            //info!("idx:{packet_index}/p_idx:{full_packet_index}/shrd:{received_shards}/t_shrd:{total_shards}/len:{total_payload_size}");
+            //debug!("idx:{packet_index}/p_idx:{full_packet_index}/shrd:{received_shards}/t_shrd:{total_shards}/len:{total_payload_size}");
 
             self.check_packet_loss(packet_index);
             if self.previous_packet_index == packet_index {
-                info!("Packet {packet_index} retransmitted");
+                debug!("Packet {packet_index} retransmitted");
                 continue;
             }
             self.previous_packet_index = packet_index;
             self.next_packet_index = packet_index + 1;
 
             if self.full_packet_index != full_packet_index {
-                /*info!("Packet idx: {packet_index}");
-                if received_shards != prev_packet_total_shards {
-                    info!("Prev packet info: size {prev_packet_total_payload_size} total_shards: {prev_packet_total_shards}");
-                    info!("Packet was incomplete! Expected: {prev_packet_total_shards}, received: {received_shards}");
-                }
-                prev_packet_total_shards = total_shards;
-                prev_packet_total_payload_size = total_payload_size;*/
                 self.full_packet_index = full_packet_index;
 
                 self.had_packet_loss = false;
@@ -270,22 +256,16 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             
             let len = bytes.len();
             let max = (last_max_index + len) as usize;
-            //info!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
+            //debug!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
             buffer[last_max_index..max].copy_from_slice(&bytes);
             last_max_index = max;
 
             received_shards += 1;
             if received_shards == total_shards || self.had_packet_loss {
-                if max > total_payload_size as _ {
-                    info!("Packet buffer overflow!");
-                } else if max < total_payload_size as _ {
-                    info!("Packet buffer underflow!");
-                }
                 break;
             }
         }
 
-        //info!("RX: {t}");
         let mut bytes_reader = buffer.reader();
         let header = bincode::deserialize_from(&mut bytes_reader).map_err(err!())?;
         buffer = bytes_reader.into_inner();
@@ -293,6 +273,8 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         Ok(ReceivedPacket {
             header,
             buffer,
+            // TODO: Ideally, receiver should avoid delegating packet loss handling to further code
+            // and implement strategy pattern instead.
             had_packet_loss: self.had_packet_loss,
         })
     }

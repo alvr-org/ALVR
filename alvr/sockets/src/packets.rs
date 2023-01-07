@@ -91,7 +91,7 @@ pub enum ClientControlPacket {
 // legacy video packet
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoFrameHeaderPacket {
-    pub tracking_frame_index: u64,
+    pub tracking_timestamp: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]

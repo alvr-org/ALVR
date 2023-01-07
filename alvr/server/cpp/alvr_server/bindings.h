@@ -35,7 +35,7 @@ struct ClientStats {
     unsigned long long totalPipelineLatencyNs;
 };
 struct VideoFrame {
-    unsigned long long trackingFrameIndex;
+    unsigned long long trackingTimestamp;
 };
 enum OpenvrPropertyType {
     Bool,

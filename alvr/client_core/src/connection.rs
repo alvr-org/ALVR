@@ -364,10 +364,10 @@ async fn stream_pipeline(
                 } else {
                     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                         stats.report_video_packet_received(Duration::from_nanos(
-                            packet.header.tracking_frame_index,
+                            packet.header.tracking_timestamp,
                         ));
                     }
-                    decoder::push_nal(packet.buffer, packet.header.tracking_frame_index);
+                    decoder::push_nal(packet.buffer, packet.header.tracking_timestamp);
                 }
             }
         }

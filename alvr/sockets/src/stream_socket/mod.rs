@@ -65,14 +65,6 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
-/*#[derive(Serialize, Deserialize)]
-struct PacketControlHeader {
-    stream_id: u16,
-    index: u32,
-    size: u32,
-    shard_index: u32,
-}*/
-
 #[derive(Clone)]
 pub struct StreamSender<T> {
     stream_id: u16,
@@ -127,7 +119,7 @@ impl<T: Serialize> StreamSender<T> {
 
         buffer.put_u16(self.stream_id);
         buffer.put_u32(self.next_packet_index);
-        buffer.put_u32(total_shards as u32); // + 1 header shard
+        buffer.put_u32(total_shards as u32);
         buffer.put_u32(total_payload_size as u32);
         buffer.put_u32(self.full_packet_index);
 
@@ -154,7 +146,6 @@ impl<T: Serialize> StreamSender<T> {
 
             let offset = last_max_index;
             let max = offset + shard_size;
-            //debug!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
             buffer.put_slice(&payload[offset..max]);
             last_max_index = max;
 
@@ -230,8 +221,6 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             let total_payload_size = bytes.get_u32();
             let full_packet_index = bytes.get_u32();
 
-            //debug!("idx:{packet_index}/p_idx:{full_packet_index}/shrd:{received_shards}/t_shrd:{total_shards}/len:{total_payload_size}");
-
             self.check_packet_loss(packet_index);
             if self.previous_packet_index == packet_index {
                 debug!("Packet {packet_index} retransmitted");
@@ -253,7 +242,6 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
 
             let len = bytes.len();
             let max = (last_max_index + len) as usize;
-            //debug!("offset:{last_max_index}/max:{max}/len:{total_payload_size}");
             buffer[last_max_index..max].copy_from_slice(&bytes);
             last_max_index = max;
 

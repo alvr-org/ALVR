@@ -82,15 +82,12 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
 
   instanceInfo.enabledExtensionCount = instanceExtensions.size();
   instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
-  vkCreateInstance(&instanceInfo, nullptr, &instance);
-  if (!instance) {
-    throw std::runtime_error("Failed to create vulkan instance.");
-  }
+  VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &instance));
 
   uint32_t deviceCount = 0;
-  vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+  VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
   std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
-  vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data());
+  VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data()));
   for (VkPhysicalDevice dev : physicalDevices) {
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(dev, &props);
@@ -113,9 +110,9 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   Info("Using Vulkan device %s", props.deviceName);
 
   uint32_t deviceExtensionCount = 0;
-  vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr);
+  VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr));
   std::vector<VkExtensionProperties> deviceExts(deviceExtensionCount);
-  vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, deviceExts.data());
+  VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, deviceExts.data()));
   for (const char *name : device_extensions) {
     auto it = std::find_if(deviceExts.begin(), deviceExts.end(), [name](VkExtensionProperties e) {
       return strcmp(e.extensionName, name) == 0;
@@ -169,7 +166,7 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   deviceInfo.pQueueCreateInfos = queueInfos.data();
   deviceInfo.enabledExtensionCount = deviceExtensions.size();
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
-  vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device);
+  VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device));
 
   // AV_HWDEVICE_TYPE_DRM doesn't work with SW encoder
   if (Settings::Instance().m_force_sw_encoding) {

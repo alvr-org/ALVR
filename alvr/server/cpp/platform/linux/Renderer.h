@@ -89,6 +89,7 @@ private:
         PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
         PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
         PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT;
+        bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
     } d;
 

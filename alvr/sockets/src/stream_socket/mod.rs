@@ -179,7 +179,7 @@ enum StreamReceiverType {
 pub struct ReceivedPacket<T> {
     pub header: T,
     pub buffer: BytesMut,
-    pub is_lost: bool,
+    pub had_packet_loss: bool,
 }
 
 pub struct StreamReceiver<T> {
@@ -187,7 +187,7 @@ pub struct StreamReceiver<T> {
     next_packet_index: u32,
     previous_packet_index: u32,
     full_packet_index: u32,
-    is_packet_lost: bool,
+    had_packet_loss: bool,
     _phantom: PhantomData<T>,
 }
 
@@ -199,8 +199,8 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             info!(
                 "Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}"
             );
-            if self.is_packet_lost == false {
-                self.is_packet_lost = true;
+            if self.had_packet_loss == false {
+                self.had_packet_loss = true;
             }
         }
     }
@@ -232,7 +232,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             if self.full_packet_index != full_packet_index {
                 self.full_packet_index = full_packet_index;
 
-                self.is_packet_lost = false;
+                self.had_packet_loss = false;
 
                 last_max_index = 0;
                 received_shards = 0;
@@ -246,7 +246,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             last_max_index = max;
 
             received_shards += 1;
-            if received_shards == total_shards || self.is_packet_lost {
+            if received_shards == total_shards || self.had_packet_loss {
                 break;
             }
         }
@@ -260,7 +260,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             buffer,
             // TODO: Ideally, receiver should avoid delegating packet loss handling to further code
             // and implement strategy pattern instead.
-            is_lost: self.is_packet_lost,
+            had_packet_loss: self.had_packet_loss,
         })
     }
 }
@@ -403,7 +403,7 @@ impl StreamSocket {
             next_packet_index: 0,
             previous_packet_index: u32::MAX,
             full_packet_index: u32::MAX,
-            is_packet_lost: false,
+            had_packet_loss: false,
             _phantom: PhantomData,
         })
     }

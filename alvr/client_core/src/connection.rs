@@ -357,7 +357,7 @@ async fn stream_pipeline(
                     break Ok(());
                 }
 
-                if packet.is_lost {
+                if packet.had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }
@@ -381,7 +381,7 @@ async fn stream_pipeline(
             loop {
                 let packet = receiver.recv().await?;
 
-                if !packet.is_lost {
+                if !packet.had_packet_loss {
                     EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
                         device_id: packet.header.path,
                         duration: packet.header.duration,

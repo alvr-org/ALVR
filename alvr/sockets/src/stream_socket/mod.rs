@@ -19,6 +19,7 @@ use std::{
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
+    cmp,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
 use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};

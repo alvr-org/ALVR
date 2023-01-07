@@ -14,7 +14,7 @@ define([
                 processData: false,
                 async: false,
                 success: function (res) {
-                    gpus = res[0];
+                    gpus = res;
                 },
             });
             

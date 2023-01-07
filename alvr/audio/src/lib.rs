@@ -421,7 +421,7 @@ pub async fn receive_samples_loop(
 
         let mut sample_buffer_ref = sample_buffer.lock();
 
-        if packet.had_packet_loss {
+        if packet.is_lost {
             info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
@@ -438,7 +438,7 @@ pub async fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || packet.had_packet_loss {
+        if sample_buffer_ref.len() == 0 || packet.is_lost {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -452,8 +452,7 @@ pub async fn receive_samples_loop(
                     }
                 }
 
-                if packet.had_packet_loss
-                    && sample_buffer_ref.len() / channels_count == batch_frames_count
+                if packet.is_lost && sample_buffer_ref.len() / channels_count == batch_frames_count
                 {
                     // Add a fade-out to make a cross-fade.
                     for f in 0..batch_frames_count {

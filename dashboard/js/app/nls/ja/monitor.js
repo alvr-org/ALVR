@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "最大エンコードレイテンシ",
     transportLatency: "転送レイテンシ",
     decodeLatency: "デコードレイテンシ",
-    packetsLostTotal: "総損失FEC数",
     clientFPS: "クライアントFPS",
     serverFPS: "サーバFPS",
     packets: "パケット",

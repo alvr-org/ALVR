@@ -38,7 +38,6 @@ define({
     encodeLatencyMax: "Latence maximale de l'encodeur",
     transportLatency: "Latence de transmission",
     decodeLatency: "Latence du décodeur",
-    packetsLostTotal: "Total d'erreur FEC",
     clientFPS: "FPS du client",
     serverFPS: "FPS du serveur",
     packets: "Paquets",

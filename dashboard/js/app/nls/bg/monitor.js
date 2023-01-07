@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Максимално закъснение на енкодера",
     transportLatency: "Закъснение на предаването",
     decodeLatency: "Закъснение на декодера",
-    packetsLostTotal: "Общо неуспех на FEC",
     clientFPS: "FPS на клиента",
     serverFPS: "FPS на сървъра",
     packets: "пакети",

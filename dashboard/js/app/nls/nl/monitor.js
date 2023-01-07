@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Codeer latency maximaal",
     transportLatency: "Transport latency",
     decodeLatency: "Decodeer latency",
-    packetsLostTotal: "Totale mislukte Fec",
     clientFPS: "Client FPS",
     serverFPS: "Server FPS",
     packets: "Pakketten",

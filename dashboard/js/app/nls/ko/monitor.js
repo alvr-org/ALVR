@@ -38,7 +38,6 @@ define({
     encodeLatencyMax: "최대 인코드 지연시간",
     transportLatency: "전송 지연시간",
     decodeLatency: "디코더 지연시간",
-    packetsLostTotal: "총 Fec 실패",
     clientFPS: "클라이언트 FPS",
     serverFPS: "서버 FPS",
     packets: "패킷",

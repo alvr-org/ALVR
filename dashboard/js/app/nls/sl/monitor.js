@@ -37,7 +37,6 @@ define({
     encodeLatencyMax: "Najdaljši čas zlaganja",
     transportLatency: "Čas prenašanja",
     decodeLatency: "Čas razlaganja",
-    packetsLostTotal: "Skupno št.FEC napak",
     clientFPS: "Št. prejetih sličic na skundo",
     serverFPS: "Št. oddanih sličic na skundo",
     packets: "Zabojčkov",

@@ -1,7 +1,7 @@
 #![allow(clippy::if_same_then_else)]
 
 use crate::{
-    decoder::{self, push_nal, DECODER_INIT_CONFIG},
+    decoder::{self, DECODER_INIT_CONFIG},
     platform,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
@@ -367,11 +367,7 @@ async fn stream_pipeline(
                             packet.header.tracking_frame_index,
                         ));
                     }
-                    push_nal(
-                        packet.buffer.as_ptr(),
-                        packet.buffer.len() as i32,
-                        packet.header.tracking_frame_index,
-                    );
+                    decoder::push_nal(packet.buffer, packet.header.tracking_frame_index);
                 }
             }
         }

@@ -6,6 +6,7 @@ use alvr_common::{
     RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
+use bytes::BytesMut;
 use jni::{
     objects::{GlobalRef, JObject},
     sys::jobject,
@@ -25,7 +26,6 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
-    ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -239,8 +239,7 @@ impl VideoDecoderEnqueuer {
     pub fn push_frame_nal(
         &self,
         timestamp: Duration,
-        data: *const u8,
-        length: i32,
+        data: BytesMut,
         timeout: Duration,
     ) -> StrResult<bool> {
         let Some(decoder) = &*self.inner.lock() else {
@@ -250,9 +249,8 @@ impl VideoDecoderEnqueuer {
 
         match decoder.dequeue_input_buffer(timeout) {
             MediaCodecResult::Ok(mut buffer) => {
-                unsafe {
-                    ptr::copy_nonoverlapping(data, buffer.buffer_mut().as_ptr() as _, length as _)
-                }
+                let length = data.len();
+                buffer.buffer_mut()[..length].copy_from_slice(&data);
 
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly

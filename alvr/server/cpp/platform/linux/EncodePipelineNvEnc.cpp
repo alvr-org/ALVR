@@ -37,34 +37,34 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
 
     auto codec_id = ALVR_CODEC(settings.m_codec);
     const char *encoder_name = encoder(codec_id);
-    const AVCodec *codec = AVCODEC.avcodec_find_encoder_by_name(encoder_name);
+    const AVCodec *codec = avcodec_find_encoder_by_name(encoder_name);
     if (codec == nullptr) {
         throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
     }
 
-    encoder_ctx = AVCODEC.avcodec_alloc_context3(codec);
+    encoder_ctx = avcodec_alloc_context3(codec);
     if (not encoder_ctx) {
         throw std::runtime_error("failed to allocate NvEnc encoder");
     }
 
     switch (codec_id) {
     case ALVR_CODEC_H264:
-        AVUTIL.av_opt_set(encoder_ctx, "preset", "llhq", 0);
-        AVUTIL.av_opt_set(encoder_ctx, "zerolatency", "1", 0);
+        av_opt_set(encoder_ctx, "preset", "llhq", 0);
+        av_opt_set(encoder_ctx, "zerolatency", "1", 0);
 
         switch (settings.m_entropyCoding) {
         case ALVR_CABAC:
-            AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
+            av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
             break;
         case ALVR_CAVLC:
-            AVUTIL.av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
+            av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
             break;
         }
 
         break;
     case ALVR_CODEC_H265:
-        AVUTIL.av_opt_set(encoder_ctx, "preset", "llhq", 0);
-        AVUTIL.av_opt_set(encoder_ctx, "zerolatency", "1", 0);
+        av_opt_set(encoder_ctx, "preset", "llhq", 0);
+        av_opt_set(encoder_ctx, "zerolatency", "1", 0);
         break;
     }
 
@@ -88,21 +88,21 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
     encoder_ctx->gop_size = INT16_MAX;
     encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
 
-    err = AVCODEC.avcodec_open2(encoder_ctx, codec, NULL);
+    err = avcodec_open2(encoder_ctx, codec, NULL);
     if (err < 0) {
         throw alvr::AvException("Cannot open video encoder codec:", err);
     }
 
-    hw_frame = AVUTIL.av_frame_alloc();
+    hw_frame = av_frame_alloc();
 }
 
 alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
-    AVUTIL.av_buffer_unref(&hw_ctx);
-    AVUTIL.av_frame_free(&hw_frame);
+    av_buffer_unref(&hw_ctx);
+    av_frame_free(&hw_frame);
 }
 
 void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {
-    int err = AVUTIL.av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
+    int err = av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
     if (err) {
         throw alvr::AvException("av_hwframe_transfer_data", err);
     }
@@ -110,7 +110,7 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
     hw_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
     hw_frame->pts = targetTimestampNs;
 
-    if ((err = AVCODEC.avcodec_send_frame(encoder_ctx, hw_frame)) < 0) {
+    if ((err = avcodec_send_frame(encoder_ctx, hw_frame)) < 0) {
         throw alvr::AvException("avcodec_send_frame failed:", err);
     }
 }

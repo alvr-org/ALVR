@@ -88,12 +88,6 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-// legacy video packet
-#[derive(Serialize, Deserialize, Clone)]
-pub struct VideoFrameHeaderPacket {
-    pub tracking_timestamp: u64,
-}
-
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct DeviceMotion {
     pub orientation: Quat,

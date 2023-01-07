@@ -175,7 +175,7 @@ void (*LogDebug)(const char *stringPtr);
 void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
-void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
+void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
 unsigned long long (*PathStringToHash)(const char *path);

@@ -69,9 +69,8 @@ void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestamp
 		len = len - end;
 	}
 
-	VideoFrame header = {targetTimestampNs};
-	VideoSend(header, buf, len);
-	m_Statistics->CountPacket(sizeof(VideoFrame) + len);
+	VideoSend(targetTimestampNs, buf, len);
+	m_Statistics->CountPacket(sizeof(targetTimestampNs) + len);
 }
 
 void ClientConnection::ReportNetworkLatency(uint64_t latencyUs) {

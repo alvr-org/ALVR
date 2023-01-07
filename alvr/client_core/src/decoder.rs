@@ -68,9 +68,7 @@ pub fn create_decoder(config_nal: Vec<u8>) {
     }
 }
 
-pub fn push_nal(buffer: BytesMut, timestamp_ns: u64) {
-    let timestamp = Duration::from_nanos(timestamp_ns);
-
+pub fn push_nal(buffer: BytesMut, timestamp: Duration) {
     if EXTERNAL_DECODER.value() {
         let mut nal = vec![0; buffer.len() as _];
         nal.copy_from_slice(&buffer);

@@ -15,8 +15,7 @@ use alvr_session::{AudioDeviceId, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
     PeerType, ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
-    VideoFrameHeaderPacket, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
-    VIDEO,
+    VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use serde_json as json;
@@ -321,9 +320,7 @@ async fn stream_pipeline(
     IS_STREAMING.set(true);
 
     let video_receive_loop = {
-        let mut receiver = stream_socket
-            .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
-            .await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<Duration>(VIDEO).await?;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -358,11 +355,9 @@ async fn stream_pipeline(
                 }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_video_packet_received(Duration::from_nanos(
-                        packet.header.tracking_timestamp,
-                    ));
+                    stats.report_video_packet_received(packet.header);
                 }
-                decoder::push_nal(packet.buffer, packet.header.tracking_timestamp);
+                decoder::push_nal(packet.buffer, packet.header);
 
                 if packet.had_packet_loss {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {

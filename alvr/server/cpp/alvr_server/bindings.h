@@ -34,9 +34,6 @@ struct ClientStats {
     unsigned long long vsyncQueueNs;
     unsigned long long totalPipelineLatencyNs;
 };
-struct VideoFrame {
-    unsigned long long trackingTimestamp;
-};
 enum OpenvrPropertyType {
     Bool,
     Float,
@@ -113,7 +110,7 @@ extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
-extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
+extern "C" void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len);
 extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,
                                float frequency,

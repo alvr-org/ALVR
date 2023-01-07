@@ -30,9 +30,7 @@ use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{
-    ClientListAction, GpuVendor, Haptics, ServerControlPacket, VideoFrameHeaderPacket,
-};
+use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -62,7 +60,7 @@ static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(No
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 pub struct VideoPacket {
-    pub header: VideoFrameHeaderPacket,
+    pub header: Duration,
     pub payload: Vec<u8>,
 }
 
@@ -348,11 +346,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
+    extern "C" fn video_send(tracking_timestamp: u64, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
-            let header = VideoFrameHeaderPacket {
-                tracking_timestamp: header.trackingTimestamp,
-            };
+            let header = Duration::from_nanos(tracking_timestamp);
 
             let mut vec_buffer = vec![0; len as _];
 

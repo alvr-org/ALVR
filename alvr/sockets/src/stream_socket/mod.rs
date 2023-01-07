@@ -14,12 +14,12 @@ use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    cmp,
     collections::HashMap,
     marker::PhantomData,
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
-    cmp,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
 use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};

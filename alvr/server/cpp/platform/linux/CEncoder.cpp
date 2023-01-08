@@ -239,7 +239,7 @@ void CEncoder::Run() {
         }
 
         // Close enough to present
-        ReportPresent(pose->targetTimestampNs);
+        ReportPresent(pose->targetTimestampNs, 0);
 
         if (m_captureFrame) {
           m_captureFrame = false;
@@ -250,7 +250,7 @@ void CEncoder::Run() {
 
         render.Render(frame_info.image, frame_info.semaphore_value);
 
-        ReportComposed(pose->targetTimestampNs);
+        ReportComposed(pose->targetTimestampNs, 0);
 
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 

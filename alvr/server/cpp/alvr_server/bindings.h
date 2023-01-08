@@ -130,8 +130,8 @@ extern "C" void (*HapticsSend)(unsigned long long path,
                                float amplitude);
 extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);
-extern "C" void (*ReportPresent)(unsigned long long timestamp_ns);
-extern "C" void (*ReportComposed)(unsigned long long timestamp_ns);
+extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
+extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
 extern "C" void (*ReportFecFailure)(int percentage);
 

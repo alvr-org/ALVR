@@ -155,7 +155,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
-	ReportPresent(m_targetTimestampNs);
+	ReportPresent(m_targetTimestampNs, 0);
 
 	bool useMutex = true;
 
@@ -203,7 +203,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 		}
 	}
 
-	ReportComposed(m_targetTimestampNs);
+	ReportComposed(m_targetTimestampNs, 0);
 
 	if (m_pEncoder) {
 		m_pEncoder->NewFrameReady();

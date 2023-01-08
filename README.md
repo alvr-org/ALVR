@@ -49,12 +49,12 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 ## Install
 
-Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation).
+Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Basic-installation).
 
 ## Troubleshooting
 
 -   Please check the [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting) page. The original repository [wiki](https://github.com/polygraphene/ALVR/wiki/Troubleshooting) can also help.  
--   Configuration recommendations and information may be found [here](https://github.com/alvr-org/ALVR/wiki/Configuration-Information-and-Recommendations)
+-   Configuration recommendations and information may be found [here](https://github.com/alvr-org/ALVR/wiki/PC)
 
 ## Uninstall
 

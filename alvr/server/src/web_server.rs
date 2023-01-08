@@ -205,7 +205,7 @@ async fn http_api(
             reply_json(&maybe_err.unwrap_or(0))?
         }
         "/api/audio-devices" => reply_json(&SERVER_DATA_MANAGER.read().get_audio_devices_list()?)?,
-        "/api/graphics-devices" => reply_json(&[SERVER_DATA_MANAGER.read().get_gpu_name()])?,
+        "/api/graphics-devices" => reply_json(&SERVER_DATA_MANAGER.read().get_gpu_names())?,
         "/restart-steamvr" => {
             crate::notify_restart_driver();
             reply(StatusCode::OK)?

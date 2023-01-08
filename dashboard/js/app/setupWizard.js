@@ -6,7 +6,7 @@ define([
 ], function (_, wizardTemplate, i18n) {
     return function (alvrSettings) {
         function getAndCheckGPUSupport() {
-            let gpu = "Unknown";
+            let gpus = [];
             $.ajax({
                 type: "GET",
                 url: "api/graphics-devices",
@@ -14,25 +14,29 @@ define([
                 processData: false,
                 async: false,
                 success: function (res) {
-                    if (res.length > 0) {
-                        gpu = res[0];
-                    }
+                    gpus = res;
                 },
             });
-
-            const unsupportedGPURegex = new RegExp(
-                "(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?S*)|VE|LE|X(1?[0-9][0-5]0))" +
-                    "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))" +
-                    "|Intel" +
-                    "|Unknown" +
-                    "|llvmpipe (LLVM [1-99].[1-99].[1-99], [32-256] bits)"
-            );
-
-            if (unsupportedGPURegex.test(gpu)) {
-                return "🔴 " + gpu + i18n.GPUUnsupported;
-            } else {
-                return "🟢 " + gpu + i18n.GPUSupported;
+            
+            const message = []
+            for (const i in gpus) {
+                const unsupportedGPURegex = new RegExp(
+                    "(Radeon (((VIVO|[2-9][0-9][0-9][0-9]) ?S*)|VE|LE|X(1?[0-9][0-5]0))" +
+                        "|GeForce ((8[3-9][0-9]|9[0-3][0-9]|94[0-5])[AM]|GT 1030|GTX 9([2-3][0-9]|40)MX|MX(110|130|1[5-9][0-9]|2[0-9][0-9]|3[0-2][0-9]|330|350|450)))" +
+                        "|Intel" +
+                        "|llvmpipe (LLVM [1-99].[1-99].[1-99], [32-256] bits)"
+                );
+    
+                if (unsupportedGPURegex.test(gpus[i])) {
+                    message.push(`GPU ${i}: 🔴 ${gpus[i]} ${i18n.GPUUnsupported}`);
+                } else {
+                    message.push(`GPU ${i}: 🟢 ${gpus[i]} ${i18n.GPUSupported}`);
+                }
             }
+            if (!message.length) {
+                return 'No GPUs found in your system!';
+            }
+            return message.join('\n\n');
         }
 
         this.showWizard = function () {

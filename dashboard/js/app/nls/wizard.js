@@ -7,7 +7,7 @@ define({
         titleHardwareReq: "Hardware requirements",
         textHardwareReq:
             "ALVR requires a dedicated and recent graphics card. <br/> <br/> Make sure you have at least one output audio device. <br/> <br/> ",
-        YourGPUIs: "Your GPU:",
+        YourGPUIs: "Your GPU(s):",
         GPUSupported: " \nGreat! This GPU is probably supported!",
         GPUUnsupported:
             " \nWe are sorry, but this card may be unsupported. You can try ALVR anyway and see if it works",

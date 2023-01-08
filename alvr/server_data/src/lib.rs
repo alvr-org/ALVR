@@ -55,7 +55,7 @@ pub struct ServerDataManager {
     settings: Settings,
     session_path: PathBuf,
     script_engine: rhai::Engine,
-    gpu_info: Option<AdapterInfo>,
+    gpu_infos: Vec<AdapterInfo>,
 }
 
 impl ServerDataManager {
@@ -98,11 +98,10 @@ impl ServerDataManager {
             .enumerate_adapters(wgpu::Backends::VULKAN)
             .collect();
 
-        let gpu_info = if let Some(adapter) = vk_adapters.get(0) {
-            Some(adapter.get_info())
-        } else {
-            None
-        };
+        let gpu_infos = vk_adapters
+            .iter()
+            .map(|adapter| adapter.get_info())
+            .collect();
 
         let script_engine = rhai::Engine::new();
 
@@ -111,7 +110,7 @@ impl ServerDataManager {
             settings: session_desc.to_settings(),
             session_path: session_path.to_owned(),
             script_engine,
-            gpu_info,
+            gpu_infos,
         }
     }
 
@@ -174,24 +173,24 @@ impl ServerDataManager {
             .map_err(|e| e.to_string())
     }
 
-    pub fn get_gpu_vendor(&self) -> GpuVendor {
-        if let Some(info) = &self.gpu_info {
-            match info.vendor {
+    pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {
+        return self
+            .gpu_infos
+            .iter()
+            .map(|adapter_info| match adapter_info.vendor {
                 0x10de => GpuVendor::Nvidia,
                 0x1002 => GpuVendor::Amd,
                 _ => GpuVendor::Other,
-            }
-        } else {
-            GpuVendor::Other
-        }
+            })
+            .collect();
     }
 
-    pub fn get_gpu_name(&self) -> String {
-        if let Some(info) = &self.gpu_info {
-            info.name.clone()
-        } else {
-            "".into()
-        }
+    pub fn get_gpu_names(&self) -> Vec<String> {
+        return self
+            .gpu_infos
+            .iter()
+            .map(|adapter_info| adapter_info.name.clone())
+            .collect();
     }
 
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]

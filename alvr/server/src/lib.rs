@@ -211,7 +211,11 @@ fn init() {
 
     {
         let mut data_manager = SERVER_DATA_MANAGER.write();
-        if matches!(data_manager.get_gpu_vendor(), GpuVendor::Nvidia) {
+        if data_manager
+            .get_gpu_vendors()
+            .iter()
+            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        {
             data_manager
                 .session_mut()
                 .session_settings

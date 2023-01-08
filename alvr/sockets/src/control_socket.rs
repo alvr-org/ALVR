@@ -74,9 +74,16 @@ impl ProtoControlSocket {
             }
         };
 
-        socket.set_nodelay(true).map_err(err!())?;
         let peer_ip = socket.peer_addr().map_err(err!())?.ip();
-        let socket = Framed::new(socket, Ldc::new());
+        let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
+
+        socket.set_reuse_address(true).map_err(err!())?;
+        socket.set_nodelay(true).map_err(err!())?;
+
+        let socket = match TcpStream::from_std(socket.into()).map_err(err!()) {
+            Ok(socket) => Framed::new(socket, Ldc::new()),
+            Err(e) => panic!("Unable to convert control socket! Error: {e}."),
+        };
 
         Ok((Self { inner: socket }, peer_ip))
     }

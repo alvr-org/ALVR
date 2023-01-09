@@ -49,9 +49,6 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
 
     switch (codec_id) {
     case ALVR_CODEC_H264:
-        av_opt_set(encoder_ctx, "preset", "llhq", 0);
-        av_opt_set(encoder_ctx, "zerolatency", "1", 0);
-
         switch (settings.m_entropyCoding) {
         case ALVR_CABAC:
             av_opt_set(encoder_ctx->priv_data, "coder", "ac", 0);
@@ -60,13 +57,46 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
             av_opt_set(encoder_ctx->priv_data, "coder", "vlc", 0);
             break;
         }
-
         break;
     case ALVR_CODEC_H265:
-        av_opt_set(encoder_ctx, "preset", "llhq", 0);
-        av_opt_set(encoder_ctx, "zerolatency", "1", 0);
         break;
     }
+
+    switch (settings.m_rateControlMode) {
+    case ALVR_CBR:
+        av_opt_set(encoder_ctx->priv_data, "rc", "cbr", 0);
+        break;
+    case ALVR_VBR:
+        av_opt_set(encoder_ctx->priv_data, "rc", "vbr", 0);
+        break;
+    }
+
+    switch (settings.m_encoderQualityPreset) {
+    case ALVR_QUALITY:
+        av_opt_set(encoder_ctx->priv_data, "preset", "p7", 0);
+        break;
+    case ALVR_BALANCED:
+        av_opt_set(encoder_ctx->priv_data, "preset", "p4", 0);
+        break;
+    case ALVR_SPEED:
+    default:
+        av_opt_set(encoder_ctx->priv_data, "preset", "p1", 0);
+        break;
+    }
+
+    if (settings.m_nvencAdaptiveQuantizationMode == 1) {
+        av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);
+    } else if (settings.m_nvencAdaptiveQuantizationMode == 2) {
+        av_opt_set_int(encoder_ctx->priv_data, "temporal_aq", 1, 0);
+    }
+
+    if (settings.m_nvencEnableWeightedPrediction) {
+        av_opt_set_int(encoder_ctx->priv_data, "weighted_pred", 1, 0);
+    }
+
+    av_opt_set_int(encoder_ctx->priv_data, "tune", settings.m_nvencTuningPreset, 0);
+    av_opt_set_int(encoder_ctx->priv_data, "zerolatency", 1, 0);
+    av_opt_set_int(encoder_ctx->priv_data, "delay", 0, 0);
 
     /**
      * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA

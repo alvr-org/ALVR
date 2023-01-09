@@ -198,9 +198,9 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
     }
   }
   if (devicePath.empty()) {
-    throw std::runtime_error("Failed to find device path");
+    devicePath = "/dev/dri/renderD128";
   }
-  Info("Found device path %s", devicePath.c_str());
+  Info("Using device path %s", devicePath.c_str());
 
   if (drmContext) {
     ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);

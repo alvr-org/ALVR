@@ -26,6 +26,8 @@ openxr = { git = "https://github.com/Ralith/openxrs" }
 android-activity = { git = "https://github.com/rust-mobile/android-activity", features = [
     "native-activity",
 ] }
+jni = "0.20"
+ndk-context = "0.1"
 
 [package.metadata.android]
 package = "alvr.client"
@@ -127,9 +129,6 @@ value = "3,6DoF"
 [[package.metadata.android.application.meta_data]]
 name = "pvr.app.type"
 value = "vr"
-[[package.metadata.android.application.meta_data]]
-name = "display_rate"
-value = "90"
 [[package.metadata.android.application.meta_data]]
 name = "handtracking"
 value = "1"

@@ -279,7 +279,7 @@ pub fn entry_point() {
 
     let xr_entry = if device_name == "Quest" {
         unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap() }
-    } else if device_name.contains("Pico") {
+    } else if device_name.contains("Pico") || device_name == "A8150" {
         unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap() }
     } else {
         unsafe { xr::Entry::load().unwrap() }
@@ -732,7 +732,14 @@ pub fn entry_point() {
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: android_activity::AndroidApp) {
-    let rendering_thread = thread::spawn(entry_point);
+    let rendering_thread = thread::spawn(|| {
+        // workaround for the Pico runtime
+        let context = ndk_context::android_context();
+        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) }.unwrap();
+        let _env = vm.attach_current_thread().unwrap();
+
+        entry_point();
+    });
 
     let mut should_quit = false;
     while !should_quit {

@@ -603,19 +603,27 @@ pub fn entry_point() {
                     }
                 }
 
-                views = if let Some(views) = history_views {
-                    views
-                } else {
-                    let (_, views) = xr_session
-                        .locate_views(
-                            xr::ViewConfigurationType::PRIMARY_STEREO,
-                            frame_state.predicted_display_time,
-                            &reference_space,
-                        )
-                        .unwrap();
+                views = history_views.unwrap_or_else(|| {
+                    let default_view = xr::View {
+                        pose: xr::Posef {
+                            orientation: xr::Quaternionf {
+                                x: 0.0,
+                                y: 0.0,
+                                z: 0.0,
+                                w: 1.0,
+                            },
+                            position: xr::Vector3f::default(),
+                        },
+                        fov: xr::Fovf {
+                            angle_left: -0.1,
+                            angle_right: 0.1,
+                            angle_up: 0.1,
+                            angle_down: -0.1,
+                        },
+                    };
 
-                    views
-                }
+                    vec![default_view, default_view]
+                });
             }
 
             view_resolution = stream_view_resolution;

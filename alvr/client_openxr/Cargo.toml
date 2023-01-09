@@ -13,6 +13,7 @@ crate_type = ["cdylib"]
 alvr_common.workspace = true
 alvr_client_core.workspace = true
 alvr_client_opengl.workspace = true
+alvr_events.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 

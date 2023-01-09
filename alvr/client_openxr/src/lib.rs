@@ -1,3 +1,5 @@
+mod interaction;
+
 use alvr_client_core::ClientCoreEvent;
 use alvr_client_opengl::RenderViewInput;
 use alvr_common::{
@@ -7,11 +9,11 @@ use alvr_common::{
     Fov, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_sockets::{DeviceMotion, Tracking};
+use interaction::StreamingInteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 use std::{
-    collections::{HashMap, VecDeque},
-    ffi::c_void,
+    collections::VecDeque,
     path::Path,
     ptr,
     sync::Arc,
@@ -21,28 +23,14 @@ use std::{
 
 const IPD_CHANGE_EPS: f32 = 0.001;
 
-enum ButtonAction {
-    Binary(xr::Action<bool>),
-    Scalar(xr::Action<f32>),
-}
-
-struct HandTrackingSource {
-    grip_action: xr::Action<xr::Posef>,
-    grip_space: xr::Space,
-    skeleton: Option<xr::HandTracker>,
-}
-
 struct StreamingInputContext {
     is_streaming: Arc<RelaxedAtomic>,
     frame_interval: Duration,
     xr_instance: xr::Instance,
     xr_session: xr::Session<xr::AnyGraphics>,
-    action_set: xr::ActionSet,
+    interaction_context: Arc<StreamingInteractionContext>,
     reference_space: Arc<xr::Space>,
     views_history: Arc<Mutex<VecDeque<(Duration, Vec<xr::View>)>>>,
-    left_hand_tracking_source: Arc<HandTrackingSource>,
-    right_hand_tracking_source: Arc<HandTrackingSource>,
-    button_actions: Arc<HashMap<u64, ButtonAction>>,
 }
 
 struct EglContext {
@@ -197,8 +185,10 @@ fn streaming_input_loop(ctx: StreamingInputContext) {
     let mut last_ipd = 0.0;
 
     while ctx.is_streaming.value() {
+        // Streaming related inputs are updated here. Make sure every input poll is done in this
+        // thread
         ctx.xr_session
-            .sync_actions(&[(&ctx.action_set).into()])
+            .sync_actions(&[(&ctx.interaction_context.action_set).into()])
             .unwrap();
 
         let now = to_duration(ctx.xr_instance.now().unwrap());
@@ -236,65 +226,6 @@ fn streaming_input_loop(ctx: StreamingInputContext) {
             }
         }
 
-        fn get_hand_motion(
-            session: &xr::Session<xr::AnyGraphics>,
-            reference_space: &xr::Space,
-            time: xr::Time,
-            tracking: &HandTrackingSource,
-        ) -> Option<DeviceMotion> {
-            if tracking
-                .grip_action
-                .is_active(session, xr::Path::NULL)
-                .unwrap()
-            {
-                let (location, velocity) =
-                    tracking.grip_space.relate(reference_space, time).unwrap();
-
-                let hand_motion = DeviceMotion {
-                    orientation: to_quat(location.pose.orientation),
-                    position: to_vec3(location.pose.position),
-                    linear_velocity: to_vec3(velocity.linear_velocity),
-                    angular_velocity: to_vec3(velocity.angular_velocity),
-                };
-
-                Some(hand_motion)
-            } else {
-                None
-            }
-        }
-
-        fn get_hand_joints(
-            reference_space: &xr::Space,
-            time: xr::Time,
-            tracking: &HandTrackingSource,
-        ) -> Option<[Quat; 19]> {
-            // todo: support also velocities in the protocol
-            if let Some(skeleton) = &tracking.skeleton {
-                if let Some(joints) = reference_space.locate_hand_joints(skeleton, time).unwrap() {
-                    let r = joints
-                        .iter()
-                        .map(|j| to_quat(j.pose.orientation))
-                        .collect::<Vec<Quat>>();
-
-                    // convert to oculus hand
-                    // todo: support openxr hands directly into the server
-                    Some([
-                        r[0], // root
-                        r[1], // wrist
-                        r[2], r[3], r[4], r[5], // thumb
-                        r[7], r[8], r[9], // index
-                        r[12], r[13], r[14], // middle
-                        r[17], r[18], r[19], // ring
-                        r[21], r[22], r[23], r[24], // pinky
-                    ])
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-
         let tracker_time = to_xr_time(now + alvr_client_core::get_tracker_prediction_offset());
 
         let mut device_motions = vec![(
@@ -307,39 +238,34 @@ fn streaming_input_loop(ctx: StreamingInputContext) {
             },
         )];
 
-        if let Some(motion) = get_hand_motion(
+        let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
             &ctx.xr_session,
             &ctx.reference_space,
             tracker_time,
-            &ctx.left_hand_tracking_source,
-        ) {
+            &ctx.interaction_context.left_hand_source,
+        );
+        let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
+            &ctx.xr_session,
+            &ctx.reference_space,
+            tracker_time,
+            &ctx.interaction_context.right_hand_source,
+        );
+
+        if let Some(motion) = left_hand_motion {
             device_motions.push((*LEFT_HAND_ID, motion));
         }
-        if let Some(motion) = get_hand_motion(
-            &ctx.xr_session,
-            &ctx.reference_space,
-            tracker_time,
-            &ctx.right_hand_tracking_source,
-        ) {
+        if let Some(motion) = right_hand_motion {
             device_motions.push((*RIGHT_HAND_ID, motion));
         }
 
         alvr_client_core::send_tracking(Tracking {
             target_timestamp,
             device_motions,
-            left_hand_skeleton: get_hand_joints(
-                &ctx.reference_space,
-                tracker_time,
-                &ctx.left_hand_tracking_source,
-            ),
-            right_hand_skeleton: get_hand_joints(
-                &ctx.reference_space,
-                tracker_time,
-                &ctx.right_hand_tracking_source,
-            ),
+            left_hand_skeleton,
+            right_hand_skeleton,
         });
 
-        // todo: send buttons
+        interaction::update_buttons(&ctx.xr_session, &ctx.interaction_context.button_actions);
 
         deadline += ctx.frame_interval / 3;
         thread::sleep(deadline.saturating_duration_since(Instant::now()));
@@ -415,74 +341,11 @@ pub fn entry_point() {
     alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
     alvr_client_opengl::initialize();
 
-    let streaming_action_set = xr_instance
-        .create_action_set("alvr_input", "ALVR input", 0)
-        .unwrap();
-
-    let mut bindings = vec![];
-
-    fn binding<'a, T: xr::ActionTy>(action: &'a xr::Action<T>, path: &str) -> xr::Binding<'a> {
-        xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
-    }
-
-    let left_grip_action = streaming_action_set
-        .create_action("left_hand_pose", "Left hand pose", &[])
-        .unwrap();
-    let right_grip_action = streaming_action_set
-        .create_action("right_hand_pose", "Right hand pose", &[])
-        .unwrap();
-    let streaming_button_actions = Arc::new(HashMap::new());
-
-    bindings.push(binding(
-        &left_grip_action,
-        "/user/hand/left/input/grip/pose",
+    let streaming_interaction_context = Arc::new(interaction::initialize_streaming_interaction(
+        &xr_instance,
+        xr_system,
+        &xr_session.clone().into_any_graphics(),
     ));
-    bindings.push(binding(
-        &right_grip_action,
-        "/user/hand/right/input/grip/pose",
-    ));
-
-    xr_instance
-        .suggest_interaction_profile_bindings(
-            xr_instance
-                .string_to_path("/interaction_profiles/khr/simple_controller")
-                .unwrap(),
-            &bindings,
-        )
-        .unwrap();
-
-    xr_session
-        .attach_action_sets(&[&streaming_action_set])
-        .unwrap();
-
-    let left_grip_space = left_grip_action
-        .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
-    let right_grip_space = right_grip_action
-        .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
-        .unwrap();
-
-    let (left_hand_tracker, right_hand_tracker) =
-        if xr_instance.supports_hand_tracking(xr_system).unwrap() {
-            (
-                Some(xr_session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
-                Some(xr_session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
-            )
-        } else {
-            (None, None)
-        };
-
-    let left_hand_tracking_source = Arc::new(HandTrackingSource {
-        grip_action: left_grip_action,
-        grip_space: left_grip_space,
-        skeleton: left_hand_tracker,
-    });
-
-    let right_hand_tracking_source = Arc::new(HandTrackingSource {
-        grip_action: right_grip_action,
-        grip_space: right_grip_space,
-        skeleton: right_hand_tracker,
-    });
 
     let reference_space = Arc::new(
         xr_session
@@ -618,12 +481,9 @@ pub fn entry_point() {
                         frame_interval: Duration::from_secs_f32(1.0 / fps),
                         xr_instance: xr_instance.clone(),
                         xr_session: xr_session.clone().into_any_graphics(),
-                        action_set: streaming_action_set.clone(),
+                        interaction_context: Arc::clone(&streaming_interaction_context),
                         reference_space: Arc::clone(&reference_space),
                         views_history: Arc::clone(&views_history),
-                        left_hand_tracking_source: Arc::clone(&left_hand_tracking_source),
-                        right_hand_tracking_source: Arc::clone(&right_hand_tracking_source),
-                        button_actions: Arc::clone(&streaming_button_actions),
                     };
 
                     streaming_input_thread = Some(thread::spawn(|| {
@@ -671,7 +531,26 @@ pub fn entry_point() {
                     frequency,
                     amplitude,
                 } => {
-                    // todo
+                    let action = if device_id == *LEFT_HAND_ID {
+                        &streaming_interaction_context
+                            .left_hand_source
+                            .vibration_action
+                    } else {
+                        &streaming_interaction_context
+                            .right_hand_source
+                            .vibration_action
+                    };
+
+                    action
+                        .apply_feedback(
+                            &xr_session,
+                            xr::Path::NULL,
+                            &xr::HapticVibration::new()
+                                .amplitude(amplitude)
+                                .frequency(frequency)
+                                .duration(xr::Duration::from_nanos(duration.as_nanos() as _)),
+                        )
+                        .unwrap();
                 }
                 _ => panic!(),
             }

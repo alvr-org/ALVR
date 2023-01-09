@@ -129,11 +129,11 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (this->left_controller &&
                     haptics_info.containerHandle == this->left_controller->prop_container) {
                     HapticsSend(
-                        LEFT_CONTROLLER_HAPTIC_ID, duration, haptics_info.fFrequency, amplitude);
+                        LEFT_HAND_ID, duration, haptics_info.fFrequency, amplitude);
                 } else if (this->right_controller &&
                            haptics_info.containerHandle == this->right_controller->prop_container) {
                     HapticsSend(
-                        RIGHT_CONTROLLER_HAPTIC_ID, duration, haptics_info.fFrequency, amplitude);
+                        RIGHT_HAND_ID, duration, haptics_info.fFrequency, amplitude);
                 }
             }
         }

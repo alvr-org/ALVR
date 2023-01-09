@@ -179,6 +179,7 @@ dependencies = [
  "alvr_client_core",
  "alvr_client_opengl",
  "alvr_common",
+ "alvr_events",
  "alvr_session",
  "alvr_sockets",
  "android-activity",

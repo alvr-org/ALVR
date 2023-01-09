@@ -4,12 +4,6 @@
 uint64_t HEAD_ID;
 uint64_t LEFT_HAND_ID;
 uint64_t RIGHT_HAND_ID;
-uint64_t LEFT_CONTROLLER_HAPTIC_ID;
-uint64_t RIGHT_CONTROLLER_HAPTIC_ID;
-
-uint64_t OCULUS_CONTROLLER_PROFILE_ID;
-uint64_t INDEX_CONTROLLER_PROFILE_ID;
-uint64_t VIVE_CONTROLLER_PROFILE_ID;
 
 uint64_t MENU_CLICK_ID;
 uint64_t A_CLICK_ID;
@@ -48,14 +42,6 @@ void init_paths() {
     HEAD_ID = PathStringToHash("/user/head");
     LEFT_HAND_ID = PathStringToHash("/user/hand/left");
     RIGHT_HAND_ID = PathStringToHash("/user/hand/right");
-    LEFT_CONTROLLER_HAPTIC_ID = PathStringToHash("/user/hand/left/output/haptic");
-    RIGHT_CONTROLLER_HAPTIC_ID = PathStringToHash("/user/hand/right/output/haptic");
-
-    OCULUS_CONTROLLER_PROFILE_ID =
-        PathStringToHash("/interaction_profiles/oculus/touch_controller");
-    INDEX_CONTROLLER_PROFILE_ID =
-        PathStringToHash("/interaction_profiles/valve/index_controller");
-    VIVE_CONTROLLER_PROFILE_ID = PathStringToHash("/interaction_profiles/htc/vive_controller");
 
     MENU_CLICK_ID = PathStringToHash("/user/hand/left/input/menu/click");
     A_CLICK_ID = PathStringToHash("/user/hand/right/input/a/click");

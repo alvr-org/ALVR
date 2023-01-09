@@ -492,8 +492,8 @@ pub fn entry_point() {
 
                     let swapchains = stream_swapchains.get_or_insert_with(|| {
                         [
-                            create_swapchain(&xr_session, recommended_resolution),
-                            create_swapchain(&xr_session, recommended_resolution),
+                            create_swapchain(&xr_session, stream_view_resolution),
+                            create_swapchain(&xr_session, stream_view_resolution),
                         ]
                     });
 

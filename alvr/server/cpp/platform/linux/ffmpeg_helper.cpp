@@ -1,8 +1,11 @@
 #include "ffmpeg_helper.h"
 
 #include <chrono>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 
-#include "alvr_server/Settings.h"
 #include "alvr_server/bindings.h"
 #include "alvr_server/Logger.h"
 
@@ -49,6 +52,7 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
       VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
+      VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME
   };
   device_extensions.insert(device_extensions.end(), requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 
@@ -103,11 +107,17 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
     throw std::runtime_error("Failed to find vulkan device.");
   }
 
-  VkPhysicalDeviceProperties props;
-  vkGetPhysicalDeviceProperties(physicalDevice, &props);
-  nvidia = props.vendorID == 0x10de;
+  VkPhysicalDeviceDrmPropertiesEXT drmProps = {};
+  drmProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT;
+
+  VkPhysicalDeviceProperties2 deviceProps = {};
+  deviceProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+  deviceProps.pNext = &drmProps;
+  vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
+
+  nvidia = deviceProps.properties.vendorID == 0x10de;
   drmContext = !nvidia;
-  Info("Using Vulkan device %s", props.deviceName);
+  Info("Using Vulkan device %s", deviceProps.properties.deviceName);
 
   uint32_t deviceExtensionCount = 0;
   VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, nullptr));
@@ -168,10 +178,29 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
   VK_CHECK(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &device));
 
-  // AV_HWDEVICE_TYPE_DRM doesn't work with SW encoder
-  if (Settings::Instance().m_force_sw_encoding) {
-    drmContext = false;
+  for (int i = 128; i < 136; ++i) {
+    auto path = "/dev/dri/renderD" + std::to_string(i);
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd == -1) {
+      continue;
+    }
+    struct stat s = {};
+    int ret = fstat(fd, &s);
+    close(fd);
+    if (ret != 0) {
+      continue;
+    }
+    dev_t primaryDev = makedev(drmProps.primaryMajor, drmProps.primaryMinor);
+    dev_t renderDev = makedev(drmProps.renderMajor, drmProps.renderMinor);
+    if (primaryDev == s.st_rdev || renderDev == s.st_rdev) {
+      devicePath = path;
+      break;
+    }
   }
+  if (devicePath.empty()) {
+    throw std::runtime_error("Failed to find device path");
+  }
+  Info("Found device path %s", devicePath.c_str());
 
   if (drmContext) {
     ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);

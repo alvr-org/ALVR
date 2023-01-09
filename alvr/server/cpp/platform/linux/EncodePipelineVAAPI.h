@@ -25,7 +25,7 @@ class EncodePipelineVAAPI: public EncodePipeline
 {
 public:
   ~EncodePipelineVAAPI();
-  EncodePipelineVAAPI(VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height);
+  EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height);
 
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
 

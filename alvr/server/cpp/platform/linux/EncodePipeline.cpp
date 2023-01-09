@@ -92,7 +92,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
         Info("failed to create AMF encoder: %s", e.what());
       }
       try {
-        auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(input_frame, vk_frame_ctx, width, height);
+        auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(vk_ctx, input_frame, vk_frame_ctx, width, height);
         Info("using VAAPI encoder");
         return vaapi;
       } catch (std::exception &e)

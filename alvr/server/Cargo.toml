@@ -59,6 +59,7 @@ webbrowser = "0.8" # this is just for opening links in the default browser
 # Miscellaneous
 fern = "0.6"
 winit = "0.27" # needed to get the screen size
+spin_sleep = "1.1.1"
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }

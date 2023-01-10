@@ -773,15 +773,15 @@ async fn connection_pipeline(
 
     // Vsync thread
     if cfg!(windows) {
-        let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
         thread::spawn(move || {
+            let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
             let mut deadline = Instant::now();
 
             while is_streaming.value() {
                 unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
 
                 deadline += frame_interval;
-                std::thread::sleep(deadline.saturating_duration_since(Instant::now()));
+                spin_sleep::sleep(deadline.saturating_duration_since(Instant::now()));
             }
         });
     }

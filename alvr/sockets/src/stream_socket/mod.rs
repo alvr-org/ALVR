@@ -186,6 +186,7 @@ pub struct StreamReceiver<T> {
     receiver: StreamReceiverType,
     next_packet_index: u32,
     previous_packet_index: u32,
+    expected_total_shards: u32,
     full_packet_index: u32,
     had_packet_loss: bool,
     is_packet_lost: bool,
@@ -212,6 +213,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         let mut buffer = BytesMut::new();
         let mut last_max_index = 0;
         self.had_packet_loss = false;
+        self.expected_total_shards = 0;
         loop {
             let mut bytes = match &mut self.receiver {
                 StreamReceiverType::Queue(receiver) => {
@@ -220,7 +222,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             };
 
             let packet_index = bytes.get_u32();
-            let total_shards = bytes.get_u32() as usize;
+            let total_shards = bytes.get_u32();
             let total_payload_size = bytes.get_u32();
             let full_packet_index = bytes.get_u32();
 
@@ -233,7 +235,12 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             self.next_packet_index = packet_index + 1;
 
             if self.full_packet_index != full_packet_index {
+                if received_shards != self.expected_total_shards {
+                    self.had_packet_loss = true;
+                    info!("Last packet was incomplete! Received: {received_shards}, expected: {}", self.expected_total_shards);
+                }
                 self.full_packet_index = full_packet_index;
+                self.expected_total_shards = total_shards;
 
                 self.is_packet_lost = false;
 
@@ -407,6 +414,7 @@ impl StreamSocket {
             next_packet_index: 0,
             previous_packet_index: u32::MAX,
             full_packet_index: u32::MAX,
+            expected_total_shards: 0,
             had_packet_loss: false,
             is_packet_lost: false,
             _phantom: PhantomData,

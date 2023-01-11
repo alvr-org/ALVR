@@ -55,21 +55,19 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
 }
 
 // Map the vulkan frames to corresponding vaapi frames
-AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr::VkFrameCtx& vk_frame_ctx)
+AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr::VkFrame &input_frame)
 {
   AVBufferRef *hw_frames_ref;
   int err = 0;
-
-  auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
 
   if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
     throw std::runtime_error("Failed to create VAAPI frame context.");
   }
   auto frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
   frames_ctx->format = AV_PIX_FMT_VAAPI;
-  frames_ctx->sw_format = input_frame_ctx->sw_format;
-  frames_ctx->width = input_frame_ctx->width;
-  frames_ctx->height = input_frame_ctx->height;
+  frames_ctx->sw_format = input_frame.avFormat();
+  frames_ctx->width = input_frame.imageInfo().extent.width;
+  frames_ctx->height = input_frame.imageInfo().extent.height;
   frames_ctx->initial_pool_size = 1;
   if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
     av_buffer_unref(&hw_frames_ref);
@@ -78,8 +76,31 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr:
 
   AVFrame * mapped_frame = av_frame_alloc();
   av_hwframe_get_buffer(hw_frames_ref, mapped_frame, 0);
-  auto vk_frame = input_frame.make_av_frame(vk_frame_ctx);
-  av_hwframe_map(mapped_frame, vk_frame.get(), AV_HWFRAME_MAP_READ);
+
+  AVBufferRef *drm_frames_ref = NULL;
+  if (!(drm_frames_ref = av_hwframe_ctx_alloc(drm_device_ctx))) {
+    throw std::runtime_error("Failed to create vulkan frame context.");
+  }
+  AVHWFramesContext *drm_frames_ctx = (AVHWFramesContext *)(drm_frames_ref->data);
+  drm_frames_ctx->format = AV_PIX_FMT_DRM_PRIME;
+  drm_frames_ctx->sw_format = frames_ctx->sw_format;
+  drm_frames_ctx->width = frames_ctx->width;
+  drm_frames_ctx->height = frames_ctx->height;
+  drm_frames_ctx->initial_pool_size = 0;
+  if ((err = av_hwframe_ctx_init(drm_frames_ref)) < 0) {
+    av_buffer_unref(&drm_frames_ref);
+    throw alvr::AvException("Failed to initialize DRM frame context:", err);
+  }
+
+  AVFrame *vk_frame = av_frame_alloc();
+  vk_frame->width = frames_ctx->width;
+  vk_frame->height = frames_ctx->height;
+  vk_frame->hw_frames_ctx = drm_frames_ref;
+  vk_frame->data[0] = (uint8_t*)(AVDRMFrameDescriptor*)input_frame;
+  vk_frame->format = AV_PIX_FMT_DRM_PRIME;
+  vk_frame->buf[0] = av_buffer_alloc(1);
+  av_hwframe_map(mapped_frame, vk_frame, AV_HWFRAME_MAP_READ);
+  av_frame_free(&vk_frame);
 
   av_buffer_unref(&hw_frames_ref);
 
@@ -88,7 +109,7 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, alvr::VkFrame &input_frame, alvr:
 
 }
 
-alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx& vk_frame_ctx, uint32_t width, uint32_t height)
+alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input_frame, uint32_t width, uint32_t height)
 {
   /* VAAPI Encoding pipeline
    * The encoding pipeline has 3 frame types:
@@ -103,6 +124,15 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
   int err = av_hwdevice_ctx_create(&hw_ctx, AV_HWDEVICE_TYPE_VAAPI, vk_ctx.devicePath.c_str(), NULL, 0);
   if (err < 0) {
     throw alvr::AvException("Failed to create a VAAPI device:", err);
+  }
+
+  drm_ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_DRM);
+  AVHWDeviceContext *hwctx = (AVHWDeviceContext *)drm_ctx->data;
+  AVDRMDeviceContext *drmctx = (AVDRMDeviceContext*)hwctx->hwctx;
+  drmctx->fd = -1;
+  err = av_hwdevice_ctx_init(drm_ctx);
+  if (err < 0)  {
+    throw alvr::AvException("Failed to create DRM device:", err);
   }
 
   const auto& settings = Settings::Instance();
@@ -153,7 +183,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
   encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
-  
+
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
@@ -163,7 +193,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
       quality.preset_mode = PRESET_MODE_QUALITY;
       encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
     break;
-    case ALVR_BALANCED: 
+    case ALVR_BALANCED:
       quality.preset_mode = PRESET_MODE_BALANCE;
       encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
     break;
@@ -173,7 +203,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
        encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
     break;
   }
-  
+
   av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
   av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 
@@ -185,7 +215,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
   }
 
   encoder_frame = av_frame_alloc();
-  mapped_frame = map_frame(hw_ctx, input_frame, vk_frame_ctx);
+  mapped_frame = map_frame(hw_ctx, drm_ctx, input_frame);
 
   filter_graph = avfilter_graph_alloc();
 
@@ -250,6 +280,7 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
   av_frame_free(&mapped_frame);
   av_frame_free(&encoder_frame);
   av_buffer_unref(&hw_ctx);
+  av_buffer_unref(&drm_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)

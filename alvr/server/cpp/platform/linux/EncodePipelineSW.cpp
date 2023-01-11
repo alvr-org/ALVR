@@ -116,6 +116,7 @@ alvr::EncodePipelineSW::~EncodePipelineSW()
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
   rgbtoyuv->Convert(encoder_frame->data, encoder_frame->linesize);
+  gpu_timestamp = rgbtoyuv->GetTimestamp();
 
   encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
   encoder_frame->pts = targetTimestampNs;

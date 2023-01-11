@@ -52,7 +52,12 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     VK_LOAD_PFN(vkImportSemaphoreFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdKHR);
     VK_LOAD_PFN(vkGetImageDrmFormatModifierPropertiesEXT);
+    VK_LOAD_PFN(vkGetCalibratedTimestampsEXT);
 #undef VK_LOAD_PFN
+
+    VkPhysicalDeviceProperties props = {};
+    vkGetPhysicalDeviceProperties(m_physDev, &props);
+    m_timestampPeriod = props.limits.timestampPeriod;
 }
 
 Renderer::~Renderer()
@@ -76,6 +81,7 @@ Renderer::~Renderer()
     vkFreeMemory(m_dev, m_output.memory, nullptr);
     vkDestroyFramebuffer(m_dev, m_output.framebuffer, nullptr);
 
+    vkDestroyQueryPool(m_dev, m_queryPool, nullptr);
     vkDestroyCommandPool(m_dev, m_commandPool, nullptr);
     vkDestroySampler(m_dev, m_sampler, nullptr);
     vkDestroyBuffer(m_dev, m_vertexBuffer, nullptr);
@@ -94,6 +100,13 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
 
     vkGetDeviceQueue(m_dev, m_queueFamilyIndex, 0, &m_queue);
     vkGetDeviceQueue(m_dev, m_queueFamilyIndexCompute, 0, &m_queueCompute);
+
+    // Timestamp query
+    VkQueryPoolCreateInfo queryPoolInfo = {};
+    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolInfo.queryCount = 2;
+    VK_CHECK(vkCreateQueryPool(m_dev, &queryPoolInfo, nullptr, &m_queryPool));
 
     // Command buffer
     VkCommandPoolCreateInfo cmdPoolInfo = {};
@@ -575,6 +588,9 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
 
+    vkCmdResetQueryPool(m_commandBuffer, m_queryPool, 0, 2);
+    vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_queryPool, 0);
+
     for (size_t i = 0; i < m_pipelines.size(); ++i) {
         VkRect2D rect = {};
         VkDescriptorSet in = VK_NULL_HANDLE;
@@ -594,6 +610,8 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         }
         m_pipelines[i]->Render(in, out, rect);
     }
+
+    vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 1);
 
     VK_CHECK(vkEndCommandBuffer(m_commandBuffer));
 
@@ -621,6 +639,24 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         dumpImage(m_output.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
         m_outputImageCapture.clear();
     }
+}
+
+Renderer::Timestamps Renderer::GetTimestamps()
+{
+    uint64_t queries[2];
+    VK_CHECK(vkGetQueryPoolResults(m_dev, m_queryPool, 0, 2, 2 * sizeof(uint64_t), queries, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+    queries[0] *= m_timestampPeriod;
+    queries[1] *= m_timestampPeriod;
+
+    VkCalibratedTimestampInfoEXT timestampInfo = {};
+    timestampInfo.sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
+    timestampInfo.timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
+    uint64_t deviation;
+    uint64_t timestamp;
+    VK_CHECK(d.vkGetCalibratedTimestampsEXT(m_dev, 1, &timestampInfo, &timestamp, &deviation));
+    timestamp *= m_timestampPeriod;
+
+    return {timestamp, queries[0], queries[1]};
 }
 
 void Renderer::Wait(uint32_t index, uint64_t waitValue)

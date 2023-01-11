@@ -32,7 +32,7 @@ void AMFPipe::doPassthrough(bool hasQueryTimeout)
 			Debug("Failed to get AMF component data. Last status: %d.\n", res);
 		}
 	} else {
-		uint8_t timeout = 1000; // 1s timeout
+		uint16_t timeout = 1000; // 1s timeout
 		AMF_RESULT res = m_amfComponentSrc->QueryOutput(&data);
 		while (!data && --timeout != 0) {
 			amf_sleep(1);

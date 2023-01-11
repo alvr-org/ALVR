@@ -136,12 +136,6 @@ pub struct AudioDevicesList {
     pub input: Vec<String>,
 }
 
-pub enum GpuVendor {
-    Nvidia,
-    Amd,
-    Other,
-}
-
 #[derive(Clone, Debug)]
 pub enum PathSegment {
     Name(String),

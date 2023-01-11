@@ -30,9 +30,7 @@ use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{
-    ClientListAction, GpuVendor, Haptics, ServerControlPacket, VideoFrameHeaderPacket,
-};
+use alvr_sockets::{ClientListAction, Haptics, ServerControlPacket, VideoFrameHeaderPacket};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -221,18 +219,6 @@ fn init() {
 
     {
         let mut data_manager = SERVER_DATA_MANAGER.write();
-        if data_manager
-            .get_gpu_vendors()
-            .iter()
-            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
-        {
-            data_manager
-                .session_mut()
-                .session_settings
-                .extra
-                .patches
-                .linux_async_reprojection = false;
-        }
 
         if data_manager.session().server_version != *ALVR_VERSION {
             let mut session_ref = data_manager.session_mut();

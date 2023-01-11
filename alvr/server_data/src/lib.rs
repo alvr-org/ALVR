@@ -1,7 +1,7 @@
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
-use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
+use alvr_sockets::{AudioDevicesList, ClientListAction, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -10,7 +10,6 @@ use std::{
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
 };
-use wgpu::AdapterInfo;
 
 fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
     fs::write(path, json::to_string_pretty(session).map_err(err!())?).map_err(err!())
@@ -55,7 +54,6 @@ pub struct ServerDataManager {
     settings: Settings,
     session_path: PathBuf,
     script_engine: rhai::Engine,
-    gpu_infos: Vec<AdapterInfo>,
 }
 
 impl ServerDataManager {
@@ -94,15 +92,6 @@ impl ServerDataManager {
             Err(_) => SessionDesc::default(),
         };
 
-        let vk_adapters: Vec<wgpu::Adapter> = wgpu::Instance::new(wgpu::Backends::VULKAN)
-            .enumerate_adapters(wgpu::Backends::VULKAN)
-            .collect();
-
-        let gpu_infos = vk_adapters
-            .iter()
-            .map(|adapter| adapter.get_info())
-            .collect();
-
         let script_engine = rhai::Engine::new();
 
         Self {
@@ -110,7 +99,6 @@ impl ServerDataManager {
             settings: session_desc.to_settings(),
             session_path: session_path.to_owned(),
             script_engine,
-            gpu_infos,
         }
     }
 
@@ -171,26 +159,6 @@ impl ServerDataManager {
             .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
             .map(|d| d.to_string())
             .map_err(|e| e.to_string())
-    }
-
-    pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {
-        return self
-            .gpu_infos
-            .iter()
-            .map(|adapter_info| match adapter_info.vendor {
-                0x10de => GpuVendor::Nvidia,
-                0x1002 => GpuVendor::Amd,
-                _ => GpuVendor::Other,
-            })
-            .collect();
-    }
-
-    pub fn get_gpu_names(&self) -> Vec<String> {
-        return self
-            .gpu_infos
-            .iter()
-            .map(|adapter_info| adapter_info.name.clone())
-            .collect();
     }
 
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]

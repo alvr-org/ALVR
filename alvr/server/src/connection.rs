@@ -61,15 +61,21 @@ pub fn handshake_loop() -> IntResult {
     loop {
         check_interrupt!(IS_ALIVE.value());
 
-        let mut manual_client_ips = HashMap::new();
-        for (hostname, connection_info) in SERVER_DATA_MANAGER.read().client_list() {
-            for ip in &connection_info.manual_ips {
-                manual_client_ips.insert(*ip, hostname.clone());
+        let manual_client_ips = {
+            let connected_hostnames_lock = CONNECTED_CLIENT_HOSTNAMES.lock();
+            let mut manual_client_ips = HashMap::new();
+            for (hostname, connection_info) in SERVER_DATA_MANAGER.read().client_list() {
+                if !connected_hostnames_lock.contains(hostname) {
+                    for ip in &connection_info.manual_ips {
+                        manual_client_ips.insert(*ip, hostname.clone());
+                    }
+                }
             }
-        }
+            manual_client_ips
+        };
 
         if !manual_client_ips.is_empty() && try_connect(manual_client_ips).is_ok() {
-            // Do not sleep, allow to connect to all manual clients in rapid succession
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             continue;
         }
 
@@ -86,7 +92,6 @@ pub fn handshake_loop() -> IntResult {
                     debug!("UDP handshake packet listening: {e}");
 
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-
                     continue;
                 }
             };
@@ -111,10 +116,10 @@ pub fn handshake_loop() -> IntResult {
 
             // do not attempt connection if the client is already connected
             if trusted && !CONNECTED_CLIENT_HOSTNAMES.lock().contains(&client_hostname) {
-                match try_connect([(client_ip, client_hostname.clone())].into_iter().collect()) {
-                    Ok(()) => continue,
-                    // use error!(): usually errors should not happen here
-                    Err(e) => warn!("Handshake error for {client_hostname}: {e}"),
+                if let Err(e) =
+                    try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
+                {
+                    error!("Handshake error for {client_hostname}: {e}");
                 }
             }
         }
@@ -127,9 +132,17 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let runtime = Runtime::new().map_err(to_int_e!())?;
 
     let (mut proto_socket, client_ip) = runtime
-        .block_on(ProtoControlSocket::connect_to(PeerType::AnyClient(
-            client_ips.keys().cloned().collect(),
-        )))
+        .block_on(async {
+            let get_proto_socket = ProtoControlSocket::connect_to(PeerType::AnyClient(
+                client_ips.keys().cloned().collect(),
+            ));
+            tokio::select! {
+                proto_socket = get_proto_socket => proto_socket,
+                _ = time::sleep(Duration::from_secs(1)) => {
+                    fmt_e!("Control socket failed to connect")
+                }
+            }
+        })
         .map_err(to_int_e!())?;
 
     // Safety: this never panics because client_ip is picked from client_ips keys
@@ -535,10 +548,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         });
 
         {
-            let mut streaming_hostname_mut = STREAMING_CLIENT_HOSTNAME.lock();
-            if let Some(hostname) = streaming_hostname_mut.clone() {
+            let mut streaming_hostname_lock = STREAMING_CLIENT_HOSTNAME.lock();
+            if let Some(hostname) = streaming_hostname_lock.clone() {
                 if hostname == client_hostname {
-                    *streaming_hostname_mut = None
+                    *streaming_hostname_lock = None
                 }
             }
         }

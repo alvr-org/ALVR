@@ -411,15 +411,21 @@ pub unsafe extern "C" fn HmdDriverFactory(
         alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
     }
 
-    extern "C" fn report_present(timestamp_ns: u64) {
+    extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_frame_present(Duration::from_nanos(timestamp_ns));
+            stats.report_frame_present(
+                Duration::from_nanos(timestamp_ns),
+                Duration::from_nanos(offset_ns),
+            );
         }
     }
 
-    extern "C" fn report_composed(timestamp_ns: u64) {
+    extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_frame_composed(Duration::from_nanos(timestamp_ns));
+            stats.report_frame_composed(
+                Duration::from_nanos(timestamp_ns),
+                Duration::from_nanos(offset_ns),
+            );
         }
     }
 

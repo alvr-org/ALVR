@@ -181,8 +181,8 @@ void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
 unsigned long long (*PathStringToHash)(const char *path);
-void (*ReportPresent)(unsigned long long timestamp_ns);
-void (*ReportComposed)(unsigned long long timestamp_ns);
+void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
+void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
 void (*ReportFecFailure)(int percentage);
 

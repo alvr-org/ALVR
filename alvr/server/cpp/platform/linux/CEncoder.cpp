@@ -238,9 +238,6 @@ void CEncoder::Run() {
           continue;
         }
 
-        // Close enough to present
-        ReportPresent(pose->targetTimestampNs);
-
         if (m_captureFrame) {
           m_captureFrame = false;
           render.Wait(frame_info.image, frame_info.semaphore_value);
@@ -249,8 +246,6 @@ void CEncoder::Run() {
         }
 
         render.Render(frame_info.image, frame_info.semaphore_value);
-
-        ReportComposed(pose->targetTimestampNs);
 
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
@@ -262,6 +257,12 @@ void CEncoder::Run() {
           Error("Failed to get encoded data!");
           continue;
         }
+
+        auto timestamps = render.GetTimestamps();
+        uint64_t timestamp_present = timestamps.renderBegin;
+        uint64_t timestamp_composed = encode_pipeline->GetTimestamp() ? encode_pipeline->GetTimestamp() : timestamps.renderComplete;
+        ReportPresent(pose->targetTimestampNs, timestamps.now - timestamp_present);
+        ReportComposed(pose->targetTimestampNs, timestamps.now - timestamp_composed);
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
 

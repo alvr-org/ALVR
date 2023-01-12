@@ -41,6 +41,12 @@ public:
         DrmImage drm;
     };
 
+    struct Timestamps {
+        uint64_t now;
+        uint64_t renderBegin;
+        uint64_t renderComplete;
+    };
+
     explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t graphicsIdx, uint32_t computeIdx, const std::vector<const char *> &devExtensions);
     virtual ~Renderer();
 
@@ -53,6 +59,8 @@ public:
     Output CreateOutput(uint32_t width, uint32_t height);
 
     void Render(uint32_t index, uint64_t waitValue);
+
+    Timestamps GetTimestamps();
 
     void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore = nullptr, VkFence *fence = nullptr);
 
@@ -89,6 +97,7 @@ private:
         PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
         PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
         PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT;
+        PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT;
         bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
     } d;
@@ -107,6 +116,7 @@ private:
     uint32_t m_queueFamilyIndexCompute;
     VkFormat m_format;
     VkExtent2D m_imageSize;
+    VkQueryPool m_queryPool;
     VkCommandPool m_commandPool;
     VkSampler m_sampler;
     VkBuffer m_vertexBuffer;
@@ -116,6 +126,7 @@ private:
     VkDescriptorSetLayout m_descriptorLayout;
     VkCommandBuffer m_commandBuffer;
     VkFence m_fence;
+    double m_timestampPeriod;
 
     std::string m_inputImageCapture;
     std::string m_outputImageCapture;

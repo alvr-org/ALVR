@@ -171,6 +171,17 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input
       break;
   }
 
+  switch (settings.m_rateControlMode)
+  {
+    case ALVR_VBR:
+      av_opt_set(encoder_ctx->priv_data, "rc_mode", "VBR", 0);
+      break;
+    case ALVR_CBR:
+    default:
+      av_opt_set(encoder_ctx->priv_data, "rc_mode", "CBR", 0);
+      break;
+  }
+
   encoder_ctx->width = width;
   encoder_ctx->height = height;
   encoder_ctx->time_base = {1, (int)1e9};

@@ -35,12 +35,11 @@ static uint32_t to_drm_format(VkFormat format)
     }
 }
 
-Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t graphicsIdx, uint32_t computeIdx, const std::vector<const char*> &devExtensions)
+Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
-    , m_queueFamilyIndex(graphicsIdx)
-    , m_queueFamilyIndexCompute(computeIdx)
+    , m_queueFamilyIndex(queueIdx)
 {
     auto checkExtension = [devExtensions](const char *name) {
         return std::find(devExtensions.begin(), devExtensions.end(), name) != devExtensions.end();
@@ -80,6 +79,7 @@ Renderer::~Renderer()
     vkDestroyImage(m_dev, m_output.image, nullptr);
     vkFreeMemory(m_dev, m_output.memory, nullptr);
     vkDestroyFramebuffer(m_dev, m_output.framebuffer, nullptr);
+    vkDestroySemaphore(m_dev, m_output.semaphore, nullptr);
 
     vkDestroyQueryPool(m_dev, m_queryPool, nullptr);
     vkDestroyCommandPool(m_dev, m_commandPool, nullptr);
@@ -99,7 +99,6 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
     m_imageSize.height = height;
 
     vkGetDeviceQueue(m_dev, m_queueFamilyIndex, 0, &m_queue);
-    vkGetDeviceQueue(m_dev, m_queueFamilyIndexCompute, 0, &m_queueCompute);
 
     // Timestamp query
     VkQueryPoolCreateInfo queryPoolInfo = {};
@@ -380,7 +379,7 @@ void Renderer::AddPipeline(RenderPipeline *pipeline)
     }
 }
 
-Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
+void Renderer::CreateOutput(uint32_t width, uint32_t height)
 {
     m_output.imageInfo = {};
     m_output.imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -574,12 +573,21 @@ Renderer::Output Renderer::CreateOutput(uint32_t width, uint32_t height)
     framebufferInfo.height = m_output.imageInfo.extent.height;
     VK_CHECK(vkCreateFramebuffer(m_dev, &framebufferInfo, nullptr, &m_output.framebuffer));
 
-    return m_output;
+    VkSemaphoreCreateInfo semInfo = {};
+    semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VK_CHECK(vkCreateSemaphore(m_dev, &semInfo, nullptr, &m_output.semaphore));
 }
 
 void Renderer::Render(uint32_t index, uint64_t waitValue)
 {
     if (!m_inputImageCapture.empty()) {
+        VkSemaphoreWaitInfo waitInfo = {};
+        waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+        waitInfo.semaphoreCount = 1;
+        waitInfo.pSemaphores = &m_images[index].semaphore;
+        waitInfo.pValues = &waitValue;
+        VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
+
         dumpImage(m_images[index].image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_imageSize.width, m_imageSize.height, m_inputImageCapture);
         m_inputImageCapture.clear();
     }
@@ -628,17 +636,31 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = &m_images[index].semaphore;
     submitInfo.pWaitDstStageMask = &waitStage;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &m_output.semaphore;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
+    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, nullptr));
+}
+
+void Renderer::Sync()
+{
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &m_output.semaphore;
+    submitInfo.pWaitDstStageMask = &waitStage;
     VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, m_fence));
 
     VK_CHECK(vkWaitForFences(m_dev, 1, &m_fence, VK_TRUE, UINT64_MAX));
     VK_CHECK(vkResetFences(m_dev, 1, &m_fence));
+}
 
-    if (!m_outputImageCapture.empty()) {
-        dumpImage(m_output.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
-        m_outputImageCapture.clear();
-    }
+Renderer::Output Renderer::GetOutput()
+{
+    return m_output;
 }
 
 Renderer::Timestamps Renderer::GetTimestamps()
@@ -656,17 +678,12 @@ Renderer::Timestamps Renderer::GetTimestamps()
     VK_CHECK(d.vkGetCalibratedTimestampsEXT(m_dev, 1, &timestampInfo, &timestamp, &deviation));
     timestamp *= m_timestampPeriod;
 
-    return {timestamp, queries[0], queries[1]};
-}
+    if (!m_outputImageCapture.empty()) {
+        dumpImage(m_output.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
+        m_outputImageCapture.clear();
+    }
 
-void Renderer::Wait(uint32_t index, uint64_t waitValue)
-{
-    VkSemaphoreWaitInfo waitInfo = {};
-    waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
-    waitInfo.semaphoreCount = 1;
-    waitInfo.pSemaphores = &m_images[index].semaphore;
-    waitInfo.pValues = &waitValue;
-    VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
+    return {timestamp, queries[0], queries[1]};
 }
 
 void Renderer::CaptureInputFrame(const std::string &filename)
@@ -677,90 +694,6 @@ void Renderer::CaptureInputFrame(const std::string &filename)
 void Renderer::CaptureOutputFrame(const std::string &filename)
 {
     m_outputImageCapture = filename;
-}
-
-void Renderer::CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore, VkFence *fence)
-{
-    std::array<VkImageMemoryBarrier, 2> imageBarrierIn;
-    imageBarrierIn[0] = {};
-    imageBarrierIn[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrierIn[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageBarrierIn[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    imageBarrierIn[0].image = m_output.image;
-    imageBarrierIn[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarrierIn[0].subresourceRange.layerCount = 1;
-    imageBarrierIn[0].subresourceRange.levelCount = 1;
-    imageBarrierIn[0].srcAccessMask = 0;
-    imageBarrierIn[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    imageBarrierIn[1] = {};
-    imageBarrierIn[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrierIn[1].oldLayout = layout;
-    imageBarrierIn[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageBarrierIn[1].image = image;
-    imageBarrierIn[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarrierIn[1].subresourceRange.layerCount = 1;
-    imageBarrierIn[1].subresourceRange.levelCount = 1;
-    imageBarrierIn[1].srcAccessMask = 0;
-    imageBarrierIn[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    commandBufferBegin();
-
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierIn.size(), imageBarrierIn.data());
-
-    if (m_format == format) {
-        VkImageCopy imageCopy;
-        imageCopy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageCopy.srcSubresource.mipLevel = 0;
-        imageCopy.srcSubresource.baseArrayLayer = 0;
-        imageCopy.srcSubresource.layerCount = 1;
-        imageCopy.srcOffset.x = 0;
-        imageCopy.srcOffset.y = 0;
-        imageCopy.srcOffset.z = 0;
-        imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageCopy.dstSubresource.mipLevel = 0;
-        imageCopy.dstSubresource.baseArrayLayer = 0;
-        imageCopy.dstSubresource.layerCount = 1;
-        imageCopy.dstOffset.x = 0;
-        imageCopy.dstOffset.y = 0;
-        imageCopy.dstOffset.z = 0;
-        imageCopy.extent.width = m_output.imageInfo.extent.width;
-        imageCopy.extent.height = m_output.imageInfo.extent.height;
-        imageCopy.extent.depth = 1;
-        vkCmdCopyImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-    } else {
-        VkImageBlit imageBlit;
-        imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageBlit.srcSubresource.mipLevel = 0;
-        imageBlit.srcSubresource.baseArrayLayer = 0;
-        imageBlit.srcSubresource.layerCount = 1;
-        imageBlit.srcOffsets[0].x = 0;
-        imageBlit.srcOffsets[0].y = 0;
-        imageBlit.srcOffsets[0].z = 0;
-        imageBlit.srcOffsets[1].x = m_output.imageInfo.extent.width;
-        imageBlit.srcOffsets[1].y = m_output.imageInfo.extent.height;
-        imageBlit.srcOffsets[1].z = 1;
-        imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageBlit.dstSubresource.mipLevel = 0;
-        imageBlit.dstSubresource.baseArrayLayer = 0;
-        imageBlit.dstSubresource.layerCount = 1;
-        imageBlit.dstOffsets[0].x = 0;
-        imageBlit.dstOffsets[0].y = 0;
-        imageBlit.dstOffsets[0].z = 0;
-        imageBlit.dstOffsets[1].x = m_output.imageInfo.extent.width;
-        imageBlit.dstOffsets[1].y = m_output.imageInfo.extent.height;
-        imageBlit.dstOffsets[1].z = 1;
-        vkCmdBlitImage(m_commandBuffer, m_output.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_NEAREST);
-    }
-
-    VK_CHECK(vkEndCommandBuffer(m_commandBuffer));
-
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.signalSemaphoreCount = semaphore ? 1 : 0;
-    submitInfo.pSignalSemaphores = semaphore;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_commandBuffer;
-    VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, fence ? *fence : nullptr));
 }
 
 std::string Renderer::result_to_str(VkResult result)

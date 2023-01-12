@@ -75,7 +75,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
   if(Settings::Instance().m_force_sw_encoding == false) {
     if (vk_ctx.nvidia) {
       try {
-        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(input_frame, vk_frame_ctx, width, height);
+        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, input_frame, vk_frame_ctx, width, height);
         Info("using NvEnc encoder");
         return nvenc;
       } catch (std::exception &e)
@@ -84,7 +84,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
       }
     } else {
       try {
-        auto amf = std::make_unique<alvr::EncodePipelineAMF>(vk_ctx, render, input_frame.format(), width, height);
+        auto amf = std::make_unique<alvr::EncodePipelineAMF>(render, width, height);
         Info("using AMF encoder");
         return amf;
       } catch (std::exception &e)
@@ -92,7 +92,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
         Info("failed to create AMF encoder: %s", e.what());
       }
       try {
-        auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(vk_ctx, input_frame, width, height);
+        auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(render, vk_ctx, input_frame, width, height);
         Info("using VAAPI encoder");
         return vaapi;
       } catch (std::exception &e)
@@ -101,7 +101,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
       }
     }
   }
-  auto sw = std::make_unique<alvr::EncodePipelineSW>(render, input_frame, width, height);
+  auto sw = std::make_unique<alvr::EncodePipelineSW>(render, width, height);
   Info("using SW encoder");
   return sw;
 }
@@ -124,9 +124,4 @@ bool alvr::EncodePipeline::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
   *pts = enc_pkt->pts;
   av_packet_free(&enc_pkt);
   return true;
-}
-
-uint64_t alvr::EncodePipeline::GetTimestamp()
-{
-  return gpu_timestamp;
 }

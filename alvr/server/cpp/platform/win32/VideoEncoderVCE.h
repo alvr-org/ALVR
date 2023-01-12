@@ -19,7 +19,7 @@ public:
 	AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver);
 	virtual ~AMFPipe();
 
-	void doPassthrough(bool hasQueryTimeout);
+	void doPassthrough(bool hasQueryTimeout, uint32_t timerResolution);
 protected:
 	amf::AMFComponentPtr m_amfComponentSrc;
 	AMFDataReceiver m_receiver;
@@ -44,6 +44,8 @@ public:
 	void Connect(AMFPipePtr pipe);
 	void Run(bool hasQueryTimeout);
 protected:
+	uint32_t m_timerResolution;
+
 	std::vector<AMFPipePtr> m_pipes;
 };
 

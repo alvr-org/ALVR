@@ -62,7 +62,7 @@ const SERVER_DISCONNECTED_MESSAGE: &str = "The server has disconnected.";
 const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
-const CONNECTION_ERROR_PAUSE: Duration = Duration::from_millis(500);
+const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 const HUD_TEXTURE_WIDTH: usize = 1280;
@@ -132,22 +132,25 @@ pub fn connection_lifecycle_loop(
     loop {
         check_interrupt!(IS_ALIVE.value());
 
-        match connection_pipeline(
-            recommended_view_resolution,
-            supported_refresh_rates.clone(),
-            Arc::clone(&decoder_guard),
-        ) {
-            Ok(()) => continue,
-            Err(InterruptibleError::Interrupted) => return Ok(()),
-            Err(InterruptibleError::Other(e)) => {
-                let message = format!("Connection error:\n{e}\nCheck the PC for more details");
-                error!("{message}");
-                set_hud_message(&message);
-
-                // avoid spamming error messages
-                thread::sleep(CONNECTION_ERROR_PAUSE);
+        if IS_RESUMED.value() {
+            if let Err(e) = connection_pipeline(
+                recommended_view_resolution,
+                supported_refresh_rates.clone(),
+                Arc::clone(&decoder_guard),
+            ) {
+                match e {
+                    InterruptibleError::Interrupted => return Ok(()),
+                    InterruptibleError::Other(_) => {
+                        let message =
+                            format!("Connection error:\n{e}\nCheck the PC for more details");
+                        error!("{message}");
+                        set_hud_message(&message);
+                    }
+                }
             }
         }
+
+        thread::sleep(CONNECTION_RETRY_INTERVAL);
     }
 }
 
@@ -194,13 +197,6 @@ fn connection_pipeline(
             }
         }
     };
-
-    if !IS_RESUMED.value() {
-        info!("Not streaming because not resumed");
-        return runtime
-            .block_on(proto_control_socket.send(&ClientConnectionResult::ClientStandby))
-            .map_err(to_int_e!());
-    }
 
     let microphone_sample_rate =
         AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)

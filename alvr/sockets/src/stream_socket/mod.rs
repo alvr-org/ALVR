@@ -195,11 +195,11 @@ pub struct StreamReceiver<T> {
 
 impl<T: DeserializeOwned> StreamReceiver<T> {
     fn check_packet_loss(&mut self, packet_index: u32) {
-        if packet_index != self.next_packet_index && self.previous_packet_index != packet_index {
-            let previous_packet = self.previous_packet_index;
-            let next_packet = self.next_packet_index;
+        if packet_index != self.next_packet_index {
             info!(
-                "Lost packet: {next_packet}/Received: {packet_index}/Previous: {previous_packet}"
+                "Received: {packet_index}/Lost packet: {}/Previous: {}",
+                self.next_packet_index,
+                self.previous_packet_index
             );
             if self.is_packet_lost == false {
                 self.had_packet_loss = true;
@@ -226,11 +226,11 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             let total_payload_size = bytes.get_u32();
             let full_packet_index = bytes.get_u32();
 
-            self.check_packet_loss(packet_index);
             if self.previous_packet_index == packet_index {
                 debug!("Packet {packet_index} retransmitted");
                 continue;
             }
+            self.check_packet_loss(packet_index);
             self.previous_packet_index = packet_index;
             self.next_packet_index = packet_index + 1;
 

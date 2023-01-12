@@ -277,6 +277,7 @@ dependencies = [
  "serde",
  "serde_json",
  "settings-schema",
+ "spin_sleep",
  "tempfile",
  "tokio",
  "tokio-tungstenite",
@@ -298,7 +299,6 @@ dependencies = [
  "rhai",
  "serde_json",
  "tokio",
- "wgpu",
 ]
 
 [[package]]
@@ -3937,6 +3937,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02e2d2db9033d13a1567121ddd7a095ee144db4e1ca1b1bda3419bc0da294ebd"
 dependencies = [
  "libc",
+ "winapi",
+]
+
+[[package]]
+name = "spin_sleep"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cafa7900db085f4354dbc7025e25d7a839a14360ea13b5fc4fd717f2d3b23134"
+dependencies = [
+ "once_cell",
  "winapi",
 ]
 

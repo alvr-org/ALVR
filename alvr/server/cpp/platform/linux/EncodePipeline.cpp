@@ -125,3 +125,8 @@ bool alvr::EncodePipeline::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
   av_packet_free(&enc_pkt);
   return true;
 }
+
+uint64_t alvr::EncodePipeline::GetTimestamp()
+{
+  return gpu_timestamp;
+}

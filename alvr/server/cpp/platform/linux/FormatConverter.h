@@ -9,6 +9,8 @@ public:
 
     void Convert(uint8_t **data, int *linesize);
 
+    uint64_t GetTimestamp();
+
 protected:
     struct OutputImage {
         VkImage image;
@@ -23,6 +25,7 @@ protected:
 
     Renderer *r;
     VkSampler m_sampler;
+    VkQueryPool m_queryPool;
     VkCommandPool m_commandPool;
     VkCommandBuffer m_commandBuffer;
     VkDescriptorSet m_descriptor;

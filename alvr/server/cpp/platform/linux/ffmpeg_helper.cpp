@@ -52,7 +52,8 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
       VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
       VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
-      VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME
+      VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
+      VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
   };
   device_extensions.insert(device_extensions.end(), requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 

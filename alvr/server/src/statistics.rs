@@ -85,13 +85,13 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_frame_present(&mut self, target_timestamp: Duration) {
+    pub fn report_frame_present(&mut self, target_timestamp: Duration, offset: Duration) {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            let now = Instant::now();
+            let now = Instant::now() - offset;
 
             self.last_frame_present_interval =
                 now.saturating_duration_since(self.last_frame_present_instant);
@@ -101,13 +101,13 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_frame_composed(&mut self, target_timestamp: Duration) {
+    pub fn report_frame_composed(&mut self, target_timestamp: Duration, offset: Duration) {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.frame_composed = Instant::now();
+            frame.frame_composed = Instant::now() - offset;
         }
     }
 

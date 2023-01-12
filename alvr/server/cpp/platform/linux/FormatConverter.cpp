@@ -16,6 +16,7 @@ FormatConverter::~FormatConverter()
     }
 
     vkDestroySampler(r->m_dev, m_sampler, nullptr);
+    vkDestroyQueryPool(r->m_dev, m_queryPool, nullptr);
     vkDestroyCommandPool(r->m_dev, m_commandPool, nullptr);
     vkDestroyDescriptorSetLayout(r->m_dev, m_descriptorLayout, nullptr);
     vkDestroyImageView(r->m_dev, m_view, nullptr);
@@ -39,6 +40,13 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, int
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     VK_CHECK(vkCreateSampler(r->m_dev, &samplerInfo, nullptr, &m_sampler));
+
+    // Timestamp query
+    VkQueryPoolCreateInfo queryPoolInfo = {};
+    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    queryPoolInfo.queryCount = 1;
+    VK_CHECK(vkCreateQueryPool(r->m_dev, &queryPoolInfo, nullptr, &m_queryPool));
 
     // Command buffer
     VkCommandPoolCreateInfo cmdPoolInfo = {};
@@ -231,9 +239,13 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
 
+    vkCmdResetQueryPool(m_commandBuffer, m_queryPool, 0, 1);
+
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
     vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 1, &m_descriptor, 0, nullptr);
     vkCmdDispatch(m_commandBuffer, m_groupCountX, m_groupCountY, 1);
+
+    vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 0);
 
     vkEndCommandBuffer(m_commandBuffer);
 
@@ -250,6 +262,13 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
         data[i] = m_images[i].mapped;
         linesize[i] = m_images[i].linesize;
     }
+}
+
+uint64_t FormatConverter::GetTimestamp()
+{
+    uint64_t query;
+    VK_CHECK(vkGetQueryPoolResults(r->m_dev, m_queryPool, 0, 1, sizeof(uint64_t), &query, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+    return query * r->m_timestampPeriod;
 }
 
 RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo)

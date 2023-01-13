@@ -41,8 +41,6 @@ pub async fn bind(
     let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
     let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
 
-    socket.set_reuse_address(true).ok();
-
     info!(
         "Initial UDP buffer size: send: {}B, recv: {}B",
         socket.send_buffer_size().map_err(err!())?,

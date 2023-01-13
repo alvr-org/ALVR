@@ -14,7 +14,20 @@ pub fn init_logging(
 ) {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
         let maybe_event = format!("{message}");
-        if maybe_event.starts_with('{') {
+        let json_option = {
+            if maybe_event.starts_with('{') {
+                let json_result = serde_json::from_str(&maybe_event);
+                if json_result.is_ok() {
+                    json_result.unwrap()
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
+        if json_option.is_some() {
             legacy_events_sender.send(maybe_event.clone()).ok();
         } else {
             let severity = match record.level() {
@@ -33,7 +46,7 @@ pub fn init_logging(
                 .send(serde_json::to_string(&event).unwrap())
                 .ok();
         }
-        let log_message = if maybe_event.starts_with('{') {
+        let log_message = if json_option.is_some() {
             format!("#{}#", maybe_event)
         } else {
             maybe_event.clone()
@@ -46,8 +59,8 @@ pub fn init_logging(
             ))
             .ok();
 
-        let event_type = if maybe_event.starts_with('{') {
-            serde_json::from_str(&maybe_event).unwrap()
+        let event_type = if json_option.is_some() {
+            json_option.unwrap()
         } else {
             let severity = match record.level() {
                 log::Level::Error => EventSeverity::Error,

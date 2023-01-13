@@ -115,19 +115,21 @@ impl<T: Serialize> StreamSender<T> {
 
         let mut data_remain = total_payload_size;
 
-        let mut buffer = BytesMut::with_capacity(offset + max_payload_size);
+        let mut total_buffer = BytesMut::with_capacity(total_shards * offset + total_payload_size);
 
-        buffer.put_u16(self.stream_id);
-        buffer.put_u32(self.next_packet_index);
-        buffer.put_u32(total_shards as u32);
-        buffer.put_u32(total_payload_size as u32);
-        buffer.put_u32(self.full_packet_index);
+        total_buffer.put_u16(self.stream_id);
+        total_buffer.put_u32(self.next_packet_index);
+        total_buffer.put_u32(total_shards as u32);
+        total_buffer.put_u32(total_payload_size as u32);
+        total_buffer.put_u32(self.full_packet_index);
 
-        let mut buffer_writer = buffer.writer();
+        let mut buffer_writer = total_buffer.writer();
         bincode::serialize_into(&mut buffer_writer, data_header)
             .map_err(err!())
             .ok();
-        self.send_buffer(buffer_writer.into_inner()).await;
+        total_buffer = buffer_writer.into_inner();
+        let buffer = total_buffer.split();
+        self.send_buffer(buffer).await;
         data_remain -= data_header_size;
         self.next_packet_index += 1;
 
@@ -136,19 +138,19 @@ impl<T: Serialize> StreamSender<T> {
             // If number of total shards is correct, the shard size will be always down to zero
             let shard_size = cmp::min(data_remain, max_payload_size);
             data_remain -= shard_size;
-            let mut buffer = BytesMut::with_capacity(offset + shard_size);
 
-            buffer.put_u16(self.stream_id);
-            buffer.put_u32(self.next_packet_index);
-            buffer.put_u32(total_shards as u32);
-            buffer.put_u32(total_payload_size as u32);
-            buffer.put_u32(self.full_packet_index);
+            total_buffer.put_u16(self.stream_id);
+            total_buffer.put_u32(self.next_packet_index);
+            total_buffer.put_u32(total_shards as u32);
+            total_buffer.put_u32(total_payload_size as u32);
+            total_buffer.put_u32(self.full_packet_index);
 
             let offset = last_max_index;
             let max = offset + shard_size;
-            buffer.put_slice(&payload[offset..max]);
+            total_buffer.put_slice(&payload[offset..max]);
             last_max_index = max;
 
+            let buffer = total_buffer.split();
             self.send_buffer(buffer).await;
             self.next_packet_index += 1;
         }

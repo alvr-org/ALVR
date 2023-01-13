@@ -1,4 +1,4 @@
-use crate::{command, dependencies, version};
+use crate::{command, version};
 use alvr_filesystem::{self as afs, Layout};
 use std::{
     fmt::{self, Display, Formatter},

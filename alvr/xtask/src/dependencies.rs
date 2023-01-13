@@ -1,9 +1,6 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::fs;
 use xshell::{cmd, Shell};
 
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
@@ -251,26 +248,4 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
 
     get_oculus_openxr_mobile_loader();
-}
-
-pub fn find_resolved_so_paths(bin_or_so: &Path, depends_so: &str) -> Vec<PathBuf> {
-    let sh = Shell::new().unwrap();
-
-    let cmdline = format!(
-        "ldd {} | cut -d '>' -f 2 | awk \'{{print $1}}\' | grep {}",
-        bin_or_so.to_string_lossy(),
-        depends_so
-    );
-
-    cmd!(sh, "sh")
-        .args(&["-c", &cmdline])
-        .read()
-        .map_or(vec![], |output| {
-            let mut result = output
-                .lines()
-                .filter_map(|line| PathBuf::from(line).canonicalize().ok()) // canonicalize resolves symlinks
-                .collect::<Vec<_>>();
-            result.dedup();
-            result
-        })
 }

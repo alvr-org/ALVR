@@ -299,6 +299,7 @@ dependencies = [
  "rhai",
  "serde_json",
  "tokio",
+ "wgpu",
 ]
 
 [[package]]

@@ -105,12 +105,12 @@ pub fn package_server(
         command::targz(&sh, &afs::server_build_dir()).unwrap();
 
         if appimage {
-            server_appimage(true, gpl, zsync);
+            package_server_appimage(true, zsync);
         }
     }
 }
 
-pub fn server_appimage(release: bool, gpl: bool, update: bool) {
+fn package_server_appimage(release: bool, update: bool) {
     let sh = Shell::new().unwrap();
 
     let appdir = &afs::build_dir().join("ALVR.AppDir");

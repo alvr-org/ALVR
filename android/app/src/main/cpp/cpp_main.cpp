@@ -35,8 +35,6 @@ void log(AlvrLogLevel level, const char *format, ...) {
 uint64_t HEAD_ID = alvr_path_string_to_id("/user/head");
 uint64_t LEFT_HAND_ID = alvr_path_string_to_id("/user/hand/left");
 uint64_t RIGHT_HAND_ID = alvr_path_string_to_id("/user/hand/right");
-uint64_t LEFT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/left/output/haptic");
-uint64_t RIGHT_CONTROLLER_HAPTICS_ID = alvr_path_string_to_id("/user/hand/right/output/haptic");
 
 uint64_t MENU_CLICK_ID = alvr_path_string_to_id("/user/hand/left/input/menu/click");
 uint64_t A_CLICK_ID = alvr_path_string_to_id("/user/hand/right/input/a/click");
@@ -731,7 +729,7 @@ void eventsThread() {
         while (alvr_poll_event(&event)) {
             if (event.tag == ALVR_EVENT_HAPTICS) {
                 auto haptics = event.HAPTICS;
-                int curHandIndex = (haptics.device_id == RIGHT_CONTROLLER_HAPTICS_ID ? 0 : 1);
+                int curHandIndex = (haptics.device_id == RIGHT_HAND_ID ? 0 : 1);
                 auto &s = CTX.hapticsState[curHandIndex];
                 s.startUs = 0;
                 s.endUs = (uint64_t) (haptics.duration_s * 1000'000);

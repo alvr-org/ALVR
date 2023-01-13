@@ -6,8 +6,6 @@
 extern uint64_t HEAD_ID;
 extern uint64_t LEFT_HAND_ID;
 extern uint64_t RIGHT_HAND_ID;
-extern uint64_t LEFT_CONTROLLER_HAPTIC_ID;
-extern uint64_t RIGHT_CONTROLLER_HAPTIC_ID;
 
 extern uint64_t OCULUS_CONTROLLER_PROFILE_ID;
 extern uint64_t INDEX_CONTROLLER_PROFILE_ID;

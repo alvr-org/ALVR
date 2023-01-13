@@ -4,16 +4,10 @@ use once_cell::sync::Lazy;
 pub const HEAD_PATH: &str = "/user/head";
 pub const LEFT_HAND_PATH: &str = "/user/hand/left";
 pub const RIGHT_HAND_PATH: &str = "/user/hand/right";
-pub const LEFT_CONTROLLER_HAPTIC_PATH: &str = "/user/hand/left/output/haptic";
-pub const RIGHT_CONTROLLER_HAPTIC_PATH: &str = "/user/hand/right/output/haptic";
 
 pub static HEAD_ID: Lazy<u64> = Lazy::new(|| hash_string(HEAD_PATH));
 pub static LEFT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_HAND_PATH));
 pub static RIGHT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_HAND_PATH));
-pub static LEFT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
-    Lazy::new(|| hash_string(LEFT_CONTROLLER_HAPTIC_PATH));
-pub static RIGHT_CONTROLLER_HAPTIC_ID: Lazy<u64> =
-    Lazy::new(|| hash_string(RIGHT_CONTROLLER_HAPTIC_PATH));
 
 pub const HEAD_ENTER_CLICK_PATH: &str = "/user/head/input/enter/click";
 pub const MENU_CLICK_PATH: &str = "/user/hand/left/input/menu/click";

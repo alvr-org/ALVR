@@ -13,7 +13,7 @@ class EncodePipelineSW: public EncodePipeline
 {
 public:
   ~EncodePipelineSW();
-  EncodePipelineSW(Renderer *render, VkFrame &input_frame, uint32_t width, uint32_t height);
+  EncodePipelineSW(Renderer *render, uint32_t width, uint32_t height);
 
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
 

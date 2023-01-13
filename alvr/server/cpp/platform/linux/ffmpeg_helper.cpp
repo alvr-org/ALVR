@@ -139,15 +139,10 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
   std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
-  bool foundCompute = false;
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
     const bool graphics = queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
-    const bool compute = queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT;
     if (graphics) {
       queueFamilyIndex = i;
-    } else if (compute) {
-      foundCompute = true;
-      queueFamilyIndexCompute = i;
     }
     VkDeviceQueueCreateInfo queueInfo = {};
     queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -155,9 +150,6 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
     queueInfo.queueCount = 1;
     queueInfo.pQueuePriorities = &queuePriority;
     queueInfos.push_back(queueInfo);
-  }
-  if (!foundCompute) {
-    queueFamilyIndexCompute = queueFamilyIndex;
   }
 
   VkPhysicalDeviceVulkan12Features features12 = {};

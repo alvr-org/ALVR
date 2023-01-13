@@ -31,7 +31,7 @@ const char * encoder(ALVR_CODEC codec)
 
 }
 
-alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame, uint32_t width, uint32_t height)
+alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint32_t height)
 {
   const auto& settings = Settings::Instance();
 
@@ -102,7 +102,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, VkFrame &input_frame,
   encoder_frame->height = height;
   encoder_frame->format = encoder_ctx->pix_fmt;
   av_frame_get_buffer(encoder_frame, 0);
-  rgbtoyuv = new RgbToYuv420(render, input_frame.image(), input_frame.imageInfo());
+  rgbtoyuv = new RgbToYuv420(render, render->GetOutput().image, render->GetOutput().imageInfo, render->GetOutput().semaphore);
 }
 
 alvr::EncodePipelineSW::~EncodePipelineSW()
@@ -116,7 +116,8 @@ alvr::EncodePipelineSW::~EncodePipelineSW()
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
   rgbtoyuv->Convert(encoder_frame->data, encoder_frame->linesize);
-  gpu_timestamp = rgbtoyuv->GetTimestamp();
+  rgbtoyuv->Sync();
+  timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
   encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
   encoder_frame->pts = targetTimestampNs;

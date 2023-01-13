@@ -64,7 +64,8 @@ namespace alvr
 class EncodePipelineAMF : public EncodePipeline
 {
 public:
-    EncodePipelineAMF(VkContext &context, Renderer *render, VkFormat format, uint32_t width, uint32_t height);
+    EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t height);
+    ~EncodePipelineAMF();
 
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     bool GetEncoded(std::vector<uint8_t> &out, uint64_t *pts) override;
@@ -82,11 +83,9 @@ private:
     std::unique_ptr<AMFPipeline> m_pipeline;
     std::vector<amf::AMFComponentPtr> m_amfComponents;
 
-    VkInstance m_vkInstance;
-    VkPhysicalDevice m_vkPhysicalDevice;
-    VkDevice m_vkDevice;
-    VkQueue m_vkQueue;
     Renderer *m_render;
+    VkQueryPool m_queryPool = VK_NULL_HANDLE;
+    VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
 
     amf::AMF_SURFACE_FORMAT m_surfaceFormat;
 

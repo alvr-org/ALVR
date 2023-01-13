@@ -240,7 +240,6 @@ void CEncoder::Run() {
 
         if (m_captureFrame) {
           m_captureFrame = false;
-          render.Wait(frame_info.image, frame_info.semaphore_value);
           render.CaptureInputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_input.ppm");
           render.CaptureOutputFrame(Settings::Instance().m_captureFrameDir + "/alvr_frame_output.ppm");
         }
@@ -258,11 +257,27 @@ void CEncoder::Run() {
           continue;
         }
 
-        auto timestamps = render.GetTimestamps();
-        uint64_t timestamp_present = timestamps.renderBegin;
-        uint64_t timestamp_composed = encode_pipeline->GetTimestamp() ? encode_pipeline->GetTimestamp() : timestamps.renderComplete;
-        ReportPresent(pose->targetTimestampNs, timestamps.now - timestamp_present);
-        ReportComposed(pose->targetTimestampNs, timestamps.now - timestamp_composed);
+        auto render_timestamps = render.GetTimestamps();
+        auto encode_timestamp = encode_pipeline->GetTimestamp();
+
+        uint64_t present_offset = render_timestamps.now - render_timestamps.renderBegin;
+        uint64_t composed_offset = 0;
+
+        if (encode_timestamp.gpu) {
+          composed_offset = render_timestamps.now - encode_timestamp.gpu;
+        } else if (encode_timestamp.cpu) {
+          auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+          composed_offset = now - encode_timestamp.cpu;
+        } else {
+          Error("Invalid encoder timestamp!");
+        }
+
+        if (present_offset < composed_offset) {
+          present_offset = composed_offset;
+        }
+
+        ReportPresent(pose->targetTimestampNs, present_offset);
+        ReportComposed(pose->targetTimestampNs, composed_offset);
 
         m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
 

@@ -15,9 +15,10 @@ FormatConverter::~FormatConverter()
         vkFreeMemory(r->m_dev, image.memory, nullptr);
     }
 
+    vkDestroySemaphore(r->m_dev, m_output.semaphore, nullptr);
+
     vkDestroySampler(r->m_dev, m_sampler, nullptr);
     vkDestroyQueryPool(r->m_dev, m_queryPool, nullptr);
-    vkDestroyCommandPool(r->m_dev, m_commandPool, nullptr);
     vkDestroyDescriptorSetLayout(r->m_dev, m_descriptorLayout, nullptr);
     vkDestroyImageView(r->m_dev, m_view, nullptr);
     vkDestroyShaderModule(r->m_dev, m_shader, nullptr);
@@ -25,9 +26,10 @@ FormatConverter::~FormatConverter()
     vkDestroyPipelineLayout(r->m_dev, m_pipelineLayout, nullptr);
 }
 
-void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, int count, const unsigned char *shaderData, unsigned shaderLen)
+void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen)
 {
     m_images.resize(count);
+    m_semaphore = semaphore;
 
     // Sampler
     VkSamplerCreateInfo samplerInfo = {};
@@ -49,16 +51,10 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, int
     VK_CHECK(vkCreateQueryPool(r->m_dev, &queryPoolInfo, nullptr, &m_queryPool));
 
     // Command buffer
-    VkCommandPoolCreateInfo cmdPoolInfo = {};
-    cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    cmdPoolInfo.queueFamilyIndex = r->m_queueFamilyIndexCompute;
-    cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    VK_CHECK(vkCreateCommandPool(r->m_dev, &cmdPoolInfo, nullptr, &m_commandPool));
-
     VkCommandBufferAllocateInfo commandBufferInfo = {};
     commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    commandBufferInfo.commandPool = m_commandPool;
+    commandBufferInfo.commandPool = r->m_commandPool;
     commandBufferInfo.commandBufferCount = 1;
     VK_CHECK(vkAllocateCommandBuffers(r->m_dev, &commandBufferInfo, &m_commandBuffer));
 
@@ -203,6 +199,10 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, int
         VK_CHECK(vkMapMemory(r->m_dev, m_images[i].memory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&m_images[i].mapped)));
     }
 
+    VkSemaphoreCreateInfo semInfo = {};
+    semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    VK_CHECK(vkCreateSemaphore(r->m_dev, &semInfo, nullptr, &m_output.semaphore));
+
     // Shader
     VkShaderModuleCreateInfo moduleInfo = {};
     moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -249,19 +249,38 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
 
     vkEndCommandBuffer(m_commandBuffer);
 
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &m_semaphore;
+    submitInfo.pWaitDstStageMask = &waitStage;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &m_output.semaphore;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
-    VK_CHECK(vkQueueSubmit(r->m_queueCompute, 1, &submitInfo, r->m_fence));
-
-    VK_CHECK(vkWaitForFences(r->m_dev, 1, &r->m_fence, VK_TRUE, UINT64_MAX));
-    VK_CHECK(vkResetFences(r->m_dev, 1, &r->m_fence));
+    VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
 
     for (size_t i = 0; i < m_images.size(); ++i) {
         data[i] = m_images[i].mapped;
         linesize[i] = m_images[i].linesize;
     }
+}
+
+void FormatConverter::Sync()
+{
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &m_output.semaphore;
+    submitInfo.pWaitDstStageMask = &waitStage;
+    VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, r->m_fence));
+
+    VK_CHECK(vkWaitForFences(r->m_dev, 1, &r->m_fence, VK_TRUE, UINT64_MAX));
+    VK_CHECK(vkResetFences(r->m_dev, 1, &r->m_fence));
 }
 
 uint64_t FormatConverter::GetTimestamp()
@@ -271,8 +290,8 @@ uint64_t FormatConverter::GetTimestamp()
     return query * r->m_timestampPeriod;
 }
 
-RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo)
+RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore)
     : FormatConverter(render)
 {
-    init(image, imageInfo, 3, RGBTOYUV420_SHADER_COMP_SPV_PTR, RGBTOYUV420_SHADER_COMP_SPV_LEN);
+    init(image, imageInfo, semaphore, 3, RGBTOYUV420_SHADER_COMP_SPV_PTR, RGBTOYUV420_SHADER_COMP_SPV_LEN);
 }

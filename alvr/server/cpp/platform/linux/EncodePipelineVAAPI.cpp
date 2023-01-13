@@ -109,7 +109,8 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr
 
 }
 
-alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(VkContext &vk_ctx, VkFrame &input_frame, uint32_t width, uint32_t height)
+alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, uint32_t width, uint32_t height)
+    : r(render)
 {
   /* VAAPI Encoding pipeline
    * The encoding pipeline has 3 frame types:
@@ -296,6 +297,8 @@ alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
+  r->Sync();
+  timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
   int err = av_buffersrc_add_frame_flags(filter_in, mapped_frame, AV_BUFFERSRC_FLAG_PUSH | AV_BUFFERSRC_FLAG_KEEP_REF);
   if (err != 0)
   {

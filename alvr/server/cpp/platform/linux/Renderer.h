@@ -34,6 +34,7 @@ public:
         VkImageCreateInfo imageInfo;
         VkDeviceSize size;
         VkDeviceMemory memory;
+        VkSemaphore semaphore;
         // ---
         VkImageView view;
         VkFramebuffer framebuffer;
@@ -47,7 +48,7 @@ public:
         uint64_t renderComplete;
     };
 
-    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t graphicsIdx, uint32_t computeIdx, const std::vector<const char *> &devExtensions);
+    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char *> &devExtensions);
     virtual ~Renderer();
 
     void Startup(uint32_t width, uint32_t height, VkFormat format);
@@ -56,21 +57,21 @@ public:
 
     void AddPipeline(RenderPipeline *pipeline);
 
-    Output CreateOutput(uint32_t width, uint32_t height);
+    void CreateOutput(uint32_t width, uint32_t height);
 
     void Render(uint32_t index, uint64_t waitValue);
 
+    void Sync();
+
+    Output GetOutput();
     Timestamps GetTimestamps();
 
-    void CopyOutput(VkImage image, VkFormat format, VkImageLayout layout, VkSemaphore *semaphore = nullptr, VkFence *fence = nullptr);
-
-    void Wait(uint32_t index, uint64_t waitValue);
     void CaptureInputFrame(const std::string &filename);
     void CaptureOutputFrame(const std::string &filename);
 
     static std::string result_to_str(VkResult result);
 
-private:
+// private:
     struct InputImage {
         VkImage image;
         VkDeviceMemory memory;
@@ -112,8 +113,6 @@ private:
     VkPhysicalDevice m_physDev;
     VkQueue m_queue;
     uint32_t m_queueFamilyIndex;
-    VkQueue m_queueCompute;
-    uint32_t m_queueFamilyIndexCompute;
     VkFormat m_format;
     VkExtent2D m_imageSize;
     VkQueryPool m_queryPool;
@@ -130,9 +129,6 @@ private:
 
     std::string m_inputImageCapture;
     std::string m_outputImageCapture;
-
-    friend class RenderPipeline;
-    friend class FormatConverter;
 };
 
 class RenderPipeline

@@ -23,10 +23,12 @@ const char *encoder(ALVR_CODEC codec) {
 }
 
 } // namespace
-alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
+alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
+                                               VkFrame &input_frame,
                                                VkFrameCtx &vk_frame_ctx,
                                                uint32_t width,
                                                uint32_t height) {
+    r = render;
     auto input_frame_ctx = (AVHWFramesContext *)vk_frame_ctx.ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
@@ -132,6 +134,8 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
 }
 
 void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {
+    r->Sync();
+    timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     int err = av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
     if (err) {
         throw alvr::AvException("av_hwframe_transfer_data", err);

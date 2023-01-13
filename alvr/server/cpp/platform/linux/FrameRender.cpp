@@ -7,7 +7,7 @@
 #include <filesystem>
 
 FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
-    : Renderer(ctx.get_vk_instance(), ctx.get_vk_device(), ctx.get_vk_phys_device(), ctx.get_vk_queue_family_index(), ctx.get_vk_queue_compute_family_index(), ctx.get_vk_device_extensions())
+    : Renderer(ctx.get_vk_instance(), ctx.get_vk_device(), ctx.get_vk_phys_device(), ctx.get_vk_queue_family_index(), ctx.get_vk_device_extensions())
 {
     Startup(init.image_create_info.extent.width, init.image_create_info.extent.height, init.image_create_info.format);
 
@@ -52,7 +52,8 @@ FrameRender::~FrameRender()
 
 FrameRender::Output FrameRender::CreateOutput()
 {
-    return Renderer::CreateOutput(m_width, m_height);
+    Renderer::CreateOutput(m_width, m_height);
+    return GetOutput();
 }
 
 uint32_t FrameRender::GetEncodingWidth() const

@@ -4,11 +4,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
-#[cfg(target_os = "android")]
-pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../resources/loading.gltf");
-#[cfg(target_os = "android")]
-pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../resources/buffer.bin");
-
 fn config_path() -> PathBuf {
     app_dirs2::app_root(
         AppDataType::UserConfig,

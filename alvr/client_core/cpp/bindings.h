@@ -5,8 +5,9 @@ struct EyeInput {
     float position[3];
     float fovLeft;
     float fovRight;
-    float fovTop;
-    float fovBottom;
+    float fovUp;
+    float fovDown;
+    unsigned int swapchainIndex;
 };
 
 struct VideoFrame {
@@ -30,6 +31,8 @@ struct OnCreateResult {
 struct StreamConfigInput {
     unsigned int viewWidth;
     unsigned int viewHeight;
+    const unsigned int *swapchainTextures[2];
+    unsigned int swapchainLength;
     bool enableFoveation;
     float foveationCenterSizeX;
     float foveationCenterSizeY;
@@ -50,14 +53,14 @@ extern "C" void initGraphicsNative();
 extern "C" void destroyGraphicsNative();
 extern "C" void prepareLobbyRoom(int viewWidth,
                                  int viewHeight,
-                                 const int *swapchainTextures[2],
+                                 const unsigned int *swapchainTextures[2],
                                  int swapchainLength);
 extern "C" void destroyRenderers();
-extern "C" void setStreamConfig(StreamConfigInput config);
-extern "C" void streamStartNative(const int *swapchainTextures[2], int swapchainLength);
+extern "C" void streamStartNative(StreamConfigInput config);
 extern "C" void updateLobbyHudTexture(const unsigned char *data);
-extern "C" void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]);
-extern "C" void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]);
+extern "C" void renderLobbyNative(const EyeInput eyeInputs[2]);
+extern "C" void renderStreamNative(void *streamHardwareBuffer,
+                                   const unsigned int swapchainIndices[2]);
 
 // nal.h
 extern "C" void initializeNalParser(int codec, bool enableFec);

@@ -1037,14 +1037,14 @@ async fn connection_pipeline(
                             EyeFov {
                                 left: config.fov[0].left,
                                 right: config.fov[0].right,
-                                top: config.fov[0].top,
-                                bottom: config.fov[0].bottom,
+                                up: config.fov[0].up,
+                                down: config.fov[0].down,
                             },
                             EyeFov {
                                 left: config.fov[1].left,
                                 right: config.fov[1].right,
-                                top: config.fov[1].top,
-                                bottom: config.fov[1].bottom,
+                                up: config.fov[1].up,
+                                down: config.fov[1].down,
                             },
                         ],
                         ipd_m: config.ipd_m,

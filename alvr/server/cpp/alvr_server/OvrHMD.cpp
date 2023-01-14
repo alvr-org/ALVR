@@ -26,8 +26,8 @@ vr::HmdRect2_t fov_to_projection(EyeFov fov) {
     auto proj_bounds = vr::HmdRect2_t{};
     proj_bounds.vTopLeft.v[0] = tanf(fov.left);
     proj_bounds.vBottomRight.v[0] = tanf(fov.right);
-    proj_bounds.vTopLeft.v[1] = -tanf(fov.top);
-    proj_bounds.vBottomRight.v[1] = -tanf(fov.bottom);
+    proj_bounds.vTopLeft.v[1] = -tanf(fov.up);
+    proj_bounds.vBottomRight.v[1] = -tanf(fov.down);
 
     return proj_bounds;
 }

@@ -13,10 +13,12 @@ mod platform;
 mod sockets;
 mod statistics;
 mod storage;
+mod opengl;
 
 #[cfg(target_os = "android")]
 mod audio;
 
+pub use decoder::get_frame;
 pub use logging_backend::init_logging;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -26,13 +28,11 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
-    RelaxedAtomic,
+    Fov, RelaxedAtomic,
 };
 use alvr_events::ButtonValue;
-use alvr_session::{CodecType, OculusFovetionLevel};
-use alvr_sockets::{
-    BatteryPacket, ClientControlPacket, ClientStatistics, Fov, Tracking, ViewsConfig,
-};
+use alvr_session::{CodecType, FoveatedRenderingDesc, OculusFovetionLevel};
+use alvr_sockets::{BatteryPacket, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
@@ -54,7 +54,8 @@ static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientCon
     Lazy::new(|| Mutex::new(None));
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientEvent>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
 static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
@@ -63,10 +64,12 @@ static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
 static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 
 #[derive(Serialize, Deserialize)]
-pub enum ClientEvent {
+pub enum ClientCoreEvent {
+    UpdateHudMessage(String),
     StreamingStarted {
         view_resolution: UVec2,
         fps: f32,
+        foveated_rendering: Option<FoveatedRenderingDesc>,
         oculus_foveation_level: OculusFovetionLevel,
         dynamic_oculus_foveation: bool,
         extra_latency: bool,
@@ -137,7 +140,7 @@ pub fn pause() {
     IS_RESUMED.set(false);
 }
 
-pub fn poll_event() -> Option<ClientEvent> {
+pub fn poll_event() -> Option<ClientCoreEvent> {
     EVENT_QUEUE.lock().pop_front()
 }
 
@@ -230,71 +233,4 @@ pub fn report_compositor_start(target_timestamp: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_compositor_start(target_timestamp);
     }
-}
-
-/// Can be called before or after `initialize()`
-#[cfg(target_os = "android")]
-pub fn initialize_opengl() {
-    use crate::storage::{LOBBY_ROOM_BIN, LOBBY_ROOM_GLTF};
-
-    unsafe {
-        LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
-        LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
-        LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
-        LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
-
-        initGraphicsNative();
-    }
-}
-
-/// Must be called after `destroy()`. Can be skipped if the GL context is destroyed before
-#[cfg(target_os = "android")]
-pub fn destroy_opengl() {
-    unsafe { destroyGraphicsNative() };
-}
-
-/// Must be called before `resume()`
-#[cfg(target_os = "android")]
-pub fn resume_opengl(preferred_view_resolution: UVec2, swapchain_textures: [Vec<i32>; 2]) {
-    let swapchain_length = swapchain_textures[0].len();
-    let mut swapchain_textures = [
-        swapchain_textures[0].as_ptr(),
-        swapchain_textures[1].as_ptr(),
-    ];
-
-    unsafe {
-        prepareLobbyRoom(
-            preferred_view_resolution.x as _,
-            preferred_view_resolution.y as _,
-            swapchain_textures.as_mut_ptr(),
-            swapchain_length as _,
-        );
-    }
-}
-
-/// Must be called after `pause()`
-#[cfg(target_os = "android")]
-pub fn pause_opengl() {
-    unsafe { destroyRenderers() };
-}
-
-#[cfg(target_os = "android")]
-pub fn start_stream_opengl(swapchain_textures: [Vec<i32>; 2]) {
-    let swapchain_length = swapchain_textures[0].len();
-    let mut swapchain_textures = [
-        swapchain_textures[0].as_ptr(),
-        swapchain_textures[1].as_ptr(),
-    ];
-
-    unsafe { streamStartNative(swapchain_textures.as_mut_ptr(), swapchain_length as _) };
-}
-
-#[cfg(target_os = "android")]
-pub fn render_lobby_opengl(eye_inputs: [EyeInput; 2], swapchain_indices: [i32; 2]) {
-    unsafe { renderLobbyNative(eye_inputs.as_ptr(), swapchain_indices.as_ptr()) };
-}
-
-#[cfg(target_os = "android")]
-pub fn render_stream_opengl(hardware_buffer: *mut std::ffi::c_void, swapchain_indices: [i32; 2]) {
-    unsafe { renderStreamNative(hardware_buffer, swapchain_indices.as_ptr()) };
 }

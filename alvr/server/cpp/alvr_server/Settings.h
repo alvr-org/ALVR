@@ -41,8 +41,6 @@ public:
 	int32_t m_recommendedTargetWidth;
 	int32_t m_recommendedTargetHeight;
 
-
-	EyeFov m_eyeFov[2];
 	float m_flSecondsFromVsyncToPhotons;
 	float m_flIPD;
 

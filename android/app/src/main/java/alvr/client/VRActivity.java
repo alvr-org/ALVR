@@ -148,19 +148,5 @@ public class VRActivity extends Activity {
 
     native void onPauseNative();
 
-    native void onStreamStartNative();
-
-    native void onStreamStopNative();
-
     native void renderNative();
-
-    @SuppressWarnings("unused")
-    public void onStreamStart() {
-        mRenderingHandler.post(this::onStreamStartNative);
-    }
-
-    @SuppressWarnings("unused")
-    public void onStreamStop() {
-        mRenderingHandler.post(this::onStreamStopNative);
-    }
 }

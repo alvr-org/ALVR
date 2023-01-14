@@ -12,6 +12,7 @@ log = "0.4"
 once_cell = "1"
 parking_lot = "0.12"
 semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
 msgbox = "0.7"

@@ -131,7 +131,6 @@ class GraphicsContext {
     std::vector<GLuint> lobbySwapchainTextures[2];
     std::unique_ptr<ovrRenderer> lobbyRenderer;
 
-    StreamConfigInput streamConfig{};
     std::unique_ptr<Texture> streamTexture;
     std::vector<GLuint> streamSwapchainTextures[2];
     std::unique_ptr<ovrRenderer> streamRenderer;
@@ -661,10 +660,7 @@ void renderEye(
     GL(glUseProgram(0));
 }
 
-void ovrRenderer_RenderFrame(ovrRenderer *renderer,
-                             const EyeInput input[2],
-                             const int swapchainIndex[2],
-                             bool isLobby) {
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], bool isLobby) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -679,8 +675,8 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer,
 
         auto tanl = tan(input[eye].fovLeft);
         auto tanr = tan(input[eye].fovRight);
-        auto tant = tan(-input[eye].fovTop);
-        auto tanb = tan(-input[eye].fovBottom);
+        auto tant = tan(-input[eye].fovUp);
+        auto tanb = tan(-input[eye].fovDown);
         auto a = 2 / (tanr - tanl);
         auto b = 2 / (tanb - tant);
         auto c = (tanr + tanl) / (tanr - tanl);
@@ -695,7 +691,7 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer,
     // Render the eye images.
     for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
-        ovrFramebuffer_SetCurrent(frameBuffer, swapchainIndex[eye]);
+        ovrFramebuffer_SetCurrent(frameBuffer, input[eye].swapchainIndex);
 
         Recti viewport = {0,
                           0,
@@ -732,7 +728,7 @@ void destroyGraphicsNative() {
 // on resume
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
-                      const int *swapchainTextures[2],
+                      const unsigned int *swapchainTextures[2],
                       int swapchainLength) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
@@ -764,9 +760,7 @@ void destroyRenderers() {
     }
 }
 
-void setStreamConfig(StreamConfigInput config) { g_ctx.streamConfig = config; }
-
-void streamStartNative(const int *swapchainTextures[2], int swapchainLength) {
+void streamStartNative(StreamConfigInput config) {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.release();
@@ -775,27 +769,27 @@ void streamStartNative(const int *swapchainTextures[2], int swapchainLength) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.streamSwapchainTextures[eye].clear();
 
-        for (int i = 0; i < swapchainLength; i++) {
-            g_ctx.streamSwapchainTextures[eye].push_back(swapchainTextures[eye][i]);
+        for (int i = 0; i < config.swapchainLength; i++) {
+            g_ctx.streamSwapchainTextures[eye].push_back(config.swapchainTextures[eye][i]);
         }
     }
 
     g_ctx.streamRenderer = std::make_unique<ovrRenderer>();
     ovrRenderer_Create(g_ctx.streamRenderer.get(),
-                       g_ctx.streamConfig.viewWidth,
-                       g_ctx.streamConfig.viewHeight,
+                       config.viewWidth,
+                       config.viewHeight,
                        g_ctx.streamTexture.get(),
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.streamSwapchainTextures,
-                       {g_ctx.streamConfig.enableFoveation,
-                        g_ctx.streamConfig.viewWidth,
-                        g_ctx.streamConfig.viewHeight,
-                        g_ctx.streamConfig.foveationCenterSizeX,
-                        g_ctx.streamConfig.foveationCenterSizeY,
-                        g_ctx.streamConfig.foveationCenterShiftX,
-                        g_ctx.streamConfig.foveationCenterShiftY,
-                        g_ctx.streamConfig.foveationEdgeRatioX,
-                        g_ctx.streamConfig.foveationEdgeRatioY});
+                       {config.enableFoveation,
+                        config.viewWidth,
+                        config.viewHeight,
+                        config.foveationCenterSizeX,
+                        config.foveationCenterSizeY,
+                        config.foveationCenterShiftX,
+                        config.foveationCenterShiftY,
+                        config.foveationEdgeRatioX,
+                        config.foveationEdgeRatioY});
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -806,7 +800,7 @@ void updateLobbyHudTexture(const unsigned char *data) {
     memcpy(&g_ctx.hudTextureBitmap[0], data, HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
 }
 
-void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2]) {
+void renderLobbyNative(const EyeInput eyeInputs[2]) {
     // update text image
     {
         std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
@@ -826,10 +820,10 @@ void renderLobbyNative(const EyeInput eyeInputs[2], const int swapchainIndices[2
         g_ctx.hudTextureBitmap.clear();
     }
 
-    ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, swapchainIndices, true);
+    ovrRenderer_RenderFrame(g_ctx.lobbyRenderer.get(), eyeInputs, true);
 }
 
-void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2]) {
+void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchainIndices[2]) {
     GL(EGLClientBuffer clientBuffer =
            eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
     GL(EGLImageKHR image = eglCreateImageKHR(
@@ -839,7 +833,9 @@ void renderStreamNative(void *streamHardwareBuffer, const int swapchainIndices[2
     GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
     EyeInput eyeInputs[2] = {};
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, swapchainIndices, false);
+    eyeInputs[0].swapchainIndex = swapchainIndices[0];
+    eyeInputs[1].swapchainIndex = swapchainIndices[1];
+    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);
 
     GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
 }

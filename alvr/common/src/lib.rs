@@ -1,6 +1,7 @@
 mod average;
 mod logging;
 mod paths;
+mod primitives;
 mod version;
 
 use std::{
@@ -16,7 +17,6 @@ pub mod prelude {
     pub use log::{debug, error, info, warn};
 }
 
-pub use glam;
 pub use log;
 pub use once_cell;
 pub use parking_lot;
@@ -25,6 +25,7 @@ pub use semver;
 pub use average::*;
 pub use logging::*;
 pub use paths::*;
+pub use primitives::*;
 pub use version::*;
 
 pub const ALVR_NAME: &str = "ALVR";

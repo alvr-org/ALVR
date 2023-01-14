@@ -89,7 +89,7 @@ struct Render_EGL {
 
 struct Swapchain {
     ovrTextureSwapChain *inner;
-    int index;
+    uint32_t index;
 };
 
 class NativeContext {
@@ -109,7 +109,6 @@ public:
     uint32_t recommendedViewWidth = 1;
     uint32_t recommendedViewHeight = 1;
     float refreshRate = 72.f;
-    StreamingStarted_Body streamingConfig = {};
 
     uint64_t ovrFrameIndex = 0;
 
@@ -121,9 +120,8 @@ public:
 
     uint8_t lastLeftControllerBattery = 0;
     uint8_t lastRightControllerBattery = 0;
-
-    float lastIpd;
-    EyeFov lastFov;
+    float lastIpd = 0.0;
+    int lastRecenterCount = 0;
 
     std::map<uint64_t, AlvrButtonValue> previousButtonsState;
 
@@ -401,10 +399,10 @@ void updateButtons() {
 }
 
 // return fov in OpenXR convention
-EyeFov getFov(ovrTracking2 tracking, int eye) {
+AlvrFov getFov(ovrTracking2 tracking, int eye) {
     // ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
 
-    EyeFov fov;
+    AlvrFov fov;
     auto projection = tracking.Eye[eye].ProjectionMatrix;
     double a = projection.M[0][0];
     double b = projection.M[1][1];
@@ -413,8 +411,8 @@ EyeFov getFov(ovrTracking2 tracking, int eye) {
 
     fov.left = (float) atan((c - 1) / a);
     fov.right = (float) atan((c + 1) / a);
-    fov.top = -(float) atan((d - 1) / b);
-    fov.bottom = -(float) atan((d + 1) / b);
+    fov.up = -(float) atan((d - 1) / b);
+    fov.down = -(float) atan((d + 1) / b);
 
     return fov;
 }
@@ -559,16 +557,8 @@ void updateHapticsState() {
 // low frequency events.
 // This thread gets created after the creation of ovrContext and before its destruction
 void eventsThread() {
-    auto java = getOvrJava(true);
-
-    jclass cls = java.Env->GetObjectClass(java.ActivityObject);
-    jmethodID onStreamStartMethod = java.Env->GetMethodID(cls, "onStreamStart", "()V");
-    jmethodID onStreamStopMethod = java.Env->GetMethodID(cls, "onStreamStop", "()V");
-
     auto deadline = std::chrono::steady_clock::now();
     auto motionVec = std::vector<AlvrDeviceMotion>();
-
-    int recenterCount = 0;
 
     while (CTX.running) {
         if (CTX.streaming) {
@@ -595,8 +585,6 @@ void eventsThread() {
                     CTX.trackingFrameMap.pop_back();
                 }
             }
-
-            updateButtons();
 
             double controllerDisplayTimeS = vrapi_GetTimeInSeconds() +
                                             (double) alvr_get_tracker_prediction_offset_ns() / 1e9;
@@ -685,64 +673,7 @@ void eventsThread() {
             alvr_send_tracking(targetTimestampNs, &motionVec[0], motionVec.size(), leftHand,
                                rightHand);
 
-        }
-
-
-        // there is no useful event in the oculus API, ignore
-        ovrEventHeader _eventHeader;
-        auto _res = vrapi_PollEvent(&_eventHeader);
-
-        int newRecenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
-        if (recenterCount != newRecenterCount) {
-            float width, height;
-            getPlayspaceArea(&width, &height);
-            alvr_send_playspace(width, height);
-
-            recenterCount = newRecenterCount;
-        }
-
-        ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
-        auto newLeftFov = getFov(tracking, 0);
-        auto newRightFov = getFov(tracking, 1);
-        float newIpd = vrapi_GetInterpupillaryDistance(&tracking);
-
-        if (abs(newIpd - CTX.lastIpd) > IPD_EPS ||
-            abs(newLeftFov.left - CTX.lastFov.left) > IPD_EPS) {
-            EyeFov fov[2] = {newLeftFov, newRightFov};
-            alvr_send_views_config(fov, newIpd);
-            CTX.lastIpd = newIpd;
-            CTX.lastFov = newLeftFov;
-        }
-
-        uint8_t leftBattery = getControllerBattery(0);
-        if (leftBattery != CTX.lastLeftControllerBattery) {
-            alvr_send_battery(LEFT_HAND_ID, (float) leftBattery / 100.f, false);
-            CTX.lastLeftControllerBattery = leftBattery;
-        }
-        uint8_t rightBattery = getControllerBattery(1);
-        if (rightBattery != CTX.lastRightControllerBattery) {
-            alvr_send_battery(RIGHT_HAND_ID, (float) rightBattery / 100.f, false);
-            CTX.lastRightControllerBattery = rightBattery;
-        }
-
-        AlvrEvent event;
-        while (alvr_poll_event(&event)) {
-            if (event.tag == ALVR_EVENT_HAPTICS) {
-                auto haptics = event.HAPTICS;
-                int curHandIndex = (haptics.device_id == RIGHT_HAND_ID ? 0 : 1);
-                auto &s = CTX.hapticsState[curHandIndex];
-                s.startUs = 0;
-                s.endUs = (uint64_t) (haptics.duration_s * 1000'000);
-                s.amplitude = haptics.amplitude;
-                s.frequency = haptics.frequency;
-                s.fresh = true;
-                s.buffered = false;
-            } else if (event.tag == ALVR_EVENT_STREAMING_STARTED) {
-                CTX.streamingConfig = event.STREAMING_STARTED;
-                java.Env->CallVoidMethod(java.ActivityObject, onStreamStartMethod);
-            } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
-                java.Env->CallVoidMethod(java.ActivityObject, onStreamStopMethod);
-            }
+            updateButtons();
         }
 
         deadline += std::chrono::nanoseconds((uint64_t) (1e9 / CTX.refreshRate / 3));
@@ -831,7 +762,7 @@ extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
 
     vrapi_SetTrackingSpace(CTX.ovrContext, VRAPI_TRACKING_SPACE_STAGE);
 
-    std::vector<int32_t> textureHandlesBuffer[2];
+    std::vector<uint32_t> textureHandlesBuffer[2];
     for (int eye = 0; eye < 2; eye++) {
         CTX.lobbySwapchains[eye].inner =
                 vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
@@ -850,7 +781,7 @@ extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
 
         CTX.lobbySwapchains[eye].index = 0;
     }
-    const int32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
+    const uint32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
 
     CTX.running = true;
     CTX.eventsThread = std::thread(eventsThread);
@@ -863,86 +794,7 @@ extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_alvr_client_VRActivity_onStreamStartNative(JNIEnv *_env, jobject _context) {
-    auto java = getOvrJava();
-
-    CTX.refreshRate = CTX.streamingConfig.fps;
-
-    std::vector<int32_t> textureHandlesBuffer[2];
-    for (int eye = 0; eye < 2; eye++) {
-        CTX.streamSwapchains[eye].inner =
-                vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
-                                              SWAPCHAIN_FORMAT,
-                                              CTX.streamingConfig.view_width,
-                                              CTX.streamingConfig.view_height,
-                                              1,
-                                              3);
-        auto size = vrapi_GetTextureSwapChainLength(CTX.streamSwapchains[eye].inner);
-
-        for (int index = 0; index < size; index++) {
-            auto handle = vrapi_GetTextureSwapChainHandle(CTX.streamSwapchains[eye].inner, index);
-            textureHandlesBuffer[eye].push_back(handle);
-        }
-
-        CTX.streamSwapchains[eye].index = 0;
-    }
-    const int32_t *textureHandles[2] = {&textureHandlesBuffer[0][0], &textureHandlesBuffer[1][0]};
-
-    // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes
-    // discarded from VrAPI(?). Which introduces stutter animation. I think the number of discarded
-    // frames is shown as Stale in Logcat like following:
-    //    I/VrApi:
-    //    FPS=72,Prd=63ms,Tear=0,Early=0,Stale=8,VSnc=1,Lat=0,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/F/N,Mem=1804MHz,Free=989MB,PSM=0,PLS=0,Temp=36.0C/0.0C,TW=1.90ms,App=2.74ms,GD=0.00ms
-    // After enabling ExtraLatencyMode:
-    //    I/VrApi:
-    //    FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
-    // We need to set ExtraLatencyMode On to workaround for this issue.
-    vrapi_SetExtraLatencyMode(CTX.ovrContext,
-                              (ovrExtraLatencyMode) CTX.streamingConfig.extra_latency);
-
-    ovrResult result = vrapi_SetDisplayRefreshRate(CTX.ovrContext, CTX.refreshRate);
-    if (result != ovrSuccess) {
-        error("Failed to set refresh rate requested by the server: %d", result);
-    }
-
-    vrapi_SetPropertyInt(
-            &java, VRAPI_FOVEATION_LEVEL, CTX.streamingConfig.oculus_foveation_level);
-    vrapi_SetPropertyInt(
-            &java, VRAPI_DYNAMIC_FOVEATION_ENABLED, CTX.streamingConfig.dynamic_oculus_foveation);
-
-    ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
-    EyeFov fovArr[2] = {getFov(tracking, 0), getFov(tracking, 1)};
-    float ipd = vrapi_GetInterpupillaryDistance(&tracking);
-    alvr_send_views_config(fovArr, ipd);
-
-    alvr_send_battery(LEFT_HAND_ID, getControllerBattery(0) / 100.f, false);
-    alvr_send_battery(RIGHT_HAND_ID, getControllerBattery(1) / 100.f, false);
-
-    float areaWidth, areaHeight;
-    getPlayspaceArea(&areaWidth, &areaHeight);
-    alvr_send_playspace(areaWidth, areaHeight);
-
-    alvr_start_stream_opengl(textureHandles, textureHandlesBuffer[0].size());
-
-    CTX.streaming = true;
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_alvr_client_VRActivity_onStreamStopNative(JNIEnv *_env, jobject _context) {
-    CTX.streaming = false;
-
-    if (CTX.streamSwapchains[0].inner != nullptr) {
-        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[0].inner);
-        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[1].inner);
-        CTX.streamSwapchains[0].inner = nullptr;
-        CTX.streamSwapchains[1].inner = nullptr;
-    }
-}
-
-extern "C" JNIEXPORT void JNICALL
 Java_alvr_client_VRActivity_onPauseNative(JNIEnv *_env, jobject _context) {
-    Java_alvr_client_VRActivity_onStreamStopNative(_env, _context);
-
     alvr_pause();
     alvr_pause_opengl();
 
@@ -968,7 +820,142 @@ Java_alvr_client_VRActivity_onPauseNative(JNIEnv *_env, jobject _context) {
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
+Java_alvr_client_VRActivity_renderNative(JNIEnv *, jobject) {
+    auto java = getOvrJava();
+
+    // there is no useful event in the oculus API, ignore
+    ovrEventHeader _eventHeader;
+    auto _res = vrapi_PollEvent(&_eventHeader);
+
+    AlvrEvent event;
+    while (alvr_poll_event(&event)) {
+        if (event.tag == ALVR_EVENT_HUD_MESSAGE_UPDATED) {
+            uint64_t messageSize = alvr_hud_message(nullptr);
+            auto messageBuffer = std::vector<char>(messageSize, 0);
+            alvr_hud_message(&messageBuffer[0]);
+
+            alvr_update_hud_message_opengl(&messageBuffer[0]);
+        } else if (event.tag == ALVR_EVENT_STREAMING_STARTED) {
+            auto config = event.STREAMING_STARTED;
+
+            CTX.refreshRate = config.fps;
+
+            std::vector<uint32_t> textureHandlesBuffer[2];
+            for (int eye = 0; eye < 2; eye++) {
+                CTX.streamSwapchains[eye].inner =
+                        vrapi_CreateTextureSwapChain3(VRAPI_TEXTURE_TYPE_2D,
+                                                      SWAPCHAIN_FORMAT,
+                                                      config.view_width,
+                                                      config.view_height,
+                                                      1,
+                                                      3);
+                auto size = vrapi_GetTextureSwapChainLength(CTX.streamSwapchains[eye].inner);
+
+                for (int index = 0; index < size; index++) {
+                    auto handle = vrapi_GetTextureSwapChainHandle(CTX.streamSwapchains[eye].inner,
+                                                                  index);
+                    textureHandlesBuffer[eye].push_back(handle);
+                }
+
+                CTX.streamSwapchains[eye].index = 0;
+            }
+            const uint32_t *textureHandles[2] = {&textureHandlesBuffer[0][0],
+                                                 &textureHandlesBuffer[1][0]};
+
+            // On Oculus Quest, without ExtraLatencyMode frames passed to vrapi_SubmitFrame2 are sometimes
+            // discarded from VrAPI(?). Which introduces stutter animation. I think the number of discarded
+            // frames is shown as Stale in Logcat like following:
+            //    I/VrApi:
+            //    FPS=72,Prd=63ms,Tear=0,Early=0,Stale=8,VSnc=1,Lat=0,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/F/N,Mem=1804MHz,Free=989MB,PSM=0,PLS=0,Temp=36.0C/0.0C,TW=1.90ms,App=2.74ms,GD=0.00ms
+            // After enabling ExtraLatencyMode:
+            //    I/VrApi:
+            //    FPS=71,Prd=76ms,Tear=0,Early=66,Stale=0,VSnc=1,Lat=1,Fov=0,CPU4/GPU=3/3,1958/515MHz,OC=FF,TA=0/E0/0,SP=N/N/N,Mem=1804MHz,Free=906MB,PSM=0,PLS=0,Temp=38.0C/0.0C,TW=1.93ms,App=1.46ms,GD=0.00ms
+            // We need to set ExtraLatencyMode On to workaround for this issue.
+            vrapi_SetExtraLatencyMode(CTX.ovrContext, (ovrExtraLatencyMode) config.extra_latency);
+
+            vrapi_SetDisplayRefreshRate(CTX.ovrContext, CTX.refreshRate);
+
+            vrapi_SetPropertyInt(&java, VRAPI_FOVEATION_LEVEL, config.oculus_foveation_level);
+            vrapi_SetPropertyInt(&java, VRAPI_DYNAMIC_FOVEATION_ENABLED,
+                                 config.dynamic_oculus_foveation);
+
+            CTX.lastLeftControllerBattery = 0;
+            CTX.lastRightControllerBattery = 0;
+            CTX.lastIpd = 0.0;
+            CTX.lastRecenterCount = 0;
+            CTX.lastRecenterCount = -1;
+
+            auto streamConfig = AlvrStreamConfig{};
+            streamConfig.view_resolution_width = config.view_width;
+            streamConfig.view_resolution_height = config.view_height;
+            streamConfig.swapchain_textures = textureHandles;
+            streamConfig.swapchain_length = textureHandlesBuffer[0].size();
+            streamConfig.enable_foveation = config.enable_foveation;
+            streamConfig.foveation_center_size_x = config.foveation_center_size_x;
+            streamConfig.foveation_center_size_y = config.foveation_center_shift_y;
+            streamConfig.foveation_center_shift_x = config.foveation_center_shift_x;
+            streamConfig.foveation_center_shift_y = config.foveation_center_shift_y;
+            streamConfig.foveation_edge_ratio_x = config.foveation_edge_ratio_x;
+            streamConfig.foveation_edge_ratio_y = config.foveation_edge_ratio_y;
+
+            alvr_start_stream_opengl(streamConfig);
+
+            CTX.streaming = true;
+        } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
+            CTX.streaming = false;
+
+            if (CTX.streamSwapchains[0].inner != nullptr) {
+                vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[0].inner);
+                vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[1].inner);
+                CTX.streamSwapchains[0].inner = nullptr;
+                CTX.streamSwapchains[1].inner = nullptr;
+            }
+        } else if (event.tag == ALVR_EVENT_HAPTICS) {
+            auto haptics = event.HAPTICS;
+            int curHandIndex = (haptics.device_id == RIGHT_HAND_ID ? 0 : 1);
+            auto &s = CTX.hapticsState[curHandIndex];
+            s.startUs = 0;
+            s.endUs = (uint64_t) (haptics.duration_s * 1000'000);
+            s.amplitude = haptics.amplitude;
+            s.frequency = haptics.frequency;
+            s.fresh = true;
+            s.buffered = false;
+
+            updateHapticsState();
+        }
+    }
+
+    int recenterCount = vrapi_GetSystemStatusInt(&java, VRAPI_SYS_STATUS_RECENTER_COUNT);
+    if (recenterCount != CTX.lastRecenterCount) {
+        float width, height;
+        getPlayspaceArea(&width, &height);
+        alvr_send_playspace(width, height);
+
+        CTX.lastRecenterCount = recenterCount;
+    }
+
+    {
+        ovrTracking2 tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, 0.0);
+        float ipd = vrapi_GetInterpupillaryDistance(&tracking);
+
+        if (abs(ipd - CTX.lastIpd) > IPD_EPS) {
+            AlvrFov fov[2] = {getFov(tracking, 0), getFov(tracking, 1)};
+            alvr_send_views_config(fov, ipd);
+            CTX.lastIpd = ipd;
+        }
+    }
+
+    uint8_t leftBattery = getControllerBattery(0);
+    if (leftBattery != CTX.lastLeftControllerBattery) {
+        alvr_send_battery(LEFT_HAND_ID, (float) leftBattery / 100.f, false);
+        CTX.lastLeftControllerBattery = leftBattery;
+    }
+    uint8_t rightBattery = getControllerBattery(1);
+    if (rightBattery != CTX.lastRightControllerBattery) {
+        alvr_send_battery(RIGHT_HAND_ID, (float) rightBattery / 100.f, false);
+        CTX.lastRightControllerBattery = rightBattery;
+    }
+
     ovrLayerProjection2 worldLayer = vrapi_DefaultLayerProjection2();
 
     double displayTime;
@@ -997,8 +984,8 @@ Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
             }
         }
 
-        int swapchainIndices[2] = {CTX.streamSwapchains[0].index,
-                                   CTX.streamSwapchains[1].index};
+        uint32_t swapchainIndices[2] = {CTX.streamSwapchains[0].index,
+                                        CTX.streamSwapchains[1].index};
         alvr_render_stream_opengl(streamHardwareBuffer, swapchainIndices);
 
         double vsyncQueueS = vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex) -
@@ -1015,21 +1002,19 @@ Java_alvr_client_VRActivity_renderNative(JNIEnv *_env, jobject _context) {
         displayTime = vrapi_GetPredictedDisplayTime(CTX.ovrContext, CTX.ovrFrameIndex);
         tracking = vrapi_GetPredictedTracking2(CTX.ovrContext, displayTime);
 
-        AlvrEyeInput eyeInputs[2] = {};
-        int swapchainIndices[2] = {};
+        AlvrViewInput viewInputs[2] = {};
         for (int eye = 0; eye < 2; eye++) {
             auto q = tracking.HeadPose.Pose.Orientation;
             auto v = ovrMatrix4f_Inverse(&tracking.Eye[eye].ViewMatrix);
 
-            eyeInputs[eye].orientation = AlvrQuat{q.x, q.y, q.z, q.w};
-            eyeInputs[eye].position[0] = v.M[0][3];
-            eyeInputs[eye].position[1] = v.M[1][3];
-            eyeInputs[eye].position[2] = v.M[2][3];
-            eyeInputs[eye].fov = getFov(tracking, eye);
-
-            swapchainIndices[eye] = CTX.lobbySwapchains[eye].index;
+            viewInputs[eye].orientation = AlvrQuat{q.x, q.y, q.z, q.w};
+            viewInputs[eye].position[0] = v.M[0][3];
+            viewInputs[eye].position[1] = v.M[1][3];
+            viewInputs[eye].position[2] = v.M[2][3];
+            viewInputs[eye].fov = getFov(tracking, eye);
+            viewInputs[eye].swapchain_index = CTX.lobbySwapchains[eye].index;
         }
-        alvr_render_lobby_opengl(eyeInputs, swapchainIndices);
+        alvr_render_lobby_opengl(viewInputs);
 
         for (int eye = 0; eye < 2; eye++) {
             worldLayer.Textures[eye].ColorSwapChain = CTX.lobbySwapchains[eye].inner;

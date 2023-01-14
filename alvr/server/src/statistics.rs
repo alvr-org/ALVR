@@ -176,6 +176,9 @@ impl StatisticsManager {
                     + client_stats.vsync_queue,
             );
 
+            let client_fps = 1.0 / client_stats.frame_interval.as_secs_f32().min(1.0);
+            let server_fps = 1.0 / self.last_frame_present_interval.as_secs_f32().min(1.0);
+
             if self.last_full_report_instant + FULL_REPORT_INTERVAL < Instant::now() {
                 self.last_full_report_instant += FULL_REPORT_INTERVAL;
 
@@ -195,8 +198,8 @@ impl StatisticsManager {
                     fec_percentage: self.fec_percentage,
                     fec_errors_total: self.fec_errors_total,
                     fec_errors_per_sec: (self.fec_failures_partial_sum as f32 / interval_secs) as _,
-                    client_fps: (1. / client_stats.frame_interval.as_secs_f32()) as _,
-                    server_fps: (1. / self.last_frame_present_interval.as_secs_f32()) as _,
+                    client_fps: client_fps as _,
+                    server_fps: server_fps as _,
                     battery_hmd: (self
                         .battery_gauges
                         .get(&HEAD_ID)
@@ -234,8 +237,8 @@ impl StatisticsManager {
                 decoder_queue_s: client_stats.video_decoder_queue.as_secs_f32(),
                 client_compositor_s: client_stats.rendering.as_secs_f32(),
                 vsync_queue_s: client_stats.vsync_queue.as_secs_f32(),
-                client_fps: 1. / client_stats.frame_interval.as_secs_f32(),
-                server_fps: 1. / self.last_frame_present_interval.as_secs_f32(),
+                client_fps,
+                server_fps,
             }));
 
             network_latency

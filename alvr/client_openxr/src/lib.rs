@@ -361,6 +361,25 @@ pub fn entry_point() {
     let mut streaming_input_thread = None;
     let views_history = Arc::new(Mutex::new(VecDeque::new()));
 
+    let default_view = xr::View {
+        pose: xr::Posef {
+            orientation: xr::Quaternionf {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+            position: xr::Vector3f::default(),
+        },
+        fov: xr::Fovf {
+            angle_left: -0.1,
+            angle_right: 0.1,
+            angle_up: 0.1,
+            angle_down: -0.1,
+        },
+    };
+    let mut last_good_views = vec![default_view, default_view];
+
     let mut event_storage = xr::EventDataBuffer::new();
     'main_loop: loop {
         while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
@@ -603,27 +622,12 @@ pub fn entry_point() {
                     }
                 }
 
-                views = history_views.unwrap_or_else(|| {
-                    let default_view = xr::View {
-                        pose: xr::Posef {
-                            orientation: xr::Quaternionf {
-                                x: 0.0,
-                                y: 0.0,
-                                z: 0.0,
-                                w: 1.0,
-                            },
-                            position: xr::Vector3f::default(),
-                        },
-                        fov: xr::Fovf {
-                            angle_left: -0.1,
-                            angle_right: 0.1,
-                            angle_up: 0.1,
-                            angle_down: -0.1,
-                        },
-                    };
-
-                    vec![default_view, default_view]
-                });
+                views = if let Some(views) = history_views {
+                    last_good_views = views.clone();
+                    views
+                } else {
+                    last_good_views.clone()
+                };
             }
 
             view_resolution = stream_view_resolution;
@@ -636,9 +640,7 @@ pub fn entry_point() {
             swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
             swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
 
-            if !hardware_buffer.is_null() {
-                alvr_client_opengl::render_stream(hardware_buffer, [left_view_idx, right_view_idx]);
-            }
+            alvr_client_opengl::render_stream(hardware_buffer, [left_view_idx, right_view_idx]);
 
             swapchains[0].release_image().unwrap();
             swapchains[1].release_image().unwrap();

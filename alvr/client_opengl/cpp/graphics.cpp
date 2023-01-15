@@ -1,5 +1,6 @@
 #include "bindings.h"
 #include "ffr.h"
+#include "staging_pass.h"
 #include "gltf_model.h"
 #include "utils.h"
 #include <EGL/egl.h>
@@ -68,6 +69,7 @@ typedef struct {
     GLuint hudTexture;
     GltfModel *lobbyScene;
     std::unique_ptr<FFR> ffr;
+    std::unique_ptr<StagingPass> staging_pass;
     bool enableFFR;
 } ovrRenderer;
 
@@ -177,12 +179,10 @@ void main()
 )glsl";
 
 static const char FRAGMENT_SHADER[] = R"glsl(
-#extension GL_OES_EGL_image_external_essl3 : enable
-#extension GL_OES_EGL_image_external : enable
 in lowp vec2 uv;
 in lowp vec4 fragmentColor;
 out lowp vec4 outColor;
-uniform %s Texture0;
+uniform sampler2D Texture0;
 void main()
 {
     outColor = texture(Texture0, uv);
@@ -534,11 +534,16 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         Texture *streamTexture,
                         int hudTexture,
                         std::vector<GLuint> textures[2],
-                        FFRData ffrData) {
-    renderer->enableFFR = ffrData.enabled;
-    if (renderer->enableFFR) {
-        renderer->ffr = std::make_unique<FFR>(streamTexture);
-        renderer->ffr->Initialize(ffrData);
+                        FFRData ffrData,
+                        bool isLobby) {
+    if (!isLobby) {
+        renderer->staging_pass = std::make_unique<StagingPass>(streamTexture);
+        renderer->staging_pass->Initialize(width, height);
+        renderer->enableFFR = ffrData.enabled;
+        if (renderer->enableFFR) {
+            renderer->ffr = std::make_unique<FFR>(renderer->staging_pass->GetOutputTexture());
+            renderer->ffr->Initialize(ffrData);
+        }
     }
 
     // Create the frame buffers.
@@ -552,10 +557,7 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     renderer->lobbyScene = new GltfModel();
     renderer->lobbyScene->load();
 
-    std::string fragment_shader;
-    fragment_shader =
-        string_format(FRAGMENT_SHADER, renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
-    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, fragment_shader.c_str());
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER);
 
     ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
 
@@ -644,7 +646,7 @@ void renderEye(
         if (renderer->enableFFR) {
             GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
-            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->streamTexture->GetGLTexture()));
+            GL(glBindTexture(GL_TEXTURE_2D, renderer->staging_pass->GetOutputTexture()->GetGLTexture()));
         }
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
@@ -661,10 +663,6 @@ void renderEye(
 }
 
 void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], bool isLobby) {
-    if (renderer->enableFFR) {
-        renderer->ffr->Render();
-    }
-
     glm::mat4 mvpMatrix[2];
     for (int eye = 0; eye < 2; eye++) {
         auto p = input[eye].position;
@@ -745,7 +743,8 @@ void prepareLobbyRoom(int viewWidth,
                        nullptr,
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.lobbySwapchainTextures,
-                       {false});
+                       {false},
+                       true);
 }
 
 // on pause
@@ -789,7 +788,8 @@ void streamStartNative(StreamConfigInput config) {
                         config.foveationCenterShiftX,
                         config.foveationCenterShiftY,
                         config.foveationEdgeRatioX,
-                        config.foveationEdgeRatioY});
+                        config.foveationEdgeRatioY},
+                        false);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -824,18 +824,27 @@ void renderLobbyNative(const EyeInput eyeInputs[2]) {
 }
 
 void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchainIndices[2]) {
-    GL(EGLClientBuffer clientBuffer =
-           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-    GL(EGLImageKHR image = eglCreateImageKHR(
-           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+    auto renderer = g_ctx.streamRenderer.get();
 
-    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
-    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+    if (streamHardwareBuffer != 0) {
+      GL(EGLClientBuffer clientBuffer =
+             eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+      GL(EGLImageKHR image = eglCreateImageKHR(
+             g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+
+      GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+      GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
+      renderer->staging_pass->Render();
+      if (renderer->enableFFR) {
+          renderer->ffr->Render();
+      }
+
+      GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    }
 
     EyeInput eyeInputs[2] = {};
     eyeInputs[0].swapchainIndex = swapchainIndices[0];
     eyeInputs[1].swapchainIndex = swapchainIndices[1];
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);
-
-    GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    ovrRenderer_RenderFrame(renderer, eyeInputs, false);
 }

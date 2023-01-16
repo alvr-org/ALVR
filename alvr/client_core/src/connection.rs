@@ -384,10 +384,8 @@ async fn stream_pipeline(
             .subscribe_to_stream::<Haptics>(HAPTICS)
             .await?;
         async move {
-            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                receiver.recv_buffer(&mut receiver_buffer).await?;
-                let (haptics, _) = receiver_buffer.get()?;
+                let haptics = receiver.recv_header_only().await?;
 
                 EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
                     device_id: haptics.path,

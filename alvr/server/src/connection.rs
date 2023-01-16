@@ -849,11 +849,8 @@ async fn connection_pipeline(
                     / 1000.;
 
             let tracking_manager = TrackingManager::new(settings.headset);
-
-            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                receiver.recv_buffer(&mut receiver_buffer).await?;
-                let (tracking, _) = receiver_buffer.get()?;
+                let tracking = receiver.recv_header_only().await?;
 
                 let mut device_motions = vec![];
                 for (id, motion) in tracking.device_motions {
@@ -950,10 +947,8 @@ async fn connection_pipeline(
             .subscribe_to_stream::<ClientStatistics>(STATISTICS)
             .await?;
         async move {
-            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                receiver.recv_buffer(&mut receiver_buffer).await?;
-                let (client_stats, _) = receiver_buffer.get()?;
+                let client_stats = receiver.recv_header_only().await?;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let network_latency = stats.report_statistics(client_stats);

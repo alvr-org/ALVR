@@ -265,6 +265,13 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
             }
         }
     }
+
+    pub async fn recv_header_only(&mut self) -> StrResult<T> {
+        let mut buffer = ReceiverBuffer::new();
+        self.recv_buffer(&mut buffer).await?;
+
+        Ok(buffer.get()?.0)
+    }
 }
 
 pub enum StreamSocketBuilder {

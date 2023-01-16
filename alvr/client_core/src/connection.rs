@@ -6,17 +6,17 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, VideoFrame, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE,
-    IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
-use alvr_session::{AudioDeviceId, CodecType, SessionDesc};
+use alvr_session::{AudioDeviceId, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
-    PeerType, ProtoControlSocket, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
-    VideoFrameHeaderPacket, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING,
-    VIDEO,
+    PeerType, ProtoControlSocket, ReceiverBuffer, SenderBuffer, ServerControlPacket,
+    StreamConfigPacket, StreamSocketBuilder, VideoStreamingCapabilities, AUDIO, HAPTICS,
+    STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use serde_json as json;
@@ -249,6 +249,7 @@ async fn stream_pipeline(
         res = stream_socket_builder.accept_from_server(
             server_ip,
             settings.connection.stream_port,
+            settings.connection.packet_size as _
         ) => res?,
         _ = time::sleep(Duration::from_secs(5)) => {
             return fmt_e!("Timeout while setting up streams");
@@ -279,11 +280,11 @@ async fn stream_pipeline(
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *TRACKING_SENDER.lock() = Some(data_sender);
+
+            let mut sender_buffer = SenderBuffer::new();
             while let Some(tracking) = data_receiver.recv().await {
-                socket_sender
-                    .send_buffer(socket_sender.new_buffer(&tracking, 0)?)
-                    .await
-                    .ok();
+                sender_buffer.set_header(&tracking)?;
+                socket_sender.send_buffer(&sender_buffer).await.ok();
 
                 // Note: this is not the best place to report the acquired input. Instead it should
                 // be done as soon as possible (or even just before polling the input). Instead this
@@ -304,11 +305,11 @@ async fn stream_pipeline(
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *STATISTICS_SENDER.lock() = Some(data_sender);
+
+            let mut sender_buffer = SenderBuffer::new();
             while let Some(stats) = data_receiver.recv().await {
-                socket_sender
-                    .send_buffer(socket_sender.new_buffer(&stats, 0)?)
-                    .await
-                    .ok();
+                sender_buffer.set_header(&stats)?;
+                socket_sender.send_buffer(&sender_buffer).await.ok();
             }
 
             Ok(())
@@ -327,11 +328,7 @@ async fn stream_pipeline(
     IS_STREAMING.set(true);
 
     let video_receive_loop = {
-        let mut receiver = stream_socket
-            .subscribe_to_stream::<VideoFrameHeaderPacket>(VIDEO)
-            .await?;
-        let codec = settings.video.codec;
-        let enable_fec = settings.connection.enable_fec;
+        let mut receiver = stream_socket.subscribe_to_stream::<Duration>(VIDEO).await?;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -356,45 +353,24 @@ async fn stream_pipeline(
 
             let _stream_guard = StreamCloseGuard;
 
-            unsafe {
-                crate::initializeNalParser(matches!(codec, CodecType::HEVC) as _, enable_fec)
-            };
-
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
+            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                let packet = receiver.recv().await?;
+                receiver.recv_buffer(&mut receiver_buffer).await?;
+                let (timestamp, nal) = receiver_buffer.get()?;
 
                 if !IS_RESUMED.value() {
                     break Ok(());
                 }
 
-                let header = VideoFrame {
-                    packetCounter: packet.header.packet_counter,
-                    trackingFrameIndex: packet.header.tracking_frame_index,
-                    videoFrameIndex: packet.header.video_frame_index,
-                    sentTime: packet.header.sent_time,
-                    frameByteSize: packet.header.frame_byte_size,
-                    fecIndex: packet.header.fec_index,
-                    fecPercentage: packet.header.fec_percentage,
-                };
-
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_video_packet_received(Duration::from_nanos(
-                        packet.header.tracking_frame_index,
-                    ));
+                    stats.report_video_packet_received(timestamp);
                 }
 
-                let mut fec_failure = false;
-                unsafe {
-                    crate::processNalPacket(
-                        header,
-                        packet.buffer.as_ptr(),
-                        packet.buffer.len() as _,
-                        &mut fec_failure,
-                    )
-                };
-                if fec_failure {
+                decoder::push_nal(timestamp, nal);
+
+                if receiver_buffer.had_packet_loss() {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
                     }
@@ -408,14 +384,16 @@ async fn stream_pipeline(
             .subscribe_to_stream::<Haptics>(HAPTICS)
             .await?;
         async move {
+            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                let packet = receiver.recv().await?.header;
+                receiver.recv_buffer(&mut receiver_buffer).await?;
+                let (haptics, _) = receiver_buffer.get()?;
 
                 EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-                    device_id: packet.path,
-                    duration: packet.duration,
-                    frequency: packet.frequency,
-                    amplitude: packet.amplitude,
+                    device_id: haptics.path,
+                    duration: haptics.duration,
+                    frequency: haptics.frequency,
+                    amplitude: haptics.amplitude,
                 });
             }
         }

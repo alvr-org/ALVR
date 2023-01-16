@@ -188,14 +188,13 @@ void (*LogDebug)(const char *stringPtr);
 void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
-void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
+void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
 unsigned long long (*PathStringToHash)(const char *path);
 void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
-void (*ReportFecFailure)(int percentage);
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants
@@ -271,7 +270,6 @@ void ReportNetworkLatency(unsigned long long latencyUs) {
 
 void VideoErrorReportReceive() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->OnFecFailure();
         g_driver_provider.hmd->m_encoder->OnPacketLoss();
     }
 }

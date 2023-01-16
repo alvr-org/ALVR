@@ -19,8 +19,8 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
     ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
-    ServerControlPacket, StreamConfigPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
-    KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
+    ReceiverBuffer, SenderBuffer, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
+    Tracking, AUDIO, HAPTICS, KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use settings_schema::Switch;
@@ -477,7 +477,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         saturation,
         gamma,
         sharpening,
-        enable_fec: settings.connection.enable_fec,
         linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
@@ -620,6 +619,7 @@ async fn connection_pipeline(
             settings.connection.stream_protocol,
             settings.connection.server_send_buffer_bytes,
             settings.connection.server_recv_buffer_bytes,
+            settings.connection.packet_size as _,
         ) => res?,
         _ = time::sleep(Duration::from_secs(5)) => {
             return fmt_e!("Timeout while setting up streams");
@@ -769,10 +769,11 @@ async fn connection_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *VIDEO_SENDER.lock() = Some(data_sender);
 
-            while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
-                let mut buffer = socket_sender.new_buffer(&header, payload.len())?;
-                buffer.get_mut().extend(payload);
-                socket_sender.send_buffer(buffer).await.ok();
+            let mut sender_buffer = SenderBuffer::new();
+            while let Some(VideoPacket { timestamp, payload }) = data_receiver.recv().await {
+                sender_buffer.set_header(&timestamp)?;
+                sender_buffer.payload_mut().extend(payload);
+                socket_sender.send_buffer(&sender_buffer).await.ok();
             }
 
             Ok(())
@@ -800,11 +801,10 @@ async fn connection_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *HAPTICS_SENDER.lock() = Some(data_sender);
 
+            let mut sender_buffer = SenderBuffer::new();
             while let Some(haptics) = data_receiver.recv().await {
-                socket_sender
-                    .send_buffer(socket_sender.new_buffer(&haptics, 0)?)
-                    .await
-                    .ok();
+                sender_buffer.set_header(&haptics)?;
+                socket_sender.send_buffer(&sender_buffer).await.ok();
             }
 
             Ok(())
@@ -849,8 +849,11 @@ async fn connection_pipeline(
                     / 1000.;
 
             let tracking_manager = TrackingManager::new(settings.headset);
+
+            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                let tracking = receiver.recv().await?.header;
+                receiver.recv_buffer(&mut receiver_buffer).await?;
+                let (tracking, _) = receiver_buffer.get()?;
 
                 let mut device_motions = vec![];
                 for (id, motion) in tracking.device_motions {
@@ -947,8 +950,10 @@ async fn connection_pipeline(
             .subscribe_to_stream::<ClientStatistics>(STATISTICS)
             .await?;
         async move {
+            let mut receiver_buffer = ReceiverBuffer::new();
             loop {
-                let client_stats = receiver.recv().await?.header;
+                receiver.recv_buffer(&mut receiver_buffer).await?;
+                let (client_stats, _) = receiver_buffer.get()?;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let network_latency = stats.report_statistics(client_stats);
@@ -1023,9 +1028,12 @@ async fn connection_pipeline(
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
-                Ok(ClientControlPacket::VideoErrorReport) => unsafe {
-                    crate::VideoErrorReportReceive()
-                },
+                Ok(ClientControlPacket::VideoErrorReport) => {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_packet_loss();
+                    }
+                    unsafe { crate::VideoErrorReportReceive() };
+                }
                 Ok(ClientControlPacket::ViewsConfig(config)) => unsafe {
                     crate::SetViewsConfig(crate::ViewsConfigData {
                         fov: [

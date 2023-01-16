@@ -1,7 +1,7 @@
 use alvr_audio::AudioDevice;
 use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_session::AudioBufferingConfig;
-use alvr_sockets::{StreamReceiver, StreamSender};
+use alvr_sockets::{SenderBuffer, StreamReceiver, StreamSender};
 use oboe::{
     AudioInputCallback, AudioInputStreamSafe, AudioOutputCallback, AudioOutputStreamSafe,
     AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,
@@ -78,10 +78,11 @@ pub async fn record_audio_loop(
         Ok(())
     });
 
+    let mut sender_buffer = SenderBuffer::new();
     while let Some(data) = data_receiver.recv().await {
-        let mut buffer = sender.new_buffer(&(), data.len())?;
-        buffer.get_mut().extend(data);
-        sender.send_buffer(buffer).await.ok();
+        sender_buffer.payload_mut().clear();
+        sender_buffer.payload_mut().extend(data);
+        sender.send_buffer(&sender_buffer).await.ok();
     }
 
     Ok(())

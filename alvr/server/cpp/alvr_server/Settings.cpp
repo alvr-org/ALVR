@@ -162,8 +162,6 @@ void Settings::Load()
 		m_gamma = (float)config.get("gamma").get<double>();
 		m_sharpening = (float)config.get("sharpening").get<double>();
 
-		m_enableFec = config.get("enable_fec").get<bool>();
-
 		m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
 
 		m_nvencTuningPreset = (uint32_t)config.get("nvenc_tuning_preset").get<int64_t>();

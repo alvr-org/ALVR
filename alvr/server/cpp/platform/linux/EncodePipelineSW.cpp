@@ -92,6 +92,8 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 
+  encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
   int err = avcodec_open2(encoder_ctx, codec, &opt);
   if (err < 0) {
     throw alvr::AvException("Cannot open video encoder codec:", err);
@@ -126,4 +128,8 @@ void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
   if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed:", err);
   }
+}
+
+void alvr::EncodePipelineSW::GetConfigNAL() {
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size);
 }

@@ -269,3 +269,9 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
 	}
 }
+
+void VideoEncoderNVENC::GetConfigNAL() {
+	std::vector<uint8_t> header;
+	m_NvNecoder->GetSequenceParams(header);
+	InitializeDecoder(header.data(), header.size());
+}

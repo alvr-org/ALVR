@@ -6,6 +6,7 @@
 #include "amf/public/include/components/VideoEncoderHEVC.h"
 #include "amf/public/include/components/VideoConverter.h"
 #include "amf/public/include/components/PreProcessing.h"
+#include "amf/public/include/core/Buffer.h"
 #include "amf/public/common/AMFSTL.h"
 #include "amf/public/common/Thread.h"
 
@@ -63,6 +64,8 @@ public:
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR);
 	void Receive(AMFDataPtr data);
+
+	void GetConfigNAL();
 private:	
 	static const wchar_t *START_TIME_PROPERTY;
 	static const wchar_t *FRAME_INDEX_PROPERTY;

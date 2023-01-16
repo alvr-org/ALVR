@@ -67,6 +67,7 @@ pub struct BatteryPacket {
 pub enum ClientControlPacket {
     PlayspaceSync(Vec2),
     RequestIdr,
+    RequestConfigNAL,
     KeepAlive,
     StreamReady,
     ViewsConfig(ViewsConfig),

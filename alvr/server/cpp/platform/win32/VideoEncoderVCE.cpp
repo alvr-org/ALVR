@@ -158,8 +158,6 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		switch (Settings::Instance().m_rateControlMode) {
 			case ALVR_CBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
-				// Required for CBR to work correctly
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, true);
 				break;
 			case ALVR_VBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
@@ -222,8 +220,6 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 		switch (Settings::Instance().m_rateControlMode) {
 			case ALVR_CBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
-				// Required for CBR to work correctly
-				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, true);
 				break;
 			case ALVR_VBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
@@ -463,9 +459,6 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// FIXME: This option doesn't work in drivers 22.3.1 - 22.5.1, but works in 22.10.3
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
 		if (insertIDR) {
-			Debug("Inserting IDR frame for H.264.\n");
-			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_SPS, true);
-			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_PPS, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
 		}
 		break;
@@ -473,11 +466,6 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// FIXME: This option works with 22.10.3, but may not work with older drivers
 		surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
 		if (insertIDR) {
-			Debug("Inserting IDR frame for H.265.\n");
-			// Insert VPS,SPS,PPS
-			// These options don't work properly on older AMD driver (Radeon Software 17.7, AMF Runtime 1.4.4)
-			// Fixed in 18.9.2 & 1.4.9
-			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_HEADER, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_IDR);
 		}
 		break;
@@ -527,4 +515,15 @@ void VideoEncoderVCE::SkipAUD(char **buffer, int *length) {
 
 	*buffer += m_audNalSize;
 	*length -= m_audNalSize;
+}
+
+void VideoEncoderVCE::GetConfigNAL() {
+	amf::AMFVariant var;
+	if (m_codec == ALVR_CODEC_H264) {
+		m_amfComponents.back()->GetProperty(AMF_VIDEO_ENCODER_EXTRADATA, &var);
+	} else {
+		m_amfComponents.back()->GetProperty(AMF_VIDEO_ENCODER_HEVC_EXTRADATA, &var);
+	}
+	amf::AMFBufferPtr buffer(var.pInterface);
+	InitializeDecoder(reinterpret_cast<unsigned char *>(buffer->GetNative()), buffer->GetSize());
 }

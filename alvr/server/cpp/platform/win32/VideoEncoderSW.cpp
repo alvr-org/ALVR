@@ -93,8 +93,7 @@ void VideoEncoderSW::Initialize() {
 			av_dict_set(&opt, "nal-hrd", "vbr", 0);
 			break;
 	}
-	m_codecContext->rc_max_rate = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
-	m_codecContext->thread_count = Settings::Instance().m_swThreadCount;
+	m_codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
 	if((err = avcodec_open2(m_codecContext, codec, &opt))) throw MakeException("Cannot open video encoder codec: %d", err);
 
@@ -295,6 +294,10 @@ AVCodecID VideoEncoderSW::ToFFMPEGCodec(ALVR_CODEC codec) {
 		default:
 			return AV_CODEC_ID_NONE;
 	}
+}
+
+void VideoEncoderSW::GetConfigNAL() {
+	InitializeDecoder(m_codecContext->extradata, m_codecContext->extradata_size);
 }
 
 #endif // ALVR_GPL

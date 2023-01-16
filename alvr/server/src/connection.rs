@@ -1023,6 +1023,7 @@ async fn connection_pipeline(
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::RequestConfigNAL) => unsafe { crate::RequestConfigNAL() },
                 Ok(ClientControlPacket::VideoErrorReport) => unsafe {
                     crate::VideoErrorReportReceive()
                 },

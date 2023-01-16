@@ -70,7 +70,7 @@ public:
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     bool GetEncoded(std::vector<uint8_t> &out, uint64_t *pts) override;
     void SetBitrate(int64_t bitrate) override;
-
+    void GetConfigNAL() override;
 private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);
     amf::AMFComponentPtr MakePreprocessor(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height);

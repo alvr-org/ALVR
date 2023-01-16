@@ -26,6 +26,7 @@ public:
 
   virtual void PushFrame(uint64_t targetTimestampNs, bool idr) = 0;
   virtual bool GetEncoded(std::vector<uint8_t> & out, uint64_t *pts);
+  virtual void GetConfigNAL() = 0;
   virtual Timestamp GetTimestamp() { return timestamp; }
 
   virtual void SetBitrate(int64_t bitrate);

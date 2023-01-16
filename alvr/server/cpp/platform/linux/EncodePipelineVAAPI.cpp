@@ -196,6 +196,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
 
+  encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
@@ -317,4 +319,8 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
     throw alvr::AvException("avcodec_send_frame failed: ", err);
   }
   av_frame_unref(encoder_frame);
+}
+
+void alvr::EncodePipelineVAAPI::GetConfigNAL() {
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size);
 }

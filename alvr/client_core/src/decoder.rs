@@ -85,7 +85,7 @@ pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64
             show_err(decoder.push_frame_nal(timestamp, &nal, Duration::from_millis(500)));
         } else if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
             sender
-                .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                .send(alvr_sockets::ClientControlPacket::RequestConfigNAL)
                 .ok();
         }
     }

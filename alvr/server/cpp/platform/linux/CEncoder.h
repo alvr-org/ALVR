@@ -20,6 +20,7 @@ class CEncoder : public CThread {
     void Stop();
     void OnPacketLoss();
     void InsertIDR();
+    void GetConfigNAL();
     bool IsConnected() { return m_connected; }
     void CaptureFrame();
 
@@ -27,6 +28,7 @@ class CEncoder : public CThread {
     void GetFds(int client, int (*fds)[6]);
     std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
+    std::unique_ptr<alvr::EncodePipeline> m_encodePipeline;
     std::atomic_bool m_exiting{false};
     IDRScheduler m_scheduler;
     pollfd m_socket;

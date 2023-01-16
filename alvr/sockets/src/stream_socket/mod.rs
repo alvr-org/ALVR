@@ -211,6 +211,8 @@ pub struct StreamReceiver<T> {
 /// reordering entropy is too high, packets will never be successfully reconstructed.
 impl<T: DeserializeOwned> StreamReceiver<T> {
     pub async fn recv_buffer(&mut self, buffer: &mut ReceiverBuffer<T>) -> StrResult {
+        buffer.had_packet_loss = false;
+
         loop {
             let current_packet_index = self.next_packet_index;
             self.next_packet_index += 1;
@@ -244,8 +246,6 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
                                 break;
                             }
                         }
-
-                        buffer.had_packet_loss = false;
 
                         return Ok(());
                     }

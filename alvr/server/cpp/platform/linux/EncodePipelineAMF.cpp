@@ -422,19 +422,32 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
 
     vkEndCommandBuffer(m_commandBuffer);
 
-    VkSemaphore waitSemaphore = m_render->GetOutput().semaphore;
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    uint32_t waitCount = 0;
+    VkSemaphore waitSemaphores[2];
+    VkPipelineStageFlags waitStages[2];
+
+    waitSemaphores[waitCount] = m_render->GetOutput().semaphore;
+    waitStages[waitCount] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    waitCount++;
+
+    if (surfaceVk->Sync.bSubmitted) {
+        waitSemaphores[waitCount] = surfaceVk->Sync.hSemaphore;
+        waitStages[waitCount] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        waitCount++;
+    }
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &waitSemaphore;
-    submitInfo.pWaitDstStageMask = &waitStage;
+    submitInfo.waitSemaphoreCount = waitCount;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &surfaceVk->Sync.hSemaphore;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &m_commandBuffer;
     VK_CHECK(vkQueueSubmit(m_render->m_queue, 1, &submitInfo, nullptr));
+
+    surfaceVk->Sync.bSubmitted = true;
 
     m_targetTimestampNs = targetTimestampNs;
 

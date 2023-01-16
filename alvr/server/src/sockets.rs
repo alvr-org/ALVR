@@ -1,4 +1,4 @@
-use alvr_common::{StrResult, *};
+use alvr_common::{prelude::*, StrResult, *};
 use alvr_events::EventType;
 use alvr_sockets::{CONTROL_PORT, HANDSHAKE_PACKET_SIZE_BYTES, LOCAL_IP};
 use std::{
@@ -44,10 +44,14 @@ impl WelcomeSocket {
             let received_protocol_id = u64::from_le_bytes(protocol_id_bytes);
 
             if received_protocol_id != alvr_common::protocol_id() {
-                alvr_events::send_event(EventType::ClientFoundWrongVersion(format!(
+                let message = format!(
                     "Expected protocol ID {}, Found {received_protocol_id}",
                     alvr_common::protocol_id()
-                )));
+                );
+                alvr_events::send_event(EventType::ClientFoundWrongVersion(message.clone()));
+                warn!("Found incompatible client! Upgrade or downgrade");
+
+                return int_fmt_e!("{message}");
             }
 
             let mut hostname_bytes = [0; 32];

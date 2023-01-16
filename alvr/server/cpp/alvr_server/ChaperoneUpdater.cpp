@@ -13,6 +13,22 @@ using namespace alvr_chaperone;
 
 static std::mutex chaperone_mutex;
 
+#ifdef __linux__
+vr::HmdMatrix34_t GetRawZeroPose() {
+    vr::HmdMatrix34_t out = {};
+    std::unique_lock<std::mutex> lock(chaperone_mutex);
+    vr::EVRInitError error;
+    vr::VR_Init(&error, vr::VRApplication_Utility);
+    if (error != vr::VRInitError_None) {
+        Warn("Failed to init OpenVR client to get raw zero pose! Error: %d", error);
+        return out;
+    }
+    out = vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
+    vr::VR_Shutdown();
+    return out;
+}
+#endif
+
 void SetChaperone(float areaWidth, float areaHeight) {
 #ifndef __APPLE__
     const vr::HmdMatrix34_t MATRIX_IDENTITY = {

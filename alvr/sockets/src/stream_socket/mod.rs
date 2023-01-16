@@ -5,7 +5,6 @@
 // bytes while still handling the additional byte buffer with zero copies and extra allocations.
 
 mod tcp;
-mod throttled_udp;
 mod udp;
 
 use alvr_common::prelude::*;
@@ -21,7 +20,6 @@ use std::{
     sync::Arc,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
-use throttled_udp::{ThrottledUdpStreamReceiveSocket, ThrottledUdpStreamSendSocket};
 use tokio::net;
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
@@ -29,13 +27,11 @@ use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 #[derive(Clone)]
 enum StreamSendSocket {
     Udp(UdpStreamSendSocket),
-    ThrottledUdp(ThrottledUdpStreamSendSocket),
     Tcp(TcpStreamSendSocket),
 }
 
 enum StreamReceiveSocket {
     Udp(UdpStreamReceiveSocket),
-    ThrottledUdp(ThrottledUdpStreamReceiveSocket),
     Tcp(TcpStreamReceiveSocket),
 }
 
@@ -112,9 +108,6 @@ impl<T> StreamSender<T> {
                 .send(buffer.inner.freeze())
                 .await
                 .map_err(err!()),
-            StreamSendSocket::ThrottledUdp(socket) => {
-                socket.send(buffer.inner.freeze()).await.map_err(err!())
-            }
         }
     }
 }
@@ -195,7 +188,6 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
 pub enum StreamSocketBuilder {
     Tcp(net::TcpListener),
     Udp(net::UdpSocket),
-    ThrottledUdp(net::UdpSocket),
 }
 
 impl StreamSocketBuilder {
@@ -211,9 +203,6 @@ impl StreamSocketBuilder {
             ),
             SocketProtocol::Tcp => StreamSocketBuilder::Tcp(
                 tcp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?,
-            ),
-            SocketProtocol::ThrottledUdp { .. } => StreamSocketBuilder::ThrottledUdp(
-                udp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?,
             ),
         })
     }
@@ -235,14 +224,6 @@ impl StreamSocketBuilder {
                     StreamReceiveSocket::Tcp(receive_socket),
                 )
             }
-            StreamSocketBuilder::ThrottledUdp(socket) => {
-                let (send_socket, receive_socket) =
-                    throttled_udp::accept_from_server(socket, server_ip, port).await?;
-                (
-                    StreamSendSocket::ThrottledUdp(send_socket),
-                    StreamReceiveSocket::ThrottledUdp(receive_socket),
-                )
-            }
         };
 
         Ok(StreamSocket {
@@ -256,7 +237,6 @@ impl StreamSocketBuilder {
         client_ip: IpAddr,
         port: u16,
         protocol: SocketProtocol,
-        video_byterate: u32,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
     ) -> StrResult<StreamSocket> {
@@ -276,22 +256,6 @@ impl StreamSocketBuilder {
                 (
                     StreamSendSocket::Tcp(send_socket),
                     StreamReceiveSocket::Tcp(receive_socket),
-                )
-            }
-            SocketProtocol::ThrottledUdp { bitrate_multiplier } => {
-                let socket = udp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?;
-
-                let (send_socket, receive_socket) = throttled_udp::connect_to_client(
-                    socket,
-                    client_ip,
-                    port,
-                    video_byterate,
-                    bitrate_multiplier,
-                )
-                .await?;
-                (
-                    StreamSendSocket::ThrottledUdp(send_socket),
-                    StreamReceiveSocket::ThrottledUdp(receive_socket),
                 )
             }
         };
@@ -338,9 +302,6 @@ impl StreamSocket {
             }
             StreamReceiveSocket::Tcp(socket) => {
                 tcp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
-            }
-            StreamReceiveSocket::ThrottledUdp(socket) => {
-                throttled_udp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
             }
         }
     }

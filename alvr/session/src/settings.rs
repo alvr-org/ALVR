@@ -526,14 +526,6 @@ pub struct HeadsetDesc {
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum SocketProtocol {
     Udp,
-
-    #[schema(advanced)]
-    #[serde(rename_all = "camelCase")]
-    ThrottledUdp {
-        #[schema(min = 1.0, step = 0.1, gui = "UpDown")]
-        bitrate_multiplier: f32,
-    },
-
     Tcp,
 }
 
@@ -890,14 +882,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             web_server_port: 8082,
             stream_protocol: SocketProtocolDefault {
-                variant: if !cfg!(target_os = "linux") {
-                    SocketProtocolDefaultVariant::Udp
-                } else {
-                    SocketProtocolDefaultVariant::Tcp
-                },
-                ThrottledUdp: SocketProtocolThrottledUdpDefault {
-                    bitrate_multiplier: 1.5,
-                },
+                variant: SocketProtocolDefaultVariant::Udp,
             },
             server_send_buffer_bytes: SocketBufferSizeDefault {
                 Custom: 100000,

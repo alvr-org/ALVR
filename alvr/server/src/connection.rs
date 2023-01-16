@@ -50,10 +50,6 @@ fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
 
-fn mbits_to_bytes(value: u64) -> u32 {
-    (value * 1024 * 1024 / 8) as u32
-}
-
 // Alternate connection trials with manual IPs and clients discovered on the local network
 pub fn handshake_loop() -> IntResult {
     let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
@@ -622,7 +618,6 @@ async fn connection_pipeline(
             client_ip,
             settings.connection.stream_port,
             settings.connection.stream_protocol,
-            mbits_to_bytes(settings.video.encode_bitrate_mbs),
             settings.connection.server_send_buffer_bytes,
             settings.connection.server_recv_buffer_bytes,
         ) => res?,

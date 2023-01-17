@@ -365,7 +365,7 @@ pub async fn record_audio_loop(
     let mut sender_buffer = SenderBuffer::new();
     while let Some(maybe_data) = data_receiver.recv().await {
         sender_buffer.payload_mut().clear();
-        sender_buffer.payload_mut().extend(maybe_data?);
+        sender_buffer.payload_mut().extend_from_slice(&maybe_data?);
         sender.send_buffer(&sender_buffer).await.ok();
     }
 

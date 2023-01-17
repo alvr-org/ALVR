@@ -1,6 +1,6 @@
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
 use alvr_session::{AudioBufferingConfig, AudioDeviceId, LinuxAudioBackend};
-use alvr_sockets::{ReceiverBuffer, SenderBuffer, StreamReceiver, StreamSender};
+use alvr_sockets::{ReceiverBuffer, StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
@@ -362,11 +362,8 @@ pub async fn record_audio_loop(
     });
 
     // todo: reuse buffers also in the audio callback
-    let mut sender_buffer = SenderBuffer::new();
     while let Some(maybe_data) = data_receiver.recv().await {
-        sender_buffer.payload_mut().clear();
-        sender_buffer.payload_mut().extend_from_slice(&maybe_data?);
-        sender.send_buffer(&sender_buffer).await.ok();
+        sender.send(&(), maybe_data?).await.ok();
     }
 
     Ok(())

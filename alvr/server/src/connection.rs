@@ -772,7 +772,7 @@ async fn connection_pipeline(
             let mut sender_buffer = SenderBuffer::new();
             while let Some(VideoPacket { timestamp, payload }) = data_receiver.recv().await {
                 sender_buffer.set_header(&timestamp)?;
-                sender_buffer.payload_mut().extend(payload);
+                sender_buffer.payload_mut().extend_from_slice(&payload);
                 socket_sender.send_buffer(&sender_buffer).await.ok();
             }
 

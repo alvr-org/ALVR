@@ -61,54 +61,6 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
-// This should be stored and reused for multiple `send_buffer` calls.
-// WARNING: first set the header, then the payload.
-pub struct SenderBuffer<T> {
-    inner: Option<BytesMut>,
-    offset: usize,
-    _phantom: PhantomData<T>,
-}
-
-impl<T> SenderBuffer<T> {
-    pub fn new() -> Self {
-        Self {
-            inner: Some(BytesMut::new()),
-            offset: 0,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn payload_mut(&mut self) -> SendBufferLock {
-        let buffer_ref = self.inner.as_mut().unwrap();
-        let buffer_bytes = buffer_ref.split_off(self.offset);
-        SendBufferLock {
-            header_bytes: buffer_ref,
-            buffer_bytes,
-        }
-    }
-}
-
-impl<T: Serialize> SenderBuffer<T> {
-    /// Calling this will clear the payload
-    pub fn set_header(&mut self, header: &T) -> StrResult {
-        let mut buffer = self.inner.take().unwrap();
-
-        buffer.clear();
-
-        let mut buffer_writer = buffer.writer();
-        bincode::serialize_into(&mut buffer_writer, header).map_err(err!())?;
-        self.inner = Some(buffer_writer.into_inner());
-
-        Ok(())
-    }
-}
-
-impl<T> Default for SenderBuffer<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone)]
 pub struct StreamSender<T> {
     stream_id: u16,
@@ -119,41 +71,58 @@ pub struct StreamSender<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<T> StreamSender<T> {
-    pub async fn send_buffer(&mut self, buffer: &SenderBuffer<T>) -> StrResult {
+impl<T: Serialize> StreamSender<T> {
+    async fn send_buffer(&self, buffer: BytesMut) {
+        match &self.socket {
+            StreamSendSocket::Udp(socket) => socket
+                .inner
+                .lock()
+                .await
+                .feed((buffer.freeze(), socket.peer_addr))
+                .await
+                .map_err(err!())
+                .ok(),
+            StreamSendSocket::Tcp(socket) => socket
+                .lock()
+                .await
+                .feed(buffer.freeze())
+                .await
+                .map_err(err!())
+                .ok(),
+        };
+    }
+
+    pub async fn send(&mut self, header: &T, buffer: Vec<u8>) -> StrResult {
         // packet layout:
         // [ 2B (stream ID) | 4B (packet index) | 4B (packet shard count) | 4B (shard index)]
         // this escluses length delimited coding, which is handled by the TCP backend
         const OFFSET: usize = 2 + 4 + 4 + 4;
         let max_payload_size = self.max_packet_size - OFFSET;
 
-        let buffer = buffer.inner.as_ref().unwrap();
+        let data_header_size = bincode::serialized_size(header).map_err(err!()).unwrap() as usize;
 
         let shards = buffer.chunks(max_payload_size);
-        let shards_count = shards.len();
+        let shards_count = shards.len() + 1;
 
-        let mut shards_buffer = BytesMut::with_capacity(buffer.len() + shards_count * OFFSET);
+        let mut shards_buffer =
+            BytesMut::with_capacity(data_header_size + buffer.len() + shards_count * OFFSET);
+
+        {
+            shards_buffer.put_u16(self.stream_id);
+            shards_buffer.put_u32(self.next_packet_index);
+            shards_buffer.put_u32(shards_count as _);
+            shards_buffer.put_u32(0);
+            shards_buffer.put_slice(&bincode::serialize(header).map_err(err!()).unwrap());
+            self.send_buffer(shards_buffer.split()).await;
+        }
 
         for (shard_index, shard) in shards.enumerate() {
             shards_buffer.put_u16(self.stream_id);
             shards_buffer.put_u32(self.next_packet_index);
             shards_buffer.put_u32(shards_count as _);
-            shards_buffer.put_u32(shard_index as _);
+            shards_buffer.put_u32((shard_index + 1) as _);
             shards_buffer.put_slice(shard);
-            let packet = shards_buffer.split().freeze();
-
-            match &self.socket {
-                StreamSendSocket::Udp(socket) => socket
-                    .inner
-                    .lock()
-                    .await
-                    .feed((packet, socket.peer_addr))
-                    .await
-                    .map_err(err!())?,
-                StreamSendSocket::Tcp(socket) => {
-                    socket.lock().await.feed(packet).await.map_err(err!())?
-                }
-            };
+            self.send_buffer(shards_buffer.split()).await;
         }
 
         match &self.socket {

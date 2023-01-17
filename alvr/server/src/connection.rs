@@ -19,8 +19,8 @@ use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
     ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
-    ReceiverBuffer, SenderBuffer, ServerControlPacket, StreamConfigPacket, StreamSocketBuilder,
-    Tracking, AUDIO, HAPTICS, KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
+    ServerControlPacket, StreamConfigPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
+    KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use settings_schema::Switch;
@@ -769,11 +769,8 @@ async fn connection_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *VIDEO_SENDER.lock() = Some(data_sender);
 
-            let mut sender_buffer = SenderBuffer::new();
             while let Some(VideoPacket { timestamp, payload }) = data_receiver.recv().await {
-                sender_buffer.set_header(&timestamp)?;
-                sender_buffer.payload_mut().extend_from_slice(&payload);
-                socket_sender.send_buffer(&sender_buffer).await.ok();
+                socket_sender.send(&timestamp, payload).await.ok();
             }
 
             Ok(())
@@ -801,10 +798,8 @@ async fn connection_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *HAPTICS_SENDER.lock() = Some(data_sender);
 
-            let mut sender_buffer = SenderBuffer::new();
             while let Some(haptics) = data_receiver.recv().await {
-                sender_buffer.set_header(&haptics)?;
-                socket_sender.send_buffer(&sender_buffer).await.ok();
+                socket_sender.send(&haptics, vec![]).await.ok();
             }
 
             Ok(())

@@ -14,9 +14,8 @@ use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
 use alvr_session::{AudioDeviceId, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
-    PeerType, ProtoControlSocket, ReceiverBuffer, SenderBuffer, ServerControlPacket,
-    StreamConfigPacket, StreamSocketBuilder, VideoStreamingCapabilities, AUDIO, HAPTICS,
-    STATISTICS, TRACKING, VIDEO,
+    PeerType, ProtoControlSocket, ReceiverBuffer, ServerControlPacket, StreamConfigPacket,
+    StreamSocketBuilder, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use serde_json as json;
@@ -281,10 +280,8 @@ async fn stream_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *TRACKING_SENDER.lock() = Some(data_sender);
 
-            let mut sender_buffer = SenderBuffer::new();
             while let Some(tracking) = data_receiver.recv().await {
-                sender_buffer.set_header(&tracking)?;
-                socket_sender.send_buffer(&sender_buffer).await.ok();
+                socket_sender.send(&tracking, vec![]).await.ok();
 
                 // Note: this is not the best place to report the acquired input. Instead it should
                 // be done as soon as possible (or even just before polling the input). Instead this
@@ -306,10 +303,8 @@ async fn stream_pipeline(
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *STATISTICS_SENDER.lock() = Some(data_sender);
 
-            let mut sender_buffer = SenderBuffer::new();
             while let Some(stats) = data_receiver.recv().await {
-                sender_buffer.set_header(&stats)?;
-                socket_sender.send_buffer(&sender_buffer).await.ok();
+                socket_sender.send(&stats, vec![]).await.ok();
             }
 
             Ok(())

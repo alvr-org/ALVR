@@ -27,26 +27,6 @@ struct AlvrDeviceMotion {
     float angularVelocity[3];
 };
 
-struct ClientStats {
-    unsigned long long targetTimestampNs;
-    unsigned long long videoDecodeNs;
-    unsigned long long renderingNs;
-    unsigned long long vsyncQueueNs;
-    unsigned long long totalPipelineLatencyNs;
-};
-struct VideoFrame {
-    unsigned int packetCounter;
-    unsigned long long trackingFrameIndex;
-    // FEC decoder needs some value for identify video frame number to detect new frame.
-    // trackingFrameIndex becomes sometimes same value as previous video frame (in case of low
-    // tracking rate).
-    unsigned long long videoFrameIndex;
-    unsigned long long sentTime;
-    unsigned int frameByteSize;
-    unsigned int fecIndex;
-    unsigned short fecPercentage;
-    // char frameBuffer[];
-};
 enum OpenvrPropertyType {
     Bool,
     Float,
@@ -123,7 +103,7 @@ extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
-extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
+extern "C" void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len);
 extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,
                                float frequency,
@@ -133,7 +113,6 @@ extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
-extern "C" void (*ReportFecFailure)(int percentage);
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

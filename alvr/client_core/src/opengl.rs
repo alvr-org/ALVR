@@ -10,6 +10,9 @@ use glyph_brush_layout::{
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
 
+#[cfg(target_os = "android")]
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
 const HUD_TEXTURE_WIDTH: usize = 1280;
 const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
@@ -27,32 +30,32 @@ pub fn initialize() {
         pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../resources/loading.gltf");
         pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../resources/buffer.bin");
 
-        crate::LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
-        crate::LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
-        crate::LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
-        crate::LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
+        LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
+        LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
+        LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
+        LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
 
-        crate::initGraphicsNative();
+        initGraphicsNative();
     }
 }
 
 pub fn destroy() {
     #[cfg(target_os = "android")]
     unsafe {
-        crate::destroyGraphicsNative()
-    };
+        destroyGraphicsNative();
+    }
 }
 
 pub fn resume(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2]) {
-    let swapchain_length = swapchain_textures[0].len();
-    let mut swapchain_textures = [
-        swapchain_textures[0].as_ptr(),
-        swapchain_textures[1].as_ptr(),
-    ];
-
     #[cfg(target_os = "android")]
     unsafe {
-        crate::prepareLobbyRoom(
+        let swapchain_length = swapchain_textures[0].len();
+        let mut swapchain_textures = [
+            swapchain_textures[0].as_ptr(),
+            swapchain_textures[1].as_ptr(),
+        ];
+
+        prepareLobbyRoom(
             preferred_view_resolution.x as _,
             preferred_view_resolution.y as _,
             swapchain_textures.as_mut_ptr(),
@@ -64,8 +67,8 @@ pub fn resume(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2
 pub fn pause() {
     #[cfg(target_os = "android")]
     unsafe {
-        crate::destroyRenderers()
-    };
+        destroyRenderers();
+    }
 }
 
 pub fn start_stream(
@@ -73,45 +76,45 @@ pub fn start_stream(
     swapchain_textures: [Vec<u32>; 2],
     foveated_rendering: Option<FoveatedRenderingDesc>,
 ) {
-    let config = crate::StreamConfigInput {
-        viewWidth: view_resolution.x,
-        viewHeight: view_resolution.y,
-        swapchainTextures: [
-            swapchain_textures[0].as_ptr(),
-            swapchain_textures[1].as_ptr(),
-        ],
-        swapchainLength: swapchain_textures[0].len() as _,
-        enableFoveation: foveated_rendering.is_some(),
-        foveationCenterSizeX: foveated_rendering
-            .as_ref()
-            .map(|f| f.center_size_x)
-            .unwrap_or_default(),
-        foveationCenterSizeY: foveated_rendering
-            .as_ref()
-            .map(|f| f.center_size_y)
-            .unwrap_or_default(),
-        foveationCenterShiftX: foveated_rendering
-            .as_ref()
-            .map(|f| f.center_shift_x)
-            .unwrap_or_default(),
-        foveationCenterShiftY: foveated_rendering
-            .as_ref()
-            .map(|f| f.center_shift_y)
-            .unwrap_or_default(),
-        foveationEdgeRatioX: foveated_rendering
-            .as_ref()
-            .map(|f| f.edge_ratio_x)
-            .unwrap_or_default(),
-        foveationEdgeRatioY: foveated_rendering
-            .as_ref()
-            .map(|f| f.edge_ratio_y)
-            .unwrap_or_default(),
-    };
-
     #[cfg(target_os = "android")]
     unsafe {
-        crate::streamStartNative(config)
-    };
+        let config = StreamConfigInput {
+            viewWidth: view_resolution.x,
+            viewHeight: view_resolution.y,
+            swapchainTextures: [
+                swapchain_textures[0].as_ptr(),
+                swapchain_textures[1].as_ptr(),
+            ],
+            swapchainLength: swapchain_textures[0].len() as _,
+            enableFoveation: foveated_rendering.is_some(),
+            foveationCenterSizeX: foveated_rendering
+                .as_ref()
+                .map(|f| f.center_size_x)
+                .unwrap_or_default(),
+            foveationCenterSizeY: foveated_rendering
+                .as_ref()
+                .map(|f| f.center_size_y)
+                .unwrap_or_default(),
+            foveationCenterShiftX: foveated_rendering
+                .as_ref()
+                .map(|f| f.center_shift_x)
+                .unwrap_or_default(),
+            foveationCenterShiftY: foveated_rendering
+                .as_ref()
+                .map(|f| f.center_shift_y)
+                .unwrap_or_default(),
+            foveationEdgeRatioX: foveated_rendering
+                .as_ref()
+                .map(|f| f.edge_ratio_x)
+                .unwrap_or_default(),
+            foveationEdgeRatioY: foveated_rendering
+                .as_ref()
+                .map(|f| f.edge_ratio_y)
+                .unwrap_or_default(),
+        };
+
+        streamStartNative(config);
+    }
 }
 
 pub fn update_hud_message(message: &str) {
@@ -154,41 +157,41 @@ pub fn update_hud_message(message: &str) {
 
     #[cfg(target_os = "android")]
     unsafe {
-        crate::updateLobbyHudTexture(buffer.as_ptr())
-    };
+        updateLobbyHudTexture(buffer.as_ptr());
+    }
 }
 
 pub fn render_lobby(view_inputs: [RenderViewInput; 2]) {
-    let eye_inputs = [
-        crate::EyeInput {
-            position: view_inputs[0].position.to_array(),
-            orientation: view_inputs[0].orientation.to_array(),
-            fovLeft: view_inputs[0].fov.left,
-            fovRight: view_inputs[0].fov.right,
-            fovUp: view_inputs[0].fov.up,
-            fovDown: view_inputs[0].fov.down,
-            swapchainIndex: view_inputs[0].swapchain_index as _,
-        },
-        crate::EyeInput {
-            position: view_inputs[1].position.to_array(),
-            orientation: view_inputs[1].orientation.to_array(),
-            fovLeft: view_inputs[1].fov.left,
-            fovRight: view_inputs[1].fov.right,
-            fovUp: view_inputs[1].fov.up,
-            fovDown: view_inputs[1].fov.down,
-            swapchainIndex: view_inputs[1].swapchain_index as _,
-        },
-    ];
-
     #[cfg(target_os = "android")]
     unsafe {
-        crate::renderLobbyNative(eye_inputs.as_ptr())
-    };
+        let eye_inputs = [
+            EyeInput {
+                position: view_inputs[0].position.to_array(),
+                orientation: view_inputs[0].orientation.to_array(),
+                fovLeft: view_inputs[0].fov.left,
+                fovRight: view_inputs[0].fov.right,
+                fovUp: view_inputs[0].fov.up,
+                fovDown: view_inputs[0].fov.down,
+                swapchainIndex: view_inputs[0].swapchain_index as _,
+            },
+            EyeInput {
+                position: view_inputs[1].position.to_array(),
+                orientation: view_inputs[1].orientation.to_array(),
+                fovLeft: view_inputs[1].fov.left,
+                fovRight: view_inputs[1].fov.right,
+                fovUp: view_inputs[1].fov.up,
+                fovDown: view_inputs[1].fov.down,
+                swapchainIndex: view_inputs[1].swapchain_index as _,
+            },
+        ];
+
+        renderLobbyNative(eye_inputs.as_ptr());
+    }
 }
 
 pub fn render_stream(hardware_buffer: *mut std::ffi::c_void, swapchain_indices: [u32; 2]) {
     #[cfg(target_os = "android")]
     unsafe {
-        crate::renderStreamNative(hardware_buffer, swapchain_indices.as_ptr())
-    };
+        renderStreamNative(hardware_buffer, swapchain_indices.as_ptr());
+    }
 }

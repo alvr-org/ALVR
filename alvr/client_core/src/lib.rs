@@ -21,8 +21,6 @@ mod audio;
 pub use decoder::get_frame;
 pub use logging_backend::init_logging;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
 use alvr_common::{
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
@@ -97,10 +95,6 @@ pub fn initialize(
     external_decoder: bool,
 ) {
     logging_backend::init_logging();
-
-    unsafe {
-        pushNal = Some(decoder::push_nal);
-    }
 
     // Make sure to reset config in case of version compat mismatch.
     if Config::load().protocol_id != alvr_common::protocol_id() {

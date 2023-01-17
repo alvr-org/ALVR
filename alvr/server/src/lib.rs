@@ -30,9 +30,7 @@ use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
-use alvr_sockets::{
-    ClientListAction, GpuVendor, Haptics, ServerControlPacket, VideoFrameHeaderPacket,
-};
+use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -62,7 +60,7 @@ static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(No
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
 pub struct VideoPacket {
-    pub header: VideoFrameHeaderPacket,
+    pub timestamp: Duration,
     pub payload: Vec<u8>,
 }
 
@@ -348,35 +346,22 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn video_send(header: VideoFrame, buffer_ptr: *mut u8, len: i32) {
+    extern "C" fn video_send(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32) {
         if let Some(sender) = &*VIDEO_SENDER.lock() {
-            let header = VideoFrameHeaderPacket {
-                packet_counter: header.packetCounter,
-                tracking_frame_index: header.trackingFrameIndex,
-                video_frame_index: header.videoFrameIndex,
-                sent_time: header.sentTime,
-                frame_byte_size: header.frameByteSize,
-                fec_index: header.fecIndex,
-                fec_percentage: header.fecPercentage,
-            };
+            let timestamp = Duration::from_nanos(timestamp_ns);
 
-            let mut vec_buffer = vec![0; len as _];
+            let mut payload = vec![0; len as _];
 
             // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
             unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, vec_buffer.as_mut_ptr(), len as _);
+                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), len as _);
             }
 
             if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
-                sender.send(vec_buffer.clone()).ok();
+                sender.send(payload.clone()).ok();
             }
 
-            sender
-                .send(VideoPacket {
-                    header,
-                    payload: vec_buffer,
-                })
-                .ok();
+            sender.send(VideoPacket { timestamp, payload }).ok();
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet(len as _);
@@ -449,12 +434,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn report_fec_failure(percentage: i32) {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_fec_failure(percentage as u32);
-        }
-    }
-
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
@@ -469,7 +448,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
     ReportEncoded = Some(report_encoded);
-    ReportFecFailure = Some(report_fec_failure);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

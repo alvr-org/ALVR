@@ -1,6 +1,6 @@
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
 use alvr_session::{AudioBufferingConfig, AudioDeviceId, LinuxAudioBackend};
-use alvr_sockets::{StreamReceiver, StreamSender};
+use alvr_sockets::{ReceiverBuffer, SenderBuffer, StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Sample, SampleFormat, StreamConfig,
@@ -361,11 +361,12 @@ pub async fn record_audio_loop(
         }
     });
 
+    // todo: reuse buffers also in the audio callback
+    let mut sender_buffer = SenderBuffer::new();
     while let Some(maybe_data) = data_receiver.recv().await {
-        let data = maybe_data?;
-        let mut buffer = sender.new_buffer(&(), data.len())?;
-        buffer.get_mut().extend(data);
-        sender.send_buffer(buffer).await.ok();
+        sender_buffer.payload_mut().clear();
+        sender_buffer.payload_mut().extend(maybe_data?);
+        sender.send_buffer(&sender_buffer).await.ok();
     }
 
     Ok(())
@@ -412,18 +413,20 @@ pub async fn receive_samples_loop(
     batch_frames_count: usize,
     average_buffer_frames_count: usize,
 ) -> StrResult {
+    let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
     loop {
-        let packet = receiver.recv().await?;
+        receiver.recv_buffer(&mut receiver_buffer).await?;
+        let (_, packet) = receiver_buffer.get()?;
+
         let new_samples = packet
-            .buffer
             .chunks_exact(2)
             .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
             .collect::<Vec<_>>();
 
         let mut sample_buffer_ref = sample_buffer.lock();
 
-        if packet.had_packet_loss {
+        if receiver_buffer.had_packet_loss() {
             info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
@@ -440,7 +443,7 @@ pub async fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || packet.had_packet_loss {
+        if sample_buffer_ref.len() == 0 || receiver_buffer.had_packet_loss() {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -454,7 +457,7 @@ pub async fn receive_samples_loop(
                     }
                 }
 
-                if packet.had_packet_loss
+                if receiver_buffer.had_packet_loss()
                     && sample_buffer_ref.len() / channels_count == batch_frames_count
                 {
                     // Add a fade-out to make a cross-fade.

@@ -9,7 +9,7 @@ mod udp;
 
 use alvr_common::prelude::*;
 use alvr_session::{SocketBufferSize, SocketProtocol};
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -120,19 +120,6 @@ pub struct StreamSender<T> {
 }
 
 impl<T> StreamSender<T> {
-    pub async fn feed_socket(&mut self, packet: Bytes) -> StrResult {
-        match &self.socket {
-            StreamSendSocket::Udp(socket) => socket
-                .inner
-                .lock()
-                .await
-                .feed((packet, socket.peer_addr))
-                .await
-                .map_err(err!()),
-            StreamSendSocket::Tcp(socket) => socket.lock().await.feed(packet).await.map_err(err!()),
-        }
-    }
-
     pub async fn send_buffer(&mut self, buffer: &SenderBuffer<T>) -> StrResult {
         // packet layout:
         // [ 2B (stream ID) | 4B (packet index) | 4B (packet shard count) | 4B (shard index)]
@@ -153,8 +140,20 @@ impl<T> StreamSender<T> {
             shards_buffer.put_u32(shards_count as _);
             shards_buffer.put_u32(shard_index as _);
             shards_buffer.put_slice(shard);
+            let packet = shards_buffer.split().freeze();
 
-            self.feed_socket(shards_buffer.split().freeze()).await?;
+            match &self.socket {
+                StreamSendSocket::Udp(socket) => socket
+                    .inner
+                    .lock()
+                    .await
+                    .feed((packet, socket.peer_addr))
+                    .await
+                    .map_err(err!())?,
+                StreamSendSocket::Tcp(socket) => {
+                    socket.lock().await.feed(packet).await.map_err(err!())?
+                }
+            };
         }
 
         match &self.socket {

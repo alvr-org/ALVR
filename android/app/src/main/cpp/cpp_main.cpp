@@ -785,6 +785,18 @@ extern "C" JNIEXPORT void JNICALL Java_alvr_client_VRActivity_onResumeNative(
 
 extern "C" JNIEXPORT void JNICALL
 Java_alvr_client_VRActivity_onPauseNative(JNIEnv *_env, jobject _context) {
+    if (CTX.streaming) {
+        CTX.streaming = false;
+        CTX.inputThread.join();
+    }
+
+    if (CTX.streamSwapchains[0].inner != nullptr) {
+        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[0].inner);
+        vrapi_DestroyTextureSwapChain(CTX.streamSwapchains[1].inner);
+        CTX.streamSwapchains[0].inner = nullptr;
+        CTX.streamSwapchains[1].inner = nullptr;
+    }
+
     alvr_pause();
     alvr_pause_opengl();
 

@@ -136,7 +136,7 @@ pub struct LatencyUseFrametimeDesc {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct AdaptiveBitrateDesc {
-    #[schema(min = 10, max = 500, step = 1)]
+    #[schema(min = 10, max = 1000, step = 1)]
     pub bitrate_maximum: u64,
 
     #[schema(advanced, min = 1000, max = 25000, step = 500)]
@@ -273,7 +273,7 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub sw_thread_count: u32,
 
-    #[schema(min = 1, max = 500)]
+    #[schema(min = 1, max = 1000)]
     pub encode_bitrate_mbs: u64,
 
     pub adaptive_bitrate: Switch<AdaptiveBitrateDesc>,

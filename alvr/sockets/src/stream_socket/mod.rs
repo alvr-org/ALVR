@@ -171,6 +171,7 @@ impl<T: DeserializeOwned> ReceiverBuffer<T> {
 pub struct StreamReceiver<T> {
     receiver: mpsc::UnboundedReceiver<BytesMut>,
     next_packet_shards: HashMap<usize, BytesMut>,
+    next_packet_shards_count: Option<usize>,
     next_packet_index: u32,
     _phantom: PhantomData<T>,
 }
@@ -189,16 +190,10 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
                 HashMap::with_capacity(self.next_packet_shards.capacity());
             mem::swap(&mut current_packet_shards, &mut self.next_packet_shards);
 
+            let mut current_packet_shards_count = self.next_packet_shards_count.take();
+
             loop {
-                let mut shard = self.receiver.recv().await.ok_or_else(enone!())?;
-
-                let shard_packet_index = shard.get_u32();
-                let shards_count = shard.get_u32() as usize;
-                let shard_index = shard.get_u32() as usize;
-
-                if shard_packet_index == current_packet_index {
-                    current_packet_shards.insert(shard_index, shard);
-
+                if let Some(shards_count) = current_packet_shards_count {
                     if current_packet_shards.len() >= shards_count {
                         buffer.inner.clear();
 
@@ -217,14 +212,35 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
 
                         return Ok(());
                     }
+                }
+
+                let mut shard = self.receiver.recv().await.ok_or_else(enone!())?;
+
+                let shard_packet_index = shard.get_u32();
+                let shards_count = shard.get_u32() as usize;
+                let shard_index = shard.get_u32() as usize;
+
+                if shard_packet_index == current_packet_index {
+                    current_packet_shards.insert(shard_index, shard);
+                    current_packet_shards_count = Some(shards_count);
                 } else if shard_packet_index == self.next_packet_index {
                     self.next_packet_shards.insert(shard_index, shard);
+                    self.next_packet_shards_count = Some(shards_count);
+
+                    // This happens if the next packet was completed before the current packet. This
+                    // is very common if the packet contains only one shard.
+                    if self.next_packet_shards.len() == shards_count {
+                        buffer.had_packet_loss = true;
+
+                        break;
+                    }
                 } else if shard_packet_index > self.next_packet_index {
                     debug!("Shard with packet index too new. Signaling packet loss.");
                     buffer.had_packet_loss = true;
 
                     self.next_packet_shards.clear();
                     self.next_packet_shards.insert(shard_index, shard);
+                    self.next_packet_shards_count = Some(shards_count);
                     self.next_packet_index = shard_packet_index;
 
                     break;
@@ -358,6 +374,7 @@ impl StreamSocket {
         Ok(StreamReceiver {
             receiver,
             next_packet_shards: HashMap::new(),
+            next_packet_shards_count: None,
             next_packet_index: 0,
             _phantom: PhantomData,
         })

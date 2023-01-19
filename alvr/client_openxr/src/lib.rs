@@ -1,6 +1,6 @@
 mod interaction;
 
-use alvr_client_core::{ClientCoreEvent, opengl::RenderViewInput};
+use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::Mutex,
@@ -34,6 +34,8 @@ struct StreamingInputContext {
 
 struct EglContext {
     instance: egl::DynamicInstance<EGL1_4>,
+    display: egl::Display,
+    config: egl::Config,
     context: egl::Context,
     dummy_surface: egl::Surface,
 }
@@ -64,15 +66,7 @@ fn to_xr_time(timestamp: Duration) -> xr::Time {
 }
 
 #[allow(unused_variables)]
-fn init_xr_session_egl(
-    xr_instance: &xr::Instance,
-    xr_system: xr::SystemId,
-) -> (
-    EglContext,
-    xr::Session<xr::OpenGlEs>,
-    xr::FrameWaiter,
-    xr::FrameStream<xr::OpenGlEs>,
-) {
+fn init_egl() -> EglContext {
     let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
 
     let display = instance.get_display(egl::DEFAULT_DISPLAY).unwrap();
@@ -129,33 +123,13 @@ fn init_xr_session_egl(
         )
         .unwrap();
 
-    #[cfg(target_os = "android")]
-    {
-        let (xr_session, xr_frame_waiter, xr_frame_stream) = unsafe {
-            xr_instance.create_session(
-                xr_system,
-                &xr::opengles::SessionCreateInfo::Android {
-                    display: display.as_ptr(),
-                    config: config.as_ptr(),
-                    context: context.as_ptr(),
-                },
-            )
-        }
-        .unwrap();
-
-        (
-            EglContext {
-                instance,
-                context,
-                dummy_surface,
-            },
-            xr_session,
-            xr_frame_waiter,
-            xr_frame_stream,
-        )
+    EglContext {
+        instance,
+        display,
+        config,
+        context,
+        dummy_surface,
     }
-    #[cfg(not(target_os = "android"))]
-    unimplemented!()
 }
 
 pub fn create_swapchain(
@@ -315,93 +289,230 @@ pub fn entry_point() {
         )
         .unwrap();
 
-    let xr_system = xr_instance
-        .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
+    let egl_context = init_egl();
+
+    'session_loop: loop {
+        let xr_system = xr_instance
+            .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
+            .unwrap();
+
+        // mandatory call
+        let _ = xr_instance
+            .graphics_requirements::<xr::OpenGlEs>(xr_system)
+            .unwrap();
+
+        let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) = unsafe {
+            xr_instance.create_session(
+                xr_system,
+                #[cfg(target_os = "android")]
+                &xr::opengles::SessionCreateInfo::Android {
+                    display: egl_context.display.as_ptr(),
+                    config: egl_context.config.as_ptr(),
+                    context: egl_context.context.as_ptr(),
+                },
+                #[cfg(not(target_os = "android"))]
+                todo!(),
+            )
+        }
         .unwrap();
 
-    // mandatory call
-    let _ = xr_instance
-        .graphics_requirements::<xr::OpenGlEs>(xr_system)
-        .unwrap();
+        let views = xr_instance
+            .enumerate_view_configuration_views(
+                xr_system,
+                xr::ViewConfigurationType::PRIMARY_STEREO,
+            )
+            .unwrap();
+        assert_eq!(views.len(), 2);
 
-    let (_egl_context, xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
-        init_xr_session_egl(&xr_instance, xr_system);
+        let recommended_resolution = UVec2::new(
+            views[0].recommended_image_rect_width,
+            views[0].recommended_image_rect_height,
+        );
 
-    let views = xr_instance
-        .enumerate_view_configuration_views(xr_system, xr::ViewConfigurationType::PRIMARY_STEREO)
-        .unwrap();
-    assert_eq!(views.len(), 2);
+        alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
+        alvr_client_core::opengl::initialize();
 
-    let recommended_resolution = UVec2::new(
-        views[0].recommended_image_rect_width,
-        views[0].recommended_image_rect_height,
-    );
+        let streaming_interaction_context =
+            Arc::new(interaction::initialize_streaming_interaction(
+                &xr_instance,
+                xr_system,
+                &xr_session.clone().into_any_graphics(),
+            ));
 
-    alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
-    alvr_client_core::opengl::initialize();
+        let reference_space = Arc::new(
+            xr_session
+                .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
+                .unwrap(),
+        );
 
-    let streaming_interaction_context = Arc::new(interaction::initialize_streaming_interaction(
-        &xr_instance,
-        xr_system,
-        &xr_session.clone().into_any_graphics(),
-    ));
+        let is_streaming = Arc::new(RelaxedAtomic::new(false));
 
-    let reference_space = Arc::new(
-        xr_session
-            .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
-            .unwrap(),
-    );
+        let mut lobby_swapchains = None;
+        let mut stream_swapchains = None;
+        let mut stream_view_resolution = UVec2::ZERO;
+        let mut streaming_input_thread = None;
+        let views_history = Arc::new(Mutex::new(VecDeque::new()));
 
-    let is_streaming = Arc::new(RelaxedAtomic::new(false));
-
-    let mut lobby_swapchains = None;
-    let mut stream_swapchains = None;
-    let mut stream_view_resolution = UVec2::ZERO;
-    let mut streaming_input_thread = None;
-    let views_history = Arc::new(Mutex::new(VecDeque::new()));
-
-    let default_view = xr::View {
-        pose: xr::Posef {
-            orientation: xr::Quaternionf {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-                w: 1.0,
+        let default_view = xr::View {
+            pose: xr::Posef {
+                orientation: xr::Quaternionf {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                    w: 1.0,
+                },
+                position: xr::Vector3f::default(),
             },
-            position: xr::Vector3f::default(),
-        },
-        fov: xr::Fovf {
-            angle_left: -0.1,
-            angle_right: 0.1,
-            angle_up: 0.1,
-            angle_down: -0.1,
-        },
-    };
-    let mut last_good_views = vec![default_view, default_view];
+            fov: xr::Fovf {
+                angle_left: -0.1,
+                angle_right: 0.1,
+                angle_up: 0.1,
+                angle_down: -0.1,
+            },
+        };
+        let mut last_good_views = vec![default_view, default_view];
 
-    let mut event_storage = xr::EventDataBuffer::new();
-    'main_loop: loop {
-        while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
-            match event {
-                xr::Event::EventsLost(e) => {
-                    error!("OpenXR: lost {} events!", e.lost_event_count());
+        let mut event_storage = xr::EventDataBuffer::new();
+        'render_loop: loop {
+            while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
+                match event {
+                    xr::Event::EventsLost(e) => {
+                        error!("OpenXR: lost {} events!", e.lost_event_count());
+                    }
+                    xr::Event::InstanceLossPending(_) => break 'session_loop,
+                    xr::Event::SessionStateChanged(e) => match e.state() {
+                        xr::SessionState::READY => {
+                            xr_session
+                                .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
+                                .unwrap();
+
+                            let swapchains = lobby_swapchains.get_or_insert_with(|| {
+                                [
+                                    create_swapchain(&xr_session, recommended_resolution),
+                                    create_swapchain(&xr_session, recommended_resolution),
+                                ]
+                            });
+
+                            alvr_client_core::opengl::resume(
+                                recommended_resolution,
+                                [
+                                    swapchains[0]
+                                        .enumerate_images()
+                                        .unwrap()
+                                        .iter()
+                                        .map(|i| *i as _)
+                                        .collect(),
+                                    swapchains[1]
+                                        .enumerate_images()
+                                        .unwrap()
+                                        .iter()
+                                        .map(|i| *i as _)
+                                        .collect(),
+                                ],
+                            );
+
+                            alvr_client_core::resume();
+                        }
+                        xr::SessionState::STOPPING => {
+                            alvr_client_core::pause();
+
+                            alvr_client_core::opengl::pause();
+
+                            lobby_swapchains.take();
+
+                            xr_session.end().unwrap();
+                        }
+                        xr::SessionState::EXITING => {
+                            break 'session_loop;
+                        }
+                        xr::SessionState::LOSS_PENDING => {
+                            break 'render_loop;
+                        }
+                        _ => (),
+                    },
+                    xr::Event::ReferenceSpaceChangePending(_) => {
+                        // e.
+                    }
+                    xr::Event::PerfSettingsEXT(e) => {
+                        info!(
+                            "Perf: from {:?} to {:?}, domain: {:?}/{:?}",
+                            e.from_level(),
+                            e.to_level(),
+                            e.domain(),
+                            e.sub_domain(),
+                        );
+                    }
+                    xr::Event::InteractionProfileChanged(_) => {
+                        // todo
+                    }
+                    xr::Event::PassthroughStateChangedFB(_) => {
+                        // todo
+                    }
+                    _ => (),
+                    // not used:
+                    // VisibilityMaskChangedKHR
+                    // MainSessionVisibilityChangedEXTX
+                    // DisplayRefreshRateChangedFB
+                    // SpatialAnchorCreateCompleteFB
+                    // SpaceSetStatusCompleteFB
+                    // SpaceQueryResultsAvailableFB
+                    // SpaceQueryCompleteFB
+                    // SpaceSaveCompleteFB
+                    // SpaceEraseCompleteFB
+                    // ViveTrackerConnectedHTCX
+                    // MarkerTrackingUpdateVARJO
                 }
-                xr::Event::InstanceLossPending(_) => break 'main_loop,
-                xr::Event::SessionStateChanged(e) => match e.state() {
-                    xr::SessionState::READY => {
-                        xr_session
-                            .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
-                            .unwrap();
+            }
 
-                        let swapchains = lobby_swapchains.get_or_insert_with(|| {
+            let lobby_swapchains = if let Some(swapchains) = &mut lobby_swapchains {
+                swapchains
+            } else {
+                thread::sleep(Duration::from_millis(100));
+                continue;
+            };
+
+            while let Some(event) = alvr_client_core::poll_event() {
+                match event {
+                    ClientCoreEvent::UpdateHudMessage(message) => {
+                        alvr_client_core::opengl::update_hud_message(&message);
+                    }
+                    ClientCoreEvent::StreamingStarted {
+                        view_resolution,
+                        fps,
+                        foveated_rendering,
+                        oculus_foveation_level,
+                        dynamic_oculus_foveation,
+                        extra_latency,
+                    } => {
+                        xr_session.request_display_refresh_rate(fps).unwrap();
+
+                        stream_view_resolution = view_resolution;
+
+                        is_streaming.set(true);
+
+                        let context = StreamingInputContext {
+                            is_streaming: Arc::clone(&is_streaming),
+                            frame_interval: Duration::from_secs_f32(1.0 / fps),
+                            xr_instance: xr_instance.clone(),
+                            xr_session: xr_session.clone().into_any_graphics(),
+                            interaction_context: Arc::clone(&streaming_interaction_context),
+                            reference_space: Arc::clone(&reference_space),
+                            views_history: Arc::clone(&views_history),
+                        };
+
+                        streaming_input_thread = Some(thread::spawn(|| {
+                            streaming_input_loop(context);
+                        }));
+
+                        let swapchains = stream_swapchains.get_or_insert_with(|| {
                             [
-                                create_swapchain(&xr_session, recommended_resolution),
-                                create_swapchain(&xr_session, recommended_resolution),
+                                create_swapchain(&xr_session, stream_view_resolution),
+                                create_swapchain(&xr_session, stream_view_resolution),
                             ]
                         });
 
-                        alvr_client_core::opengl::resume(
-                            recommended_resolution,
+                        alvr_client_core::opengl::start_stream(
+                            view_resolution,
                             [
                                 swapchains[0]
                                     .enumerate_images()
@@ -416,326 +527,210 @@ pub fn entry_point() {
                                     .map(|i| *i as _)
                                     .collect(),
                             ],
+                            foveated_rendering,
                         );
-
-                        alvr_client_core::resume();
                     }
-                    xr::SessionState::STOPPING => {
-                        alvr_client_core::pause();
+                    ClientCoreEvent::StreamingStopped => {
+                        stream_swapchains.take();
 
-                        alvr_client_core::opengl::pause();
+                        is_streaming.set(false);
 
-                        lobby_swapchains.take();
-
-                        xr_session.end().unwrap();
+                        if let Some(thread) = streaming_input_thread.take() {
+                            thread.join().unwrap();
+                        }
                     }
-                    xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
-                        break 'main_loop;
+                    ClientCoreEvent::Haptics {
+                        device_id,
+                        duration,
+                        frequency,
+                        amplitude,
+                    } => {
+                        let action = if device_id == *LEFT_HAND_ID {
+                            &streaming_interaction_context
+                                .left_hand_source
+                                .vibration_action
+                        } else {
+                            &streaming_interaction_context
+                                .right_hand_source
+                                .vibration_action
+                        };
+
+                        action
+                            .apply_feedback(
+                                &xr_session,
+                                xr::Path::NULL,
+                                &xr::HapticVibration::new()
+                                    .amplitude(amplitude)
+                                    .frequency(frequency)
+                                    .duration(xr::Duration::from_nanos(duration.as_nanos() as _)),
+                            )
+                            .unwrap();
                     }
-                    _ => (),
-                },
-                xr::Event::ReferenceSpaceChangePending(_) => {
-                    // e.
+                    _ => panic!(),
                 }
-                xr::Event::PerfSettingsEXT(e) => {
-                    info!(
-                        "Perf: from {:?} to {:?}, domain: {:?}/{:?}",
-                        e.from_level(),
-                        e.to_level(),
-                        e.domain(),
-                        e.sub_domain(),
-                    );
-                }
-                xr::Event::InteractionProfileChanged(_) => {
-                    // todo
-                }
-                xr::Event::PassthroughStateChangedFB(_) => {
-                    // todo
-                }
-                _ => (),
-                // not used:
-                // VisibilityMaskChangedKHR
-                // MainSessionVisibilityChangedEXTX
-                // DisplayRefreshRateChangedFB
-                // SpatialAnchorCreateCompleteFB
-                // SpaceSetStatusCompleteFB
-                // SpaceQueryResultsAvailableFB
-                // SpaceQueryCompleteFB
-                // SpaceSaveCompleteFB
-                // SpaceEraseCompleteFB
-                // ViveTrackerConnectedHTCX
-                // MarkerTrackingUpdateVARJO
             }
-        }
 
-        let lobby_swapchains = if let Some(swapchains) = &mut lobby_swapchains {
-            swapchains
-        } else {
-            thread::sleep(Duration::from_millis(100));
-            continue;
-        };
-
-        while let Some(event) = alvr_client_core::poll_event() {
-            match event {
-                ClientCoreEvent::UpdateHudMessage(message) => {
-                    alvr_client_core::opengl::update_hud_message(&message);
+            let frame_state = match xr_frame_waiter.wait() {
+                Ok(state) => state,
+                Err(e) => {
+                    error!("{e}");
+                    panic!();
                 }
-                ClientCoreEvent::StreamingStarted {
-                    view_resolution,
-                    fps,
-                    foveated_rendering,
-                    oculus_foveation_level,
-                    dynamic_oculus_foveation,
-                    extra_latency,
-                } => {
-                    xr_session.request_display_refresh_rate(fps).unwrap();
-
-                    stream_view_resolution = view_resolution;
-
-                    is_streaming.set(true);
-
-                    let context = StreamingInputContext {
-                        is_streaming: Arc::clone(&is_streaming),
-                        frame_interval: Duration::from_secs_f32(1.0 / fps),
-                        xr_instance: xr_instance.clone(),
-                        xr_session: xr_session.clone().into_any_graphics(),
-                        interaction_context: Arc::clone(&streaming_interaction_context),
-                        reference_space: Arc::clone(&reference_space),
-                        views_history: Arc::clone(&views_history),
-                    };
-
-                    streaming_input_thread = Some(thread::spawn(|| {
-                        streaming_input_loop(context);
-                    }));
-
-                    let swapchains = stream_swapchains.get_or_insert_with(|| {
-                        [
-                            create_swapchain(&xr_session, stream_view_resolution),
-                            create_swapchain(&xr_session, stream_view_resolution),
-                        ]
-                    });
-
-                    alvr_client_core::opengl::start_stream(
-                        view_resolution,
-                        [
-                            swapchains[0]
-                                .enumerate_images()
-                                .unwrap()
-                                .iter()
-                                .map(|i| *i as _)
-                                .collect(),
-                            swapchains[1]
-                                .enumerate_images()
-                                .unwrap()
-                                .iter()
-                                .map(|i| *i as _)
-                                .collect(),
-                        ],
-                        foveated_rendering,
-                    );
-                }
-                ClientCoreEvent::StreamingStopped => {
-                    stream_swapchains.take();
-
-                    is_streaming.set(false);
-
-                    if let Some(thread) = streaming_input_thread.take() {
-                        thread.join().unwrap();
-                    }
-                }
-                ClientCoreEvent::Haptics {
-                    device_id,
-                    duration,
-                    frequency,
-                    amplitude,
-                } => {
-                    let action = if device_id == *LEFT_HAND_ID {
-                        &streaming_interaction_context
-                            .left_hand_source
-                            .vibration_action
-                    } else {
-                        &streaming_interaction_context
-                            .right_hand_source
-                            .vibration_action
-                    };
-
-                    action
-                        .apply_feedback(
-                            &xr_session,
-                            xr::Path::NULL,
-                            &xr::HapticVibration::new()
-                                .amplitude(amplitude)
-                                .frequency(frequency)
-                                .duration(xr::Duration::from_nanos(duration.as_nanos() as _)),
-                        )
-                        .unwrap();
-                }
-                _ => panic!(),
-            }
-        }
-
-        let frame_state = match xr_frame_waiter.wait() {
-            Ok(state) => state,
-            Err(e) => {
-                error!("{e}");
-                panic!();
-            }
-        };
-
-        xr_frame_stream.begin().unwrap();
-
-        if !frame_state.should_render {
-            xr_frame_stream
-                .end(
-                    frame_state.predicted_display_time,
-                    xr::EnvironmentBlendMode::OPAQUE,
-                    &[],
-                )
-                .unwrap();
-
-            continue;
-        }
-
-        let display_time;
-        let views;
-        let view_resolution;
-        let swapchains;
-        if is_streaming.value() {
-            let (timestamp, hardware_buffer) = if let Some(pair) = alvr_client_core::get_frame() {
-                pair
-            } else {
-                (
-                    to_duration(frame_state.predicted_display_time),
-                    ptr::null_mut(),
-                )
             };
 
-            display_time = timestamp;
+            xr_frame_stream.begin().unwrap();
 
-            {
-                let mut history_views = None;
+            if !frame_state.should_render {
+                xr_frame_stream
+                    .end(
+                        frame_state.predicted_display_time,
+                        xr::EnvironmentBlendMode::OPAQUE,
+                        &[],
+                    )
+                    .unwrap();
 
-                for (history_timestamp, views) in &*views_history.lock() {
-                    if *history_timestamp == timestamp {
-                        history_views = Some(views.clone());
-                    }
-                }
-
-                views = if let Some(views) = history_views {
-                    last_good_views = views.clone();
-                    views
-                } else {
-                    last_good_views.clone()
-                };
+                continue;
             }
 
-            view_resolution = stream_view_resolution;
+            let display_time;
+            let views;
+            let view_resolution;
+            let swapchains;
+            if is_streaming.value() {
+                let (timestamp, hardware_buffer) = if let Some(pair) = alvr_client_core::get_frame()
+                {
+                    pair
+                } else {
+                    (
+                        to_duration(frame_state.predicted_display_time),
+                        ptr::null_mut(),
+                    )
+                };
 
-            swapchains = stream_swapchains.as_mut().unwrap();
+                display_time = timestamp;
 
-            let left_view_idx = swapchains[0].acquire_image().unwrap();
-            let right_view_idx = swapchains[1].acquire_image().unwrap();
+                {
+                    let mut history_views = None;
 
-            swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
-            swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
+                    for (history_timestamp, views) in &*views_history.lock() {
+                        if *history_timestamp == timestamp {
+                            history_views = Some(views.clone());
+                        }
+                    }
 
-            alvr_client_core::opengl::render_stream(hardware_buffer, [left_view_idx, right_view_idx]);
+                    views = if let Some(views) = history_views {
+                        last_good_views = views.clone();
+                        views
+                    } else {
+                        last_good_views.clone()
+                    };
+                }
 
-            swapchains[0].release_image().unwrap();
-            swapchains[1].release_image().unwrap();
+                view_resolution = stream_view_resolution;
 
-            let vsync_queue = Duration::from_nanos(
-                (frame_state.predicted_display_time - xr_instance.now().unwrap()).as_nanos() as _,
-            );
-            alvr_client_core::report_submit(timestamp, vsync_queue);
-        } else {
-            display_time = to_duration(frame_state.predicted_display_time);
+                swapchains = stream_swapchains.as_mut().unwrap();
 
-            views = xr_session
-                .locate_views(
-                    xr::ViewConfigurationType::PRIMARY_STEREO,
-                    frame_state.predicted_display_time,
-                    &reference_space,
+                let left_view_idx = swapchains[0].acquire_image().unwrap();
+                let right_view_idx = swapchains[1].acquire_image().unwrap();
+
+                swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
+                swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
+
+                alvr_client_core::opengl::render_stream(
+                    hardware_buffer,
+                    [left_view_idx, right_view_idx],
+                );
+
+                swapchains[0].release_image().unwrap();
+                swapchains[1].release_image().unwrap();
+
+                let vsync_queue = Duration::from_nanos(
+                    (frame_state.predicted_display_time - xr_instance.now().unwrap()).as_nanos()
+                        as _,
+                );
+                alvr_client_core::report_submit(timestamp, vsync_queue);
+            } else {
+                display_time = to_duration(frame_state.predicted_display_time);
+
+                views = xr_session
+                    .locate_views(
+                        xr::ViewConfigurationType::PRIMARY_STEREO,
+                        frame_state.predicted_display_time,
+                        &reference_space,
+                    )
+                    .unwrap()
+                    .1;
+
+                view_resolution = recommended_resolution;
+
+                swapchains = lobby_swapchains;
+
+                let left_view_idx = swapchains[0].acquire_image().unwrap();
+                let right_view_idx = swapchains[1].acquire_image().unwrap();
+
+                swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
+                swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
+
+                alvr_client_core::opengl::render_lobby([
+                    RenderViewInput {
+                        position: to_vec3(views[0].pose.position),
+                        orientation: to_quat(views[0].pose.orientation),
+                        fov: to_fov(views[0].fov),
+                        swapchain_index: left_view_idx,
+                    },
+                    RenderViewInput {
+                        position: to_vec3(views[1].pose.position),
+                        orientation: to_quat(views[1].pose.orientation),
+                        fov: to_fov(views[1].fov),
+                        swapchain_index: right_view_idx,
+                    },
+                ]);
+
+                swapchains[0].release_image().unwrap();
+                swapchains[1].release_image().unwrap();
+            }
+
+            let rect = xr::Rect2Di {
+                offset: xr::Offset2Di { x: 0, y: 0 },
+                extent: xr::Extent2Di {
+                    width: view_resolution.x as _,
+                    height: view_resolution.y as _,
+                },
+            };
+            xr_frame_stream
+                .end(
+                    to_xr_time(display_time),
+                    xr::EnvironmentBlendMode::OPAQUE,
+                    &[&xr::CompositionLayerProjection::new()
+                        .space(&reference_space)
+                        .views(&[
+                            xr::CompositionLayerProjectionView::new()
+                                .pose(views[0].pose)
+                                .fov(views[0].fov)
+                                .sub_image(
+                                    xr::SwapchainSubImage::new()
+                                        .swapchain(&swapchains[0])
+                                        .image_array_index(0)
+                                        .image_rect(rect),
+                                ),
+                            xr::CompositionLayerProjectionView::new()
+                                .pose(views[1].pose)
+                                .fov(views[1].fov)
+                                .sub_image(
+                                    xr::SwapchainSubImage::new()
+                                        .swapchain(&swapchains[1])
+                                        .image_array_index(0)
+                                        .image_rect(rect),
+                                ),
+                        ])],
                 )
-                .unwrap()
-                .1;
-
-            view_resolution = recommended_resolution;
-
-            swapchains = lobby_swapchains;
-
-            let left_view_idx = swapchains[0].acquire_image().unwrap();
-            let right_view_idx = swapchains[1].acquire_image().unwrap();
-
-            swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
-            swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
-
-            alvr_client_core::opengl::render_lobby([
-                RenderViewInput {
-                    position: to_vec3(views[0].pose.position),
-                    orientation: to_quat(views[0].pose.orientation),
-                    fov: to_fov(views[0].fov),
-                    swapchain_index: left_view_idx,
-                },
-                RenderViewInput {
-                    position: to_vec3(views[1].pose.position),
-                    orientation: to_quat(views[1].pose.orientation),
-                    fov: to_fov(views[1].fov),
-                    swapchain_index: right_view_idx,
-                },
-            ]);
-
-            swapchains[0].release_image().unwrap();
-            swapchains[1].release_image().unwrap();
+                .unwrap();
         }
-
-        let rect = xr::Rect2Di {
-            offset: xr::Offset2Di { x: 0, y: 0 },
-            extent: xr::Extent2Di {
-                width: view_resolution.x as _,
-                height: view_resolution.y as _,
-            },
-        };
-        xr_frame_stream
-            .end(
-                to_xr_time(display_time),
-                xr::EnvironmentBlendMode::OPAQUE,
-                &[&xr::CompositionLayerProjection::new()
-                    .space(&reference_space)
-                    .views(&[
-                        xr::CompositionLayerProjectionView::new()
-                            .pose(views[0].pose)
-                            .fov(views[0].fov)
-                            .sub_image(
-                                xr::SwapchainSubImage::new()
-                                    .swapchain(&swapchains[0])
-                                    .image_array_index(0)
-                                    .image_rect(rect),
-                            ),
-                        xr::CompositionLayerProjectionView::new()
-                            .pose(views[1].pose)
-                            .fov(views[1].fov)
-                            .sub_image(
-                                xr::SwapchainSubImage::new()
-                                    .swapchain(&swapchains[1])
-                                    .image_array_index(0)
-                                    .image_rect(rect),
-                            ),
-                    ])],
-            )
-            .unwrap();
     }
 
     alvr_client_core::opengl::destroy();
 
     alvr_client_core::destroy();
-
-    drop((
-        xr_session,
-        xr_frame_waiter,
-        xr_frame_stream,
-        lobby_swapchains,
-    ));
 }
 
 #[cfg(target_os = "android")]

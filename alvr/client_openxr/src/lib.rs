@@ -20,6 +20,7 @@ use std::{
 };
 
 const IPD_CHANGE_EPS: f32 = 0.001;
+const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
 struct StreamingInputContext {
     is_streaming: Arc<RelaxedAtomic>,
@@ -592,6 +593,9 @@ pub fn entry_point() {
                     panic!();
                 }
             };
+            let frame_interval =
+                Duration::from_nanos(frame_state.predicted_display_period.as_nanos() as _);
+            let vsync_time = to_duration(frame_state.predicted_display_time);
 
             xr_frame_stream.begin().unwrap();
 
@@ -623,7 +627,17 @@ pub fn entry_point() {
             let views;
             let view_resolution;
             if is_streaming.value() {
-                if let Some((timestamp, hardware_buffer)) = alvr_client_core::get_frame() {
+                let frame_poll_deadline = Instant::now()
+                    + Duration::from_secs_f32(
+                        frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
+                    );
+                let mut frame_result = None;
+                while frame_result.is_none() && Instant::now() < frame_poll_deadline {
+                    frame_result = alvr_client_core::get_frame();
+                    thread::sleep(Duration::from_millis(1));
+                }
+
+                if let Some((timestamp, hardware_buffer)) = frame_result {
                     let mut history_views = None;
                     for (history_timestamp, views) in &*views_history.lock() {
                         if *history_timestamp == timestamp {
@@ -662,12 +676,12 @@ pub fn entry_point() {
                         vec![default_view, default_view]
                     };
 
-                    display_time = to_duration(frame_state.predicted_display_time);
+                    display_time = vsync_time;
                 }
 
                 view_resolution = stream_view_resolution;
             } else {
-                display_time = to_duration(frame_state.predicted_display_time);
+                display_time = vsync_time;
 
                 views = xr_session
                     .locate_views(

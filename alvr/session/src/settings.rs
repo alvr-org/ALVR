@@ -850,8 +850,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     pose_time_offset_ms: 20,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
-                    position_offset_left: [-0.0065, 0.002, -0.051],
-                    rotation_offset_left: [40., 0., 0.],
+                    position_offset_left: [-0.005, 0.0, -0.11],
+                    rotation_offset_left: [-15.0, 0., 0.],
                     override_trigger_threshold: SwitchDefault {
                         enabled: false,
                         content: ControllersTriggerOverrideDescDefault {

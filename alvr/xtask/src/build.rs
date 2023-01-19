@@ -1,4 +1,4 @@
-use crate::{command, version};
+use crate::command;
 use alvr_filesystem::{self as afs, Layout};
 use std::{
     fmt::{self, Display, Formatter},
@@ -253,46 +253,39 @@ pub fn build_client_lib(profile: Profile) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_quest_client(profile: Profile) {
+pub fn build_android_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
-    build_client_lib(profile);
+    let mut flags = vec![];
+    match profile {
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution")
+        }
+        Profile::Release => flags.push("--release"),
+        Profile::Debug => (),
+    }
+    let flags_ref = &flags;
 
-    let is_nightly = version::version().contains("nightly");
+    let target_dir = afs::target_dir();
 
-    let package_type = if is_nightly { "Nightly" } else { "Stable" };
+    let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));
+    cmd!(
+        sh,
+        "cargo apk build --target-dir={target_dir} {flags_ref...}"
+    )
+    .run()
+    .unwrap();
 
-    let build_type = if matches!(profile, Profile::Debug) {
-        "debug"
-    } else {
-        // Release or Distribution
-        "release"
-    };
+    const ARTIFACT_NAME: &str = "alvr_client_android";
 
-    let build_task = format!("assemble{package_type}{build_type}");
+    let artifacts_dir = afs::target_dir().join(profile.to_string());
+    let build_dir = afs::build_dir().join(ARTIFACT_NAME);
 
-    let client_dir = afs::workspace_dir().join("android");
-
-    const ARTIFACT_NAME: &str = "alvr_client_quest";
-
-    let _push_guard = sh.push_dir(&client_dir);
-    if cfg!(windows) {
-        cmd!(sh, "cmd /C gradlew.bat {build_task}").run().unwrap();
-    } else {
-        cmd!(sh, "bash ./gradlew {build_task}").run().unwrap();
-    };
-
-    sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
-        .unwrap();
+    sh.create_dir(&build_dir).unwrap();
     sh.copy_file(
-        client_dir
-            .join("app/build/outputs/apk")
-            .join(package_type)
-            .join(build_type)
-            .join(format!("app-{package_type}-{build_type}.apk")),
-        afs::build_dir()
-            .join(ARTIFACT_NAME)
-            .join(format!("{ARTIFACT_NAME}.apk")),
+        artifacts_dir.join("apk/alvr_client_openxr.apk"),
+        build_dir.join(format!("{ARTIFACT_NAME}.apk")),
     )
     .unwrap();
 }

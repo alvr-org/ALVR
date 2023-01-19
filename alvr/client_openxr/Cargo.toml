@@ -1,0 +1,133 @@
+[package]
+name = "alvr_client_openxr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+crate_type = ["cdylib"]
+
+[dependencies]
+alvr_common.workspace = true
+alvr_client_core.workspace = true
+alvr_events.workspace = true
+alvr_session.workspace = true
+alvr_sockets.workspace = true
+
+glow = "0.11"
+khronos-egl = { version = "4", features = ["dynamic"] }
+openxr = { git = "https://github.com/Ralith/openxrs" }
+
+[target.'cfg(target_os = "android")'.dependencies]
+# note: git version fixes spammy log. upgrade to registry when a new version comes out
+android-activity = { git = "https://github.com/rust-mobile/android-activity", features = [
+    "native-activity",
+] }
+jni = "0.20"
+ndk-context = "0.1"
+
+[package.metadata.android]
+package = "alvr.client"
+build_targets = ["aarch64-linux-android"]
+runtime_libs = "../../deps/android_openxr"
+
+[package.metadata.android.sdk]
+min_sdk_version = 26
+target_sdk_version = 29
+
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.microphone"
+required = true
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.vr.headtracking"
+required = true
+[[package.metadata.android.uses_feature]]
+opengles_version = [3, 1]
+required = true
+
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_WIFI_STATE"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.INTERNET"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.RECORD_AUDIO"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.WAKE_LOCK"
+[[package.metadata.android.uses_permission]]
+name = "org.khronos.openxr.permission.OPENXR"
+[[package.metadata.android.uses_permission]]
+name = "org.khronos.openxr.permission.OPENXR_SYSTEM"
+
+[[package.metadata.android.queries.provider]]
+name = "org.khronos.openxr"
+authorities = "org.khronos.openxr.runtime_broker;org.khronos.openxr.system_runtime_broker"
+
+[package.metadata.android.application]
+debuggable = true
+theme = "@android:style/Theme.Black.NoTitleBar.Fullscreen"
+# icon = todo
+label = "ALVR"
+
+[package.metadata.android.application.activity]
+config_changes = "density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
+launch_mode = "singleTask"
+orientation = "landscape"
+
+[[package.metadata.android.application.activity.intent_filter]]
+actions = ["android.intent.action.MAIN"]
+categories = [
+    "android.intent.category.LAUNCHER",
+    "com.oculus.intent.category.VR",
+    "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
+]
+
+# Quest entries
+[[package.metadata.android.uses_feature]]
+name = "oculus.software.handtracking"
+required = false
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.HAND_TRACKING"
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.WIFI_LOCK"
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.intent.category.VR"
+value = "vr_only"
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.supportedDevices"
+value = "quest|quest2|cambria"
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.vr.focusaware"
+value = "true"
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.handtracking.frequency"
+value = "HIGH"
+[[package.metadata.android.application.meta_data]]
+name = "com.oculus.handtracking.version"
+value = "V2.0"
+
+# Vive Focus 3 entries
+[[package.metadata.android.uses_feature]]
+name = "wave.feature.handtracking"
+required = true
+[[package.metadata.android.application.meta_data]]
+name = "minWaveSDKVersion"
+value = "1"
+[[package.metadata.android.application.meta_data]]
+name = "com.htc.vr.content.NumController"
+value = "1,2"
+[[package.metadata.android.application.meta_data]]
+name = "com.htc.vr.content.NumDoFController"
+value = "3,6DoF"
+[[package.metadata.android.application.meta_data]]
+name = "com.htc.vr.content.NumDoFHmd"
+value = "3,6DoF"
+
+# Pico entries
+[[package.metadata.android.application.meta_data]]
+name = "pvr.app.type"
+value = "vr"
+[[package.metadata.android.application.meta_data]]
+name = "handtracking"
+value = "1"

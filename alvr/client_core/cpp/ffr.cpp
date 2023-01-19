@@ -10,7 +10,6 @@ using namespace gl_render_utils;
 
 namespace {
     const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
-        #extension GL_OES_EGL_image_external_essl3 : enable
         precision highp float;
 
         const uvec2 TARGET_RESOLUTION = uvec2(%u, %u);
@@ -33,7 +32,7 @@ namespace {
     )glsl";
 
     const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
-        uniform samplerExternalOES tex0;
+        uniform sampler2D tex0;
         in vec2 uv;
         out vec4 color;
         void main() {

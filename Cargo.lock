@@ -156,6 +156,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_client_openxr"
+version = "20.0.0-dev06"
+dependencies = [
+ "alvr_client_core",
+ "alvr_common",
+ "alvr_events",
+ "alvr_session",
+ "alvr_sockets",
+ "android-activity",
+ "glow",
+ "jni 0.20.0",
+ "khronos-egl",
+ "ndk-context",
+ "openxr",
+]
+
+[[package]]
 name = "alvr_commands"
 version = "20.0.0-dev06"
 dependencies = [
@@ -352,6 +369,29 @@ dependencies = [
  "pkg-config",
  "xshell",
 ]
+
+[[package]]
+name = "android-activity"
+version = "0.4.0"
+source = "git+https://github.com/rust-mobile/android-activity#6942637c3ccfdb2d02af97fdf174c1aa273c16a8"
+dependencies = [
+ "android-properties",
+ "bitflags",
+ "cc",
+ "jni-sys",
+ "libc",
+ "log",
+ "ndk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ndk-context",
+ "ndk-sys 0.4.1+23.1.7779620",
+ "num_enum",
+]
+
+[[package]]
+name = "android-properties"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc7eb209b1518d6bb87b283c20095f5228ecda460da70b44f0802523dea6da04"
 
 [[package]]
 name = "android_log-sys"
@@ -3006,6 +3046,25 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openxr"
+version = "0.17.1"
+source = "git+https://github.com/Ralith/openxrs#e5fe4164216fcc16189c52ea58e639e85e8e2d6b"
+dependencies = [
+ "libc",
+ "libloading",
+ "ndk-context",
+ "openxr-sys",
+]
+
+[[package]]
+name = "openxr-sys"
+version = "0.9.3"
+source = "git+https://github.com/Ralith/openxrs#e5fe4164216fcc16189c52ea58e639e85e8e2d6b"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

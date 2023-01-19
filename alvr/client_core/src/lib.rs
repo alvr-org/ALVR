@@ -9,11 +9,12 @@ mod c_api;
 mod connection;
 mod decoder;
 mod logging_backend;
-mod opengl;
 mod platform;
 mod sockets;
 mod statistics;
 mod storage;
+
+pub mod opengl;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -87,6 +88,10 @@ pub enum ClientCoreEvent {
         timestamp: Duration,
         nal: Vec<u8>,
     },
+}
+
+pub fn get_device_name() -> String {
+    platform::device_model()
 }
 
 pub fn initialize(

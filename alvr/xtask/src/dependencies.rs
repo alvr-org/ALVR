@@ -210,29 +210,58 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     cmd!(sh, "make install").run().unwrap();
 }
 
-fn get_oculus_openxr_mobile_loader() {
+fn get_android_openxr_loaders() {
     let sh = Shell::new().unwrap();
 
-    let temp_sdk_dir = afs::build_dir().join("temp_download");
-
-    // OpenXR SDK v1.0.18. todo: upgrade when new version is available
-    command::download_and_extract_zip(
-        &sh,
-        "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
-        &temp_sdk_dir,
-    )
-    .unwrap();
-
-    let destination_dir = afs::deps_dir().join("android/oculus_openxr/arm64-v8a");
+    let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
     fs::create_dir_all(&destination_dir).unwrap();
 
+    let temp_dir = afs::build_dir().join("temp_download");
+
+    // Generic
+    command::download_and_extract_zip(
+        &sh,
+        &format!(
+            "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
+            "release-1.0.26/openxr_loader_for_android-1.0.26.aar",
+        ),
+        &temp_dir,
+    )
+    .unwrap();
     fs::copy(
-        temp_sdk_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        temp_dir.join("prefab/modules/openxr_loader/libs/android.arm64-v8a/libopenxr_loader.so"),
         destination_dir.join("libopenxr_loader.so"),
     )
     .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
 
-    fs::remove_dir_all(temp_sdk_dir).ok();
+    // Quest
+    command::download_and_extract_zip(
+        &sh,
+        "https://securecdn.oculus.com/binaries/download/?id=5860257274012811",
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_quest.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
+
+    // Pico
+    command::download_and_extract_zip(
+        &sh,
+        "https://sdk.picovr.com/developer-platform/sdk/Pico_OpenXR_SDK_v210.zip",
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("libs/android.arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_pico.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(temp_dir).ok();
 }
 
 pub fn build_android_deps(skip_admin_priv: bool) {
@@ -245,7 +274,9 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add aarch64-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
+    cmd!(sh, "cargo install cargo-apk cargo-ndk cbindgen")
+        .run()
+        .unwrap();
 
-    get_oculus_openxr_mobile_loader();
+    get_android_openxr_loaders();
 }

@@ -10,11 +10,6 @@ struct EyeInput {
     unsigned int swapchainIndex;
 };
 
-struct OnCreateResult {
-    int streamSurfaceHandle;
-    int loadingSurfaceHandle;
-};
-
 struct StreamConfigInput {
     unsigned int viewWidth;
     unsigned int viewHeight;

@@ -26,8 +26,8 @@ vr::HmdRect2_t fov_to_projection(EyeFov fov) {
     auto proj_bounds = vr::HmdRect2_t{};
     proj_bounds.vTopLeft.v[0] = tanf(fov.left);
     proj_bounds.vBottomRight.v[0] = tanf(fov.right);
-    proj_bounds.vTopLeft.v[1] = -tanf(fov.up);
-    proj_bounds.vBottomRight.v[1] = -tanf(fov.down);
+    proj_bounds.vTopLeft.v[1] = tanf(fov.down);
+    proj_bounds.vBottomRight.v[1] = tanf(fov.up);
 
     return proj_bounds;
 }
@@ -50,7 +50,7 @@ inline vr::ETrackedDeviceClass getControllerDeviceClass() {
 OvrHmd::OvrHmd()
     : TrackedDevice(HEAD_ID), m_baseComponentsInitialized(false),
       m_streamComponentsInitialized(false) {
-    auto dummy_fov = EyeFov{-1.0, 1.0, 1.0, -1.0};
+    auto dummy_fov = EyeFov{-1.0, 1.0, -1.0, 1.0};
 
     this->views_config = ViewsConfigData{};
     this->views_config.ipd_m = 0.063;

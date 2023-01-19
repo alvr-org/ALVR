@@ -7,6 +7,8 @@
 #include <poll.h>
 #include <sys/types.h>
 
+#include "EncodePipeline.h"
+
 class ClientConnection;
 class PoseHistory;
 

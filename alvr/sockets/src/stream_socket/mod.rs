@@ -223,27 +223,22 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
                 if shard_packet_index == current_packet_index {
                     current_packet_shards.insert(shard_index, shard);
                     current_packet_shards_count = Some(shards_count);
-                } else if shard_packet_index == self.next_packet_index {
-                    self.next_packet_shards.insert(shard_index, shard);
-                    self.next_packet_shards_count = Some(shards_count);
-
-                    // This happens if the next packet was completed before the current packet. This
-                    // is very common if the packet contains only one shard.
-                    if self.next_packet_shards.len() == shards_count {
-                        buffer.had_packet_loss = true;
-
-                        break;
+                } else if shard_packet_index >= self.next_packet_index {
+                    if shard_packet_index > self.next_packet_index {
+                        self.next_packet_shards.clear();
                     }
-                } else if shard_packet_index > self.next_packet_index {
-                    debug!("Shard with packet index too new. Signaling packet loss.");
-                    buffer.had_packet_loss = true;
 
-                    self.next_packet_shards.clear();
                     self.next_packet_shards.insert(shard_index, shard);
                     self.next_packet_shards_count = Some(shards_count);
                     self.next_packet_index = shard_packet_index;
 
-                    break;
+                    if shard_packet_index > self.next_packet_index
+                        || self.next_packet_shards.len() == shards_count
+                    {
+                        debug!("Skipping to next packet. Signaling packet loss.");
+                        buffer.had_packet_loss = true;
+                        break;
+                    }
                 }
                 // else: ignore old shard
             }

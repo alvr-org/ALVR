@@ -12,9 +12,8 @@ use interaction::StreamingInteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     path::Path,
-    ptr,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -130,6 +129,32 @@ fn init_egl() -> EglContext {
         context,
         dummy_surface,
     }
+}
+
+fn create_xr_session(
+    xr_instance: &xr::Instance,
+    xr_system: xr::SystemId,
+    egl_context: &EglContext,
+) -> (
+    xr::Session<xr::OpenGlEs>,
+    xr::FrameWaiter,
+    xr::FrameStream<xr::OpenGlEs>,
+) {
+    #[cfg(target_os = "android")]
+    unsafe {
+        xr_instance
+            .create_session(
+                xr_system,
+                &xr::opengles::SessionCreateInfo::Android {
+                    display: egl_context.display.as_ptr(),
+                    config: egl_context.config.as_ptr(),
+                    context: egl_context.context.as_ptr(),
+                },
+            )
+            .unwrap()
+    }
+    #[cfg(not(target_os = "android"))]
+    unimplemented!()
 }
 
 pub fn create_swapchain(
@@ -301,32 +326,20 @@ pub fn entry_point() {
             .graphics_requirements::<xr::OpenGlEs>(xr_system)
             .unwrap();
 
-        let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) = unsafe {
-            xr_instance.create_session(
-                xr_system,
-                #[cfg(target_os = "android")]
-                &xr::opengles::SessionCreateInfo::Android {
-                    display: egl_context.display.as_ptr(),
-                    config: egl_context.config.as_ptr(),
-                    context: egl_context.context.as_ptr(),
-                },
-                #[cfg(not(target_os = "android"))]
-                todo!(),
-            )
-        }
-        .unwrap();
+        let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
+            create_xr_session(&xr_instance, xr_system, &egl_context);
 
-        let views = xr_instance
+        let views_config = xr_instance
             .enumerate_view_configuration_views(
                 xr_system,
                 xr::ViewConfigurationType::PRIMARY_STEREO,
             )
             .unwrap();
-        assert_eq!(views.len(), 2);
+        assert_eq!(views_config.len(), 2);
 
         let recommended_resolution = UVec2::new(
-            views[0].recommended_image_rect_width,
-            views[0].recommended_image_rect_height,
+            views_config[0].recommended_image_rect_width,
+            views_config[0].recommended_image_rect_height,
         );
 
         alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
@@ -370,7 +383,9 @@ pub fn entry_point() {
                 angle_down: -0.1,
             },
         };
-        let mut last_good_views = vec![default_view, default_view];
+
+        let mut last_swapchain_left_view = HashMap::new();
+        let mut last_swapchain_right_view = HashMap::new();
 
         let mut event_storage = xr::EventDataBuffer::new();
         'render_loop: loop {
@@ -592,26 +607,24 @@ pub fn entry_point() {
                 continue;
             }
 
+            let swapchains = if let Some(swapchains) = &mut stream_swapchains {
+                swapchains
+            } else {
+                lobby_swapchains
+            };
+
+            let left_swapchain_idx = swapchains[0].acquire_image().unwrap();
+            let right_swapchain_idx = swapchains[1].acquire_image().unwrap();
+
+            swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
+            swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
+
             let display_time;
             let views;
             let view_resolution;
-            let swapchains;
             if is_streaming.value() {
-                let (timestamp, hardware_buffer) = if let Some(pair) = alvr_client_core::get_frame()
-                {
-                    pair
-                } else {
-                    (
-                        to_duration(frame_state.predicted_display_time),
-                        ptr::null_mut(),
-                    )
-                };
-
-                display_time = timestamp;
-
-                {
+                if let Some((timestamp, hardware_buffer)) = alvr_client_core::get_frame() {
                     let mut history_views = None;
-
                     for (history_timestamp, views) in &*views_history.lock() {
                         if *history_timestamp == timestamp {
                             history_views = Some(views.clone());
@@ -619,36 +632,40 @@ pub fn entry_point() {
                     }
 
                     views = if let Some(views) = history_views {
-                        last_good_views = views.clone();
+                        last_swapchain_left_view.insert(left_swapchain_idx, views[0]);
+                        last_swapchain_right_view.insert(right_swapchain_idx, views[1]);
+
                         views
                     } else {
-                        last_good_views.clone()
+                        vec![default_view, default_view]
                     };
+
+                    alvr_client_core::opengl::render_stream(
+                        hardware_buffer,
+                        [left_swapchain_idx, right_swapchain_idx],
+                    );
+
+                    let vsync_queue = Duration::from_nanos(
+                        (frame_state.predicted_display_time - xr_instance.now().unwrap()).as_nanos()
+                            as _,
+                    );
+                    alvr_client_core::report_submit(timestamp, vsync_queue);
+
+                    display_time = timestamp;
+                } else {
+                    views = if let (Some(left_view), Some(right_view)) = (
+                        last_swapchain_left_view.get(&left_swapchain_idx),
+                        last_swapchain_right_view.get(&right_swapchain_idx),
+                    ) {
+                        vec![*left_view, *right_view]
+                    } else {
+                        vec![default_view, default_view]
+                    };
+
+                    display_time = to_duration(frame_state.predicted_display_time);
                 }
 
                 view_resolution = stream_view_resolution;
-
-                swapchains = stream_swapchains.as_mut().unwrap();
-
-                let left_view_idx = swapchains[0].acquire_image().unwrap();
-                let right_view_idx = swapchains[1].acquire_image().unwrap();
-
-                swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
-                swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
-
-                alvr_client_core::opengl::render_stream(
-                    hardware_buffer,
-                    [left_view_idx, right_view_idx],
-                );
-
-                swapchains[0].release_image().unwrap();
-                swapchains[1].release_image().unwrap();
-
-                let vsync_queue = Duration::from_nanos(
-                    (frame_state.predicted_display_time - xr_instance.now().unwrap()).as_nanos()
-                        as _,
-                );
-                alvr_client_core::report_submit(timestamp, vsync_queue);
             } else {
                 display_time = to_duration(frame_state.predicted_display_time);
 
@@ -663,32 +680,24 @@ pub fn entry_point() {
 
                 view_resolution = recommended_resolution;
 
-                swapchains = lobby_swapchains;
-
-                let left_view_idx = swapchains[0].acquire_image().unwrap();
-                let right_view_idx = swapchains[1].acquire_image().unwrap();
-
-                swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
-                swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
-
                 alvr_client_core::opengl::render_lobby([
                     RenderViewInput {
                         position: to_vec3(views[0].pose.position),
                         orientation: to_quat(views[0].pose.orientation),
                         fov: to_fov(views[0].fov),
-                        swapchain_index: left_view_idx,
+                        swapchain_index: left_swapchain_idx,
                     },
                     RenderViewInput {
                         position: to_vec3(views[1].pose.position),
                         orientation: to_quat(views[1].pose.orientation),
                         fov: to_fov(views[1].fov),
-                        swapchain_index: right_view_idx,
+                        swapchain_index: right_swapchain_idx,
                     },
                 ]);
-
-                swapchains[0].release_image().unwrap();
-                swapchains[1].release_image().unwrap();
             }
+
+            swapchains[0].release_image().unwrap();
+            swapchains[1].release_image().unwrap();
 
             let rect = xr::Rect2Di {
                 offset: xr::Offset2Di { x: 0, y: 0 },

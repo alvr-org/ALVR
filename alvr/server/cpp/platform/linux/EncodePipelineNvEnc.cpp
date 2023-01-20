@@ -117,6 +117,9 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(VkFrame &input_frame,
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
     encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
+    encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
+    encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+    encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
 
     err = avcodec_open2(encoder_ctx, codec, NULL);
     if (err < 0) {

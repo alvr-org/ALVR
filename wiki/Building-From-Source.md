@@ -1,146 +1,103 @@
-ALVR can be built on Windows and Linux.
+ALVR can be built on Windows and Linux. The following instructions are for both OSes.
 
-# Windows
+# Common prerequisites
 
 Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
-### Prerequisites
+You need to install [rustup](https://www.rust-lang.org/tools/install).
 
- * [Chocolatey](https://chocolatey.org/install)
- * [rustup](https://rustup.rs/). Alternatively install with: `choco install rustup.install` 
+On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
-## Server
+# Server build
 
-**Note: These instructions are for the master branch.**
+First you need to gather some additional resources in preparation for the build.  
 
-On the repository root execute:
-```
-cargo xtask prepare-deps --platform windows
-cargo xtask build-server --release
-```
-ALVR server will be built into `build/alvr_server_windows/`.
-
-To compile with software encoding support execute:
-```
-cargo xtask build-server --release --gpl
-```
-This will download and use FFmpeg binaries that are GPL licensed.
-
-## Client
-
- * [Android Studio](https://developer.android.com/studio)
- * Latest NDK (currently 25.1.8937393)
- * Environment variable `JAVA_HOME` set to `C:\Program Files\Android\Android Studio\jre`
- * Environment variable `ANDROID_SDK_ROOT` set to `%LOCALAPPDATA%\Android\Sdk`
- * Environment variable `ANDROID_NDK_HOME` set to `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
-
-On the repository root execute:
-```
-cargo xtask prepare-deps --platform android
-cargo xtask build-client --release 
-```
-ALVR client will be built into `build/alvr_client_<platform>/`.
-
-# Linux
-**Note: Linux builds of ALVR are still experimental!**
-
-## Supported GPU Configurations
-
- * AMD using radv is known to work, with hardware encoding
- * AMD using amdvlk does not work
- * NVIDIA using proprietary driver works, with hardware encoding.
- * Intel is untested
-
-## Packaged Builds
-
-#### Deb and RPM Distributions
-The build script located at `packaging/alvr_build_linux.sh` allows building of client and server together or independently, along with installation of any necessary dependencies if requested. This script will respect existing git repositories; if you would like a specific release, simply clone this repository at the release tag you need, then run the script in the directory above the repository.
-
-#### Note:
- * Fedora **client** builds are not recommended as they may potentially pollute the system Rust install; better support for this will be added later
- * Releases prior to the merge of [PR 786](https://github.com/alvr-org/ALVR/pull/786) will not function due to a lack of required packaging files
- * This script is designed to request superuser permissions only when neccessary; do not run it as root
-
-#### Usage:
-```
-Usage: alvr_build_linux.sh ACTION
-Description: Script to prepare the system and build ALVR package(s)
-Arguments:
-    ACTIONS
-        all             Prepare and build ALVR client and server
-        client          Prepare and build ALVR client
-        server          Prepare and build ALVR server
-    FLAGS
-        --build-only    Only build ALVR package(s)
-        --prep-only     Only prepare system for ALVR package build
-```
-
-#### Example:
-```bash
-git clone https://github.com/alvr-org/ALVR.git
-./ALVR/packaging/alvr_build_linux.sh all
-```
-
-## Server
-
-### Dependencies
-
-You need [rustup](https://rustup.rs/) and the following platform specific dependencies:
+If you are on Linux, install these additional packages:
 
 * **Arch**
+
   ```bash
   sudo pacman -Syu clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip
   ```
 
 * **Gentoo**
-    * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
-    * `sys-libs/libunwind`
-    * `dev-lang/rust >= 1.51`
+
+  * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
+  * `sys-libs/libunwind`
+  * `dev-lang/rust >= 1.51`
 
 * **Nix(OS)**
 
-    Use the `shell.nix` in `packaging/nix`.
+  Use the `shell.nix` in `packaging/nix`.
 
 * **Ubuntu / Pop!_OS 20.04**
-    ```bash
-    sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev
-    ```
-
-### Building
-
-Bundled version:
-```bash
-cargo xtask prepare-deps --platform linux --gpl [--no-nvidia]
-cargo xtask build-server --release --gpl
-```
-
-To use the system ffmpeg install (you need a ffmpeg version with vulkan) you just run:
-```bash
-cargo xtask build-server --release
-```
-
-## Client
-
-### Dependencies
-* **Arch**
   ```bash
-  sudo pacman -Syu git unzip rustup cargo jre11-openjdk-headless jdk8-openjdk clang python libxtst fontconfig lib32-gcc-libs lib32-glibc libxrender
-  ```
-  - Android SDK (can be installed using [android-sdk](https://aur.archlinux.org/packages/android-sdk)<sup>AUR</sup>)
-  ```bash
-  sudo ${ANDROID_HOME}/tools/bin/sdkmanager "patcher;v4" "ndk;22.1.7171670" "cmake;3.10.2.4988404" "platforms;android-31" "build-tools;32.0.0"
+  sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev
   ```
 
-### Building
+Move to the root directory of the project, then run this command (paying attention to the bullet points below):
+
+```bash
+cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
+```
+
+* Replace `[your platform]` with your computer OS, either `windows` or `linux`
+* Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that on Windows this is needed only for software encoding; on Linux FFmpeg is always needed, and if you omit the `--gpl` flag, the system ffmpeg libraries will be used, which can cause compatibility issues at runtime. As the name suggest, if you use this flag you can only redistribute the final package as GPLv2.0 licensed (because of the x264 encoder).
+* Use the flag `--no-nvidia` only on Linux and if you have an AMD gpu.
+
+Next up is the proper build of the server. Run the following:
+
+```bash
+cargo xtask build-server --release [--gpl]
+```
+
+Again, the `--gpl` flag is needed only if you want to bundle FFmpeg.
+
+You can find the resulting package in `build/alvr_server_[your platform]`
+
+If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
+
+# Client build
+
+For the client you need install:
+
+* [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
+* Platform Tools 33 (Android 13)
+* Latest NDK (currently v25.1.8937393)
+* Set the environment variable `JAVA_HOME`
+  * For example on Windows: `C:\Program Files\Android\Android Studio\jre`
+* Set the environment variable `ANDROID_SDK_ROOT`
+  * For example on Windows: `%LOCALAPPDATA%\Android\Sdk`
+* Set the environment variable `ANDROID_NDK_HOME`
+  * For example on Windows: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
+
+First you need to gather some additional resources in preparation for the build.  
+Move to the root directory of the project, then run this command:
+
 ```bash
 cargo xtask prepare-deps --platform android
+```
+
+Next up is the proper build of the client. Run the following:
+
+```bash
 cargo xtask build-client --release
 ```
 
-### Docker
-You can also build the client using Docker: https://gist.github.com/m00nwtchr/fae4424ff6cda5772bf624a08005e43e
+The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
 
-### Troubleshooting
+## `openxr-client` branch
+
+To build and run:
+
+```bash
+cd alvr/client_openxr
+cargo apk run
+```
+
+You need the headset to be connected via USB and with the screen on to successfully launch the debugger and logcat.
+
+# Troubleshooting (Linux)
 
 On some distributions, Steam Native runs ALVR a little better. To get Steam Native on Ubuntu run it with:
 ```bash

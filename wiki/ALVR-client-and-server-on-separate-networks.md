@@ -65,7 +65,7 @@ Its pros and cons are similar to ZeroTier, but it's self-hosted and open-source 
 - Compile [n2n](https://github.com/ntop/n2n) from source
   - Or you can grab pre-built binaries from [here](https://github.com/lucktu/n2n) directly, compiled by lucktu.
   - Some Linux distribution may have n2n, but be sure you're using the same version. Since the source code is v3, the following steps will also use v3 in the example below.
-- TAP-Windows driver or [OpenVPN](https://community.openvpn.net/openvpn) (includes TAP-Windows) if you're using Windows PC
+- [TAP-Windows driver](https://community.openvpn.net/openvpn/wiki/GettingTapWindows) or [OpenVPN](https://openvpn.net/community/) (includes TAP-Windows) if you're using Windows PC
 - [hin2n](https://github.com/switch-iot/hin2n) APK
 - A server with public IP and allow public ports
 - SideQuest or some other method to install the hin2n APK onto your headset

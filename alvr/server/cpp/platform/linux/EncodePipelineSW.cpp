@@ -88,7 +88,9 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = 0;
   encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
+  encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
   encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 

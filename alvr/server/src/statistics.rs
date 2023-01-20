@@ -179,8 +179,16 @@ impl StatisticsManager {
                     + client_stats.vsync_queue,
             );
 
-            let client_fps = 1.0 / client_stats.frame_interval.as_secs_f32().min(1.0);
-            let server_fps = 1.0 / self.last_frame_present_interval.as_secs_f32().min(1.0);
+            let client_fps = 1.0
+                / client_stats
+                    .frame_interval
+                    .max(Duration::from_millis(1))
+                    .as_secs_f32();
+            let server_fps = 1.0
+                / self
+                    .last_frame_present_interval
+                    .max(Duration::from_millis(1))
+                    .as_secs_f32();
 
             if self.last_full_report_instant + FULL_REPORT_INTERVAL < Instant::now() {
                 self.last_full_report_instant += FULL_REPORT_INTERVAL;

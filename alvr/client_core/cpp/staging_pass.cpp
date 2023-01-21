@@ -10,7 +10,7 @@ using namespace std;
 using namespace gl_render_utils;
 
 namespace {
-    const string PASSTHROUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
+const string PASSTHROUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
         precision highp float;
 
@@ -24,19 +24,15 @@ namespace {
     )glsl";
 }
 
-StagingPass::StagingPass(Texture *inputSurface)
-        : mInputSurface(inputSurface) {
-}
+StagingPass::StagingPass(Texture *inputSurface) : mInputSurface(inputSurface) {}
 
 void StagingPass::Initialize(uint32_t width, uint32_t height) {
-    mOutputTexture.reset(
-            new Texture(false, width * 2, height, GL_RGB8));
+    mOutputTexture.reset(new Texture(false, 0, false, width * 2, height));
     mOutputTextureState = make_unique<RenderState>(mOutputTexture.get());
 
     auto decompressAxisAlignedShaderStr = PASSTHROUGH_FRAGMENT_SHADER;
     mStagingPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
-                               decompressAxisAlignedShaderStr));
+        new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER, decompressAxisAlignedShaderStr));
 }
 
 void StagingPass::Render() const {

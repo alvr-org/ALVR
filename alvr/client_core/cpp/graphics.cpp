@@ -1,7 +1,7 @@
 #include "bindings.h"
 #include "ffr.h"
-#include "staging_pass.h"
 #include "gltf_model.h"
+#include "staging_pass.h"
 #include "utils.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -291,8 +291,8 @@ void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
                            const int height) {
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
-        frameBuffer->renderTargets.push_back(
-            std::make_unique<gl_render_utils::Texture>(glRenderTarget, false, width, height));
+        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
+            true, glRenderTarget, false, width, height, GL_SRGB8_ALPHA8, GL_RGBA));
         frameBuffer->renderStates.push_back(
             std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
@@ -646,7 +646,8 @@ void renderEye(
         if (renderer->enableFFR) {
             GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
-            GL(glBindTexture(GL_TEXTURE_2D, renderer->staging_pass->GetOutputTexture()->GetGLTexture()));
+            GL(glBindTexture(GL_TEXTURE_2D,
+                             renderer->staging_pass->GetOutputTexture()->GetGLTexture()));
         }
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
@@ -713,9 +714,9 @@ void initGraphicsNative() {
     glEGLImageTargetTexture2DOES =
         (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 
-    g_ctx.streamTexture = std::make_unique<Texture>(true);
+    g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
-        false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+        false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
 }
 
 void destroyGraphicsNative() {
@@ -789,7 +790,7 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationCenterShiftY,
                         config.foveationEdgeRatioX,
                         config.foveationEdgeRatioY},
-                        false);
+                       false);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -827,20 +828,20 @@ void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchain
     auto renderer = g_ctx.streamRenderer.get();
 
     if (streamHardwareBuffer != 0) {
-      GL(EGLClientBuffer clientBuffer =
-             eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-      GL(EGLImageKHR image = eglCreateImageKHR(
-             g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+        GL(EGLClientBuffer clientBuffer =
+               eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+        GL(EGLImageKHR image = eglCreateImageKHR(
+               g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
 
-      GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
-      GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+        GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+        GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
-      renderer->staging_pass->Render();
-      if (renderer->enableFFR) {
-          renderer->ffr->Render();
-      }
+        renderer->staging_pass->Render();
+        if (renderer->enableFFR) {
+            renderer->ffr->Render();
+        }
 
-      GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+        GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
     }
 
     FfiViewInput eyeInputs[2] = {};

@@ -10,6 +10,7 @@ pub static LEFT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_HAND_PATH));
 pub static RIGHT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_HAND_PATH));
 
 pub const HEAD_ENTER_CLICK_PATH: &str = "/user/head/input/enter/click";
+pub const BACK_CLICK_PATH: &str = "/user/hand/left/input/back/click";
 pub const MENU_CLICK_PATH: &str = "/user/hand/left/input/menu/click";
 pub const A_CLICK_PATH: &str = "/user/hand/right/input/a/click";
 pub const A_TOUCH_PATH: &str = "/user/hand/right/input/a/touch";

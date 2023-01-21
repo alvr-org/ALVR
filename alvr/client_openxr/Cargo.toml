@@ -16,6 +16,7 @@ alvr_events.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
+libc = "0.2"
 glow = "0.11"
 khronos-egl = { version = "4", features = ["dynamic"] }
 openxr = { git = "https://github.com/Ralith/openxrs" }

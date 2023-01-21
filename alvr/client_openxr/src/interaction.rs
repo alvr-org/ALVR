@@ -32,6 +32,7 @@ pub struct ButtonBindingInfo {
 // The oculus touch controller is used as the universal binding for every platform. Given its
 // popularity, all OpenXR runtimes should support binding to the oculus touch controller.
 const OCULUS_TOUCH_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
+const PICO_CONTROLLER_PROFILE: &str = "/interaction_profiles/pico/neo3_controller";
 
 fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     let mut list = vec![
@@ -274,6 +275,19 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
         ]);
     }
 
+    if platform == Platform::Pico {
+        list.extend([
+            (
+                *MENU_CLICK_ID, // faked as oculus menu button
+                ButtonBindingInfo {
+                    name: "back_click".into(),
+                    binding_path: BACK_CLICK_PATH.into(),
+                    binding_type: BindingType::Binary,
+                }
+            )
+        ]);
+    }
+
     list.into_iter().collect()
 }
 
@@ -374,11 +388,17 @@ pub fn initialize_streaming_interaction(
     ));
 
     // Apply bindings:
+    
+    let controller_profile = if platform == Platform::Pico {
+        PICO_CONTROLLER_PROFILE
+    } else {
+        OCULUS_TOUCH_CONTROLLER_PROFILE
+    };
 
     xr_instance
         .suggest_interaction_profile_bindings(
             xr_instance
-                .string_to_path(OCULUS_TOUCH_CONTROLLER_PROFILE)
+                .string_to_path(controller_profile)
                 .unwrap(),
             &bindings,
         )

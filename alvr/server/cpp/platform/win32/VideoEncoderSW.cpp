@@ -84,7 +84,7 @@ void VideoEncoderSW::Initialize() {
 	m_codecContext->max_b_frames = 0;
 	m_codecContext->gop_size = 0;
 	m_codecContext->bit_rate = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
-	m_codecContext->rc_buffer_size = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
+	m_codecContext->rc_buffer_size = m_codecContext->bit_rate / Settings::Instance().m_refreshRate * 1.1;
 	switch (Settings::Instance().m_rateControlMode) {
 		case ALVR_CBR:
 			av_dict_set(&opt, "nal-hrd", "cbr", 0);
@@ -93,7 +93,7 @@ void VideoEncoderSW::Initialize() {
 			av_dict_set(&opt, "nal-hrd", "vbr", 0);
 			break;
 	}
-	m_codecContext->rc_max_rate = Settings::Instance().mEncodeBitrateMBs * 1'000'000L;
+	m_codecContext->rc_max_rate = m_codecContext->bit_rate;
 	m_codecContext->thread_count = Settings::Instance().m_swThreadCount;
 
 	if((err = avcodec_open2(m_codecContext, codec, &opt))) throw MakeException("Cannot open video encoder codec: %d", err);
@@ -168,6 +168,8 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 	if(m_Listener->GetStatistics()->CheckBitrateUpdated()) {
 		//Debug("Bitrate changed");
 		m_codecContext->bit_rate = m_Listener->GetStatistics()->GetBitrate() * 1000000L;
+		m_codecContext->rc_buffer_size = m_codecContext->bit_rate / Settings::Instance().m_refreshRate * 1.1;
+		m_codecContext->rc_max_rate = m_codecContext->bit_rate;
 	}
 
 	// Setup staging texture if not defined yet; we can only define it here as we now have the texture's size

@@ -3,7 +3,7 @@
 #include <memory>
 #include <sys/types.h>
 
-#include "staging_pass.h"
+#include "gamma_pass.h"
 #include "utils.h"
 
 using namespace std;
@@ -20,13 +20,14 @@ const string PASSTHROUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
         void main()
         {
             color = texture(tex0, uv);
+            color.rgb = pow(color.rgb, vec3(2.2));
         }
     )glsl";
 }
 
-StagingPass::StagingPass(Texture *inputSurface) : mInputSurface(inputSurface) {}
+GammaPass::GammaPass(Texture *inputSurface) : mInputSurface(inputSurface) {}
 
-void StagingPass::Initialize(uint32_t width, uint32_t height) {
+void GammaPass::Initialize(uint32_t width, uint32_t height) {
     mOutputTexture.reset(new Texture(false, 0, false, width * 2, height));
     mOutputTextureState = make_unique<RenderState>(mOutputTexture.get());
 
@@ -35,7 +36,7 @@ void StagingPass::Initialize(uint32_t width, uint32_t height) {
         new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER, decompressAxisAlignedShaderStr));
 }
 
-void StagingPass::Render() const {
+void GammaPass::Render() const {
     mOutputTextureState->ClearDepth();
     mStagingPipeline->Render(*mOutputTextureState);
 }

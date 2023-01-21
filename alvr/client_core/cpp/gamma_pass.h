@@ -5,9 +5,9 @@
 #include <vector>
 #include "gl_render_utils/render_pipeline.h"
 
-class StagingPass {
+class GammaPass {
 public:
-    StagingPass(gl_render_utils::Texture *inputSurface);
+    GammaPass(gl_render_utils::Texture *inputSurface);
 
     void Initialize(uint32_t width, uint32_t height);
 

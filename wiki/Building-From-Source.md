@@ -17,8 +17,10 @@ If you are on Linux, install these additional packages:
 * **Arch**
 
   ```bash
-  sudo pacman -Syu clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip
+  sudo pacman -Sy clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
   ```
+
+The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.
 
 * **Gentoo**
 
@@ -44,6 +46,7 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
 * Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that on Windows this is needed only for software encoding; on Linux FFmpeg is always needed, and if you omit the `--gpl` flag, the system ffmpeg libraries will be used, which can cause compatibility issues at runtime. As the name suggest, if you use this flag you can only redistribute the final package as GPLv2.0 licensed (because of the x264 encoder).
 * Use the flag `--no-nvidia` only on Linux and if you have an AMD gpu.
+* This is not required if your Linux distribution includes Vulkan support in its ffmpeg package, like Arch (see above).
 
 Next up is the proper build of the server. Run the following:
 

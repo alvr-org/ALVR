@@ -22,6 +22,15 @@ use std::{
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
+// Platform of the device. It is used to match the VR runtime and enable features conditionally.
+#[derive(PartialEq, Clone, Copy)]
+pub enum Platform {
+    Quest,
+    Pico,
+    Vive,
+    Other,
+}
+
 struct StreamingInputContext {
     is_streaming: Arc<RelaxedAtomic>,
     frame_interval: Duration,
@@ -274,14 +283,21 @@ fn streaming_input_loop(ctx: StreamingInputContext) {
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let device_name = alvr_client_core::get_device_name();
+    let platform = match alvr_client_core::manufacturer_name().as_str() {
+        "Oculus" => Platform::Quest,
+        "Pico" => Platform::Pico,
+        "HTC" => Platform::Vive,
+        _ => Platform::Other,
+    };
 
-    let xr_entry = if device_name == "Quest" {
-        unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap() }
-    } else if device_name.contains("Pico") || device_name == "A8150" {
-        unsafe { xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap() }
-    } else {
-        unsafe { xr::Entry::load().unwrap() }
+    let xr_entry = match platform {
+        Platform::Quest => unsafe {
+            xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap()
+        },
+        Platform::Pico => unsafe {
+            xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
+        },
+        _ => unsafe { xr::Entry::load().unwrap() },
     };
 
     #[cfg(target_os = "android")]
@@ -348,6 +364,7 @@ pub fn entry_point() {
 
         let streaming_interaction_context =
             Arc::new(interaction::initialize_streaming_interaction(
+                platform,
                 &xr_instance,
                 xr_system,
                 &xr_session.clone().into_any_graphics(),

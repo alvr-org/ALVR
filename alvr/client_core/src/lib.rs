@@ -90,8 +90,8 @@ pub enum ClientCoreEvent {
     },
 }
 
-pub fn get_device_name() -> String {
-    platform::device_model()
+pub fn manufacturer_name() -> String {
+    platform::manufacturer_name()
 }
 
 pub fn initialize(

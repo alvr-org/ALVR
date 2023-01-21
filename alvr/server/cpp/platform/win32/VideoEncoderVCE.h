@@ -96,14 +96,8 @@ private:
 	int m_renderHeight;
 	int m_bitrateInMBits;
 
-	char *m_audByteSequence;
-	int m_audNalSize;
-	int m_audHeaderSize;
-
 	bool m_hasQueryTimeout;
 
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
-	void SkipAUD(char **buffer, int *length);
-	void LoadAUDByteSequence();
 };
 

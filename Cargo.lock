@@ -168,6 +168,7 @@ dependencies = [
  "glow",
  "jni 0.20.0",
  "khronos-egl",
+ "libc",
  "ndk-context",
  "openxr",
 ]

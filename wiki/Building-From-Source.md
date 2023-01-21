@@ -17,7 +17,7 @@ If you are on Linux, install these additional packages:
 * **Arch**
 
   ```bash
-  sudo pacman -Sy clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
+  sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
   ```
 
 The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.

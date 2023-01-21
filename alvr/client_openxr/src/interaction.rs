@@ -430,16 +430,16 @@ pub fn get_hand_motion(
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandSource,
-) -> (Option<DeviceMotion>, Option<[Quat; 19]>) {
+) -> StrResult<(Option<DeviceMotion>, Option<[Quat; 19]>)> {
     if hand_source
         .grip_action
         .is_active(session, xr::Path::NULL)
-        .unwrap()
+        .map_err(err!())?
     {
         let (location, velocity) = hand_source
             .grip_space
             .relate(reference_space, time)
-            .unwrap();
+            .map_err(err!())?;
 
         let hand_motion = DeviceMotion {
             orientation: to_quat(location.pose.orientation),
@@ -448,13 +448,14 @@ pub fn get_hand_motion(
             angular_velocity: to_vec3(velocity.angular_velocity),
         };
 
-        return (Some(hand_motion), None);
+        return Ok((Some(hand_motion), None));
     }
 
     if let Some(tracker) = &hand_source.skeleton_tracker {
         // todo: support also velocities in the protocol
-        if let Some((joint_locations, jont_velocities)) =
-            reference_space.relate_hand_joints(tracker, time).unwrap()
+        if let Some((joint_locations, jont_velocities)) = reference_space
+            .relate_hand_joints(tracker, time)
+            .map_err(err!())?
         {
             let r = joint_locations
                 .iter()
@@ -481,30 +482,30 @@ pub fn get_hand_motion(
                 r[21], r[22], r[23], r[24], // pinky
             ];
 
-            (Some(root_motion), Some(joint_rotations))
+            Ok((Some(root_motion), Some(joint_rotations)))
         } else {
-            (None, None)
+            Ok((None, None))
         }
     } else {
-        (None, None)
+        Ok((None, None))
     }
 }
 
 pub fn update_buttons(
     xr_session: &xr::Session<xr::AnyGraphics>,
     button_actions: &HashMap<u64, ButtonAction>,
-) {
+) -> StrResult {
     for (id, action) in button_actions {
         match action {
             ButtonAction::Binary(action) => {
-                let state = action.state(xr_session, xr::Path::NULL).unwrap();
+                let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
 
                 if state.changed_since_last_sync {
                     alvr_client_core::send_button(*id, ButtonValue::Binary(state.current_state));
                 }
             }
             ButtonAction::Scalar(action) => {
-                let state = action.state(xr_session, xr::Path::NULL).unwrap();
+                let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
 
                 if state.changed_since_last_sync {
                     alvr_client_core::send_button(*id, ButtonValue::Scalar(state.current_state));
@@ -512,4 +513,6 @@ pub fn update_buttons(
             }
         }
     }
+
+    Ok(())
 }

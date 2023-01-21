@@ -187,97 +187,89 @@ pub fn create_swapchain(
         .unwrap()
 }
 
-fn streaming_input_loop(ctx: StreamingInputContext) {
-    let mut deadline = Instant::now();
+// This function is allowed to return errors. It can happen when the session is destroyed
+// asynchronously
+fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> StrResult {
+    // Streaming related inputs are updated here. Make sure every input poll is done in this
+    // thread
+    ctx.xr_session
+        .sync_actions(&[(&ctx.interaction_context.action_set).into()])
+        .map_err(err!())?;
 
-    let mut last_ipd = 0.0;
+    let now = to_duration(ctx.xr_instance.now().map_err(err!())?);
 
-    while ctx.is_streaming.value() {
-        // Streaming related inputs are updated here. Make sure every input poll is done in this
-        // thread
-        ctx.xr_session
-            .sync_actions(&[(&ctx.interaction_context.action_set).into()])
-            .unwrap();
+    let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
 
-        let now = to_duration(ctx.xr_instance.now().unwrap());
-
-        let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
-
-        let (_, views) = ctx
-            .xr_session
-            .locate_views(
-                xr::ViewConfigurationType::PRIMARY_STEREO,
-                to_xr_time(target_timestamp),
-                &ctx.reference_space,
-            )
-            .unwrap();
-
-        let ipd = (to_vec3(views[0].pose.position) - to_vec3(views[1].pose.position)).length();
-        if f32::abs(last_ipd - ipd) > IPD_CHANGE_EPS {
-            alvr_client_core::send_views_config([to_fov(views[0].fov), to_fov(views[1].fov)], ipd);
-
-            last_ipd = ipd;
-        }
-
-        // Note: Here is assumed that views are on the same plane and orientation. The head position
-        // is approximated as the center point between the eyes.
-        let head_position =
-            (to_vec3(views[0].pose.position) + to_vec3(views[1].pose.position)) / 2.0;
-        let head_orientation = to_quat(views[0].pose.orientation);
-
-        {
-            let mut views_history_lock = ctx.views_history.lock();
-
-            views_history_lock.push_back((target_timestamp, views));
-            if views_history_lock.len() > 360 {
-                views_history_lock.pop_front();
-            }
-        }
-
-        let tracker_time = to_xr_time(now + alvr_client_core::get_tracker_prediction_offset());
-
-        let mut device_motions = vec![(
-            *HEAD_ID,
-            DeviceMotion {
-                orientation: head_orientation,
-                position: head_position,
-                linear_velocity: Vec3::ZERO,
-                angular_velocity: Vec3::ZERO,
-            },
-        )];
-
-        let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
-            &ctx.xr_session,
+    let (_, views) = ctx
+        .xr_session
+        .locate_views(
+            xr::ViewConfigurationType::PRIMARY_STEREO,
+            to_xr_time(target_timestamp),
             &ctx.reference_space,
-            tracker_time,
-            &ctx.interaction_context.left_hand_source,
-        );
-        let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
-            &ctx.xr_session,
-            &ctx.reference_space,
-            tracker_time,
-            &ctx.interaction_context.right_hand_source,
-        );
+        )
+        .map_err(err!())?;
 
-        if let Some(motion) = left_hand_motion {
-            device_motions.push((*LEFT_HAND_ID, motion));
-        }
-        if let Some(motion) = right_hand_motion {
-            device_motions.push((*RIGHT_HAND_ID, motion));
-        }
+    let ipd = (to_vec3(views[0].pose.position) - to_vec3(views[1].pose.position)).length();
+    if f32::abs(*last_ipd - ipd) > IPD_CHANGE_EPS {
+        alvr_client_core::send_views_config([to_fov(views[0].fov), to_fov(views[1].fov)], ipd);
 
-        alvr_client_core::send_tracking(Tracking {
-            target_timestamp,
-            device_motions,
-            left_hand_skeleton,
-            right_hand_skeleton,
-        });
-
-        interaction::update_buttons(&ctx.xr_session, &ctx.interaction_context.button_actions);
-
-        deadline += ctx.frame_interval / 3;
-        thread::sleep(deadline.saturating_duration_since(Instant::now()));
+        *last_ipd = ipd;
     }
+
+    // Note: Here is assumed that views are on the same plane and orientation. The head position
+    // is approximated as the center point between the eyes.
+    let head_position = (to_vec3(views[0].pose.position) + to_vec3(views[1].pose.position)) / 2.0;
+    let head_orientation = to_quat(views[0].pose.orientation);
+
+    {
+        let mut views_history_lock = ctx.views_history.lock();
+
+        views_history_lock.push_back((target_timestamp, views));
+        if views_history_lock.len() > 360 {
+            views_history_lock.pop_front();
+        }
+    }
+
+    let tracker_time = to_xr_time(now + alvr_client_core::get_tracker_prediction_offset());
+
+    let mut device_motions = vec![(
+        *HEAD_ID,
+        DeviceMotion {
+            orientation: head_orientation,
+            position: head_position,
+            linear_velocity: Vec3::ZERO,
+            angular_velocity: Vec3::ZERO,
+        },
+    )];
+
+    let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
+        &ctx.xr_session,
+        &ctx.reference_space,
+        tracker_time,
+        &ctx.interaction_context.left_hand_source,
+    )?;
+    let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
+        &ctx.xr_session,
+        &ctx.reference_space,
+        tracker_time,
+        &ctx.interaction_context.right_hand_source,
+    )?;
+
+    if let Some(motion) = left_hand_motion {
+        device_motions.push((*LEFT_HAND_ID, motion));
+    }
+    if let Some(motion) = right_hand_motion {
+        device_motions.push((*RIGHT_HAND_ID, motion));
+    }
+
+    alvr_client_core::send_tracking(Tracking {
+        target_timestamp,
+        device_motions,
+        left_hand_skeleton,
+        right_hand_skeleton,
+    });
+
+    interaction::update_buttons(&ctx.xr_session, &ctx.interaction_context.button_actions)
 }
 
 pub fn entry_point() {
@@ -381,7 +373,7 @@ pub fn entry_point() {
         let mut lobby_swapchains = None;
         let mut stream_swapchains = None;
         let mut stream_view_resolution = UVec2::ZERO;
-        let mut streaming_input_thread = None;
+        let mut streaming_input_thread = None::<thread::JoinHandle<_>>;
         let views_history = Arc::new(Mutex::new(VecDeque::new()));
 
         let default_view = xr::View {
@@ -447,6 +439,17 @@ pub fn entry_point() {
                             alvr_client_core::resume();
                         }
                         xr::SessionState::STOPPING => {
+                            // Make sure streaming resources are destroyed before pausing
+                            {
+                                stream_swapchains.take();
+
+                                is_streaming.set(false);
+
+                                if let Some(thread) = streaming_input_thread.take() {
+                                    thread.join().unwrap();
+                                }
+                            }
+
                             alvr_client_core::pause();
 
                             alvr_client_core::opengl::pause();
@@ -533,8 +536,17 @@ pub fn entry_point() {
                             views_history: Arc::clone(&views_history),
                         };
 
-                        streaming_input_thread = Some(thread::spawn(|| {
-                            streaming_input_loop(context);
+                        streaming_input_thread = Some(thread::spawn(move || {
+                            let mut deadline = Instant::now();
+
+                            let mut last_ipd = 0.0;
+
+                            while context.is_streaming.value() {
+                                show_err(update_streaming_input(&context, &mut last_ipd));
+
+                                deadline += context.frame_interval / 3;
+                                thread::sleep(deadline.saturating_duration_since(Instant::now()));
+                            }
                         }));
 
                         let swapchains = stream_swapchains.get_or_insert_with(|| {

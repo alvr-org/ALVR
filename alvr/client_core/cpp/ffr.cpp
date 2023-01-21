@@ -9,7 +9,7 @@ using namespace std;
 using namespace gl_render_utils;
 
 namespace {
-    const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
+const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
         precision highp float;
 
         const uvec2 TARGET_RESOLUTION = uvec2(%u, %u);
@@ -31,7 +31,7 @@ namespace {
         }
     )glsl";
 
-    const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
+const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
         uniform sampler2D tex0;
         in vec2 uv;
         out vec4 color;
@@ -65,88 +65,103 @@ namespace {
         }
     )glsl";
 
-    struct FoveationVars {
-		uint32_t targetEyeWidth;
-		uint32_t targetEyeHeight;
-		uint32_t optimizedEyeWidth;
-		uint32_t optimizedEyeHeight;
+struct FoveationVars {
+    uint32_t targetEyeWidth;
+    uint32_t targetEyeHeight;
+    uint32_t optimizedEyeWidth;
+    uint32_t optimizedEyeHeight;
 
-		float eyeWidthRatio;
-		float eyeHeightRatio;
+    float eyeWidthRatio;
+    float eyeHeightRatio;
 
-		float centerSizeX;
-		float centerSizeY;
-		float centerShiftX;
-		float centerShiftY;
-		float edgeRatioX;
-		float edgeRatioY;
-    };
+    float centerSizeX;
+    float centerSizeY;
+    float centerShiftX;
+    float centerShiftY;
+    float edgeRatioX;
+    float edgeRatioY;
+};
 
-    FoveationVars CalculateFoveationVars(FFRData data) {
-        float targetEyeWidth = data.viewWidth;
-        float targetEyeHeight = data.viewHeight;
+FoveationVars CalculateFoveationVars(FFRData data) {
+    float targetEyeWidth = data.viewWidth;
+    float targetEyeHeight = data.viewHeight;
 
-		float centerSizeX = data.centerSizeX;
-		float centerSizeY = data.centerSizeY;
-		float centerShiftX = data.centerShiftX;
-		float centerShiftY = data.centerShiftY;
-		float edgeRatioX = data.edgeRatioX;
-		float edgeRatioY = data.edgeRatioY;
+    float centerSizeX = data.centerSizeX;
+    float centerSizeY = data.centerSizeY;
+    float centerShiftX = data.centerShiftX;
+    float centerShiftY = data.centerShiftY;
+    float edgeRatioX = data.edgeRatioX;
+    float edgeRatioY = data.edgeRatioY;
 
-		float edgeSizeX = targetEyeWidth-centerSizeX*targetEyeWidth;
-		float edgeSizeY = targetEyeHeight-centerSizeY*targetEyeHeight;
+    float edgeSizeX = targetEyeWidth - centerSizeX * targetEyeWidth;
+    float edgeSizeY = targetEyeHeight - centerSizeY * targetEyeHeight;
 
-		float centerSizeXAligned = 1.-ceil(edgeSizeX/(edgeRatioX*2.))*(edgeRatioX*2.)/targetEyeWidth;
-		float centerSizeYAligned = 1.-ceil(edgeSizeY/(edgeRatioY*2.))*(edgeRatioY*2.)/targetEyeHeight;
+    float centerSizeXAligned =
+        1. - ceil(edgeSizeX / (edgeRatioX * 2.)) * (edgeRatioX * 2.) / targetEyeWidth;
+    float centerSizeYAligned =
+        1. - ceil(edgeSizeY / (edgeRatioY * 2.)) * (edgeRatioY * 2.) / targetEyeHeight;
 
-		float edgeSizeXAligned = targetEyeWidth-centerSizeXAligned*targetEyeWidth;
-		float edgeSizeYAligned = targetEyeHeight-centerSizeYAligned*targetEyeHeight;
+    float edgeSizeXAligned = targetEyeWidth - centerSizeXAligned * targetEyeWidth;
+    float edgeSizeYAligned = targetEyeHeight - centerSizeYAligned * targetEyeHeight;
 
-		float centerShiftXAligned = ceil(centerShiftX*edgeSizeXAligned/(edgeRatioX*2.))*(edgeRatioX*2.)/edgeSizeXAligned;
-		float centerShiftYAligned = ceil(centerShiftY*edgeSizeYAligned/(edgeRatioY*2.))*(edgeRatioY*2.)/edgeSizeYAligned;
+    float centerShiftXAligned = ceil(centerShiftX * edgeSizeXAligned / (edgeRatioX * 2.)) *
+                                (edgeRatioX * 2.) / edgeSizeXAligned;
+    float centerShiftYAligned = ceil(centerShiftY * edgeSizeYAligned / (edgeRatioY * 2.)) *
+                                (edgeRatioY * 2.) / edgeSizeYAligned;
 
-		float foveationScaleX = (centerSizeXAligned+(1.-centerSizeXAligned)/edgeRatioX);
-		float foveationScaleY = (centerSizeYAligned+(1.-centerSizeYAligned)/edgeRatioY);
+    float foveationScaleX = (centerSizeXAligned + (1. - centerSizeXAligned) / edgeRatioX);
+    float foveationScaleY = (centerSizeYAligned + (1. - centerSizeYAligned) / edgeRatioY);
 
-		float optimizedEyeWidth = foveationScaleX*targetEyeWidth;
-		float optimizedEyeHeight = foveationScaleY*targetEyeHeight;
+    float optimizedEyeWidth = foveationScaleX * targetEyeWidth;
+    float optimizedEyeHeight = foveationScaleY * targetEyeHeight;
 
-		// round the frame dimensions to a number of pixel multiple of 32 for the encoder
-		auto optimizedEyeWidthAligned = (uint32_t)ceil(optimizedEyeWidth / 32.f) * 32;
-		auto optimizedEyeHeightAligned = (uint32_t)ceil(optimizedEyeHeight / 32.f) * 32;
+    // round the frame dimensions to a number of pixel multiple of 32 for the encoder
+    auto optimizedEyeWidthAligned = (uint32_t)ceil(optimizedEyeWidth / 32.f) * 32;
+    auto optimizedEyeHeightAligned = (uint32_t)ceil(optimizedEyeHeight / 32.f) * 32;
 
-		float eyeWidthRatioAligned = optimizedEyeWidth/optimizedEyeWidthAligned;
-		float eyeHeightRatioAligned = optimizedEyeHeight/optimizedEyeHeightAligned;
+    float eyeWidthRatioAligned = optimizedEyeWidth / optimizedEyeWidthAligned;
+    float eyeHeightRatioAligned = optimizedEyeHeight / optimizedEyeHeightAligned;
 
-        return {data.viewWidth, data.viewHeight, optimizedEyeWidthAligned, optimizedEyeHeightAligned,
-			eyeWidthRatioAligned, eyeHeightRatioAligned,
-			centerSizeXAligned, centerSizeYAligned, centerShiftXAligned, centerShiftYAligned, edgeRatioX, edgeRatioY };
-    }
+    return {data.viewWidth,
+            data.viewHeight,
+            optimizedEyeWidthAligned,
+            optimizedEyeHeightAligned,
+            eyeWidthRatioAligned,
+            eyeHeightRatioAligned,
+            centerSizeXAligned,
+            centerSizeYAligned,
+            centerShiftXAligned,
+            centerShiftYAligned,
+            edgeRatioX,
+            edgeRatioY};
 }
+} // namespace
 
-
-FFR::FFR(Texture *inputSurface)
-        : mInputSurface(inputSurface) {
-}
+FFR::FFR(Texture *inputSurface) : mInputSurface(inputSurface) {}
 
 void FFR::Initialize(FFRData ffrData) {
     auto fv = CalculateFoveationVars(ffrData);
     auto ffrCommonShaderStr = string_format(FFR_COMMON_SHADER_FORMAT,
-                                            fv.targetEyeWidth, fv.targetEyeHeight,
-                                            fv.optimizedEyeWidth, fv.optimizedEyeHeight,
-                                            fv.eyeWidthRatio, fv.eyeHeightRatio,
-                                            fv.centerSizeX, fv.centerSizeY,
-                                            fv.centerShiftX, fv.centerShiftY,
-                                            fv.edgeRatioX, fv.edgeRatioY);
+                                            fv.targetEyeWidth,
+                                            fv.targetEyeHeight,
+                                            fv.optimizedEyeWidth,
+                                            fv.optimizedEyeHeight,
+                                            fv.eyeWidthRatio,
+                                            fv.eyeHeightRatio,
+                                            fv.centerSizeX,
+                                            fv.centerSizeY,
+                                            fv.centerShiftX,
+                                            fv.centerShiftY,
+                                            fv.edgeRatioX,
+                                            fv.edgeRatioY);
 
-    mExpandedTexture.reset(
-            new Texture(false, ffrData.viewWidth * 2, ffrData.viewHeight, GL_RGB8));
+    mExpandedTexture.reset(new Texture(false, 0, false, ffrData.viewWidth * 2, ffrData.viewHeight));
     mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
 
-    auto decompressAxisAlignedShaderStr = ffrCommonShaderStr + DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER;
+    auto decompressAxisAlignedShaderStr =
+        ffrCommonShaderStr + DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER;
     mDecompressAxisAlignedPipeline = unique_ptr<RenderPipeline>(
-            new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER,
-                               decompressAxisAlignedShaderStr));
+        new RenderPipeline({mInputSurface}, QUAD_2D_VERTEX_SHADER, decompressAxisAlignedShaderStr));
 }
 
 void FFR::Render() const {

@@ -305,6 +305,7 @@ pub fn entry_point() {
     enabled_extensions.khr_convert_timespec_time = true;
     enabled_extensions.ext_hand_tracking = available_extensions.ext_hand_tracking;
     enabled_extensions.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
+    enabled_extensions.fb_color_space = available_extensions.fb_color_space;
     #[cfg(target_os = "android")]
     {
         enabled_extensions.khr_android_create_instance = true;
@@ -520,7 +521,9 @@ pub fn entry_point() {
                         dynamic_oculus_foveation,
                         extra_latency,
                     } => {
-                        xr_session.request_display_refresh_rate(fps).unwrap();
+                        if platform == Platform::Quest || platform == Platform::Pico {
+                            xr_session.request_display_refresh_rate(fps).unwrap();
+                        }
 
                         stream_view_resolution = view_resolution;
 

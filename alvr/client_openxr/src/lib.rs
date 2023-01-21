@@ -200,7 +200,7 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
 
     let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
 
-    let (_, views) = ctx
+    let (view_flags, views) = ctx
         .xr_session
         .locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
@@ -208,6 +208,12 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
             &ctx.reference_space,
         )
         .map_err(err!())?;
+
+    if !view_flags.contains(xr::ViewStateFlags::POSITION_VALID)
+        || !view_flags.contains(xr::ViewStateFlags::ORIENTATION_VALID)
+    {
+        return Ok(());
+    }
 
     let ipd = (to_vec3(views[0].pose.position) - to_vec3(views[1].pose.position)).length();
     if f32::abs(*last_ipd - ipd) > IPD_CHANGE_EPS {

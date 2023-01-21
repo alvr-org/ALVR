@@ -1,10 +1,9 @@
-use alvr_common::{glam::Quat, once_cell::sync::Lazy, *};
+use crate::{to_quat, to_vec3, Platform};
+use alvr_common::{glam::Quat, *};
 use alvr_events::ButtonValue;
 use alvr_sockets::DeviceMotion;
 use openxr as xr;
 use std::collections::HashMap;
-
-use crate::{to_quat, to_vec3};
 
 enum BindingType {
     Binary,
@@ -33,81 +32,197 @@ pub struct ButtonBindingInfo {
 // The oculus touch controller is used as the universal binding for every platform. Given its
 // popularity, all OpenXR runtimes should support binding to the oculus touch controller.
 const OCULUS_TOUCH_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
-static OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO: Lazy<HashMap<u64, ButtonBindingInfo>> =
-    Lazy::new(|| {
-        [
-            (
-                *MENU_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "menu_click".into(),
-                    binding_path: MENU_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *A_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "a_click".into(),
-                    binding_path: A_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *A_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "a_touch".into(),
-                    binding_path: A_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *B_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "b_click".into(),
-                    binding_path: B_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *B_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "b_touch".into(),
-                    binding_path: B_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *X_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "x_click".into(),
-                    binding_path: X_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *X_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "x_touch".into(),
-                    binding_path: X_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *Y_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "y_click".into(),
-                    binding_path: Y_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *Y_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "y_touch".into(),
-                    binding_path: Y_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
+
+fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
+    let mut list = vec![
+        (
+            *MENU_CLICK_ID,
+            ButtonBindingInfo {
+                name: "menu_click".into(),
+                binding_path: MENU_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *A_CLICK_ID,
+            ButtonBindingInfo {
+                name: "a_click".into(),
+                binding_path: A_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *A_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "a_touch".into(),
+                binding_path: A_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *B_CLICK_ID,
+            ButtonBindingInfo {
+                name: "b_click".into(),
+                binding_path: B_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *B_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "b_touch".into(),
+                binding_path: B_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *X_CLICK_ID,
+            ButtonBindingInfo {
+                name: "x_click".into(),
+                binding_path: X_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *X_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "x_touch".into(),
+                binding_path: X_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *Y_CLICK_ID,
+            ButtonBindingInfo {
+                name: "y_click".into(),
+                binding_path: Y_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *Y_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "y_touch".into(),
+                binding_path: Y_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *LEFT_SQUEEZE_VALUE_ID,
+            ButtonBindingInfo {
+                name: "left_squeeze_value".into(),
+                binding_path: LEFT_SQUEEZE_VALUE_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *LEFT_TRIGGER_VALUE_ID,
+            ButtonBindingInfo {
+                name: "left_trigger_value".into(),
+                binding_path: LEFT_TRIGGER_VALUE_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *LEFT_TRIGGER_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "left_trigger_touch".into(),
+                binding_path: LEFT_TRIGGER_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *LEFT_THUMBSTICK_X_ID,
+            ButtonBindingInfo {
+                name: "left_thumbstick_x".into(),
+                binding_path: LEFT_THUMBSTICK_X_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *LEFT_THUMBSTICK_Y_ID,
+            ButtonBindingInfo {
+                name: "left_thumbstick_y".into(),
+                binding_path: LEFT_THUMBSTICK_Y_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *LEFT_THUMBSTICK_CLICK_ID,
+            ButtonBindingInfo {
+                name: "left_thumbstick_click".into(),
+                binding_path: LEFT_THUMBSTICK_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *LEFT_THUMBSTICK_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "left_thumbstick_touch".into(),
+                binding_path: LEFT_THUMBSTICK_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *RIGHT_SQUEEZE_VALUE_ID,
+            ButtonBindingInfo {
+                name: "right_squeeze_value".into(),
+                binding_path: RIGHT_SQUEEZE_VALUE_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *RIGHT_TRIGGER_VALUE_ID,
+            ButtonBindingInfo {
+                name: "right_trigger_value".into(),
+                binding_path: RIGHT_TRIGGER_VALUE_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *RIGHT_TRIGGER_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "right_trigger_touch".into(),
+                binding_path: RIGHT_TRIGGER_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *RIGHT_THUMBSTICK_X_ID,
+            ButtonBindingInfo {
+                name: "right_thumbstick_x".into(),
+                binding_path: RIGHT_THUMBSTICK_X_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *RIGHT_THUMBSTICK_Y_ID,
+            ButtonBindingInfo {
+                name: "right_thumbstick_y".into(),
+                binding_path: RIGHT_THUMBSTICK_Y_PATH.into(),
+                binding_type: BindingType::Scalar,
+            },
+        ),
+        (
+            *RIGHT_THUMBSTICK_CLICK_ID,
+            ButtonBindingInfo {
+                name: "right_thumbstick_click".into(),
+                binding_path: RIGHT_THUMBSTICK_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+        (
+            *RIGHT_THUMBSTICK_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "right_thumbstick_touch".into(),
+                binding_path: RIGHT_THUMBSTICK_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+    ];
+
+    if platform == Platform::Quest {
+        list.extend([
             (
                 *LEFT_SQUEEZE_CLICK_ID,
                 ButtonBindingInfo {
@@ -117,66 +232,10 @@ static OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO: Lazy<HashMap<u64, ButtonBind
                 },
             ),
             (
-                *LEFT_SQUEEZE_VALUE_ID,
-                ButtonBindingInfo {
-                    name: "left_squeeze_value".into(),
-                    binding_path: LEFT_SQUEEZE_VALUE_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
                 *LEFT_TRIGGER_CLICK_ID,
                 ButtonBindingInfo {
                     name: "left_trigger_click".into(),
                     binding_path: "/user/hand/left/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_TRIGGER_VALUE_ID,
-                ButtonBindingInfo {
-                    name: "left_trigger_value".into(),
-                    binding_path: LEFT_TRIGGER_VALUE_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *LEFT_TRIGGER_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "left_trigger_touch".into(),
-                    binding_path: LEFT_TRIGGER_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_THUMBSTICK_X_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbstick_x".into(),
-                    binding_path: LEFT_THUMBSTICK_X_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *LEFT_THUMBSTICK_Y_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbstick_y".into(),
-                    binding_path: LEFT_THUMBSTICK_Y_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *LEFT_THUMBSTICK_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbstick_click".into(),
-                    binding_path: LEFT_THUMBSTICK_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_THUMBSTICK_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbstick_touch".into(),
-                    binding_path: LEFT_THUMBSTICK_TOUCH_PATH.into(),
                     binding_type: BindingType::Binary,
                 },
             ),
@@ -197,66 +256,10 @@ static OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO: Lazy<HashMap<u64, ButtonBind
                 },
             ),
             (
-                *RIGHT_SQUEEZE_VALUE_ID,
-                ButtonBindingInfo {
-                    name: "right_squeeze_value".into(),
-                    binding_path: RIGHT_SQUEEZE_VALUE_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
                 *RIGHT_TRIGGER_CLICK_ID,
                 ButtonBindingInfo {
                     name: "right_trigger_click".into(),
                     binding_path: "/user/hand/right/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_TRIGGER_VALUE_ID,
-                ButtonBindingInfo {
-                    name: "right_trigger_value".into(),
-                    binding_path: RIGHT_TRIGGER_VALUE_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *RIGHT_TRIGGER_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "right_trigger_touch".into(),
-                    binding_path: RIGHT_TRIGGER_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_THUMBSTICK_X_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbstick_x".into(),
-                    binding_path: RIGHT_THUMBSTICK_X_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *RIGHT_THUMBSTICK_Y_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbstick_y".into(),
-                    binding_path: RIGHT_THUMBSTICK_Y_PATH.into(),
-                    binding_type: BindingType::Scalar,
-                },
-            ),
-            (
-                *RIGHT_THUMBSTICK_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbstick_click".into(),
-                    binding_path: RIGHT_THUMBSTICK_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_THUMBSTICK_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbstick_touch".into(),
-                    binding_path: RIGHT_THUMBSTICK_TOUCH_PATH.into(),
                     binding_type: BindingType::Binary,
                 },
             ),
@@ -268,10 +271,11 @@ static OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO: Lazy<HashMap<u64, ButtonBind
                     binding_type: BindingType::Binary,
                 },
             ),
-        ]
-        .into_iter()
-        .collect()
-    });
+        ]);
+    }
+
+    list.into_iter().collect()
+}
 
 pub struct StreamingInteractionContext {
     pub action_set: xr::ActionSet,
@@ -281,6 +285,7 @@ pub struct StreamingInteractionContext {
 }
 
 pub fn initialize_streaming_interaction(
+    platform: Platform,
     xr_instance: &xr::Instance,
     xr_system: xr::SystemId,
     xr_session: &xr::Session<xr::AnyGraphics>,
@@ -295,10 +300,12 @@ pub fn initialize_streaming_interaction(
         xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
     }
 
+    let bindings_info = get_button_bindings(platform);
+
     // Create actions:
 
     let mut button_actions = HashMap::new();
-    for (id, info) in &*OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO {
+    for (id, info) in &bindings_info {
         let display_name = format!(
             "{}{}",
             info.name[0..1].to_uppercase(),
@@ -337,10 +344,7 @@ pub fn initialize_streaming_interaction(
     // Create action bindings:
 
     for (id, action) in &button_actions {
-        let path = &OCULUS_TOUCH_CONTROLLER_BUTTON_BINDING_INFO
-            .get(id)
-            .unwrap()
-            .binding_path;
+        let path = &bindings_info.get(id).unwrap().binding_path;
         match action {
             ButtonAction::Binary(action) => {
                 bindings.push(binding(action, path));

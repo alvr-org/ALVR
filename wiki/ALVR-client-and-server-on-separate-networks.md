@@ -55,6 +55,48 @@ At this point, you should be ready to go. Have fun in VR!
 An alternative to ZeroTier with practically the same setup procedure. This could have better latency, depending on your distance to the datacenter.
 https://tailscale.com/
 
+## n2n
+
+[n2n](https://github.com/ntop/n2n) is another P2P VPN solution, just like ZeroTier. You need to run _supernode_ on a server with an IP and port publicly accessible on internet (or at least your PC and Quest can access to it), and run _edge_ node on your PC and Quest.
+
+Its pros and cons are similar to ZeroTier, but it's self-hosted and open-source if you care about privacy, though instead you need some knowledge about networking and server deploying.
+
+### Requirements
+- Compile [n2n](https://github.com/ntop/n2n) from source
+  - Or you can grab pre-built binaries from [here](https://github.com/lucktu/n2n) directly, compiled by lucktu.
+  - Some Linux distribution may have n2n, but be sure you're using the same version. Since the source code is v3, the following steps will also use v3 in the example below.
+- [TAP-Windows driver](https://community.openvpn.net/openvpn/wiki/GettingTapWindows) or [OpenVPN](https://openvpn.net/community/) (includes TAP-Windows) if you're using Windows PC
+- [hin2n](https://github.com/switch-iot/hin2n) APK
+- A server with public IP and allow public ports
+- SideQuest or some other method to install the hin2n APK onto your headset
+
+### Installation
+We're going to use n2n v3, and set the port of _supernode_ to `1234` as the example. You can change `1234` to any port, but below `1024` requires root.
+
+- Open port `1234` on your server's firewall (usually `iptables`, if you don't know what to do, ask Google).
+- Upload _supernode_ binary to your server, run `./supernode -p 1234`.
+- Install TAP-Windows driver or OpenVPN on your PC if you're using Windows.
+- Upload _edge_ binary to your PC, run `./edge -c [network-name] -k [secret-password] -a 192.168.100.1 -l [your-server-ip]:1234` to connect to the _supernode_, assign the IP `192.168.100.1` to the PC, and use the password you provided for data encryption. 
+- Once you see `[OK] edge <<< ================ >>> supernode`, your PC is done, or you need to follow the error logs to see what's wrong.
+- Install _hin2n_ on your Quest and open it, click the plus button at the top-right corner to add a new configuration and assign `192.168.100.2` to your Quest:
+  - N2N version: v3
+  - Supernode: `[your-server-ip]:1234`
+  - Community: `[network-name]`
+  - Encrypt key: `[secret-password]`
+  - IP address: `192.168.100.2`
+  - Subnet mask: `255.255.255.0`
+- Click "Current Setting" under the connect button, select the configuration we created just now, then click the connect button. If you're asked to allow hin2n to create a VPN connection, allow it.
+- Once you see `[OK] edge <<< ================ >>> supernode`, your Quest is done.
+- Open ALVR on your headset, record the hostname it shows.
+- Open ALVR dashboard on your PC, click "Add client manually" button, put the hostname you just recorded, and set IP address to `192.168.100.2` which is assigned to Quest just now.
+- Once it's done, you're all set.
+
+### Troubleshooting
+- Make sure you can access to the supernode, your supernode should be run on a server with public IP, and you can ping it on your PC.
+- If your Quest cannot connect to ALVR dashboard, ping the IP you assigned to Quest in hin2n. If it fails, try redoing the setup steps.
+- If the edge binary or hin2n says the IP has already been assigned and not released by supernode, you can set IP address to another one in the same subnet like `192.168.100.123` to reassign a new IP to the device.
+- If you're playing over WAN, you may see more glitches, higher stream latency, or lagger response with TCP. Use adaptive bitrate and UDP may improve your experience.
+
 # ALVR v11 and Below
 
 ALVR version Experimental v7 or newer is recommended for this configuration.

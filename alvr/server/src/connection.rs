@@ -3,8 +3,8 @@ use crate::{
     tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
     AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
     AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, VideoPacket, CONTROL_CHANNEL_SENDER,
-    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -1017,7 +1017,18 @@ async fn connection_pipeline(
                         playspace_sync_sender.send(packet).ok();
                     }
                 }
-                Ok(ClientControlPacket::RequestIdr) => unsafe { crate::RequestIDR() },
+                Ok(ClientControlPacket::RequestIdr) => {
+                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                        if let Some(config_buffer) = &*DECODER_CONFIG.lock() {
+                            sender
+                                .send(ServerControlPacket::InitializeDecoder {
+                                    config_buffer: config_buffer.clone(),
+                                })
+                                .ok();
+                        }
+                    }
+                    unsafe { crate::RequestIDR() }
+                }
                 Ok(ClientControlPacket::VideoErrorReport) => {
                     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                         stats.report_packet_loss();

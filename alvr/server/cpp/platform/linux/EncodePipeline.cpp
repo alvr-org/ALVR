@@ -67,7 +67,8 @@ void filter_NAL(const uint8_t* input, size_t input_size, std::vector<uint8_t> &o
 
 void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
   encoder_ctx->bit_rate = bitrate;
-  encoder_ctx->rc_buffer_size = bitrate / Settings::Instance().m_refreshRate;
+  encoder_ctx->rc_buffer_size = bitrate / Settings::Instance().m_refreshRate * 1.1;
+  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
 }
 
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)

@@ -712,8 +712,7 @@ pub fn entry_point() {
                     };
 
                     let vsync_queue = Duration::from_nanos(
-                        (frame_state.predicted_display_time - xr_now).as_nanos()
-                            as _,
+                        (frame_state.predicted_display_time - xr_now).as_nanos() as _,
                     );
                     alvr_client_core::report_submit(timestamp, vsync_queue);
 
@@ -811,11 +810,14 @@ pub fn entry_point() {
 #[inline]
 fn pico_xr_now() -> xr::Time {
     use libc::timespec;
-    let mut ts_now = timespec{ tv_sec: 0, tv_nsec: 0 };
+    let mut ts_now = timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
     unsafe {
         libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now);
     }
-    xr::Time::from_nanos(ts_now.tv_sec * 1000000000 + ts_now.tv_nsec)
+    xr::Time::from_nanos(ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec)
 }
 
 #[cfg(target_os = "android")]

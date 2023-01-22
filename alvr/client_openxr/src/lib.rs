@@ -67,10 +67,6 @@ fn to_fov(f: xr::Fovf) -> Fov {
     }
 }
 
-fn to_duration(time: xr::Time) -> Duration {
-    Duration::from_nanos(time.as_nanos() as _)
-}
-
 fn to_xr_time(timestamp: Duration) -> xr::Time {
     xr::Time::from_nanos(timestamp.as_nanos() as _)
 }
@@ -197,7 +193,7 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         .sync_actions(&[(&ctx.interaction_context.action_set).into()])
         .map_err(err!())?;
 
-    let now = to_duration(xr_time_now(&ctx.xr_instance, ctx.platform));
+    let now = xr_runtime_now(&ctx.xr_instance, ctx.platform).ok_or_else(enone!())?;
 
     let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
 
@@ -315,7 +311,7 @@ pub fn entry_point() {
     exts.fb_color_space = available_extensions.fb_color_space;
     #[cfg(target_os = "android")]
     {
-        enabled_extensions.khr_android_create_instance = true;
+        exts.khr_android_create_instance = true;
     }
 
     let xr_instance = xr_entry
@@ -635,7 +631,8 @@ pub fn entry_point() {
             };
             let frame_interval =
                 Duration::from_nanos(frame_state.predicted_display_period.as_nanos() as _);
-            let vsync_time = to_duration(frame_state.predicted_display_time);
+            let vsync_time =
+                Duration::from_nanos(frame_state.predicted_display_time.as_nanos() as _);
 
             xr_frame_stream.begin().unwrap();
 
@@ -699,11 +696,9 @@ pub fn entry_point() {
                         [left_swapchain_idx, right_swapchain_idx],
                     );
 
-                    let vsync_queue = Duration::from_nanos(
-                        (frame_state.predicted_display_time - xr_time_now(&xr_instance, platform))
-                            .as_nanos() as _,
-                    );
-                    alvr_client_core::report_submit(timestamp, vsync_queue);
+                    if let Some(now) = xr_runtime_now(&xr_instance, platform) {
+                        alvr_client_core::report_submit(timestamp, vsync_time.saturating_sub(now));
+                    }
 
                     display_time = timestamp;
                 } else {
@@ -796,23 +791,24 @@ pub fn entry_point() {
     alvr_client_core::destroy();
 }
 
-fn xr_time_now(xr_instance: &xr::Instance, platform: Platform) -> xr::Time {
-    #[cfg(target_os = "android")]
-    if platform == Platform::Pico {
-        use libc::timespec;
-        let mut ts_now = timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        unsafe {
-            libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now);
+fn xr_runtime_now(xr_instance: &xr::Instance, platform: Platform) -> Option<Duration> {
+    let time_nanos = {
+        #[cfg(target_os = "android")]
+        if platform == Platform::Pico {
+            let mut ts_now = libc::timespec {
+                tv_sec: 0,
+                tv_nsec: 0,
+            };
+            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now) };
+            ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec
+        } else {
+            xr_instance.now().ok()?.as_nanos()
         }
-        xr::Time::from_nanos(ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec)
-    } else {
-        xr_instance.now().unwrap()
-    }
-    #[cfg(not(target_os = "android"))]
-    xr_instance.now().unwrap()
+        #[cfg(not(target_os = "android"))]
+        xr_instance.now().ok()?.as_nanos()
+    };
+
+    (time_nanos > 0).then(|| Duration::from_nanos(time_nanos as _))
 }
 
 #[cfg(target_os = "android")]

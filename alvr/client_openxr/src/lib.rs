@@ -829,13 +829,14 @@ fn android_main(app: android_activity::AndroidApp) {
 
     let mut should_quit = false;
     while !should_quit {
-        app.poll_events(Some(Duration::from_millis(100)), |event| {
-            if matches!(
-                event,
-                android_activity::PollEvent::Main(android_activity::MainEvent::Destroy)
-            ) {
+        app.poll_events(Some(Duration::from_millis(100)), |event| match event {
+            android_activity::PollEvent::Main(android_activity::MainEvent::Destroy) => {
                 should_quit = true;
             }
+            android_activity::PollEvent::Main(android_activity::MainEvent::InputAvailable) => {
+                app.input_events(|_| android_activity::InputStatus::Unhandled);
+            }
+            _ => (),
         });
     }
 

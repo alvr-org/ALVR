@@ -276,14 +276,48 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     }
 
     if platform == Platform::Pico {
-        list.extend([(
-            *MENU_CLICK_ID, // faked as oculus menu button
-            ButtonBindingInfo {
-                name: "back_click".into(),
-                binding_path: BACK_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        )]);
+        list.extend([
+            (
+                *MENU_CLICK_ID, // faked as oculus menu button
+                ButtonBindingInfo {
+                    name: "back_click".into(),
+                    binding_path: BACK_CLICK_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *LEFT_SQUEEZE_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "left_squeeze_click".into(),
+                    binding_path: "/user/hand/left/input/squeeze".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *LEFT_TRIGGER_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "left_trigger_click".into(),
+                    binding_path: "/user/hand/left/input/trigger".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *RIGHT_SQUEEZE_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "right_squeeze_click".into(),
+                    binding_path: "/user/hand/right/input/squeeze".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *RIGHT_TRIGGER_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "right_trigger_click".into(),
+                    binding_path: "/user/hand/right/input/trigger".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+        ]);
     }
 
     list.into_iter().collect()

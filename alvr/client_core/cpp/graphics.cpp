@@ -1,7 +1,7 @@
 #include "bindings.h"
 #include "ffr.h"
 #include "gltf_model.h"
-#include "gamma_pass.h"
+#include "srgb_correction_pass.h"
 #include "utils.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -69,7 +69,7 @@ typedef struct {
     GLuint hudTexture;
     GltfModel *lobbyScene;
     std::unique_ptr<FFR> ffr;
-    std::unique_ptr<GammaPass> gamma_pass;
+    std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
     bool enableFFR;
 } ovrRenderer;
 
@@ -537,11 +537,11 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         FFRData ffrData,
                         bool isLobby) {
     if (!isLobby) {
-        renderer->gamma_pass = std::make_unique<GammaPass>(streamTexture);
-        renderer->gamma_pass->Initialize(width, height);
+        renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
+        renderer->srgbCorrectionPass->Initialize(width, height);
         renderer->enableFFR = ffrData.enabled;
         if (renderer->enableFFR) {
-            renderer->ffr = std::make_unique<FFR>(renderer->gamma_pass->GetOutputTexture());
+            renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(ffrData);
         }
     }
@@ -647,7 +647,7 @@ void renderEye(
             GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
             GL(glBindTexture(GL_TEXTURE_2D,
-                             renderer->gamma_pass->GetOutputTexture()->GetGLTexture()));
+                             renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture()));
         }
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
@@ -836,7 +836,7 @@ void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchain
         GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
         GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
-        renderer->gamma_pass->Render();
+        renderer->srgbCorrectionPass->Render();
         if (renderer->enableFFR) {
             renderer->ffr->Render();
         }

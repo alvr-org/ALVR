@@ -17,10 +17,23 @@ const string PASSTHROUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
         uniform samplerExternalOES tex0;
         in vec2 uv;
         out vec4 color;
+
+        const float div12 = 1. / 12.92;
+        const float div1 = 1. / 1.055;
+        
+        float srgbToLinear(float val)
+        {
+          return val < 0.04045
+          ? val * div12
+          : pow((val + 0.055) * div1, 2.4);
+        }
+
         void main()
         {
             color = texture(tex0, uv);
-            color.rgb = pow(color.rgb, vec3(2.2));
+            color.r = srgbToLinear(color.r);
+            color.g = srgbToLinear(color.g);
+            color.b = srgbToLinear(color.b);
         }
     )glsl";
 }

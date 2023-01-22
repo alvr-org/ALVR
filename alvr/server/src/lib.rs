@@ -93,6 +93,8 @@ static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
 
 static IS_ALIVE: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
+static DECODER_CONFIG: Lazy<Mutex<Option<Vec<u8>>>> = Lazy::new(|| Mutex::new(None));
+
 pub enum WindowType {
     Alcro(alcro::UI),
     Browser,
@@ -340,9 +342,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 sender.send(config_buffer.clone()).ok();
             }
 
-            sender
-                .send(ServerControlPacket::InitializeDecoder { config_buffer })
-                .ok();
+            *DECODER_CONFIG.lock() = Some(config_buffer);
         }
     }
 

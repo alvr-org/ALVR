@@ -197,13 +197,7 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         .sync_actions(&[(&ctx.interaction_context.action_set).into()])
         .map_err(err!())?;
 
-    let xr_now = if ctx.platform == Platform::Pico {
-        pico_xr_now()
-    } else {
-        ctx.xr_instance.now().map_err(err!())?
-    };
-
-    let now = to_duration(xr_now);
+    let now = to_duration(xr_time_now(&ctx.xr_instance, ctx.platform));
 
     let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
 
@@ -705,14 +699,9 @@ pub fn entry_point() {
                         [left_swapchain_idx, right_swapchain_idx],
                     );
 
-                    let xr_now = if platform == Platform::Pico {
-                        pico_xr_now()
-                    } else {
-                        xr_instance.now().unwrap()
-                    };
-
                     let vsync_queue = Duration::from_nanos(
-                        (frame_state.predicted_display_time - xr_now).as_nanos() as _,
+                        (frame_state.predicted_display_time - xr_time_now(&xr_instance, platform))
+                            .as_nanos() as _,
                     );
                     alvr_client_core::report_submit(timestamp, vsync_queue);
 
@@ -807,17 +796,23 @@ pub fn entry_point() {
     alvr_client_core::destroy();
 }
 
-#[inline]
-fn pico_xr_now() -> xr::Time {
-    use libc::timespec;
-    let mut ts_now = timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    unsafe {
-        libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now);
+fn xr_time_now(xr_instance: &xr::Instance, platform: Platform) -> xr::Time {
+    #[cfg(target_os = "android")]
+    if platform == Platform::Pico {
+        use libc::timespec;
+        let mut ts_now = timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
+        unsafe {
+            libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now);
+        }
+        xr::Time::from_nanos(ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec)
+    } else {
+        xr_instance.now().unwrap()
     }
-    xr::Time::from_nanos(ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec)
+    #[cfg(not(target_os = "android"))]
+    xr_instance.now().unwrap()
 }
 
 #[cfg(target_os = "android")]

@@ -276,16 +276,14 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     }
 
     if platform == Platform::Pico {
-        list.extend([
-            (
-                *MENU_CLICK_ID, // faked as oculus menu button
-                ButtonBindingInfo {
-                    name: "back_click".into(),
-                    binding_path: BACK_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                }
-            )
-        ]);
+        list.extend([(
+            *MENU_CLICK_ID, // faked as oculus menu button
+            ButtonBindingInfo {
+                name: "back_click".into(),
+                binding_path: BACK_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        )]);
     }
 
     list.into_iter().collect()
@@ -388,7 +386,7 @@ pub fn initialize_streaming_interaction(
     ));
 
     // Apply bindings:
-    
+
     let controller_profile = if platform == Platform::Pico {
         PICO_CONTROLLER_PROFILE
     } else {
@@ -397,9 +395,7 @@ pub fn initialize_streaming_interaction(
 
     xr_instance
         .suggest_interaction_profile_bindings(
-            xr_instance
-                .string_to_path(controller_profile)
-                .unwrap(),
+            xr_instance.string_to_path(controller_profile).unwrap(),
             &bindings,
         )
         .unwrap();

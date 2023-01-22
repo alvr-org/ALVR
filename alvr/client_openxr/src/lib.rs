@@ -307,12 +307,12 @@ pub fn entry_point() {
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
 
-    let mut enabled_extensions = xr::ExtensionSet::default();
-    enabled_extensions.khr_opengl_es_enable = true;
-    enabled_extensions.khr_convert_timespec_time = true;
-    enabled_extensions.ext_hand_tracking = available_extensions.ext_hand_tracking;
-    enabled_extensions.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
-    enabled_extensions.fb_color_space = available_extensions.fb_color_space;
+    let mut exts = xr::ExtensionSet::default();
+    exts.khr_opengl_es_enable = true;
+    exts.khr_convert_timespec_time = true;
+    exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
+    exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
+    exts.fb_color_space = available_extensions.fb_color_space;
     #[cfg(target_os = "android")]
     {
         enabled_extensions.khr_android_create_instance = true;
@@ -326,7 +326,7 @@ pub fn entry_point() {
                 engine_name: "ALVR",
                 engine_version: 0,
             },
-            &enabled_extensions,
+            &exts,
             &[],
         )
         .unwrap();
@@ -528,7 +528,7 @@ pub fn entry_point() {
                         dynamic_oculus_foveation,
                         extra_latency,
                     } => {
-                        if platform == Platform::Quest || platform == Platform::Pico {
+                        if exts.fb_display_refresh_rate {
                             xr_session.request_display_refresh_rate(fps).unwrap();
                         }
 
@@ -818,6 +818,8 @@ fn xr_time_now(xr_instance: &xr::Instance, platform: Platform) -> xr::Time {
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: android_activity::AndroidApp) {
+    use android_activity::{InputStatus, MainEvent, PollEvent};
+
     let rendering_thread = thread::spawn(|| {
         // workaround for the Pico runtime
         let context = ndk_context::android_context();
@@ -830,11 +832,11 @@ fn android_main(app: android_activity::AndroidApp) {
     let mut should_quit = false;
     while !should_quit {
         app.poll_events(Some(Duration::from_millis(100)), |event| match event {
-            android_activity::PollEvent::Main(android_activity::MainEvent::Destroy) => {
+            PollEvent::Main(MainEvent::Destroy) => {
                 should_quit = true;
             }
-            android_activity::PollEvent::Main(android_activity::MainEvent::InputAvailable) => {
-                app.input_events(|_| android_activity::InputStatus::Unhandled);
+            PollEvent::Main(MainEvent::InputAvailable) => {
+                app.input_events(|_| InputStatus::Unhandled);
             }
             _ => (),
         });

@@ -21,7 +21,7 @@ AMFPipe::~AMFPipe()
 	m_amfComponentSrc->Drain();
 }
 
-void AMFPipe::doPassthrough(bool hasQueryTimeout) 
+void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution) 
 {
 	amf::AMFDataPtr data = nullptr;
 	if (hasQueryTimeout) {
@@ -32,12 +32,16 @@ void AMFPipe::doPassthrough(bool hasQueryTimeout)
 			Debug("Failed to get AMF component data. Last status: %d.\n", res);
 		}
 	} else {
-		uint8_t timeout = 1000; // 1s timeout
+		uint16_t timeout = 1000; // 1s timeout
 		AMF_RESULT res = m_amfComponentSrc->QueryOutput(&data);
+
+		timeBeginPeriod(timerResolution);
 		while (!data && --timeout != 0) {
 			amf_sleep(1);
 			res = m_amfComponentSrc->QueryOutput(&data);
 		}
+		timeEndPeriod(timerResolution);
+
 		if (data) {
 			m_receiver(data);
 		} else {
@@ -71,7 +75,10 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 
 AMFPipeline::AMFPipeline() 
 	: m_pipes()
-{}
+{
+	TIMECAPS tc;
+	m_timerResolution = timeGetDevCaps(&tc, sizeof(tc)) == TIMERR_NOERROR ? tc.wPeriodMin : 1;
+}
 
 AMFPipeline::~AMFPipeline() 
 {
@@ -90,7 +97,7 @@ void AMFPipeline::Run(bool hasQueryTimeout)
 {
 	for (auto &pipe : m_pipes)
 	{
-		pipe->doPassthrough(hasQueryTimeout);
+		pipe->doPassthrough(hasQueryTimeout, m_timerResolution);
 	}
 }
 
@@ -327,8 +334,6 @@ void VideoEncoderVCE::Initialize()
 
 	LoadAUDByteSequence();
 
-	::amf_increase_timer_precision();
-
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&m_amfContext));
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
@@ -382,8 +387,6 @@ void VideoEncoderVCE::Shutdown()
 	m_amfContext = NULL;
 
 	g_AMFFactory.Terminate();
-
-	amf_restore_timer_precision();
 
 	if (fpOut) {
 		fpOut.close();

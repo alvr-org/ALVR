@@ -10,7 +10,7 @@ If you have any doubt about what is (or isn't) written in here you can contact @
 
 ### The built application
 
-ALVR is made of two applications: the server and client. The server is installed on the PC and the client is installed on the headset. While the client is a single APK, the server is made of three parts: the launcher, the driver and the dashboard. The launcher (`ALVR Launcher.exe`) is the single executable found at the root of the server app installation. The driver is located in `bin/win64/` and named `driver_alvr_server.dll`. The dashboard is a collection of files located in `dashboard/`.
+ALVR is made of two applications: the server and client. The server is installed on the PC and the client is installed on the headset. While the client is a single APK, the server is made of three parts: the launcher, the driver and the dashboard. The launcher (`ALVR Launcher.exe`) is the single executable found at the root of the server app Basic-installation. The driver is located in `bin/win64/` and named `driver_alvr_server.dll`. The dashboard is a collection of files located in `dashboard/`.
 
 The launcher sets up the PC environment and then opens SteamVR, which loads the ALVR driver. The driver is responsible for loading the dashboard and connecting to the client.
 
@@ -56,7 +56,7 @@ While log IDs can contain any (serializable) type of data, it is preferred to us
 ## The launcher
 
 The launcher is the entry point for the server application. It first checks that SteamVR is installed and setup properly and then launches it.  
-The launcher requires `%LOCALAPPDATA%/openvr/` to contain a valid UTF-8 formatted file `openvrpaths.vrpath`. This file is crucial because it contains the path of the installation folder of SteamVR, the paths of the current registered drivers and the path of the Steam `config/` folder.  
+The launcher requires `%LOCALAPPDATA%/openvr/` to contain a valid UTF-8 formatted file `openvrpaths.vrpath`. This file is crucial because it contains the path of the Basic-installation folder of SteamVR, the paths of the current registered drivers and the path of the Steam `config/` folder.  
 
 ### The bootstrap lifecycle
 
@@ -69,7 +69,7 @@ The launcher requires `%LOCALAPPDATA%/openvr/` to contain a valid UTF-8 formatte
 
 ### Other launcher functions
 
-The launcher has the button `Reset drivers and retry` that attempts to fix the current ALVR installation. It works as follows:
+The launcher has the button `Reset drivers and retry` that attempts to fix the current ALVR Basic-installation. It works as follows:
 
 1. SteamVR is killed.
 2. `openvrpaths.vrpath` is deleted and ALVR add-on is unblocked (in `steam/config/steamvr.vrsettings`).

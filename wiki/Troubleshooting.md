@@ -1,9 +1,9 @@
 Troubleshooting (for ALVR 14.0.0 and later)
 ===
 
-First off, please make sure to carefully read the [installation](https://github.com/alvr-org/ALVR/wiki/Installation) and [usage](https://github.com/alvr-org/ALVR/wiki/Usage) instructions.
+First off, please make sure to carefully read the [Basic-installation](https://github.com/alvr-org/ALVR/wiki/Basic-installation) and [usage](https://github.com/alvr-org/ALVR/wiki/Usage) instructions.
 
-The first thing to try is to delete the file `settings.json` located in the ALVR installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
+The first thing to try is to delete the file `settings.json` located in the ALVR Basic-installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
 
 Keep in mind that sometimes a restart of ALVR/SteamVR/PC/Headset will be enough to solve some problems. 
 
@@ -105,9 +105,9 @@ If you're still getting this message (or otherwise not getting a headset icon in
 
 #### Some lines to look for and tips for them:
 
-`Unable to load driver alvr_server because of error VRInitError_Init_FileNotFound(103). Skipping.` - This usually means a library that ALVR needs is missing. Make sure you followed installation instructions carefully, installed the latest Visual C++ Redistributable x64 package and no files are missing where you extracted ALVR (especially in the bin\win64 directory).
+`Unable to load driver alvr_server because of error VRInitError_Init_FileNotFound(103). Skipping.` - This usually means a library that ALVR needs is missing. Make sure you followed Basic-installation instructions carefully, installed the latest Visual C++ Redistributable x64 package and no files are missing where you extracted ALVR (especially in the bin\win64 directory).
 
-`Skipping duplicate external driver alvr_server` - This line means another ALVR driver is registered. Go to the installation tab in ALVR and remove all drivers.
+`Skipping duplicate external driver alvr_server` - This line means another ALVR driver is registered. Go to the Basic-installation tab in ALVR and remove all drivers.
 
 `Skipping external driver X:\path\to\your\alvr_server_windows because it is not a directory` - This can happen if you put ALVR in a OneDrive (or a similar service) directory or the path to ALVR contains characters not in UTF-8. Try putting ALVR elsewhere, preferably so that the path to ALVR contains only ASCII characters.
 

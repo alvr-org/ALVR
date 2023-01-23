@@ -1,11 +1,11 @@
-# Basic installation
+# Basic Basic-installation
 
 PC side:
 
 * Install SteamVR, **launch it once** then close it. This is to make sure it sets the environment correctly for ALVR.
 * Go to the latest release [download page](https://github.com/alvr-org/ALVR/releases/latest). In the "Assets" section at the bottom download the ALVR Installer.
-* Run the installer. If prompted, allow the execution in the SmartScreen popup. You need to give administrator permissions to install ALVR. For best compatibility do not change the installation folder.
-* Once the installation finished, launch ALVR. You are greeted with a setup wizard. Follow the setup to set the firewall rules and presets.
+* Run the installer. If prompted, allow the execution in the SmartScreen popup. You need to give administrator permissions to install ALVR. For best compatibility do not change the Basic-installation folder.
+* Once the Basic-installation finished, launch ALVR. You are greeted with a setup wizard. Follow the setup to set the firewall rules and presets.
 
 **If you have problems launching ALVR, follow the guide below to use the portable version**
 
@@ -21,7 +21,7 @@ Headset side:
 
 For any problem visit the [troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
 
-# Advanced installation
+# Advanced Basic-installation
 
 ## Portable version
 There is also a portable version for the PC that requires more manual steps to make it work.
@@ -44,22 +44,22 @@ To use the microphone you need to install the [VB-CABLE driver](https://vb-audio
 
 ## Connect headset and PC on separate networks
 
-Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks).
+Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above).
 
 ## Use ALVR together with third-party drivers
 
-By default ALVR disables other SteamVR drivers before starting. Among these drivers there is [Driver4VR](https://www.driver4vr.com/) for full body tracking. ALVR disables these drivers to maximize compatibility with every PC setup. You can disable this behavior by manually registering the ALVR driver. Go to the `Installation` tab and click on `Register ALVR driver`. The next time you launch ALVR you will be able to use the other drivers concurrently.
+By default ALVR disables other SteamVR drivers before starting. Among these drivers there is [Driver4VR](https://www.driver4vr.com/) for full body tracking. ALVR disables these drivers to maximize compatibility with every PC setup. You can disable this behavior by manually registering the ALVR driver. Go to the `Basic-installation` tab and click on `Register ALVR driver`. The next time you launch ALVR you will be able to use the other drivers concurrently.
 
 ## Launch ALVR together with SteamVR
 
-You can skip the ALVR Launcher and open ALVR automatically together with SteamVR. Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
+You can skip the ALVR Launcher and open ALVR automatically together with SteamVR. Open ALVR, go to the `Basic-installation` tab and click on `Register ALVR driver`.
 
 ## Use a browser different than Chrome
 
 ALVR requires a Chromium based browser to correctly display the dashboard. Chrome and Edge work out of the box, but Edge has a few bugs that make ALVR behave weirdly. If you want to use other Chromium based browsers like Brave or Vivaldi you have to add an environment variable `ALCRO_BROWSER_PATH` pointing to the path of the browser executable (for example `C:\Program Files\Vivaldi\Application\vivaldi.exe`). Unfortunately Firefox is not supported.
 
 ## Connect headset and PC via a USB Cable
-Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Use-ALVR-through-a-USB-connection).
+Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection).
 
 
 # Linux

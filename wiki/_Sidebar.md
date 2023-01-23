@@ -1,6 +1,6 @@
 **Start here**
 
-* [Installation](https://github.com/alvr-org/ALVR/wiki/Installation)
+* [Basic-installation](https://github.com/alvr-org/ALVR/wiki/Basic-installation)
 
 * [Settings guide](https://github.com/alvr-org/ALVR/wiki/Settings-guide)
 
@@ -12,13 +12,13 @@
 
 **Configuration**
 
-* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Configuration-Information-and-Recommendations)
+* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/PC)
 
-* [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks)
+* [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above)
 
 * [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 
-* [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/Use-ALVR-through-a-USB-connection)
+* [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection)
 
 * [Linux encoders requirements](https://github.com/alvr-org/ALVR/wiki/Linux-encoders-requirements)
 
@@ -46,4 +46,4 @@
 
 * [Linux support](https://github.com/alvr-org/ALVR/wiki/Linux-Support-development-progress)
 
-* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Real-time-video-upscaling-experiments)
+* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Why?)

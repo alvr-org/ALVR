@@ -19,6 +19,6 @@
 
 ## Troubleshooting
 * [ ] The firewall settings where successfully applied with the setup of ALVR
-* [ ] I did not change the network settings since the installation of ALVR (Private/Public/Work)
-* [ ] I did not move the installation folder of ALVR since the setup
+* [ ] I did not change the network settings since the Basic-installation of ALVR (Private/Public/Work)
+* [ ] I did not move the Basic-installation folder of ALVR since the setup
 * [ ] The path to the folder of ALVR does not contain any non latin characters or accents (ツ Л Ö ...)

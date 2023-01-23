@@ -341,7 +341,7 @@ In this document, settings in **Basic Settings** describe settings that are visi
 
 ### Log to disk 
 
-* Save the file `session.txt` at the root of the ALVR installation folder. 
+* Save the file `session.txt` at the root of the ALVR Basic-installation folder. 
 * This is useful to get get debug information when a crash happens. By default this is disabled because this file continues to grow as long as ALVR is kept open and it keeps growing until the whole hard-drive is filled.
 
 ## Advanced Extras

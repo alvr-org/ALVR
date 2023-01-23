@@ -48,7 +48,7 @@ void VideoEncoderNVENC::Initialize()
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 	initializeParams.encodeConfig = &encodeConfig;
 
-	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
+	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
 	   
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
@@ -95,7 +95,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 			initializeParams.encodeConfig = &encodeConfig;
-			FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
+			FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
 			NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
 			reconfigureParams.reInitEncodeParams = initializeParams;
 			m_NvNecoder->Reconfigure(&reconfigureParams);
@@ -243,8 +243,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	
 	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
-	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
-	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
+	encodeConfig.rcParams.vbvBufferSize = maxFrameSize * 1.1;
+	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize * 1.1;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
 	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
 	if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {

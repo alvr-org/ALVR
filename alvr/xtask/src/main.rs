@@ -145,6 +145,9 @@ fn main() {
         } else {
             Profile::Debug
         };
+        #[cfg(target_os = "linux")]
+        let gpl = true;
+        #[cfg(not(target_os = "linux"))]
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");

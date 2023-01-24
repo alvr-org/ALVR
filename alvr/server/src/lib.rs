@@ -331,19 +331,15 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn initialize_decoder(buffer_ptr: *const u8, len: i32) {
-        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-            let mut config_buffer = vec![0; len as usize];
+        let mut config_buffer = vec![0; len as usize];
 
-            unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize)
-            };
+        unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
 
-            if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
-                sender.send(config_buffer.clone()).ok();
-            }
-
-            *DECODER_CONFIG.lock() = Some(config_buffer);
+        if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+            sender.send(config_buffer.clone()).ok();
         }
+
+        *DECODER_CONFIG.lock() = Some(config_buffer);
     }
 
     extern "C" fn video_send(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32) {

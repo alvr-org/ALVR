@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use pkg_config;
 use std::{env, path::PathBuf};
 
 fn get_ffmpeg_path() -> PathBuf {
@@ -15,65 +13,6 @@ fn get_ffmpeg_path() -> PathBuf {
         ffmpeg_path.join("alvr_build")
     } else {
         ffmpeg_path
-    }
-}
-
-#[cfg(feature = "local_ffmpeg")]
-fn do_ffmpeg_config(build: &mut cc::Build) {
-    let ffmpeg_path = get_ffmpeg_path();
-
-    assert!(ffmpeg_path.join("include").exists());
-    build.include(ffmpeg_path.join("include"));
-}
-
-fn do_ffmpeg_config_post() {
-    if cfg!(feature = "local_ffmpeg") {
-        let statik = cfg!(all(feature = "gpl", target_os = "linux"));
-
-        let ffmpeg_path = get_ffmpeg_path();
-        let ffmpeg_lib_path = ffmpeg_path.join("lib");
-
-        assert!(ffmpeg_lib_path.exists());
-
-        println!(
-            "cargo:rustc-link-search=native={}",
-            ffmpeg_lib_path.to_string_lossy()
-        );
-
-        if statik {
-            #[cfg(target_os = "linux")]
-            {
-                let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
-                assert!(ffmpeg_pkg_path.exists());
-
-                let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
-                env::set_var(
-                    "PKG_CONFIG_PATH",
-                    env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
-                        format!("{ffmpeg_pkg_path}:{old}")
-                    }),
-                );
-
-                let pkg = pkg_config::Config::new().statik(statik).to_owned();
-
-                for lib in ["libavutil", "libavfilter", "libavcodec"] {
-                    pkg.probe(lib).unwrap();
-                }
-            }
-        } else {
-            for lib in ["avutil", "avfilter", "avcodec", "swscale"] {
-                println!("cargo:rustc-link-lib={lib}");
-            }
-        }
-    } else {
-        #[cfg(target_os = "linux")]
-        {
-            let pkg = pkg_config::Config::new();
-
-            for lib in ["libavutil", "libavfilter", "libavcodec"] {
-                pkg.probe(lib).unwrap();
-            }
-        }
     }
 }
 
@@ -134,15 +73,55 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(feature = "local_ffmpeg")]
-    do_ffmpeg_config(&mut build);
+    let use_ffmpeg = cfg!(feature = "gpl") || cfg!(target_os = "linux");
 
-    #[cfg(all(windows, feature = "gpl"))]
+    if use_ffmpeg {
+        let ffmpeg_path = get_ffmpeg_path();
+
+        assert!(ffmpeg_path.join("include").exists());
+        build.include(ffmpeg_path.join("include"));
+    }
+
+    #[cfg(feature = "gpl")]
     build.define("ALVR_GPL", None);
 
     build.compile("bindings");
 
-    do_ffmpeg_config_post();
+    if use_ffmpeg {
+        let ffmpeg_path = get_ffmpeg_path();
+        let ffmpeg_lib_path = ffmpeg_path.join("lib");
+
+        assert!(ffmpeg_lib_path.exists());
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ffmpeg_lib_path.to_string_lossy()
+        );
+
+        #[cfg(target_os = "linux")]
+        {
+            let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
+            assert!(ffmpeg_pkg_path.exists());
+
+            let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
+            env::set_var(
+                "PKG_CONFIG_PATH",
+                env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
+                    format!("{ffmpeg_pkg_path}:{old}")
+                }),
+            );
+
+            let pkg = pkg_config::Config::new().statik(true).to_owned();
+
+            for lib in ["libavutil", "libavfilter", "libavcodec"] {
+                pkg.probe(lib).unwrap();
+            }
+        }
+        #[cfg(windows)]
+        for lib in ["avutil", "avfilter", "avcodec", "swscale"] {
+            println!("cargo:rustc-link-lib={lib}");
+        }
+    }
 
     bindgen::builder()
         .clang_arg("-xc++")

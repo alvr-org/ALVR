@@ -44,7 +44,7 @@ void extractHeaders(uint8_t **buf, int *len, int nalNum) {
 		b++;
 		headersLen++;
 	}
-	if (headersLen == 0 || foundHeaders != nalNum) {
+	if (foundHeaders != nalNum) {
 		return;
 	}
 	InitializeDecoder((const unsigned char *)b, headersLen);

@@ -191,10 +191,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = INT16_MAX;
-  encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
-  encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
+  SetBitrate(settings.mEncodeBitrateMBs * 1'000'000L);
 
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;

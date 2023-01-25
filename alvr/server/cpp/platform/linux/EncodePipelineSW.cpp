@@ -87,10 +87,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   encoder_ctx->pix_fmt = settings.m_use10bitEncoder && codec_id == ALVR_CODEC_H265 ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = 0;
-  encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
-  encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / 10;
+  SetBitrate(settings.mEncodeBitrateMBs * 1'000'000L);
   encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 
@@ -128,10 +125,4 @@ void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
   if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
     throw alvr::AvException("avcodec_send_frame failed:", err);
   }
-}
-
-void alvr::EncodePipelineSW::SetBitrate(int64_t bitrate)
-{
-  EncodePipeline::SetBitrate(bitrate);
-  encoder_ctx->rc_buffer_size = bitrate / 10;
 }

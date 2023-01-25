@@ -30,7 +30,6 @@ pub fn build_server(
     root: Option<String>,
     reproducible: bool,
     experiments: bool,
-    local_ffmpeg: bool,
     keep_config: bool,
 ) {
     let sh = Shell::new().unwrap();
@@ -50,10 +49,6 @@ pub fn build_server(
         common_flags.push("--locked");
     }
     let common_flags_ref = &common_flags;
-
-    let gpl_flag = (gpl || local_ffmpeg)
-        .then(|| vec!["--features", if gpl { "gpl" } else { "local_ffmpeg" }])
-        .unwrap_or_default();
 
     let artifacts_dir = afs::target_dir().join(profile.to_string());
 
@@ -79,6 +74,8 @@ pub fn build_server(
 
     // build server
     {
+        let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
+
         let _push_guard = sh.push_dir(afs::crate_dir("server"));
         cmd!(sh, "cargo build {common_flags_ref...} {gpl_flag...}")
             .run()

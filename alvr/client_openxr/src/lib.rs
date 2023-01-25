@@ -23,12 +23,17 @@ const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
 // Platform of the device. It is used to match the VR runtime and enable features conditionally.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Platform {
     Quest,
     Pico,
     Vive,
     Other,
+}
+
+struct HistoryView {
+    timestamp: Duration,
+    views: Vec<xr::View>,
 }
 
 struct StreamingInputContext {
@@ -39,9 +44,10 @@ struct StreamingInputContext {
     xr_session: xr::Session<xr::AnyGraphics>,
     interaction_context: Arc<StreamingInteractionContext>,
     reference_space: Arc<xr::Space>,
-    views_history: Arc<Mutex<VecDeque<(Duration, Vec<xr::View>)>>>,
+    views_history: Arc<Mutex<VecDeque<HistoryView>>>,
 }
 
+#[allow(unused)]
 struct EglContext {
     instance: egl::DynamicInstance<EGL1_4>,
     display: egl::Display,
@@ -138,6 +144,7 @@ fn init_egl() -> EglContext {
     }
 }
 
+#[allow(unused)]
 fn create_xr_session(
     xr_instance: &xr::Instance,
     xr_system: xr::SystemId,
@@ -227,7 +234,10 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
     {
         let mut views_history_lock = ctx.views_history.lock();
 
-        views_history_lock.push_back((target_timestamp, views));
+        views_history_lock.push_back(HistoryView {
+            timestamp: target_timestamp,
+            views,
+        });
         if views_history_lock.len() > 360 {
             views_history_lock.pop_front();
         }
@@ -350,12 +360,18 @@ pub fn entry_point() {
             .unwrap();
         assert_eq!(views_config.len(), 2);
 
-        let recommended_resolution = UVec2::new(
+        let recommended_view_resolution = UVec2::new(
             views_config[0].recommended_image_rect_width,
             views_config[0].recommended_image_rect_height,
         );
 
-        alvr_client_core::initialize(recommended_resolution, vec![72.0, 90.0], false);
+        let supported_refresh_rates = if exts.fb_display_refresh_rate {
+            xr_session.enumerate_display_refresh_rates().unwrap()
+        } else {
+            vec![90.0]
+        };
+
+        alvr_client_core::initialize(recommended_view_resolution, supported_refresh_rates, false);
         alvr_client_core::opengl::initialize();
 
         let streaming_interaction_context =
@@ -417,13 +433,13 @@ pub fn entry_point() {
 
                             let swapchains = lobby_swapchains.get_or_insert_with(|| {
                                 [
-                                    create_swapchain(&xr_session, recommended_resolution),
-                                    create_swapchain(&xr_session, recommended_resolution),
+                                    create_swapchain(&xr_session, recommended_view_resolution),
+                                    create_swapchain(&xr_session, recommended_view_resolution),
                                 ]
                             });
 
                             alvr_client_core::opengl::resume(
-                                recommended_resolution,
+                                recommended_view_resolution,
                                 [
                                     swapchains[0]
                                         .enumerate_images()
@@ -533,7 +549,7 @@ pub fn entry_point() {
                         is_streaming.set(true);
 
                         let context = StreamingInputContext {
-                            platform: platform,
+                            platform,
                             is_streaming: Arc::clone(&is_streaming),
                             frame_interval: Duration::from_secs_f32(1.0 / fps),
                             xr_instance: xr_instance.clone(),
@@ -676,9 +692,9 @@ pub fn entry_point() {
 
                 if let Some((timestamp, hardware_buffer)) = frame_result {
                     let mut history_views = None;
-                    for (history_timestamp, views) in &*views_history.lock() {
-                        if *history_timestamp == timestamp {
-                            history_views = Some(views.clone());
+                    for history_frame in &*views_history.lock() {
+                        if history_frame.timestamp == timestamp {
+                            history_views = Some(history_frame.views.clone());
                         }
                     }
 
@@ -727,7 +743,7 @@ pub fn entry_point() {
                     .unwrap()
                     .1;
 
-                view_resolution = recommended_resolution;
+                view_resolution = recommended_view_resolution;
 
                 alvr_client_core::opengl::render_lobby([
                     RenderViewInput {
@@ -791,6 +807,7 @@ pub fn entry_point() {
     alvr_client_core::destroy();
 }
 
+#[allow(unused)]
 fn xr_runtime_now(xr_instance: &xr::Instance, platform: Platform) -> Option<Duration> {
     let time_nanos = {
         #[cfg(target_os = "android")]

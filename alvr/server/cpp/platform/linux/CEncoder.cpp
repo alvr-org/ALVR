@@ -229,7 +229,7 @@ void CEncoder::Run() {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
         if (m_listener->GetStatistics()->CheckBitrateUpdated()) {
-          encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1000000L); // in bits;
+          encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1'000'000L); // in bits;
         }
 
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);

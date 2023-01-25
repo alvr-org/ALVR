@@ -8,6 +8,8 @@
 #include "Utils.h"
 #include "Settings.h"
 
+static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
+
 static const uint8_t H264_NAL_TYPE_SPS = 7;
 static const uint8_t H265_NAL_TYPE_VPS = 32;
 
@@ -19,13 +21,11 @@ ClientConnection::ClientConnection() {
 }
 
 /*
-	Extracts the (VPS + )SPS + PPS video configuration headers from H.264 or H.265 stream as a sequence of NALs.
+	Sends the (VPS + )SPS + PPS video configuration headers from H.264 or H.265 stream as a sequence of NALs.
 	(VPS + )SPS + PPS have short size (8bytes + 28bytes in some environment), so we can
 	assume SPS + PPS is contained in first fragment.
 */
-void extractHeaders(uint8_t **buf, int *len, int nalNum) {
-	static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
-
+void sendHeaders(uint8_t **buf, int *len, int nalNum) {
 	uint8_t *b = *buf;
 	uint8_t *end = b + *len;
 
@@ -47,7 +47,7 @@ void extractHeaders(uint8_t **buf, int *len, int nalNum) {
 	if (foundHeaders != nalNum) {
 		return;
 	}
-	InitializeDecoder((const unsigned char *)b, headersLen);
+	InitializeDecoder((const unsigned char *)*buf, headersLen);
 
 	// move the cursor forward excluding config NALs
 	*buf = b;
@@ -60,12 +60,12 @@ void processH264Nals(uint8_t **buf, int *len) {
 	uint8_t nalType = b[4] & 0x1F;
 	
 	if (nalType == H264_NAL_TYPE_AUD) {
-		b += 6;
-		l -= 6;
+		b += sizeof(NAL_HEADER) + 2;
+		l -= sizeof(NAL_HEADER) + 2;
 		nalType = b[4] & 0x1F;
 	}
 	if (nalType == H264_NAL_TYPE_SPS) {
-		extractHeaders(buf, len, 2); // 2 headers SPS and PPS
+		sendHeaders(&b, &l, 2); // 2 headers SPS and PPS
 	}
 	*buf = b;
 	*len = l;
@@ -77,12 +77,12 @@ void processH265Nals(uint8_t **buf, int *len) {
 	uint8_t nalType = (b[4] >> 1) & 0x3F;
 	
 	if (nalType == H265_NAL_TYPE_AUD) {
-		b += 7;
-		l -= 7;
+		b += sizeof(NAL_HEADER) + 3;
+		l -= sizeof(NAL_HEADER) + 3;
 		nalType = (b[4] >> 1) & 0x3F;
 	}
 	if (nalType == H265_NAL_TYPE_VPS) {
-		extractHeaders(buf, len, 3); // 3 headers VPS, SPS and PPS
+		sendHeaders(&b, &l, 3); // 3 headers VPS, SPS and PPS
 	}
 	*buf = b;
 	*len = l;

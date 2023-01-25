@@ -11,7 +11,7 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    RelaxedAtomic, HEAD_ID,
+    RelaxedAtomic,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
@@ -677,7 +677,7 @@ async fn connection_pipeline(
                         Err(_) => continue,
                     };
                     crate::SetOpenvrProperty(
-                        *HEAD_ID,
+                        *alvr_common::HEAD_ID,
                         crate::to_ffi_openvr_prop(
                             alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                             alvr_session::OpenvrPropValue::String(device_id),
@@ -709,7 +709,7 @@ async fn connection_pipeline(
                     };
                     unsafe {
                         crate::SetOpenvrProperty(
-                            *HEAD_ID,
+                            *alvr_common::HEAD_ID,
                             crate::to_ffi_openvr_prop(
                                 alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                                 alvr_session::OpenvrPropValue::String(default_device_id),
@@ -742,7 +742,7 @@ async fn connection_pipeline(
             let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
             unsafe {
                 crate::SetOpenvrProperty(
-                    *HEAD_ID,
+                    *alvr_common::HEAD_ID,
                     crate::to_ffi_openvr_prop(
                         alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
                         alvr_session::OpenvrPropValue::String(microphone_device_id),
@@ -846,25 +846,14 @@ async fn connection_pipeline(
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
-                let mut device_motions = vec![];
-                for (id, motion) in tracking.device_motions {
-                    let motion = if id == *HEAD_ID {
-                        tracking_manager.map_head(motion)
-                    } else if let Some(motion) = tracking_manager.map_controller(motion) {
-                        motion
-                    } else {
-                        warn!("Unrecognized device ID. Trackers are not supported");
-                        continue;
-                    };
-                    device_motions.push((id, motion));
-                }
-
-                let ffi_motions = device_motions
+                let ffi_motions = tracking
+                    .device_motions
                     .into_iter()
+                    .filter_map(|(id, m)| Some((id, tracking_manager.filter_map_motion(id, m)?)))
                     .map(|(id, motion)| FfiDeviceMotion {
                         deviceID: id,
-                        orientation: to_ffi_quat(motion.orientation),
-                        position: motion.position.to_array(),
+                        orientation: to_ffi_quat(motion.pose.orientation),
+                        position: motion.pose.position.to_array(),
                         linearVelocity: motion.linear_velocity.to_array(),
                         angularVelocity: motion.angular_velocity.to_array(),
                     })

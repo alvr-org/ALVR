@@ -11,7 +11,7 @@ use alvr_common::{
 };
 use alvr_events::ButtonValue;
 use alvr_session::{CodecType, FoveatedRenderingDesc};
-use alvr_sockets::{DeviceMotion, Tracking};
+use alvr_sockets::{DeviceMotion, Pose, Tracking};
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
@@ -400,8 +400,10 @@ pub extern "C" fn alvr_send_tracking(
             (
                 motion.device_id,
                 DeviceMotion {
-                    orientation: from_tracking_quat(motion.orientation),
-                    position: Vec3::from_slice(&motion.position),
+                    pose: Pose {
+                        orientation: from_tracking_quat(motion.orientation),
+                        position: Vec3::from_slice(&motion.position),
+                    },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
                     angular_velocity: Vec3::from_slice(&motion.angular_velocity),
                 },
@@ -573,8 +575,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs).orientation;
             let f = (*view_inputs).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,
@@ -588,8 +592,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs.offset(1)).orientation;
             let f = (*view_inputs.offset(1)).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs.offset(1)).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs.offset(1)).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,

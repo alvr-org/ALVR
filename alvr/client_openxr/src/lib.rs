@@ -7,7 +7,7 @@ use alvr_common::{
     prelude::*,
     Fov, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_sockets::{DeviceMotion, Tracking};
+use alvr_sockets::{DeviceMotion, Pose, Tracking};
 use interaction::StreamingInteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
@@ -62,6 +62,13 @@ fn to_vec3(v: xr::Vector3f) -> Vec3 {
 
 fn to_quat(q: xr::Quaternionf) -> Quat {
     Quat::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+fn to_pose(p: xr::Posef) -> Pose {
+    Pose {
+        orientation: to_quat(p.orientation),
+        position: to_vec3(p.position),
+    }
 }
 
 fn to_fov(f: xr::Fovf) -> Fov {
@@ -248,8 +255,10 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
     let mut device_motions = vec![(
         *HEAD_ID,
         DeviceMotion {
-            orientation: head_orientation,
-            position: head_position,
+            pose: Pose {
+                orientation: head_orientation,
+                position: head_position,
+            },
             linear_velocity: Vec3::ZERO,
             angular_velocity: Vec3::ZERO,
         },
@@ -747,14 +756,12 @@ pub fn entry_point() {
 
                 alvr_client_core::opengl::render_lobby([
                     RenderViewInput {
-                        position: to_vec3(views[0].pose.position),
-                        orientation: to_quat(views[0].pose.orientation),
+                        pose: to_pose(views[0].pose),
                         fov: to_fov(views[0].fov),
                         swapchain_index: left_swapchain_idx,
                     },
                     RenderViewInput {
-                        position: to_vec3(views[1].pose.position),
-                        orientation: to_quat(views[1].pose.orientation),
+                        pose: to_pose(views[1].pose),
                         fov: to_fov(views[1].fov),
                         swapchain_index: right_swapchain_idx,
                     },

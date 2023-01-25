@@ -1,7 +1,7 @@
-use crate::{to_quat, to_vec3, Platform};
+use crate::{to_pose, to_quat, to_vec3, Platform};
 use alvr_common::{glam::Quat, *};
 use alvr_events::ButtonValue;
-use alvr_sockets::DeviceMotion;
+use alvr_sockets::{DeviceMotion, Pose};
 use openxr as xr;
 use std::collections::HashMap;
 
@@ -492,8 +492,10 @@ pub fn get_hand_motion(
             .map_err(err!())?;
 
         let hand_motion = DeviceMotion {
-            orientation: to_quat(location.pose.orientation),
-            position: to_vec3(location.pose.position),
+            pose: Pose {
+                orientation: to_quat(location.pose.orientation),
+                position: to_vec3(location.pose.position),
+            },
             linear_velocity: to_vec3(velocity.linear_velocity),
             angular_velocity: to_vec3(velocity.angular_velocity),
         };
@@ -516,8 +518,7 @@ pub fn get_hand_motion(
             // todo: support openxr hands directly into the server
 
             let root_motion = DeviceMotion {
-                orientation: to_quat(joint_locations[0].pose.orientation),
-                position: to_vec3(joint_locations[0].pose.position),
+                pose: to_pose(joint_locations[0].pose),
                 linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
                 angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
             };

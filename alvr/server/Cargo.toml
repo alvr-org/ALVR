@@ -10,8 +10,7 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [features]
-gpl = ["local_ffmpeg"]
-local_ffmpeg = []
+gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
 
 [dependencies]
 alvr_audio.workspace = true
@@ -67,5 +66,5 @@ bindgen = "0.63"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 
-[target.'cfg(unix)'.build-dependencies]
+[target.'cfg(target_os = "linux")'.build-dependencies]
 pkg-config = "0.3"

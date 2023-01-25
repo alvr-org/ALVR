@@ -36,9 +36,8 @@ FLAGS:
     --keep-config       Preserve the configuration file between rebuilds (session.json)
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
-    --gpl               Bundle GPL libraries. For build subcommands
+    --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
     --experiments       Build unfinished features. For build subcommands
-    --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
     --appimage          Package as AppImage. For package-server subcommand
     --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
@@ -145,9 +144,6 @@ fn main() {
         } else {
             Profile::Debug
         };
-        #[cfg(target_os = "linux")]
-        let gpl = true;
-        #[cfg(not(target_os = "linux"))]
         let gpl = args.contains("--gpl");
         let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
@@ -157,8 +153,6 @@ fn main() {
 
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
-
-        let local_ffmpeg = args.contains("--local-ffmpeg");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -184,34 +178,18 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(
-                    profile,
-                    gpl,
-                    None,
-                    false,
-                    experiments,
-                    local_ffmpeg,
-                    keep_config,
-                ),
+                "build-server" => {
+                    build::build_server(profile, gpl, None, false, experiments, keep_config)
+                }
                 "build-client" => build::build_quest_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(
-                            profile,
-                            gpl,
-                            None,
-                            false,
-                            experiments,
-                            local_ffmpeg,
-                            keep_config,
-                        );
+                        build::build_server(profile, gpl, None, false, experiments, keep_config);
                     }
                     run_server();
                 }
-                "package-server" => {
-                    packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
-                }
+                "package-server" => packaging::package_server(gpl, root, appimage, zsync),
                 "package-client" => build::build_quest_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

@@ -104,14 +104,14 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
         &sh,
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n5.1",
         &download_path,
     )
     .unwrap();
 
     let final_path = download_path.join("ffmpeg");
 
-    fs::rename(download_path.join("FFmpeg-n4.4"), &final_path).unwrap();
+    fs::rename(download_path.join("FFmpeg-n5.1"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -204,6 +204,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
             .run()
             .unwrap();
     }
+
+    // Patches ffmpeg for workarounds and patches that have yet to be unstreamed
+    let ffmpeg_command = "for p in ../../../patches/*; do patch -p1 < $p; done";
+    cmd!(sh, "bash -c {ffmpeg_command}").run().unwrap();
 
     let nproc = cmd!(sh, "nproc").read().unwrap();
     cmd!(sh, "make -j{nproc}").run().unwrap();

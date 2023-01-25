@@ -60,6 +60,7 @@ alvr::EncodePipeline::~EncodePipeline()
 
 bool alvr::EncodePipeline::GetEncoded(FramePacket &packet)
 {
+  av_packet_free(&encoder_packet);
   encoder_packet = av_packet_alloc();
   int err = avcodec_receive_packet(encoder_ctx, encoder_packet);
   if (err != 0) {
@@ -73,9 +74,4 @@ bool alvr::EncodePipeline::GetEncoded(FramePacket &packet)
   packet.size = encoder_packet->size;
   packet.pts = encoder_packet->pts;
   return true;
-}
-
-void alvr::EncodePipeline::Free()
-{
-  av_packet_free(&encoder_packet);
 }

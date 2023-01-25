@@ -280,8 +280,6 @@ void CEncoder::Run() {
         m_listener->SendVideo(packet.data, packet.size, packet.pts);
 
         m_listener->GetStatistics()->EncodeOutput();
-
-        encode_pipeline->Free();
       }
     }
     catch (std::exception &e) {

@@ -458,6 +458,7 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
 
 bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
 {
+    m_framePacket = {nullptr, 0, 0};
     if (m_hasQueryTimeout) {
         m_pipeline->Run();
     } else {
@@ -480,10 +481,6 @@ bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
     timestamp.gpu = query * m_render->m_timestampPeriod;
 
     return true;
-}
-
-void EncodePipelineAMF::Free() {
-    m_framePacket = {nullptr, 0, 0};
 }
 
 void EncodePipelineAMF::SetBitrate(int64_t bitrate)

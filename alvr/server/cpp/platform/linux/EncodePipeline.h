@@ -33,7 +33,6 @@ public:
 
   virtual void PushFrame(uint64_t targetTimestampNs, bool idr) = 0;
   virtual bool GetEncoded(FramePacket &data);
-  virtual void Free();
   virtual Timestamp GetTimestamp() { return timestamp; }
 
   virtual void SetBitrate(int64_t bitrate);

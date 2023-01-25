@@ -32,9 +32,9 @@ The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](http
 
   Use the `shell.nix` in `packaging/nix`.
 
-* **Ubuntu / Pop!_OS 20.04**
+* **Debian 12 / Ubuntu 20.04 / Pop!_OS 20.04**
   ```bash
-  sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev
+  sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers
   ```
 
 Move to the root directory of the project, then run this command (paying attention to the bullet points below):
@@ -65,14 +65,40 @@ If you want to edit and rebuild the code, you can skip the `prepare-deps` comman
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
-* Platform Tools 33 (Android 13)
-* Latest NDK (currently v25.1.8937393)
-* Set the environment variable `JAVA_HOME`
-  * For example on Windows: `C:\Program Files\Android\Android Studio\jre`
-* Set the environment variable `ANDROID_SDK_ROOT`
-  * For example on Windows: `%LOCALAPPDATA%\Android\Sdk`
-* Set the environment variable `ANDROID_NDK_HOME`
-  * For example on Windows: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
+* Latest Android SDK Platform-Tools 33 (Android 13)
+* Latest Android NDK (currently v25.1.8937393)
+
+On Linux, the three mentioned developer applications can be installed on Linux.
+
+* **Arch**
+
+  ```bash
+  sudo pacman -S tandroid-sdk-platform-tools sdkmanager android-ndk
+  ```
+
+* **Gentoo**
+
+  * `dev-util/android-studio`
+  * `dev-util/android-sdk-update-manager`
+  * `dev-util/android-ndk >= 25.1`
+
+* **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10** (Debian requires to have the `non-free` repository enabled)
+  ```bash
+  sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
+  ```
+
+Set the environment variables:
+  * `JAVA_HOME`:
+    * Windows: `C:\Program Files\Android\Android Studio\jre`
+    * Linux: `/usr/lib/jvm/default-java/bin`
+  * `ANDROID_SDK_ROOT`:
+    * Windows: `%LOCALAPPDATA%\Android\Sdk`
+    * Linux: `~/AndroidSDK`
+      * Arch: `~/Android/Sdk`
+      * Gentoo: `~/Android`
+  * `ANDROID_NDK_HOME`:
+    * Windows: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
+    * Linux: `/usr/lib/android-sdk/ndk`
 
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:
@@ -80,6 +106,18 @@ Move to the root directory of the project, then run this command:
 ```bash
 cargo xtask prepare-deps --platform android
 ```
+
+Before building the client, Android has to have us to agree to the licenses otherwise building the client will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
+* Windows:
+  ```shell
+  cd "%ANDROID_SDK_ROOT%\tools\bin"
+  sdkmanager.bat --licenses
+  ```
+* Linux:
+  ```bash
+  cd ~/AndroidSDK
+  sdkmanager --licenses
+  ```
 
 Next up is the proper build of the client. Run the following:
 

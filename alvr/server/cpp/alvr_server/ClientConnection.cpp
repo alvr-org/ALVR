@@ -8,65 +8,95 @@
 #include "Utils.h"
 #include "Settings.h"
 
-static const uint8_t NAL_TYPE_SPS = 7;
+static const uint8_t H264_NAL_TYPE_SPS = 7;
 static const uint8_t H265_NAL_TYPE_VPS = 32;
 
-ClientConnection::ClientConnection() {
-	m_Statistics = std::make_shared<Statistics>();
+static const uint8_t H264_NAL_TYPE_AUD = 9;
+static const uint8_t H265_NAL_TYPE_AUD = 35;
+
+ClientConnection::ClientConnection() { 
+	m_Statistics = std::make_shared<Statistics>(); 
 }
 
-int findVPSSPS(const uint8_t *frameBuffer, int frameByteSize) {
-    int zeroes = 0;
-    int foundNals = 0;
-    for (int i = 0; i < frameByteSize; i++) {
-        if (frameBuffer[i] == 0) {
-            zeroes++;
-        } else if (frameBuffer[i] == 1) {
-            if (zeroes >= 2) {
-                foundNals++;
-                if (Settings::Instance().m_codec == ALVR_CODEC_H264 && foundNals >= 3) {
-                    // Find end of SPS+PPS on H.264.
-                    return i - 3;
-                } else if (Settings::Instance().m_codec == ALVR_CODEC_H265 && foundNals >= 4) {
-                    // Find end of VPS+SPS+PPS on H.264.
-                    return i - 3;
-                }
-            }
-            zeroes = 0;
-        } else {
-            zeroes = 0;
-        }
-    }
-    return -1;
+/*
+	Extracts the (VPS + )SPS + PPS video configuration headers from H.264 or H.265 stream as a sequence of NALs.
+	(VPS + )SPS + PPS have short size (8bytes + 28bytes in some environment), so we can
+	assume SPS + PPS is contained in first fragment.
+*/
+void extractHeaders(uint8_t **buf, int *len, int nalNum) {
+	static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
+
+	uint8_t *b = *buf;
+	uint8_t *end = b + *len;
+
+	int headersLen = 0;
+	int foundHeaders = -1; // Offset by 1 header to find the length until the next header
+	while (b != end) {
+		if (memcmp(b, NAL_HEADER, sizeof(NAL_HEADER)) == 0) {
+			foundHeaders++;
+			if (foundHeaders == nalNum) {
+				break;
+			}
+			b += sizeof(NAL_HEADER);
+			headersLen += sizeof(NAL_HEADER);
+		}
+
+		b++;
+		headersLen++;
+	}
+	if (headersLen == 0 || foundHeaders != nalNum) {
+		return;
+	}
+	InitializeDecoder((const unsigned char *)b, headersLen);
+
+	// move the cursor forward excluding config NALs
+	*buf = b;
+	*len -= headersLen;
+}
+
+void processH264Nals(uint8_t **buf, int *len) {
+	uint8_t *b = *buf;
+	int l = *len;
+	uint8_t nalType = b[4] & 0x1F;
+	
+	if (nalType == H264_NAL_TYPE_AUD) {
+		b += 6;
+		l -= 6;
+		nalType = b[4] & 0x1F;
+	}
+	if (nalType == H264_NAL_TYPE_SPS) {
+		extractHeaders(buf, len, 2); // 2 headers SPS and PPS
+	}
+	*buf = b;
+	*len = l;
+}
+
+void processH265Nals(uint8_t **buf, int *len) {
+	uint8_t *b = *buf;
+	int l = *len;
+	uint8_t nalType = (b[4] >> 1) & 0x3F;
+	
+	if (nalType == H265_NAL_TYPE_AUD) {
+		b += 7;
+		l -= 7;
+		nalType = (b[4] >> 1) & 0x3F;
+	}
+	if (nalType == H265_NAL_TYPE_VPS) {
+		extractHeaders(buf, len, 3); // 3 headers VPS, SPS and PPS
+	}
+	*buf = b;
+	*len = l;
 }
 
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs) {
 	// Report before the frame is packetized
 	ReportEncoded(targetTimestampNs);
 
-	uint8_t NALType;
-	if (Settings::Instance().m_codec == ALVR_CODEC_H264)
-		NALType = buf[4] & 0x1F;
-	else
-		NALType = (buf[4] >> 1) & 0x3F;
-
-	if ((Settings::Instance().m_codec == ALVR_CODEC_H264 && NALType == NAL_TYPE_SPS) ||
-		(Settings::Instance().m_codec == ALVR_CODEC_H265 && NALType == H265_NAL_TYPE_VPS)) {
-		// This frame contains (VPS + )SPS + PPS + IDR on NVENC H.264 (H.265) stream.
-		// (VPS + )SPS + PPS has short size (8bytes + 28bytes in some environment), so we can
-		// assume SPS + PPS is contained in first fragment.
-
-		int end = findVPSSPS(buf, len);
-		if (end == -1) {
-			// Invalid frame.
-			return;
-		}
-
-		InitializeDecoder((const unsigned char *)buf, end);
-
-		// move the cursor forward excluding config NALs
-		buf = &buf[end];
-		len = len - end;
+	int codec = Settings::Instance().m_codec;
+	if (codec == ALVR_CODEC_H264) {
+		processH264Nals(&buf, &len);
+	} else if (codec == ALVR_CODEC_H265) {
+		processH265Nals(&buf, &len);
 	}
 
 	VideoSend(targetTimestampNs, buf, len);

@@ -8,12 +8,9 @@ You need to install [rustup](https://www.rust-lang.org/tools/install).
 
 On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
-# Users with Nvidia GPUs
+# Linux Users
 
-Before building the server, those with nvidia GPUs would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers requires at least the following driver version for the respective OS to work properly, taken from nv-codec-header's README:
-
-* Windows: `522.25`
-* Linux: `520.56.06`
+Before building the server, those on Linux with would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers for nvidia users requires at least driver version `520.56.06` to work properly, taken from nv-codec-header's README.
 
 Run the following commands as shown:
 
@@ -60,8 +57,7 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
 * **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that on Windows this is needed only for software encoding. As the name suggest, if you use this flag you can only redistribute the final package as GPLv2.0 licensed (because of the x264 encoder).
-* Use the flag `--no-nvidia` only on Linux and if you have a AMD gpu.
-* This command is not required if your Linux distribution includes Vulkan support in its ffmpeg package, like Arch (see above).
+* **Linux only:** Use the flag `--no-nvidia` if you have a AMD gpu.
 
 Next up is the proper build of the server. Run the following:
 
@@ -87,9 +83,7 @@ On Linux, the three mentioned developer applications can be installed on Linux f
 
 * **Arch**
 
-  ```bash
-  sudo pacman -S tandroid-sdk-platform-tools sdkmanager android-ndk
-  ```
+  * Packages can vary, read up on the Arch Wiki's [Android](https://wiki.archlinux.org/title/Android) page.
 
 * **Gentoo**
 
@@ -102,19 +96,25 @@ On Linux, the three mentioned developer applications can be installed on Linux f
   sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
   ```
 
-Set the environment variables:
+For Windows, set the environment variables:
+
   * `JAVA_HOME`:
-    * Windows: `C:\Program Files\Android\Android Studio\jre`
-    * Linux: `/usr/lib/jvm/default-java/bin`
+    * Example: `C:\Program Files\Android\Android Studio\jre`
   * `ANDROID_SDK_ROOT`:
-    * Windows: `%LOCALAPPDATA%\Android\Sdk`
-    * Linux:
-      * Debian / Ubuntu / Pop!\_OS : `~/AndroidSDK`
-      * Arch: `~/Android/Sdk`
-      * Gentoo: `~/Android`
+    * Example: `%LOCALAPPDATA%\Android\Sdk`
   * `ANDROID_NDK_HOME`:
-    * Windows: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
-    * Linux: `/usr/lib/android-sdk/ndk`
+    * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
+
+For Linux, the directories for the environment variables can greatly differ from the type of install to where it's installed, but generally they would be as:
+
+  * `JAVA_HOME`:
+    * `/usr/lib/jvm/default-java/bin`
+  * `ANDROID_SDK_ROOT`:
+    * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
+    * Arch: `~/Android/Sdk`
+    * Gentoo: `~/Android`
+  * `ANDROID_NDK_HOME`:
+    * `/usr/lib/android-sdk/ndk`
 
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:

@@ -1,4 +1,4 @@
-**Warning:** This page is very outdated, see [Building From Source](https://github.com/alvr-org/ALVR/wiki/Building-From-Source) instead.
+**Warning:** This page is outdated and doesn't get updated often; see [Building From Source](https://github.com/alvr-org/ALVR/wiki/Building-From-Source).
 
 ## 2022-01-04
 An experimental NVENC fork has successfully been created by [Toxblh](https://github.com/Toxblh), helping fix one of the larger bottlenecks on NVIDIA GPUs. [Pull Request here](https://github.com/alvr-org/ALVR/pull/906)
@@ -10,7 +10,6 @@ No special build steps are required for users who can acquire the correct ffmpeg
 The PR in the last log was proceeded by [#604](https://github.com/alvr-org/ALVR/pull/604) and this new PR was merged into the main branch. Build instructions remain the same, but the `vrenv.sh` patching is no longer needed.
 
 ## 2021-04-01
-
 A [PR](https://github.com/alvr-org/ALVR/pull/569) has been made integrating Xytovl's vulkan layer into the main ALVR tree. It doesn't actually stream video yet but it provides a solid base for future work and is compatible with nVidia GPUs.
 
 After you've checked the PR's branch out and [built the server](https://github.com/alvr-org/ALVR/wiki/Build-from-source#build-server), you can build and install the Vulkan layer like this:
@@ -23,12 +22,10 @@ make -j
 Add this line: `source "$(cat $XDG_RUNTIME_DIR/alvr_dir.txt | rev | cut -d'/' -f3- | rev)/alvr/server/cpp/tools/vulkan-layer/layer/vrenv.sh"` **before** the last one (`exec "$@"`) to `/path/to/your/SteamLibrary/steamapps/common/SteamVR/bin/vrenv.sh`.
 
 ## 2021-03-15
-
 Xytovl's branch has been merged into the main repository. The build steps are unchanged.
 Work has started towards a new frame capturing method using a Vulkan debug layer.
 
 ## 2021-03-10
-
 An experimental branch is available at https://github.com/xytovl/ALVR/tree/linux-port-openvr with many limitations
 
 ### Adopted solution
@@ -59,8 +56,8 @@ On the headset, launch the application, then click trust on the configuration wi
 The headset says that the server will restart, but it will not. You must relaunch it manually.
 
 If you are here, once it is all restarted, you should be able to get the stream on the headset.
-## 2021-01-15
 
+## 2021-01-15
 The development road has been defined, but we are not completely sure everything will work.
 
 * We can try to extract frames from the VR game using a custom Vulkan validation layer. Examples are:
@@ -71,7 +68,6 @@ The development road has been defined, but we are not completely sure everything
 * For audio we are going to use the Rust library CPAL, which is an audio backend abstraction layer. We can switch (maybe even at runtime) between ALSA and JACK. CPAL supports also Windows (WASAPI, ASIO), Android (OpenSL, AAudio), Web (Emscripten) and even macOS (Core Audio) if we need that in the future. Reference: https://github.com/RustAudio/cpal
 
 ## Earlier
-
 We cannot find a way of obtaining the frames rendered by the VR game from SteamVR. The OpenVR API exposes methods to do this but they don't work on Linux (at least we were not able to make them work). The two methods to obtain frames with OpenVR are by implementing the interfaces `IVRVirtualDisplay` and `IVRDriverDirectModeComponent`. On Windows, ALVR uses `IVRDriverDirectModeComponent`. On Linux, `IVRVirtualDisplay` crashes on Nvidia GPUs and does nothing on AMD. Similarly `IVRDriverDirectModeComponent` does not work on Linux. We tried to get help from Valve through multiple channels but we were not successful.
 
 References:

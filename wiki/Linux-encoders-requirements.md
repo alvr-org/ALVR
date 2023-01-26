@@ -1,10 +1,8 @@
 # Linux encoders requirements
-
 ALVR uses FFmpeg for all encoders (except AMF), so you will need to make sure the encoder of your choice works with FFmpeg.
 Always consult Log tab in dashboard, it will tell you the reason why an encoder failed to initialize.
 
 ## VAAPI (AMD/Intel GPUs)
-
 Requires *libva* and appropriate driver for your GPU. Check codec support with `vainfo`:
 
 ```sh
@@ -44,20 +42,16 @@ ffmpeg -vaapi_device /dev/dri/renderD128 -f lavfi -i testsrc -t 30 -vf 'format=n
 ```
 
 ## AMF (AMD GPUs)
-
-AMF requires proprietary Vulkan driver amd-pro. Troubleshooting AMF Basic-installation on your system is out of scope here, but you
+AMF requires the proprietary Vulkan driver amd-pro. Troubleshooting AMF installation on your system is out of scope here, but you
 can use [amf-test](https://github.com/nowrep/amf-test-linux). HEVC is only supported on RDNA and newer GPUs.
 
-Make sure amf-test succeeds before you try to get it working with ALVR.
-You will need to tell ALVR where to find amd-pro driver, edit your SteamVR launch command (change the path as appropriate
-for your system):
+Make sure amf-test succeeds before you try to get it working with ALVR. You will need to tell ALVR where to find the amd-pro driver, editing your SteamVR launch command (change the path as appropriate for your system):
 
     env ALVR_AMF_ICD=/path/to/amd_pro_icd64.json %command%
 
 ALVR should now be able to use AMF.
 
 ## NVENC (NVidia)
-
 Requires *libcuda*.
 
 **Test ffmpeg commands**
@@ -70,7 +64,6 @@ ffmpeg -f lavfi -i testsrc -t 30 -vf 'format=nv12,hwupload' -c:v h264_nvenc nven
 ffmpeg -f lavfi -i testsrc -t 30 -vf 'format=nv12,hwupload' -c:v hevc_nvenc nvenc-hevc.mp4
 ```
 
-## Software (all GPUs)
-
+## Software (All GPUs)
 Software encoder is mainly used as a fallback and as such should work on all GPUs without any requirements.
 Only H264 encoding is currently supported.

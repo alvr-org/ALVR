@@ -1,7 +1,6 @@
 ALVR can be built on Windows and Linux. The following instructions are for both OSes.
 
-# Common prerequisites
-
+# Common Prerequisites
 Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
 You need to install [rustup](https://www.rust-lang.org/tools/install).
@@ -9,8 +8,7 @@ You need to install [rustup](https://www.rust-lang.org/tools/install).
 On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
 # Linux Users
-
-Before building the server, those on Linux with would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers for nvidia users requires at least driver version `520.56.06` to work properly, taken from nv-codec-header's README.
+Before building the server, those on Linux would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers for nvidia users requires at least driver version `520.56.06` to work properly, taken from nv-codec-header's README.
 
 Run the following commands as shown:
 
@@ -20,28 +18,23 @@ cd nv-codec-headers/
 sudo make install
 ```
 
-# Server build
-
+# Server Build
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:
 
 * **Arch**
-
   ```bash
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
   ```
-
     * The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.
 
 * **Gentoo**
-
   * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
   * `sys-libs/libunwind`
   * `dev-lang/rust >= 1.51`
 
 * **Nix(OS)**
-
   * Use the `shell.nix` in `packaging/nix`.
 
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**
@@ -71,8 +64,7 @@ You can find the resulting package in `build/alvr_server_[your platform]`
 
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
 
-# Client build
-
+# Client Build
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
@@ -82,11 +74,9 @@ For the client you need install:
 On Linux, the three mentioned developer applications can be installed on Linux from upstream.
 
 * **Arch**
-
   * Packages can vary, read up on the Arch Wiki's [Android](https://wiki.archlinux.org/title/Android) page.
 
 * **Gentoo**
-
   * `dev-util/android-studio`
   * `dev-util/android-sdk-update-manager`
   * `dev-util/android-ndk >= 25.1`
@@ -143,10 +133,8 @@ cargo xtask build-client --release
 
 The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
 
-## `openxr-client` branch
-
+## `openxr-client` Branch
 To build and run:
-
 ```bash
 cd alvr/client_openxr
 cargo apk run
@@ -155,7 +143,6 @@ cargo apk run
 You need the headset to be connected via USB and with the screen on to successfully launch the debugger and logcat.
 
 # Troubleshooting (Linux)
-
 On some distributions, Steam Native runs ALVR a little better. To get Steam Native on Ubuntu run it with:
 ```bash
 env STEAM_RUNTIME=0 steam

@@ -96,7 +96,7 @@ private:
     int m_bitrateInMBits;
 
     bool m_hasQueryTimeout = false;
-    FramePacket m_framePacket = {nullptr, 0, 0};
+    amf::AMFBufferPtr m_frameBuffer;
     uint64_t m_targetTimestampNs;
 };
 

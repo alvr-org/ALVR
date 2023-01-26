@@ -37,13 +37,13 @@ class OvrHmd : public TrackedDevice,
     virtual void DebugRequest(const char *, char *, uint32_t) {}
     virtual vr::DriverPose_t GetPose();
 
-    void OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion);
+    void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
 
     void StartStreaming();
 
     void StopStreaming();
 
-    void SetViewsConfig(ViewsConfigData config);
+    void SetViewsConfig(FfiViewsConfig config);
 
     bool IsTrackingRef() const { return m_deviceClass == vr::TrackedDeviceClass_TrackingReference; }
     bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
@@ -71,7 +71,7 @@ class OvrHmd : public TrackedDevice,
     std::shared_ptr<PoseHistory> m_poseHistory;
 
   private:
-    ViewsConfigData views_config;
+    FfiViewsConfig views_config;
 
     bool m_baseComponentsInitialized;
     bool m_streamComponentsInitialized;

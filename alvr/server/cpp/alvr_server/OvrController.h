@@ -35,9 +35,9 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
 
     vr::VRInputComponentHandle_t getHapticComponent();
 
-    void SetButton(uint64_t id, AlvrButtonValue value);
+    void SetButton(uint64_t id, FfiButtonValue value);
 
-    bool onPoseUpdate(float predictionS, AlvrDeviceMotion motion, const OculusHand &hand);
+    bool onPoseUpdate(float predictionS, FfiDeviceMotion motion, const FfiHandSkeleton &hand);
     std::string GetSerialNumber();
 
     void GetBoneTransform(bool withController,

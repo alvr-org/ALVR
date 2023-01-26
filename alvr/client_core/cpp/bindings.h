@@ -1,6 +1,6 @@
 #pragma once
 
-struct EyeInput {
+struct FfiViewInput {
     float orientation[4]; // x, y, z, w
     float position[3];
     float fovLeft;
@@ -10,12 +10,7 @@ struct EyeInput {
     unsigned int swapchainIndex;
 };
 
-struct OnCreateResult {
-    int streamSurfaceHandle;
-    int loadingSurfaceHandle;
-};
-
-struct StreamConfigInput {
+struct FfiStreamConfig {
     unsigned int viewWidth;
     unsigned int viewHeight;
     const unsigned int *swapchainTextures[2];
@@ -43,8 +38,8 @@ extern "C" void prepareLobbyRoom(int viewWidth,
                                  const unsigned int *swapchainTextures[2],
                                  int swapchainLength);
 extern "C" void destroyRenderers();
-extern "C" void streamStartNative(StreamConfigInput config);
+extern "C" void streamStartNative(FfiStreamConfig config);
 extern "C" void updateLobbyHudTexture(const unsigned char *data);
-extern "C" void renderLobbyNative(const EyeInput eyeInputs[2]);
+extern "C" void renderLobbyNative(const FfiViewInput eyeInputs[2]);
 extern "C" void renderStreamNative(void *streamHardwareBuffer,
                                    const unsigned int swapchainIndices[2]);

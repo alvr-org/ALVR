@@ -243,10 +243,10 @@ void RequestIDR() {
 
 void SetTracking(unsigned long long targetTimestampNs,
                  float controllerPoseTimeOffsetS,
-                 const AlvrDeviceMotion *deviceMotions,
+                 const FfiDeviceMotion *deviceMotions,
                  int motionsCount,
-                 OculusHand leftHand,
-                 OculusHand rightHand) {
+                 FfiHandSkeleton leftHand,
+                 FfiHandSkeleton rightHand) {
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
@@ -281,7 +281,7 @@ void ShutdownSteamvr() {
     }
 }
 
-void SetOpenvrProperty(unsigned long long top_level_path, OpenvrProperty prop) {
+void SetOpenvrProperty(unsigned long long top_level_path, FfiOpenvrProperty prop) {
     auto device_it = g_driver_provider.tracked_devices.find(top_level_path);
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
@@ -289,7 +289,7 @@ void SetOpenvrProperty(unsigned long long top_level_path, OpenvrProperty prop) {
     }
 }
 
-void SetViewsConfig(ViewsConfigData config) {
+void SetViewsConfig(FfiViewsConfig config) {
     if (g_driver_provider.hmd) {
         g_driver_provider.hmd->SetViewsConfig(config);
     }
@@ -306,7 +306,7 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
     }
 }
 
-void SetButton(unsigned long long path, AlvrButtonValue value) {
+void SetButton(unsigned long long path, FfiButtonValue value) {
     if (std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
         LEFT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.left_controller->SetButton(path, value);

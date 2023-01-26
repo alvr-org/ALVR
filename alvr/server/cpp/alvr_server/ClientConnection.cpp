@@ -32,7 +32,7 @@ void sendHeaders(uint8_t **buf, int *len, int nalNum) {
 	int headersLen = 0;
 	int foundHeaders = -1; // Offset by 1 header to find the length until the next header
 	while (b != end) {
-		if (memcmp(b, NAL_HEADER, sizeof(NAL_HEADER)) == 0) {
+		if (b + sizeof(NAL_HEADER) <= end && memcmp(b, NAL_HEADER, sizeof(NAL_HEADER)) == 0) {
 			foundHeaders++;
 			if (foundHeaders == nalNum) {
 				break;
@@ -58,8 +58,8 @@ void processH264Nals(uint8_t **buf, int *len) {
 	uint8_t *b = *buf;
 	int l = *len;
 	uint8_t nalType = b[4] & 0x1F;
-	
-	if (nalType == H264_NAL_TYPE_AUD) {
+
+	if (nalType == H264_NAL_TYPE_AUD && l > sizeof(NAL_HEADER) * 2 + 2) {
 		b += sizeof(NAL_HEADER) + 2;
 		l -= sizeof(NAL_HEADER) + 2;
 		nalType = b[4] & 0x1F;
@@ -75,8 +75,8 @@ void processH265Nals(uint8_t **buf, int *len) {
 	uint8_t *b = *buf;
 	int l = *len;
 	uint8_t nalType = (b[4] >> 1) & 0x3F;
-	
-	if (nalType == H265_NAL_TYPE_AUD) {
+
+	if (nalType == H265_NAL_TYPE_AUD && l > sizeof(NAL_HEADER) * 2 + 3) {
 		b += sizeof(NAL_HEADER) + 3;
 		l -= sizeof(NAL_HEADER) + 3;
 		nalType = (b[4] >> 1) & 0x3F;
@@ -91,6 +91,10 @@ void processH265Nals(uint8_t **buf, int *len) {
 void ClientConnection::SendVideo(uint8_t *buf, int len, uint64_t targetTimestampNs) {
 	// Report before the frame is packetized
 	ReportEncoded(targetTimestampNs);
+
+	if (len < sizeof(NAL_HEADER)) {
+		return;
+	}
 
 	int codec = Settings::Instance().m_codec;
 	if (codec == ALVR_CODEC_H264) {

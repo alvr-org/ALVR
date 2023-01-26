@@ -100,24 +100,24 @@ pub enum WindowType {
     Browser,
 }
 
-pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> OpenvrProperty {
+pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> FfiOpenvrProperty {
     let type_ = match value {
-        OpenvrPropValue::Bool(_) => OpenvrPropertyType_Bool,
-        OpenvrPropValue::Float(_) => OpenvrPropertyType_Float,
-        OpenvrPropValue::Int32(_) => OpenvrPropertyType_Int32,
-        OpenvrPropValue::Uint64(_) => OpenvrPropertyType_Uint64,
-        OpenvrPropValue::Vector3(_) => OpenvrPropertyType_Vector3,
-        OpenvrPropValue::Double(_) => OpenvrPropertyType_Double,
-        OpenvrPropValue::String(_) => OpenvrPropertyType_String,
+        OpenvrPropValue::Bool(_) => FfiOpenvrPropertyType_Bool,
+        OpenvrPropValue::Float(_) => FfiOpenvrPropertyType_Float,
+        OpenvrPropValue::Int32(_) => FfiOpenvrPropertyType_Int32,
+        OpenvrPropValue::Uint64(_) => FfiOpenvrPropertyType_Uint64,
+        OpenvrPropValue::Vector3(_) => FfiOpenvrPropertyType_Vector3,
+        OpenvrPropValue::Double(_) => FfiOpenvrPropertyType_Double,
+        OpenvrPropValue::String(_) => FfiOpenvrPropertyType_String,
     };
 
     let value = match value {
-        OpenvrPropValue::Bool(bool_) => OpenvrPropertyValue { bool_ },
-        OpenvrPropValue::Float(float_) => OpenvrPropertyValue { float_ },
-        OpenvrPropValue::Int32(int32) => OpenvrPropertyValue { int32 },
-        OpenvrPropValue::Uint64(uint64) => OpenvrPropertyValue { uint64 },
-        OpenvrPropValue::Vector3(vector3) => OpenvrPropertyValue { vector3 },
-        OpenvrPropValue::Double(double_) => OpenvrPropertyValue { double_ },
+        OpenvrPropValue::Bool(bool_) => FfiOpenvrPropertyValue { bool_ },
+        OpenvrPropValue::Float(float_) => FfiOpenvrPropertyValue { float_ },
+        OpenvrPropValue::Int32(int32) => FfiOpenvrPropertyValue { int32 },
+        OpenvrPropValue::Uint64(uint64) => FfiOpenvrPropertyValue { uint64 },
+        OpenvrPropValue::Vector3(vector3) => FfiOpenvrPropertyValue { vector3 },
+        OpenvrPropValue::Double(double_) => FfiOpenvrPropertyValue { double_ },
         OpenvrPropValue::String(value) => {
             let c_string = CString::new(value).unwrap();
             let mut string = [0; 64];
@@ -130,11 +130,11 @@ pub fn to_cpp_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ope
                 );
             }
 
-            OpenvrPropertyValue { string }
+            FfiOpenvrPropertyValue { string }
         }
     };
 
-    OpenvrProperty {
+    FfiOpenvrProperty {
         key: key as u32,
         type_,
         value,

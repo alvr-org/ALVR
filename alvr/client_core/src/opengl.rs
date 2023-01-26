@@ -78,7 +78,7 @@ pub fn start_stream(
 ) {
     #[cfg(target_os = "android")]
     unsafe {
-        let config = StreamConfigInput {
+        let config = FfiStreamConfig {
             viewWidth: view_resolution.x,
             viewHeight: view_resolution.y,
             swapchainTextures: [
@@ -165,7 +165,7 @@ pub fn render_lobby(view_inputs: [RenderViewInput; 2]) {
     #[cfg(target_os = "android")]
     unsafe {
         let eye_inputs = [
-            EyeInput {
+            FfiViewInput {
                 position: view_inputs[0].position.to_array(),
                 orientation: view_inputs[0].orientation.to_array(),
                 fovLeft: view_inputs[0].fov.left,
@@ -174,7 +174,7 @@ pub fn render_lobby(view_inputs: [RenderViewInput; 2]) {
                 fovDown: view_inputs[0].fov.down,
                 swapchainIndex: view_inputs[0].swapchain_index as _,
             },
-            EyeInput {
+            FfiViewInput {
                 position: view_inputs[1].position.to_array(),
                 orientation: view_inputs[1].orientation.to_array(),
                 fovLeft: view_inputs[1].fov.left,

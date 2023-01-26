@@ -1,33 +1,33 @@
 #pragma once
 
-struct EyeFov {
+struct FfiFov {
     float left;
     float right;
     float up;
     float down;
 };
 
-struct AlvrQuat {
+struct FfiQuat {
     float x;
     float y;
     float z;
     float w;
 };
 
-struct OculusHand {
+struct FfiHandSkeleton {
     bool enabled;
-    AlvrQuat boneRotations[19];
+    FfiQuat boneRotations[19];
 };
 
-struct AlvrDeviceMotion {
+struct FfiDeviceMotion {
     unsigned long long deviceID;
-    AlvrQuat orientation;
+    FfiQuat orientation;
     float position[3];
     float linearVelocity[3];
     float angularVelocity[3];
 };
 
-enum OpenvrPropertyType {
+enum FfiOpenvrPropertyType {
     Bool,
     Float,
     Int32,
@@ -37,7 +37,7 @@ enum OpenvrPropertyType {
     String,
 };
 
-union OpenvrPropertyValue {
+union FfiOpenvrPropertyValue {
     bool bool_;
     float float_;
     int int32;
@@ -47,24 +47,24 @@ union OpenvrPropertyValue {
     char string[64];
 };
 
-struct OpenvrProperty {
+struct FfiOpenvrProperty {
     unsigned int key;
-    OpenvrPropertyType type;
-    OpenvrPropertyValue value;
+    FfiOpenvrPropertyType type;
+    FfiOpenvrPropertyValue value;
 };
 
-struct ViewsConfigData {
-    EyeFov fov[2];
+struct FfiViewsConfig {
+    FfiFov fov[2];
     float ipd_m;
 };
 
-enum AlvrButtonType {
+enum FfiButtonType {
     BUTTON_TYPE_BINARY,
     BUTTON_TYPE_SCALAR,
 };
 
-struct AlvrButtonValue {
-    AlvrButtonType type;
+struct FfiButtonValue {
+    FfiButtonType type;
     union {
         bool binary;
         float scalar;
@@ -121,19 +121,19 @@ extern "C" void SendVSync(float frameIntervalS);
 extern "C" void RequestIDR();
 extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             float controllerPoseTimeOffsetS,
-                            const AlvrDeviceMotion *deviceMotions,
+                            const FfiDeviceMotion *deviceMotions,
                             int motionsCount,
-                            OculusHand leftHand,
-                            OculusHand rightHand);
+                            FfiHandSkeleton leftHand,
+                            FfiHandSkeleton rightHand);
 extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
-extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, OpenvrProperty prop);
+extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, FfiOpenvrProperty prop);
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
-extern "C" void SetViewsConfig(ViewsConfigData config);
+extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
-extern "C" void SetButton(unsigned long long path, AlvrButtonValue value);
+extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
 
 extern "C" void SetBitrateParameters(unsigned long long bitrate_mbs,
                                      bool adaptive_bitrate_enabled,

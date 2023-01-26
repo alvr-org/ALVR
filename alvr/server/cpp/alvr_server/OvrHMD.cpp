@@ -22,7 +22,7 @@
 const vr::HmdMatrix34_t MATRIX_IDENTITY = {
     {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
 
-vr::HmdRect2_t fov_to_projection(EyeFov fov) {
+vr::HmdRect2_t fov_to_projection(FfiFov fov) {
     auto proj_bounds = vr::HmdRect2_t{};
     proj_bounds.vTopLeft.v[0] = tanf(fov.left);
     proj_bounds.vBottomRight.v[0] = tanf(fov.right);
@@ -50,9 +50,9 @@ inline vr::ETrackedDeviceClass getControllerDeviceClass() {
 OvrHmd::OvrHmd()
     : TrackedDevice(HEAD_ID), m_baseComponentsInitialized(false),
       m_streamComponentsInitialized(false) {
-    auto dummy_fov = EyeFov{-1.0, 1.0, 1.0, -1.0};
+    auto dummy_fov = FfiFov{-1.0, 1.0, 1.0, -1.0};
 
-    this->views_config = ViewsConfigData{};
+    this->views_config = FfiViewsConfig{};
     this->views_config.ipd_m = 0.063;
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
@@ -309,7 +309,7 @@ void *OvrHmd::GetComponent(const char *component_name_and_version) {
 
 vr::DriverPose_t OvrHmd::GetPose() { return m_pose; }
 
-void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion) {
+void OvrHmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
         auto pose = vr::DriverPose_t{};
         pose.poseIsValid = true;
@@ -393,7 +393,7 @@ void OvrHmd::StopStreaming() {
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0);
 }
 
-void OvrHmd::SetViewsConfig(ViewsConfigData config) {
+void OvrHmd::SetViewsConfig(FfiViewsConfig config) {
     this->views_config = config;
 
     auto left_transform = MATRIX_IDENTITY;

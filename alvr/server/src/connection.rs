@@ -1,10 +1,9 @@
 use crate::{
     buttons::BUTTON_PATH_FROM_ID, sockets::WelcomeSocket, statistics::StatisticsManager,
-    tracking::TrackingManager, AlvrButtonType_BUTTON_TYPE_BINARY,
-    AlvrButtonType_BUTTON_TYPE_SCALAR, AlvrButtonValue, AlvrButtonValue__bindgen_ty_1,
-    AlvrDeviceMotion, AlvrQuat, EyeFov, OculusHand, VideoPacket, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    tracking::TrackingManager, FfiButtonValue, FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiQuat,
+    FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -679,7 +678,7 @@ async fn connection_pipeline(
                     };
                     crate::SetOpenvrProperty(
                         *HEAD_ID,
-                        crate::to_cpp_openvr_prop(
+                        crate::to_ffi_openvr_prop(
                             alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                             alvr_session::OpenvrPropValue::String(device_id),
                         ),
@@ -711,7 +710,7 @@ async fn connection_pipeline(
                     unsafe {
                         crate::SetOpenvrProperty(
                             *HEAD_ID,
-                            crate::to_cpp_openvr_prop(
+                            crate::to_ffi_openvr_prop(
                                 alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                                 alvr_session::OpenvrPropValue::String(default_device_id),
                             ),
@@ -744,7 +743,7 @@ async fn connection_pipeline(
             unsafe {
                 crate::SetOpenvrProperty(
                     *HEAD_ID,
-                    crate::to_cpp_openvr_prop(
+                    crate::to_ffi_openvr_prop(
                         alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
                         alvr_session::OpenvrPropValue::String(microphone_device_id),
                     ),
@@ -820,8 +819,8 @@ async fn connection_pipeline(
         });
     }
 
-    fn to_tracking_quat(quat: Quat) -> AlvrQuat {
-        AlvrQuat {
+    fn to_ffi_quat(quat: Quat) -> FfiQuat {
+        FfiQuat {
             x: quat.x,
             y: quat.y,
             z: quat.z,
@@ -860,79 +859,77 @@ async fn connection_pipeline(
                     device_motions.push((id, motion));
                 }
 
-                let raw_motions = device_motions
+                let ffi_motions = device_motions
                     .into_iter()
-                    .map(|(id, motion)| AlvrDeviceMotion {
+                    .map(|(id, motion)| FfiDeviceMotion {
                         deviceID: id,
-                        orientation: to_tracking_quat(motion.orientation),
+                        orientation: to_ffi_quat(motion.orientation),
                         position: motion.position.to_array(),
                         linearVelocity: motion.linear_velocity.to_array(),
                         angularVelocity: motion.angular_velocity.to_array(),
                     })
                     .collect::<Vec<_>>();
 
-                let left_oculus_hand = if let Some(arr) = tracking.left_hand_skeleton {
-                    let vec = arr.into_iter().map(to_tracking_quat).collect::<Vec<_>>();
-                    let mut array = [AlvrQuat::default(); 19];
+                let left_hand_skeleton = if let Some(arr) = tracking.left_hand_skeleton {
+                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
+                    let mut array = [FfiQuat::default(); 19];
                     array.copy_from_slice(&vec);
 
-                    OculusHand {
+                    FfiHandSkeleton {
                         enabled: true,
                         boneRotations: array,
                     }
                 } else {
-                    OculusHand {
+                    FfiHandSkeleton {
                         enabled: false,
                         ..Default::default()
                     }
                 };
 
-                let right_oculus_hand = if let Some(arr) = tracking.right_hand_skeleton {
-                    let vec = arr.into_iter().map(to_tracking_quat).collect::<Vec<_>>();
-                    let mut array = [AlvrQuat::default(); 19];
+                let right_hand_skeleton = if let Some(arr) = tracking.right_hand_skeleton {
+                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
+                    let mut array = [FfiQuat::default(); 19];
                     array.copy_from_slice(&vec);
 
-                    OculusHand {
+                    FfiHandSkeleton {
                         enabled: true,
                         boneRotations: array,
                     }
                 } else {
-                    OculusHand {
+                    FfiHandSkeleton {
                         enabled: false,
                         ..Default::default()
                     }
                 };
 
-                let maybe_server_prediction_average =
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_tracking_received(tracking.target_timestamp);
+                let server_prediction_average = if let Some(stats) = &mut *STATISTICS_MANAGER.lock()
+                {
+                    stats.report_tracking_received(tracking.target_timestamp);
 
-                        unsafe {
-                            crate::SetTracking(
-                                tracking.target_timestamp.as_nanos() as _,
-                                tracking_latency_offset_s,
-                                raw_motions.as_ptr(),
-                                raw_motions.len() as _,
-                                left_oculus_hand,
-                                right_oculus_hand,
-                            )
-                        };
-
-                        Some(stats.get_server_prediction_average())
-                    } else {
-                        None
+                    unsafe {
+                        crate::SetTracking(
+                            tracking.target_timestamp.as_nanos() as _,
+                            tracking_latency_offset_s,
+                            ffi_motions.as_ptr(),
+                            ffi_motions.len() as _,
+                            left_hand_skeleton,
+                            right_hand_skeleton,
+                        )
                     };
 
-                if let Some(server_prediction_average) = maybe_server_prediction_average {
-                    control_sender
-                        .lock()
-                        .await
-                        .send(&ServerControlPacket::ServerPredictionAverage(
-                            server_prediction_average,
-                        ))
-                        .await
-                        .ok();
-                }
+                    stats.get_server_prediction_average()
+                } else {
+                    Duration::ZERO
+                };
+
+                control_sender
+                    .lock()
+                    .await
+                    .send(&ServerControlPacket::ServerPredictionAverage(
+                        server_prediction_average,
+                    ))
+                    .await
+                    .ok();
             }
         }
     };
@@ -1036,15 +1033,15 @@ async fn connection_pipeline(
                     unsafe { crate::VideoErrorReportReceive() };
                 }
                 Ok(ClientControlPacket::ViewsConfig(config)) => unsafe {
-                    crate::SetViewsConfig(crate::ViewsConfigData {
+                    crate::SetViewsConfig(FfiViewsConfig {
                         fov: [
-                            EyeFov {
+                            FfiFov {
                                 left: config.fov[0].left,
                                 right: config.fov[0].right,
                                 up: config.fov[0].up,
                                 down: config.fov[0].down,
                             },
-                            EyeFov {
+                            FfiFov {
                                 left: config.fov[1].left,
                                 right: config.fov[1].right,
                                 up: config.fov[1].up,
@@ -1073,14 +1070,14 @@ async fn connection_pipeline(
                     }
 
                     let value = match value {
-                        ButtonValue::Binary(value) => AlvrButtonValue {
-                            type_: AlvrButtonType_BUTTON_TYPE_BINARY,
-                            __bindgen_anon_1: AlvrButtonValue__bindgen_ty_1 { binary: value },
+                        ButtonValue::Binary(value) => FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { binary: value },
                         },
 
-                        ButtonValue::Scalar(value) => AlvrButtonValue {
-                            type_: AlvrButtonType_BUTTON_TYPE_SCALAR,
-                            __bindgen_anon_1: AlvrButtonValue__bindgen_ty_1 { scalar: value },
+                        ButtonValue::Scalar(value) => FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { scalar: value },
                         },
                     };
 

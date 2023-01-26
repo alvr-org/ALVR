@@ -660,7 +660,7 @@ void renderEye(
     GL(glUseProgram(0));
 }
 
-void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], bool isLobby) {
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2], bool isLobby) {
     if (renderer->enableFFR) {
         renderer->ffr->Render();
     }
@@ -760,7 +760,7 @@ void destroyRenderers() {
     }
 }
 
-void streamStartNative(StreamConfigInput config) {
+void streamStartNative(FfiStreamConfig config) {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.release();
@@ -800,7 +800,7 @@ void updateLobbyHudTexture(const unsigned char *data) {
     memcpy(&g_ctx.hudTextureBitmap[0], data, HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
 }
 
-void renderLobbyNative(const EyeInput eyeInputs[2]) {
+void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
     // update text image
     {
         std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
@@ -832,7 +832,7 @@ void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchain
     GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
     GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
-    EyeInput eyeInputs[2] = {};
+    FfiViewInput eyeInputs[2] = {};
     eyeInputs[0].swapchainIndex = swapchainIndices[0];
     eyeInputs[1].swapchainIndex = swapchainIndices[1];
     ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);

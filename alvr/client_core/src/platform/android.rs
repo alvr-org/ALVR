@@ -402,7 +402,8 @@ pub fn video_decoder_split(
                         match &mut image_reader.acquire_next_image() {
                             Ok(image @ Some(_)) => {
                                 let image = image.take().unwrap();
-                                let timestamp = Duration::from_nanos(image.get_timestamp().unwrap() as u64);
+                                let timestamp =
+                                    Duration::from_nanos(image.get_timestamp().unwrap() as u64);
 
                                 dequeued_frame_callback(timestamp);
 
@@ -459,11 +460,15 @@ pub fn video_decoder_split(
                         // The buffer timestamp is actually nanoseconds
                         let presentation_time_us = buffer.presentation_time_us();
 
-                        if let Err(e) = decoder.release_output_buffer_at_time(buffer, presentation_time_us) {
+                        if let Err(e) =
+                            decoder.release_output_buffer_at_time(buffer, presentation_time_us)
+                        {
                             error!("Decoder dequeue error: {e}");
                         }
                     }
-                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => thread::sleep(Duration::from_micros(500)),
+                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => {
+                        thread::sleep(Duration::from_micros(500))
+                    }
                     MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
                     MediaCodecResult::Err(e) => {
                         error!("Decoder dequeue error: {e}");

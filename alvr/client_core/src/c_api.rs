@@ -94,10 +94,11 @@ pub struct AlvrDeviceMotion {
     angular_velocity: [f32; 3],
 }
 
+/// OpenXR convention
 #[repr(C)]
-pub struct OculusHand {
-    enabled: bool,
-    bone_rotations: [AlvrQuat; 19],
+pub struct AlvrHandSkeleton {
+    joint_positions: [[f32; 3]; 26],
+    joint_rotations: [AlvrQuat; 26],
 }
 
 #[allow(dead_code)]
@@ -362,26 +363,25 @@ pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
-    left_oculus_hand: OculusHand,
-    right_oculus_hand: OculusHand,
+    left_hand_skeleton: *const AlvrHandSkeleton,
+    right_hand_skeleton: *const AlvrHandSkeleton,
 ) {
-    fn from_tracking_quat(quat: AlvrQuat) -> Quat {
+    fn from_capi_quat(quat: AlvrQuat) -> Quat {
         Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
     }
 
-    fn from_oculus_hand(hand: OculusHand) -> Option<[Quat; 19]> {
-        hand.enabled.then(|| {
-            let vec = hand
-                .bone_rotations
-                .iter()
-                .cloned()
-                .map(from_tracking_quat)
-                .collect::<Vec<_>>();
-
-            let mut array = [Quat::IDENTITY; 19];
-            array.copy_from_slice(&vec);
-
-            array
+    fn from_capi_hand_skeleton(skeleton: *const AlvrHandSkeleton) -> Option<[Pose; 26]> {
+        (!skeleton.is_null()).then(|| {
+            unsafe { (*skeleton).joint_positions }
+                .into_iter()
+                .zip(unsafe { (*skeleton).joint_rotations }.into_iter())
+                .map(|(p, r)| Pose {
+                    orientation: from_capi_quat(r),
+                    position: Vec3::from_slice(&p),
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
         })
     }
 
@@ -401,7 +401,7 @@ pub extern "C" fn alvr_send_tracking(
                 motion.device_id,
                 DeviceMotion {
                     pose: Pose {
-                        orientation: from_tracking_quat(motion.orientation),
+                        orientation: from_capi_quat(motion.orientation),
                         position: Vec3::from_slice(&motion.position),
                     },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
@@ -414,8 +414,8 @@ pub extern "C" fn alvr_send_tracking(
     let tracking = Tracking {
         target_timestamp: Duration::from_nanos(target_timestamp_ns),
         device_motions,
-        left_hand_skeleton: from_oculus_hand(left_oculus_hand),
-        right_hand_skeleton: from_oculus_hand(right_oculus_hand),
+        left_hand_skeleton: from_capi_hand_skeleton(left_hand_skeleton),
+        right_hand_skeleton: from_capi_hand_skeleton(right_hand_skeleton),
     };
 
     crate::send_tracking(tracking);

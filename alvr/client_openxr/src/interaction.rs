@@ -1,5 +1,5 @@
 use crate::{to_pose, to_quat, to_vec3, Platform};
-use alvr_common::{glam::Quat, *};
+use alvr_common::*;
 use alvr_events::ButtonValue;
 use alvr_sockets::{DeviceMotion, Pose};
 use openxr as xr;
@@ -480,7 +480,7 @@ pub fn get_hand_motion(
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandSource,
-) -> StrResult<(Option<DeviceMotion>, Option<[Quat; 19]>)> {
+) -> StrResult<(Option<DeviceMotion>, Option<[Pose; 26]>)> {
     if hand_source
         .grip_action
         .is_active(session, xr::Path::NULL)
@@ -509,31 +509,20 @@ pub fn get_hand_motion(
             .relate_hand_joints(tracker, time)
             .map_err(err!())?
         {
-            let r = joint_locations
-                .iter()
-                .map(|j| to_quat(j.pose.orientation))
-                .collect::<Vec<Quat>>();
-
-            // convert to oculus hand
-            // todo: support openxr hands directly into the server
-
             let root_motion = DeviceMotion {
                 pose: to_pose(joint_locations[0].pose),
                 linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
                 angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
             };
 
-            let joint_rotations = [
-                r[0], // root
-                r[1], // wrist
-                r[2], r[3], r[4], r[5], // thumb
-                r[7], r[8], r[9], // index
-                r[12], r[13], r[14], // middle
-                r[17], r[18], r[19], // ring
-                r[21], r[22], r[23], r[24], // pinky
-            ];
+            let joints = joint_locations
+                .iter()
+                .map(|j| to_pose(j.pose))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
 
-            Ok((Some(root_motion), Some(joint_rotations)))
+            Ok((Some(root_motion), Some(joints)))
         } else {
             Ok((None, None))
         }

@@ -1,17 +1,20 @@
 use crate::{
-    buttons::BUTTON_PATH_FROM_ID, sockets::WelcomeSocket, statistics::StatisticsManager,
-    tracking::TrackingManager, FfiButtonValue, FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiQuat,
-    FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
-    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    buttons::BUTTON_PATH_FROM_ID,
+    sockets::WelcomeSocket,
+    statistics::StatisticsManager,
+    to_ffi_quat,
+    tracking::{self, TrackingManager},
+    FfiButtonValue, FfiDeviceMotion, FfiFov, FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, UVec2, Vec2},
+    glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    RelaxedAtomic,
+    RelaxedAtomic, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
@@ -28,6 +31,7 @@ use std::{
     future,
     net::IpAddr,
     process::Command,
+    ptr,
     sync::{mpsc as smpsc, Arc},
     thread,
     time::{Duration, Instant},
@@ -819,15 +823,6 @@ async fn connection_pipeline(
         });
     }
 
-    fn to_ffi_quat(quat: Quat) -> FfiQuat {
-        FfiQuat {
-            x: quat.x,
-            y: quat.y,
-            z: quat.z,
-            w: quat.w,
-        }
-    }
-
     let tracking_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<Tracking>(TRACKING)
@@ -859,37 +854,12 @@ async fn connection_pipeline(
                     })
                     .collect::<Vec<_>>();
 
-                let left_hand_skeleton = if let Some(arr) = tracking.left_hand_skeleton {
-                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
-                    let mut array = [FfiQuat::default(); 19];
-                    array.copy_from_slice(&vec);
-
-                    FfiHandSkeleton {
-                        enabled: true,
-                        boneRotations: array,
-                    }
-                } else {
-                    FfiHandSkeleton {
-                        enabled: false,
-                        ..Default::default()
-                    }
-                };
-
-                let right_hand_skeleton = if let Some(arr) = tracking.right_hand_skeleton {
-                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
-                    let mut array = [FfiQuat::default(); 19];
-                    array.copy_from_slice(&vec);
-
-                    FfiHandSkeleton {
-                        enabled: true,
-                        boneRotations: array,
-                    }
-                } else {
-                    FfiHandSkeleton {
-                        enabled: false,
-                        ..Default::default()
-                    }
-                };
+                let left_hand_skeleton = tracking
+                    .left_hand_skeleton
+                    .map(|s| tracking::to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
+                let right_hand_skeleton = tracking
+                    .right_hand_skeleton
+                    .map(|s| tracking::to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
 
                 let server_prediction_average = if let Some(stats) = &mut *STATISTICS_MANAGER.lock()
                 {
@@ -901,8 +871,16 @@ async fn connection_pipeline(
                             tracking_latency_offset_s,
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
-                            left_hand_skeleton,
-                            right_hand_skeleton,
+                            if let Some(skeleton) = &left_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(skeleton) = &right_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
                         )
                     };
 

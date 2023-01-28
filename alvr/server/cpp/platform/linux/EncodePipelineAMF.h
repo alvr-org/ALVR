@@ -68,7 +68,7 @@ public:
     ~EncodePipelineAMF();
 
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
-    bool GetEncoded(std::vector<uint8_t> &out, uint64_t *pts) override;
+    bool GetEncoded(FramePacket &packet) override;
     void SetBitrate(int64_t bitrate) override;
 
 private:
@@ -96,7 +96,7 @@ private:
     int m_bitrateInMBits;
 
     bool m_hasQueryTimeout = false;
-    std::vector<uint8_t> m_outBuffer;
+    amf::AMFBufferPtr m_frameBuffer;
     uint64_t m_targetTimestampNs;
 };
 

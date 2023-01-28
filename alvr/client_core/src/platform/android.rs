@@ -463,7 +463,7 @@ pub fn video_decoder_split(
                             error!("Decoder dequeue error: {e}");
                         }
                     }
-                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => (),
+                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => thread::sleep(Duration::from_micros(500)),
                     MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
                     MediaCodecResult::Err(e) => {
                         error!("Decoder dequeue error: {e}");

@@ -396,7 +396,7 @@ pub fn video_decoder_split(
 
                         if image_queue_lock.len() > available_buffering_frames {
                             warn!("Video frame queue overflow!");
-                            image_queue_lock.clear();
+                            image_queue_lock.pop_front();
                         }
 
                         match &mut image_reader.acquire_next_image() {

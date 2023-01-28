@@ -458,10 +458,10 @@ pub fn video_decoder_split(
                 match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
                     MediaCodecResult::Ok(buffer) => {
                         // The buffer timestamp is actually nanoseconds
-                        let presentation_time_us = buffer.presentation_time_us();
+                        let presentation_time_ns = buffer.presentation_time_us();
 
                         if let Err(e) =
-                            decoder.release_output_buffer_at_time(buffer, presentation_time_us)
+                            decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
                         {
                             error!("Decoder dequeue error: {e}");
                         }

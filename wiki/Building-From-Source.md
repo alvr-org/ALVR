@@ -22,7 +22,6 @@ sudo make install
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:
-
 * **Arch**
   ```bash
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
@@ -65,13 +64,26 @@ You can find the resulting package in `build/alvr_server_[your platform]`
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
 
 # Client Build
+## 1. Installing necessary packages
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
 * Latest Android SDK Platform-Tools 33 (Android 13)
 * Latest Android NDK (currently v25.1.8937393)
 
-On Linux, the three mentioned developer applications can be installed on Linux from upstream.
+On Linux, the specific package names for the android tools can differ from distro to distro, see up on the wiki for more information:
+* Gentoo:
+  * https://wiki.gentoo.org/wiki/Android
+* Arch:
+  * https://wiki.archlinux.org/title/Android
+* Debian:
+  * https://wiki.debian.org/AndroidStudio
+* Ubuntu:
+  * https://help.ubuntu.com/community/AndroidSDK
+* Pop!\_OS:
+  * N/A
+
+The three mentioned developer applications can be installed from upstream; although the packages and setup responsible for the required tools can differ between distros, being:
 
 * **Arch**
   * Packages can vary, read up on the Arch Wiki's [Android](https://wiki.archlinux.org/title/Android) page.
@@ -81,31 +93,39 @@ On Linux, the three mentioned developer applications can be installed on Linux f
   * `dev-util/android-sdk-update-manager`
   * `dev-util/android-ndk >= 25.1`
 
-* **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10** (Debian requires to have the `non-free` repository enabled)
+For Debian, it requires to have the `non-free` repository to be enabled:
+* **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10**
   ```bash
   sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
   ```
 
+## 2. Setting environment variables
 For Windows, set the environment variables:
+* `JAVA_HOME`:
+  * Example: `C:\Program Files\Android\Android Studio\jre`
+* `ANDROID_SDK_ROOT`:
+  * Example: `%LOCALAPPDATA%\Android\Sdk`
+* `ANDROID_NDK_HOME`:
+  * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
 
-  * `JAVA_HOME`:
-    * Example: `C:\Program Files\Android\Android Studio\jre`
-  * `ANDROID_SDK_ROOT`:
-    * Example: `%LOCALAPPDATA%\Android\Sdk`
-  * `ANDROID_NDK_HOME`:
-    * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
+For Linux, the correct directories for the environment variables can greatly differ depending on the type of install. See the wiki page of your distro for more information:
+* Gentoo:
+  * https://wiki.gentoo.org/wiki/Android
+* Ubuntu:
+  * https://help.ubuntu.com/community/AndroidSDK#Post-Installation_Configuration
 
-For Linux, the directories for the environment variables can greatly differ from the type of install to where it's installed, but generally they would be as:
+Distro wikis that weren't listed above does not mention of environment variables, although generally they would be as:
+* `JAVA_HOME`:
+  * `/usr/lib/jvm/default-java/bin`
+* `ANDROID_SDK_ROOT`:
+  * Arch: `~/Android/Sdk`
+  * Gentoo: `~/Android`
+  * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
+* `ANDROID_NDK_HOME`:
+  * Arch: `/opt/android-sdk/ndk`
+  * Linux: `/usr/lib/android-sdk/ndk`
 
-  * `JAVA_HOME`:
-    * `/usr/lib/jvm/default-java/bin`
-  * `ANDROID_SDK_ROOT`:
-    * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
-    * Arch: `~/Android/Sdk`
-    * Gentoo: `~/Android`
-  * `ANDROID_NDK_HOME`:
-    * `/usr/lib/android-sdk/ndk`
-
+## 3. Building
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:
 

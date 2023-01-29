@@ -809,16 +809,18 @@ async fn connection_pipeline(
         }
     };
 
-    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Option<Vec2>>();
 
     let is_tracking_ref_only = settings.headset.tracking_ref_only;
     if !is_tracking_ref_only {
         // use a separate thread because SetChaperone() is blocking
         thread::spawn(move || {
             while let Ok(packet) = playspace_sync_receiver.recv() {
-                let width = f32::max(packet.x, 2.0);
-                let height = f32::max(packet.y, 2.0);
-                unsafe { crate::SetChaperone(width, height) };
+                if let Some(area) = packet {
+                    unsafe { crate::SetChaperone(area.x, area.y) };
+                } else {
+                    unsafe { crate::SetChaperone(2.0, 2.0) };
+                }
             }
         });
     }

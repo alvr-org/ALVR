@@ -2,8 +2,8 @@ mod interaction;
 
 use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
-    glam::{Quat, UVec2, Vec3},
-    parking_lot::Mutex,
+    glam::{Quat, UVec2, Vec2, Vec3},
+    parking_lot::{Mutex, RwLock},
     prelude::*,
     Fov, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
@@ -43,7 +43,7 @@ struct StreamingInputContext {
     xr_instance: xr::Instance,
     xr_session: xr::Session<xr::AnyGraphics>,
     interaction_context: Arc<StreamingInteractionContext>,
-    reference_space: Arc<xr::Space>,
+    reference_space: Arc<RwLock<xr::Space>>,
     views_history: Arc<Mutex<VecDeque<HistoryView>>>,
 }
 
@@ -216,7 +216,7 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         .locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
             to_xr_time(target_timestamp),
-            &ctx.reference_space,
+            &ctx.reference_space.read(),
         )
         .map_err(err!())?;
 
@@ -266,13 +266,13 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
 
     let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
         &ctx.xr_session,
-        &ctx.reference_space,
+        &ctx.reference_space.read(),
         tracker_time,
         &ctx.interaction_context.left_hand_source,
     )?;
     let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
         &ctx.xr_session,
-        &ctx.reference_space,
+        &ctx.reference_space.read(),
         tracker_time,
         &ctx.interaction_context.right_hand_source,
     )?;
@@ -391,11 +391,11 @@ pub fn entry_point() {
                 &xr_session.clone().into_any_graphics(),
             ));
 
-        let reference_space = Arc::new(
+        let reference_space = Arc::new(RwLock::new(
             xr_session
                 .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
                 .unwrap(),
-        );
+        ));
 
         let is_streaming = Arc::new(RelaxedAtomic::new(false));
 
@@ -430,11 +430,11 @@ pub fn entry_point() {
         'render_loop: loop {
             while let Some(event) = xr_instance.poll_event(&mut event_storage).unwrap() {
                 match event {
-                    xr::Event::EventsLost(e) => {
-                        error!("OpenXR: lost {} events!", e.lost_event_count());
+                    xr::Event::EventsLost(event) => {
+                        error!("OpenXR: lost {} events!", event.lost_event_count());
                     }
                     xr::Event::InstanceLossPending(_) => break 'session_loop,
-                    xr::Event::SessionStateChanged(e) => match e.state() {
+                    xr::Event::SessionStateChanged(event) => match event.state() {
                         xr::SessionState::READY => {
                             xr_session
                                 .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
@@ -495,16 +495,33 @@ pub fn entry_point() {
                         }
                         _ => (),
                     },
-                    xr::Event::ReferenceSpaceChangePending(_) => {
-                        // e.
+                    xr::Event::ReferenceSpaceChangePending(event) => {
+                        error!(
+                            "ReferenceSpaceChangePending type: {:?}",
+                            event.reference_space_type()
+                        );
+
+                        *reference_space.write() = xr_session
+                            .create_reference_space(
+                                xr::ReferenceSpaceType::STAGE,
+                                xr::Posef::IDENTITY,
+                            )
+                            .unwrap();
+
+                        alvr_client_core::send_playspace(
+                            xr_session
+                                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
+                                .unwrap()
+                                .map(|a| Vec2::new(a.width, a.height)),
+                        );
                     }
-                    xr::Event::PerfSettingsEXT(e) => {
+                    xr::Event::PerfSettingsEXT(event) => {
                         info!(
                             "Perf: from {:?} to {:?}, domain: {:?}/{:?}",
-                            e.from_level(),
-                            e.to_level(),
-                            e.domain(),
-                            e.sub_domain(),
+                            event.from_level(),
+                            event.to_level(),
+                            event.domain(),
+                            event.sub_domain(),
                         );
                     }
                     xr::Event::InteractionProfileChanged(_) => {
@@ -605,6 +622,13 @@ pub fn entry_point() {
                                     .collect(),
                             ],
                             foveated_rendering,
+                        );
+
+                        alvr_client_core::send_playspace(
+                            xr_session
+                                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
+                                .unwrap()
+                                .map(|a| Vec2::new(a.width, a.height)),
                         );
                     }
                     ClientCoreEvent::StreamingStopped => {
@@ -747,7 +771,7 @@ pub fn entry_point() {
                     .locate_views(
                         xr::ViewConfigurationType::PRIMARY_STEREO,
                         frame_state.predicted_display_time,
-                        &reference_space,
+                        &reference_space.read(),
                     )
                     .unwrap()
                     .1;
@@ -783,7 +807,7 @@ pub fn entry_point() {
                     to_xr_time(display_time),
                     xr::EnvironmentBlendMode::OPAQUE,
                     &[&xr::CompositionLayerProjection::new()
-                        .space(&reference_space)
+                        .space(&reference_space.read())
                         .views(&[
                             xr::CompositionLayerProjectionView::new()
                                 .pose(views[0].pose)

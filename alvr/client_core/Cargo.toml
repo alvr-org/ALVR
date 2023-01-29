@@ -30,7 +30,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "=0.11.1"
 jni = "0.20"
-ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0", features = [
+ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "dea742a", features = [
     "api-level-26",
     "media",
 ] }

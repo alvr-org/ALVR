@@ -64,7 +64,7 @@ pub struct BatteryPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    PlayspaceSync(Vec2),
+    PlayspaceSync(Option<Vec2>),
     RequestIdr,
     KeepAlive,
     StreamReady,

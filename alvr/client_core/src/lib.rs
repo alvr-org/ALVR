@@ -163,7 +163,7 @@ pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
     }
 }
 
-pub fn send_playspace(area: Vec2) {
+pub fn send_playspace(area: Option<Vec2>) {
     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
         sender.send(ClientControlPacket::PlayspaceSync(area)).ok();
     }

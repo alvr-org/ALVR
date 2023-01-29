@@ -355,7 +355,7 @@ pub fn initialize_streaming_interaction(
         let display_name = format!(
             "{}{}",
             info.name[0..1].to_uppercase(),
-            info.name[1..].split('_').collect::<Vec<_>>().join(" ")
+            info.name[1..].replace('_', " ")
         );
 
         let action = match info.binding_type {

@@ -345,7 +345,11 @@ pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged
 
 #[no_mangle]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
-    crate::send_playspace(Vec2::new(width, height));
+    if width != 0.0 && height != 0.0 {
+        crate::send_playspace(Some(Vec2::new(width, height)));
+    } else {
+        crate::send_playspace(None);
+    }
 }
 
 #[no_mangle]

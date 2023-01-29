@@ -1,11 +1,15 @@
-const quantile = (arr, q) => {
-    const sorted = arr.sort((a, b) => a - b);
-    const pos = (sorted.length - 1) * q;
+function quantile(arr, q) {
+    const pos = (arr.length - 1) * q;
     const base = Math.floor(pos);
     const rest = pos - base;
-    if (sorted[base + 1] !== undefined) {
-        return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+    if (arr[base + 1] !== undefined) {
+        return arr[base] + rest * (arr[base + 1] - arr[base]);
     } else {
-        return sorted[base];
+        return arr[base];
     }
+};
+
+function quantiles(arr, min, max) {
+    const sorted = arr.sort((a, b) => a - b);
+    return [quantile(sorted, min), quantile(sorted, max)];
 };

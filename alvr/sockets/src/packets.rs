@@ -93,7 +93,7 @@ pub struct Pose {
     pub position: Vec3,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub struct DeviceMotion {
     pub pose: Pose,
     pub linear_velocity: Vec3,

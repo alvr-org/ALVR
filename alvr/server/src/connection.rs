@@ -304,10 +304,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut controllers_type_right = "".into();
     let mut controllers_registered_device_type = "".into();
     let mut controllers_input_profile_path = "".into();
-    let mut linear_velocity_cutoff = 0.0;
-    let mut angular_velocity_cutoff = 0.0;
-    let mut position_offset_left = [0.0; 3];
-    let mut rotation_offset_left = [0.0; 3];
     let mut override_trigger_threshold = false;
     let mut trigger_threshold = 0.0;
     let mut override_grip_threshold = false;
@@ -330,10 +326,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         controllers_type_right = config.ctrl_type_right.clone();
         controllers_registered_device_type = config.registered_device_type.clone();
         controllers_input_profile_path = config.input_profile_path.clone();
-        linear_velocity_cutoff = config.linear_velocity_cutoff;
-        angular_velocity_cutoff = config.angular_velocity_cutoff;
-        position_offset_left = config.position_offset_left;
-        rotation_offset_left = config.rotation_offset_left;
         override_trigger_threshold =
             if let Switch::Enabled(config) = config.override_trigger_threshold {
                 trigger_threshold = config.trigger_threshold;
@@ -412,7 +404,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         target_eye_resolution_width: target_view_resolution.x,
         target_eye_resolution_height: target_view_resolution.y,
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
-        force_3dof: settings.headset.force_3dof,
         tracking_ref_only: settings.headset.tracking_ref_only,
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
@@ -440,7 +431,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         bitrate_up_rate,
         bitrate_down_rate,
         bitrate_light_load_threshold,
-        position_offset: settings.headset.position_offset,
         controllers_enabled,
         controllers_mode_idx,
         controllers_tracking_system_name,
@@ -453,10 +443,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         controllers_type_right,
         controllers_registered_device_type,
         controllers_input_profile_path,
-        linear_velocity_cutoff,
-        angular_velocity_cutoff,
-        position_offset_left,
-        rotation_offset_left,
         override_trigger_threshold,
         trigger_threshold,
         override_grip_threshold,
@@ -843,23 +829,16 @@ async fn connection_pipeline(
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
-                let ffi_motions = tracking
-                    .device_motions
-                    .into_iter()
-                    .filter_map(|(id, m)| Some((id, tracking_manager.filter_map_motion(id, m)?)))
-                    .map(|(id, motion)| FfiDeviceMotion {
-                        deviceID: id,
-                        orientation: to_ffi_quat(motion.pose.orientation),
-                        position: motion.pose.position.to_array(),
-                        linearVelocity: motion.linear_velocity.to_array(),
-                        angularVelocity: motion.angular_velocity.to_array(),
-                    })
-                    .collect::<Vec<_>>();
+                let ffi_motions = tracking_manager.transform_motions(
+                    &tracking.device_motions,
+                    tracking.left_hand_skeleton.is_some(),
+                    tracking.right_hand_skeleton.is_some(),
+                );
 
-                let left_hand_skeleton = tracking
+                let ffi_left_hand_skeleton = tracking
                     .left_hand_skeleton
                     .map(|s| tracking::to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
-                let right_hand_skeleton = tracking
+                let ffi_right_hand_skeleton = tracking
                     .right_hand_skeleton
                     .map(|s| tracking::to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
 
@@ -873,12 +852,12 @@ async fn connection_pipeline(
                             tracking_latency_offset_s,
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
-                            if let Some(skeleton) = &left_hand_skeleton {
+                            if let Some(skeleton) = &ffi_left_hand_skeleton {
                                 skeleton
                             } else {
                                 ptr::null()
                             },
-                            if let Some(skeleton) = &right_hand_skeleton {
+                            if let Some(skeleton) = &ffi_right_hand_skeleton {
                                 skeleton
                             } else {
                                 ptr::null()

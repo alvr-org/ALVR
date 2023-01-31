@@ -16,11 +16,8 @@ extern uint64_t g_DriverTestMode;
 Settings Settings::m_Instance;
 
 Settings::Settings()
-	: m_loaded(false), m_EnableOffsetPos(false)
+	: m_loaded(false)
 {
-	m_OffsetPos[0] = 0.0f;
-	m_OffsetPos[1] = 0.0f;
-	m_OffsetPos[2] = 0.0f;
 }
 
 Settings::~Settings()
@@ -67,7 +64,6 @@ void Settings::Load()
 
 		m_flIPD = 0.063;
 
-		m_force3DOF = config.get("force_3dof").get<bool>();		
 		m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
 
 		m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
@@ -114,25 +110,6 @@ void Settings::Load()
 		m_controllerMode = (int32_t)config.get("controllers_mode_idx").get<int64_t>();
 
 		m_disableController = !config.get("controllers_enabled").get<bool>();
-
-		m_EnableOffsetPos = true;
-		auto headsetPositionOffset = config.get("position_offset").get<picojson::array>();
-		m_OffsetPos[0] = (float)headsetPositionOffset[0].get<double>();
-		m_OffsetPos[1] = (float)headsetPositionOffset[1].get<double>();
-		m_OffsetPos[2] = (float)headsetPositionOffset[2].get<double>();
-
-		m_linearVelocityCutoff = (float)config.get("linear_velocity_cutoff").get<double>();
-		m_angularVelocityCutoff = (float)config.get("angular_velocity_cutoff").get<double>();
-
-		auto leftControllerPositionOffset = config.get("position_offset_left").get<picojson::array>();
-		m_leftControllerPositionOffset[0] = leftControllerPositionOffset[0].get<double>();
-		m_leftControllerPositionOffset[1] = leftControllerPositionOffset[1].get<double>();
-		m_leftControllerPositionOffset[2] = leftControllerPositionOffset[2].get<double>();
-
-		auto leftControllerRotationOffset = config.get("rotation_offset_left").get<picojson::array>();
-		m_leftControllerRotationOffset[0] = leftControllerRotationOffset[0].get<double>();
-		m_leftControllerRotationOffset[1] = leftControllerRotationOffset[1].get<double>();
-		m_leftControllerRotationOffset[2] = leftControllerRotationOffset[2].get<double>();
 
 		m_overrideTriggerThreshold = config.get("override_trigger_threshold").get<bool>();
 		m_triggerThreshold = config.get("trigger_threshold").get<double>();

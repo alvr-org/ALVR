@@ -505,12 +505,6 @@ pub struct HeadsetDesc {
     pub registered_device_type: String,
 
     #[schema(advanced)]
-    pub position_offset: [f32; 3],
-
-    #[schema(advanced)]
-    pub force_3dof: bool,
-
-    #[schema(advanced)]
     pub tracking_ref_only: bool,
 
     #[schema(advanced)]
@@ -829,8 +823,6 @@ pub fn session_settings_default() -> SettingsDefault {
             manufacturer_name: "Oculus".into(),
             render_model_name: "generic_hmd".into(),
             registered_device_type: "oculus/1WMGH000XX0000".into(),
-            position_offset: [0., 0., 0.],
-            force_3dof: false,
             tracking_ref_only: false,
             enable_vive_tracker_proxy: false,
             controllers: SwitchDefault {
@@ -850,8 +842,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     pose_time_offset_ms: 20,
                     linear_velocity_cutoff: 0.01,
                     angular_velocity_cutoff: 10.,
-                    position_offset_left: [-0.005, 0.0, -0.11],
-                    rotation_offset_left: [-15.0, 0., 0.],
+                    position_offset_left: [0.0, 0.0, -0.11],
+                    rotation_offset_left: [-20.0, 0., 0.],
                     override_trigger_threshold: SwitchDefault {
                         enabled: false,
                         content: ControllersTriggerOverrideDescDefault {

@@ -589,10 +589,6 @@ void OvrController::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-inline float Magnitude(const float v[3]) { return v[0] * v[0] + v[1] * v[1] + v[2] * v[2]; }
-// Magnitude already squared
-inline float Shape(float x, float a) { return (x > a * a ? 1 - (a * a / x) : 0.); }
-
 bool OvrController::onPoseUpdate(float predictionS,
                                  FfiDeviceMotion motion,
                                  const FfiHandSkeleton *handSkeleton) {
@@ -610,34 +606,6 @@ bool OvrController::onPoseUpdate(float predictionS,
 
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.vecDriverFromHeadTranslation[0] = 0.0;
-    pose.vecDriverFromHeadTranslation[1] = 0.0;
-    pose.vecDriverFromHeadTranslation[2] = 0.0;
-
-    // todo: set on Rust side
-    if (handSkeleton == nullptr) {
-        double rightHandSignFlip = this->device_id == LEFT_HAND_ID ? 1. : -1.;
-
-        // controller is rotated and translated, prepare pose
-        double rotation[3] = {
-            Settings::Instance().m_leftControllerRotationOffset[1] * DEG_TO_RAD * rightHandSignFlip,
-            Settings::Instance().m_leftControllerRotationOffset[2] * DEG_TO_RAD * rightHandSignFlip,
-            Settings::Instance().m_leftControllerRotationOffset[0] * DEG_TO_RAD,
-        };
-        pose.qDriverFromHeadRotation = EulerAngleToQuaternion(rotation);
-
-        vr::HmdVector3d_t offset;
-        offset.v[0] = Settings::Instance().m_leftControllerPositionOffset[0] * rightHandSignFlip;
-        offset.v[1] = Settings::Instance().m_leftControllerPositionOffset[1];
-        offset.v[2] = Settings::Instance().m_leftControllerPositionOffset[2];
-
-        vr::HmdVector3d_t offsetRes =
-            vrmath::quaternionRotateVector(pose.qDriverFromHeadRotation, offset, false);
-
-        pose.vecDriverFromHeadTranslation[0] = offsetRes.v[0];
-        pose.vecDriverFromHeadTranslation[1] = offsetRes.v[1];
-        pose.vecDriverFromHeadTranslation[2] = offsetRes.v[2];
-    }
 
     pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
                                         motion.orientation.x,
@@ -647,30 +615,6 @@ bool OvrController::onPoseUpdate(float predictionS,
     pose.vecPosition[0] = motion.position[0];
     pose.vecPosition[1] = motion.position[1];
     pose.vecPosition[2] = motion.position[2];
-
-    // use cutoffs for velocity to stop jitter when there is not a lot of movement
-    float LinearVelocityMultiplier =
-        Shape(Magnitude(motion.linearVelocity), Settings::Instance().m_linearVelocityCutoff);
-    float AngularVelocityMultiplier =
-        Shape(Magnitude(motion.angularVelocity),
-              Settings::Instance().m_angularVelocityCutoff * DEG_TO_RAD);
-
-    pose.vecVelocity[0] = motion.linearVelocity[0] * LinearVelocityMultiplier;
-    pose.vecVelocity[1] = motion.linearVelocity[1] * LinearVelocityMultiplier;
-    pose.vecVelocity[2] = motion.linearVelocity[2] * LinearVelocityMultiplier;
-    pose.vecAngularVelocity[0] = motion.angularVelocity[0] * AngularVelocityMultiplier;
-    pose.vecAngularVelocity[1] = motion.angularVelocity[1] * AngularVelocityMultiplier;
-    pose.vecAngularVelocity[2] = motion.angularVelocity[2] * AngularVelocityMultiplier;
-
-    // correct direction of velocities
-    vr::HmdVector3d_t angVel;
-    angVel.v[0] = pose.vecAngularVelocity[0];
-    angVel.v[1] = pose.vecAngularVelocity[1];
-    angVel.v[2] = pose.vecAngularVelocity[2];
-    vr::HmdVector3d_t angVelRes = vrmath::quaternionRotateVector(pose.qRotation, angVel, true);
-    pose.vecAngularVelocity[0] = angVelRes.v[0];
-    pose.vecAngularVelocity[1] = angVelRes.v[1];
-    pose.vecAngularVelocity[2] = angVelRes.v[2];
 
     pose.poseTimeOffset = predictionS;
 

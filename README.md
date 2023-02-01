@@ -9,28 +9,29 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    VR Headset     |         Support          |
-| :---------------: | :----------------------: |
-|   Quest 1/2/Pro   |    :heavy_check_mark:    |
-|   Pico 4/Neo 3    |     :construction: *     |
-|   Vive Focus 3    |     :construction: *     |
-| Smartphone/Monado |     :construction: *     |
-|      GearVR       |     :construction: *     |
-|  Google Daydream  | :construction: * (maybe) |
-|     Oculus Go     |          :x: **          |
+|    VR Headset     |          Support          |
+| :---------------: | :-----------------------: |
+|   Quest 1/2/Pro   |    :heavy_check_mark:     |
+|   Pico 4/Neo 3    |   :heavy_check_mark: *    |
+|   Vive Focus 3    |   :heavy_check_mark: *    |
+| Smartphone/Monado |     :construction: **     |
+|      GearVR       |     :construction: **     |
+|  Google Daydream  | :construction: ** (maybe) |
+|     Oculus Go     |          :x: ***          |
 
-\* : Coming soon  
-\** : Oculus Go support was dropped on v19. Minimum supported OS is Android 8.
+\* : Available on nightly only  
+\** : Coming soon  
+\*** : Oculus Go support was dropped on v19. Minimum supported OS is Android 8.
 
-|        PC OS        |       Support       |
-| :-----------------: | :-----------------: |
-|   Windows 8/10/11   | :heavy_check_mark:  |
-|    Windows 7/XP     |         :x:         |
-|     Ubuntu/Arch     |    :warning: ***    |
-| Other linux distros | :grey_question: *** |
-|        macOS        |         :x:         |
+|        PC OS        |       Support        |
+| :-----------------: | :------------------: |
+|   Windows 8/10/11   |  :heavy_check_mark:  |
+|    Windows 7/XP     |         :x:          |
+|     Ubuntu/Arch     |    :warning: ****    |
+| Other linux distros | :grey_question: **** |
+|        macOS        |         :x:          |
 
-\*** : Linux support is still in beta. To be able to make audio work or run ALVR at all you may need advanced knowledge of your distro for debugging or building from source.
+\**** : Linux support is still in beta. To be able to make audio work or run ALVR at all you may need advanced knowledge of your distro for debugging or building from source.
 
 ## Requirements
 

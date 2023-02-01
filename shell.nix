@@ -1,1 +1,0 @@
-packaging/nix/shell.nix

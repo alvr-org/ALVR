@@ -24,29 +24,6 @@ pub fn version() -> String {
     version
 }
 
-fn bump_client_gradle_version(new_version: &str, is_nightly: bool) {
-    let gradle_file_path = &afs::workspace_dir().join("android/app/build.gradle");
-    let file_content = fs::read_to_string(gradle_file_path).unwrap();
-
-    // Replace versionName
-    let (file_start, _, file_end) = split_string(&file_content, "versionName \"", '\"');
-    let file_content = format!("{file_start}{new_version}{file_end}");
-
-    let file_content = if !is_nightly {
-        // Replace versionCode
-        let (file_start, old_version_code_string, file_end) =
-            split_string(&file_content, "versionCode ", '\n');
-        format!(
-            "{file_start}{}{file_end}",
-            old_version_code_string.parse::<usize>().unwrap() + 1,
-        )
-    } else {
-        file_content
-    };
-
-    fs::write(gradle_file_path, file_content).unwrap();
-}
-
 fn bump_cargo_version(new_version: &str) {
     let manifest_path = afs::workspace_dir().join("Cargo.toml");
 
@@ -119,7 +96,6 @@ pub fn bump_version(maybe_version: Option<String>, is_nightly: bool) {
     }
 
     bump_cargo_version(&version);
-    bump_client_gradle_version(&version, is_nightly);
     bump_rpm_spec_version(&version, is_nightly);
     bump_deb_control_version(&version);
 

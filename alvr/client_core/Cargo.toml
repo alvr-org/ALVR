@@ -28,7 +28,7 @@ settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
-android_logger = "=0.11.1"
+android_logger = "0.12"
 jni = "0.20"
 ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "dea742a", features = [
     "api-level-26",

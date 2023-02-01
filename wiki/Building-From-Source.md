@@ -65,11 +65,11 @@ If you want to edit and rebuild the code, you can skip the `prepare-deps` comman
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
-* Platform Tools 33 (Android 13)
+* Platform Tools 29 (Android 10)
 * Latest NDK (currently v25.1.8937393)
 * Set the environment variable `JAVA_HOME`
   * For example on Windows: `C:\Program Files\Android\Android Studio\jre`
-* Set the environment variable `ANDROID_SDK_ROOT`
+* Set the environment variable `ANDROID_HOME`
   * For example on Windows: `%LOCALAPPDATA%\Android\Sdk`
 * Set the environment variable `ANDROID_NDK_HOME`
   * For example on Windows: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
@@ -88,8 +88,6 @@ cargo xtask build-client --release
 ```
 
 The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
-
-## `openxr-client` branch
 
 To build and run:
 

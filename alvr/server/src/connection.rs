@@ -2,11 +2,10 @@ use crate::{
     buttons::BUTTON_PATH_FROM_ID,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
-    to_ffi_quat,
     tracking::{self, TrackingManager},
-    FfiButtonValue, FfiDeviceMotion, FfiFov, FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
+    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -811,11 +810,14 @@ async fn connection_pipeline(
         });
     }
 
+    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new(&settings.headset)));
+
     let tracking_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
         let control_sender = Arc::clone(&control_sender);
+        let tracking_manager = Arc::clone(&tracking_manager);
         async move {
             let tracking_latency_offset_s =
                 if let Switch::Enabled(controllers) = &settings.headset.controllers {
@@ -824,12 +826,10 @@ async fn connection_pipeline(
                     0
                 } as f32
                     / 1000.;
-
-            let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
-                let ffi_motions = tracking_manager.transform_motions(
+                let ffi_motions = tracking_manager.lock().await.transform_motions(
                     &tracking.device_motions,
                     tracking.left_hand_skeleton.is_some(),
                     tracking.right_hand_skeleton.is_some(),
@@ -960,6 +960,8 @@ async fn connection_pipeline(
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
                     if !is_tracking_ref_only {
                         playspace_sync_sender.send(packet).ok();
+
+                        tracking_manager.lock().await.recenter();
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => {

@@ -464,11 +464,23 @@ pub struct ControllersDesc {
     pub use_headset_tracking_system: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Patches {
-    pub remove_sync_popup: bool,
-    pub linux_async_reprojection: bool,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum PositionRecenteringMode {
+    Disabled,
+    LocalFloor,
+    #[serde(rename_all = "camelCase")]
+    Local {
+        view_height: f32,
+    },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum RotationRecenteringMode {
+    Disabled,
+    Yaw,
+    Tilted,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -511,6 +523,10 @@ pub struct HeadsetDesc {
     pub enable_vive_tracker_proxy: bool,
 
     pub controllers: Switch<ControllersDesc>,
+
+    pub position_recentering_mode: PositionRecenteringMode,
+
+    pub rotation_recentering_mode: RotationRecenteringMode,
 
     #[schema(advanced)]
     pub extra_latency_mode: bool,
@@ -603,6 +619,13 @@ pub enum LogLevel {
     Warning,
     Info,
     Debug,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Patches {
+    pub remove_sync_popup: bool,
+    pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -863,6 +886,13 @@ pub fn session_settings_default() -> SettingsDefault {
                     haptics_low_duration_range: 0.5,
                     use_headset_tracking_system: false,
                 },
+            },
+            position_recentering_mode: PositionRecenteringModeDefault {
+                Local: PositionRecenteringModeLocalDefault { view_height: 1.5 },
+                variant: PositionRecenteringModeDefaultVariant::LocalFloor,
+            },
+            rotation_recentering_mode: RotationRecenteringModeDefault {
+                variant: RotationRecenteringModeDefaultVariant::Yaw,
             },
             extra_latency_mode: false,
         },

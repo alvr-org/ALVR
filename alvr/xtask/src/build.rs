@@ -1,8 +1,10 @@
 use crate::command;
 use alvr_filesystem::{self as afs, Layout};
 use std::{
+    env,
     fmt::{self, Display, Formatter},
     fs,
+    path::PathBuf,
 };
 use xshell::{cmd, Shell};
 
@@ -267,7 +269,44 @@ pub fn build_android_client(profile: Profile) {
     }
     let flags_ref = &flags;
 
+    const ARTIFACT_NAME: &str = "alvr_client_android";
+
     let target_dir = afs::target_dir();
+    let build_dir = afs::build_dir().join(ARTIFACT_NAME);
+    sh.create_dir(&build_dir).unwrap();
+
+    // Create debug keystore (signing will be overwritten by CI)
+    if matches!(profile, Profile::Release | Profile::Distribution) {
+        let keystore_path = build_dir.join("debug.keystore");
+        if !keystore_path.exists() {
+            let keytool = PathBuf::from(env::var("JAVA_HOME").unwrap())
+                .join("bin")
+                .join(afs::exec_fname("keytool"));
+            let pass = "alvrclient";
+
+            let other = vec![
+                "-genkey",
+                "-v",
+                "-alias",
+                "androiddebugkey",
+                "-dname",
+                "CN=Android Debug,O=Android,C=US",
+                "-keyalg",
+                "RSA",
+                "-keysize",
+                "2048",
+                "-validity",
+                "10000",
+            ];
+
+            cmd!(
+                sh,
+                "{keytool} -keystore {keystore_path} -storepass {pass} -keypass {pass} {other...}"
+            )
+            .run()
+            .unwrap();
+        }
+    }
 
     let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));
     cmd!(
@@ -277,14 +316,10 @@ pub fn build_android_client(profile: Profile) {
     .run()
     .unwrap();
 
-    const ARTIFACT_NAME: &str = "alvr_client_android";
-
-    let artifacts_dir = afs::target_dir().join(profile.to_string());
-    let build_dir = afs::build_dir().join(ARTIFACT_NAME);
-
-    sh.create_dir(&build_dir).unwrap();
     sh.copy_file(
-        artifacts_dir.join("apk/alvr_client_openxr.apk"),
+        afs::target_dir()
+            .join(profile.to_string())
+            .join("apk/alvr_client_openxr.apk"),
         build_dir.join(format!("{ARTIFACT_NAME}.apk")),
     )
     .unwrap();

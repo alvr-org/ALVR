@@ -34,6 +34,14 @@ package = "alvr.client"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"
 
+[package.metadata.android.signing.release]
+path = "../../build/alvr_client_android/debug.keystore"
+keystore_password = "alvrclient"
+
+[package.metadata.android.signing.distribution]
+path = "../../build/alvr_client_android/debug.keystore"
+keystore_password = "alvrclient"
+
 [package.metadata.android.sdk]
 min_sdk_version = 26
 target_sdk_version = 29

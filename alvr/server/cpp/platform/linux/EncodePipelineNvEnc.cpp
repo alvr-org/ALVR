@@ -99,6 +99,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     av_opt_set_int(encoder_ctx->priv_data, "tune", settings.m_nvencTuningPreset, 0);
     av_opt_set_int(encoder_ctx->priv_data, "zerolatency", 1, 0);
     av_opt_set_int(encoder_ctx->priv_data, "delay", 0, 0);
+    av_opt_set_int(encoder_ctx->priv_data, "forced-idr", 1, 0);
 
     /**
      * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA

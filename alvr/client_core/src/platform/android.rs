@@ -103,14 +103,28 @@ pub fn device_model() -> String {
     let vm = vm();
     let env = vm.attach_current_thread().unwrap();
 
-    let jdevice_name = env
+    let jname = env
         .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
         .unwrap()
         .l()
         .unwrap();
-    let device_name_raw = env.get_string(jdevice_name.into()).unwrap();
+    let name_raw = env.get_string(jname.into()).unwrap();
 
-    device_name_raw.to_string_lossy().as_ref().to_owned()
+    name_raw.to_string_lossy().as_ref().to_owned()
+}
+
+pub fn manufacturer_name() -> String {
+    let vm = vm();
+    let env = vm.attach_current_thread().unwrap();
+
+    let jname = env
+        .get_static_field("android/os/Build", "MANUFACTURER", "Ljava/lang/String;")
+        .unwrap()
+        .l()
+        .unwrap();
+    let name_raw = env.get_string(jname.into()).unwrap();
+
+    name_raw.to_string_lossy().as_ref().to_owned()
 }
 
 fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {

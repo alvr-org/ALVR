@@ -95,15 +95,6 @@ public:
 	std::string m_controllerInputProfilePath;
 	bool m_disableController;
 
-	float m_linearVelocityCutoff;
-	float m_angularVelocityCutoff;
-
-	float m_OffsetPos[3];
-	bool m_EnableOffsetPos;
-
-	double m_leftControllerPositionOffset[3];
-	double m_leftControllerRotationOffset[3];
-
 	bool m_overrideTriggerThreshold;
 	float m_triggerThreshold;
 	bool m_overrideGripThreshold;
@@ -118,8 +109,6 @@ public:
 	int32_t m_causePacketLoss;
 
 	int32_t m_trackingFrameOffset;
-
-	bool m_force3DOF;
 
 	bool m_aggressiveKeyframeResend;
 

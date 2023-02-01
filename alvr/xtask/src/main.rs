@@ -181,7 +181,7 @@ fn main() {
                 "build-server" => {
                     build::build_server(profile, gpl, None, false, experiments, keep_config)
                 }
-                "build-client" => build::build_quest_client(profile),
+                "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
@@ -190,7 +190,7 @@ fn main() {
                     run_server();
                 }
                 "package-server" => packaging::package_server(gpl, root, appimage, zsync),
-                "package-client" => build::build_quest_client(Profile::Distribution),
+                "package-client" => build::build_android_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),

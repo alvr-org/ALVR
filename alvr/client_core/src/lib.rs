@@ -9,11 +9,12 @@ mod c_api;
 mod connection;
 mod decoder;
 mod logging_backend;
-mod opengl;
 mod platform;
 mod sockets;
 mod statistics;
 mod storage;
+
+pub mod opengl;
 
 #[cfg(target_os = "android")]
 mod audio;
@@ -89,6 +90,10 @@ pub enum ClientCoreEvent {
     },
 }
 
+pub fn manufacturer_name() -> String {
+    platform::manufacturer_name()
+}
+
 pub fn initialize(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
@@ -158,7 +163,7 @@ pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
     }
 }
 
-pub fn send_playspace(area: Vec2) {
+pub fn send_playspace(area: Option<Vec2>) {
     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
         sender.send(ClientControlPacket::PlayspaceSync(area)).ok();
     }

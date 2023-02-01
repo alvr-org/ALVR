@@ -15,8 +15,8 @@ struct FfiQuat {
 };
 
 struct FfiHandSkeleton {
-    bool enabled;
-    FfiQuat boneRotations[19];
+    float jointPositions[26][3];
+    FfiQuat jointRotations[26];
 };
 
 struct FfiDeviceMotion {
@@ -123,8 +123,8 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             float controllerPoseTimeOffsetS,
                             const FfiDeviceMotion *deviceMotions,
                             int motionsCount,
-                            FfiHandSkeleton leftHand,
-                            FfiHandSkeleton rightHand);
+                            const FfiHandSkeleton *leftHand,
+                            const FfiHandSkeleton *rightHand);
 extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();

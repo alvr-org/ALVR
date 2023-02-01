@@ -20,6 +20,7 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
+    glam::Quat,
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
@@ -98,6 +99,15 @@ static DECODER_CONFIG: Lazy<Mutex<Option<Vec<u8>>>> = Lazy::new(|| Mutex::new(No
 pub enum WindowType {
     Alcro(alcro::UI),
     Browser,
+}
+
+fn to_ffi_quat(quat: Quat) -> FfiQuat {
+    FfiQuat {
+        x: quat.x,
+        y: quat.y,
+        z: quat.z,
+        w: quat.w,
+    }
 }
 
 pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> FfiOpenvrProperty {

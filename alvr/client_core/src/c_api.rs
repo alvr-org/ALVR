@@ -11,7 +11,7 @@ use alvr_common::{
 };
 use alvr_events::ButtonValue;
 use alvr_session::{CodecType, FoveatedRenderingDesc};
-use alvr_sockets::{DeviceMotion, Tracking};
+use alvr_sockets::{DeviceMotion, Pose, Tracking};
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
@@ -94,10 +94,11 @@ pub struct AlvrDeviceMotion {
     angular_velocity: [f32; 3],
 }
 
+/// OpenXR convention
 #[repr(C)]
-pub struct OculusHand {
-    enabled: bool,
-    bone_rotations: [AlvrQuat; 19],
+pub struct AlvrHandSkeleton {
+    joint_positions: [[f32; 3]; 26],
+    joint_rotations: [AlvrQuat; 26],
 }
 
 #[allow(dead_code)]
@@ -344,7 +345,11 @@ pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged
 
 #[no_mangle]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
-    crate::send_playspace(Vec2::new(width, height));
+    if width != 0.0 && height != 0.0 {
+        crate::send_playspace(Some(Vec2::new(width, height)));
+    } else {
+        crate::send_playspace(None);
+    }
 }
 
 #[no_mangle]
@@ -362,26 +367,25 @@ pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
-    left_oculus_hand: OculusHand,
-    right_oculus_hand: OculusHand,
+    left_hand_skeleton: *const AlvrHandSkeleton,
+    right_hand_skeleton: *const AlvrHandSkeleton,
 ) {
-    fn from_tracking_quat(quat: AlvrQuat) -> Quat {
+    fn from_capi_quat(quat: AlvrQuat) -> Quat {
         Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
     }
 
-    fn from_oculus_hand(hand: OculusHand) -> Option<[Quat; 19]> {
-        hand.enabled.then(|| {
-            let vec = hand
-                .bone_rotations
-                .iter()
-                .cloned()
-                .map(from_tracking_quat)
-                .collect::<Vec<_>>();
-
-            let mut array = [Quat::IDENTITY; 19];
-            array.copy_from_slice(&vec);
-
-            array
+    fn from_capi_hand_skeleton(skeleton: *const AlvrHandSkeleton) -> Option<[Pose; 26]> {
+        (!skeleton.is_null()).then(|| {
+            unsafe { (*skeleton).joint_positions }
+                .into_iter()
+                .zip(unsafe { (*skeleton).joint_rotations }.into_iter())
+                .map(|(p, r)| Pose {
+                    orientation: from_capi_quat(r),
+                    position: Vec3::from_slice(&p),
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
         })
     }
 
@@ -400,8 +404,10 @@ pub extern "C" fn alvr_send_tracking(
             (
                 motion.device_id,
                 DeviceMotion {
-                    orientation: from_tracking_quat(motion.orientation),
-                    position: Vec3::from_slice(&motion.position),
+                    pose: Pose {
+                        orientation: from_capi_quat(motion.orientation),
+                        position: Vec3::from_slice(&motion.position),
+                    },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
                     angular_velocity: Vec3::from_slice(&motion.angular_velocity),
                 },
@@ -412,8 +418,8 @@ pub extern "C" fn alvr_send_tracking(
     let tracking = Tracking {
         target_timestamp: Duration::from_nanos(target_timestamp_ns),
         device_motions,
-        left_hand_skeleton: from_oculus_hand(left_oculus_hand),
-        right_hand_skeleton: from_oculus_hand(right_oculus_hand),
+        left_hand_skeleton: from_capi_hand_skeleton(left_hand_skeleton),
+        right_hand_skeleton: from_capi_hand_skeleton(right_hand_skeleton),
     };
 
     crate::send_tracking(tracking);
@@ -573,8 +579,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs).orientation;
             let f = (*view_inputs).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,
@@ -588,8 +596,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs.offset(1)).orientation;
             let f = (*view_inputs.offset(1)).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs.offset(1)).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs.offset(1)).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,

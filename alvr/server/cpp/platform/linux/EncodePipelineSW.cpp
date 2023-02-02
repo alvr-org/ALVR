@@ -78,6 +78,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
 
   av_dict_set(&opt, "preset", "ultrafast", 0);
   av_dict_set(&opt, "tune", "zerolatency", 0);
+  av_dict_set(&opt, "forced-idr", "true", 0);
 
   encoder_ctx->width = width;
   encoder_ctx->height = height;

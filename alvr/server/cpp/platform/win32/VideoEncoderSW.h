@@ -31,10 +31,6 @@ public:
 
 	static void LibVALog(void*, int level, const char* data, va_list va);
 
-	bool should_keep_nal_h264(const uint8_t *header_start);
-	bool should_keep_nal_h265(const uint8_t *header_start);
-	void filter_NAL(const uint8_t *input, size_t input_size, std::vector<uint8_t> &out);
-
 	AVCodecID ToFFMPEGCodec(ALVR_CODEC codec);
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR);
@@ -48,9 +44,9 @@ private:
 	AVFrame *m_transferredFrame, *m_encoderFrame;
 	SwsContext *m_scalerContext = nullptr;
 
-	ComPtr<ID3D11Texture2D> stagingTex;
-	D3D11_TEXTURE2D_DESC stagingTexDesc;
-	D3D11_MAPPED_SUBRESOURCE stagingTexMap;
+	ComPtr<ID3D11Texture2D> m_stagingTex;
+	D3D11_TEXTURE2D_DESC m_stagingTexDesc;
+	D3D11_MAPPED_SUBRESOURCE m_stagingTexMap;
 
     ALVR_CODEC m_codec;
 	int m_refreshRate;

@@ -33,7 +33,7 @@ use std::{
     ptr,
     sync::{mpsc as smpsc, Arc},
     thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::{
     runtime::Runtime,
@@ -53,7 +53,7 @@ fn align32(value: f32) -> u32 {
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
-pub fn handshake_loop() -> IntResult {
+pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResult {
     let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
 
     loop {
@@ -72,7 +72,9 @@ pub fn handshake_loop() -> IntResult {
             manual_client_ips
         };
 
-        if !manual_client_ips.is_empty() && try_connect(manual_client_ips).is_ok() {
+        if !manual_client_ips.is_empty()
+            && try_connect(manual_client_ips, frame_interval_sender.clone()).is_ok()
+        {
             thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             continue;
         }
@@ -114,9 +116,10 @@ pub fn handshake_loop() -> IntResult {
 
             // do not attempt connection if the client is already connected
             if trusted && !CONNECTED_CLIENT_HOSTNAMES.lock().contains(&client_hostname) {
-                if let Err(e) =
-                    try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
-                {
+                if let Err(e) = try_connect(
+                    [(client_ip, client_hostname.clone())].into_iter().collect(),
+                    frame_interval_sender.clone(),
+                ) {
                     error!("Handshake error for {client_hostname}: {e}");
                 }
             }
@@ -126,7 +129,10 @@ pub fn handshake_loop() -> IntResult {
     }
 }
 
-fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
+fn try_connect(
+    mut client_ips: HashMap<IpAddr, String>,
+    frame_interval_sender: smpsc::Sender<Duration>,
+) -> IntResult {
     let runtime = Runtime::new().map_err(to_int_e!())?;
 
     let (mut proto_socket, client_ip) = runtime
@@ -521,6 +527,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         control_receiver,
                         streaming_caps.microphone_sample_rate,
                         fps,
+                        frame_interval_sender
                     ) => {
                         show_warn(res);
                     },
@@ -579,6 +586,7 @@ async fn connection_pipeline(
     mut control_receiver: ControlSocketReceiver<ClientControlPacket>,
     microphone_sample_rate: u32,
     refresh_rate: f32,
+    frame_interval_sender: smpsc::Sender<Duration>,
 ) -> StrResult {
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -619,6 +627,11 @@ async fn connection_pipeline(
         settings.connection.statistics_history_size as _,
         Duration::from_secs_f32(1.0 / refresh_rate),
     ));
+
+    // todo: dynamic framerate
+    frame_interval_sender
+        .send(Duration::from_secs_f32(1.0 / refresh_rate))
+        .ok();
 
     alvr_events::send_event(EventType::ClientConnected);
 
@@ -764,21 +777,6 @@ async fn connection_pipeline(
             Ok(())
         }
     };
-
-    // Vsync thread
-    if cfg!(windows) {
-        thread::spawn(move || {
-            let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
-            let mut deadline = Instant::now();
-
-            while is_streaming.value() {
-                unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
-
-                deadline += frame_interval;
-                spin_sleep::sleep(deadline.saturating_duration_since(Instant::now()));
-            }
-        });
-    }
 
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;

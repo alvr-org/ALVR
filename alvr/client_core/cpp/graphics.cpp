@@ -71,6 +71,7 @@ typedef struct {
     std::unique_ptr<FFR> ffr;
     std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
     bool enableFFR;
+    GLuint streamRenderTexture;
 } ovrRenderer;
 
 enum VertexAttributeLocation {
@@ -537,12 +538,15 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         FFRData ffrData,
                         bool isLobby) {
     if (!isLobby) {
-        renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
-        renderer->srgbCorrectionPass->Initialize(width, height);
         renderer->enableFFR = ffrData.enabled;
         if (renderer->enableFFR) {
-            renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
+            renderer->ffr = std::make_unique<FFR>(streamTexture);
             renderer->ffr->Initialize(ffrData);
+            renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
+        } else {
+            renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
+            renderer->srgbCorrectionPass->Initialize(width, height);
+            renderer->streamRenderTexture = renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
     }
 
@@ -643,12 +647,7 @@ void renderEye(
 
         GL(glUniform1f(renderer->streamProgram.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
-        if (renderer->enableFFR) {
-            GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
-        } else {
-            GL(glBindTexture(GL_TEXTURE_2D,
-                             renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture()));
-        }
+        GL(glBindTexture(GL_TEXTURE_2D, renderer->streamRenderTexture));
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
 
@@ -836,9 +835,10 @@ void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchain
         GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
         GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
-        renderer->srgbCorrectionPass->Render();
         if (renderer->enableFFR) {
             renderer->ffr->Render();
+        } else {
+            renderer->srgbCorrectionPass->Render();
         }
 
         GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));

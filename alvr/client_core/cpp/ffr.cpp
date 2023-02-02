@@ -10,7 +10,13 @@ using namespace gl_render_utils;
 
 namespace {
 const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
+        #extension GL_OES_EGL_image_external_essl3 : enable
         precision highp float;
+
+        const float DIV12 = 1. / 12.92;
+        const float DIV1 = 1. / 1.055;
+        const float THRESHOLD = 0.04045;
+        const vec3 GAMMA = vec3(2.4);
 
         const uvec2 TARGET_RESOLUTION = uvec2(%u, %u);
         const uvec2 OPTIMIZED_RESOLUTION = uvec2(%u, %u);
@@ -32,7 +38,7 @@ const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
     )glsl";
 
 const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
-        uniform sampler2D tex0;
+        uniform samplerExternalOES tex0;
         in vec2 uv;
         out vec4 color;
         void main() {
@@ -62,6 +68,11 @@ const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
             vec2 uncompressedUV = underBound*leftEdge+inBound*center+overBound*rightEdge;
 
             color = texture(tex0, EyeToTextureUV(uncompressedUV * EYE_SIZE_RATIO, isRightEye));
+
+            vec3 condition = vec3(color.r < THRESHOLD, color.g < THRESHOLD, color.b < THRESHOLD);
+            vec3 lowValues = color.rgb * DIV12;
+            vec3 highValues = pow((color.rgb + 0.055) * DIV1, GAMMA);
+            color.rgb = condition * lowValues + (1.0 - condition) * highValues;
         }
     )glsl";
 

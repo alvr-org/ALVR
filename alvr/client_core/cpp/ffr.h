@@ -16,11 +16,30 @@ struct FFRData {
     float edgeRatioY;
 };
 
+struct FoveationVars {
+    uint32_t targetEyeWidth;
+    uint32_t targetEyeHeight;
+    uint32_t optimizedEyeWidth;
+    uint32_t optimizedEyeHeight;
+
+    float eyeWidthRatio;
+    float eyeHeightRatio;
+
+    float centerSizeX;
+    float centerSizeY;
+    float centerShiftX;
+    float centerShiftY;
+    float edgeRatioX;
+    float edgeRatioY;
+};
+
+FoveationVars CalculateFoveationVars(FFRData data);
+
 class FFR {
 public:
     FFR(gl_render_utils::Texture *inputSurface);
 
-    void Initialize(FFRData ffrData);
+    void Initialize(FoveationVars fv);
 
     void Render() const;
 

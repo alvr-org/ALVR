@@ -64,23 +64,7 @@ const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
             color = texture(tex0, EyeToTextureUV(uncompressedUV * EYE_SIZE_RATIO, isRightEye));
         }
     )glsl";
-
-struct FoveationVars {
-    uint32_t targetEyeWidth;
-    uint32_t targetEyeHeight;
-    uint32_t optimizedEyeWidth;
-    uint32_t optimizedEyeHeight;
-
-    float eyeWidthRatio;
-    float eyeHeightRatio;
-
-    float centerSizeX;
-    float centerSizeY;
-    float centerShiftX;
-    float centerShiftY;
-    float edgeRatioX;
-    float edgeRatioY;
-};
+} // namespace
 
 FoveationVars CalculateFoveationVars(FFRData data) {
     float targetEyeWidth = data.viewWidth;
@@ -135,12 +119,10 @@ FoveationVars CalculateFoveationVars(FFRData data) {
             edgeRatioX,
             edgeRatioY};
 }
-} // namespace
 
 FFR::FFR(Texture *inputSurface) : mInputSurface(inputSurface) {}
 
-void FFR::Initialize(FFRData ffrData) {
-    auto fv = CalculateFoveationVars(ffrData);
+void FFR::Initialize(FoveationVars fv) {
     auto ffrCommonShaderStr = string_format(FFR_COMMON_SHADER_FORMAT,
                                             fv.targetEyeWidth,
                                             fv.targetEyeHeight,
@@ -155,7 +137,7 @@ void FFR::Initialize(FFRData ffrData) {
                                             fv.edgeRatioX,
                                             fv.edgeRatioY);
 
-    mExpandedTexture.reset(new Texture(false, 0, false, ffrData.viewWidth * 2, ffrData.viewHeight));
+    mExpandedTexture.reset(new Texture(false, 0, false, fv.targetEyeWidth * 2, fv.targetEyeHeight));
     mExpandedTextureState = make_unique<RenderState>(mExpandedTexture.get());
 
     auto decompressAxisAlignedShaderStr =

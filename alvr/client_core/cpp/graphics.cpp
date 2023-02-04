@@ -538,11 +538,14 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         bool isLobby) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
-        renderer->srgbCorrectionPass->Initialize(width, height);
         renderer->enableFFR = ffrData.enabled;
         if (renderer->enableFFR) {
+            FoveationVars fv = CalculateFoveationVars(ffrData);
+            renderer->srgbCorrectionPass->Initialize(fv.optimizedEyeWidth, fv.optimizedEyeHeight);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
-            renderer->ffr->Initialize(ffrData);
+            renderer->ffr->Initialize(fv);
+        } else {
+            renderer->srgbCorrectionPass->Initialize(width, height);
         }
     }
 

@@ -71,6 +71,7 @@ typedef struct {
     std::unique_ptr<FFR> ffr;
     std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
     bool enableFFR;
+    GLuint streamRenderTexture;
 } ovrRenderer;
 
 enum VertexAttributeLocation {
@@ -544,8 +545,10 @@ void ovrRenderer_Create(ovrRenderer *renderer,
             renderer->srgbCorrectionPass->Initialize(fv.optimizedEyeWidth, fv.optimizedEyeHeight);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
+            renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
             renderer->srgbCorrectionPass->Initialize(width, height);
+            renderer->streamRenderTexture = renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
     }
 
@@ -633,10 +636,6 @@ void renderEye(
     } else {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
 
-        glm::mat4 mvpMatrix[2];
-        mvpMatrix[0] = glm::mat4(1.0);
-        mvpMatrix[1] = glm::mat4(1.0);
-
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 
         GL(glUniformMatrix4fv(renderer->streamProgram.UniformLocation[UNIFORM_MVP_MATRIX],
@@ -646,12 +645,7 @@ void renderEye(
 
         GL(glUniform1f(renderer->streamProgram.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
-        if (renderer->enableFFR) {
-            GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
-        } else {
-            GL(glBindTexture(GL_TEXTURE_2D,
-                             renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture()));
-        }
+        GL(glBindTexture(GL_TEXTURE_2D, renderer->streamRenderTexture));
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
 
@@ -668,26 +662,31 @@ void renderEye(
 
 void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2], bool isLobby) {
     glm::mat4 mvpMatrix[2];
-    for (int eye = 0; eye < 2; eye++) {
-        auto p = input[eye].position;
-        auto o = input[eye].orientation;
-        auto trans = glm::translate(glm::mat4(1.0), glm::vec3(p[0], p[1], p[2]));
-        auto rot = glm::mat4_cast(glm::quat(o[3], o[0], o[1], o[2]));
-        auto viewInv = glm::inverse(trans * rot);
+    if (isLobby) {
+        for (int eye = 0; eye < 2; eye++) {
+            auto p = input[eye].position;
+            auto o = input[eye].orientation;
+            auto trans = glm::translate(glm::mat4(1.0), glm::vec3(p[0], p[1], p[2]));
+            auto rot = glm::mat4_cast(glm::quat(o[3], o[0], o[1], o[2]));
+            auto viewInv = glm::inverse(trans * rot);
 
-        auto tanl = tan(input[eye].fovLeft);
-        auto tanr = tan(input[eye].fovRight);
-        auto tant = tan(input[eye].fovUp);
-        auto tanb = tan(input[eye].fovDown);
-        auto a = 2 / (tanr - tanl);
-        auto b = 2 / (tant - tanb);
-        auto c = (tanr + tanl) / (tanr - tanl);
-        auto d = (tant + tanb) / (tant - tanb);
-        auto proj = glm::mat4(
-            a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
-        proj = glm::transpose(proj);
+            auto tanl = tan(input[eye].fovLeft);
+            auto tanr = tan(input[eye].fovRight);
+            auto tant = tan(input[eye].fovUp);
+            auto tanb = tan(input[eye].fovDown);
+            auto a = 2 / (tanr - tanl);
+            auto b = 2 / (tant - tanb);
+            auto c = (tanr + tanl) / (tanr - tanl);
+            auto d = (tant + tanb) / (tant - tanb);
+            auto proj = glm::mat4(
+                a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
+            proj = glm::transpose(proj);
 
-        mvpMatrix[eye] = glm::transpose(proj * viewInv);
+            mvpMatrix[eye] = glm::transpose(proj * viewInv);
+        }
+    } else {
+        mvpMatrix[0] = glm::mat4(1.0);
+        mvpMatrix[1] = glm::mat4(1.0);
     }
 
     // Render the eye images.

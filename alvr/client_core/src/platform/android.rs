@@ -333,8 +333,8 @@ impl VideoDecoderDequeuer {
                     .cast(),
             ))
         } else {
-            warn!("Video frame queue underflow!");
-
+            // TODO: add back when implementing proper phase sync
+            //warn!("Video frame queue underflow!");
             None
         }
     }

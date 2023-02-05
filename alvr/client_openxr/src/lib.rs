@@ -751,6 +751,7 @@ pub fn entry_point() {
 
                     display_time = timestamp;
                 } else {
+                    warn!("Timed out when waiting frame!");
                     views = if let (Some(left_view), Some(right_view)) = (
                         last_swapchain_left_view.get(&left_swapchain_idx),
                         last_swapchain_right_view.get(&right_swapchain_idx),

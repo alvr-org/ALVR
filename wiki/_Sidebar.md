@@ -12,6 +12,8 @@
 
 **Configuration**
 
+* [Settings tutorial](https://github.com/alvr-org/ALVR/wiki/Settings-tutorial)
+
 * [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/PC)
 
 * [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above)

@@ -50,7 +50,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 ## Install
 
-Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation).
+Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation-guide).
 
 ## Troubleshooting
 

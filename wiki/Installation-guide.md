@@ -1,4 +1,4 @@
-# Installation
+# Installation guide
 
 ## Basic installation
 

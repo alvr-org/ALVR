@@ -1,7 +1,7 @@
 Troubleshooting (for ALVR 14.0.0 and later)
 ===
 
-First off, please make sure to carefully read the [Installation](https://github.com/alvr-org/ALVR/wiki/Installation) and [usage](https://github.com/alvr-org/ALVR/wiki/Usage) instructions.
+First off, please make sure to carefully read the [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide) and [Usage](https://github.com/alvr-org/ALVR/wiki/Usage) pages.
 
 The first thing to try is to delete the file `settings.json` located in the ALVR installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
 
@@ -85,9 +85,9 @@ Make sure ALVR is running both on the PC and on the headset. To be visible in th
 
 To fix this, you can try the following:
 
- 1. Ping the headset to check it's reachable from the PC - you can do this by opening CMD and typing `ping <headset IP>` without "<>" (you can find the headset's IP in the top left corner of SideQuest) - if ping fails, check that both PC and headset are connected to the same network
- 1. You can also try disabling your firewall for testing, but you shouldn't leave it disabled to use ALVR
- 1. Open ports 9943 and 9944 on your firewall
+* Ping the headset to check it's reachable from the PC - you can do this by opening CMD and typing `ping <headset IP>` without "<>" (you can find the headset's IP in the top left corner of SideQuest) - if ping fails, check that both PC and headset are connected to the same network
+* You can also try disabling your firewall for testing, but you shouldn't leave it disabled to use ALVR
+* Open ports 9943 and 9944 on your firewall
 
 If pinging works but you still don't see the client on the server app, then headset and PC might be on separate subnets. To solve this you can add the client manually.  
 In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Add client`.

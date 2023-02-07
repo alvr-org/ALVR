@@ -89,7 +89,9 @@ pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResu
             let (client_hostname, client_ip) = match welcome_socket.recv_non_blocking() {
                 Ok(pair) => pair,
                 Err(e) => {
-                    debug!("UDP handshake packet listening: {e}");
+                    if let InterruptibleError::Other(e) = e {
+                        warn!("UDP handshake listening error: {e}");
+                    }
 
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;

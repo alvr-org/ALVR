@@ -47,7 +47,7 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 ```
 
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
-* **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that on Windows this is needed only for software encoding. As the name suggest, if you use this flag you can only redistribute the final package as GPLv2.0 licensed (because of the x264 encoder).
+* **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that this is only needed for software encoding. As the name suggests, if you use this flag you can only redistribute the final package as GPLv2.0 licensed; because of the x264 encoder.
 * **Linux only:** Use the flag `--no-nvidia` if you have a AMD gpu.
 
 Next up is the proper build of the server. Run the following:
@@ -144,7 +144,6 @@ Before building the client, Android has to have us to agree to the licenses othe
   ```
 
 Next up is the proper build of the client. Run the following:
-
 ```bash
 cargo xtask build-client --release
 ```
@@ -153,7 +152,6 @@ The built APK will be in `build/alvr_client_quest`. You can then use adb or Side
 
 ## `openxr-client` Branch
 To build and run:
-
 ```bash
 cd alvr/client_openxr
 cargo apk run
@@ -179,7 +177,6 @@ file * | grep ELF | cut -d: -f1 | LD_LIBRARY_PATH=. xargs ldd | grep 'not found'
 ```
 
 Some dependencies have to be fixed manually for example instead of forcing a downgrade to libffi version 6 (which could downgrade a bunch of the system) you can do a symlink instead (requires testing):
-
 ```bash
 cd /lib/i386-linux-gnu
 ln -s libffi.so.7 libffi.so.6

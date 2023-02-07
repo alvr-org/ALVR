@@ -65,29 +65,6 @@ enum ALVR_INPUT {
 	ALVR_INPUT_MAX = ALVR_INPUT_TRACKPAD_FORCE,
 	ALVR_INPUT_COUNT = ALVR_INPUT_MAX + 1
 };
-enum ALVR_HAND {
-	alvrHandBone_Invalid = -1,
-	alvrHandBone_WristRoot = 0,	// root frame of the hand, where the wrist is located
-	alvrHandBone_ForearmStub = 1,	// frame for user's forearm
-	alvrHandBone_Thumb0 = 2,	// thumb trapezium bone
-	alvrHandBone_Thumb1 = 3,	// thumb metacarpal bone
-	alvrHandBone_Thumb2 = 4,	// thumb proximal phalange bone
-	alvrHandBone_Thumb3 = 5,	// thumb distal phalange bone
-	alvrHandBone_Index1 = 6,	// index proximal phalange bone
-	alvrHandBone_Index2 = 7,	// index intermediate phalange bone
-	alvrHandBone_Index3 = 8,	// index distal phalange bone
-	alvrHandBone_Middle1 = 9,	// middle proximal phalange bone
-	alvrHandBone_Middle2 = 10,	// middle intermediate phalange bone
-	alvrHandBone_Middle3 = 11,	// middle distal phalange bone
-	alvrHandBone_Ring1 = 12,	// ring proximal phalange bone
-	alvrHandBone_Ring2 = 13,	// ring intermediate phalange bone
-	alvrHandBone_Ring3 = 14,	// ring distal phalange bone
-	alvrHandBone_Pinky0 = 15,	// pinky metacarpal bone
-	alvrHandBone_Pinky1 = 16,	// pinky proximal phalange bone
-	alvrHandBone_Pinky2 = 17,	// pinky intermediate phalange bone
-	alvrHandBone_Pinky3 = 18,	// pinky distal phalange bone
-	alvrHandBone_MaxSkinnable = 19,
-};
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
 
 #endif //ALVRCLIENT_PACKETTYPES_H

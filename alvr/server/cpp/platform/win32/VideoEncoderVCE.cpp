@@ -1,6 +1,5 @@
 #include "VideoEncoderVCE.h"
 
-#include "alvr_server/Statistics.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 
@@ -106,10 +105,8 @@ void AMFPipeline::Run(bool hasQueryTimeout)
 //
 
 VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
-	, std::shared_ptr<ClientConnection> listener
 	, int width, int height)
 	: m_d3dRender(d3dRender)
-	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
@@ -389,22 +386,21 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
 
-	if (m_Listener) {
-		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
-			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
-			amf_int64 bitRateIn = m_bitrateInMBits * 1'000'000L; // in bits
-			if (m_codec == ALVR_CODEC_H264)
-			{
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
-			}
-			else
-			{
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
-				m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
-			}
+	uint64_t bitrateMbs;
+	if (GetUpdatedBitrate(&bitrateMbs)) {
+		m_bitrateInMBits = bitrateMbs;
+		amf_int64 bitRateIn = m_bitrateInMBits * 1'000'000L; // in bits
+		if (m_codec == ALVR_CODEC_H264)
+		{
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
+		}
+		else
+		{
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
 		}
 	}
 
@@ -432,19 +428,14 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 
 	amf::AMFBufferPtr buffer(data); // query for buffer interface
 
-	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput();
-	}
-
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = static_cast<int>(buffer->GetSize());
 
 	if (fpOut) {
 		fpOut.write(p, length);
 	}
-	if (m_Listener) {
-		m_Listener->SendVideo(reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
-	}
+
+	ParseFrameNals(reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

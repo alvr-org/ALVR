@@ -6,15 +6,14 @@
 #else
 #include "platform/linux/CEncoder.h"
 #endif
-#include "ClientConnection.h"
+#include "AdaptiveBitrate.h"
 #include "Logger.h"
 #include "OvrController.h"
 #include "OvrHMD.h"
 #include "Paths.h"
-#include "Settings.h"
-#include "Statistics.h"
-#include "TrackedDevice.h"
 #include "PoseHistory.h"
+#include "Settings.h"
+#include "TrackedDevice.h"
 #include "bindings.h"
 #include "driverlog.h"
 #include "openvr_driver.h"
@@ -63,6 +62,8 @@ static void load_debug_privilege(void) {
 
 class DriverProvider : public vr::IServerTrackedDeviceProvider {
   public:
+    std::shared_ptr<AdaptiveBitrate> adaptive_bitrate;
+
     std::shared_ptr<OvrHmd> hmd;
     std::shared_ptr<OvrController> left_controller, right_controller;
     // std::vector<OvrViveTrackerProxy> generic_trackers;
@@ -72,6 +73,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
     virtual vr::EVRInitError Init(vr::IVRDriverContext *pContext) override {
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
+
+        this->adaptive_bitrate = std::make_shared<AdaptiveBitrate>();
 
         this->hmd = std::make_shared<OvrHmd>();
         this->left_controller = this->hmd->m_leftController;
@@ -263,13 +266,11 @@ void SetTracking(unsigned long long targetTimestampNs,
     }
 }
 void ReportNetworkLatency(unsigned long long latencyUs) {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->ReportNetworkLatency(latencyUs);
-    }
+    g_driver_provider.adaptive_bitrate->NetworkSend(latencyUs);
 }
 
 void VideoErrorReportReceive() {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
+    if (g_driver_provider.hmd) {
         g_driver_provider.hmd->m_encoder->OnPacketLoss();
     }
 }
@@ -320,14 +321,12 @@ void SetButton(unsigned long long path, FfiButtonValue value) {
 void SetBitrateParameters(unsigned long long bitrate_mbs,
                           bool adaptive_bitrate_enabled,
                           unsigned long long bitrate_max) {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        if (adaptive_bitrate_enabled) {
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = true;
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_adaptiveBitrateMaximum = bitrate_max;
-        } else {
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = false;
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_bitrate = bitrate_mbs;
-        }
+    if (adaptive_bitrate_enabled) {
+        g_driver_provider.adaptive_bitrate->m_enableAdaptiveBitrate = true;
+        g_driver_provider.adaptive_bitrate->m_adaptiveBitrateMaximum = bitrate_max;
+    } else {
+        g_driver_provider.adaptive_bitrate->m_enableAdaptiveBitrate = false;
+        g_driver_provider.adaptive_bitrate->m_bitrate = bitrate_mbs;
     }
 }
 
@@ -338,3 +337,15 @@ void CaptureFrame() {
     }
 #endif
 }
+
+bool GetUpdatedBitrate(unsigned long long *outBitrateMbs) {
+    if (g_driver_provider.adaptive_bitrate->CheckBitrateUpdated()) {
+        *outBitrateMbs = g_driver_provider.adaptive_bitrate->GetBitrate();
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void CountPacketABR(int bytes) { g_driver_provider.adaptive_bitrate->CountPacket(bytes); }

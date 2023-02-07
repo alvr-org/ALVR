@@ -7,12 +7,11 @@
 #include <poll.h>
 #include <sys/types.h>
 
-class ClientConnection;
 class PoseHistory;
 
 class CEncoder : public CThread {
   public:
-    CEncoder(std::shared_ptr<ClientConnection> listener, std::shared_ptr<PoseHistory> poseHistory);
+    CEncoder(std::shared_ptr<PoseHistory> poseHistory);
     ~CEncoder();
     bool Init() override { return true; }
     void Run() override;
@@ -25,7 +24,6 @@ class CEncoder : public CThread {
 
   private:
     void GetFds(int client, int (*fds)[6]);
-    std::shared_ptr<ClientConnection> m_listener;
     std::shared_ptr<PoseHistory> m_poseHistory;
     std::atomic_bool m_exiting{false};
     IDRScheduler m_scheduler;

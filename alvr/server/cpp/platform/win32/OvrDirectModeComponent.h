@@ -1,6 +1,5 @@
 #pragma once
 #include "openvr_driver.h"
-#include "alvr_server/ClientConnection.h"
 #include "alvr_server/Utils.h"
 #include "CEncoder.h"
 #include "alvr_server/PoseHistory.h"
@@ -39,7 +38,6 @@ public:
 private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
-	std::shared_ptr<ClientConnection> m_Listener;
 	std::shared_ptr<PoseHistory> m_poseHistory;
 
 	// Resource for each process

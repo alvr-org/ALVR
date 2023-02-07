@@ -140,3 +140,10 @@ extern "C" void SetBitrateParameters(unsigned long long bitrate_mbs,
                                      unsigned long long bitrate_max);
 
 extern "C" void CaptureFrame();
+
+// returns true if the bitrate was updated
+bool GetUpdatedBitrate(unsigned long long *outBitrateMbs);
+void CountPacketABR(int bytes);
+
+// NalParsing.cpp
+void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimestampNs);

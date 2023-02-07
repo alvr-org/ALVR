@@ -12,9 +12,9 @@
 #define BITS_IN_MBIT 1000000
 #define US_IN_S 1000000
 
-class Statistics {
+class AdaptiveBitrate {
 public:
-	Statistics() {
+	AdaptiveBitrate() {
 		ResetAll();
 		m_current = time(NULL);
 	}
@@ -33,13 +33,8 @@ public:
 	void CountPacket(int bytes) {
 		CheckAndResetSecond();
 
-		m_bitsSentInSecond += bytes * 8;
-	}
-
-	void EncodeOutput() {
-		CheckAndResetSecond();
-
 		m_framesInSecond++;
+		m_bitsSentInSecond += bytes * 8;
 	}
 
 	void NetworkSend(uint64_t latencyUs) {

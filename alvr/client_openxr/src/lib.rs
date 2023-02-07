@@ -720,7 +720,7 @@ pub fn entry_point() {
                 let mut frame_result = None;
                 while frame_result.is_none() && Instant::now() < frame_poll_deadline {
                     frame_result = alvr_client_core::get_frame();
-                    thread::sleep(Duration::from_millis(1));
+                    thread::yield_now();
                 }
 
                 if let Some((timestamp, hardware_buffer)) = frame_result {
@@ -751,6 +751,7 @@ pub fn entry_point() {
 
                     display_time = timestamp;
                 } else {
+                    warn!("Timed out when waiting for frame!");
                     views = if let (Some(left_view), Some(right_view)) = (
                         last_swapchain_left_view.get(&left_swapchain_idx),
                         last_swapchain_right_view.get(&right_swapchain_idx),

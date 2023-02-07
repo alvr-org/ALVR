@@ -11,7 +11,7 @@ using namespace gl_render_utils;
 namespace {
 const string SRGB_CORRECTION_FRAGMENT_SHADER = R"glsl(#version 300 es
         #extension GL_OES_EGL_image_external_essl3 : enable
-        precision highp float;
+        precision mediump float;
 
         uniform samplerExternalOES tex0;
         in vec2 uv;

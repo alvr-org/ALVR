@@ -456,26 +456,27 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
     m_amfComponents.front()->SubmitInput(surface);
 }
 
-bool EncodePipelineAMF::GetEncoded(std::vector<uint8_t> &out, uint64_t *pts)
+bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
 {
+    m_frameBuffer = NULL;
     if (m_hasQueryTimeout) {
         m_pipeline->Run();
     } else {
         uint32_t timeout = 4 * 1000; // 1 second
-        while (m_outBuffer.empty() && --timeout != 0) {
+        while (m_frameBuffer == NULL && --timeout != 0) {
             std::this_thread::sleep_for(std::chrono::microseconds(250));
             m_pipeline->Run();
         }
     }
 
-    if (m_outBuffer.empty()) {
+    if (m_frameBuffer == NULL) {
         Error("Timed out waiting for encoder data");
         return false;
     }
 
-    out = m_outBuffer;
-    *pts = m_targetTimestampNs;
-    m_outBuffer.clear();
+    packet.data = reinterpret_cast<uint8_t *>(m_frameBuffer->GetNative());
+    packet.size = static_cast<int>(m_frameBuffer->GetSize());
+    packet.pts = m_targetTimestampNs;
 
     uint64_t query;
     VK_CHECK(vkGetQueryPoolResults(m_render->m_dev, m_queryPool, 0, 1, sizeof(uint64_t), &query, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
@@ -499,12 +500,7 @@ void EncodePipelineAMF::SetBitrate(int64_t bitrate)
 
 void EncodePipelineAMF::Receive(amf::AMFDataPtr data)
 {
-    amf::AMFBufferPtr buffer(data); // query for buffer interface
-
-    char *p = reinterpret_cast<char*>(buffer->GetNative());
-    int length = static_cast<int>(buffer->GetSize());
-
-    m_outBuffer = std::vector<uint8_t>(p, p + length);
+    m_frameBuffer = amf::AMFBufferPtr(data); // query for buffer interface
 }
 
 void EncodePipelineAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR)

@@ -1,10 +1,8 @@
 #![allow(unused_variables)]
 
-use alvr_common::{
-    glam::{Quat, UVec2, Vec3},
-    Fov,
-};
+use alvr_common::{glam::UVec2, Fov};
 use alvr_session::FoveatedRenderingDesc;
+use alvr_sockets::Pose;
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
@@ -18,8 +16,7 @@ const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
 
 pub struct RenderViewInput {
-    pub position: Vec3,
-    pub orientation: Quat,
+    pub pose: Pose,
     pub fov: Fov,
     pub swapchain_index: u32,
 }
@@ -166,8 +163,8 @@ pub fn render_lobby(view_inputs: [RenderViewInput; 2]) {
     unsafe {
         let eye_inputs = [
             FfiViewInput {
-                position: view_inputs[0].position.to_array(),
-                orientation: view_inputs[0].orientation.to_array(),
+                position: view_inputs[0].pose.position.to_array(),
+                orientation: view_inputs[0].pose.orientation.to_array(),
                 fovLeft: view_inputs[0].fov.left,
                 fovRight: view_inputs[0].fov.right,
                 fovUp: view_inputs[0].fov.up,
@@ -175,8 +172,8 @@ pub fn render_lobby(view_inputs: [RenderViewInput; 2]) {
                 swapchainIndex: view_inputs[0].swapchain_index as _,
             },
             FfiViewInput {
-                position: view_inputs[1].position.to_array(),
-                orientation: view_inputs[1].orientation.to_array(),
+                position: view_inputs[1].pose.position.to_array(),
+                orientation: view_inputs[1].pose.orientation.to_array(),
                 fovLeft: view_inputs[1].fov.left,
                 fovRight: view_inputs[1].fov.right,
                 fovUp: view_inputs[1].fov.up,

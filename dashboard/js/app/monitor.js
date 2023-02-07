@@ -847,27 +847,19 @@ define([
                 framerateGraphData[0].shift();
                 framerateGraphData[0].unshift(time - duration);
 
-                const ldata = []
-                    .concat(latencyGraphData[latencyGraphData.length - 1])
-                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
-                    .filter(Boolean);
-                const lq1 = quantile(ldata, 0.1);
-                const lq3 = quantile(ldata, 0.9);
+                const ldata = latencyGraphData[latencyGraphData.length - 1]
+                    .filter((v, i) => !!v && latencyGraphData[0][i] > now - 10 * 1000);
+                const [lq1, lq3] = quantiles(ldata, 0.1, 0.9);
                 latencyGraph.batch(() => {
                     latencyGraph.setScale("y", { min: 0, max: lq3 + (lq3 - lq1) });
                     latencyGraph.setData(stack(latencyGraphData, (i) => false).data);
                 });
-                const fdata1 = []
-                    .concat(framerateGraphData[1])
-                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
-                    .filter(Boolean);
-                const fdata2 = []
-                    .concat(framerateGraphData[2])
-                    .filter((v, i) => latencyGraphData[0][i] > now - 10 * 1000)
-                    .filter(Boolean);
+                const fdata1 = framerateGraphData[1]
+                    .filter((v, i) => !!v && latencyGraphData[0][i] > now - 10 * 1000);
+                const fdata2 = framerateGraphData[2]
+                    .filter((v, i) => !!v && latencyGraphData[0][i] > now - 10 * 1000);
                 const fdata = fdata1.concat(fdata2);
-                const fq1 = quantile(fdata, 0.1);
-                const fq3 = quantile(fdata, 0.9);
+                const [fq1, fq3] = quantiles(fdata, 0.1, 0.9);
                 latencyGraph.batch(() => {
                     framerateGraph.setScale("y", {
                         min: fq1 - (fq3 - fq1),

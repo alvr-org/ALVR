@@ -20,6 +20,7 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
+    glam::Quat,
     log,
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
@@ -37,6 +38,7 @@ use std::{
     ffi::{c_char, c_void, CStr, CString},
     ptr,
     sync::{
+        self,
         atomic::{AtomicUsize, Ordering},
         Arc, Once,
     },
@@ -98,6 +100,15 @@ static DECODER_CONFIG: Lazy<Mutex<Option<Vec<u8>>>> = Lazy::new(|| Mutex::new(No
 pub enum WindowType {
     Alcro(alcro::UI),
     Browser,
+}
+
+fn to_ffi_quat(quat: Quat) -> FfiQuat {
+    FfiQuat {
+        x: quat.x,
+        y: quat.y,
+        z: quat.z,
+        w: quat.w,
+    }
 }
 
 pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> FfiOpenvrProperty {
@@ -385,6 +396,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         IS_ALIVE.set(true);
 
+        let (frame_interval_sender, frame_interval_receiver) = sync::mpsc::channel();
+
         thread::spawn(move || {
             if set_default_chap {
                 // call this when inside a new tokio thread. Calling this on the parent thread will
@@ -392,10 +405,31 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 unsafe { SetChaperone(2.0, 2.0) };
             }
 
-            if let Err(InterruptibleError::Other(e)) = connection::handshake_loop() {
+            if let Err(InterruptibleError::Other(e)) =
+                connection::handshake_loop(frame_interval_sender)
+            {
                 warn!("Connection thread closed: {e}");
             }
         });
+
+        if cfg!(windows) {
+            // Vsync thread
+            thread::spawn(move || {
+                let mut frame_interval = Duration::from_millis(20);
+                let mut deadline = Instant::now();
+
+                while IS_ALIVE.value() {
+                    unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
+
+                    while let Ok(interval) = frame_interval_receiver.try_recv() {
+                        frame_interval = interval;
+                    }
+
+                    deadline += frame_interval;
+                    spin_sleep::sleep(deadline.saturating_duration_since(Instant::now()));
+                }
+            });
+        }
     }
 
     extern "C" fn _shutdown_runtime() {

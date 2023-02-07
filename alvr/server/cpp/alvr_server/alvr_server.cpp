@@ -245,8 +245,8 @@ void SetTracking(unsigned long long targetTimestampNs,
                  float controllerPoseTimeOffsetS,
                  const FfiDeviceMotion *deviceMotions,
                  int motionsCount,
-                 FfiHandSkeleton leftHand,
-                 FfiHandSkeleton rightHand) {
+                 const FfiHandSkeleton *leftHand,
+                 const FfiHandSkeleton *rightHand) {
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);

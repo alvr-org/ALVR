@@ -18,7 +18,7 @@ cd nv-codec-headers/
 sudo make install
 ```
 
-# Server Build
+# Server Building
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:
@@ -61,8 +61,8 @@ You can find the resulting package in `build/alvr_server_[your platform]`
 
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
 
-# Client Build
-## 1. Install necessary packages
+# Client Building
+## 1. Installing necessary packages
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
@@ -123,7 +123,7 @@ Distro wikis that weren't listed above does not mention of environment variables
   * Arch: `/opt/android-sdk/ndk`
   * Linux: `/usr/lib/android-sdk/ndk`
 
-## 3. Build
+## 3. Building
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:
 
@@ -150,8 +150,7 @@ cargo xtask build-client --release
 
 The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
 
-## `openxr-client` Branch
-To build and run:
+To build and run an apk for OpenXR as well, run:
 ```bash
 cd alvr/client_openxr
 cargo apk run

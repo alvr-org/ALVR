@@ -34,7 +34,7 @@ Cons:
 - ZeroTier APK for your Quest (you can find it online)
 - SideQuest or some other method to install the ZeroTier APK onto your headset
 
-### Basic-installation
+### Installation
 Use the "Install APK" function of SideQuest to install the ZeroTier APK to your Quest, and also download and install ZeroTier on your PC. After you've installed ZeroTier, follow Zerotier's official [Getting Started](https://zerotier.atlassian.net/wiki/spaces/SD/pages/8454145/Getting+Started+with+ZeroTier) guide to setup a network for ALVR. Join the network on both the Quest and the PC. On the Quest, make sure that the network is enabled by switching on the slider on the network in the list in the ZeroTier app (you may be prompted to allow ZeroTier to create a VPN connection). 
 
 After both your PC and your Quest are connected to the same ZeroTier network, we'll need to manually add your quest to the ALVR dashboard. To do so, we'll need to find your Quest's ZeroTier IP. There are two ways to do this. 
@@ -70,7 +70,7 @@ Its pros and cons are similar to ZeroTier, but it's self-hosted and open-source 
 - A server with public IP and allow public ports
 - SideQuest or some other method to install the hin2n APK onto your headset
 
-### Basic-installation
+### Installation
 We're going to use n2n v3, and set the port of _supernode_ to `1234` as the example. You can change `1234` to any port, but below `1024` requires root.
 
 - Open port `1234` on your server's firewall (usually `iptables`, if you don't know what to do, ask Google).

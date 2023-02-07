@@ -117,18 +117,10 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
 	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
 	, m_use10bit(Settings::Instance().m_use10bitEncoder)
-	, m_audByteSequence(nullptr)
-	, m_audNalSize(0)
-	, m_audHeaderSize(0)
 	, m_hasQueryTimeout(false)
 {}
 
-VideoEncoderVCE::~VideoEncoderVCE() {
-	if (m_audByteSequence) {
-		delete[] m_audByteSequence;
-		m_audByteSequence = nullptr;
-	}
-}
+VideoEncoderVCE::~VideoEncoderVCE() {}
 
 amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
@@ -332,8 +324,6 @@ void VideoEncoderVCE::Initialize()
 	Debug("Initializing VideoEncoderVCE.\n");
 	AMF_THROW_IF(g_AMFFactory.Init());
 
-	LoadAUDByteSequence();
-
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&m_amfContext));
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
@@ -449,9 +439,6 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 	char *p = reinterpret_cast<char *>(buffer->GetNative());
 	int length = static_cast<int>(buffer->GetSize());
 
-	//Fallback in case AUD was not removed by the encoder
-	SkipAUD(&p, &length);
-
 	if (fpOut) {
 		fpOut.write(p, length);
 	}
@@ -487,47 +474,4 @@ void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 	default:
 		throw MakeException("Invalid video codec");
 	}
-}
-
-void VideoEncoderVCE::LoadAUDByteSequence() {
-	const char H264_AUD_HEADER[] = {0x00, 0x00, 0x00, 0x01, 0x09};
-	const char H265_AUD_HEADER[] = {0x00, 0x00, 0x00, 0x01, 0x46};
-
-	switch (m_codec) {
-	case ALVR_CODEC_H264:
-		m_audHeaderSize = sizeof(H264_AUD_HEADER);
-		m_audByteSequence = new char[m_audHeaderSize];
-		m_audNalSize = 6;
-		std::copy(std::begin(H264_AUD_HEADER), std::end(H264_AUD_HEADER), m_audByteSequence);
-		break;
-	case ALVR_CODEC_H265:
-		m_audHeaderSize = sizeof(H265_AUD_HEADER);
-		m_audByteSequence = new char[m_audHeaderSize];
-		m_audNalSize = 7;
-		std::copy(std::begin(H265_AUD_HEADER), std::end(H265_AUD_HEADER), m_audByteSequence);
-		break;
-	default:
-		throw MakeException("Invalid video codec");
-	}
-}
-
-void VideoEncoderVCE::SkipAUD(char **buffer, int *length) {
-	static const char NAL_HEADER[] = {0x00, 0x00, 0x00, 0x01};
-
-	if (*length < m_audNalSize + sizeof(NAL_HEADER)) {
-		return;
-	}
-
-	// Check if start with AUD NAL.
-	if (memcmp(*buffer, m_audByteSequence, m_audHeaderSize) != 0) {
-		return;
-	}
-
-	// Check if AUD NAL size is m_audNalSize bytes.
-	if (memcmp(*buffer + m_audNalSize, NAL_HEADER, sizeof(NAL_HEADER)) != 0) {
-		return;
-	}
-
-	*buffer += m_audNalSize;
-	*length -= m_audNalSize;
 }

@@ -1,6 +1,7 @@
 #include "bindings.h"
 #include "ffr.h"
 #include "gltf_model.h"
+#include "srgb_correction_pass.h"
 #include "utils.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -68,6 +69,7 @@ typedef struct {
     GLuint hudTexture;
     GltfModel *lobbyScene;
     std::unique_ptr<FFR> ffr;
+    std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
     bool enableFFR;
 } ovrRenderer;
 
@@ -177,12 +179,10 @@ void main()
 )glsl";
 
 static const char FRAGMENT_SHADER[] = R"glsl(
-#extension GL_OES_EGL_image_external_essl3 : enable
-#extension GL_OES_EGL_image_external : enable
 in lowp vec2 uv;
 in lowp vec4 fragmentColor;
 out lowp vec4 outColor;
-uniform %s Texture0;
+uniform sampler2D Texture0;
 void main()
 {
     outColor = texture(Texture0, uv);
@@ -291,8 +291,8 @@ void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
                            const int height) {
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
-        frameBuffer->renderTargets.push_back(
-            std::make_unique<gl_render_utils::Texture>(glRenderTarget, false, width, height));
+        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
+            true, glRenderTarget, false, width, height, GL_SRGB8_ALPHA8, GL_RGBA));
         frameBuffer->renderStates.push_back(
             std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
@@ -534,11 +534,16 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         Texture *streamTexture,
                         int hudTexture,
                         std::vector<GLuint> textures[2],
-                        FFRData ffrData) {
-    renderer->enableFFR = ffrData.enabled;
-    if (renderer->enableFFR) {
-        renderer->ffr = std::make_unique<FFR>(streamTexture);
-        renderer->ffr->Initialize(ffrData);
+                        FFRData ffrData,
+                        bool isLobby) {
+    if (!isLobby) {
+        renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
+        renderer->srgbCorrectionPass->Initialize(width, height);
+        renderer->enableFFR = ffrData.enabled;
+        if (renderer->enableFFR) {
+            renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
+            renderer->ffr->Initialize(ffrData);
+        }
     }
 
     // Create the frame buffers.
@@ -552,10 +557,7 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     renderer->lobbyScene = new GltfModel();
     renderer->lobbyScene->load();
 
-    std::string fragment_shader;
-    fragment_shader =
-        string_format(FRAGMENT_SHADER, renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
-    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, fragment_shader.c_str());
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER);
 
     ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
 
@@ -644,7 +646,8 @@ void renderEye(
         if (renderer->enableFFR) {
             GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
         } else {
-            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->streamTexture->GetGLTexture()));
+            GL(glBindTexture(GL_TEXTURE_2D,
+                             renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture()));
         }
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
@@ -661,10 +664,6 @@ void renderEye(
 }
 
 void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2], bool isLobby) {
-    if (renderer->enableFFR) {
-        renderer->ffr->Render();
-    }
-
     glm::mat4 mvpMatrix[2];
     for (int eye = 0; eye < 2; eye++) {
         auto p = input[eye].position;
@@ -675,12 +674,12 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2],
 
         auto tanl = tan(input[eye].fovLeft);
         auto tanr = tan(input[eye].fovRight);
-        auto tant = tan(-input[eye].fovUp);
-        auto tanb = tan(-input[eye].fovDown);
+        auto tant = tan(input[eye].fovUp);
+        auto tanb = tan(input[eye].fovDown);
         auto a = 2 / (tanr - tanl);
-        auto b = 2 / (tanb - tant);
+        auto b = 2 / (tant - tanb);
         auto c = (tanr + tanl) / (tanr - tanl);
-        auto d = (tanb + tant) / (tanb - tant);
+        auto d = (tant + tanb) / (tant - tanb);
         auto proj = glm::mat4(
             a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
         proj = glm::transpose(proj);
@@ -715,9 +714,9 @@ void initGraphicsNative() {
     glEGLImageTargetTexture2DOES =
         (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 
-    g_ctx.streamTexture = std::make_unique<Texture>(true);
+    g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
-        false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+        false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
 }
 
 void destroyGraphicsNative() {
@@ -745,7 +744,8 @@ void prepareLobbyRoom(int viewWidth,
                        nullptr,
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.lobbySwapchainTextures,
-                       {false});
+                       {false},
+                       true);
 }
 
 // on pause
@@ -789,7 +789,8 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationCenterShiftX,
                         config.foveationCenterShiftY,
                         config.foveationEdgeRatioX,
-                        config.foveationEdgeRatioY});
+                        config.foveationEdgeRatioY},
+                       false);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -824,18 +825,27 @@ void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
 }
 
 void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchainIndices[2]) {
-    GL(EGLClientBuffer clientBuffer =
-           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-    GL(EGLImageKHR image = eglCreateImageKHR(
-           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+    auto renderer = g_ctx.streamRenderer.get();
 
-    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
-    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+    if (streamHardwareBuffer != 0) {
+        GL(EGLClientBuffer clientBuffer =
+               eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+        GL(EGLImageKHR image = eglCreateImageKHR(
+               g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+
+        GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+        GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
+        renderer->srgbCorrectionPass->Render();
+        if (renderer->enableFFR) {
+            renderer->ffr->Render();
+        }
+
+        GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    }
 
     FfiViewInput eyeInputs[2] = {};
     eyeInputs[0].swapchainIndex = swapchainIndices[0];
     eyeInputs[1].swapchainIndex = swapchainIndices[1];
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);
-
-    GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    ovrRenderer_RenderFrame(renderer, eyeInputs, false);
 }

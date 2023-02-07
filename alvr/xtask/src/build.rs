@@ -1,8 +1,10 @@
-use crate::{command, version};
+use crate::command;
 use alvr_filesystem::{self as afs, Layout};
 use std::{
+    env,
     fmt::{self, Display, Formatter},
     fs,
+    path::PathBuf,
 };
 use xshell::{cmd, Shell};
 
@@ -253,46 +255,72 @@ pub fn build_client_lib(profile: Profile) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_quest_client(profile: Profile) {
+pub fn build_android_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
-    build_client_lib(profile);
+    let mut flags = vec![];
+    match profile {
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution")
+        }
+        Profile::Release => flags.push("--release"),
+        Profile::Debug => (),
+    }
+    let flags_ref = &flags;
 
-    let is_nightly = version::version().contains("nightly");
+    const ARTIFACT_NAME: &str = "alvr_client_android";
 
-    let package_type = if is_nightly { "Nightly" } else { "Stable" };
+    let target_dir = afs::target_dir();
+    let build_dir = afs::build_dir().join(ARTIFACT_NAME);
+    sh.create_dir(&build_dir).unwrap();
 
-    let build_type = if matches!(profile, Profile::Debug) {
-        "debug"
-    } else {
-        // Release or Distribution
-        "release"
-    };
+    // Create debug keystore (signing will be overwritten by CI)
+    if matches!(profile, Profile::Release | Profile::Distribution) {
+        let keystore_path = build_dir.join("debug.keystore");
+        if !keystore_path.exists() {
+            let keytool = PathBuf::from(env::var("JAVA_HOME").unwrap())
+                .join("bin")
+                .join(afs::exec_fname("keytool"));
+            let pass = "alvrclient";
 
-    let build_task = format!("assemble{package_type}{build_type}");
+            let other = vec![
+                "-genkey",
+                "-v",
+                "-alias",
+                "androiddebugkey",
+                "-dname",
+                "CN=Android Debug,O=Android,C=US",
+                "-keyalg",
+                "RSA",
+                "-keysize",
+                "2048",
+                "-validity",
+                "10000",
+            ];
 
-    let client_dir = afs::workspace_dir().join("android");
+            cmd!(
+                sh,
+                "{keytool} -keystore {keystore_path} -storepass {pass} -keypass {pass} {other...}"
+            )
+            .run()
+            .unwrap();
+        }
+    }
 
-    const ARTIFACT_NAME: &str = "alvr_client_quest";
+    let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));
+    cmd!(
+        sh,
+        "cargo apk build --target-dir={target_dir} {flags_ref...}"
+    )
+    .run()
+    .unwrap();
 
-    let _push_guard = sh.push_dir(&client_dir);
-    if cfg!(windows) {
-        cmd!(sh, "cmd /C gradlew.bat {build_task}").run().unwrap();
-    } else {
-        cmd!(sh, "bash ./gradlew {build_task}").run().unwrap();
-    };
-
-    sh.create_dir(&afs::build_dir().join(ARTIFACT_NAME))
-        .unwrap();
     sh.copy_file(
-        client_dir
-            .join("app/build/outputs/apk")
-            .join(package_type)
-            .join(build_type)
-            .join(format!("app-{package_type}-{build_type}.apk")),
-        afs::build_dir()
-            .join(ARTIFACT_NAME)
-            .join(format!("{ARTIFACT_NAME}.apk")),
+        afs::target_dir()
+            .join(profile.to_string())
+            .join("apk/alvr_client_openxr.apk"),
+        build_dir.join(format!("{ARTIFACT_NAME}.apk")),
     )
     .unwrap();
 }

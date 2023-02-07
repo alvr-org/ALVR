@@ -1,17 +1,19 @@
 use crate::{
-    buttons::BUTTON_PATH_FROM_ID, sockets::WelcomeSocket, statistics::StatisticsManager,
-    tracking::TrackingManager, FfiButtonValue, FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiQuat,
-    FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
+    buttons::BUTTON_PATH_FROM_ID,
+    sockets::WelcomeSocket,
+    statistics::StatisticsManager,
+    tracking::{self, TrackingManager},
+    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
     DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
     STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
-    glam::{Quat, UVec2, Vec2},
+    glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    RelaxedAtomic, HEAD_ID,
+    RelaxedAtomic, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
@@ -28,9 +30,10 @@ use std::{
     future,
     net::IpAddr,
     process::Command,
+    ptr,
     sync::{mpsc as smpsc, Arc},
     thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::{
     runtime::Runtime,
@@ -50,7 +53,7 @@ fn align32(value: f32) -> u32 {
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
-pub fn handshake_loop() -> IntResult {
+pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResult {
     let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
 
     loop {
@@ -69,7 +72,9 @@ pub fn handshake_loop() -> IntResult {
             manual_client_ips
         };
 
-        if !manual_client_ips.is_empty() && try_connect(manual_client_ips).is_ok() {
+        if !manual_client_ips.is_empty()
+            && try_connect(manual_client_ips, frame_interval_sender.clone()).is_ok()
+        {
             thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             continue;
         }
@@ -111,9 +116,10 @@ pub fn handshake_loop() -> IntResult {
 
             // do not attempt connection if the client is already connected
             if trusted && !CONNECTED_CLIENT_HOSTNAMES.lock().contains(&client_hostname) {
-                if let Err(e) =
-                    try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
-                {
+                if let Err(e) = try_connect(
+                    [(client_ip, client_hostname.clone())].into_iter().collect(),
+                    frame_interval_sender.clone(),
+                ) {
                     error!("Handshake error for {client_hostname}: {e}");
                 }
             }
@@ -123,7 +129,10 @@ pub fn handshake_loop() -> IntResult {
     }
 }
 
-fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
+fn try_connect(
+    mut client_ips: HashMap<IpAddr, String>,
+    frame_interval_sender: smpsc::Sender<Duration>,
+) -> IntResult {
     let runtime = Runtime::new().map_err(to_int_e!())?;
 
     let (mut proto_socket, client_ip) = runtime
@@ -300,10 +309,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut controllers_type_right = "".into();
     let mut controllers_registered_device_type = "".into();
     let mut controllers_input_profile_path = "".into();
-    let mut linear_velocity_cutoff = 0.0;
-    let mut angular_velocity_cutoff = 0.0;
-    let mut position_offset_left = [0.0; 3];
-    let mut rotation_offset_left = [0.0; 3];
     let mut override_trigger_threshold = false;
     let mut trigger_threshold = 0.0;
     let mut override_grip_threshold = false;
@@ -326,10 +331,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         controllers_type_right = config.ctrl_type_right.clone();
         controllers_registered_device_type = config.registered_device_type.clone();
         controllers_input_profile_path = config.input_profile_path.clone();
-        linear_velocity_cutoff = config.linear_velocity_cutoff;
-        angular_velocity_cutoff = config.angular_velocity_cutoff;
-        position_offset_left = config.position_offset_left;
-        rotation_offset_left = config.rotation_offset_left;
         override_trigger_threshold =
             if let Switch::Enabled(config) = config.override_trigger_threshold {
                 trigger_threshold = config.trigger_threshold;
@@ -408,7 +409,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         target_eye_resolution_width: target_view_resolution.x,
         target_eye_resolution_height: target_view_resolution.y,
         seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
-        force_3dof: settings.headset.force_3dof,
         tracking_ref_only: settings.headset.tracking_ref_only,
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
@@ -436,7 +436,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         bitrate_up_rate,
         bitrate_down_rate,
         bitrate_light_load_threshold,
-        position_offset: settings.headset.position_offset,
         controllers_enabled,
         controllers_mode_idx,
         controllers_tracking_system_name,
@@ -449,10 +448,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         controllers_type_right,
         controllers_registered_device_type,
         controllers_input_profile_path,
-        linear_velocity_cutoff,
-        angular_velocity_cutoff,
-        position_offset_left,
-        rotation_offset_left,
         override_trigger_threshold,
         trigger_threshold,
         override_grip_threshold,
@@ -532,6 +527,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         control_receiver,
                         streaming_caps.microphone_sample_rate,
                         fps,
+                        frame_interval_sender
                     ) => {
                         show_warn(res);
                     },
@@ -590,6 +586,7 @@ async fn connection_pipeline(
     mut control_receiver: ControlSocketReceiver<ClientControlPacket>,
     microphone_sample_rate: u32,
     refresh_rate: f32,
+    frame_interval_sender: smpsc::Sender<Duration>,
 ) -> StrResult {
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -630,6 +627,11 @@ async fn connection_pipeline(
         settings.connection.statistics_history_size as _,
         Duration::from_secs_f32(1.0 / refresh_rate),
     ));
+
+    // todo: dynamic framerate
+    frame_interval_sender
+        .send(Duration::from_secs_f32(1.0 / refresh_rate))
+        .ok();
 
     alvr_events::send_event(EventType::ClientConnected);
 
@@ -677,7 +679,7 @@ async fn connection_pipeline(
                         Err(_) => continue,
                     };
                     crate::SetOpenvrProperty(
-                        *HEAD_ID,
+                        *alvr_common::HEAD_ID,
                         crate::to_ffi_openvr_prop(
                             alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                             alvr_session::OpenvrPropValue::String(device_id),
@@ -709,7 +711,7 @@ async fn connection_pipeline(
                     };
                     unsafe {
                         crate::SetOpenvrProperty(
-                            *HEAD_ID,
+                            *alvr_common::HEAD_ID,
                             crate::to_ffi_openvr_prop(
                                 alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                                 alvr_session::OpenvrPropValue::String(default_device_id),
@@ -742,7 +744,7 @@ async fn connection_pipeline(
             let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
             unsafe {
                 crate::SetOpenvrProperty(
-                    *HEAD_ID,
+                    *alvr_common::HEAD_ID,
                     crate::to_ffi_openvr_prop(
                         alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
                         alvr_session::OpenvrPropValue::String(microphone_device_id),
@@ -776,21 +778,6 @@ async fn connection_pipeline(
         }
     };
 
-    // Vsync thread
-    if cfg!(windows) {
-        thread::spawn(move || {
-            let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
-            let mut deadline = Instant::now();
-
-            while is_streaming.value() {
-                unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
-
-                deadline += frame_interval;
-                spin_sleep::sleep(deadline.saturating_duration_since(Instant::now()));
-            }
-        });
-    }
-
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
         async move {
@@ -805,34 +792,30 @@ async fn connection_pipeline(
         }
     };
 
-    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Vec2>();
+    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Option<Vec2>>();
 
     let is_tracking_ref_only = settings.headset.tracking_ref_only;
     if !is_tracking_ref_only {
         // use a separate thread because SetChaperone() is blocking
         thread::spawn(move || {
             while let Ok(packet) = playspace_sync_receiver.recv() {
-                let width = f32::max(packet.x, 2.0);
-                let height = f32::max(packet.y, 2.0);
-                unsafe { crate::SetChaperone(width, height) };
+                if let Some(area) = packet {
+                    unsafe { crate::SetChaperone(area.x, area.y) };
+                } else {
+                    unsafe { crate::SetChaperone(2.0, 2.0) };
+                }
             }
         });
     }
 
-    fn to_ffi_quat(quat: Quat) -> FfiQuat {
-        FfiQuat {
-            x: quat.x,
-            y: quat.y,
-            z: quat.z,
-            w: quat.w,
-        }
-    }
+    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new(&settings.headset)));
 
     let tracking_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
         let control_sender = Arc::clone(&control_sender);
+        let tracking_manager = Arc::clone(&tracking_manager);
         async move {
             let tracking_latency_offset_s =
                 if let Switch::Enabled(controllers) = &settings.headset.controllers {
@@ -841,66 +824,21 @@ async fn connection_pipeline(
                     0
                 } as f32
                     / 1000.;
-
-            let tracking_manager = TrackingManager::new(settings.headset);
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
-                let mut device_motions = vec![];
-                for (id, motion) in tracking.device_motions {
-                    let motion = if id == *HEAD_ID {
-                        tracking_manager.map_head(motion)
-                    } else if let Some(motion) = tracking_manager.map_controller(motion) {
-                        motion
-                    } else {
-                        warn!("Unrecognized device ID. Trackers are not supported");
-                        continue;
-                    };
-                    device_motions.push((id, motion));
-                }
+                let ffi_motions = tracking_manager.lock().await.transform_motions(
+                    &tracking.device_motions,
+                    tracking.left_hand_skeleton.is_some(),
+                    tracking.right_hand_skeleton.is_some(),
+                );
 
-                let ffi_motions = device_motions
-                    .into_iter()
-                    .map(|(id, motion)| FfiDeviceMotion {
-                        deviceID: id,
-                        orientation: to_ffi_quat(motion.orientation),
-                        position: motion.position.to_array(),
-                        linearVelocity: motion.linear_velocity.to_array(),
-                        angularVelocity: motion.angular_velocity.to_array(),
-                    })
-                    .collect::<Vec<_>>();
-
-                let left_hand_skeleton = if let Some(arr) = tracking.left_hand_skeleton {
-                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
-                    let mut array = [FfiQuat::default(); 19];
-                    array.copy_from_slice(&vec);
-
-                    FfiHandSkeleton {
-                        enabled: true,
-                        boneRotations: array,
-                    }
-                } else {
-                    FfiHandSkeleton {
-                        enabled: false,
-                        ..Default::default()
-                    }
-                };
-
-                let right_hand_skeleton = if let Some(arr) = tracking.right_hand_skeleton {
-                    let vec = arr.into_iter().map(to_ffi_quat).collect::<Vec<_>>();
-                    let mut array = [FfiQuat::default(); 19];
-                    array.copy_from_slice(&vec);
-
-                    FfiHandSkeleton {
-                        enabled: true,
-                        boneRotations: array,
-                    }
-                } else {
-                    FfiHandSkeleton {
-                        enabled: false,
-                        ..Default::default()
-                    }
-                };
+                let ffi_left_hand_skeleton = tracking
+                    .left_hand_skeleton
+                    .map(|s| tracking::to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
+                let ffi_right_hand_skeleton = tracking
+                    .right_hand_skeleton
+                    .map(|s| tracking::to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
 
                 let server_prediction_average = if let Some(stats) = &mut *STATISTICS_MANAGER.lock()
                 {
@@ -912,8 +850,16 @@ async fn connection_pipeline(
                             tracking_latency_offset_s,
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
-                            left_hand_skeleton,
-                            right_hand_skeleton,
+                            if let Some(skeleton) = &ffi_left_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(skeleton) = &ffi_right_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
                         )
                     };
 
@@ -1012,6 +958,8 @@ async fn connection_pipeline(
                 Ok(ClientControlPacket::PlayspaceSync(packet)) => {
                     if !is_tracking_ref_only {
                         playspace_sync_sender.send(packet).ok();
+
+                        tracking_manager.lock().await.recenter();
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => {

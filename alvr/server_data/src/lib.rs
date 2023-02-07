@@ -94,9 +94,12 @@ impl ServerDataManager {
             Err(_) => SessionDesc::default(),
         };
 
-        let vk_adapters: Vec<wgpu::Adapter> = wgpu::Instance::new(wgpu::Backends::VULKAN)
-            .enumerate_adapters(wgpu::Backends::VULKAN)
-            .collect();
+        let vk_adapters: Vec<wgpu::Adapter> = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::VULKAN,
+            dx12_shader_compiler: Default::default(),
+        })
+        .enumerate_adapters(wgpu::Backends::VULKAN)
+        .collect();
 
         let gpu_infos = vk_adapters
             .iter()

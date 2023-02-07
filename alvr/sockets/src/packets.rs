@@ -1,11 +1,10 @@
-use std::{net::IpAddr, time::Duration};
-
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     Fov,
 };
 use alvr_events::{ButtonValue, EventSeverity};
 use serde::{Deserialize, Serialize};
+use std::{net::IpAddr, time::Duration};
 
 pub const TRACKING: u16 = 0;
 pub const HAPTICS: u16 = 1;
@@ -65,7 +64,7 @@ pub struct BatteryPacket {
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
-    PlayspaceSync(Vec2),
+    PlayspaceSync(Option<Vec2>),
     RequestIdr,
     KeepAlive,
     StreamReady,
@@ -88,10 +87,15 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct DeviceMotion {
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+pub struct Pose {
     pub orientation: Quat,
     pub position: Vec3,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
+pub struct DeviceMotion {
+    pub pose: Pose,
     pub linear_velocity: Vec3,
     pub angular_velocity: Vec3,
 }
@@ -100,8 +104,8 @@ pub struct DeviceMotion {
 pub struct Tracking {
     pub target_timestamp: Duration,
     pub device_motions: Vec<(u64, DeviceMotion)>,
-    pub left_hand_skeleton: Option<[Quat; 19]>, // legacy oculus hand
-    pub right_hand_skeleton: Option<[Quat; 19]>, // legacy oculus hand
+    pub left_hand_skeleton: Option<[Pose; 26]>,
+    pub right_hand_skeleton: Option<[Pose; 26]>,
 }
 
 #[derive(Serialize, Deserialize)]

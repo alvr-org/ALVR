@@ -45,7 +45,7 @@ ffmpeg -vaapi_device /dev/dri/renderD128 -f lavfi -i testsrc -t 30 -vf 'format=n
 
 ## AMF (AMD GPUs)
 
-AMF requires proprietary Vulkan driver amd-pro. Troubleshooting AMF Basic-installation on your system is out of scope here, but you
+AMF requires proprietary Vulkan driver amd-pro. Troubleshooting AMF installation on your system is out of scope here, but you
 can use [amf-test](https://github.com/nowrep/amf-test-linux). HEVC is only supported on RDNA and newer GPUs.
 
 Make sure amf-test succeeds before you try to get it working with ALVR.

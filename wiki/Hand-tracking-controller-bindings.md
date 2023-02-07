@@ -1,7 +1,10 @@
-# Current bindings for ALVR v14.0.0 (and possibly later)
+Current bindings for ALVR 14.0.0
+===
+
 There's no trackpad/joystick position mapping.
 
-## Oculus Rift S
+Oculus Rift S
+---
 |Action|w/ handtracking pinch|w/o pinch|
 |-|-|-|
 |Trigger|index + thumb pinch|index finger curl|
@@ -13,7 +16,8 @@ There's no trackpad/joystick position mapping.
 |Y|left middle + thumb pinch| N/A |
 |Menu button|left pinky + thumb pinch| N/A |
 
-## Valve Index
+Valve Index
+---
 |Action|w/ handtracking pinch|w/o pinch|
 |-|-|-|
 |Trigger|index finger curl|index finger curl|
@@ -23,7 +27,8 @@ There's no trackpad/joystick position mapping.
 |B|index + thumb pinch| N/A |
 |System button|ring + thumb pinch| N/A |
 
-## HTC Vive
+HTC Vive
+---
 |Action|w/ handtracking pinch|w/o pinch|
 |-|-|-|
 |Trigger|index finger curl|index finger curl|

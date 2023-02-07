@@ -1,10 +1,10 @@
 **Start here**
 
-* [Installation](https://github.com/alvr-org/ALVR/wiki/Installation)
+* [Basic-installation](https://github.com/alvr-org/ALVR/wiki/Basic-installation)
 
 * [Settings guide](https://github.com/alvr-org/ALVR/wiki/Settings-guide)
 
-* [Hand-tracking controller bindings](https://github.com/alvr-org/ALVR/wiki/Hand-tracking-controller-bindings)
+* [Hand tracking controller bindings](https://github.com/alvr-org/ALVR/wiki/Hand-tracking-controller-bindings)
 
 * [Other resources](https://github.com/alvr-org/ALVR/wiki/Other-resources)
 
@@ -12,11 +12,11 @@
 
 **Configuration**
 
-* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
+* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/PC)
 
-* [ALVR on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-on-separate-networks)
+* [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above)
 
-* [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering)
+* [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 
 * [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection)
 
@@ -32,7 +32,7 @@
 
 * [Controller latency](https://github.com/alvr-org/ALVR/wiki/Controller-latency)
 
-* [My game is not working properly! Help!](https://github.com/alvr-org/ALVR/wiki/Game-not-working-properly)
+* [My game is not working properly! Help](https://github.com/alvr-org/ALVR/wiki/My-game-is-not-working-properly!-Help!)
 
 ***
 
@@ -46,4 +46,4 @@
 
 * [Linux support](https://github.com/alvr-org/ALVR/wiki/Linux-Support-development-progress)
 
-* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Real-time-video-upscaling-experiments)
+* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Why?)

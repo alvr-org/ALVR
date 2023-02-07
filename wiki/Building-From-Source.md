@@ -42,7 +42,6 @@ If you are on Linux, install these additional packages:
   ```
 
 Move to the root directory of the project, then run this command (paying attention to the bullet points below):
-
 ```bash
 cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 ```
@@ -52,7 +51,6 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 * **Linux only:** Use the flag `--no-nvidia` if you have a AMD gpu.
 
 Next up is the proper build of the server. Run the following:
-
 ```bash
 cargo xtask build-server --release [--gpl]
 ```
@@ -64,11 +62,11 @@ You can find the resulting package in `build/alvr_server_[your platform]`
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
 
 # Client Build
-## 1. Installing necessary packages
+## 1. Install necessary packages
 For the client you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
-* Latest Android SDK Platform-Tools 33 (Android 13)
+* Latest Android SDK Platform-Tools 29 (Android 10)
 * Latest Android NDK (currently v25.1.8937393)
 
 On Linux, the specific package names for the android tools can differ from distro to distro, see up on the wiki for more information:
@@ -103,7 +101,7 @@ For Debian, it requires to have the `non-free` repository to be enabled:
 For Windows, set the environment variables:
 * `JAVA_HOME`:
   * Example: `C:\Program Files\Android\Android Studio\jre`
-* `ANDROID_SDK_ROOT`:
+* `ANDROID_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk`
 * `ANDROID_NDK_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
@@ -117,7 +115,7 @@ For Linux, the correct directories for the environment variables can greatly dif
 Distro wikis that weren't listed above does not mention of environment variables, although generally they would be as:
 * `JAVA_HOME`:
   * `/usr/lib/jvm/default-java/bin`
-* `ANDROID_SDK_ROOT`:
+* `ANDROID_HOME`:
   * Arch: `~/Android/Sdk`
   * Gentoo: `~/Android`
   * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
@@ -125,7 +123,7 @@ Distro wikis that weren't listed above does not mention of environment variables
   * Arch: `/opt/android-sdk/ndk`
   * Linux: `/usr/lib/android-sdk/ndk`
 
-## 3. Building
+## 3. Build
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:
 
@@ -155,6 +153,7 @@ The built APK will be in `build/alvr_client_quest`. You can then use adb or Side
 
 ## `openxr-client` Branch
 To build and run:
+
 ```bash
 cd alvr/client_openxr
 cargo apk run

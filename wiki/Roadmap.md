@@ -2,7 +2,7 @@
 
 This post will continue to evolve during ALVR development.
 
-## Long-term goals
+## Long-term goal
 
 Create a universal bridge between XR devices. 
 

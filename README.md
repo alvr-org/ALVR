@@ -49,7 +49,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 ## Install
 
-Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation).
+Follow the Basic-installation guide [here](https://github.com/alvr-org/ALVR/wiki/Basic-Basic-installation).
 
 ## Troubleshooting
 
@@ -58,9 +58,9 @@ Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Insta
 
 ## Uninstall
 
-Open `ALVR Launcher.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
+Open `ALVR Launcher.exe`, go to `Basic-installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
-If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
+If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the Basic-installation folder.
 
 ## Build from source
 

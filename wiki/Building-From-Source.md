@@ -1,6 +1,7 @@
 ALVR can be built on Windows and Linux. The following instructions are for both OSes.
 
 # Common Prerequisites
+
 Preferred IDE (optional): Visual Studio Code with rust-analyzer extension
 
 You need to install [rustup](https://www.rust-lang.org/tools/install).
@@ -8,6 +9,7 @@ You need to install [rustup](https://www.rust-lang.org/tools/install).
 On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
 # Linux Users
+
 Before building the server, those on Linux would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers for nvidia users requires at least driver version `520.56.06` to work properly, taken from nv-codec-header's README.
 
 Run the following commands as shown:
@@ -19,6 +21,7 @@ sudo make install
 ```
 
 # Server Building
+
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:
@@ -62,11 +65,12 @@ You can find the resulting package in `build/alvr_server_[your platform]`
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-server` command.
 
 # Client Building
-## 1. Installing necessary packages
-For the client you need install:
 
+## 1. Installing necessary packages
+
+For the client you need install:
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
-* Latest Android SDK Platform-Tools 29 (Android 10)
+* Android SDK Platform-Tools 29 (Android 10)
 * Latest Android NDK (currently v25.1.8937393)
 
 On Linux, the specific package names for the android tools can differ from distro to distro, see up on the wiki for more information:
@@ -98,6 +102,7 @@ For Debian, it requires to have the `non-free` repository to be enabled:
   ```
 
 ## 2. Setting environment variables
+
 For Windows, set the environment variables:
 * `JAVA_HOME`:
   * Example: `C:\Program Files\Android\Android Studio\jre`
@@ -124,6 +129,7 @@ Distro wikis that weren't listed above does not mention of environment variables
   * Linux: `/usr/lib/android-sdk/ndk`
 
 ## 3. Building
+
 First you need to gather some additional resources in preparation for the build.  
 Move to the root directory of the project, then run this command:
 
@@ -150,7 +156,7 @@ cargo xtask build-client --release
 
 The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
 
-To build and run an apk for OpenXR as well, run:
+To build and run:
 ```bash
 cd alvr/client_openxr
 cargo apk run
@@ -159,6 +165,7 @@ cargo apk run
 You need the headset to be connected via USB and with the screen on to successfully launch the debugger and logcat.
 
 # Troubleshooting (Linux)
+
 On some distributions, Steam Native runs ALVR a little better. To get Steam Native on Ubuntu run it with:
 ```bash
 env STEAM_RUNTIME=0 steam

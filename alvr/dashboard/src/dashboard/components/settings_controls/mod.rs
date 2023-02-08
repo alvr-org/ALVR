@@ -31,7 +31,6 @@ pub use switch::*;
 pub use text::*;
 pub use vector::*;
 
-use crate::translation::{SharedTranslation, TranslationBundle};
 use egui::Ui;
 use serde::Serialize;
 use serde_json as json;
@@ -77,9 +76,7 @@ pub fn map_fragment<T: Serialize>(
 }
 
 pub struct SettingsContext {
-    pub advanced: bool,
     pub view_width: f32,
-    pub t: Arc<SharedTranslation>,
 }
 
 pub trait SettingControl {
@@ -117,16 +114,12 @@ impl SettingContainer for EmptyContainer {
 pub fn create_setting_control(
     schema: SchemaNode,
     session_fragment: json::Value,
-    trans_path: &str,
-    trans: &TranslationBundle,
 ) -> Box<dyn SettingControl> {
     match schema {
         SchemaNode::Choice { default, variants } => Box::new(ChoiceControl::new(
             default,
             variants,
             session_fragment,
-            trans_path,
-            trans,
         )),
         SchemaNode::Optional {
             default_set,
@@ -141,8 +134,6 @@ pub fn create_setting_control(
             content_advanced,
             *content,
             session_fragment,
-            trans_path,
-            trans,
         )),
         SchemaNode::Boolean { default } => Box::new(Boolean::new(default)),
         SchemaNode::Integer {
@@ -185,7 +176,6 @@ pub fn create_setting_container(
     schema: SchemaNode,
     session_fragment: json::Value,
     trans_path: &str,
-    trans: &TranslationBundle,
 ) -> Box<dyn SettingContainer> {
     match schema {
         SchemaNode::Section { entries } => {

@@ -28,7 +28,7 @@ pub mod graph_colors {
 }
 
 pub fn set_theme(ctx: &Context) {
-    let mut style = (*ctx.style()).clone();
+    let mut style = *ctx.style();
     style.spacing.slider_width = 200_f32; // slider width can only be set globally
     style.spacing.item_spacing = vec2(15.0, 15.0);
     style.spacing.button_padding = vec2(10.0, 10.0);

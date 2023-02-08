@@ -7,7 +7,6 @@ use self::components::{
 use crate::{
     dashboard::components::StatisticsTab,
     theme,
-    translation::{self, TranslationBundle},
 };
 use alvr_events::{Event, EventSeverity, EventType, LogEvent};
 use alvr_session::{ClientConnectionDesc, LogLevel, SessionDesc};
@@ -88,11 +87,8 @@ impl Dashboard {
     pub fn new(
         session: SessionDesc,
         drivers: Vec<String>,
-        translation_bundle: Arc<TranslationBundle>,
         connected: Option<String>,
     ) -> Self {
-        let t = translation::get_shared_translation(&translation_bundle);
-
         Self {
             selected_tab: Tab::Connections,
             tab_labels: [
@@ -110,8 +106,6 @@ impl Dashboard {
             statistics_tab: StatisticsTab::new(),
             settings_tab: SettingsTab::new(
                 &session.session_settings,
-                Arc::clone(&t),
-                &translation_bundle,
             ),
             installation_tab: InstallationTab::new(),
             logs_tab: LogsTab::new(),

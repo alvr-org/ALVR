@@ -37,7 +37,6 @@ FLAGS:
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
     --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
-    --experiments       Build unfinished features. For build subcommands
     --appimage          Package as AppImage. For package-server subcommand
     --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
@@ -145,7 +144,6 @@ fn main() {
             Profile::Debug
         };
         let gpl = args.contains("--gpl");
-        let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
@@ -179,13 +177,13 @@ fn main() {
                     }
                 }
                 "build-server" => {
-                    build::build_server(profile, gpl, None, false, experiments, keep_config)
+                    build::build_server(profile, gpl, None, false, keep_config)
                 }
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {
                     if !no_rebuild {
-                        build::build_server(profile, gpl, None, false, experiments, keep_config);
+                        build::build_server(profile, gpl, None, false, keep_config);
                     }
                     run_server();
                 }

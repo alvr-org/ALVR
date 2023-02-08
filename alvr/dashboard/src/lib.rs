@@ -2,15 +2,14 @@ use std::ops::Deref;
 
 pub mod dashboard;
 pub mod theme;
-pub mod translation;
 
 #[derive(Clone)]
-pub struct LocalizedId {
+pub struct DisplayString {
     pub id: String,
-    pub trans: String,
+    pub display: String,
 }
 
-impl Deref for LocalizedId {
+impl Deref for DisplayString {
     type Target = String;
 
     fn deref(&self) -> &String {

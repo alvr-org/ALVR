@@ -1,4 +1,4 @@
-use crate::{translation::TranslationBundle, LocalizedId};
+use crate::{translation::TranslationBundle, DisplayString};
 
 use super::{
     EmptyContainer, EmptyControl, SettingContainer, SettingControl, SettingsContext,
@@ -25,7 +25,7 @@ enum DisplayMode {
 
 struct Entry {
     display_mode: DisplayMode,
-    id: LocalizedId,
+    id: DisplayString,
     help: Option<String>,
     notice: Option<String>,
     control: Box<dyn SettingControl>,
@@ -52,9 +52,9 @@ impl Section {
             entries: entries
                 .into_iter()
                 .map(|(id, data)| {
-                    let id = LocalizedId {
+                    let id = DisplayString {
                         id: id.clone(),
-                        trans: entry_trans(trans, trans_path, &id),
+                        display: entry_trans(trans, trans_path, &id),
                     };
                     let entry_trans_path = format!("{}-{}", trans_path, *id);
 
@@ -140,7 +140,7 @@ impl Section {
                                     .horizontal({
                                         let entry_session = session_entry.clone();
                                         |ui| {
-                                            let res = ui.label(&entry.id.trans);
+                                            let res = ui.label(&entry.id.display);
                                             if let Some(help) = &entry.help {
                                                 res.on_hover_text(help);
                                             }

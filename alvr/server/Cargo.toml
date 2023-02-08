@@ -28,7 +28,7 @@ chrono = "0.4"
 bincode = "1"
 serde = "1"
 serde_json = "1"
-settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
+settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
 # Networking and async
 bytes = "1"
 futures = "0.3"

@@ -1,5 +1,4 @@
-use crate::{dashboard::basic_components, translation::TranslationBundle, LocalizedId};
-
+use crate::{dashboard::basic_components, DisplayString};
 use super::{
     EmptyContainer, EmptyControl, SettingContainer, SettingControl, SettingsContext,
     SettingsResponse,
@@ -10,8 +9,8 @@ use settings_schema::EntryData;
 use std::collections::HashMap;
 
 pub struct ChoiceControl {
-    default: LocalizedId,
-    variant_labels: Vec<LocalizedId>,
+    default: DisplayString,
+    variant_labels: Vec<DisplayString>,
     controls: HashMap<String, (Box<dyn SettingControl>, bool)>,
 }
 
@@ -20,22 +19,20 @@ impl ChoiceControl {
         default: String,
         variants_schema: Vec<(String, Option<EntryData>)>,
         session_fragment: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
     ) -> Self {
         let mut session_variants =
             json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
 
         Self {
-            default: LocalizedId {
+            default: DisplayString {
                 id: default.clone(),
-                trans: trans.attribute(trans_path, &default),
+                display: trans.attribute(trans_path, &default),
             },
             variant_labels: variants_schema
                 .iter()
-                .map(|(id, _)| LocalizedId {
+                .map(|(id, _)| DisplayString {
                     id: id.clone(),
-                    trans: trans.attribute(trans_path, id),
+                    display: trans.attribute(trans_path, id),
                 })
                 .collect(),
             controls: variants_schema
@@ -89,7 +86,7 @@ impl SettingControl for ChoiceControl {
             ui,
             &variant,
             &self.default,
-            &format!("\"{}\"", self.default.trans),
+            &format!("\"{}\"", self.default.display),
             &ctx.t,
         )
         .then(|| {

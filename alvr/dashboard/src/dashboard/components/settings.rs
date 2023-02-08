@@ -1,8 +1,6 @@
 use super::{Section, SettingsContext, SettingsResponse};
 use crate::{
     dashboard::{basic_components, DashboardResponse},
-    translation::{SharedTranslation, TranslationBundle},
-    LocalizedId,
 };
 use alvr_session::{SessionDesc, SessionSettings};
 use egui::Ui;
@@ -20,8 +18,6 @@ pub struct SettingsTab {
 impl SettingsTab {
     pub fn new(
         session_settings: &SessionSettings,
-        t: Arc<SharedTranslation>,
-        trans: &TranslationBundle,
     ) -> Self {
         let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
         let mut session = json::from_value::<HashMap<String, json::Value>>(

@@ -1,7 +1,5 @@
 use egui::{Align, Align2, Layout, Ui, Window};
 
-use crate::translation::SharedTranslation;
-
 pub enum ModalResponse {
     Ok,
     Cancel,
@@ -13,7 +11,6 @@ pub fn modal(
     content: impl FnOnce(&mut Ui, f32), // arg 2: available width
     do_not_show_again: Option<&mut bool>,
     visible: &mut bool,
-    t: &SharedTranslation,
 ) -> Option<ModalResponse> {
     let mut response = None;
     if *visible {
@@ -29,18 +26,18 @@ pub fn modal(
                     ui.add_space(10_f32);
 
                     if let Some(do_not_show_again) = do_not_show_again {
-                        ui.checkbox(do_not_show_again, &t.do_not_ask_again);
+                        ui.checkbox(do_not_show_again, "Do not ask again");
                     }
 
                     ui.columns(2, |cols| {
                         for (i, col) in cols.iter_mut().enumerate() {
                             col.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                                 if i == 0 {
-                                    if ui.button(&t.cancel).clicked() {
+                                    if ui.button("Cancel").clicked() {
                                         *visible = false;
                                         response = Some(ModalResponse::Cancel);
                                     }
-                                } else if ui.button(&t.ok).clicked() {
+                                } else if ui.button("OK").clicked() {
                                     *visible = false;
                                     response = Some(ModalResponse::Ok);
                                 }

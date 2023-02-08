@@ -279,18 +279,18 @@ fn try_connect(
     let mut bitrate_light_load_threshold = 0.0;
     let enable_adaptive_bitrate = if let Switch::Enabled(config) = settings.video.adaptive_bitrate {
         bitrate_maximum = config.bitrate_maximum;
-        latency_target = config.latency_target;
+        latency_target = config.latency_target_us;
 
         latency_use_frametime = if let Switch::Enabled(config) = config.latency_use_frametime {
-            latency_target_maximum = config.latency_target_maximum;
-            latency_target_offset = config.latency_target_offset;
+            latency_target_maximum = config.latency_target_maximum_us;
+            latency_target_offset = config.latency_target_offset_us;
 
             true
         } else {
             false
         };
 
-        latency_threshold = config.latency_threshold;
+        latency_threshold = config.latency_threshold_us;
         bitrate_up_rate = config.bitrate_up_rate;
         bitrate_down_rate = config.bitrate_down_rate;
         bitrate_light_load_threshold = config.bitrate_light_load_threshold;
@@ -415,7 +415,7 @@ fn try_connect(
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
-        codec: matches!(settings.video.codec, CodecType::HEVC) as _,
+        codec: matches!(settings.video.codec, CodecType::Hevc) as _,
         rate_control_mode: settings.video.rate_control_mode as u32,
         entropy_coding: settings.video.entropy_coding as u32,
         refresh_rate: fps as _,

@@ -1,6 +1,5 @@
 mod buttons;
 mod connection;
-mod dashboard;
 mod logging_backend;
 mod sockets;
 mod statistics;
@@ -57,7 +56,6 @@ static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
     Lazy::new(|| Mutex::new(Runtime::new().ok()));
-static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
@@ -158,13 +156,6 @@ pub fn shutdown_runtimes() {
     // Shutsdown all connection runtimes
     IS_ALIVE.set(false);
 
-    if let Some(window_type) = WINDOW.lock().take() {
-        match window_type.as_ref() {
-            WindowType::Alcro(window) => window.close(),
-            WindowType::Browser => (),
-        }
-    }
-
     WEBSERVER_RUNTIME.lock().take();
 }
 
@@ -226,8 +217,6 @@ fn init() {
             legacy_events_sender,
             events_sender,
         )));
-
-        thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
 
     {

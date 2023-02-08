@@ -616,6 +616,14 @@ bool OvrController::onPoseUpdate(float predictionS,
     pose.vecPosition[1] = motion.position[1];
     pose.vecPosition[2] = motion.position[2];
 
+    pose.vecVelocity[0] = motion.linearVelocity[0];
+    pose.vecVelocity[1] = motion.linearVelocity[1];
+    pose.vecVelocity[2] = motion.linearVelocity[2];
+
+    pose.vecAngularVelocity[0] = motion.angularVelocity[0];
+    pose.vecAngularVelocity[1] = motion.angularVelocity[1];
+    pose.vecAngularVelocity[2] = motion.angularVelocity[2];
+
     pose.poseTimeOffset = predictionS;
 
     m_pose = pose;

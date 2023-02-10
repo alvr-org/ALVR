@@ -649,6 +649,38 @@ bool OvrController::onPoseUpdate(float predictionS,
                                                  vr::VRSkeletalMotionRange_WithoutController,
                                                  boneTransform,
                                                  SKELETON_BONE_COUNT);
+
+        float rotThumb = (handSkeleton->jointRotations[2].z + handSkeleton->jointRotations[2].y +
+                          handSkeleton->jointRotations[3].z + handSkeleton->jointRotations[3].y +
+                          handSkeleton->jointRotations[4].z + handSkeleton->jointRotations[4].y) *
+                         0.67f;
+        float rotIndex = (handSkeleton->jointRotations[7].z + handSkeleton->jointRotations[8].z +
+                          handSkeleton->jointRotations[9].z) *
+                         0.67f;
+        float rotMiddle = (handSkeleton->jointRotations[12].z + handSkeleton->jointRotations[13].z +
+                           handSkeleton->jointRotations[14].z) *
+                          0.67f;
+        float rotRing = (handSkeleton->jointRotations[17].z + handSkeleton->jointRotations[18].z +
+                         handSkeleton->jointRotations[19].z) *
+                        0.67f;
+        float rotPinky = (handSkeleton->jointRotations[22].z + handSkeleton->jointRotations[23].z +
+                          handSkeleton->jointRotations[24].z) *
+                         0.67f;
+
+        switch (Settings::Instance().m_controllerMode) {
+        case 1:
+        case 3:
+        case 7:
+            vr_driver_input->UpdateBooleanComponent(
+                m_handles[ALVR_INPUT_JOYSTICK_TOUCH], rotThumb > 0.7f, 0.0);
+            vr_driver_input->UpdateBooleanComponent(
+                m_handles[ALVR_INPUT_TRIGGER_TOUCH], rotIndex > 0.7f, 0.0);
+        }
+
+        vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_INDEX], rotIndex, 0.0);
+        vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_MIDDLE], rotMiddle, 0.0);
+        vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_RING], rotRing, 0.0);
+        vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_PINKY], rotPinky, 0.0);
     } else {
         switch (Settings::Instance().m_controllerMode) {
         case 3:

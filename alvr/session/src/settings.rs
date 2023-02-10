@@ -427,7 +427,7 @@ pub struct ControllersDesc {
     #[schema(min = -50, max = 50, step = 1)]
     pub pose_time_offset_ms: i64,
 
-    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
+    #[schema(advanced, min = 0., max = 1.0, step = 0.001)]
     pub linear_velocity_cutoff: f32,
 
     #[schema(advanced, min = 0., max = 100., step = 1.)]
@@ -872,7 +872,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset_ms: 20,
-                    linear_velocity_cutoff: 0.01,
+                    linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.,
                     position_offset_left: [0.0, 0.0, -0.11],
                     rotation_offset_left: [-20.0, 0., 0.],

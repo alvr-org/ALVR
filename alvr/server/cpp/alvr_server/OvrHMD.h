@@ -8,8 +8,6 @@
 #include "platform/win32/OvrDirectModeComponent.h"
 #endif
 
-class ClientConnection;
-
 class OvrController;
 class OvrController;
 class OvrViveTrackerProxy;
@@ -59,8 +57,6 @@ class OvrHmd : public TrackedDevice,
     virtual void
     GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom);
     virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV);
-
-    std::shared_ptr<ClientConnection> m_Listener;
 
     vr::VRInputComponentHandle_t m_proximity;
 

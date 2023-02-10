@@ -2,7 +2,6 @@
 
 #include "VideoEncoderSW.h"
 
-#include "alvr_server/Statistics.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
@@ -13,10 +12,8 @@
 #include <algorithm>
 
 VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender
-	, std::shared_ptr<ClientConnection> listener
 	, int width, int height)
 	: m_d3dRender(d3dRender)
-	, m_Listener(listener)
 	, m_codec(static_cast<ALVR_CODEC>(Settings::Instance().m_codec))
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
@@ -130,9 +127,10 @@ void VideoEncoderSW::Shutdown() {
 
 void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR) {
 	// Handle bitrate changes
-	if(m_Listener->GetStatistics()->CheckBitrateUpdated()) {
+	uint64_t bitrateMbs;
+	if(GetUpdatedBitrate(&bitrateMbs)) {
 		//Debug("Bitrate changed");
-		m_codecContext->bit_rate = m_Listener->GetStatistics()->GetBitrate() * 1'000'000L;
+		m_codecContext->bit_rate = bitrateMbs * 1'000'000L;
 		m_codecContext->rc_buffer_size = m_codecContext->bit_rate / m_refreshRate * 1.1;
 		m_codecContext->rc_max_rate = m_codecContext->bit_rate;
 	}
@@ -209,16 +207,13 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 			break;
 		}
 		// Send encoded frame to client
-		m_Listener->SendVideo(packet->data, packet->size, packet->pts);
+		ParseFrameNals(packet->data, packet->size, packet->pts);
 		//Debug("Sent encoded packet to client");
 		av_packet_free(&packet);
 	}
 	if (err == AVERROR(EINVAL)) {
 		Error("Received encoded frame failed: err code %d", err);
 	}
-
-	// Send statistics to client
-	m_Listener->GetStatistics()->EncodeOutput();
 
 	// Unmap the copied texture and delete it
 	m_d3dRender->GetContext()->Unmap(m_stagingTex.Get(), 0);

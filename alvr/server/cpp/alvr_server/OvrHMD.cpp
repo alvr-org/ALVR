@@ -1,6 +1,5 @@
 #include "OvrHMD.h"
 
-#include "ClientConnection.h"
 #include "Logger.h"
 #include "OvrController.h"
 #include "OvrViveTrackerProxy.h"
@@ -117,11 +116,6 @@ OvrHmd::~OvrHmd() {
         Debug("OvrHmd::~OvrHmd(): Stopping encoder...\n");
         m_encoder->Stop();
         m_encoder.reset();
-    }
-
-    if (m_Listener) {
-        Debug("OvrHmd::~OvrHmd(): Stopping network...\n");
-        m_Listener.reset();
     }
 
 #ifdef _WIN32
@@ -357,15 +351,12 @@ void OvrHmd::StartStreaming() {
         return;
     }
 
-    // create listener
-    m_Listener.reset(new ClientConnection());
-
     // Spin up a separate thread to handle the overlapped encoding/transmit step.
     if (IsHMD()) {
 #ifdef _WIN32
         m_encoder = std::make_shared<CEncoder>();
         try {
-            m_encoder->Initialize(m_D3DRender, m_Listener);
+            m_encoder->Initialize(m_D3DRender);
         } catch (Exception e) {
             Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
                   "If you get this error after changing some settings, you can revert them by",
@@ -381,7 +372,7 @@ void OvrHmd::StartStreaming() {
 #elif __APPLE__
         m_encoder = std::make_shared<CEncoder>();
 #else
-        m_encoder = std::make_shared<CEncoder>(m_Listener, m_poseHistory);
+        m_encoder = std::make_shared<CEncoder>(m_poseHistory);
         m_encoder->Start();
 #endif
     }

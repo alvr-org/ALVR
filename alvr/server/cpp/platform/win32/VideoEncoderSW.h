@@ -5,7 +5,6 @@
 #include <wrl.h>
 
 #include "shared/d3drender.h"
-#include "alvr_server/ClientConnection.h"
 #include "VideoEncoder.h"
 
 extern "C" {
@@ -22,7 +21,6 @@ class VideoEncoderSW : public VideoEncoder
 {
 public:
 	VideoEncoderSW(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener
 		, int width, int height);
 	~VideoEncoderSW();
 
@@ -38,7 +36,6 @@ public:
 	HRESULT CopyTexture(ID3D11Texture2D *pTexture);
 private:
     std::shared_ptr<CD3DRender> m_d3dRender;
-	std::shared_ptr<ClientConnection> m_Listener;
 
 	AVCodecContext *m_codecContext;
 	AVFrame *m_transferredFrame, *m_encoderFrame;

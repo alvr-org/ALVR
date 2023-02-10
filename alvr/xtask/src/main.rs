@@ -176,9 +176,7 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => {
-                    build::build_server(profile, gpl, None, false, keep_config)
-                }
+                "build-server" => build::build_server(profile, gpl, None, false, keep_config),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
                 "run-server" => {

@@ -556,6 +556,13 @@ pub enum SocketBufferSize {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct DisconnectionCriteria {
+    pub latency_threshold_ms: u64,
+    pub sustain_duration_s: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ConnectionDesc {
     pub client_discovery: Switch<DiscoveryConfig>,
 
@@ -594,6 +601,8 @@ pub struct ConnectionDesc {
 
     #[schema(advanced)]
     pub statistics_history_size: u64,
+
+    pub disconnection_criteria: Switch<DisconnectionCriteria>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -929,6 +938,13 @@ pub fn session_settings_default() -> SettingsDefault {
             on_disconnect_script: "".into(),
             packet_size: 1400,
             statistics_history_size: 256,
+            disconnection_criteria: SwitchDefault {
+                enabled: false,
+                content: DisconnectionCriteriaDefault {
+                    latency_threshold_ms: 150,
+                    sustain_duration_s: 3,
+                },
+            },
         },
         extra: ExtraDescDefault {
             theme: ThemeDefault {

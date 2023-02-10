@@ -324,6 +324,7 @@ async fn stream_pipeline(
 
     let video_receive_loop = {
         let mut receiver = stream_socket.subscribe_to_stream::<Duration>(VIDEO).await?;
+        let disconnection_critera = settings.connection.disconnection_criteria;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -351,6 +352,7 @@ async fn stream_pipeline(
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
             let mut receiver_buffer = ReceiverBuffer::new();
+            let mut disconnection_timer_begin = None;
             loop {
                 receiver.recv_buffer(&mut receiver_buffer).await?;
                 let (timestamp, nal) = receiver_buffer.get()?;
@@ -368,6 +370,26 @@ async fn stream_pipeline(
                 if receiver_buffer.had_packet_loss() {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::VideoErrorReport).ok();
+                    }
+                }
+
+                if let Switch::Enabled(criteria) = &disconnection_critera {
+                    if let Some(stats) = &*STATISTICS_MANAGER.lock() {
+                        if stats.average_total_pipeline_latency()
+                            < Duration::from_millis(criteria.latency_threshold_ms)
+                        {
+                            disconnection_timer_begin = None;
+                        } else {
+                            let begin = disconnection_timer_begin.unwrap_or_else(Instant::now);
+
+                            if Instant::now()
+                                > begin + Duration::from_secs(criteria.sustain_duration_s)
+                            {
+                                DISCONNECT_NOTIFIER.notify_one();
+                            }
+
+                            disconnection_timer_begin = Some(begin);
+                        }
                     }
                 }
             }

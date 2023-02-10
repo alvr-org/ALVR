@@ -35,9 +35,11 @@ pub enum NvencTuningPreset {
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum NvencMultiPass {
+    #[schema(strings(help = "Fast, but may introduce compression artifacts."))]
     Disabled = 0,
-    #[schema(strings(display_name = "1/4 resolution"))]
+    #[schema(strings(display_name = "1/4 Resolution", help = "Increases compression quality, small trade-off in speed."))]
     QuarterResolution = 1,
+    #[schema(strings(help = "Further increases compression quality, larger trade-off in speed."))]
     FullResolution = 2,
 }
 
@@ -45,7 +47,9 @@ pub enum NvencMultiPass {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum NvencAdaptiveQuantizationMode {
     Disabled = 0,
+    #[schema(strings(help = "Helps reduce color banding, but high-complexity scenes might look worse."))]
     Spatial = 1,
+    #[schema(strings(help = "Helps improve overall encoding quality, very small trade-off in speed."))]
     Temporal = 2,
 }
 
@@ -54,16 +58,16 @@ pub enum NvencAdaptiveQuantizationMode {
 pub enum RateControlMode {
     #[schema(strings(display_name = "CBR"))]
     Cbr = 0,
-    #[schema(strings(display_name = "VBR"))]
+    #[schema(strings(display_name = "VBR", help = "Only supported on Windows, and only with AMD/Nvidia GPUs."))]
     Vbr = 1,
 }
 
 #[repr(u8)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum EntropyCoding {
-    #[schema(strings(display_name = "CABAC"))]
+    #[schema(strings(display_name = "CABAC", help = "Better quality for the same bitrate, but significantly slower."))]
     Cabac = 0,
-    #[schema(strings(display_name = "CAVLC"))]
+    #[schema(strings(display_name = "CAVLC", help = "Lower quality for the same bitrate, significantly faster."))]
     Cavlc = 1,
 }
 
@@ -147,13 +151,14 @@ pub struct AdaptiveBitrateDesc {
     pub bitrate_maximum: u64,
 
     #[schema(
-        strings(display_name = "Latency target (μs)"),
+        strings(display_name = "Latency target (μs)", help = "The target network latency or frame time (see below)."),
         min = 1000,
         max = 25000,
         step = 500
     )]
     pub latency_target_us: u64,
 
+    #[schema(strings(display_name = "Use frame time", help = "Apply latency target to frame time, instead of network latency."))]
     pub latency_use_frametime: Switch<LatencyUseFrametimeDesc>,
 
     #[schema(
@@ -268,7 +273,7 @@ pub struct ColorCorrectionDesc {
 pub enum CodecType {
     #[schema(strings(display_name = "h264"))]
     H264,
-    #[schema(strings(display_name = "HEVC"))]
+    #[schema(strings(display_name = "HEVC", help = "May provide better visual fidelity at the cost of increased encoder latency."))]
     Hevc,
 }
 
@@ -300,8 +305,10 @@ pub struct VideoDesc {
 
     pub entropy_coding: EntropyCoding,
 
+    #[schema(strings(display_name = "Reduce color banding", help = "Sets the encoder to use 10 bits per channel instead of 8. Does not work on Linux with Nvidia."))]
     pub use_10bit_encoder: bool,
 
+    #[schema(strings(display_name = "Force software uncoding", help = "Forces the encoder to use CPU instead of GPU."))]
     pub force_sw_encoding: bool,
 
     pub sw_thread_count: u32,
@@ -361,7 +368,7 @@ pub struct MicrophoneDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum LinuxAudioBackend {
-    #[schema(strings(display_name = "ALSA"))]
+    #[schema(strings(display_name = "ALSA", help = "Recommended for most PulseAudio or PipeWire-based setups."))]
     Alsa,
 
     Jack,
@@ -460,16 +467,21 @@ pub struct ControllersDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum PositionRecenteringMode {
+    #[schema(strings(help = "Do not re-center position."))]
     Disabled,
+    #[schema(strings(help = "Re-center using the floor level from the headset's room calibration."))]
     LocalFloor,
-
+    #[schema(strings(help = "Re-center using a fixed view height value in meters."))]
     Local { view_height: f32 },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
 pub enum RotationRecenteringMode {
+    #[schema(strings(help = "Do not re-center rotation."))]
     Disabled,
+    #[schema(strings(help = "Re-center yaw rotation only (no head tilt or pitch)."))]
     Yaw,
+    #[schema(strings(help = "Re-center all rotation axes."))]
     Tilted,
 }
 
@@ -508,12 +520,15 @@ pub struct HeadsetDesc {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum SocketProtocol {
+    #[schema(strings(display_name = "UDP", help = "Faster, but less stable than TCP. Try this if your network is well optimized and free of interference."))]
     Udp,
+    #[schema(strings(display_name = "TCP", help = "Slower than UDP, but more stable. Pick this if you experience video or audio stutters with UDP."))]
     Tcp,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct DiscoveryConfig {
+    #[schema(strings(help = "Allow untrusted clients to connect without confirmation."))]
     pub auto_trust_clients: bool,
 }
 
@@ -543,10 +558,13 @@ pub struct ConnectionDesc {
 
     pub stream_port: u16,
 
+    #[schema(strings(help = "Reduce minimum delay between keyframes from 100ms to 5ms. Use on networks with high packet loss."))]
     pub aggressive_keyframe_resend: bool,
 
+    #[schema(strings(help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."))]
     pub on_connect_script: String,
 
+    #[schema(strings(help = "This script will be ran when the headset disconnects, or when SteamVR shuts down. Env var ACTION will be set to `disconnect`."))]
     pub on_disconnect_script: String,
 
     // Max packet size is 64KB for TCP and 65507 bytes for UDP
@@ -567,17 +585,22 @@ pub enum LogLevel {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct Patches {
     pub remove_sync_popup: bool,
+    #[schema(strings(help = "May cause jitter for Nvidia users. AMD users should keep this on.", notice = "Must be off for Nvidia GPUs!"))]
     pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraDesc {
+    #[schema(strings(help = "Ask for confirmation before reverting settings to defaults."))]
     pub revert_confirm_dialog: bool,
     pub restart_confirm_dialog: bool,
     pub prompt_before_update: bool,
+    #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
 
     pub log_button_presses: bool,
+
+    #[schema(strings(help = "Minimum level to generate popup notifications for."))]
     pub notification_level: LogLevel,
     pub exclude_notifications_without_id: bool,
 

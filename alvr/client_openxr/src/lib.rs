@@ -329,6 +329,7 @@ pub fn entry_point() {
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_color_space = available_extensions.fb_color_space;
+    exts.fb_composition_layer_settings = available_extensions.fb_composition_layer_settings;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;
@@ -796,32 +797,44 @@ pub fn entry_point() {
                     height: view_resolution.y as _,
                 },
             };
+
+            let mut layer = xr::CompositionLayerProjection::<xr::OpenGlEs>::new();
+
+            let fb_layer_settings = xr::sys::CompositionLayerSettingsFB {
+                ty: xr::sys::CompositionLayerSettingsFB::TYPE,
+                next: ptr::null(),
+                layer_flags: xr::CompositionLayerSettingsFlagsFB::QUALITY_SUPER_SAMPLING,
+            };
+            if exts.fb_composition_layer_settings {
+                let mut layer_raw = layer.into_raw();
+                layer_raw.next = &fb_layer_settings as *const _ as *const _;
+                unsafe { layer = xr::CompositionLayerProjection::from_raw(layer_raw) };
+            }
+
             xr_frame_stream
                 .end(
                     to_xr_time(display_time),
                     xr::EnvironmentBlendMode::OPAQUE,
-                    &[&xr::CompositionLayerProjection::new()
-                        .space(&reference_space.read())
-                        .views(&[
-                            xr::CompositionLayerProjectionView::new()
-                                .pose(views[0].pose)
-                                .fov(views[0].fov)
-                                .sub_image(
-                                    xr::SwapchainSubImage::new()
-                                        .swapchain(&swapchains[0])
-                                        .image_array_index(0)
-                                        .image_rect(rect),
-                                ),
-                            xr::CompositionLayerProjectionView::new()
-                                .pose(views[1].pose)
-                                .fov(views[1].fov)
-                                .sub_image(
-                                    xr::SwapchainSubImage::new()
-                                        .swapchain(&swapchains[1])
-                                        .image_array_index(0)
-                                        .image_rect(rect),
-                                ),
-                        ])],
+                    &[&layer.space(&reference_space.read()).views(&[
+                        xr::CompositionLayerProjectionView::new()
+                            .pose(views[0].pose)
+                            .fov(views[0].fov)
+                            .sub_image(
+                                xr::SwapchainSubImage::new()
+                                    .swapchain(&swapchains[0])
+                                    .image_array_index(0)
+                                    .image_rect(rect),
+                            ),
+                        xr::CompositionLayerProjectionView::new()
+                            .pose(views[1].pose)
+                            .fov(views[1].fov)
+                            .sub_image(
+                                xr::SwapchainSubImage::new()
+                                    .swapchain(&swapchains[1])
+                                    .image_array_index(0)
+                                    .image_rect(rect),
+                            ),
+                    ])],
                 )
                 .unwrap();
         }

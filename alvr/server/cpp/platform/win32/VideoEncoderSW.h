@@ -6,6 +6,7 @@
 
 #include "shared/d3drender.h"
 #include "VideoEncoder.h"
+#include "ALVR-common/packet_types.h"
 
 extern "C" {
 	#include <libavutil/avutil.h>

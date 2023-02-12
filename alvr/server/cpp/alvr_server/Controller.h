@@ -5,11 +5,11 @@
 #include "openvr_driver.h"
 #include <map>
 
-class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
+class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
   public:
-    OvrController(uint64_t deviceID);
+    Controller(uint64_t deviceID);
 
-    virtual ~OvrController(){};
+    virtual ~Controller(){};
 
     //
     // ITrackedDeviceServerDriver
@@ -44,6 +44,9 @@ class OvrController : public TrackedDevice, public vr::ITrackedDeviceServerDrive
                           float indexAnimationProgress,
                           uint64_t lastPoseTouch,
                           vr::VRBoneTransform_t outBoneTransform[]);
+
+    vr::ETrackedDeviceClass getControllerDeviceClass();
+
 
   private:
     static const int SKELETON_BONE_COUNT = 31;

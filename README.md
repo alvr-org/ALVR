@@ -14,6 +14,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |   Quest 1/2/Pro   |    :heavy_check_mark:     |
 |   Pico 4/Neo 3    |   :heavy_check_mark: *    |
 |   Vive Focus 3    |   :heavy_check_mark: *    |
+|      YVR 1/2      |   :heavy_check_mark: *    |
 | Smartphone/Monado |     :construction: **     |
 |      GearVR       |     :construction: **     |
 |  Google Daydream  | :construction: ** (maybe) |

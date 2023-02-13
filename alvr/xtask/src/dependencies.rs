@@ -265,6 +265,21 @@ fn get_android_openxr_loaders() {
         destination_dir.join("libopenxr_loader_pico.so"),
     )
     .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
+
+    // Yvr
+    command::download_and_extract_zip(
+        &sh,
+        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir
+            .join("yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_yvr.so"),
+    )
+    .unwrap();
     fs::remove_dir_all(temp_dir).ok();
 }
 

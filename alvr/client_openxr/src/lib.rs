@@ -29,6 +29,7 @@ pub enum Platform {
     Quest,
     Pico,
     Vive,
+    Yvr,
     Other,
 }
 
@@ -292,7 +293,11 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         right_hand_skeleton,
     });
 
-    interaction::update_buttons(&ctx.xr_session, &ctx.interaction_context.button_actions)
+    interaction::update_buttons(
+        ctx.platform,
+        &ctx.xr_session,
+        &ctx.interaction_context.button_actions,
+    )
 }
 
 pub fn entry_point() {
@@ -302,6 +307,7 @@ pub fn entry_point() {
         "Oculus" => Platform::Quest,
         "Pico" => Platform::Pico,
         "HTC" => Platform::Vive,
+        "YVR" => Platform::Yvr,
         _ => Platform::Other,
     };
 
@@ -311,6 +317,9 @@ pub fn entry_point() {
         },
         Platform::Pico => unsafe {
             xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
+        },
+        Platform::Yvr => unsafe {
+            xr::Entry::load_from(Path::new("libopenxr_loader_yvr.so")).unwrap()
         },
         _ => unsafe { xr::Entry::load().unwrap() },
     };

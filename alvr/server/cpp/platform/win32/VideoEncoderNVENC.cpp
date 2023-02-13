@@ -12,7 +12,7 @@ VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+	, m_bitrateInMBits(30)
 {
 	
 }

@@ -54,7 +54,6 @@ pub struct OpenvrConfig {
     pub entropy_coding: u32,
     pub force_sw_encoding: bool,
     pub sw_thread_count: u32,
-    pub encode_bitrate_mbs: u64,
     pub enable_adaptive_bitrate: bool,
     pub bitrate_maximum: u64,
     pub latency_target: u64,

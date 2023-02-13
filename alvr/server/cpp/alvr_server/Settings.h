@@ -60,7 +60,6 @@ public:
 	float m_sharpening;
 
 	int m_codec;
-	uint64_t mEncodeBitrateMBs;
 	bool m_enableAdaptiveBitrate;
 	uint64_t m_adaptiveBitrateMaximum;
 	uint64_t m_adaptiveBitrateTarget;

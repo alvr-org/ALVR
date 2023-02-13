@@ -427,7 +427,6 @@ fn try_connect(
         encoder_quality_preset: settings.video.advanced_codec_options.encoder_quality_preset as u32,
         force_sw_encoding: settings.video.force_sw_encoding,
         sw_thread_count: settings.video.sw_thread_count,
-        encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
         enable_adaptive_bitrate,
         bitrate_maximum,
         latency_target,

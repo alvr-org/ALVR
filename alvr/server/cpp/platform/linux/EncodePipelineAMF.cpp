@@ -114,7 +114,7 @@ EncodePipelineAMF::EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t 
     , m_refreshRate(Settings::Instance().m_refreshRate)
     , m_renderWidth(width)
     , m_renderHeight(height)
-    , m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+    , m_bitrateInMBits(30)
 {
     if (!AMFContext::get()->isValid()) {
         throw MakeException("AMFContext not valid");

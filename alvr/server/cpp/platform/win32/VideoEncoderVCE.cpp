@@ -111,7 +111,7 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+	, m_bitrateInMBits(30)
 	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
 	, m_use10bit(Settings::Instance().m_use10bitEncoder)
 	, m_hasQueryTimeout(false)

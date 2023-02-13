@@ -18,7 +18,7 @@ VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs) {
+	, m_bitrateInMBits(30) {
 #ifdef ALVR_DEBUG_LOG
 	av_log_set_level(AV_LOG_DEBUG);
 	av_log_set_callback(LibVALog);

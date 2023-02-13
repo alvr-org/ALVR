@@ -71,7 +71,7 @@ Unless you are using a nightly version, make sure all audio streaming options ar
 ### Arch Linux
 
 * Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
-* Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), [alvr-nightly](https://aur.archlinux.org/packages/alvr-nightly)<sup>AUR</sup>, or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
+* Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
 * Install SteamVR, **launch it once** then close it.
 * Run `alvr_launcher` or ALVR from your DE's application launcher.
 

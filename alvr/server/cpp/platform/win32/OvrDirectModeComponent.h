@@ -13,6 +13,7 @@ public:
 	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory);
 
 	void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
+	void ResetEncoder();
 
 	/** Specific to Oculus compositor support, textures supplied must be created using this method. */
 	virtual void CreateSwapTextureSet( uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, SwapTextureSet_t *pOutSwapTextureSet );

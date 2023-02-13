@@ -11,6 +11,10 @@ void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
 	m_pEncoder = pEncoder;
 }
 
+void OvrDirectModeComponent::ResetEncoder() {
+	m_pEncoder.reset();
+}
+
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
 void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, SwapTextureSet_t *pOutSwapTextureSet)
 {

@@ -11,6 +11,7 @@
 		
 			CEncoder::~CEncoder()
 		{
+			Stop();
 			if (m_videoEncoder)
 			{
 				m_videoEncoder->Shutdown();
@@ -80,8 +81,6 @@
 		{
 			m_presentationTime = presentationTime;
 			m_targetTimestampNs = targetTimestampNs;
-			m_FrameRender->Startup();
-
 			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText);
 			return true;
 		}

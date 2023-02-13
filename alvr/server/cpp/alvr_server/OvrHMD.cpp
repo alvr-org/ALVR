@@ -114,7 +114,6 @@ OvrHmd::~OvrHmd() {
 
     if (m_encoder) {
         Debug("OvrHmd::~OvrHmd(): Stopping encoder...\n");
-        m_encoder->Stop();
         m_encoder.reset();
     }
 
@@ -382,6 +381,15 @@ void OvrHmd::StartStreaming() {
 
 void OvrHmd::StopStreaming() {
     vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0);
+#ifdef _WIN32
+    if (m_directModeComponent) {
+        m_directModeComponent->ResetEncoder();
+    }
+#endif
+    if (m_encoder) {
+        m_encoder.reset();
+    }
+    m_streamComponentsInitialized = false;
 }
 
 void OvrHmd::SetViewsConfig(FfiViewsConfig config) {

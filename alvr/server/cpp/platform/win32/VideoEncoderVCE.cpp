@@ -14,11 +14,7 @@ AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver)
 	, m_receiver(receiver) 
 {}
 
-AMFPipe::~AMFPipe() 
-{
-	Debug("AMFPipe::~AMFPipe()  m_amfComponentSrc->Drain\n");
-	m_amfComponentSrc->Drain();
-}
+AMFPipe::~AMFPipe() {}
 
 void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution) 
 {
@@ -366,8 +362,7 @@ void VideoEncoderVCE::Shutdown()
 	delete m_pipeline;
 
 	for (auto &component : m_amfComponents) {
-		component->Release();
-		delete component;
+		component->Terminate();
 	}
 
 	m_amfContext->Terminate();

@@ -8,7 +8,7 @@
 #include <cstring>
 #include <string_view>
 
-inline vr::ETrackedDeviceClass getControllerDeviceClass() {
+vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
     // index == 8/9 == "HTCViveTracker.json"
     if (Settings::Instance().m_controllerMode == 8 || Settings::Instance().m_controllerMode == 9)
         return vr::TrackedDeviceClass_GenericTracker;
@@ -540,8 +540,8 @@ void PowerOff() {}
 
 /** debug request from a client */
 void Controller::DebugRequest(const char * /*pchRequest*/,
-                                 char *pchResponseBuffer,
-                                 uint32_t unResponseBufferSize) {
+                              char *pchResponseBuffer,
+                              uint32_t unResponseBufferSize) {
     if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
 }
@@ -597,8 +597,8 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
 }
 
 bool Controller::onPoseUpdate(float predictionS,
-                                 FfiDeviceMotion motion,
-                                 const FfiHandSkeleton *handSkeleton) {
+                              FfiDeviceMotion motion,
+                              const FfiHandSkeleton *handSkeleton) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -1852,11 +1852,11 @@ void GetGripClickBoneTransform(bool withController,
 }
 
 void Controller::GetBoneTransform(bool withController,
-                                     bool isLeftHand,
-                                     float thumbAnimationProgress,
-                                     float indexAnimationProgress,
-                                     uint64_t lastPoseButtons,
-                                     vr::VRBoneTransform_t outBoneTransform[]) {
+                                  bool isLeftHand,
+                                  float thumbAnimationProgress,
+                                  float indexAnimationProgress,
+                                  uint64_t lastPoseButtons,
+                                  vr::VRBoneTransform_t outBoneTransform[]) {
 
     vr::VRBoneTransform_t boneTransform1[SKELETON_BONE_COUNT];
     vr::VRBoneTransform_t boneTransform2[SKELETON_BONE_COUNT];

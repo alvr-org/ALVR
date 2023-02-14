@@ -1,12 +1,12 @@
 #include "HMD.h"
 
-#include "Logger.h"
 #include "Controller.h"
-#include "ViveTrackerProxy.h"
+#include "Logger.h"
 #include "Paths.h"
 #include "PoseHistory.h"
 #include "Settings.h"
 #include "Utils.h"
+#include "ViveTrackerProxy.h"
 #include "bindings.h"
 #include <cfloat>
 
@@ -61,7 +61,7 @@ Hmd::Hmd()
         Warn("Failed to register device");
     }
 
-    //todo: move to ViveTrackerProxy
+    // todo: move to ViveTrackerProxy
     if (Settings::Instance().m_enableViveTrackerProxy) {
         m_viveTrackerProxy = std::make_shared<ViveTrackerProxy>(*this);
         ret = vr::VRServerDriverHost()->TrackedDeviceAdded(m_viveTrackerProxy->GetSerialNumber(),
@@ -346,9 +346,7 @@ void Hmd::StartStreaming() {
     m_streamComponentsInitialized = true;
 }
 
-void Hmd::StopStreaming() {
-    vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0);
-}
+void Hmd::StopStreaming() { vr::VRDriverInput()->UpdateBooleanComponent(m_proximity, false, 0.0); }
 
 void Hmd::SetViewsConfig(FfiViewsConfig config) {
     this->views_config = config;
@@ -409,8 +407,7 @@ void Hmd::GetEyeOutputViewport(
     Debug("GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 }
 
-void Hmd::GetProjectionRaw(
-    vr::EVREye eye, float *left, float *right, float *top, float *bottom) {
+void Hmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top, float *bottom) {
     auto proj = fov_to_projection(this->views_config.fov[eye]);
     *left = proj.vTopLeft.v[0];
     *right = proj.vBottomRight.v[0];

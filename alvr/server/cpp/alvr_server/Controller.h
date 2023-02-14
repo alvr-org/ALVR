@@ -47,14 +47,13 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 
     vr::ETrackedDeviceClass getControllerDeviceClass();
 
-
   private:
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
 
     vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
     vr::VRInputComponentHandle_t m_compHaptic;
-    vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;;
+    vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;
 
     vr::DriverPose_t m_pose;
 

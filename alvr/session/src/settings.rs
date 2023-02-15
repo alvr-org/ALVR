@@ -124,38 +124,21 @@ pub struct AdvancedCodecOptions {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LatencyUseFrametimeDesc {
-    #[schema(advanced, min = 10000, max = 100000, step = 1000)]
-    pub latency_target_maximum: u64,
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum BitrateDesc {
+    #[schema(min = 1, max = 1000)]
+    ConstantMbs(u64),
+    #[serde(rename_all = "camelCase")]
+    Adaptive {
+        #[schema(min = 0.5, max = 2.0, step = 0.05)]
+        saturation_multiplier: f32,
 
-    #[schema(advanced, min = -4000, max = 8000, step = 500)]
-    pub latency_target_offset: i32,
-}
+        #[schema(min = 1, max = 1000, step = 1)]
+        max_bitrate_mbs: Switch<u64>,
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AdaptiveBitrateDesc {
-    #[schema(min = 10, max = 1000, step = 1)]
-    pub bitrate_maximum: u64,
-
-    #[schema(advanced, min = 1000, max = 25000, step = 500)]
-    pub latency_target: u64,
-
-    #[schema(advanced)]
-    pub latency_use_frametime: Switch<LatencyUseFrametimeDesc>,
-
-    #[schema(advanced, min = 500, max = 5000, step = 100)]
-    pub latency_threshold: u64,
-
-    #[schema(advanced, min = 1, max = 10, step = 1)]
-    pub bitrate_up_rate: u64,
-
-    #[schema(advanced, min = 1, max = 10, step = 1)]
-    pub bitrate_down_rate: u64,
-
-    #[schema(advanced, min = 0., max = 1., step = 0.01)]
-    pub bitrate_light_load_threshold: f32,
+        #[schema(min = 1, max = 1000, step = 1)]
+        min_bitrate_mbs: Switch<u64>,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
@@ -270,10 +253,7 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub sw_thread_count: u32,
 
-    #[schema(min = 1, max = 1000)]
-    pub encode_bitrate_mbs: u64,
-
-    pub adaptive_bitrate: Switch<AdaptiveBitrateDesc>,
+    pub bitrate: BitrateDesc,
 
     #[schema(advanced)]
     pub advanced_codec_options: AdvancedCodecOptions,
@@ -702,24 +682,20 @@ pub fn session_settings_default() -> SettingsDefault {
             use_10bit_encoder: false,
             force_sw_encoding: false,
             sw_thread_count: 0,
-            encode_bitrate_mbs: 30,
-            adaptive_bitrate: SwitchDefault {
-                enabled: true,
-                content: AdaptiveBitrateDescDefault {
-                    bitrate_maximum: 200,
-                    latency_target: 12000,
-                    latency_use_frametime: SwitchDefault {
+            bitrate: BitrateDescDefault {
+                ConstantMbs: 30,
+                Adaptive: BitrateDescAdaptiveDefault {
+                    saturation_multiplier: 0.95,
+                    max_bitrate_mbs: SwitchDefault {
                         enabled: false,
-                        content: LatencyUseFrametimeDescDefault {
-                            latency_target_maximum: 30000,
-                            latency_target_offset: 0,
-                        },
+                        content: 100,
                     },
-                    latency_threshold: 3000,
-                    bitrate_up_rate: 1,
-                    bitrate_down_rate: 3,
-                    bitrate_light_load_threshold: 0.7,
+                    min_bitrate_mbs: SwitchDefault {
+                        enabled: false,
+                        content: 5,
+                    },
                 },
+                variant: BitrateDescDefaultVariant::Adaptive,
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 encoder_quality_preset: EncoderQualityPresetDefault {

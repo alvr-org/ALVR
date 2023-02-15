@@ -127,13 +127,9 @@ void VideoEncoderSW::Shutdown() {
 
 void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR) {
 	// Handle bitrate changes
-	uint64_t bitrateMbs;
-	if(GetUpdatedBitrate(&bitrateMbs)) {
-		//Debug("Bitrate changed");
-		m_codecContext->bit_rate = bitrateMbs * 1'000'000L;
-		m_codecContext->rc_buffer_size = m_codecContext->bit_rate / m_refreshRate * 1.1;
-		m_codecContext->rc_max_rate = m_codecContext->bit_rate;
-	}
+	m_codecContext->bit_rate = GetBitrate();
+	m_codecContext->rc_buffer_size = m_codecContext->bit_rate / m_refreshRate * 1.1;
+	m_codecContext->rc_max_rate = m_codecContext->bit_rate;
 
 	// Setup staging texture if not defined yet; we can only define it here as we now have the texture's size
 	if(!m_stagingTex) {

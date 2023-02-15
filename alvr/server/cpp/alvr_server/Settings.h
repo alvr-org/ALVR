@@ -60,16 +60,6 @@ public:
 	float m_sharpening;
 
 	int m_codec;
-	bool m_enableAdaptiveBitrate;
-	uint64_t m_adaptiveBitrateMaximum;
-	uint64_t m_adaptiveBitrateTarget;
-	bool m_adaptiveBitrateUseFrametime;
-	uint64_t m_adaptiveBitrateTargetMaximum;
-	int32_t m_adaptiveBitrateTargetOffset;
-	uint64_t m_adaptiveBitrateThreshold;
-	uint64_t m_adaptiveBitrateUpRate;
-	uint64_t m_adaptiveBitrateDownRate;
-	float m_adaptiveBitrateLightLoadThreshold;
 	bool m_use10bitEncoder;
 	bool m_enableVbaq;
 	bool m_usePreproc;

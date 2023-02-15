@@ -2,13 +2,15 @@ use std::{collections::VecDeque, time::Duration};
 
 pub struct SlidingWindowAverage<T> {
     history_buffer: VecDeque<T>,
+    initial_value: T,
     max_history_size: usize,
 }
 
 impl<T> SlidingWindowAverage<T> {
-    pub fn new(max_history_size: usize) -> Self {
+    pub fn new(initial_value: T, max_history_size: usize) -> Self {
         Self {
             history_buffer: VecDeque::new(),
+            initial_value,
             max_history_size,
         }
     }
@@ -27,7 +29,17 @@ impl SlidingWindowAverage<f32> {
         if !self.history_buffer.is_empty() {
             self.history_buffer.iter().sum::<f32>() / self.history_buffer.len() as f32
         } else {
-            0.0
+            self.initial_value
+        }
+    }
+}
+
+impl SlidingWindowAverage<usize> {
+    pub fn get_average(&self) -> usize {
+        if !self.history_buffer.is_empty() {
+            self.history_buffer.iter().sum::<usize>() / self.history_buffer.len()
+        } else {
+            self.initial_value
         }
     }
 }
@@ -37,7 +49,7 @@ impl SlidingWindowAverage<Duration> {
         if !self.history_buffer.is_empty() {
             self.history_buffer.iter().sum::<Duration>() / self.history_buffer.len() as u32
         } else {
-            Duration::ZERO
+            self.initial_value
         }
     }
 }

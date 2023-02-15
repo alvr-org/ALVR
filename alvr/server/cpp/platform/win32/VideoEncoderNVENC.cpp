@@ -86,17 +86,14 @@ void VideoEncoderNVENC::Shutdown()
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
-	uint64_t bitrateMbs;
-	if (GetUpdatedBitrate(&bitrateMbs)) {
-		m_bitrateInMBits = bitrateMbs;
-		NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
-		NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-		initializeParams.encodeConfig = &encodeConfig;
-		FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
-		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
-		reconfigureParams.reInitEncodeParams = initializeParams;
-		m_NvNecoder->Reconfigure(&reconfigureParams);
-	}
+	m_bitrateInMBits = GetBitrate() / 1'000'000;
+	NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+	initializeParams.encodeConfig = &encodeConfig;
+	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
+	NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
+	reconfigureParams.reInitEncodeParams = initializeParams;
+	m_NvNecoder->Reconfigure(&reconfigureParams);
 
 	std::vector<std::vector<uint8_t>> vPacket;
 

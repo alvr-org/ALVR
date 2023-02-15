@@ -113,39 +113,6 @@ define({
         "_root_video_encodeBitrateMbs.name": "Video Bitrate",
         "_root_video_encodeBitrateMbs.description":
             "Bitrate of video streaming. 30Mbps is recommended. \nHigher bitrates result in better image but also higher latency and network traffic ",
-        "_root_video_adaptiveBitrate.name": "Adaptive bitrate",
-        "_root_video_adaptiveBitrate_enabled.description":
-            "Use frame time or user selected target to adjust bitrate",
-        "_root_video_adaptiveBitrate_content_bitrateMaximum.name": "Bitrate limit",
-        "_root_video_adaptiveBitrate_content_bitrateMaximum.description":
-            "Adaptive bitrate will not use a bitrate higher than this limit",
-        "_root_video_adaptiveBitrate_content_latencyTarget.name": "Latency target (us)", // adv
-        "_root_video_adaptiveBitrate_content_latencyTarget.description":
-            "This value will be used as the target network latency if not using frame time", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime.name": "Use frame time", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_enabled.description":
-            "Use FPS as the target network latency", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.name":
-            "Latency target limit (us)", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetMaximum.description":
-            "Adaptive bitrate will not use a target network latency higher than this limit if using frame time", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetOffset.name":
-            "Latency target offset (us)", // adv
-        "_root_video_adaptiveBitrate_content_latencyUseFrametime_content_latencyTargetOffset.description":
-            "The target latency is offset by this amount", // adv
-        "_root_video_adaptiveBitrate_content_latencyThreshold.name": "Latency threshold (us)", // adv
-        "_root_video_adaptiveBitrate_content_latencyThreshold.description":
-            "Adaptive bitrate will adjust bitrate when the network latency reaches the latency threshold", // adv
-        "_root_video_adaptiveBitrate_content_bitrateUpRate.name": "Bitrate increasing rate", // adv
-        "_root_video_adaptiveBitrate_content_bitrateUpRate.description":
-            "How much to increase bitrate when the network latency reaches the latency threshold", // adv
-        "_root_video_adaptiveBitrate_content_bitrateDownRate.name": "Bitrate decreasing rate", // adv
-        "_root_video_adaptiveBitrate_content_bitrateDownRate.description":
-            "How much to decrease bitrate when the network latency reaches the latency threshold", // adv
-        "_root_video_adaptiveBitrate_content_bitrateLightLoadThreshold.name":
-            "Bitrate light load threshold", // adv
-        "_root_video_adaptiveBitrate_content_bitrateLightLoadThreshold.description":
-            "Limit increasing bitrate if sent rate is below threshold percentage of bitrate. Prevents stutters caused when switching from simple scenes to complex scenes", // adv
         // Audio tab
         "_root_audio_tab.name": "Audio",
         "_root_audio_linuxBackend-choice-.name": "Linux backend",

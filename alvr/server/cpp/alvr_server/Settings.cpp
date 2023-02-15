@@ -76,16 +76,6 @@ void Settings::Load()
 		m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
 		m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
-		m_enableAdaptiveBitrate = config.get("enable_adaptive_bitrate").get<bool>();
-		m_adaptiveBitrateMaximum = (int)config.get("bitrate_maximum").get<int64_t>();
-		m_adaptiveBitrateTarget = (int)config.get("latency_target").get<int64_t>();
-		m_adaptiveBitrateUseFrametime = config.get("latency_use_frametime").get<bool>();
-		m_adaptiveBitrateTargetMaximum = (int)config.get("latency_target_maximum").get<int64_t>();
-		m_adaptiveBitrateTargetOffset = (int)config.get("latency_target_offset").get<int64_t>();
-		m_adaptiveBitrateThreshold = (int)config.get("latency_threshold").get<int64_t>();
-		m_adaptiveBitrateUpRate = (int)config.get("bitrate_up_rate").get<int64_t>();
-		m_adaptiveBitrateDownRate = (int)config.get("bitrate_down_rate").get<int64_t>();
-		m_adaptiveBitrateLightLoadThreshold = config.get("bitrate_light_load_threshold").get<double>();
 		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
 		m_enableVbaq = config.get("enable_vbaq").get<bool>();
 		m_usePreproc = config.get("use_preproc").get<bool>();

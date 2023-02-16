@@ -25,7 +25,10 @@ impl StatisticsManager {
             max_history_size,
             history_buffer: VecDeque::new(),
             prev_vsync: Instant::now(),
-            total_pipeline_latency_average: SlidingWindowAverage::new(max_history_size),
+            total_pipeline_latency_average: SlidingWindowAverage::new(
+                Duration::ZERO,
+                max_history_size,
+            ),
             server_prediction_average: Duration::ZERO,
         }
     }

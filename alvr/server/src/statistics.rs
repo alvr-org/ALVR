@@ -65,7 +65,7 @@ impl StatisticsManager {
             packets_lost_total: 0,
             packets_lost_partial_sum: 0,
             battery_gauges: HashMap::new(),
-            game_render_latency_average: SlidingWindowAverage::new(history_size),
+            game_render_latency_average: SlidingWindowAverage::new(Duration::ZERO, history_size),
         }
     }
 

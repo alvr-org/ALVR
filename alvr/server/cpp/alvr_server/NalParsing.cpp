@@ -111,5 +111,4 @@ void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimest
     }
 
     VideoSend(targetTimestampNs, buf, len);
-    CountPacketABR(len);
 }

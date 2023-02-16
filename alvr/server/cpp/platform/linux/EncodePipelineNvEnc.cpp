@@ -119,7 +119,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
-    SetBitrate(30 * 1'000'000L);
+    SetBitrate(settings.mEncodeBitrateMBs * 1'000'000L);
 
     err = avcodec_open2(encoder_ctx, codec, NULL);
     if (err < 0) {

@@ -2,18 +2,18 @@
 
 #include <openvr_driver.h>
 
-class OvrHmd;
+class Hmd;
 
-class OvrViveTrackerProxy final : public vr::ITrackedDeviceServerDriver
+class ViveTrackerProxy final : public vr::ITrackedDeviceServerDriver
 {
 	vr::TrackedDeviceIndex_t m_unObjectId;
-    OvrHmd* m_HMDOwner;    
+    Hmd* m_HMDOwner;    
 public:
 
-    OvrViveTrackerProxy(OvrHmd& owner);
+    ViveTrackerProxy(Hmd& owner);
 
-    OvrViveTrackerProxy(const OvrViveTrackerProxy&) = delete;
-    OvrViveTrackerProxy& operator=(const OvrViveTrackerProxy&) = delete;
+    ViveTrackerProxy(const ViveTrackerProxy&) = delete;
+    ViveTrackerProxy& operator=(const ViveTrackerProxy&) = delete;
 
     constexpr inline const char* GetSerialNumber() const { return "ALVR HMD Tracker Proxy"; }
 

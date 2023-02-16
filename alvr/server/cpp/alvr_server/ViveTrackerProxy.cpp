@@ -1,21 +1,21 @@
-#include "OvrViveTrackerProxy.h"
+#include "ViveTrackerProxy.h"
 #include "Settings.h"
-#include "OvrHMD.h"
+#include "HMD.h"
 
 #include <cassert>
 
-OvrViveTrackerProxy::OvrViveTrackerProxy(OvrHmd& owner)
+ViveTrackerProxy::ViveTrackerProxy(Hmd& owner)
 :   m_unObjectId(vr::k_unTrackedDeviceIndexInvalid),
     m_HMDOwner(&owner)
 {}
 
-vr::DriverPose_t OvrViveTrackerProxy::GetPose()
+vr::DriverPose_t ViveTrackerProxy::GetPose()
 {
     assert(m_HMDOwner != nullptr);
     return m_HMDOwner->GetPose();
 }
 
-vr::EVRInitError OvrViveTrackerProxy::Activate( vr::TrackedDeviceIndex_t unObjectId )
+vr::EVRInitError ViveTrackerProxy::Activate( vr::TrackedDeviceIndex_t unObjectId )
 {
     auto vr_properties = vr::VRProperties();
 
@@ -80,7 +80,7 @@ vr::EVRInitError OvrViveTrackerProxy::Activate( vr::TrackedDeviceIndex_t unObjec
     return vr::VRInitError_None;
 }
 
-void OvrViveTrackerProxy::update()
+void ViveTrackerProxy::update()
 {
     auto newPose =  GetPose();
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(m_unObjectId, newPose, sizeof(vr::DriverPose_t));

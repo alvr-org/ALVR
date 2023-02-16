@@ -7,9 +7,9 @@
 #include "platform/linux/CEncoder.h"
 #endif
 #include "AdaptiveBitrate.h"
+#include "Controller.h"
+#include "HMD.h"
 #include "Logger.h"
-#include "OvrController.h"
-#include "OvrHMD.h"
 #include "Paths.h"
 #include "PoseHistory.h"
 #include "Settings.h"
@@ -64,27 +64,47 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
   public:
     std::shared_ptr<AdaptiveBitrate> adaptive_bitrate;
 
-    std::shared_ptr<OvrHmd> hmd;
-    std::shared_ptr<OvrController> left_controller, right_controller;
-    // std::vector<OvrViveTrackerProxy> generic_trackers;
+    std::unique_ptr<Hmd> hmd;
+    std::unique_ptr<Controller> left_controller, right_controller;
+    // std::vector<ViveTrackerProxy> generic_trackers;
 
     std::map<uint64_t, TrackedDevice *> tracked_devices;
 
     virtual vr::EVRInitError Init(vr::IVRDriverContext *pContext) override {
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
+        bool ret;
 
         this->adaptive_bitrate = std::make_shared<AdaptiveBitrate>();
 
-        this->hmd = std::make_shared<OvrHmd>();
-        this->left_controller = this->hmd->m_leftController;
-        this->right_controller = this->hmd->m_rightController;
+        this->hmd = std::make_unique<Hmd>();
+        this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
+        this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
 
         this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)&*this->hmd});
         if (this->left_controller && this->right_controller) {
-            this->tracked_devices.insert({LEFT_HAND_ID, (TrackedDevice *)&*this->left_controller});
             this->tracked_devices.insert(
-                {RIGHT_HAND_ID, (TrackedDevice *)&*this->right_controller});
+                {LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
+            this->tracked_devices.insert(
+                {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
+        }
+
+        if (!Settings::Instance().m_disableController) {
+            ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+                left_controller->GetSerialNumber().c_str(),
+                left_controller->getControllerDeviceClass(),
+                left_controller.get());
+            if (!ret) {
+                Warn("Failed to register left controller");
+            }
+
+            ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
+                right_controller->GetSerialNumber().c_str(),
+                right_controller->getControllerDeviceClass(),
+                right_controller.get());
+            if (!ret) {
+                Warn("Failed to register right controller");
+            }
         }
 
         return vr::VRInitError_None;

@@ -30,6 +30,7 @@ pub enum Platform {
     Pico,
     Vive,
     Yvr,
+    Focus3,
     Other,
 }
 
@@ -306,7 +307,10 @@ pub fn entry_point() {
     let platform = match alvr_client_core::manufacturer_name().as_str() {
         "Oculus" => Platform::Quest,
         "Pico" => Platform::Pico,
-        "HTC" => Platform::Vive,
+        "HTC" => match alvr_client_core::device_model().as_str() {
+            "VIVE Focus 3" => Platform::Focus3,
+            _ => Platform::Vive,
+        }
         "YVR" => Platform::Yvr,
         _ => Platform::Other,
     };
@@ -342,6 +346,7 @@ pub fn entry_point() {
     {
         exts.khr_android_create_instance = true;
     }
+    exts.htc_vive_focus3_controller_interaction = available_extensions.htc_vive_focus3_controller_interaction;
 
     let xr_instance = xr_entry
         .create_instance(

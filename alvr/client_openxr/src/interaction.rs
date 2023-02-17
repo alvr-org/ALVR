@@ -34,6 +34,7 @@ pub struct ButtonBindingInfo {
 const OCULUS_TOUCH_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
 const PICO_CONTROLLER_PROFILE: &str = "/interaction_profiles/pico/neo3_controller";
 const YVR_CONTROLLER_PROFILE: &str = "/interaction_profiles/yvr/touch_controller";
+const FOCUS3_CONTROLLER_PROFILE: &str = "/interaction_profiles/htc/vive_focus3_controller";
 
 fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     let mut list = vec![
@@ -54,26 +55,10 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
             },
         ),
         (
-            *A_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "a_touch".into(),
-                binding_path: A_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
             *B_CLICK_ID,
             ButtonBindingInfo {
                 name: "b_click".into(),
                 binding_path: B_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *B_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "b_touch".into(),
-                binding_path: B_TOUCH_PATH.into(),
                 binding_type: BindingType::Binary,
             },
         ),
@@ -86,26 +71,10 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
             },
         ),
         (
-            *X_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "x_touch".into(),
-                binding_path: X_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
             *Y_CLICK_ID,
             ButtonBindingInfo {
                 name: "y_click".into(),
                 binding_path: Y_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *Y_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "y_touch".into(),
-                binding_path: Y_TOUCH_PATH.into(),
                 binding_type: BindingType::Binary,
             },
         ),
@@ -222,6 +191,42 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
             },
         ),
     ];
+
+    if platform != Platform::Focus3 {
+        list.extend( [(
+            *A_TOUCH_ID,
+            ButtonBindingInfo {
+                name: "a_touch".into(),
+                binding_path: A_TOUCH_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        ),
+            (
+                *B_TOUCH_ID,
+                ButtonBindingInfo {
+                    name: "b_touch".into(),
+                    binding_path: B_TOUCH_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *X_TOUCH_ID,
+                ButtonBindingInfo {
+                    name: "x_touch".into(),
+                    binding_path: X_TOUCH_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *Y_TOUCH_ID,
+                ButtonBindingInfo {
+                    name: "y_touch".into(),
+                    binding_path: Y_TOUCH_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+        ]);
+    }
 
     if platform == Platform::Quest {
         list.extend([
@@ -486,6 +491,7 @@ pub fn initialize_streaming_interaction(
         Platform::Pico => PICO_CONTROLLER_PROFILE,
         Platform::Vive => OCULUS_TOUCH_CONTROLLER_PROFILE,
         Platform::Yvr => YVR_CONTROLLER_PROFILE,
+        Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE,
         Platform::Other => OCULUS_TOUCH_CONTROLLER_PROFILE,
     };
 

@@ -1,11 +1,12 @@
 use crate::{
+    bitrate::BitrateManager,
     buttons::BUTTON_PATH_FROM_ID,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, CONTROL_CHANNEL_SENDER, DECODER_CONFIG,
-    DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_SENDER,
+    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -89,7 +90,9 @@ pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResu
             let (client_hostname, client_ip) = match welcome_socket.recv_non_blocking() {
                 Ok(pair) => pair,
                 Err(e) => {
-                    debug!("UDP handshake packet listening: {e}");
+                    if let InterruptibleError::Other(e) = e {
+                        warn!("UDP handshake listening error: {e}");
+                    }
 
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;
@@ -266,38 +269,6 @@ fn try_connect(
 
     let (mut control_sender, control_receiver) = proto_socket.split();
 
-    let mut bitrate_maximum = 0;
-    let mut latency_target = 0;
-    let mut latency_use_frametime = false;
-    let mut latency_target_maximum = 0;
-    let mut latency_target_offset = 0;
-    let mut latency_threshold = 0;
-    let mut bitrate_up_rate = 0;
-    let mut bitrate_down_rate = 0;
-    let mut bitrate_light_load_threshold = 0.0;
-    let enable_adaptive_bitrate = if let Switch::Enabled(config) = settings.video.adaptive_bitrate {
-        bitrate_maximum = config.bitrate_maximum;
-        latency_target = config.latency_target;
-
-        latency_use_frametime = if let Switch::Enabled(config) = config.latency_use_frametime {
-            latency_target_maximum = config.latency_target_maximum;
-            latency_target_offset = config.latency_target_offset;
-
-            true
-        } else {
-            false
-        };
-
-        latency_threshold = config.latency_threshold;
-        bitrate_up_rate = config.bitrate_up_rate;
-        bitrate_down_rate = config.bitrate_down_rate;
-        bitrate_light_load_threshold = config.bitrate_light_load_threshold;
-
-        true
-    } else {
-        false
-    };
-
     let mut controllers_mode_idx = 0;
     let mut controllers_tracking_system_name = "".into();
     let mut controllers_manufacturer_name = "".into();
@@ -425,17 +396,6 @@ fn try_connect(
         encoder_quality_preset: settings.video.advanced_codec_options.encoder_quality_preset as u32,
         force_sw_encoding: settings.video.force_sw_encoding,
         sw_thread_count: settings.video.sw_thread_count,
-        encode_bitrate_mbs: settings.video.encode_bitrate_mbs,
-        enable_adaptive_bitrate,
-        bitrate_maximum,
-        latency_target,
-        latency_use_frametime,
-        latency_target_maximum,
-        latency_target_offset,
-        latency_threshold,
-        bitrate_up_rate,
-        bitrate_down_rate,
-        bitrate_light_load_threshold,
         controllers_enabled,
         controllers_mode_idx,
         controllers_tracking_system_name,
@@ -627,6 +587,11 @@ async fn connection_pipeline(
         settings.connection.statistics_history_size as _,
         Duration::from_secs_f32(1.0 / refresh_rate),
     ));
+
+    *BITRATE_MANAGER.lock() = BitrateManager::new(
+        settings.video.bitrate,
+        settings.connection.statistics_history_size as _,
+    );
 
     // todo: dynamic framerate
     frame_interval_sender
@@ -889,8 +854,11 @@ async fn connection_pipeline(
                 let client_stats = receiver.recv_header_only().await?;
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    let timestamp = client_stats.target_timestamp;
                     let network_latency = stats.report_statistics(client_stats);
-                    unsafe { crate::ReportNetworkLatency(network_latency.as_micros() as _) };
+                    BITRATE_MANAGER
+                        .lock()
+                        .report_frame_network_latency(timestamp, network_latency);
                 }
             }
         }
@@ -911,29 +879,6 @@ async fn connection_pipeline(
                     break Ok(());
                 }
                 time::sleep(KEEPALIVE_INTERVAL).await;
-
-                // copy some settings periodically into c++
-                let data_manager = SERVER_DATA_MANAGER.read();
-                let settings = data_manager.settings();
-
-                let mut bitrate_maximum = 0;
-                let adaptive_bitrate_enabled = if let Switch::Enabled(config) =
-                    &SERVER_DATA_MANAGER.read().settings().video.adaptive_bitrate
-                {
-                    bitrate_maximum = config.bitrate_maximum;
-
-                    true
-                } else {
-                    false
-                };
-
-                unsafe {
-                    crate::SetBitrateParameters(
-                        settings.video.encode_bitrate_mbs,
-                        adaptive_bitrate_enabled,
-                        bitrate_maximum,
-                    )
-                };
             }
         }
     };

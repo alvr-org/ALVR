@@ -89,6 +89,7 @@ actions = ["android.intent.action.MAIN"]
 categories = [
     "android.intent.category.LAUNCHER",
     "com.oculus.intent.category.VR",
+    "com.yvr.intent.category.VR",
     "org.khronos.openxr.intent.category.IMMERSIVE_HMD",
 ]
 
@@ -140,3 +141,8 @@ value = "vr"
 [[package.metadata.android.application.meta_data]]
 name = "handtracking"
 value = "1"
+
+# Yvr entries
+[[package.metadata.android.application.meta_data]]
+name = "com.yvr.intent.category.VR"
+value = "vr_only"

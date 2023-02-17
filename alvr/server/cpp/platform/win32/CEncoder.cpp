@@ -18,7 +18,7 @@
 			}
 		}
 
-		void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender, std::shared_ptr<ClientConnection> listener) {
+		void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
 			m_FrameRender = std::make_shared<FrameRender>(d3dRender);
 			m_FrameRender->Startup();
 			uint32_t encoderWidth, encoderHeight;
@@ -31,7 +31,7 @@
 			if (Settings::Instance().m_force_sw_encoding) {
 				try {
 					Debug("Try to use VideoEncoderSW.\n");
-					m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, listener, encoderWidth, encoderHeight);
+					m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
 					m_videoEncoder->Initialize();
 					return;
 				}
@@ -43,7 +43,7 @@
 			
 			try {
 				Debug("Try to use VideoEncoderVCE.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, listener, encoderWidth, encoderHeight);
+				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}
@@ -52,7 +52,7 @@
 			}
 			try {
 				Debug("Try to use VideoEncoderNVENC.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, listener, encoderWidth, encoderHeight);
+				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}
@@ -62,7 +62,7 @@
 #ifdef ALVR_GPL
 			try {
 				Debug("Try to use VideoEncoderSW.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, listener, encoderWidth, encoderHeight);
+				m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}

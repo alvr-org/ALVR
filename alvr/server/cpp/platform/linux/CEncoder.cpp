@@ -14,13 +14,12 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 
 #include "ALVR-common/packet_types.h"
-#include "alvr_server/ClientConnection.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
-#include "alvr_server/Statistics.h"
 #include "protocol.h"
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
@@ -31,9 +30,8 @@ extern "C" {
 #include <libavutil/avutil.h>
 }
 
-CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
-                   std::shared_ptr<PoseHistory> poseHistory)
-    : m_listener(listener), m_poseHistory(poseHistory) {}
+CEncoder::CEncoder(std::shared_ptr<PoseHistory> poseHistory)
+    : m_poseHistory(poseHistory) {}
 
 CEncoder::~CEncoder() { Stop(); }
 
@@ -227,9 +225,7 @@ void CEncoder::Run() {
       while (not m_exiting) {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
-        if (m_listener->GetStatistics()->CheckBitrateUpdated()) {
-          encode_pipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1'000'000L); // in bits;
-        }
+        encode_pipeline->SetBitrate(GetBitrate());
 
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
         if (!pose)
@@ -277,9 +273,7 @@ void CEncoder::Run() {
         ReportPresent(pose->targetTimestampNs, present_offset);
         ReportComposed(pose->targetTimestampNs, composed_offset);
 
-        m_listener->SendVideo(packet.data, packet.size, packet.pts);
-
-        m_listener->GetStatistics()->EncodeOutput();
+        ParseFrameNals(packet.data, packet.size, packet.pts);
       }
     }
     catch (std::exception &e) {

@@ -88,7 +88,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   encoder_ctx->pix_fmt = settings.m_use10bitEncoder && codec_id == ALVR_CODEC_H265 ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = 0;
-  SetBitrate(settings.mEncodeBitrateMBs * 1'000'000L);
+  SetBitrate(30 * 1'000'000L);
   encoder_ctx->thread_type = FF_THREAD_SLICE;
   encoder_ctx->thread_count = settings.m_swThreadCount;
 

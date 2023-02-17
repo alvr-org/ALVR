@@ -33,6 +33,7 @@ pub struct ButtonBindingInfo {
 // popularity, all OpenXR runtimes should support binding to the oculus touch controller.
 const OCULUS_TOUCH_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
 const PICO_CONTROLLER_PROFILE: &str = "/interaction_profiles/pico/neo3_controller";
+const YVR_CONTROLLER_PROFILE: &str = "/interaction_profiles/yvr/touch_controller";
 
 fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     let mut list = vec![
@@ -320,6 +321,65 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
         ]);
     }
 
+    if platform == Platform::Yvr {
+        list.extend([
+            (
+                *LEFT_SQUEEZE_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "left_squeeze_click".into(),
+                    binding_path: "/user/hand/left/input/squeeze".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *LEFT_TRIGGER_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "left_trigger_click".into(),
+                    binding_path: "/user/hand/left/input/trigger".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *LEFT_THUMBREST_TOUCH_ID,
+                ButtonBindingInfo {
+                    name: "left_thumbrest_touch".into(),
+                    binding_path: LEFT_THUMBREST_TOUCH_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *RIGHT_SQUEEZE_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "right_squeeze_click".into(),
+                    binding_path: "/user/hand/right/input/squeeze".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *RIGHT_TRIGGER_CLICK_ID,
+                ButtonBindingInfo {
+                    name: "right_trigger_click".into(),
+                    binding_path: "/user/hand/right/input/trigger".into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+            (
+                *RIGHT_THUMBREST_TOUCH_ID,
+                ButtonBindingInfo {
+                    name: "right_thumbrest_touch".into(),
+                    binding_path: RIGHT_THUMBREST_TOUCH_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            ),
+        ]);
+
+        let disable_paths = vec![*LEFT_SQUEEZE_VALUE_ID, *RIGHT_SQUEEZE_VALUE_ID];
+        list = list
+            .into_iter()
+            .filter(|x| !disable_paths.contains(&x.0))
+            .collect::<Vec<_>>();
+    }
+
     list.into_iter().collect()
 }
 
@@ -421,10 +481,12 @@ pub fn initialize_streaming_interaction(
 
     // Apply bindings:
 
-    let controller_profile = if platform == Platform::Pico {
-        PICO_CONTROLLER_PROFILE
-    } else {
-        OCULUS_TOUCH_CONTROLLER_PROFILE
+    let controller_profile = match platform {
+        Platform::Quest => OCULUS_TOUCH_CONTROLLER_PROFILE,
+        Platform::Pico => PICO_CONTROLLER_PROFILE,
+        Platform::Vive => OCULUS_TOUCH_CONTROLLER_PROFILE,
+        Platform::Yvr => YVR_CONTROLLER_PROFILE,
+        Platform::Other => OCULUS_TOUCH_CONTROLLER_PROFILE,
     };
 
     xr_instance
@@ -531,7 +593,18 @@ pub fn get_hand_motion(
     }
 }
 
+fn fix_yvr_squeeze_value(action_id: u64, state: bool) {
+    let scalar_value = if state { 1_f32 } else { 0_f32 };
+
+    if action_id == *LEFT_SQUEEZE_CLICK_ID {
+        alvr_client_core::send_button(*LEFT_SQUEEZE_VALUE_ID, ButtonValue::Scalar(scalar_value));
+    } else if action_id == *RIGHT_SQUEEZE_CLICK_ID {
+        alvr_client_core::send_button(*RIGHT_SQUEEZE_VALUE_ID, ButtonValue::Scalar(scalar_value));
+    }
+}
+
 pub fn update_buttons(
+    platform: Platform,
     xr_session: &xr::Session<xr::AnyGraphics>,
     button_actions: &HashMap<u64, ButtonAction>,
 ) -> StrResult {
@@ -542,6 +615,9 @@ pub fn update_buttons(
 
                 if state.changed_since_last_sync {
                     alvr_client_core::send_button(*id, ButtonValue::Binary(state.current_state));
+                    if platform == Platform::Yvr {
+                        fix_yvr_squeeze_value(*id, state.current_state);
+                    }
                 }
             }
             ButtonAction::Scalar(action) => {

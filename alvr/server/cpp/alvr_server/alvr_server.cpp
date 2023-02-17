@@ -6,18 +6,18 @@
 #else
 #include "platform/linux/CEncoder.h"
 #endif
-#include "ClientConnection.h"
 #include "Logger.h"
 #include "OvrController.h"
 #include "OvrHMD.h"
 #include "Paths.h"
-#include "Settings.h"
-#include "Statistics.h"
-#include "TrackedDevice.h"
 #include "PoseHistory.h"
+#include "Settings.h"
+#include "TrackedDevice.h"
 #include "bindings.h"
 #include "driverlog.h"
 #include "openvr_driver.h"
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <optional>
@@ -195,6 +195,7 @@ unsigned long long (*PathStringToHash)(const char *path);
 void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
+unsigned long long (*GetBitrate)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants
@@ -262,14 +263,9 @@ void SetTracking(unsigned long long targetTimestampNs,
         }
     }
 }
-void ReportNetworkLatency(unsigned long long latencyUs) {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        g_driver_provider.hmd->m_Listener->ReportNetworkLatency(latencyUs);
-    }
-}
 
 void VideoErrorReportReceive() {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
+    if (g_driver_provider.hmd) {
         g_driver_provider.hmd->m_encoder->OnPacketLoss();
     }
 }
@@ -314,20 +310,6 @@ void SetButton(unsigned long long path, FfiButtonValue value) {
                          RIGHT_CONTROLLER_BUTTON_IDS.end(),
                          path) != RIGHT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.right_controller->SetButton(path, value);
-    }
-}
-
-void SetBitrateParameters(unsigned long long bitrate_mbs,
-                          bool adaptive_bitrate_enabled,
-                          unsigned long long bitrate_max) {
-    if (g_driver_provider.hmd && g_driver_provider.hmd->m_Listener) {
-        if (adaptive_bitrate_enabled) {
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = true;
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_adaptiveBitrateMaximum = bitrate_max;
-        } else {
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_enableAdaptiveBitrate = false;
-            g_driver_provider.hmd->m_Listener->m_Statistics->m_bitrate = bitrate_mbs;
-        }
     }
 }
 

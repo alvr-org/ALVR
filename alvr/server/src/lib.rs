@@ -1,3 +1,4 @@
+mod bitrate;
 mod buttons;
 mod connection;
 mod dashboard;
@@ -32,6 +33,7 @@ use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
+use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -60,6 +62,13 @@ static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
 static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
+static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
+    let data_lock = SERVER_DATA_MANAGER.read();
+    Mutex::new(BitrateManager::new(
+        data_lock.settings().video.bitrate.clone(),
+        data_lock.settings().connection.statistics_history_size as usize,
+    ))
+});
 
 pub struct VideoPacket {
     pub timestamp: Duration,
@@ -373,6 +382,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet(len as _);
             }
+            BITRATE_MANAGER.lock().report_encoded_frame(len as usize)
         }
     }
 
@@ -464,6 +474,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
+    extern "C" fn get_bitrate_bps() -> u64 {
+        BITRATE_MANAGER.lock().get_bitrate_bps()
+    }
+
     LogError = Some(log_error);
     LogWarn = Some(log_warn);
     LogInfo = Some(log_info);
@@ -478,6 +492,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
     ReportEncoded = Some(report_encoded);
+    GetBitrate = Some(get_bitrate_bps);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

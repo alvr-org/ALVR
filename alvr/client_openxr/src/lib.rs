@@ -14,6 +14,7 @@ use openxr as xr;
 use std::{
     collections::{HashMap, VecDeque},
     path::Path,
+    ptr,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -28,6 +29,7 @@ pub enum Platform {
     Quest,
     Pico,
     Vive,
+    Yvr,
     Other,
 }
 
@@ -291,7 +293,11 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         right_hand_skeleton,
     });
 
-    interaction::update_buttons(&ctx.xr_session, &ctx.interaction_context.button_actions)
+    interaction::update_buttons(
+        ctx.platform,
+        &ctx.xr_session,
+        &ctx.interaction_context.button_actions,
+    )
 }
 
 pub fn entry_point() {
@@ -301,6 +307,7 @@ pub fn entry_point() {
         "Oculus" => Platform::Quest,
         "Pico" => Platform::Pico,
         "HTC" => Platform::Vive,
+        "YVR" => Platform::Yvr,
         _ => Platform::Other,
     };
 
@@ -310,6 +317,9 @@ pub fn entry_point() {
         },
         Platform::Pico => unsafe {
             xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
+        },
+        Platform::Yvr => unsafe {
+            xr::Entry::load_from(Path::new("libopenxr_loader_yvr.so")).unwrap()
         },
         _ => unsafe { xr::Entry::load().unwrap() },
     };
@@ -423,8 +433,7 @@ pub fn entry_point() {
             },
         };
 
-        let mut last_swapchain_left_view = HashMap::new();
-        let mut last_swapchain_right_view = HashMap::new();
+        let mut last_good_views = vec![default_view, default_view];
 
         let mut event_storage = xr::EventDataBuffer::new();
         'render_loop: loop {
@@ -720,48 +729,42 @@ pub fn entry_point() {
                 let mut frame_result = None;
                 while frame_result.is_none() && Instant::now() < frame_poll_deadline {
                     frame_result = alvr_client_core::get_frame();
-                    thread::sleep(Duration::from_millis(1));
+                    thread::yield_now();
                 }
 
-                if let Some((timestamp, hardware_buffer)) = frame_result {
-                    let mut history_views = None;
-                    for history_frame in &*views_history.lock() {
-                        if history_frame.timestamp == timestamp {
-                            history_views = Some(history_frame.views.clone());
-                        }
+                let (timestamp, hardware_buffer) = if let Some(pair) = frame_result {
+                    pair
+                } else {
+                    warn!("Timed out when waiting for frame!");
+                    (vsync_time, ptr::null_mut())
+                };
+
+                let mut history_views = None;
+                for history_frame in &*views_history.lock() {
+                    if history_frame.timestamp == timestamp {
+                        history_views = Some(history_frame.views.clone());
                     }
+                }
 
-                    views = if let Some(views) = history_views {
-                        last_swapchain_left_view.insert(left_swapchain_idx, views[0]);
-                        last_swapchain_right_view.insert(right_swapchain_idx, views[1]);
+                views = if let Some(views) = history_views {
+                    last_good_views = views.clone();
+                    views
+                } else {
+                    last_good_views.clone()
+                };
 
-                        views
-                    } else {
-                        vec![default_view, default_view]
-                    };
+                alvr_client_core::opengl::render_stream(
+                    hardware_buffer,
+                    [left_swapchain_idx, right_swapchain_idx],
+                );
 
-                    alvr_client_core::opengl::render_stream(
-                        hardware_buffer,
-                        [left_swapchain_idx, right_swapchain_idx],
-                    );
-
+                if !hardware_buffer.is_null() {
                     if let Some(now) = xr_runtime_now(&xr_instance, platform) {
                         alvr_client_core::report_submit(timestamp, vsync_time.saturating_sub(now));
                     }
-
-                    display_time = timestamp;
-                } else {
-                    views = if let (Some(left_view), Some(right_view)) = (
-                        last_swapchain_left_view.get(&left_swapchain_idx),
-                        last_swapchain_right_view.get(&right_swapchain_idx),
-                    ) {
-                        vec![*left_view, *right_view]
-                    } else {
-                        vec![default_view, default_view]
-                    };
-
-                    display_time = vsync_time;
                 }
+
+                display_time = timestamp;
 
                 view_resolution = stream_view_resolution;
             } else {

@@ -5,7 +5,7 @@ First off, please make sure to carefully read the [Installation guide](https://g
 
 The first thing to try is to delete the file `settings.json` located in the ALVR installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
 
-Keep in mind that sometimes a restart of ALVR/SteamVR/PC/Headset will be enough to solve some problems. 
+Keep in mind that sometimes a restart of ALVR/SteamVR/PC/Headset will be enough to solve some problems.
 
 Having trouble getting ALVR to work?
 ---
@@ -89,7 +89,7 @@ To fix this, you can try the following:
 * You can also try disabling your firewall for testing, but you shouldn't leave it disabled to use ALVR
 * Open ports 9943 and 9944 on your firewall
 
-If pinging works but you still don't see the client on the server app, then headset and PC might be on separate subnets. To solve this you can add the client manually.  
+If pinging works but you still don't see the client on the server app, then headset and PC might be on separate subnets. To solve this you can add the client manually.
 In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Add client`.
 
 SteamVR says "headset not detected"
@@ -123,3 +123,50 @@ This is a situation where you have ALVR open on both headset and PC, you can see
 First make sure that SteamVR (more specifically, vrserver.exe) is allowed incoming connections (UDP, port 9944) in your firewall. You can also try disabling your firewall for testing, but you keep it disabled to use ALVR.
 
 You can try restarting ALVR on both the headset and the PC. On the headset, when connecting, you should see the view lagging behind when you turn your head (it drops below 1 fps), this means the headset is getting a response from the server when connecting and is waiting for the video stream to start. If you get no lag in the headset, response from the PC isn't reaching the headset.
+
+## Common performance-related problems
+
+### Overloaded encoder
+
+![latency graph of overloaded encoder](images/latency-graphs/overloaded-encoder.png)
+
+Symptoms: stuttery playback in the client, server FPS is stable but below the target refresh rate.
+
+Solution: increase foveation settings or decrease refresh rate.
+
+### Overloaded decoder
+
+![latency graph of overloaded decoder](images/latency-graphs/overloaded-decoder.png)
+
+Symptoms: laggy/frozen controllers, erroneous head tracking, image flipped upside-down, blinking solid colour.
+
+Solution: reduce bitrate.
+
+### Overloaded network
+
+![latency graph of overloaded network](images/latency-graphs/overloaded-network.png)
+
+Symptoms: stream freezes, image is glitchy.
+
+Solution: check that HMD is using 5G frequency and that no other device is connected to the 5G band on your AP, reduce bitrate or use a cable.
+
+### Overloaded server
+
+![latency graph of overloaded server](images/latency-graphs/overloaded-server.png)
+
+Symptoms: stuttery playback in the client, server FPS dips or fluctuates below the target refresh rate.
+
+Solution:
+
+* Decrease the graphics settings in the game
+* If possible, use the game's native upscaling solution (FSR/NIS/XeSS/DLSS…)
+* Decrease the target refresh rate in ALVR
+* Decrease render resolution in SteamVR overlay or ALVR video settings. (This will severely degrade image quality.)
+
+### Micro-stuttering
+
+![latency graph of client stuttering](images/latency-graphs/not-enough-buffering.png)
+
+Symptoms: image is not always smooth especially in high motion or fast scenes.
+
+Solution: increase maxBufferingFrames.

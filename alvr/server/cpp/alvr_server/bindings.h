@@ -113,6 +113,7 @@ extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
+extern "C" unsigned long long (*GetBitrate)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
@@ -125,7 +126,6 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             int motionsCount,
                             const FfiHandSkeleton *leftHand,
                             const FfiHandSkeleton *rightHand);
-extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
@@ -135,8 +135,7 @@ extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
 
-extern "C" void SetBitrateParameters(unsigned long long bitrate_mbs,
-                                     bool adaptive_bitrate_enabled,
-                                     unsigned long long bitrate_max);
-
 extern "C" void CaptureFrame();
+
+// NalParsing.cpp
+void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimestampNs);

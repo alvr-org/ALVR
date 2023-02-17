@@ -25,6 +25,7 @@ sudo make install
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:
+
 * **Arch**
   ```bash
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
@@ -45,15 +46,19 @@ If you are on Linux, install these additional packages:
   ```
 
 Move to the root directory of the project, then run this command (paying attention to the bullet points below):
+
 ```bash
 cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 ```
 
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
+
 * **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that this is only needed for software encoding. As the name suggests, if you use this flag you can only redistribute the final package as GPLv2.0 licensed; because of the x264 encoder.
-* **Linux only:** Use the flag `--no-nvidia` if you have a AMD gpu.
+
+* **Linux only:** Use the `--no-nvidia` flag if you have a AMD gpu.
 
 Next up is the proper build of the server. Run the following:
+
 ```bash
 cargo xtask build-server --release [--gpl]
 ```
@@ -69,19 +74,25 @@ If you want to edit and rebuild the code, you can skip the `prepare-deps` comman
 ## 1. Installing necessary packages
 
 For the client you need install:
+
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
 * Android SDK Platform-Tools 29 (Android 10)
 * Latest Android NDK (currently v25.1.8937393)
 
 On Linux, the specific package names for the android tools can differ from distro to distro, see up on the wiki for more information:
+
 * Gentoo:
   * https://wiki.gentoo.org/wiki/Android
+
 * Arch:
   * https://wiki.archlinux.org/title/Android
+
 * Debian:
   * https://wiki.debian.org/AndroidStudio
+
 * Ubuntu:
   * https://help.ubuntu.com/community/AndroidSDK
+
 * Pop!\_OS:
   * N/A
 
@@ -96,6 +107,7 @@ The three mentioned developer applications can be installed from upstream; altho
   * `dev-util/android-ndk >= 25.1`
 
 For Debian, it requires to have the `non-free` repository to be enabled:
+
 * **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10**
   ```bash
   sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
@@ -104,26 +116,34 @@ For Debian, it requires to have the `non-free` repository to be enabled:
 ## 2. Setting environment variables
 
 For Windows, set the environment variables:
+
 * `JAVA_HOME`:
   * Example: `C:\Program Files\Android\Android Studio\jre`
+
 * `ANDROID_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk`
+
 * `ANDROID_NDK_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
 
 For Linux, the correct directories for the environment variables can greatly differ depending on the type of install. See the wiki page of your distro for more information:
+
 * Gentoo:
   * https://wiki.gentoo.org/wiki/Android
+
 * Ubuntu:
   * https://help.ubuntu.com/community/AndroidSDK#Post-Installation_Configuration
 
 Distro wikis that weren't listed above does not mention of environment variables, although generally they would be as:
+
 * `JAVA_HOME`:
   * `/usr/lib/jvm/default-java/bin`
+
 * `ANDROID_HOME`:
   * Arch: `~/Android/Sdk`
   * Gentoo: `~/Android`
   * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
+
 * `ANDROID_NDK_HOME`:
   * Arch: `/opt/android-sdk/ndk`
   * Linux: `/usr/lib/android-sdk/ndk`
@@ -138,18 +158,23 @@ cargo xtask prepare-deps --platform android
 ```
 
 Before building the client, Android has to have us to agree to the licenses otherwise building the client will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
+
 * Windows:
+
   ```shell
   cd "%ANDROID_SDK_ROOT%\tools\bin"
   sdkmanager.bat --licenses
   ```
+
 * Linux:
+
   ```bash
   cd ~/AndroidSDK
   sdkmanager --licenses
   ```
 
 Next up is the proper build of the client. Run the following:
+
 ```bash
 cargo xtask build-client --release
 ```
@@ -167,27 +192,33 @@ You need the headset to be connected via USB and with the screen on to successfu
 # Troubleshooting (Linux)
 
 On some distributions, Steam Native runs ALVR a little better. To get Steam Native on Ubuntu run it with:
+
 ```bash
 env STEAM_RUNTIME=0 steam
 ```
 
 On Arch Linux, you can also get all the required libraries by downloading the `steam-native-runtime` package from the multilib repository
+
 ```bash
 sudo pacman -S steam-native-runtime
 ```
 
 Dependencies might be missing then, so run:
+
 ```bash
 cd ~/.steam/root/ubuntu12_32
 file * | grep ELF | cut -d: -f1 | LD_LIBRARY_PATH=. xargs ldd | grep 'not found' | sort | uniq
 ```
 
 Some dependencies have to be fixed manually for example instead of forcing a downgrade to libffi version 6 (which could downgrade a bunch of the system) you can do a symlink instead (requires testing):
+
 ```bash
 cd /lib/i386-linux-gnu
 ln -s libffi.so.7 libffi.so.6
 ```
+
 and
+
 ```bash
 cd /lib/x86_64-linux-gnu
 ln -s libffi.so.7 libffi.so.6

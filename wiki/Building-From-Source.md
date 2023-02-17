@@ -31,15 +31,12 @@ If you are on Linux, install these additional packages:
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
   ```
     * The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.
-
 * **Gentoo**
   * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
   * `sys-libs/libunwind`
   * `dev-lang/rust >= 1.51`
-
 * **Nix(OS)**
   * Use the `shell.nix` in `packaging/nix`.
-
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**
   ```bash
   sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers
@@ -52,9 +49,7 @@ cargo xtask prepare-deps --platform [your platform] [--gpl] [--no-nvidia]
 ```
 
 * Replace `[your platform]` with your computer OS, either `windows` or `linux`
-
 * **Windows only:** Use the `--gpl` flag if you want to download, build and bundle FFmpeg inside the ALVR server. Keep in mind that this is only needed for software encoding. As the name suggests, if you use this flag you can only redistribute the final package as GPLv2.0 licensed; because of the x264 encoder.
-
 * **Linux only:** Use the `--no-nvidia` flag if you have a AMD gpu.
 
 Next up is the proper build of the server. Run the following:
@@ -83,16 +78,12 @@ On Linux, the specific package names for the android tools can differ from distr
 
 * Gentoo:
   * https://wiki.gentoo.org/wiki/Android
-
 * Arch:
   * https://wiki.archlinux.org/title/Android
-
 * Debian:
   * https://wiki.debian.org/AndroidStudio
-
 * Ubuntu:
   * https://help.ubuntu.com/community/AndroidSDK
-
 * Pop!\_OS:
   * N/A
 
@@ -100,7 +91,6 @@ The three mentioned developer applications can be installed from upstream; altho
 
 * **Arch**
   * Packages can vary, read up on the Arch Wiki's [Android](https://wiki.archlinux.org/title/Android) page.
-
 * **Gentoo**
   * `dev-util/android-studio`
   * `dev-util/android-sdk-update-manager`
@@ -119,10 +109,8 @@ For Windows, set the environment variables:
 
 * `JAVA_HOME`:
   * Example: `C:\Program Files\Android\Android Studio\jre`
-
 * `ANDROID_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk`
-
 * `ANDROID_NDK_HOME`:
   * Example: `%LOCALAPPDATA%\Android\Sdk\ndk\25.1.8937393`
 
@@ -130,7 +118,6 @@ For Linux, the correct directories for the environment variables can greatly dif
 
 * Gentoo:
   * https://wiki.gentoo.org/wiki/Android
-
 * Ubuntu:
   * https://help.ubuntu.com/community/AndroidSDK#Post-Installation_Configuration
 
@@ -138,12 +125,10 @@ Distro wikis that weren't listed above does not mention of environment variables
 
 * `JAVA_HOME`:
   * `/usr/lib/jvm/default-java/bin`
-
 * `ANDROID_HOME`:
   * Arch: `~/Android/Sdk`
   * Gentoo: `~/Android`
   * Debian / Ubuntu / Pop!\_OS: `~/AndroidSDK`
-
 * `ANDROID_NDK_HOME`:
   * Arch: `/opt/android-sdk/ndk`
   * Linux: `/usr/lib/android-sdk/ndk`
@@ -160,14 +145,11 @@ cargo xtask prepare-deps --platform android
 Before building the client, Android has to have us to agree to the licenses otherwise building the client will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
 
 * Windows:
-
   ```shell
   cd "%ANDROID_SDK_ROOT%\tools\bin"
   sdkmanager.bat --licenses
   ```
-
 * Linux:
-
   ```bash
   cd ~/AndroidSDK
   sdkmanager --licenses

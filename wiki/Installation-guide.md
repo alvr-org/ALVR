@@ -18,7 +18,7 @@ Headset side:
 
 ### Usage
 
-* Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.  
+* Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 * You can change settings on the PC in the `Settings` tab. Most of the settings require to restart SteamVR to be applied. Use the apposite button on the bottom right corner.
 
 For any problem visit the [troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
@@ -96,11 +96,41 @@ If you do not install the correct version of FFmpeg systemwide, a common problem
 * Select `pipewire` or `pulse` as the device.
 * Connect with headset and wait until streaming starts.
 * In `pavucontrol` set the device ALVR is recording from to "Monitor of \<your audio output\>". You might have to set "Show:" to "All Streams" for it to show up.
-* Any audio should now be played on the headset, optionally you can mute the audio output.
+* Any audio should now be played on the headset. To automatically mute your PC speakers when the headset is streaming, you can use the following script:
+
+  ~~~
+  #!/bin/sh
+  case $ACTION in
+          connect)
+                  pactl set-sink-mute @DEFAULT_SINK@ 1;;
+          disconnect)
+                  pactl set-sink-mute @DEFAULT_SINK@ 0;;
+  esac
+  ~~~
+
+  Save this text to a file, make it executable (`chmod +x ...`) then put the
+  file name in "on connect script" and "on disconnect script" settings
+  (Connection tab with advanced options shown).
 
 ### Microphone
 
-* Run: `pactl load-module module-null-sink sink_name=VirtMain` (will have to be ran every time you restart/relog, on pipewire can also be done in configuration file)
+* Run: `pactl load-module module-null-sink sink_name=VirtMain` or, for a
+  permanent setup, add the following to the `context.modules` array in your
+  `~/.config/pipewire/pipewire.conf`:
+
+  ~~~
+  {   name = libpipewire-module-loopback
+      args = {
+          node.name = "VirtMain" node.description = "VirtMain" media.name = "VirtMain"
+          audio.position = [ FL FR ]
+          capture.props = {
+              media.class = Audio/Sink
+              node.name = VirtMain.capture
+          }
+      }
+  }
+  ~~~
+
 * Enable microphone streaming in ALVR dashboard.
 * Connect with headset and wait until streaming starts.
 * In `pavucontrol` set ALVR Playback to "VirtMain"

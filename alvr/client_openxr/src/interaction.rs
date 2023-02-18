@@ -29,358 +29,241 @@ pub struct ButtonBindingInfo {
     binding_type: BindingType,
 }
 
-// The oculus touch controller is used as the universal binding for every platform. Given its
-// popularity, all OpenXR runtimes should support binding to the oculus touch controller.
-const OCULUS_TOUCH_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
+const QUEST_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
 const PICO_CONTROLLER_PROFILE: &str = "/interaction_profiles/pico/neo3_controller";
+const FOCUS3_CONTROLLER_PROFILE: &str = "/interaction_profiles/htc/vive_focus3_controller";
 const YVR_CONTROLLER_PROFILE: &str = "/interaction_profiles/yvr/touch_controller";
 
 fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
-    let mut list = vec![
-        (
-            *MENU_CLICK_ID,
-            ButtonBindingInfo {
-                name: "menu_click".into(),
-                binding_path: MENU_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *A_CLICK_ID,
-            ButtonBindingInfo {
-                name: "a_click".into(),
-                binding_path: A_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *A_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "a_touch".into(),
-                binding_path: A_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *B_CLICK_ID,
-            ButtonBindingInfo {
-                name: "b_click".into(),
-                binding_path: B_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *B_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "b_touch".into(),
-                binding_path: B_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *X_CLICK_ID,
-            ButtonBindingInfo {
-                name: "x_click".into(),
-                binding_path: X_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *X_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "x_touch".into(),
-                binding_path: X_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *Y_CLICK_ID,
-            ButtonBindingInfo {
-                name: "y_click".into(),
-                binding_path: Y_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *Y_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "y_touch".into(),
-                binding_path: Y_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *LEFT_SQUEEZE_VALUE_ID,
-            ButtonBindingInfo {
-                name: "left_squeeze_value".into(),
-                binding_path: LEFT_SQUEEZE_VALUE_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *LEFT_TRIGGER_VALUE_ID,
-            ButtonBindingInfo {
-                name: "left_trigger_value".into(),
-                binding_path: LEFT_TRIGGER_VALUE_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *LEFT_TRIGGER_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "left_trigger_touch".into(),
-                binding_path: LEFT_TRIGGER_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *LEFT_THUMBSTICK_X_ID,
-            ButtonBindingInfo {
-                name: "left_thumbstick_x".into(),
-                binding_path: LEFT_THUMBSTICK_X_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *LEFT_THUMBSTICK_Y_ID,
-            ButtonBindingInfo {
-                name: "left_thumbstick_y".into(),
-                binding_path: LEFT_THUMBSTICK_Y_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *LEFT_THUMBSTICK_CLICK_ID,
-            ButtonBindingInfo {
-                name: "left_thumbstick_click".into(),
-                binding_path: LEFT_THUMBSTICK_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *LEFT_THUMBSTICK_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "left_thumbstick_touch".into(),
-                binding_path: LEFT_THUMBSTICK_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *RIGHT_SQUEEZE_VALUE_ID,
-            ButtonBindingInfo {
-                name: "right_squeeze_value".into(),
-                binding_path: RIGHT_SQUEEZE_VALUE_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *RIGHT_TRIGGER_VALUE_ID,
-            ButtonBindingInfo {
-                name: "right_trigger_value".into(),
-                binding_path: RIGHT_TRIGGER_VALUE_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *RIGHT_TRIGGER_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "right_trigger_touch".into(),
-                binding_path: RIGHT_TRIGGER_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *RIGHT_THUMBSTICK_X_ID,
-            ButtonBindingInfo {
-                name: "right_thumbstick_x".into(),
-                binding_path: RIGHT_THUMBSTICK_X_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *RIGHT_THUMBSTICK_Y_ID,
-            ButtonBindingInfo {
-                name: "right_thumbstick_y".into(),
-                binding_path: RIGHT_THUMBSTICK_Y_PATH.into(),
-                binding_type: BindingType::Scalar,
-            },
-        ),
-        (
-            *RIGHT_THUMBSTICK_CLICK_ID,
-            ButtonBindingInfo {
-                name: "right_thumbstick_click".into(),
-                binding_path: RIGHT_THUMBSTICK_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-        (
-            *RIGHT_THUMBSTICK_TOUCH_ID,
-            ButtonBindingInfo {
-                name: "right_thumbstick_touch".into(),
-                binding_path: RIGHT_THUMBSTICK_TOUCH_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        ),
-    ];
+    let mut map = HashMap::new();
 
-    if platform == Platform::Quest {
-        list.extend([
-            (
-                *LEFT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_squeeze_click".into(),
-                    binding_path: "/user/hand/left/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_trigger_click".into(),
-                    binding_path: "/user/hand/left/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_THUMBREST_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbrest_touch".into(),
-                    binding_path: LEFT_THUMBREST_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_squeeze_click".into(),
-                    binding_path: "/user/hand/right/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_trigger_click".into(),
-                    binding_path: "/user/hand/right/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_THUMBREST_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbrest_touch".into(),
-                    binding_path: RIGHT_THUMBREST_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-        ]);
-    }
+    // Baseline bindings for the Touch controller
+    map.insert(
+        *MENU_CLICK_ID,
+        ButtonBindingInfo {
+            name: "menu_click".into(),
+            binding_path: MENU_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *A_CLICK_ID,
+        ButtonBindingInfo {
+            name: "a_click".into(),
+            binding_path: A_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *B_CLICK_ID,
+        ButtonBindingInfo {
+            name: "b_click".into(),
+            binding_path: B_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *X_CLICK_ID,
+        ButtonBindingInfo {
+            name: "x_click".into(),
+            binding_path: X_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *Y_CLICK_ID,
+        ButtonBindingInfo {
+            name: "y_click".into(),
+            binding_path: Y_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_SQUEEZE_VALUE_ID,
+        ButtonBindingInfo {
+            name: "left_squeeze_value".into(),
+            binding_path: LEFT_SQUEEZE_VALUE_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *LEFT_SQUEEZE_CLICK_ID,
+        ButtonBindingInfo {
+            name: "left_squeeze_click".into(),
+            binding_path: "/user/hand/left/input/squeeze".into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_TRIGGER_VALUE_ID,
+        ButtonBindingInfo {
+            name: "left_trigger_value".into(),
+            binding_path: LEFT_TRIGGER_VALUE_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *LEFT_TRIGGER_CLICK_ID,
+        ButtonBindingInfo {
+            name: "left_trigger_click".into(),
+            binding_path: "/user/hand/left/input/trigger".into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_TRIGGER_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "left_trigger_touch".into(),
+            binding_path: LEFT_TRIGGER_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_THUMBSTICK_X_ID,
+        ButtonBindingInfo {
+            name: "left_thumbstick_x".into(),
+            binding_path: LEFT_THUMBSTICK_X_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *LEFT_THUMBSTICK_Y_ID,
+        ButtonBindingInfo {
+            name: "left_thumbstick_y".into(),
+            binding_path: LEFT_THUMBSTICK_Y_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *LEFT_THUMBSTICK_CLICK_ID,
+        ButtonBindingInfo {
+            name: "left_thumbstick_click".into(),
+            binding_path: LEFT_THUMBSTICK_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_THUMBSTICK_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "left_thumbstick_touch".into(),
+            binding_path: LEFT_THUMBSTICK_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *LEFT_THUMBREST_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "left_thumbrest_touch".into(),
+            binding_path: LEFT_THUMBREST_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_SQUEEZE_VALUE_ID,
+        ButtonBindingInfo {
+            name: "right_squeeze_value".into(),
+            binding_path: RIGHT_SQUEEZE_VALUE_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *RIGHT_SQUEEZE_CLICK_ID,
+        ButtonBindingInfo {
+            name: "right_squeeze_click".into(),
+            binding_path: "/user/hand/right/input/squeeze".into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_TRIGGER_VALUE_ID,
+        ButtonBindingInfo {
+            name: "right_trigger_value".into(),
+            binding_path: RIGHT_TRIGGER_VALUE_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *RIGHT_TRIGGER_CLICK_ID,
+        ButtonBindingInfo {
+            name: "right_trigger_click".into(),
+            binding_path: "/user/hand/right/input/trigger".into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_TRIGGER_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "right_trigger_touch".into(),
+            binding_path: RIGHT_TRIGGER_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_THUMBSTICK_X_ID,
+        ButtonBindingInfo {
+            name: "right_thumbstick_x".into(),
+            binding_path: RIGHT_THUMBSTICK_X_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *RIGHT_THUMBSTICK_Y_ID,
+        ButtonBindingInfo {
+            name: "right_thumbstick_y".into(),
+            binding_path: RIGHT_THUMBSTICK_Y_PATH.into(),
+            binding_type: BindingType::Scalar,
+        },
+    );
+    map.insert(
+        *RIGHT_THUMBSTICK_CLICK_ID,
+        ButtonBindingInfo {
+            name: "right_thumbstick_click".into(),
+            binding_path: RIGHT_THUMBSTICK_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_THUMBSTICK_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "right_thumbstick_touch".into(),
+            binding_path: RIGHT_THUMBSTICK_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *RIGHT_THUMBREST_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "right_thumbrest_touch".into(),
+            binding_path: RIGHT_THUMBREST_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
 
+    // Tweak bindings if other platforms
     if platform == Platform::Pico {
-        list.extend([
-            (
-                *MENU_CLICK_ID, // faked as oculus menu button
-                ButtonBindingInfo {
-                    name: "back_click".into(),
-                    binding_path: BACK_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_squeeze_click".into(),
-                    binding_path: "/user/hand/left/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_trigger_click".into(),
-                    binding_path: "/user/hand/left/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_squeeze_click".into(),
-                    binding_path: "/user/hand/right/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_trigger_click".into(),
-                    binding_path: "/user/hand/right/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-        ]);
+        map.insert(
+            *MENU_CLICK_ID, // faked as oculus menu button
+            ButtonBindingInfo {
+                name: "back_click".into(),
+                binding_path: BACK_CLICK_PATH.into(),
+                binding_type: BindingType::Binary,
+            },
+        );
+        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
+        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
+    } else if platform == Platform::Vive {
+        map.remove(&*LEFT_SQUEEZE_CLICK_ID);
+        map.remove(&*LEFT_TRIGGER_CLICK_ID);
+        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
+        map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
+        map.remove(&*RIGHT_TRIGGER_CLICK_ID);
+        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
+    } else if platform == Platform::Yvr {
+        map.remove(&*LEFT_SQUEEZE_VALUE_ID);
+        map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
     }
 
-    if platform == Platform::Yvr {
-        list.extend([
-            (
-                *LEFT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_squeeze_click".into(),
-                    binding_path: "/user/hand/left/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "left_trigger_click".into(),
-                    binding_path: "/user/hand/left/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *LEFT_THUMBREST_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "left_thumbrest_touch".into(),
-                    binding_path: LEFT_THUMBREST_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_SQUEEZE_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_squeeze_click".into(),
-                    binding_path: "/user/hand/right/input/squeeze".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_TRIGGER_CLICK_ID,
-                ButtonBindingInfo {
-                    name: "right_trigger_click".into(),
-                    binding_path: "/user/hand/right/input/trigger".into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-            (
-                *RIGHT_THUMBREST_TOUCH_ID,
-                ButtonBindingInfo {
-                    name: "right_thumbrest_touch".into(),
-                    binding_path: RIGHT_THUMBREST_TOUCH_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            ),
-        ]);
-
-        let disable_paths = vec![*LEFT_SQUEEZE_VALUE_ID, *RIGHT_SQUEEZE_VALUE_ID];
-        list = list
-            .into_iter()
-            .filter(|x| !disable_paths.contains(&x.0))
-            .collect::<Vec<_>>();
-    }
-
-    list.into_iter().collect()
+    map
 }
 
 pub struct StreamingInteractionContext {
@@ -482,11 +365,11 @@ pub fn initialize_streaming_interaction(
     // Apply bindings:
 
     let controller_profile = match platform {
-        Platform::Quest => OCULUS_TOUCH_CONTROLLER_PROFILE,
+        Platform::Quest => QUEST_CONTROLLER_PROFILE,
         Platform::Pico => PICO_CONTROLLER_PROFILE,
-        Platform::Vive => OCULUS_TOUCH_CONTROLLER_PROFILE,
+        Platform::Vive => FOCUS3_CONTROLLER_PROFILE,
         Platform::Yvr => YVR_CONTROLLER_PROFILE,
-        Platform::Other => OCULUS_TOUCH_CONTROLLER_PROFILE,
+        Platform::Other => QUEST_CONTROLLER_PROFILE,
     };
 
     xr_instance
@@ -593,13 +476,34 @@ pub fn get_hand_motion(
     }
 }
 
-fn fix_yvr_squeeze_value(action_id: u64, state: bool) {
-    let scalar_value = if state { 1_f32 } else { 0_f32 };
+// todo: move emulation to server
+fn emulate_missing_button_value(platform: Platform, click_action_id: u64, state: bool) {
+    let scalar_value = ButtonValue::Scalar(if state { 1_f32 } else { 0_f32 });
 
-    if action_id == *LEFT_SQUEEZE_CLICK_ID {
-        alvr_client_core::send_button(*LEFT_SQUEEZE_VALUE_ID, ButtonValue::Scalar(scalar_value));
-    } else if action_id == *RIGHT_SQUEEZE_CLICK_ID {
-        alvr_client_core::send_button(*RIGHT_SQUEEZE_VALUE_ID, ButtonValue::Scalar(scalar_value));
+    if platform == Platform::Yvr {
+        if click_action_id == *LEFT_SQUEEZE_CLICK_ID {
+            alvr_client_core::send_button(*LEFT_SQUEEZE_VALUE_ID, scalar_value);
+        } else if click_action_id == *RIGHT_SQUEEZE_CLICK_ID {
+            alvr_client_core::send_button(*RIGHT_SQUEEZE_VALUE_ID, scalar_value);
+        }
+    }
+}
+
+// todo: use hysteresis
+// todo: move emulation to server
+fn emulate_missing_button_click(platform: Platform, value_action_id: u64, state: f32) {
+    let binary_value = ButtonValue::Binary(state > 0.5);
+
+    if platform == Platform::Vive {
+        if value_action_id == *LEFT_SQUEEZE_VALUE_ID {
+            alvr_client_core::send_button(*LEFT_SQUEEZE_CLICK_ID, binary_value);
+        } else if value_action_id == *LEFT_TRIGGER_VALUE_ID {
+            alvr_client_core::send_button(*LEFT_TRIGGER_CLICK_ID, binary_value);
+        } else if value_action_id == *RIGHT_SQUEEZE_VALUE_ID {
+            alvr_client_core::send_button(*RIGHT_SQUEEZE_CLICK_ID, binary_value);
+        } else if value_action_id == *RIGHT_TRIGGER_VALUE_ID {
+            alvr_client_core::send_button(*RIGHT_TRIGGER_CLICK_ID, binary_value);
+        }
     }
 }
 
@@ -615,9 +519,8 @@ pub fn update_buttons(
 
                 if state.changed_since_last_sync {
                     alvr_client_core::send_button(*id, ButtonValue::Binary(state.current_state));
-                    if platform == Platform::Yvr {
-                        fix_yvr_squeeze_value(*id, state.current_state);
-                    }
+
+                    emulate_missing_button_value(platform, *id, state.current_state);
                 }
             }
             ButtonAction::Scalar(action) => {
@@ -625,6 +528,8 @@ pub fn update_buttons(
 
                 if state.changed_since_last_sync {
                     alvr_client_core::send_button(*id, ButtonValue::Scalar(state.current_state));
+
+                    emulate_missing_button_click(platform, *id, state.current_state);
                 }
             }
         }

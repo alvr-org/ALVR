@@ -333,15 +333,17 @@ pub fn entry_point() {
     assert!(available_extensions.khr_opengl_es_enable);
 
     let mut exts = xr::ExtensionSet::default();
-    exts.khr_opengl_es_enable = true;
-    exts.khr_convert_timespec_time = true;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_color_space = available_extensions.fb_color_space;
+    exts.htc_vive_focus3_controller_interaction =
+        available_extensions.htc_vive_focus3_controller_interaction;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;
     }
+    exts.khr_convert_timespec_time = true;
+    exts.khr_opengl_es_enable = true;
 
     let xr_instance = xr_entry
         .create_instance(

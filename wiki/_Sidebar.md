@@ -48,4 +48,4 @@
 
 * [Linux support](https://github.com/alvr-org/ALVR/wiki/Linux-Support-development-progress)
 
-* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Real-time-video-upscaling-experiments)
+* [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Why?)

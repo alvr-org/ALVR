@@ -1,4 +1,4 @@
-# ALVR wired setup (ALVR over USB)
+# Using ALVR through a USB connection
 
 ## ALVR Configuration
 

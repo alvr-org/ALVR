@@ -1,5 +1,3 @@
-# ALVR client and server on separate networks
-
 # ALVR v14 and Above
 
 Here are explained two methods to connect PC and headset remotely, port-forwarding and ZeroTier. The primary purpose of this is connecting the headset to a Cloud PC (like ShadowPC).

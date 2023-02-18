@@ -1,5 +1,3 @@
-# ALVR Checklist before posting a new Issue
-
 ## Hardware Requirements
 
 * [ ] Intel Core i5-4590/AMD FX 8350 equivalent or better

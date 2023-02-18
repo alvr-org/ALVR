@@ -25,7 +25,7 @@ openxr = { git = "https://github.com/Ralith/openxrs" }
 android-activity = { git = "https://github.com/zarik5/android-activity", features = [
     "native-activity",
 ] }
-jni = "0.20"
+jni = "0.21"
 libc = "0.2"
 ndk-context = "0.1"
 

@@ -12,7 +12,7 @@ use interaction::StreamingInteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     path::Path,
     ptr,
     sync::Arc,

@@ -77,7 +77,7 @@ pub fn init_logging() {
                     send_log(&record);
                     std::fmt::write(f, *record.args())
                 })
-                .with_min_level(Level::Info),
+                .with_max_level(alvr_common::log::LevelFilter::Info),
         );
     }
     #[cfg(not(target_os = "android"))]

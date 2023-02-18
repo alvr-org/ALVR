@@ -304,7 +304,7 @@ pub async fn record_audio_loop(
                                     .chunks_exact(4)
                                     .flat_map(|b| {
                                         f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                            .to_i16()
+                                            .to_sample::<i16>()
                                             .to_ne_bytes()
                                             .to_vec()
                                     })
@@ -336,6 +336,7 @@ pub async fn record_audio_loop(
                                 .ok();
                         }
                     },
+                    None,
                 )
                 .map_err(err!())?;
 
@@ -418,7 +419,7 @@ pub async fn receive_samples_loop(
 
         let new_samples = packet
             .chunks_exact(2)
-            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_sample::<f32>())
             .collect::<Vec<_>>();
 
         let mut sample_buffer_ref = sample_buffer.lock();

@@ -56,7 +56,7 @@ pub fn context() -> jobject {
 
 fn get_api_level() -> i32 {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")
         .unwrap()
@@ -66,7 +66,7 @@ fn get_api_level() -> i32 {
 
 pub fn try_get_microphone_permission() {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     let mic_perm_jstring = env.new_string("android.permission.RECORD_AUDIO").unwrap();
 
@@ -75,7 +75,7 @@ pub fn try_get_microphone_permission() {
             unsafe { JObject::from_raw(context()) },
             "checkSelfPermission",
             "(Ljava/lang/String;)I",
-            &[mic_perm_jstring.into()],
+            &[(&mic_perm_jstring).into()],
         )
         .unwrap()
         .i()
@@ -91,7 +91,7 @@ pub fn try_get_microphone_permission() {
             unsafe { JObject::from_raw(context()) },
             "requestPermissions",
             "([Ljava/lang/String;I)V",
-            &[unsafe { JObject::from_raw(perm_array) }.into(), 0.into()],
+            &[(&perm_array).into(), 0.into()],
         )
         .unwrap();
 
@@ -101,40 +101,40 @@ pub fn try_get_microphone_permission() {
 
 pub fn device_model() -> String {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     let jname = env
         .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
         .unwrap()
         .l()
         .unwrap();
-    let name_raw = env.get_string(jname.into()).unwrap();
+    let name_raw = env.get_string((&jname).into()).unwrap();
 
     name_raw.to_string_lossy().as_ref().to_owned()
 }
 
 pub fn manufacturer_name() -> String {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     let jname = env
         .get_static_field("android/os/Build", "MANUFACTURER", "Ljava/lang/String;")
         .unwrap()
         .l()
         .unwrap();
-    let name_raw = env.get_string(jname.into()).unwrap();
+    let name_raw = env.get_string((&jname).into()).unwrap();
 
     name_raw.to_string_lossy().as_ref().to_owned()
 }
 
-fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {
+fn get_system_service<'a>(env: &mut JNIEnv<'a>, service_name: &str) -> JObject<'a> {
     let service_str = env.new_string(service_name).unwrap();
 
     env.call_method(
         unsafe { JObject::from_raw(context()) },
         "getSystemService",
         "(Ljava/lang/String;)Ljava/lang/Object;",
-        &[service_str.into()],
+        &[(&service_str).into()],
     )
     .unwrap()
     .l()
@@ -144,9 +144,9 @@ fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {
 // Note: tried and failed to use libc
 pub fn local_ip() -> IpAddr {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
-    let wifi_manager = get_system_service(&env, "wifi");
+    let wifi_manager = get_system_service(&mut env, "wifi");
     let wifi_info = env
         .call_method(
             wifi_manager,
@@ -174,7 +174,7 @@ pub fn acquire_wifi_lock() {
 
     if maybe_wifi_lock.is_none() {
         let vm = vm();
-        let env = vm.attach_current_thread().unwrap();
+        let mut env = vm.attach_current_thread().unwrap();
 
         let wifi_mode = if get_api_level() >= 29 {
             // Recommended for virtual reality since it disables WIFI scans
@@ -183,19 +183,19 @@ pub fn acquire_wifi_lock() {
             3 // WIFI_MODE_FULL_HIGH_PERF
         };
 
-        let wifi_manager = get_system_service(&env, "wifi");
+        let wifi_manager = get_system_service(&mut env, "wifi");
         let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
         let wifi_lock = env
             .call_method(
                 wifi_manager,
                 "createWifiLock",
                 "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[wifi_mode.into(), wifi_lock_jstring.into()],
+                &[wifi_mode.into(), (&wifi_lock_jstring).into()],
             )
             .unwrap()
             .l()
             .unwrap();
-        env.call_method(wifi_lock, "acquire", "()V", &[]).unwrap();
+        env.call_method(&wifi_lock, "acquire", "()V", &[]).unwrap();
 
         *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());
     }
@@ -204,7 +204,7 @@ pub fn acquire_wifi_lock() {
 pub fn release_wifi_lock() {
     if let Some(wifi_lock) = WIFI_LOCK.lock().take() {
         let vm = vm();
-        let env = vm.attach_current_thread().unwrap();
+        let mut env = vm.attach_current_thread().unwrap();
 
         env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
             .unwrap();
@@ -215,15 +215,15 @@ pub fn release_wifi_lock() {
 
 pub fn battery_status() -> (f32, bool) {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     const BATTERY_PROPERTY_CAPACITY: i32 = 4;
 
-    let battery_manager = get_system_service(&env, "batterymanager");
+    let battery_manager = get_system_service(&mut env, "batterymanager");
 
     let percentage = env
         .call_method(
-            battery_manager,
+            &battery_manager,
             "getIntProperty",
             "(I)I",
             &[BATTERY_PROPERTY_CAPACITY.into()],

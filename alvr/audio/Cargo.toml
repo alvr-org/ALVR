@@ -11,8 +11,8 @@ alvr_common.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-cpal = { version = "0.14", features = ["jack"] }
-rodio = "0.16"
+cpal = { version = "0.15", features = ["jack"] }
+rodio = "0.17"
 serde = "1"
 tokio = "1"
 

@@ -1,4 +1,4 @@
-# ALVR Checklist before posting a new Issue
+# ALVR Checklist
 
 ## Hardware Requirements
 

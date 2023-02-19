@@ -28,7 +28,7 @@
 
 * [Issues running and connecting to ALVR](https://github.com/alvr-org/ALVR/wiki/Issues-running-and-connecting-to-ALVR)
 
-* [ALVR Checklist before posting a new Issue](https://github.com/alvr-org/ALVR/wiki/ALVR-Checklist-before-posting-a-new-Issue)
+* [ALVR Checklist before posting a new Issue](https://github.com/alvr-org/ALVR/wiki/ALVR-Checklist)
 
 * [Controller latency](https://github.com/alvr-org/ALVR/wiki/Controller-latency)
 

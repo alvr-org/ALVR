@@ -86,11 +86,12 @@ void VideoEncoderNVENC::Shutdown()
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
-	m_bitrateInMBits = GetBitrate() / 1'000'000;
+	auto params = GetDynamicEncoderParams();
+	m_bitrateInMBits = params.bitrate_bps / 1'000'000;
 	NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 	initializeParams.encodeConfig = &encodeConfig;
-	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
+	FillEncodeConfig(initializeParams, params.framerate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
 	NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
 	reconfigureParams.reInitEncodeParams = initializeParams;
 	m_NvNecoder->Reconfigure(&reconfigureParams);
@@ -119,7 +120,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 }
 
-void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits)
+void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrate_bps)
 {
 	auto &encodeConfig = *initializeParams.encodeConfig;
 	GUID encoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
@@ -229,12 +230,12 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		encodeConfig.rcParams.lowDelayKeyFrameScale = Settings::Instance().m_nvencLowDelayKeyFrameScale;
 	}
 	
-	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
+	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate_bps / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
 	encodeConfig.rcParams.vbvBufferSize = maxFrameSize * 1.1;
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize * 1.1;
-	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
-	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
+	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate_bps);
+	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrate_bps);
 	if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
 		encodeConfig.rcParams.enableAQ = 1;
 	} else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {

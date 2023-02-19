@@ -12,9 +12,10 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-void alvr::EncodePipeline::SetBitrate(int64_t bitrate) {
-  encoder_ctx->bit_rate = bitrate;
-  encoder_ctx->rc_buffer_size = bitrate / Settings::Instance().m_refreshRate * 1.1;
+void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
+  encoder_ctx->bit_rate = params.bitrate_bps;
+  encoder_ctx->framerate = AVRational{(int)params.framerate, 1};
+  encoder_ctx->rc_buffer_size = params.bitrate_bps / params.framerate * 1.1;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
 }
 

@@ -145,7 +145,10 @@ EncodePipelineAMF::EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t 
         }
     }
     m_amfComponents.emplace_back(MakeEncoder(inFormat, m_renderWidth, m_renderHeight, m_codec, m_refreshRate));
-    SetBitrate(m_bitrateInMBits * 1'000'000L); // in bits
+    auto params = FfiDynamicEncoderParams {};
+    params.bitrate_bps = 30'000'000;
+    params.framerate = 60.0;
+    SetParams(params);
 
     m_pipeline = std::make_unique<AMFPipeline>();
     for (size_t i = 0; i < m_amfComponents.size() - 1; i++) {
@@ -485,16 +488,19 @@ bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
     return true;
 }
 
-void EncodePipelineAMF::SetBitrate(int64_t bitrate)
+void EncodePipelineAMF::SetParams(FfiDynamicEncoderParams params)
 {
+    amf_int64 bitRateIn = params.bitrate_bps;
     if (m_codec == ALVR_CODEC_H264) {
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitrate / m_refreshRate * 1.1);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
     } else {
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitrate);
-        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitrate / m_refreshRate * 1.1);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
+        m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
     }
 }
 

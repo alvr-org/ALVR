@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include "alvr_server/bindings.h"
 
 extern "C" struct AVCodecContext;
 extern "C" struct AVPacket;
@@ -35,7 +36,7 @@ public:
   virtual bool GetEncoded(FramePacket &data);
   virtual Timestamp GetTimestamp() { return timestamp; }
 
-  virtual void SetBitrate(int64_t bitrate);
+  virtual void SetParams(FfiDynamicEncoderParams params);
   static std::unique_ptr<EncodePipeline> Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height);
 protected:
   AVCodecContext *encoder_ctx = nullptr; //shall be initialized by child class

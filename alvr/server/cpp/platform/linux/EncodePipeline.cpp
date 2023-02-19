@@ -13,10 +13,12 @@ extern "C" {
 }
 
 void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
-  encoder_ctx->bit_rate = params.bitrate_bps;
-  encoder_ctx->framerate = AVRational{(int)params.framerate, 1};
-  encoder_ctx->rc_buffer_size = params.bitrate_bps / params.framerate * 1.1;
-  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+  if (params.updated) {
+    encoder_ctx->bit_rate = params.bitrate_bps;
+    encoder_ctx->framerate = AVRational{(int)params.framerate, 1};
+    encoder_ctx->rc_buffer_size = params.bitrate_bps / params.framerate * 1.1;
+    encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+  }
 }
 
 std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height)

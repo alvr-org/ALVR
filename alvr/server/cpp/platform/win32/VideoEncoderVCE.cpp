@@ -387,21 +387,23 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	// Surface is cached by AMF.
 
 	auto params = GetDynamicEncoderParams();
-	m_bitrateInMBits = params.bitrate_bps / 1'000'000;
-	amf_int64 bitRateIn = m_bitrateInMBits * 1'000'000L; // in bits
-	if (m_codec == ALVR_CODEC_H264)
-	{
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
-	}
-	else
-	{
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
-		m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
+	if (params.updated) {
+		m_bitrateInMBits = params.bitrate_bps / 1'000'000;
+		amf_int64 bitRateIn = m_bitrateInMBits * 1'000'000L; // in bits
+		if (m_codec == ALVR_CODEC_H264)
+		{
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_PEAK_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
+		}
+		else
+		{
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_TARGET_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_FRAMERATE, ::AMFConstructRate(params.framerate, 1));
+			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / params.framerate * 1.1);
+		}
 	}
 
 	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, m_surfaceFormat, m_renderWidth, m_renderHeight, &surface));

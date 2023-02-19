@@ -4,6 +4,8 @@ use alvr_session::BitrateDesc;
 use settings_schema::Switch;
 use std::time::{Duration, Instant};
 
+const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+
 pub struct BitrateManager {
     desc: BitrateDesc,
     frame_interval_average: SlidingWindowAverage<Duration>,
@@ -11,6 +13,7 @@ pub struct BitrateManager {
     network_latency_average: SlidingWindowAverage<Duration>,
     last_frame_instant: Instant,
     last_timestamp: Duration,
+    last_update_instant: Instant,
 }
 
 impl BitrateManager {
@@ -28,6 +31,7 @@ impl BitrateManager {
             ),
             last_frame_instant: Instant::now(),
             last_timestamp: Duration::ZERO,
+            last_update_instant: Instant::now(),
         }
     }
 
@@ -48,13 +52,17 @@ impl BitrateManager {
         }
     }
 
-    pub fn get_encoder_params(&self) -> FfiDynamicEncoderParams {
-        let framerate = 1.0
-            / self
-                .frame_interval_average
-                .get_average()
-                .as_secs_f32()
-                .min(1.0);
+    pub fn get_encoder_params(&mut self) -> FfiDynamicEncoderParams {
+        let now = Instant::now();
+        if now > self.last_update_instant + UPDATE_INTERVAL {
+            self.last_update_instant = now;
+        } else {
+            return FfiDynamicEncoderParams {
+                updated: false,
+                bitrate_bps: 0,
+                framerate: 0.0,
+            };
+        }
 
         let bitrate_bps = match &self.desc {
             BitrateDesc::ConstantMbs(bitrate_mbs) => *bitrate_mbs * 1_000_000,
@@ -80,7 +88,15 @@ impl BitrateManager {
             }
         };
 
+        let framerate = 1.0
+            / self
+                .frame_interval_average
+                .get_average()
+                .as_secs_f32()
+                .min(1.0);
+
         FfiDynamicEncoderParams {
+            updated: true,
             bitrate_bps,
             framerate,
         }

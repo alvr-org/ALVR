@@ -72,6 +72,7 @@ struct FfiButtonValue {
 };
 
 struct FfiDynamicEncoderParams {
+    bool updated;
     unsigned long long bitrate_bps;
     float framerate;
 };

@@ -26,7 +26,7 @@
 
 **Troubleshooting**
 
-* [Issues running and connecting to ALVR](https://github.com/alvr-org/ALVR/wiki/Issues-running-and-connecting-to-ALVR)
+* [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
 
 * [ALVR Checklist before posting a new Issue](https://github.com/alvr-org/ALVR/wiki/ALVR-Checklist)
 

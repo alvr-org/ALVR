@@ -1,6 +1,6 @@
-# Issues running and connecting to ALVR
+# Troubleshooting
 
-Troubleshooting (for ALVR 14.0.0 and later)
+For ALVR 14.0.0 and later
 ===
 
 First off, please make sure to carefully read the [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide) and [Usage](https://github.com/alvr-org/ALVR/wiki/Usage) pages.

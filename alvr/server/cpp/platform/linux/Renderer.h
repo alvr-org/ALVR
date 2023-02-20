@@ -30,14 +30,14 @@ class Renderer
 {
 public:
     struct Output {
-        VkImage image;
+        VkImage image = VK_NULL_HANDLE;
         VkImageCreateInfo imageInfo;
-        VkDeviceSize size;
-        VkDeviceMemory memory;
-        VkSemaphore semaphore;
+        VkDeviceSize size = 0;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
         // ---
-        VkImageView view;
-        VkFramebuffer framebuffer;
+        VkImageView view = VK_NULL_HANDLE;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
         // ---
         DrmImage drm;
     };
@@ -73,19 +73,19 @@ public:
 
 // private:
     struct InputImage {
-        VkImage image;
-        VkDeviceMemory memory;
-        VkSemaphore semaphore;
-        VkImageView view;
-        VkDescriptorSet descriptor;
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
+        VkDescriptorSet descriptor = VK_NULL_HANDLE;
     };
 
     struct StagingImage {
-        VkImage image;
-        VkDeviceMemory memory;
-        VkImageView view;
-        VkFramebuffer framebuffer;
-        VkDescriptorSet descriptor;
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        VkDescriptorSet descriptor = VK_NULL_HANDLE;
     };
 
     void commandBufferBegin();
@@ -95,10 +95,10 @@ public:
     uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const;
 
     struct {
-        PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
-        PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
-        PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT;
-        PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT;
+        PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR = nullptr;
+        PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR = nullptr;
+        PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT = nullptr;
+        PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = nullptr;
         bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
     } d;
@@ -108,24 +108,24 @@ public:
     std::vector<StagingImage> m_stagingImages;
     std::vector<RenderPipeline*> m_pipelines;
 
-    VkInstance m_inst;
-    VkDevice m_dev;
-    VkPhysicalDevice m_physDev;
-    VkQueue m_queue;
-    uint32_t m_queueFamilyIndex;
-    VkFormat m_format;
-    VkExtent2D m_imageSize;
-    VkQueryPool m_queryPool;
-    VkCommandPool m_commandPool;
-    VkSampler m_sampler;
-    VkBuffer m_vertexBuffer;
-    VkDeviceMemory m_vertexMemory;
-    VkRenderPass m_renderPass;
-    VkDescriptorPool m_descriptorPool;
-    VkDescriptorSetLayout m_descriptorLayout;
-    VkCommandBuffer m_commandBuffer;
-    VkFence m_fence;
-    double m_timestampPeriod;
+    VkInstance m_inst = VK_NULL_HANDLE;
+    VkDevice m_dev = VK_NULL_HANDLE;
+    VkPhysicalDevice m_physDev = VK_NULL_HANDLE;
+    VkQueue m_queue = VK_NULL_HANDLE;
+    uint32_t m_queueFamilyIndex = 0;
+    VkFormat m_format = VK_FORMAT_UNDEFINED;
+    VkExtent2D m_imageSize = {0, 0};
+    VkQueryPool m_queryPool = VK_NULL_HANDLE;
+    VkCommandPool m_commandPool = VK_NULL_HANDLE;
+    VkSampler m_sampler = VK_NULL_HANDLE;
+    VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_vertexMemory = VK_NULL_HANDLE;
+    VkRenderPass m_renderPass = VK_NULL_HANDLE;
+    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
+    VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+    VkFence m_fence = VK_NULL_HANDLE;
+    double m_timestampPeriod = 0;
 
     std::string m_inputImageCapture;
     std::string m_outputImageCapture;

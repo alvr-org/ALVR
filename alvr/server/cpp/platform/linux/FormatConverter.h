@@ -6,7 +6,7 @@ class FormatConverter
 {
 public:
     struct Output {
-        VkSemaphore semaphore;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
     };
 
     virtual ~FormatConverter();
@@ -21,30 +21,30 @@ public:
 
 protected:
     struct OutputImage {
-        VkImage image;
-        VkDeviceMemory memory;
-        VkImageView view;
-        VkSemaphore semaphore;
-        VkDeviceSize linesize;
-        uint8_t *mapped;
+        VkImage image = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        VkDeviceSize linesize = 0;
+        uint8_t *mapped = nullptr;
     };
 
     explicit FormatConverter(Renderer *render);
     void init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen);
 
     Renderer *r;
-    VkSampler m_sampler;
-    VkQueryPool m_queryPool;
-    VkCommandBuffer m_commandBuffer;
-    VkDescriptorSet m_descriptor;
-    VkDescriptorSetLayout m_descriptorLayout;
-    VkImageView m_view;
-    VkSemaphore m_semaphore;
-    VkShaderModule m_shader;
-    VkPipelineLayout m_pipelineLayout;
-    VkPipeline m_pipeline;
-    uint32_t m_groupCountX;
-    uint32_t m_groupCountY;
+    VkSampler m_sampler = VK_NULL_HANDLE;
+    VkQueryPool m_queryPool = VK_NULL_HANDLE;
+    VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+    VkDescriptorSet m_descriptor = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
+    VkImageView m_view = VK_NULL_HANDLE;
+    VkSemaphore m_semaphore = VK_NULL_HANDLE;
+    VkShaderModule m_shader = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    uint32_t m_groupCountX = 0;
+    uint32_t m_groupCountY = 0;
     std::vector<OutputImage> m_images;
     Output m_output;
 };

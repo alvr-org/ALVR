@@ -1,10 +1,15 @@
 use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
-    Fov,
+    Fov, LogSeverity,
 };
-use alvr_events::{ButtonValue, EventSeverity};
+use alvr_events::{ButtonValue, LogEvent};
+use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
-use std::{net::IpAddr, time::Duration};
+use std::{
+    fmt::{self, Debug},
+    net::IpAddr,
+    time::Duration,
+};
 
 pub const TRACKING: u16 = 0;
 pub const HAPTICS: u16 = 1;
@@ -71,18 +76,9 @@ pub enum ClientControlPacket {
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
     VideoErrorReport, // legacy
-    Button {
-        path_id: u64,
-        value: ButtonValue,
-    },
-    ActiveInteractionProfile {
-        device_id: u64,
-        profile_id: u64,
-    },
-    Log {
-        level: EventSeverity,
-        message: String,
-    },
+    Button { path_id: u64, value: ButtonValue },
+    ActiveInteractionProfile { device_id: u64, profile_id: u64 },
+    Log { level: LogSeverity, message: String },
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -116,7 +112,7 @@ pub struct Haptics {
     pub amplitude: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AudioDevicesList {
     pub output: Vec<String>,
     pub input: Vec<String>,
@@ -128,19 +124,53 @@ pub enum GpuVendor {
     Other,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum PathSegment {
     Name(String),
     Index(usize),
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+impl Debug for PathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PathSegment::Name(name) => write!(f, "{}", name),
+            PathSegment::Index(index) => write!(f, "[{}]", index),
+        }
+    }
+}
+
+impl From<&str> for PathSegment {
+    fn from(value: &str) -> Self {
+        PathSegment::Name(value.to_owned())
+    }
+}
+
+impl From<String> for PathSegment {
+    fn from(value: String) -> Self {
+        PathSegment::Name(value)
+    }
+}
+
+impl From<usize> for PathSegment {
+    fn from(value: usize) -> Self {
+        PathSegment::Index(value)
+    }
+}
+
+// todo: support indices
+pub fn parse_path(path: &str) -> Vec<PathSegment> {
+    path.split('.').map(|s| s.into()).collect()
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ClientListAction {
-    AddIfMissing,
+    AddIfMissing {
+        trusted: bool,
+        manual_ips: Vec<IpAddr>,
+    },
     SetDisplayName(String),
     Trust,
-    AddIp(IpAddr),
-    RemoveIp(IpAddr),
+    SetManualIps(Vec<IpAddr>),
     RemoveEntry,
     UpdateCurrentIp(Option<IpAddr>),
 }
@@ -154,4 +184,29 @@ pub struct ClientStatistics {
     pub rendering: Duration,
     pub vsync_queue: Duration,
     pub total_pipeline_latency: Duration,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DashboardRequest {
+    Ping,
+    GetSession,
+    UpdateSession(Box<SessionDesc>),
+    SetSingleValue {
+        path: Vec<PathSegment>,
+        new_value: serde_json::Value,
+    },
+    ExecuteScript(String),
+    UpdateClientList {
+        hostname: String,
+        action: ClientListAction,
+    },
+    GetAudioDevices,
+    RestartSteamvr,
+    Log(LogEvent),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerResponse {
+    Ok,
+    AudioDevices(AudioDevicesList),
 }

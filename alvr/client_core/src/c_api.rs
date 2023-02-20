@@ -51,7 +51,6 @@ pub enum AlvrEvent {
         foveation_edge_ratio_y: f32,
         oculus_foveation_level: i32,
         dynamic_oculus_foveation: bool,
-        extra_latency: bool,
     },
     StreamingStopped,
     Haptics {
@@ -198,7 +197,6 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 foveated_rendering,
                 oculus_foveation_level,
                 dynamic_oculus_foveation,
-                extra_latency,
             } => AlvrEvent::StreamingStarted {
                 view_width: view_resolution.x,
                 view_height: view_resolution.y,
@@ -230,7 +228,6 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                     .unwrap_or_default(),
                 oculus_foveation_level: oculus_foveation_level as i32,
                 dynamic_oculus_foveation,
-                extra_latency,
             },
             ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
             ClientCoreEvent::Haptics {

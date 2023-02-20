@@ -1,7 +1,6 @@
 use crate::FfiDynamicEncoderParams;
 use alvr_common::SlidingWindowAverage;
-use alvr_session::{BitrateConfig, BitrateMode};
-use settings_schema::Switch;
+use alvr_session::{settings_schema::Switch, BitrateConfig, BitrateMode};
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},

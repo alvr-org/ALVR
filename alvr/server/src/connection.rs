@@ -22,7 +22,6 @@ use alvr_sockets::{
     KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
-use settings_schema::Switch;
 use std::{
     collections::{HashMap, HashSet},
     future,
@@ -99,8 +98,13 @@ pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResu
             let trusted = {
                 let mut data_manager = SERVER_DATA_MANAGER.write();
 
-                data_manager
-                    .update_client_list(client_hostname.clone(), ClientListAction::AddIfMissing);
+                data_manager.update_client_list(
+                    client_hostname.clone(),
+                    ClientListAction::AddIfMissing {
+                        trusted: false,
+                        manual_ips: vec![],
+                    },
+                );
 
                 if config.auto_trust_clients {
                     data_manager
@@ -345,7 +349,7 @@ fn try_connect(
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
-        codec: matches!(settings.video.codec, CodecType::HEVC) as _,
+        codec: matches!(settings.video.codec, CodecType::Hevc) as _,
         rate_control_mode: settings.video.rate_control_mode as u32,
         filler_data: settings.video.filler_data,
         entropy_coding: settings.video.entropy_coding as u32,

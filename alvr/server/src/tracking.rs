@@ -3,9 +3,10 @@ use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_session::{HeadsetDesc, PositionRecenteringMode, RotationRecenteringMode};
+use alvr_session::{
+    settings_schema::Switch, HeadsetDesc, PositionRecenteringMode, RotationRecenteringMode,
+};
 use alvr_sockets::{DeviceMotion, Pose};
-use settings_schema::Switch;
 use std::{
     collections::HashMap,
     f32::consts::{FRAC_PI_2, PI},

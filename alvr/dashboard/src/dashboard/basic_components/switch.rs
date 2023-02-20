@@ -1,4 +1,4 @@
-use egui::{Response, Sense, Ui, WidgetInfo, WidgetType};
+use eframe::egui::{self, Response, Sense, Ui, WidgetInfo, WidgetType};
 
 pub fn switch(ui: &mut Ui, on: &mut bool) -> Response {
     let desired_size = ui.spacing().interact_size.y * egui::vec2(2.0, 1.0);

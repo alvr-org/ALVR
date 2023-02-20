@@ -1,136 +1,69 @@
-use super::{Section, SettingsContext, SettingsResponse};
-use crate::{
-    dashboard::{basic_components, DashboardResponse},
-    translation::{SharedTranslation, TranslationBundle},
-    LocalizedId,
-};
-use alvr_session::{SessionDesc, SessionSettings};
-use egui::Ui;
+// use super::{Section, SettingsContext, SettingsResponse};
+use super::{presets::Presets, NestingInfo, SettingControl};
+use crate::dashboard::{get_id, DashboardRequest};
+use alvr_session::{SessionSettings, Settings};
+use alvr_sockets::AudioDevicesList;
+use eframe::egui::{Grid, ScrollArea, Ui};
 use serde_json as json;
-use settings_schema::SchemaNode;
-use std::{collections::HashMap, sync::Arc};
 
 pub struct SettingsTab {
-    selected_tab: String,
-    tab_labels: Vec<LocalizedId>,
-    tab_contents: HashMap<String, Section>,
-    context: SettingsContext,
+    advanced_grid_id: usize,
+    session_settings_json: json::Value,
+    presets: Presets,
+    root_control: SettingControl,
 }
 
 impl SettingsTab {
-    pub fn new(
-        session_settings: &SessionSettings,
-        t: Arc<SharedTranslation>,
-        trans: &TranslationBundle,
-    ) -> Self {
-        let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
-        let mut session = json::from_value::<HashMap<String, json::Value>>(
-            json::to_value(session_settings).unwrap(),
-        )
-        .unwrap();
+    pub fn new() -> Self {
+        let session_settings = alvr_session::session_settings_default();
 
-        if let SchemaNode::Section { entries } = schema {
-            Self {
-                selected_tab: entries[0].0.clone(),
-                tab_labels: entries
-                    .iter()
-                    .map(|(id, _)| LocalizedId {
-                        id: id.clone(),
-                        trans: trans.get(id),
-                    })
-                    .collect(),
-                tab_contents: entries
-                    .into_iter()
-                    .map(|(id, data)| {
-                        if let SchemaNode::Section { entries } = data.unwrap().content {
-                            (
-                                id.clone(),
-                                Section::new(entries, session.remove(&id).unwrap(), &id, trans),
-                            )
-                        } else {
-                            panic!("Invalid schema!")
-                        }
-                    })
-                    .collect(),
-                context: SettingsContext {
-                    advanced: false,
-                    view_width: 0_f32,
-                    t,
-                },
-            }
-        } else {
-            panic!("Invalid schema!")
+        let nesting_info = NestingInfo {
+            path: vec!["session_settings".into()],
+            indentation_level: 0,
+        };
+        let schema = Settings::schema(session_settings.clone());
+
+        Self {
+            advanced_grid_id: get_id(),
+            session_settings_json: json::to_value(session_settings).unwrap(),
+            presets: Presets::new(),
+            root_control: SettingControl::new(nesting_info, schema),
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
-        self.context.view_width = ui.available_width();
+    pub fn update_session(&mut self, session_settings: &SessionSettings) {
+        self.session_settings_json = json::to_value(session_settings).unwrap();
+        self.presets.session_updated(session_settings);
+    }
 
-        let selected_tab = &mut self.selected_tab;
+    pub fn update_audio_devices(&mut self, list: AudioDevicesList) {
+        self.presets.update_audio_devices(list);
+    }
 
-        let content = self
-            .tab_contents
-            .iter_mut()
-            .find_map(|(id, section)| (**id == *selected_tab).then(|| section))
-            .unwrap();
+    pub fn ui(&mut self, ui: &mut Ui) -> Vec<DashboardRequest> {
+        ui.heading("Presets");
+        let mut requests = self.presets.ui(ui);
 
-        let mut session_tabs = json::from_value::<HashMap<String, json::Value>>(
-            json::to_value(&session.session_settings).unwrap(),
-        )
-        .unwrap();
+        ui.add_space(15.0);
 
-        let mut advanced = self.context.advanced;
+        ui.heading("Advanced");
+        ScrollArea::new([true, false]).show(ui, |ui| {
+            Grid::new(self.advanced_grid_id)
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    let request = self
+                        .root_control
+                        .ui(ui, &mut self.session_settings_json, false);
 
-        let response = basic_components::tabs(
-            ui,
-            &self.tab_labels,
-            selected_tab,
-            {
-                let selected_tab = selected_tab.clone();
-                let context = &self.context;
-                move |ui| {
-                    content
-                        .ui_no_indentation(
-                            ui,
-                            session_tabs.get(&selected_tab).cloned().unwrap(),
-                            context,
-                        )
-                        .and_then(|res| match res {
-                            SettingsResponse::SessionFragment(tab_session) => {
-                                session_tabs.insert(selected_tab, tab_session);
-
-                                let mut session = session.clone();
-                                let session_settings = if let Ok(value) =
-                                    json::from_value(json::to_value(session_tabs).unwrap())
-                                {
-                                    value
-                                } else {
-                                    //Some numeric fields are not properly validated
-                                    println!("Invalid value");
-                                    return None;
-                                };
-
-                                session.session_settings = session_settings;
-
-                                Some(DashboardResponse::SessionUpdated(Box::new(session)))
-                            }
-                            SettingsResponse::PresetInvocation(code) => {
-                                Some(DashboardResponse::PresetInvocation(code))
-                            }
-                        })
-                }
-            },
-            {
-                |ui| {
-                    if ui.selectable_label(advanced, "Advanced").clicked() {
-                        advanced = !advanced;
+                    if let Some(request) = request {
+                        requests.push(request);
                     }
-                }
-            },
-        );
 
-        self.context.advanced = advanced;
+                    ui.end_row();
+                })
+        });
 
-        response
+        requests
     }
 }

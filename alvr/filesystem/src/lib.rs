@@ -151,15 +151,6 @@ impl Layout {
         }
     }
 
-    pub fn launcher_exe(&self) -> PathBuf {
-        let exe = if cfg!(windows) {
-            "ALVR Launcher.exe"
-        } else {
-            "alvr_launcher"
-        };
-        self.executables_dir.join(exe)
-    }
-
     pub fn dashboard_exe(&self) -> PathBuf {
         let exe = if cfg!(windows) {
             "ALVR Dashboard.exe"

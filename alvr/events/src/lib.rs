@@ -3,14 +3,6 @@ use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum EventSeverity {
-    Error,
-    Warning,
-    Info,
-    Debug,
-}
-
 // todo: remove some unused statistics
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")] // todo: remove casing conversion
@@ -50,7 +42,7 @@ pub struct GraphStatistics {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LogEvent {
-    pub severity: EventSeverity,
+    pub severity: LogSeverity,
     pub content: String,
 }
 
@@ -92,6 +84,7 @@ pub enum EventType {
     GraphStatistics(GraphStatistics),
     Button(ButtonEvent),
     Haptics(HapticsEvent),
+    ServerRequestsSelfRestart,
     ServerQuitting,
     Log(LogEvent),
 }

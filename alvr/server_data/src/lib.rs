@@ -5,7 +5,7 @@ use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     fs,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
@@ -152,7 +152,7 @@ impl ServerDataManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_single_value(&mut self, path: Vec<PathSegment>, value: &str) -> StrResult {
+    pub fn set_single_value(&mut self, path: Vec<PathSegment>, value: json::Value) -> StrResult {
         let mut session_json = serde_json::to_value(self.session.clone()).map_err(err!())?;
 
         let mut session_ref = &mut session_json;
@@ -163,7 +163,7 @@ impl ServerDataManager {
             };
         }
 
-        *session_ref = serde_json::from_str(value).map_err(err!())?;
+        *session_ref = value;
 
         // session_json has been updated
         self.session = serde_json::from_value(session_json).map_err(err!())?;
@@ -227,12 +227,15 @@ impl ServerDataManager {
 
         let mut updated = false;
         match action {
-            ClientListAction::AddIfMissing => {
+            ClientListAction::AddIfMissing {
+                trusted,
+                manual_ips,
+            } => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionDesc {
-                        trusted: false,
+                        trusted,
                         current_ip: None,
-                        manual_ips: HashSet::new(),
+                        manual_ips: manual_ips.into_iter().collect(),
                         display_name: "Unknown".into(),
                     };
                     new_entry.insert(client_connection_desc);
@@ -254,16 +257,9 @@ impl ServerDataManager {
                     updated = true;
                 }
             }
-            ClientListAction::AddIp(ip) => {
+            ClientListAction::SetManualIps(ips) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().manual_ips.insert(ip);
-
-                    updated = true;
-                }
-            }
-            ClientListAction::RemoveIp(ip) => {
-                if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().manual_ips.remove(&ip);
+                    entry.get_mut().manual_ips = ips.into_iter().collect();
 
                     updated = true;
                 }

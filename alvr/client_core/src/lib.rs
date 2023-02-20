@@ -71,7 +71,6 @@ pub enum ClientCoreEvent {
         foveated_rendering: Option<FoveatedRenderingDesc>,
         oculus_foveation_level: OculusFovetionLevel,
         dynamic_oculus_foveation: bool,
-        extra_latency: bool,
     },
     StreamingStopped,
     Haptics {

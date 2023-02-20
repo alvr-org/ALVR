@@ -13,6 +13,8 @@ once_cell = "1"
 parking_lot = "0.12"
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
+settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
+# settings-schema = { path = "../../../../settings-schema-rs/settings-schema" }
 
 [target.'cfg(windows)'.dependencies]
 msgbox = "0.7"

@@ -11,7 +11,7 @@ use crate::{
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
-use alvr_session::{AudioDeviceId, SessionDesc};
+use alvr_session::{settings_schema::Switch, AudioDeviceId, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
     PeerType, ProtoControlSocket, ReceiverBuffer, ServerControlPacket, StreamConfigPacket,
@@ -19,7 +19,6 @@ use alvr_sockets::{
 };
 use futures::future::BoxFuture;
 use serde_json as json;
-use settings_schema::Switch;
 use std::{
     future,
     net::IpAddr,
@@ -317,7 +316,6 @@ async fn stream_pipeline(
         foveated_rendering: settings.video.foveated_rendering.into_option(),
         oculus_foveation_level: settings.video.oculus_foveation_level,
         dynamic_oculus_foveation: settings.video.dynamic_oculus_foveation,
-        extra_latency: settings.headset.extra_latency_mode,
     };
 
     IS_STREAMING.set(true);

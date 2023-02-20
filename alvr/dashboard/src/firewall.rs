@@ -32,7 +32,7 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
                 "{}\n{}",
                 netsh_add_rule_command_string(
                     "SteamVR ALVR vrserver",
-                    &crate::steamvr_root_dir()
+                    &alvr_commands::steamvr_root_dir()
                         .map_err(|_| -1)?
                         .join("bin")
                         .join("win64")
@@ -40,7 +40,7 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
                 ),
                 netsh_add_rule_command_string(
                     "SteamVR ALVR vrserver",
-                    &crate::steamvr_root_dir()
+                    &alvr_commands::steamvr_root_dir()
                         .map_err(|_| -1)?
                         .join("bin")
                         .join("win32")

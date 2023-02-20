@@ -1,15 +1,24 @@
-use crate::{dashboard::ConnectionsResponse, dashboard::DashboardResponse, theme};
-use alvr_session::{ClientConnectionDesc, SessionDesc};
-use egui::{Align, Frame, Layout, Resize, RichText, Ui, Window};
+use crate::{
+    dashboard::DashboardRequest,
+    steamvr_launcher::LAUNCHER,
+    theme::{self, log_colors},
+};
+use alvr_session::SessionDesc;
+use alvr_sockets::ClientListAction;
+use eframe::{
+    egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
+    emath::{Align, Align2},
+    epaint::Color32,
+};
 use std::{
-    collections::HashSet,
     net::{IpAddr, Ipv4Addr},
+    thread,
 };
 
 struct EditPopupState {
+    new_client: bool,
     hostname: String,
-    display_name: String,
-    ip_addresses: Vec<String>,
+    ips: Vec<String>,
 }
 
 pub struct ConnectionsTab {
@@ -23,159 +32,168 @@ impl ConnectionsTab {
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
+    pub fn ui(
+        &mut self,
+        ui: &mut Ui,
+        session: &SessionDesc,
+        connected_to_server: bool,
+    ) -> Option<DashboardRequest> {
         let mut response = None;
 
-        // Get the different types of clients from the session
-        let trusted: Vec<(&String, &ClientConnectionDesc)> = session
-            .client_connections
-            .iter()
-            .filter_map(|(name, client_desc)| {
-                if client_desc.trusted {
-                    Some((name, client_desc))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let new: Vec<(&String, &ClientConnectionDesc)> = session
-            .client_connections
-            .iter()
-            .filter_map(|(name, client_desc)| {
-                if !client_desc.trusted {
-                    Some((name, client_desc))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        Frame::group(ui.style())
-            .fill(theme::SECTION_BG)
-            .show(ui, |ui| {
-                ui.label(RichText::new("Trusted clients").size(18.0));
-                for (name, client_desc) in trusted {
-                    ui.horizontal(|ui| {
-                        ui.label(name);
-                        if ui.button("Edit").clicked() {
-                            self.edit_popup_state = Some(EditPopupState {
-                                hostname: name.to_owned(),
-                                display_name: client_desc.display_name.to_owned(),
-                                ip_addresses: client_desc
-                                    .manual_ips
-                                    .iter()
-                                    .map(|addr| addr.to_string())
-                                    .collect::<Vec<String>>(),
-                            });
-                        }
-                        if ui.button("Remove").clicked() {
-                            response = Some(DashboardResponse::Connections(
-                                ConnectionsResponse::RemoveEntry(name.clone()),
-                            ));
-                        }
-                    });
-                }
-            });
-        ui.add_space(10.0);
-        Frame::group(ui.style())
-            .fill(theme::SECTION_BG)
-            .show(ui, |ui| {
-                ui.label(RichText::new("New clients").size(18.0));
-                for (name, client_desc) in new {
-                    ui.horizontal(|ui| {
-                        ui.label(name);
-                        if ui.button("Trust").clicked() {
-                            let mut client_desc = client_desc.clone();
-                            client_desc.trusted = true;
-                            response = Some(DashboardResponse::Connections(
-                                ConnectionsResponse::AddOrUpdate {
-                                    name: name.clone(),
-                                    client_desc: client_desc.clone(),
-                                },
-                            ));
-                        };
-                    });
-                }
-            });
-        ui.add_space(10.0);
-        if ui.button("Add client manually").clicked() {
-            self.edit_popup_state = Some(EditPopupState {
-                hostname: "x.client.alvr".to_string(),
-                display_name: "Oculus Quest 2".to_string(),
-                ip_addresses: Vec::new(),
-            });
-        }
-
-        // We use this to close the popup if that is needed
-        let mut close_popup = false;
-
-        match self.edit_popup_state.as_mut() {
-            Some(state) => {
-                Window::new("Edit connection")
-                    .anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0))
-                    .resizable(false)
-                    .collapsible(false)
-                    .show(ui.ctx(), |ui| {
-                        ui.columns(2, |ui| {
-                            ui[0].label("Hostname:");
-                            ui[1].text_edit_singleline(&mut state.hostname);
-                            ui[0].label("Display name:");
-                            ui[1].text_edit_singleline(&mut state.display_name);
-                            ui[0].label("IP Addresses");
-                            if ui[1].button("Add new").clicked() {
-                                state.ip_addresses.push("127.0.0.1".to_string());
+        if !connected_to_server {
+            Frame::group(ui.style())
+                .fill(log_colors::WARNING_LIGHT)
+                .show(ui, |ui| {
+                    Grid::new(0).num_columns(2).show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.add_space(10.0);
+                            ui.heading(
+                                RichText::new(
+                                    "The server is not connected! Clients will not be discovered",
+                                )
+                                .color(Color32::BLACK),
+                            );
+                        });
+                        ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
+                            if ui.button("Launch SteamVR").clicked() {
+                                thread::spawn(|| LAUNCHER.lock().launch_steamvr());
                             }
                         });
-                        for address in &mut state.ip_addresses {
-                            ui.text_edit_singleline(address);
-                        }
-                        ui.columns(2, |ui| {
-                            if ui[0].button("Ok").clicked() {
-                                let mut ip_addresses = HashSet::new();
-
-                                for address in &state.ip_addresses {
-                                    let parts: Vec<&str> = address.splitn(4, ".").collect();
-                                    let mut raw_addr: [u8; 4] = [0, 0, 0, 0];
-
-                                    for i in 0..4 {
-                                        match parts.get(i) {
-                                            Some(num) => {
-                                                raw_addr[i] = num.parse::<u8>().unwrap_or(0);
-                                            }
-                                            None => (),
-                                        }
-                                    }
-
-                                    let addr = IpAddr::V4(Ipv4Addr::from(raw_addr));
-
-                                    ip_addresses.insert(addr);
-                                }
-
-                                response = Some(DashboardResponse::Connections(
-                                    ConnectionsResponse::AddOrUpdate {
-                                        name: state.hostname.clone(),
-                                        client_desc: ClientConnectionDesc {
-                                            display_name: state.display_name.clone(),
-                                            current_ip: None,
-                                            manual_ips: ip_addresses,
-                                            trusted: true,
-                                        },
-                                    },
-                                ));
-
-                                close_popup = true;
-                            }
-                            if ui[1].button("Cancel").clicked() {
-                                close_popup = true;
-                            }
-                        })
                     });
-            }
-            None => (),
+                });
         }
 
-        if close_popup {
-            self.edit_popup_state = None;
+        // Get the different types of clients from the session
+        let (trusted_clients, untrusted_clients) = session
+            .client_connections
+            .iter()
+            .partition::<Vec<_>, _>(|(_, data)| data.trusted);
+
+        ui.vertical_centered_justified(|ui| {
+            Frame::group(ui.style())
+                .fill(theme::SECTION_BG)
+                .show(ui, |ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.add_space(5.0);
+                        ui.heading("New clients");
+                    });
+
+                    Grid::new(1).num_columns(2).show(ui, |ui| {
+                        for (hostname, _) in untrusted_clients {
+                            ui.horizontal(|ui| {
+                                ui.add_space(10.0);
+                                ui.label(hostname);
+                            });
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                if ui.button("Trust").clicked() {
+                                    response = Some(DashboardRequest::UpdateClientList {
+                                        hostname: hostname.clone(),
+                                        action: ClientListAction::Trust,
+                                    });
+                                };
+                            });
+                            ui.end_row();
+                        }
+                    })
+                });
+
+            ui.add_space(10.0);
+
+            Frame::group(ui.style())
+                .fill(theme::SECTION_BG)
+                .show(ui, |ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.add_space(5.0);
+                        ui.heading("Trusted clients");
+                    });
+
+                    Grid::new(2).num_columns(2).show(ui, |ui| {
+                        for (hostname, data) in trusted_clients {
+                            ui.horizontal(|ui| {
+                                ui.add_space(10.0);
+                                ui.label(format!(
+                                    "{hostname}: {} ({})",
+                                    data.current_ip.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                                    data.display_name
+                                ));
+                            });
+                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                if ui.button("Remove").clicked() {
+                                    response = Some(DashboardRequest::UpdateClientList {
+                                        hostname: hostname.clone(),
+                                        action: ClientListAction::RemoveEntry,
+                                    });
+                                }
+                                if ui.button("Edit").clicked() {
+                                    self.edit_popup_state = Some(EditPopupState {
+                                        new_client: false,
+                                        hostname: hostname.to_owned(),
+                                        ips: data
+                                            .manual_ips
+                                            .iter()
+                                            .map(|addr| addr.to_string())
+                                            .collect::<Vec<String>>(),
+                                    });
+                                }
+                            });
+                            ui.end_row();
+                        }
+                    });
+
+                    if ui.button("Add client manually").clicked() {
+                        self.edit_popup_state = Some(EditPopupState {
+                            hostname: "XXXX.client.alvr".into(),
+                            new_client: true,
+                            ips: Vec::new(),
+                        });
+                    }
+                });
+        });
+
+        if let Some(mut state) = self.edit_popup_state.take() {
+            Window::new("Edit connection")
+                .anchor(Align2::CENTER_CENTER, (0.0, 0.0))
+                .resizable(false)
+                .collapsible(false)
+                .show(ui.ctx(), |ui| {
+                    ui.columns(2, |ui| {
+                        ui[0].label("Hostname:");
+                        ui[1].add_enabled(
+                            state.new_client,
+                            TextEdit::singleline(&mut state.hostname),
+                        );
+                        ui[0].label("IP Addresses:");
+                        for address in &mut state.ips {
+                            ui[1].text_edit_singleline(address);
+                        }
+                        if ui[1].button("Add new").clicked() {
+                            state.ips.push("192.168.1.2".to_string());
+                        }
+                    });
+                    ui.columns(2, |ui| {
+                        if ui[0].button("Ok").clicked() {
+                            let manual_ips =
+                                state.ips.iter().filter_map(|s| s.parse().ok()).collect();
+
+                            if state.new_client {
+                                response = Some(DashboardRequest::UpdateClientList {
+                                    hostname: state.hostname.clone(),
+                                    action: ClientListAction::AddIfMissing {
+                                        trusted: true,
+                                        manual_ips,
+                                    },
+                                });
+                            } else {
+                                response = Some(DashboardRequest::UpdateClientList {
+                                    hostname: state.hostname.clone(),
+                                    action: ClientListAction::SetManualIps(manual_ips),
+                                });
+                            }
+                        } else if !ui[1].button("Cancel").clicked() {
+                            self.edit_popup_state = Some(state);
+                        }
+                    })
+                });
         }
 
         response

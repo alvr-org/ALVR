@@ -12,7 +12,7 @@ alvr_common.workspace = true
 bytemuck = { version = "1", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
+settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
 
 [build-dependencies]
 regex = "1"

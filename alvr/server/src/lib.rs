@@ -1,7 +1,6 @@
 mod bitrate;
 mod buttons;
 mod connection;
-mod dashboard;
 mod haptics;
 mod logging_backend;
 mod openvr_props;
@@ -63,7 +62,6 @@ static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
     Lazy::new(|| Mutex::new(Runtime::new().ok()));
-static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
@@ -150,56 +148,43 @@ pub fn create_recording_file() {
     }
 }
 
-pub fn shutdown_runtimes() {
-    alvr_events::send_event(EventType::ServerQuitting);
-
-    // Shutsdown all connection runtimes
+pub fn shutdown_tasks() {
+    // Invoke connection runtimes shutdown
+    // todo: block until they shutdown
     IS_ALIVE.set(false);
 
-    if let Some(window_type) = WINDOW.lock().take() {
-        match window_type.as_ref() {
-            WindowType::Alcro(window) => window.close(),
-            WindowType::Browser => (),
-        }
+    if let Some(backup) = SERVER_DATA_MANAGER
+        .write()
+        .session_mut()
+        .drivers_backup
+        .take()
+    {
+        alvr_commands::driver_registration(&backup.other_paths, true).ok();
+        alvr_commands::driver_registration(&[backup.alvr_path], false).ok();
     }
 
     WEBSERVER_RUNTIME.lock().take();
 }
 
-pub fn notify_shutdown_driver() {
+pub fn notify_restart_driver() {
+    alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+
     thread::spawn(|| {
         RESTART_NOTIFIER.notify_waiters();
 
         // give time to the control loop to send the restart packet (not crucial)
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(200));
 
-        shutdown_runtimes();
+        shutdown_tasks();
 
         unsafe { ShutdownSteamvr() };
     });
 }
 
-pub fn notify_restart_driver() {
-    notify_shutdown_driver();
-
-    alvr_commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
-}
-
-pub fn notify_application_update() {
-    notify_shutdown_driver();
-
-    alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
-}
-
 fn init() {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    let (legacy_events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    logging_backend::init_logging(
-        log_sender.clone(),
-        legacy_events_sender.clone(),
-        events_sender.clone(),
-    );
+    logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
         // Acquire and drop the data manager lock to create session.json if not present
@@ -221,11 +206,8 @@ fn init() {
 
         runtime.spawn(alvr_common::show_err_async(web_server::web_server(
             log_sender,
-            legacy_events_sender,
             events_sender,
         )));
-
-        thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
 
     {
@@ -440,7 +422,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtimes();
+        shutdown_tasks();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {

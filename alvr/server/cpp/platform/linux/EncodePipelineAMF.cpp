@@ -146,6 +146,7 @@ EncodePipelineAMF::EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t 
     }
     m_amfComponents.emplace_back(MakeEncoder(inFormat, m_renderWidth, m_renderHeight, m_codec, m_refreshRate));
     auto params = FfiDynamicEncoderParams {};
+    params.updated = true;
     params.bitrate_bps = 30'000'000;
     params.framerate = 60.0;
     SetParams(params);

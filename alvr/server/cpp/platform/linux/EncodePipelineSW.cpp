@@ -89,6 +89,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = 0;
   auto params = FfiDynamicEncoderParams {};
+  params.updated = true;
   params.bitrate_bps = 30'000'000;
   params.framerate = 60.0;
   SetParams(params);

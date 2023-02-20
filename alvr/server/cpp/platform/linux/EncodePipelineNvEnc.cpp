@@ -120,6 +120,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
     auto params = FfiDynamicEncoderParams {};
+    params.updated = true;
     params.bitrate_bps = 30'000'000;
     params.framerate = 60.0;
     SetParams(params);

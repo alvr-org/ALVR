@@ -474,8 +474,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn get_bitrate_bps() -> u64 {
-        BITRATE_MANAGER.lock().get_bitrate_bps()
+    extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
+        BITRATE_MANAGER.lock().get_encoder_params()
     }
 
     LogError = Some(log_error);
@@ -492,7 +492,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
     ReportEncoded = Some(report_encoded);
-    GetBitrate = Some(get_bitrate_bps);
+    GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
 
     // cast to usize to allow the variables to cross thread boundaries
     let interface_name_usize = interface_name as usize;

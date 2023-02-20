@@ -225,7 +225,7 @@ void CEncoder::Run() {
       while (not m_exiting) {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
-        encode_pipeline->SetBitrate(GetBitrate());
+        encode_pipeline->SetParams(GetDynamicEncoderParams());
 
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
         if (!pose)

@@ -71,6 +71,12 @@ struct FfiButtonValue {
     };
 };
 
+struct FfiDynamicEncoderParams {
+    bool updated;
+    unsigned long long bitrate_bps;
+    float framerate;
+};
+
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
@@ -113,7 +119,7 @@ extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
-extern "C" unsigned long long (*GetBitrate)();
+extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();

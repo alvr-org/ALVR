@@ -69,7 +69,7 @@ public:
 
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     bool GetEncoded(FramePacket &packet) override;
-    void SetBitrate(int64_t bitrate) override;
+    void SetParams(FfiDynamicEncoderParams params) override;
 
 private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);

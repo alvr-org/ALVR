@@ -191,7 +191,11 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = INT16_MAX;
-  SetBitrate(30 * 1'000'000L);
+
+  auto params = FfiDynamicEncoderParams {};
+  params.bitrate_bps = 30'000'000;
+  params.framerate = 60.0;
+  SetParams(params);
 
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;

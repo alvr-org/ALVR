@@ -47,6 +47,10 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     d.haveDmaBuf = checkExtension(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
 
+    if (!checkExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
+        throw std::runtime_error("Vulkan: Required extension " VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME " not available");
+    }
+
 #define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
     VK_LOAD_PFN(vkImportSemaphoreFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdKHR);

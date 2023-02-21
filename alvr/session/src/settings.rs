@@ -262,6 +262,9 @@ pub struct VideoDesc {
     pub rate_control_mode: RateControlMode,
 
     #[schema(advanced)]
+    pub filler_data: bool,
+
+    #[schema(advanced)]
     pub entropy_coding: EntropyCoding,
 
     pub use_10bit_encoder: bool,
@@ -708,6 +711,7 @@ pub fn session_settings_default() -> SettingsDefault {
             rate_control_mode: RateControlModeDefault {
                 variant: RateControlModeDefaultVariant::CBR,
             },
+            filler_data: false,
             entropy_coding: EntropyCodingDefault {
                 variant: EntropyCodingDefaultVariant::CAVLC,
             },

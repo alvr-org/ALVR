@@ -372,6 +372,7 @@ fn try_connect(
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.codec, CodecType::HEVC) as _,
         rate_control_mode: settings.video.rate_control_mode as u32,
+        filler_data: settings.video.filler_data,
         entropy_coding: settings.video.entropy_coding as u32,
         refresh_rate: fps as _,
         use_10bit_encoder: settings.video.use_10bit_encoder,

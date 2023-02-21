@@ -74,6 +74,7 @@ void Settings::Load()
 
 		m_codec = (int32_t)config.get("codec").get<int64_t>();
 		m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
+		m_fillerData = config.get("filler_data").get<bool>();
 		m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
 		m_refreshRate = (int)config.get("refresh_rate").get<int64_t>();
 		m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();

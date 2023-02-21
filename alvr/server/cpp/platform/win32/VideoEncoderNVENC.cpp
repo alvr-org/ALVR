@@ -187,6 +187,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		config.maxNumRefFrames = maxNumRefFrames;
 		config.idrPeriod = gopLength;
+
+		config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 	} 
 	else {
 		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
@@ -206,6 +208,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_use10bitEncoder) {
 			encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
 		}
+
+		config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 	}
 
 	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped

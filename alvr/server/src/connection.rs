@@ -590,7 +590,6 @@ async fn connection_pipeline(
 
     *BITRATE_MANAGER.lock() = BitrateManager::new(
         settings.video.bitrate,
-        settings.video.codec,
         settings.connection.statistics_history_size as _,
     );
 

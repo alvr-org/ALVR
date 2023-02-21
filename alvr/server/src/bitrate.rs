@@ -1,14 +1,13 @@
 use crate::FfiDynamicEncoderParams;
 use alvr_common::SlidingWindowAverage;
-use alvr_session::{BitrateDesc, CodecType};
+use alvr_session::BitrateDesc;
 use settings_schema::Switch;
 use std::time::{Duration, Instant};
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
-    video_desc: BitrateDesc,
-    codec_desc: CodecType,
+    desc: BitrateDesc,
     frame_interval_average: SlidingWindowAverage<Duration>,
     frame_size_bits_average: SlidingWindowAverage<usize>,
     network_latency_average: SlidingWindowAverage<Duration>,
@@ -18,10 +17,9 @@ pub struct BitrateManager {
 }
 
 impl BitrateManager {
-    pub fn new(video_desc: BitrateDesc, codec_desc: CodecType, max_history_size: usize) -> Self {
+    pub fn new(desc: BitrateDesc, max_history_size: usize) -> Self {
         Self {
-            video_desc,
-            codec_desc,
+            desc,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
                 max_history_size,
@@ -66,11 +64,7 @@ impl BitrateManager {
             };
         }
 
-        let limit_bitrate = match &self.codec_desc {
-            CodecType::H264 => false,
-            CodecType::HEVC => true,
-        };
-        let bitrate_bps = match &self.video_desc {
+        let bitrate_bps = match &self.desc {
             BitrateDesc::ConstantMbs(bitrate_mbs) => *bitrate_mbs * 1_000_000,
             BitrateDesc::Adaptive {
                 saturation_multiplier,
@@ -83,10 +77,6 @@ impl BitrateManager {
                 let mut bitrate_bps = (bits_average as f32 / latency_average.as_secs_f32()
                     * saturation_multiplier) as u64;
 
-                //Limit bitrate on HEVC because going above 100 causes issues with the decoder(XR2)
-                if limit_bitrate {
-                    bitrate_bps = u64::min(bitrate_bps, 100 * 1_000_000);
-                }
                 if let Switch::Enabled(max) = max_bitrate_mbs {
                     bitrate_bps = u64::min(bitrate_bps, max * 1_000_000);
                 }

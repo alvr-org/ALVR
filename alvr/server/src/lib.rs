@@ -66,7 +66,6 @@ static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     let data_lock = SERVER_DATA_MANAGER.read();
     Mutex::new(BitrateManager::new(
         data_lock.settings().video.bitrate.clone(),
-        data_lock.settings().video.codec.clone(),
         data_lock.settings().connection.statistics_history_size as usize,
     ))
 });

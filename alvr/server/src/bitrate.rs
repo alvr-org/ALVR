@@ -66,16 +66,45 @@ impl BitrateManager {
 
         let bitrate_bps = match &self.desc {
             BitrateDesc::ConstantMbs(bitrate_mbs) => *bitrate_mbs * 1_000_000,
-            BitrateDesc::Adaptive {
+            BitrateDesc::AdaptiveWithSaturation {
                 saturation_multiplier,
                 max_bitrate_mbs,
                 min_bitrate_mbs,
+                max_network_latency_ms,
             } => {
                 let bits_average = self.frame_size_bits_average.get_average();
                 let latency_average = self.network_latency_average.get_average();
 
                 let mut bitrate_bps = (bits_average as f32 / latency_average.as_secs_f32()
                     * saturation_multiplier) as u64;
+
+                if let Switch::Enabled(max) = max_network_latency_ms {
+                    let multiplier = *max as f32 / 1000.0 / latency_average.as_secs_f32();
+                    let max_bitrate =
+                        (bits_average as f32 / latency_average.as_secs_f32() * multiplier) as u64;
+                    bitrate_bps = u64::min(bitrate_bps, max_bitrate);
+                }
+                if let Switch::Enabled(max) = max_bitrate_mbs {
+                    bitrate_bps = u64::min(bitrate_bps, max * 1_000_000);
+                }
+                if let Switch::Enabled(min) = min_bitrate_mbs {
+                    bitrate_bps = u64::max(bitrate_bps, min * 1_000_000);
+                }
+
+                bitrate_bps
+            }
+            BitrateDesc::AdaptiveWithLatency {
+                network_latency_ms,
+                max_bitrate_mbs,
+                min_bitrate_mbs,
+            } => {
+                let bits_average = self.frame_size_bits_average.get_average();
+                let latency_average = self.network_latency_average.get_average();
+
+                let multiplier =
+                    *network_latency_ms as f32 / 1000.0 / latency_average.as_secs_f32();
+                let mut bitrate_bps =
+                    (bits_average as f32 / latency_average.as_secs_f32() * multiplier) as u64;
 
                 if let Switch::Enabled(max) = max_bitrate_mbs {
                     bitrate_bps = u64::min(bitrate_bps, max * 1_000_000);

@@ -129,9 +129,22 @@ pub enum BitrateDesc {
     #[schema(min = 1, max = 1000)]
     ConstantMbs(u64),
     #[serde(rename_all = "camelCase")]
-    Adaptive {
+    AdaptiveWithSaturation {
         #[schema(min = 0.5, max = 2.0, step = 0.05)]
         saturation_multiplier: f32,
+
+        #[schema(min = 1, max = 1000, step = 1)]
+        max_bitrate_mbs: Switch<u64>,
+
+        #[schema(min = 1, max = 1000, step = 1)]
+        min_bitrate_mbs: Switch<u64>,
+
+        #[schema(min = 1, max = 50, step = 1)]
+        max_network_latency_ms: Switch<u64>,
+    },
+    AdaptiveWithLatency {
+        #[schema(min = 1, max = 50, step = 1)]
+        network_latency_ms: u64,
 
         #[schema(min = 1, max = 1000, step = 1)]
         max_bitrate_mbs: Switch<u64>,
@@ -684,7 +697,7 @@ pub fn session_settings_default() -> SettingsDefault {
             sw_thread_count: 0,
             bitrate: BitrateDescDefault {
                 ConstantMbs: 30,
-                Adaptive: BitrateDescAdaptiveDefault {
+                AdaptiveWithSaturation: BitrateDescAdaptiveWithSaturationDefault {
                     saturation_multiplier: 0.95,
                     max_bitrate_mbs: SwitchDefault {
                         enabled: false,
@@ -694,8 +707,23 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: false,
                         content: 5,
                     },
+                    max_network_latency_ms: SwitchDefault {
+                        enabled: false,
+                        content: 10,
+                    },
                 },
-                variant: BitrateDescDefaultVariant::Adaptive,
+                AdaptiveWithLatency: BitrateDescAdaptiveWithLatencyDefault {
+                    network_latency_ms: 10,
+                    max_bitrate_mbs: SwitchDefault {
+                        enabled: false,
+                        content: 100,
+                    },
+                    min_bitrate_mbs: SwitchDefault {
+                        enabled: false,
+                        content: 5,
+                    },
+                },
+                variant: BitrateDescDefaultVariant::AdaptiveWithSaturation,
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 encoder_quality_preset: EncoderQualityPresetDefault {

@@ -687,7 +687,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 Adaptive: BitrateDescAdaptiveDefault {
                     saturation_multiplier: 0.95,
                     max_bitrate_mbs: SwitchDefault {
-                        enabled: false,
+                        enabled: true,
                         content: 100,
                     },
                     min_bitrate_mbs: SwitchDefault {

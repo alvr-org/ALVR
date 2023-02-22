@@ -1,4 +1,4 @@
-#include "OvrController.h"
+#include "Controller.h"
 #include "Logger.h"
 #include "Paths.h"
 #include "Settings.h"
@@ -8,7 +8,14 @@
 #include <cstring>
 #include <string_view>
 
-OvrController::OvrController(uint64_t deviceID) : TrackedDevice(deviceID) {
+vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
+    // index == 8/9 == "HTCViveTracker.json"
+    if (Settings::Instance().m_controllerMode == 8 || Settings::Instance().m_controllerMode == 9)
+        return vr::TrackedDeviceClass_GenericTracker;
+    return vr::TrackedDeviceClass_Controller;
+}
+
+Controller::Controller(uint64_t deviceID) : TrackedDevice(deviceID) {
     m_pose = vr::DriverPose_t{};
     m_pose.poseIsValid = true;
     m_pose.result = vr::TrackingResult_Running_OK;
@@ -28,7 +35,7 @@ OvrController::OvrController(uint64_t deviceID) : TrackedDevice(deviceID) {
 // ITrackedDeviceServerDriver
 //
 
-vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
+vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     Debug("RemoteController::Activate. objectId=%d\n", unObjectId);
 
     auto vr_properties = vr::VRProperties();
@@ -516,14 +523,14 @@ vr::EVRInitError OvrController::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     return vr::VRInitError_None;
 }
 
-void OvrController::Deactivate() {
+void Controller::Deactivate() {
     Debug("RemoteController::Deactivate\n");
     this->object_id = vr::k_unTrackedDeviceIndexInvalid;
 }
 
-void OvrController::EnterStandby() {}
+void Controller::EnterStandby() {}
 
-void *OvrController::GetComponent(const char *pchComponentNameAndVersion) {
+void *Controller::GetComponent(const char *pchComponentNameAndVersion) {
     Debug("RemoteController::GetComponent. Name=%hs\n", pchComponentNameAndVersion);
 
     return NULL;
@@ -532,18 +539,18 @@ void *OvrController::GetComponent(const char *pchComponentNameAndVersion) {
 void PowerOff() {}
 
 /** debug request from a client */
-void OvrController::DebugRequest(const char * /*pchRequest*/,
-                                 char *pchResponseBuffer,
-                                 uint32_t unResponseBufferSize) {
+void Controller::DebugRequest(const char * /*pchRequest*/,
+                              char *pchResponseBuffer,
+                              uint32_t unResponseBufferSize) {
     if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
 }
 
-vr::DriverPose_t OvrController::GetPose() { return m_pose; }
+vr::DriverPose_t Controller::GetPose() { return m_pose; }
 
-vr::VRInputComponentHandle_t OvrController::getHapticComponent() { return m_compHaptic; }
+vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHaptic; }
 
-void OvrController::SetButton(uint64_t id, FfiButtonValue value) {
+void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     if (value.type == BUTTON_TYPE_BINARY) {
         uint32_t flag;
         if (id == MENU_CLICK_ID) {
@@ -589,9 +596,9 @@ void OvrController::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool OvrController::onPoseUpdate(float predictionS,
-                                 FfiDeviceMotion motion,
-                                 const FfiHandSkeleton *handSkeleton) {
+bool Controller::onPoseUpdate(float predictionS,
+                              FfiDeviceMotion motion,
+                              const FfiHandSkeleton *handSkeleton) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -1844,12 +1851,12 @@ void GetGripClickBoneTransform(bool withController,
     }
 }
 
-void OvrController::GetBoneTransform(bool withController,
-                                     bool isLeftHand,
-                                     float thumbAnimationProgress,
-                                     float indexAnimationProgress,
-                                     uint64_t lastPoseButtons,
-                                     vr::VRBoneTransform_t outBoneTransform[]) {
+void Controller::GetBoneTransform(bool withController,
+                                  bool isLeftHand,
+                                  float thumbAnimationProgress,
+                                  float indexAnimationProgress,
+                                  uint64_t lastPoseButtons,
+                                  vr::VRBoneTransform_t outBoneTransform[]) {
 
     vr::VRBoneTransform_t boneTransform1[SKELETON_BONE_COUNT];
     vr::VRBoneTransform_t boneTransform2[SKELETON_BONE_COUNT];
@@ -1923,7 +1930,7 @@ void OvrController::GetBoneTransform(bool withController,
     }
 }
 
-std::string OvrController::GetSerialNumber() {
+std::string Controller::GetSerialNumber() {
     char str[100];
     snprintf(str, sizeof(str), "_%s", this->device_id == LEFT_HAND_ID ? "Left" : "Right");
     return Settings::Instance().m_controllerSerialNumber + str;

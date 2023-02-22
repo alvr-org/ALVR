@@ -8,9 +8,9 @@
 #include "platform/win32/OvrDirectModeComponent.h"
 #endif
 
-class OvrController;
-class OvrController;
-class OvrViveTrackerProxy;
+class Controller;
+class Controller;
+class ViveTrackerProxy;
 
 class CEncoder;
 #ifdef _WIN32
@@ -18,13 +18,11 @@ class CD3DRender;
 #endif
 class PoseHistory;
 
-class OvrHmd : public TrackedDevice,
-               public vr::ITrackedDeviceServerDriver,
-               vr::IVRDisplayComponent {
+class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVRDisplayComponent {
   public:
-    OvrHmd();
+    Hmd();
 
-    virtual ~OvrHmd();
+    virtual ~Hmd();
 
     std::string GetSerialNumber() const;
 
@@ -60,9 +58,6 @@ class OvrHmd : public TrackedDevice,
 
     vr::VRInputComponentHandle_t m_proximity;
 
-    std::shared_ptr<OvrController> m_leftController;
-    std::shared_ptr<OvrController> m_rightController;
-
     std::shared_ptr<CEncoder> m_encoder;
     std::shared_ptr<PoseHistory> m_poseHistory;
 
@@ -88,7 +83,7 @@ class OvrHmd : public TrackedDevice,
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
 #endif
 
-    std::shared_ptr<OvrViveTrackerProxy> m_viveTrackerProxy;
+    std::shared_ptr<ViveTrackerProxy> m_viveTrackerProxy;
 
     vr::DriverPose_t m_pose = {};
 

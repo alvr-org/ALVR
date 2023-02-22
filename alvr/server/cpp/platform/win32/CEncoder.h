@@ -56,7 +56,7 @@
 
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
-		std::shared_ptr<VideoEncoder> m_videoEncoder;
+		std::unique_ptr<VideoEncoder> m_videoEncoder;
 		bool m_bExiting;
 		uint64_t m_presentationTime;
 		uint64_t m_targetTimestampNs;

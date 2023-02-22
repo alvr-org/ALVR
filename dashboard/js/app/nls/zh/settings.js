@@ -150,7 +150,7 @@ define({
     "_root_headset_controllers_content_rotationOffsetLeft.description":
         "左控制器的旋转偏移量,以度为单位。\n对于右控制器,沿Y和Z轴的旋转是镜像的", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_0.name": "x", // adv
-    "_root_headset_controllers_content_rotationOffsetLeft_0.description": "Y旋转", // adv
+    "_root_headset_controllers_content_rotationOffsetLeft_0.description": "X旋转", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_1.name": "y", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_1.description": "Y旋转", // adv
     "_root_headset_controllers_content_rotationOffsetLeft_2.name": "z", // adv

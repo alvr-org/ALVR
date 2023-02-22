@@ -491,6 +491,9 @@ bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
 
 void EncodePipelineAMF::SetParams(FfiDynamicEncoderParams params)
 {
+    if (!params.updated) {
+        return;
+    }
     amf_int64 bitRateIn = params.bitrate_bps;
     if (m_codec == ALVR_CODEC_H264) {
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_TARGET_BITRATE, bitRateIn);

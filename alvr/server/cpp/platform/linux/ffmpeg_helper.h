@@ -57,6 +57,8 @@ public:
   uint32_t queueFamilyIndex;
   std::vector<const char*> instanceExtensions;
   std::vector<const char*> deviceExtensions;
+  bool amd = false;
+  bool intel = false;
   bool nvidia = false;
   std::string devicePath;
 };

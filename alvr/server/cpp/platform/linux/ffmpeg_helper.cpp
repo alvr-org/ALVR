@@ -116,6 +116,8 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   deviceProps.pNext = &drmProps;
   vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
+  amd = deviceProps.properties.vendorID == 0x1002;
+  intel = deviceProps.properties.vendorID == 0x8086;
   nvidia = deviceProps.properties.vendorID == 0x10de;
   Info("Using Vulkan device %s", deviceProps.properties.deviceName);
 

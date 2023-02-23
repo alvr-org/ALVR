@@ -35,13 +35,15 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
         Info("failed to create NvEnc encoder: %s", e.what());
       }
     } else {
-      try {
-        auto amf = std::make_unique<alvr::EncodePipelineAMF>(render, width, height);
-        Info("using AMF encoder");
-        return amf;
-      } catch (std::exception &e)
-      {
-        Info("failed to create AMF encoder: %s", e.what());
+      if (vk_ctx.amd) {
+        try {
+          auto amf = std::make_unique<alvr::EncodePipelineAMF>(render, width, height);
+          Info("using AMF encoder");
+          return amf;
+        } catch (std::exception &e)
+        {
+          Info("failed to create AMF encoder: %s", e.what());
+        }
       }
       try {
         auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(render, vk_ctx, input_frame, width, height);

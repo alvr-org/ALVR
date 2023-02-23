@@ -204,17 +204,23 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   switch (settings.m_encoderQualityPreset)
   {
     case ALVR_QUALITY:
-      quality.preset_mode = PRESET_MODE_QUALITY;
-      encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+      if (vk_ctx.amd) {
+        quality.preset_mode = PRESET_MODE_QUALITY;
+        encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+      }
     break;
     case ALVR_BALANCED:
-      quality.preset_mode = PRESET_MODE_BALANCE;
-      encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+      if (vk_ctx.amd) {
+        quality.preset_mode = PRESET_MODE_BALANCE;
+        encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+      }
     break;
     case ALVR_SPEED:
       default:
-       quality.preset_mode = PRESET_MODE_SPEED;
-       encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+       if (vk_ctx.amd) {
+         quality.preset_mode = PRESET_MODE_SPEED;
+         encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+       }
     break;
   }
 

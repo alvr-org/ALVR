@@ -608,8 +608,13 @@ bool Controller::onPoseUpdate(float predictionS,
     auto pose = vr::DriverPose_t{};
 
     pose.poseIsValid = true;
-    pose.result = vr::TrackingResult_Running_OK;
-    pose.deviceIsConnected = true;
+    if (Settings::Instance().m_disableController) {
+        pose.result = vr::TrackingResult_Uninitialized;
+        pose.deviceIsConnected = false;
+    } else { 
+        pose.result = vr::TrackingResult_Running_OK;
+        pose.deviceIsConnected = true;
+    }
 
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);

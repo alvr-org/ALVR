@@ -55,10 +55,26 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
         },
     );
     map.insert(
+        *A_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "a_touch".into(),
+            binding_path: A_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
         *B_CLICK_ID,
         ButtonBindingInfo {
             name: "b_click".into(),
             binding_path: B_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *B_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "b_touch".into(),
+            binding_path: B_TOUCH_PATH.into(),
             binding_type: BindingType::Binary,
         },
     );
@@ -71,10 +87,26 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
         },
     );
     map.insert(
+        *X_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "x_touch".into(),
+            binding_path: X_TOUCH_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
         *Y_CLICK_ID,
         ButtonBindingInfo {
             name: "y_click".into(),
             binding_path: Y_CLICK_PATH.into(),
+            binding_type: BindingType::Binary,
+        },
+    );
+    map.insert(
+        *Y_TOUCH_ID,
+        ButtonBindingInfo {
+            name: "y_touch".into(),
+            binding_path: Y_TOUCH_PATH.into(),
             binding_type: BindingType::Binary,
         },
     );
@@ -252,6 +284,10 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
         map.remove(&*LEFT_THUMBREST_TOUCH_ID);
         map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
     } else if platform == Platform::Vive {
+        map.remove(&*A_TOUCH_ID);
+        map.remove(&*B_TOUCH_ID);
+        map.remove(&*X_TOUCH_ID);
+        map.remove(&*Y_TOUCH_ID);
         map.remove(&*LEFT_SQUEEZE_CLICK_ID);
         map.remove(&*LEFT_TRIGGER_CLICK_ID);
         map.remove(&*LEFT_THUMBREST_TOUCH_ID);

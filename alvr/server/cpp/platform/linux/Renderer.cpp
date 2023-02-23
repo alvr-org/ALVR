@@ -42,7 +42,7 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     , m_queueFamilyIndex(queueIdx)
 {
     auto checkExtension = [devExtensions](const char *name) {
-        return std::find(devExtensions.begin(), devExtensions.end(), name) != devExtensions.end();
+        return std::find_if(devExtensions.begin(), devExtensions.end(), [name](const char *ext) { return strcmp(ext, name) == 0; }) != devExtensions.end();
     };
     d.haveDmaBuf = checkExtension(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);

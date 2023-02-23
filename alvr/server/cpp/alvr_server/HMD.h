@@ -41,6 +41,7 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
 
     void SetViewsConfig(FfiViewsConfig config);
 
+    vr::ETrackedDeviceClass GetDeviceClass() const { return m_deviceClass; }
     bool IsTrackingRef() const { return m_deviceClass == vr::TrackedDeviceClass_TrackingReference; }
     bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
 

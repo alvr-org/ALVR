@@ -38,6 +38,8 @@ use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
     ffi::{c_char, c_void, CStr, CString},
+    fs::File,
+    io::Write,
     ptr,
     sync::{
         self,
@@ -83,6 +85,7 @@ static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
+static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new(None));
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
@@ -359,6 +362,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
             sender.send(config_buffer.clone()).ok();
         }
 
+        if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+            file.write_all(&config_buffer).ok();
+        }
+
         *DECODER_CONFIG.lock() = Some(config_buffer);
     }
 
@@ -375,6 +382,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
             if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
                 sender.send(payload.clone()).ok();
+            }
+
+            if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+                file.write_all(&payload).ok();
             }
 
             sender.send(VideoPacket { timestamp, payload }).ok();

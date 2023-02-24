@@ -1,5 +1,6 @@
 use crate::{
-    DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
+    VIDEO_MIRROR_SENDER,
 };
 use alvr_common::{prelude::*, ALVR_VERSION};
 use alvr_events::{Event, EventType};
@@ -168,7 +169,15 @@ async fn http_api(
                 }
             };
 
-            websocket(request, sender, protocol::Message::Binary).await?
+            if let Some(config) = &*DECODER_CONFIG.lock() {
+                sender.send(config.clone()).ok();
+            }
+
+            let res = websocket(request, sender, protocol::Message::Binary).await?;
+
+            unsafe { crate::RequestIDR() };
+
+            res
         }
         "/api/driver/register" => {
             if alvr_commands::driver_registration(

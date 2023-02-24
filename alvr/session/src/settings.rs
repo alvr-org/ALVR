@@ -639,8 +639,9 @@ pub struct ExtraDesc {
     pub prompt_before_update: bool,
     pub update_channel: UpdateChannel,
     pub log_to_disk: bool,
-
     pub log_button_presses: bool,
+    pub save_video_stream: bool,
+
     #[schema(advanced)]
     pub notification_level: LogLevel,
     #[schema(advanced)]
@@ -968,6 +969,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
+            save_video_stream: false,
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {
                     LogLevelDefaultVariant::Info

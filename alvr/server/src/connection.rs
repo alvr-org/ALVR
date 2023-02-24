@@ -5,8 +5,8 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, HAPTICS_SENDER, IS_ALIVE,
+    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -28,6 +28,7 @@ use futures::future::BoxFuture;
 use settings_schema::Switch;
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
     future,
     net::IpAddr,
     process::Command,
@@ -519,6 +520,8 @@ impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
         self.0.set(false);
 
+        VIDEO_RECORDING_FILE.lock().take();
+
         unsafe { crate::DeinitializeStreaming() };
 
         let on_disconnect_script = SERVER_DATA_MANAGER
@@ -610,6 +613,23 @@ async fn connection_pipeline(
                 .spawn()
             {
                 warn!("Failed to run connect script: {e}");
+            }
+        }
+    }
+
+    if settings.extra.save_video_stream {
+        let ext = if matches!(settings.video.codec, CodecType::H264) {
+            "h264"
+        } else {
+            "h265"
+        };
+
+        let path = FILESYSTEM_LAYOUT.log_dir.join(format!("recording.{ext}"));
+
+        match File::create(path) {
+            Ok(file) => *VIDEO_RECORDING_FILE.lock() = Some(file),
+            Err(e) => {
+                error!("Failed to record video on disk: {e}");
             }
         }
     }
@@ -957,8 +977,8 @@ async fn connection_pipeline(
                             path: BUTTON_PATH_FROM_ID
                                 .get(&path_id)
                                 .cloned()
-                                .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", path_id)),
-                            value: value.clone(),
+                                .unwrap_or_else(|| format!("Unknown (ID: {path_id:#16x})")),
+                            value,
                         }));
                     }
 

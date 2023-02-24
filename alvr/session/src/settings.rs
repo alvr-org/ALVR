@@ -142,6 +142,7 @@ pub enum BitrateDesc {
         #[schema(min = 1, max = 50, step = 1)]
         max_network_latency_ms: Switch<u64>,
     },
+    #[serde(rename_all = "camelCase")]
     AdaptiveWithLatency {
         #[schema(min = 1, max = 50, step = 1)]
         network_latency_ms: u64,

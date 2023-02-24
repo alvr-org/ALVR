@@ -62,41 +62,7 @@ impl ServerDataManager {
     pub fn new(session_path: &Path) -> Self {
         let config_dir = session_path.parent().unwrap();
         fs::create_dir_all(config_dir).ok();
-
-        let session_desc = match fs::read_to_string(session_path) {
-            Ok(session_string) => {
-                let json_value = if let Ok(val) = json::from_str::<json::Value>(&session_string) {
-                    val
-                } else {
-                    json::to_value(SessionDesc::default()).unwrap()
-                };
-                match json::from_value(json_value.clone()) {
-                    Ok(session_desc) => session_desc,
-                    Err(_) => {
-                        fs::write(config_dir.join("session_old.json"), &session_string).ok();
-                        let mut session_desc = SessionDesc::default();
-                        match session_desc.merge_from_json(&json_value) {
-                            Ok(_) => info!(
-                                "{} {}",
-                                "Session extrapolated successfully.",
-                                "Old session.json is stored as session_old.json"
-                            ),
-                            Err(e) => error!(
-                                "{} {} {}",
-                                "Error while extrapolating session.",
-                                "Old session.json is stored as session_old.json.",
-                                e
-                            ),
-                        }
-                        // not essential, but useful to avoid duplicated errors
-                        save_session(&session_desc, session_path).ok();
-
-                        session_desc
-                    }
-                }
-            }
-            Err(_) => SessionDesc::default(),
-        };
+        let session_desc = Self::load_session(session_path, config_dir);
 
         let vk_adapters: Vec<wgpu::Adapter> = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::VULKAN,
@@ -119,6 +85,53 @@ impl ServerDataManager {
             script_engine,
             gpu_infos,
         }
+    }
+
+    fn load_session(session_path: &Path, config_dir: &Path) -> SessionDesc {
+        let session_string = fs::read_to_string(session_path).unwrap_or_default();
+
+        if session_string.is_empty() {
+            return SessionDesc::default();
+        }
+
+        let session_json = json::from_str::<json::Value>(&session_string)
+            .unwrap_or_else(|e| {
+                error!(
+                    "{} {} {}\n{}",
+                    "Failed to load session.json.",
+                    "Its contents will be reset and the original file content stored as session_invalid.json.",
+                    "See error message below for details:",
+                    e
+                );
+                json::Value::Null
+            });
+
+        if session_json.is_null() {
+            fs::write(config_dir.join("session_invalid.json"), &session_string).ok();
+            return SessionDesc::default();
+        }
+
+        json::from_value(session_json.clone()).unwrap_or_else(|_| {
+            fs::write(config_dir.join("session_old.json"), &session_string).ok();
+            let mut session_desc = SessionDesc::default();
+            match session_desc.merge_from_json(&session_json) {
+                Ok(_) => info!(
+                    "{} {}",
+                    "Session extrapolated successfully.",
+                    "Old session.json is stored as session_old.json"
+                ),
+                Err(e) => error!(
+                    "{} {} {}",
+                    "Error while extrapolating session.",
+                    "Old session.json is stored as session_old.json.",
+                    e
+                ),
+            }
+            // not essential, but useful to avoid duplicated errors
+            save_session(&session_desc, session_path).ok();
+
+            session_desc
+        })
     }
 
     // prefer settings()

@@ -65,7 +65,11 @@ impl ServerDataManager {
 
         let session_desc = match fs::read_to_string(session_path) {
             Ok(session_string) => {
-                let json_value = json::from_str::<json::Value>(&session_string).unwrap();
+                let json_value = if let Ok(val) = json::from_str::<json::Value>(&session_string) {
+                    val
+                } else {
+                    json::to_value(SessionDesc::default()).unwrap()
+                };
                 match json::from_value(json_value.clone()) {
                     Ok(session_desc) => session_desc,
                     Err(_) => {

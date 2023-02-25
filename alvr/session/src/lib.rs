@@ -238,16 +238,11 @@ impl SessionDesc {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
         let schema = settings::settings_schema(settings::session_settings_default());
 
-        if let Err(e) = json::from_value::<Settings>(json_session_settings_to_settings(
-            &session_settings_json,
-            &schema,
-        )) {
-            dbg!(e);
-        }
-        json::from_value(json_session_settings_to_settings(
+        json::from_value::<Settings>(json_session_settings_to_settings(
             &session_settings_json,
             &schema,
         ))
+        .map_err(|e| dbg!(e))
         .unwrap()
     }
 }

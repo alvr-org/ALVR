@@ -75,28 +75,33 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         InitDriverLog(vr::VRDriverLog());
 
         this->hmd = std::make_unique<Hmd>();
-        this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
-        this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
-
-        this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)&*this->hmd});
-        this->tracked_devices.insert({LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
-        this->tracked_devices.insert(
-            {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
-
-        bool ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-            left_controller->GetSerialNumber().c_str(),
-            left_controller->getControllerDeviceClass(),
-            left_controller.get());
-        if (!ret) {
-            Warn("Failed to register left controller");
+        if (vr::VRServerDriverHost()->TrackedDeviceAdded(this->hmd->GetSerialNumber().c_str(),
+                                                         this->hmd->GetDeviceClass(),
+                                                         this->hmd.get())) {
+            this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)this->hmd.get()});
+        } else {
+            Warn("Failed to HMD device");
         }
 
-        ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-            right_controller->GetSerialNumber().c_str(),
-            right_controller->getControllerDeviceClass(),
-            right_controller.get());
-        if (!ret) {
-            Warn("Failed to register right controller");
+        if (!Settings::Instance().m_disableController) {
+            this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
+            this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
+            
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(this->left_controller->GetSerialNumber().c_str(),
+                                                              this->left_controller->getControllerDeviceClass(),
+                                                              this->left_controller.get())) {
+                this->tracked_devices.insert({LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
+            } else {
+                Warn("Failed to register left controller");
+            }
+
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(this->right_controller->GetSerialNumber().c_str(), 
+                                                              this->right_controller->getControllerDeviceClass(), 
+                                                              this->right_controller.get())) {
+                this->tracked_devices.insert({RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
+            } else {
+                Warn("Failed to register right controller");
+            }
         }
 
         return vr::VRInitError_None;
@@ -267,11 +272,11 @@ void SetTracking(unsigned long long targetTimestampNs,
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
-            if (deviceMotions[i].deviceID == LEFT_HAND_ID && g_driver_provider.left_controller) {
+            if (g_driver_provider.left_controller && deviceMotions[i].deviceID == LEFT_HAND_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], leftHand);
-            } else if (deviceMotions[i].deviceID == RIGHT_HAND_ID &&
-                       g_driver_provider.right_controller) {
+            } else if (g_driver_provider.right_controller &&
+                       deviceMotions[i].deviceID == RIGHT_HAND_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], rightHand);
             }
@@ -318,10 +323,13 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
 }
 
 void SetButton(unsigned long long path, FfiButtonValue value) {
-    if (std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
-        LEFT_CONTROLLER_BUTTON_IDS.end()) {
+    if (g_driver_provider.left_controller &&
+        std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), 
+            LEFT_CONTROLLER_BUTTON_IDS.end(), 
+            path) != LEFT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.left_controller->SetButton(path, value);
-    } else if (std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(),
+    } else if (g_driver_provider.right_controller &&
+               std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(),
                          RIGHT_CONTROLLER_BUTTON_IDS.end(),
                          path) != RIGHT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.right_controller->SetButton(path, value);

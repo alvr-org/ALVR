@@ -54,20 +54,12 @@ Hmd::Hmd()
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
                         ? vr::TrackedDeviceClass_TrackingReference
                         : vr::TrackedDeviceClass_HMD;
-    bool ret;
-    ret = vr::VRServerDriverHost()->TrackedDeviceAdded(
-        GetSerialNumber().c_str(), m_deviceClass, this);
-    if (!ret) {
-        Warn("Failed to register device");
-    }
 
-    // todo: move to ViveTrackerProxy
     if (Settings::Instance().m_enableViveTrackerProxy) {
-        m_viveTrackerProxy = std::make_shared<ViveTrackerProxy>(*this);
-        ret = vr::VRServerDriverHost()->TrackedDeviceAdded(m_viveTrackerProxy->GetSerialNumber(),
-                                                           vr::TrackedDeviceClass_GenericTracker,
-                                                           m_viveTrackerProxy.get());
-        if (!ret) {
+        m_viveTrackerProxy = std::make_unique<ViveTrackerProxy>(*this);
+        if (!vr::VRServerDriverHost()->TrackedDeviceAdded(m_viveTrackerProxy->GetSerialNumber(),
+                                                          vr::TrackedDeviceClass_GenericTracker,
+                                                          m_viveTrackerProxy.get())) {
             Warn("Failed to register Vive tracker");
         }
     }
@@ -270,44 +262,45 @@ void *Hmd::GetComponent(const char *component_name_and_version) {
 vr::DriverPose_t Hmd::GetPose() { return m_pose; }
 
 void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
-    if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
-        auto pose = vr::DriverPose_t{};
-        pose.poseIsValid = true;
-        pose.result = vr::TrackingResult_Running_OK;
-        pose.deviceIsConnected = true;
+    if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
+        return;
+    }
+    auto pose = vr::DriverPose_t{};
+    pose.poseIsValid = true;
+    pose.result = vr::TrackingResult_Running_OK;
+    pose.deviceIsConnected = true;
 
-        pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-        pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-        pose.qRotation = HmdQuaternion_Init(
-            motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
+    pose.qRotation = HmdQuaternion_Init(
+        motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
 
-        pose.vecPosition[0] = motion.position[0];
-        pose.vecPosition[1] = motion.position[1];
-        pose.vecPosition[2] = motion.position[2];
+    pose.vecPosition[0] = motion.position[0];
+    pose.vecPosition[1] = motion.position[1];
+    pose.vecPosition[2] = motion.position[2];
 
-        m_pose = pose;
+    m_pose = pose;
 
-        m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
+    m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
 
-        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            this->object_id, pose, sizeof(vr::DriverPose_t));
+    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+        this->object_id, pose, sizeof(vr::DriverPose_t));
 
-        if (m_viveTrackerProxy != nullptr)
-            m_viveTrackerProxy->update();
+    if (m_viveTrackerProxy)
+        m_viveTrackerProxy->update();
 
 #if !defined(_WIN32) && !defined(__APPLE__)
-        // This has to be set after initialization is done, because something in vrcompositor is
-        // setting it to 90Hz in the meantime
-        if (!m_refreshRateSet && m_encoder && m_encoder->IsConnected()) {
-            m_refreshRateSet = true;
-            vr::VRProperties()->SetFloatProperty(
-                this->prop_container,
-                vr::Prop_DisplayFrequency_Float,
-                static_cast<float>(Settings::Instance().m_refreshRate));
-        }
-#endif
+    // This has to be set after initialization is done, because something in vrcompositor is
+    // setting it to 90Hz in the meantime
+    if (!m_refreshRateSet && m_encoder && m_encoder->IsConnected()) {
+        m_refreshRateSet = true;
+        vr::VRProperties()->SetFloatProperty(
+            this->prop_container,
+            vr::Prop_DisplayFrequency_Float,
+            static_cast<float>(Settings::Instance().m_refreshRate));
     }
+#endif
 }
 
 void Hmd::StartStreaming() {

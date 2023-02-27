@@ -289,6 +289,18 @@ define([
                 $.get("api/capture-frame");
             });
 
+            $("#insertIDR").click(() => {
+                $.get("api/insert-idr");
+            });
+
+            $("#startRecording").click(() => {
+                $.get("api/start-recording");
+            });
+
+            $("#stopRecording").click(() => {
+                $.get("api/stop-recording");
+            });
+
             $("#checkForUpdates").click(() => {
                 checkForUpdate(settings, 5000);
             });

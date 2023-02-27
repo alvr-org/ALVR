@@ -520,7 +520,7 @@ impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
         self.0.set(false);
 
-        VIDEO_RECORDING_FILE.lock().take();
+        *VIDEO_RECORDING_FILE.lock() = None;
 
         unsafe { crate::DeinitializeStreaming() };
 
@@ -618,20 +618,7 @@ async fn connection_pipeline(
     }
 
     if settings.extra.save_video_stream {
-        let ext = if matches!(settings.video.codec, CodecType::H264) {
-            "h264"
-        } else {
-            "h265"
-        };
-
-        let path = FILESYSTEM_LAYOUT.log_dir.join(format!("recording.{ext}"));
-
-        match File::create(path) {
-            Ok(file) => *VIDEO_RECORDING_FILE.lock() = Some(file),
-            Err(e) => {
-                error!("Failed to record video on disk: {e}");
-            }
-        }
+        crate::create_recording_file();
     }
 
     unsafe { crate::InitializeStreaming() };

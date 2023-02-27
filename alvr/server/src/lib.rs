@@ -31,7 +31,7 @@ use alvr_common::{
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
-use alvr_session::{OpenvrPropValue, OpenvrPropertyKey};
+use alvr_session::{CodecType, OpenvrPropValue, OpenvrPropertyKey};
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
@@ -161,6 +161,32 @@ pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ffi
         key: key as u32,
         type_,
         value,
+    }
+}
+
+pub fn create_recording_file() {
+    let codec = SERVER_DATA_MANAGER.read().settings().video.codec;
+    let ext = if matches!(codec, CodecType::H264) {
+        "h264"
+    } else {
+        "h265"
+    };
+
+    let path = FILESYSTEM_LAYOUT.log_dir.join(format!("recording.{ext}"));
+
+    match File::create(path) {
+        Ok(mut file) => {
+            if let Some(config) = &*DECODER_CONFIG.lock() {
+                file.write_all(config).ok();
+            }
+
+            *VIDEO_RECORDING_FILE.lock() = Some(file);
+
+            unsafe { RequestIDR() };
+        }
+        Err(e) => {
+            error!("Failed to record video on disk: {e}");
+        }
     }
 }
 

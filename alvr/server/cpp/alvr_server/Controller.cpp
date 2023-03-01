@@ -520,6 +520,21 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         break;
     }
 
+    // NB: here we set some initial values for the hand skeleton to fix the frozen hand bug
+    {
+        vr::VRBoneTransform_t boneTransforms[SKELETON_BONE_COUNT];
+        GetBoneTransform(false, this->device_id == LEFT_HAND_ID, 0.0, 0.0, 0, boneTransforms);
+
+        vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,
+                                                 vr::VRSkeletalMotionRange_WithController,
+                                                 boneTransforms,
+                                                 SKELETON_BONE_COUNT);
+        vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,
+                                                 vr::VRSkeletalMotionRange_WithoutController,
+                                                 boneTransforms,
+                                                 SKELETON_BONE_COUNT);
+    }
+
     return vr::VRInitError_None;
 }
 
@@ -989,7 +1004,7 @@ bool Controller::onPoseUpdate(float predictionS,
                                                          SKELETON_BONE_COUNT);
             if (err != vr::VRInputError_None) {
                 // Handle failure case
-                Debug("UpdateSkeletonComponentfailed.  Error: %i\n", err);
+                Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
             }
 
             GetBoneTransform(false,
@@ -1007,7 +1022,7 @@ bool Controller::onPoseUpdate(float predictionS,
                 SKELETON_BONE_COUNT);
             if (err != vr::VRInputError_None) {
                 // Handle failure case
-                Debug("UpdateSkeletonComponentfailed.  Error: %i\n", err);
+                Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
             }
             break;
         }

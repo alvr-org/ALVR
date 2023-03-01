@@ -1,6 +1,6 @@
 #![cfg(target_os = "linux")]
 
-use std::ffi::{c_char, CString};
+use std::ffi::CString;
 
 #[allow(
     non_camel_case_types,
@@ -14,10 +14,7 @@ mod bindings {
 use bindings::*;
 
 #[no_mangle]
-pub unsafe extern "C" fn vkGetInstanceProcAddr(
-    instance: VkInstance,
-    p_name: *const c_char,
-) -> PFN_vkVoidFunction {
+pub unsafe extern "C" fn ALVR_Negotiate(nli: *mut VkNegotiateLayerInterface) -> VkResult {
     g_sessionPath = CString::new(
         alvr_filesystem::filesystem_layout_invalid()
             .session()
@@ -27,13 +24,5 @@ pub unsafe extern "C" fn vkGetInstanceProcAddr(
     .unwrap()
     .into_raw();
 
-    bindings::wsi_layer_vkGetInstanceProcAddr(instance, p_name)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn vkGetDeviceProcAddr(
-    instance: VkDevice,
-    p_name: *const c_char,
-) -> PFN_vkVoidFunction {
-    bindings::wsi_layer_vkGetDeviceProcAddr(instance, p_name)
+    bindings::wsi_layer_Negotiate(nli)
 }

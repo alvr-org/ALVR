@@ -312,60 +312,32 @@ VKAPI_ATTR VkResult create_device(VkPhysicalDevice physicalDevice,
     return VK_SUCCESS;
 }
 
-} /* namespace layer */
-
-extern "C" {
-VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDevice device,
-                                                                            const char *funcName);
-
-VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-wsi_layer_vkGetInstanceProcAddr(VkInstance instance, const char *funcName);
-
 /* Clean up the dispatch table for this instance. */
-VK_LAYER_EXPORT VKAPI_ATTR void VKAPI_CALL
+VKAPI_ATTR void VKAPI_CALL
 wsi_layer_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks *pAllocator) {
     assert(instance);
     layer::instance_private_data::get(instance).disp.DestroyInstance(instance, pAllocator);
     layer::instance_private_data::destroy(instance);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR void VKAPI_CALL
+VKAPI_ATTR void VKAPI_CALL
 wsi_layer_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator) {
     layer::device_private_data::destroy(device);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+VKAPI_ATTR VkResult VKAPI_CALL
 wsi_layer_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
     return layer::create_instance(pCreateInfo, pAllocator, pInstance);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+VKAPI_ATTR VkResult VKAPI_CALL
 wsi_layer_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                          const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     return layer::create_device(physicalDevice, pCreateInfo, pAllocator, pDevice);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
-vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct) {
-    assert(pVersionStruct);
-    assert(pVersionStruct->sType == LAYER_NEGOTIATE_INTERFACE_STRUCT);
-
-    /* 2 is the minimum interface version which would utilize this function. */
-    assert(pVersionStruct->loaderLayerInterfaceVersion >= 2);
-
-    /* Set our requested interface version. Set to 2 for now to separate us from newer versions. */
-    pVersionStruct->loaderLayerInterfaceVersion = 2;
-
-    /* Fill in struct values. */
-    pVersionStruct->pfnGetInstanceProcAddr = &wsi_layer_vkGetInstanceProcAddr;
-    pVersionStruct->pfnGetDeviceProcAddr = &wsi_layer_vkGetDeviceProcAddr;
-    pVersionStruct->pfnGetPhysicalDeviceProcAddr = nullptr;
-
-    return VK_SUCCESS;
-}
-
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateDeviceExtensionProperties(
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice physicalDevice, const char *pLayerName, uint32_t *pCount,
     VkExtensionProperties *pProperties) {
     if (pLayerName && !strcmp(pLayerName, layer::global_layer.layerName))
@@ -376,7 +348,7 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateDeviceExtens
         .disp.EnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pCount, pProperties);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateInstanceExtensionProperties(
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateInstanceExtensionProperties(
     const char *pLayerName, uint32_t *pCount, VkExtensionProperties *pProperties) {
     if (pLayerName && !strcmp(pLayerName, layer::global_layer.layerName))
         return layer::extension_properties(1, layer::instance_extension, pCount, pProperties);
@@ -384,7 +356,7 @@ VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkEnumerateInstanceExte
     return VK_ERROR_LAYER_NOT_PRESENT;
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL
+VKAPI_ATTR VkResult VKAPI_CALL
 wsi_layer_vkEnumerateInstanceLayerProperties(uint32_t *pCount, VkLayerProperties *pProperties) {
     return layer::layer_properties(1, &layer::global_layer, pCount, pProperties);
 }
@@ -394,9 +366,7 @@ wsi_layer_vkEnumerateInstanceLayerProperties(uint32_t *pCount, VkLayerProperties
         return (PFN_vkVoidFunction)&wsi_layer_##func;
 
 
-const char *g_sessionPath;
-
-VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDevice device,
+PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDevice device,
                                                                             const char *funcName) {
     GET_PROC_ADDR(vkCreateSwapchainKHR);
     GET_PROC_ADDR(vkDestroySwapchainKHR);
@@ -412,7 +382,7 @@ VK_LAYER_EXPORT PFN_vkVoidFunction VKAPI_CALL wsi_layer_vkGetDeviceProcAddr(VkDe
     return layer::device_private_data::get(device).disp.GetDeviceProcAddr(device, funcName);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 wsi_layer_vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
     GET_PROC_ADDR(vkGetDeviceProcAddr);
     GET_PROC_ADDR(vkGetInstanceProcAddr);
@@ -439,4 +409,19 @@ wsi_layer_vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
 
     return layer::instance_private_data::get(instance).disp.GetInstanceProcAddr(instance, funcName);
 }
-} /* extern "C" */
+
+} /* namespace layer */
+
+const char *g_sessionPath;
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_Negotiate(VkNegotiateLayerInterface *nli)
+{
+    if (nli->loaderLayerInterfaceVersion < 2)
+        return VK_ERROR_INITIALIZATION_FAILED;
+
+    nli->loaderLayerInterfaceVersion = 2;
+    nli->pfnGetInstanceProcAddr = layer::wsi_layer_vkGetInstanceProcAddr;
+    nli->pfnGetDeviceProcAddr = layer::wsi_layer_vkGetDeviceProcAddr;
+
+    return VK_SUCCESS;
+}

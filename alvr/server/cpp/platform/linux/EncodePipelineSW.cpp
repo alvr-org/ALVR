@@ -1,33 +1,35 @@
 #include "EncodePipelineSW.h"
 
-#include <algorithm>
 #include <chrono>
 
 #include "alvr_server/Settings.h"
 #include "alvr_server/Logger.h"
-#include "ffmpeg_helper.h"
 #include "FormatConverter.h"
-
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
-}
 
 namespace
 {
 
-const char * encoder(ALVR_CODEC codec)
+void x264_log(void *p, int level, const char *fmt, va_list args)
 {
-  switch (codec)
-  {
-    case ALVR_CODEC_H264:
-      return "libx264";
-    case ALVR_CODEC_H265:
-      return "libx265";
-  }
-  throw std::runtime_error("invalid codec " + std::to_string(codec));
+    char buf[256];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    switch (level) {
+    case X264_LOG_ERROR:
+        Error("x264: %s", buf);
+        break;
+    case X264_LOG_WARNING:
+        Warn("x264: %s", buf);
+        break;
+    case X264_LOG_INFO:
+        Info("x264: %s", buf);
+        break;
+    case X264_LOG_DEBUG:
+        Debug("x264: %s", buf);
+        break;
+    default:
+        break;
+    }
 }
-
 
 }
 
@@ -41,71 +43,39 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
     throw std::runtime_error("HEVC is not supported by SW encoder");
   }
 
-  auto codec_id = ALVR_CODEC(settings.m_codec);
-  const char * encoder_name = encoder(codec_id);
-  const AVCodec *codec = avcodec_find_encoder_by_name(encoder_name);
-  if (codec == nullptr)
-  {
-    throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
-  }
+  x264_param_default_preset(&param, "ultrafast", "zerolatency");
+  x264_param_apply_profile(&param, "high");
 
-  encoder_ctx = avcodec_alloc_context3(codec);
-  if (not encoder_ctx)
-  {
-    throw std::runtime_error("failed to allocate " + std::string(encoder_name) + " encoder");
-  }
+  param.pf_log = x264_log;
+  param.i_log_level = X264_LOG_INFO;
 
-  AVDictionary * opt = NULL;
-  switch (codec_id)
-  {
-    case ALVR_CODEC_H264:
-      encoder_ctx->profile = FF_PROFILE_H264_HIGH;
-      break;
-    case ALVR_CODEC_H265:
-      encoder_ctx->profile = settings.m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
-      break;
-  }
+  param.b_aud = 0;
+  param.b_cabac = settings.m_entropyCoding == ALVR_CABAC;
+  param.b_sliced_threads = true;
+  param.i_threads = settings.m_swThreadCount;
+  param.i_width = width;
+  param.i_height = height;
+  param.rc.i_rc_method = X264_RC_ABR;
+  param.i_fps_num = 60;
+  param.i_fps_den = 1;
 
-  switch (Settings::Instance().m_rateControlMode)
-  {
-    case ALVR_CBR:
-      av_dict_set(&opt, "nal-hrd", "cbr", 0);
-      break;
-    case ALVR_VBR:
-      av_dict_set(&opt, "nal-hrd", "vbr", 0);
-      break;
-  }
-
-  av_dict_set(&opt, "preset", "ultrafast", 0);
-  av_dict_set(&opt, "tune", "zerolatency", 0);
-  av_dict_set(&opt, "forced-idr", "true", 0);
-
-  encoder_ctx->width = width;
-  encoder_ctx->height = height;
-  encoder_ctx->time_base = {1, (int)1e9};
-  encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
-  encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
-  encoder_ctx->pix_fmt = settings.m_use10bitEncoder && codec_id == ALVR_CODEC_H265 ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
-  encoder_ctx->max_b_frames = 0;
-  encoder_ctx->gop_size = 0;
   auto params = FfiDynamicEncoderParams {};
   params.updated = true;
   params.bitrate_bps = 30'000'000;
   params.framerate = 60.0;
   SetParams(params);
-  encoder_ctx->thread_type = FF_THREAD_SLICE;
-  encoder_ctx->thread_count = settings.m_swThreadCount;
 
-  int err = avcodec_open2(encoder_ctx, codec, &opt);
-  if (err < 0) {
-    throw alvr::AvException("Cannot open video encoder codec:", err);
+  enc = x264_encoder_open(&param);
+  if (!enc) {
+    throw std::runtime_error("Failed to open encoder");
   }
 
-  encoder_frame = av_frame_alloc();
-  encoder_frame->width = width;
-  encoder_frame->height = height;
-  encoder_frame->format = encoder_ctx->pix_fmt;
-  av_frame_get_buffer(encoder_frame, 0);
+  x264_picture_init(&picture);
+  picture.img.i_csp = X264_CSP_I420;
+  picture.img.i_plane = 3;
+
+  x264_picture_init(&picture_out);
+
   rgbtoyuv = new RgbToYuv420(render, render->GetOutput().image, render->GetOutput().imageInfo, render->GetOutput().semaphore);
 }
 
@@ -114,20 +84,49 @@ alvr::EncodePipelineSW::~EncodePipelineSW()
   if (rgbtoyuv) {
     delete rgbtoyuv;
   }
-  av_frame_free(&encoder_frame);
+  if (enc) {
+    x264_encoder_close(enc);
+  }
 }
 
 void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-  rgbtoyuv->Convert(encoder_frame->data, encoder_frame->linesize);
+  rgbtoyuv->Convert(picture.img.plane, picture.img.i_stride);
   rgbtoyuv->Sync();
   timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
-  encoder_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
-  encoder_frame->pts = targetTimestampNs;
+  picture.i_type = idr ? X264_TYPE_IDR : X264_TYPE_AUTO;
+  pts = picture.i_pts = targetTimestampNs;
 
-  int err;
-  if ((err = avcodec_send_frame(encoder_ctx, encoder_frame)) < 0) {
-    throw alvr::AvException("avcodec_send_frame failed:", err);
+  int nnal = 0;
+  nal_size = x264_encoder_encode(enc, &nal, &nnal, &picture, &picture_out);
+  if (nal_size < 0) {
+    throw std::runtime_error("x264 encoder_encode failed");
+  }
+}
+
+bool alvr::EncodePipelineSW::GetEncoded(FramePacket &packet)
+{
+  if (!nal) {
+    return false;
+  }
+  packet.size = nal_size;
+  packet.data = nal[0].p_payload;
+  packet.pts = pts;
+  return packet.size > 0;
+}
+
+void alvr::EncodePipelineSW::SetParams(FfiDynamicEncoderParams params)
+{
+  if (!params.updated) {
+    return;
+  }
+  int64_t bitrate = params.bitrate_bps / params.framerate * 60; // no variable framerate support in x264
+  param.rc.i_bitrate = bitrate / 1'000 * 1.4; // needs higher value to hit target bitrate
+  param.rc.i_vbv_buffer_size = param.rc.i_bitrate / 60 * 1.1;
+  param.rc.i_vbv_max_bitrate = param.rc.i_bitrate;
+  param.rc.f_vbv_buffer_init = 0.75;
+  if (enc) {
+    x264_encoder_reconfig(enc, &param);
   }
 }

@@ -25,6 +25,58 @@ use tokio::net;
 use tokio::sync::{mpsc, Mutex};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
+pub fn set_socket_buffers(
+    socket: &socket2::Socket,
+    send_buffer_bytes: SocketBufferSize,
+    recv_buffer_bytes: SocketBufferSize,
+) -> StrResult {
+    info!(
+        "Initial socket buffer size: send: {}B, recv: {}B",
+        socket.send_buffer_size().map_err(err!())?,
+        socket.recv_buffer_size().map_err(err!())?
+    );
+
+    {
+        let maybe_size = match send_buffer_bytes {
+            SocketBufferSize::Default => None,
+            SocketBufferSize::Maximum => Some(u32::MAX),
+            SocketBufferSize::Custom(size) => Some(size),
+        };
+
+        if let Some(size) = maybe_size {
+            if let Err(e) = socket.set_send_buffer_size(size as usize) {
+                info!("Error setting socket send buffer: {e}");
+            } else {
+                info!(
+                    "Set socket send buffer succeeded: {}",
+                    socket.send_buffer_size().map_err(err!())?
+                );
+            }
+        }
+    }
+
+    {
+        let maybe_size = match recv_buffer_bytes {
+            SocketBufferSize::Default => None,
+            SocketBufferSize::Maximum => Some(u32::MAX),
+            SocketBufferSize::Custom(size) => Some(size),
+        };
+
+        if let Some(size) = maybe_size {
+            if let Err(e) = socket.set_recv_buffer_size(size as usize) {
+                info!("Error setting socket recv buffer: {e}");
+            } else {
+                info!(
+                    "Set socket recv buffer succeeded: {}",
+                    socket.recv_buffer_size().map_err(err!())?
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(Clone)]
 enum StreamSendSocket {
     Udp(UdpStreamSendSocket),

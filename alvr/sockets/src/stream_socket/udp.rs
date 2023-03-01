@@ -41,43 +41,7 @@ pub async fn bind(
     let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
     let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
 
-    info!(
-        "Initial UDP buffer size: send: {}B, recv: {}B",
-        socket.send_buffer_size().map_err(err!())?,
-        socket.recv_buffer_size().map_err(err!())?
-    );
-
-    {
-        let maybe_size = match send_buffer_bytes {
-            SocketBufferSize::Default => None,
-            SocketBufferSize::Maximum => Some(u32::MAX),
-            SocketBufferSize::Custom(size) => Some(size),
-        };
-
-        if let Some(size) = maybe_size {
-            socket.set_send_buffer_size(size as usize).map_err(err!())?;
-            info!(
-                "New UDP buffer send size: {}B",
-                socket.send_buffer_size().map_err(err!())?
-            );
-        }
-    }
-
-    {
-        let maybe_size = match recv_buffer_bytes {
-            SocketBufferSize::Default => None,
-            SocketBufferSize::Maximum => Some(u32::MAX),
-            SocketBufferSize::Custom(size) => Some(size),
-        };
-
-        if let Some(size) = maybe_size {
-            socket.set_recv_buffer_size(size as usize).map_err(err!())?;
-            info!(
-                "New UDP buffer recv size: {}B",
-                socket.recv_buffer_size().map_err(err!())?
-            );
-        }
-    }
+    super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
     UdpSocket::from_std(socket.into()).map_err(err!())
 }

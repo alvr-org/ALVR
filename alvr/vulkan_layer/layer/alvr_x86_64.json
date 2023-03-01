@@ -1,5 +1,5 @@
 {
-	"file_format_version" : "1.0.0",
+	"file_format_version" : "1.1.2",
 	"layer" : {
 		"name": "VK_LAYER_ALVR_capture",
 		"type": "GLOBAL",
@@ -31,6 +31,9 @@
 				"spec_version" : "1"
 			}
 		],
+		"functions": {
+			"vkNegotiateLoaderLayerInterfaceVersion" : "ALVR_Negotiate"
+		},
 		"disable_environment": {
 			"DISABLE_ALVR_DISPLAY": "1"
 		}

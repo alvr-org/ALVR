@@ -428,10 +428,16 @@ pub struct ControllersDesc {
     pub angular_velocity_cutoff: f32,
 
     #[schema(advanced)]
-    pub position_offset_left: [f32; 3],
+    pub left_controller_position_offset: [f32; 3],
 
     #[schema(advanced)]
-    pub rotation_offset_left: [f32; 3],
+    pub left_controller_rotation_offset: [f32; 3],
+
+    #[schema(advanced)]
+    pub left_hand_tracking_position_offset: [f32; 3],
+
+    #[schema(advanced)]
+    pub left_hand_tracking_rotation_offset: [f32; 3],
 
     #[schema(advanced)]
     pub override_trigger_threshold: Switch<ControllersTriggerOverrideDesc>,
@@ -879,9 +885,11 @@ pub fn session_settings_default() -> SettingsDefault {
                     input_profile_path: "{oculus}/input/touch_profile.json".into(),
                     pose_time_offset_ms: 20,
                     linear_velocity_cutoff: 0.05,
-                    angular_velocity_cutoff: 10.,
-                    position_offset_left: [0.0, 0.0, -0.11],
-                    rotation_offset_left: [-20.0, 0., 0.],
+                    angular_velocity_cutoff: 10.0,
+                    left_controller_position_offset: [0.0, 0.0, -0.11],
+                    left_controller_rotation_offset: [-20.0, 0.0, 0.0],
+                    left_hand_tracking_position_offset: [0.04, -0.02, -0.13],
+                    left_hand_tracking_rotation_offset: [0.0, -45.0, -90.0],
                     override_trigger_threshold: SwitchDefault {
                         enabled: false,
                         content: ControllersTriggerOverrideDescDefault {

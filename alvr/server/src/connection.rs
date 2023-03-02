@@ -5,8 +5,8 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, HAPTICS_SENDER, IS_ALIVE,
-    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::{AudioDevice, AudioDeviceType};
 use alvr_common::{
@@ -28,7 +28,6 @@ use futures::future::BoxFuture;
 use settings_schema::Switch;
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
     future,
     net::IpAddr,
     process::Command,
@@ -799,7 +798,9 @@ async fn connection_pipeline(
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
-                let ffi_motions = tracking_manager.lock().await.transform_motions(
+                let mut tracking_manager_lock = tracking_manager.lock().await;
+
+                let ffi_motions = tracking_manager_lock.transform_motions(
                     &tracking.device_motions,
                     tracking.left_hand_skeleton.is_some(),
                     tracking.right_hand_skeleton.is_some(),
@@ -807,10 +808,12 @@ async fn connection_pipeline(
 
                 let ffi_left_hand_skeleton = tracking
                     .left_hand_skeleton
-                    .map(|s| tracking::to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
+                    .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
                 let ffi_right_hand_skeleton = tracking
                     .right_hand_skeleton
-                    .map(|s| tracking::to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
+                    .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
+
+                drop(tracking_manager_lock);
 
                 let server_prediction_average = if let Some(stats) = &mut *STATISTICS_MANAGER.lock()
                 {

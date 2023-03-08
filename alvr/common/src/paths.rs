@@ -1,5 +1,6 @@
 use crate::hash_string;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 pub const HEAD_PATH: &str = "/user/head";
 pub const LEFT_HAND_PATH: &str = "/user/hand/left";
@@ -8,6 +9,16 @@ pub const RIGHT_HAND_PATH: &str = "/user/hand/right";
 pub static HEAD_ID: Lazy<u64> = Lazy::new(|| hash_string(HEAD_PATH));
 pub static LEFT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_HAND_PATH));
 pub static RIGHT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_HAND_PATH));
+
+pub static DEVICE_ID_TO_PATH: Lazy<HashMap<u64, &str>> = Lazy::new(|| {
+    [
+        (*HEAD_ID, HEAD_PATH),
+        (*LEFT_HAND_ID, LEFT_HAND_PATH),
+        (*RIGHT_HAND_ID, RIGHT_HAND_PATH),
+    ]
+    .into_iter()
+    .collect()
+});
 
 pub const HEAD_ENTER_CLICK_PATH: &str = "/user/head/input/enter/click";
 pub const BACK_CLICK_PATH: &str = "/user/hand/left/input/back/click";

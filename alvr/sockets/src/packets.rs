@@ -110,7 +110,7 @@ pub struct Tracking {
 
 #[derive(Serialize, Deserialize)]
 pub struct Haptics {
-    pub path: u64,
+    pub device_id: u64,
     pub duration: Duration,
     pub frequency: f32,
     pub amplitude: f32,

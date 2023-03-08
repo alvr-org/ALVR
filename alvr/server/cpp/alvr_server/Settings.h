@@ -89,13 +89,6 @@ public:
 	bool m_overrideGripThreshold;
 	float m_gripThreshold;
 
-	float m_hapticsIntensity;
-	float m_hapticsAmplitudeCurve;
-	float m_hapticsMinDuration;
-	float m_hapticsLowDurationAmplitudeMultiplier;
-	float m_hapticsLowDurationRange;
-
-	int32_t m_causePacketLoss;
 
 	int32_t m_trackingFrameOffset;
 

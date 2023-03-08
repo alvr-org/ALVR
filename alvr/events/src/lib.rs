@@ -1,6 +1,7 @@
 use alvr_common::prelude::*;
 use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum EventSeverity {
@@ -65,6 +66,14 @@ pub struct ButtonEvent {
     pub value: ButtonValue,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HapticsEvent {
+    pub path: String,
+    pub duration: Duration,
+    pub frequency: f32,
+    pub amplitude: f32,
+}
+
 // Event is serialized as #{ "id": "..." [, "data": ...] }#
 // Pound signs are used to identify start and finish of json
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -82,6 +91,7 @@ pub enum EventType {
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
     Button(ButtonEvent),
+    Haptics(HapticsEvent),
     ServerQuitting,
     Log(LogEvent),
 }

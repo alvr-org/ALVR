@@ -375,6 +375,24 @@ pub struct ControllersGripOverrideDesc {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct HapticsConfig {
+    #[schema(min = 0., max = 5., step = 0.1)]
+    pub intensity_multiplier: f32,
+
+    #[schema(advanced, min = 0., max = 1., step = 0.01)]
+    pub amplitude_curve: f32,
+
+    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
+    pub min_duration_s: f32,
+
+    #[schema(advanced, min = 1., max = 5., step = 0.1)]
+    pub low_duration_amplitude_multiplier: f32,
+
+    #[schema(advanced, min = 0., max = 1., step = 0.01)]
+    pub low_duration_range_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
     // Dropdown:
@@ -445,20 +463,7 @@ pub struct ControllersDesc {
     #[schema(advanced)]
     pub override_grip_threshold: Switch<ControllersGripOverrideDesc>,
 
-    #[schema(min = 0., max = 5., step = 0.1)]
-    pub haptics_intensity: f32,
-
-    #[schema(advanced, min = 0., max = 1., step = 0.01)]
-    pub haptics_amplitude_curve: f32,
-
-    #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
-    pub haptics_min_duration: f32,
-
-    #[schema(advanced, min = 1., max = 5., step = 0.1)]
-    pub haptics_low_duration_amplitude_multiplier: f32,
-
-    #[schema(advanced, min = 0., max = 1., step = 0.01)]
-    pub haptics_low_duration_range: f32,
+    pub haptics: Switch<HapticsConfig>,
 
     #[schema(advanced)]
     pub use_headset_tracking_system: bool,
@@ -647,6 +652,7 @@ pub struct ExtraDesc {
     pub update_channel: UpdateChannel,
     pub log_to_disk: bool,
     pub log_button_presses: bool,
+    pub log_haptics: bool,
     pub save_video_stream: bool,
 
     #[schema(advanced)]
@@ -902,11 +908,16 @@ pub fn session_settings_default() -> SettingsDefault {
                             grip_threshold: 0.1,
                         },
                     },
-                    haptics_intensity: 1.,
-                    haptics_amplitude_curve: 0.4,
-                    haptics_min_duration: 0.01,
-                    haptics_low_duration_amplitude_multiplier: 2.5,
-                    haptics_low_duration_range: 0.5,
+                    haptics: SwitchDefault {
+                        enabled: true,
+                        content: HapticsConfigDefault {
+                            intensity_multiplier: 1.,
+                            amplitude_curve: 0.4,
+                            min_duration_s: 0.01,
+                            low_duration_amplitude_multiplier: 2.5,
+                            low_duration_range_multiplier: 0.5,
+                        },
+                    },
                     use_headset_tracking_system: false,
                 },
             },
@@ -978,6 +989,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
+            log_haptics: false,
             save_video_stream: false,
             notification_level: LogLevelDefault {
                 variant: if cfg!(debug_assertions) {

@@ -23,8 +23,7 @@
 #include <optional>
 
 #ifdef __linux__
-                          vr::HmdMatrix34_t
-                          GetRawZeroPose();
+vr::HmdMatrix34_t GetRawZeroPose();
 #endif
 
 static void load_debug_privilege(void) {
@@ -86,19 +85,23 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         if (!Settings::Instance().m_disableController) {
             this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
             this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
-            
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(this->left_controller->GetSerialNumber().c_str(),
-                                                              this->left_controller->getControllerDeviceClass(),
-                                                              this->left_controller.get())) {
-                this->tracked_devices.insert({LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
+
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    this->left_controller->GetSerialNumber().c_str(),
+                    this->left_controller->getControllerDeviceClass(),
+                    this->left_controller.get())) {
+                this->tracked_devices.insert(
+                    {LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
             } else {
                 Warn("Failed to register left controller");
             }
 
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(this->right_controller->GetSerialNumber().c_str(), 
-                                                              this->right_controller->getControllerDeviceClass(), 
-                                                              this->right_controller.get())) {
-                this->tracked_devices.insert({RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    this->right_controller->GetSerialNumber().c_str(),
+                    this->right_controller->getControllerDeviceClass(),
+                    this->right_controller.get())) {
+                this->tracked_devices.insert(
+                    {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
             } else {
                 Warn("Failed to register right controller");
             }
@@ -123,41 +126,18 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         vr::VREvent_t event;
         while (vr::VRServerDriverHost()->PollNextEvent(&event, sizeof(vr::VREvent_t))) {
             if (event.eventType == vr::VREvent_Input_HapticVibration) {
-                vr::VREvent_HapticVibration_t haptics_info = event.data.hapticVibration;
+                vr::VREvent_HapticVibration_t haptics = event.data.hapticVibration;
 
-                auto duration = haptics_info.fDurationSeconds;
-                auto amplitude = haptics_info.fAmplitude;
-
-                if (duration < Settings::Instance().m_hapticsMinDuration * 0.5)
-                    duration = Settings::Instance().m_hapticsMinDuration * 0.5;
-
-                amplitude =
-                    pow(amplitude *
-                            ((Settings::Instance().m_hapticsLowDurationAmplitudeMultiplier - 1) *
-                                 Settings::Instance().m_hapticsMinDuration *
-                                 Settings::Instance().m_hapticsLowDurationRange /
-                                 (pow(Settings::Instance().m_hapticsMinDuration *
-                                          Settings::Instance().m_hapticsLowDurationRange,
-                                      2) *
-                                      0.25 /
-                                      (duration -
-                                       0.5 * Settings::Instance().m_hapticsMinDuration *
-                                           (1 - Settings::Instance().m_hapticsLowDurationRange)) +
-                                  (duration -
-                                   0.5 * Settings::Instance().m_hapticsMinDuration *
-                                       (1 - Settings::Instance().m_hapticsLowDurationRange))) +
-                             1),
-                        1 - Settings::Instance().m_hapticsAmplitudeCurve);
-                duration =
-                    pow(Settings::Instance().m_hapticsMinDuration, 2) * 0.25 / duration + duration;
-
+                uint64_t id = 0;
                 if (this->left_controller &&
-                    haptics_info.containerHandle == this->left_controller->prop_container) {
-                    HapticsSend(LEFT_HAND_ID, duration, haptics_info.fFrequency, amplitude);
+                    haptics.containerHandle == this->left_controller->prop_container) {
+                    id = LEFT_HAND_ID;
                 } else if (this->right_controller &&
-                           haptics_info.containerHandle == this->right_controller->prop_container) {
-                    HapticsSend(RIGHT_HAND_ID, duration, haptics_info.fFrequency, amplitude);
+                           haptics.containerHandle == this->right_controller->prop_container) {
+                    id = RIGHT_HAND_ID;
                 }
+
+                HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
 #ifdef __linux__
             else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged) {
@@ -324,9 +304,8 @@ void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_pl
 
 void SetButton(unsigned long long path, FfiButtonValue value) {
     if (g_driver_provider.left_controller &&
-        std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), 
-            LEFT_CONTROLLER_BUTTON_IDS.end(), 
-            path) != LEFT_CONTROLLER_BUTTON_IDS.end()) {
+        std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
+            LEFT_CONTROLLER_BUTTON_IDS.end()) {
         g_driver_provider.left_controller->SetButton(path, value);
     } else if (g_driver_provider.right_controller &&
                std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(),

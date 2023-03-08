@@ -2,6 +2,7 @@ mod bitrate;
 mod buttons;
 mod connection;
 mod dashboard;
+mod haptics;
 mod logging_backend;
 mod sockets;
 mod statistics;
@@ -423,10 +424,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn haptics_send(path: u64, duration_s: f32, frequency: f32, amplitude: f32) {
+    extern "C" fn haptics_send(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
         if let Some(sender) = &*HAPTICS_SENDER.lock() {
             let haptics = Haptics {
-                path,
+                device_id,
                 duration: Duration::from_secs_f32(duration_s),
                 frequency,
                 amplitude,

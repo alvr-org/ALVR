@@ -105,12 +105,6 @@ void Settings::Load()
 		m_overrideGripThreshold = config.get("override_grip_threshold").get<bool>();
 		m_gripThreshold = config.get("grip_threshold").get<double>();
 
-		m_hapticsIntensity = config.get("haptics_intensity").get<double>();
-		m_hapticsAmplitudeCurve = config.get("haptics_amplitude_curve").get<double>();
-		m_hapticsMinDuration = config.get("haptics_min_duration").get<double>();
-		m_hapticsLowDurationAmplitudeMultiplier = config.get("haptics_low_duration_amplitude_multiplier").get<double>();
-		m_hapticsLowDurationRange = config.get("haptics_low_duration_range").get<double>();
-
 		m_useHeadsetTrackingSystem = config.get("use_headset_tracking_system").get<bool>();
 
 		m_enableFoveatedRendering = config.get("enable_foveated_rendering").get<bool>();

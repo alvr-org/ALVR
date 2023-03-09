@@ -1,9 +1,6 @@
 use crate::{
-    bitrate::BitrateManager,
-    buttons::BUTTON_PATH_FROM_ID,
-    sockets::WelcomeSocket,
-    statistics::StatisticsManager,
-    tracking::{self, TrackingManager},
+    bitrate::BitrateManager, buttons::BUTTON_PATH_FROM_ID, haptics::HapticsManager,
+    sockets::WelcomeSocket, statistics::StatisticsManager, tracking::TrackingManager,
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
     DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
     SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
@@ -14,9 +11,9 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
-    RelaxedAtomic, LEFT_HAND_ID, RIGHT_HAND_ID,
+    RelaxedAtomic, DEVICE_ID_TO_PATH, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_events::{ButtonEvent, ButtonValue, EventType};
+use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent};
 use alvr_session::{CodecType, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
@@ -284,11 +281,6 @@ fn try_connect(
     let mut trigger_threshold = 0.0;
     let mut override_grip_threshold = false;
     let mut grip_threshold = 0.0;
-    let mut haptics_intensity = 0.0;
-    let mut haptics_amplitude_curve = 0.0;
-    let mut haptics_min_duration = 0.0;
-    let mut haptics_low_duration_amplitude_multiplier = 0.0;
-    let mut haptics_low_duration_range = 0.0;
     let mut use_headset_tracking_system = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controllers_mode_idx = config.mode_idx;
@@ -315,12 +307,6 @@ fn try_connect(
         } else {
             false
         };
-        haptics_intensity = config.haptics_intensity;
-        haptics_amplitude_curve = config.haptics_amplitude_curve;
-        haptics_min_duration = config.haptics_min_duration;
-        haptics_low_duration_amplitude_multiplier =
-            config.haptics_low_duration_amplitude_multiplier;
-        haptics_low_duration_range = config.haptics_low_duration_range;
         use_headset_tracking_system = config.use_headset_tracking_system;
         true
     } else {
@@ -412,11 +398,6 @@ fn try_connect(
         trigger_threshold,
         override_grip_threshold,
         grip_threshold,
-        haptics_intensity,
-        haptics_amplitude_curve,
-        haptics_min_duration,
-        haptics_low_duration_amplitude_multiplier,
-        haptics_low_duration_range,
         use_headset_tracking_system,
         enable_foveated_rendering,
         foveation_center_size_x,
@@ -751,12 +732,32 @@ async fn connection_pipeline(
 
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
+        let controllers_desc = settings.headset.controllers.clone();
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *HAPTICS_SENDER.lock() = Some(data_sender);
 
+            let haptics_manager = controllers_desc
+                .into_option()
+                .and_then(|c| c.haptics.into_option())
+                .map(HapticsManager::new);
+
             while let Some(haptics) = data_receiver.recv().await {
-                socket_sender.send(&haptics, vec![]).await.ok();
+                if settings.extra.log_haptics {
+                    alvr_events::send_event(EventType::Haptics(HapticsEvent {
+                        path: DEVICE_ID_TO_PATH
+                            .get(&haptics.device_id)
+                            .map(|p| (*p).to_owned())
+                            .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
+                        duration: haptics.duration,
+                        frequency: haptics.frequency,
+                        amplitude: haptics.amplitude,
+                    }))
+                }
+
+                if let Some(manager) = &haptics_manager {
+                    socket_sender.send(&manager.map(haptics), vec![]).await.ok();
+                }
             }
 
             Ok(())

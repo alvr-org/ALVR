@@ -405,7 +405,7 @@ async fn stream_pipeline(
                 let haptics = receiver.recv_header_only().await?;
 
                 EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-                    device_id: haptics.path,
+                    device_id: haptics.device_id,
                     duration: haptics.duration,
                     frequency: haptics.frequency,
                     amplitude: haptics.amplitude,

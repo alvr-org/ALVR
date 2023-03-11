@@ -36,7 +36,7 @@ std::string alvr::AvException::makemsg(const std::string & msg, int averror)
   return msg + " " + av_msg;
 }
 
-alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*> &requiredDeviceExtensions)
+alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const char*> &requiredDeviceExtensions)
 {
   std::vector<const char*> instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
@@ -94,14 +94,20 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
   VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data()));
   for (VkPhysicalDevice dev : physicalDevices) {
-    VkPhysicalDeviceProperties props;
-    vkGetPhysicalDeviceProperties(dev, &props);
-    if (strcmp(props.deviceName, deviceName) == 0) {
+    VkPhysicalDeviceVulkan11Properties props11 = {};
+    props11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+
+    VkPhysicalDeviceProperties2 props = {};
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &props11;
+    vkGetPhysicalDeviceProperties2(dev, &props);
+    if (memcmp(props11.deviceUUID, deviceUUID, VK_UUID_SIZE) == 0) {
       physicalDevice = dev;
       break;
     }
   }
   if (!physicalDevice && !physicalDevices.empty()) {
+    Warn("Falling back to first device");
     physicalDevice = physicalDevices[0];
   }
   if (!physicalDevice) {

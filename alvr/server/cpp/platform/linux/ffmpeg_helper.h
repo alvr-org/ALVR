@@ -41,7 +41,7 @@ private:
 class VkContext
 {
 public:
-  VkContext(const char* device, const std::vector<const char*> &requiredDeviceExtensions);
+  VkContext(const uint8_t* deviceUUID, const std::vector<const char*> &requiredDeviceExtensions);
   ~VkContext();
   VkDevice get_vk_device() const { return device;}
   VkInstance get_vk_instance() const { return instance;}

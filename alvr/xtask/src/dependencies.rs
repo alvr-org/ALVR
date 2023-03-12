@@ -101,17 +101,17 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
 pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let sh = Shell::new().unwrap();
 
-    let download_path = afs::deps_dir().join("linux");
+    let ffmpeg_download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
         &sh,
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n5.1",
-        &download_path,
+        &ffmpeg_download_path,
     )
     .unwrap();
 
-    let final_path = download_path.join("ffmpeg");
+    let final_path = ffmpeg_download_path.join("ffmpeg");
 
-    fs::rename(download_path.join("FFmpeg-n5.1"), &final_path).unwrap();
+    fs::rename(ffmpeg_download_path.join("FFmpeg-n5.1"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -164,14 +164,35 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         */
         #[cfg(target_os = "linux")]
         {
+            let ffnvcodec_download_path = afs::deps_dir().join("linux");
+            command::download_and_extract_zip(
+                &sh,
+                "https://github.com/FFmpeg/nv-codec-headers/archive/refs/heads/master.zip",
+                &ffnvcodec_download_path,
+            )
+            .unwrap();
+            let ffnvcodec_headers = pkg_config::Config::new().probe("ffnvcodec").unwrap();
+            let ffnvcodec_include_flags = ffnvcodec_headers
+            .include_paths
+            .iter()
+            .map(|path| format!("-I{}", path.to_string_lossy()))
+            .reduce(|a, b| format!("{a} {b}"))
+            .expect("pkg-config ffnvcodec entry to have include-paths");
+            let ffnvcodec_link_flags = ffnvcodec_headers
+                .link_paths
+                .iter()
+                .map(|path| format!("-L{}", path.to_string_lossy()))
+                .reduce(|a, b| format!("{a} {b}"))
+                .expect("pkg-config ffnvcodec entry to have link-paths");
+
             let cuda = pkg_config::Config::new().probe("cuda").unwrap();
-            let include_flags = cuda
+            let cuda_include_flags = cuda
                 .include_paths
                 .iter()
                 .map(|path| format!("-I{}", path.to_string_lossy()))
                 .reduce(|a, b| format!("{a} {b}"))
                 .expect("pkg-config cuda entry to have include-paths");
-            let link_flags = cuda
+            let cuda_link_flags = cuda
                 .link_paths
                 .iter()
                 .map(|path| format!("-L{}", path.to_string_lossy()))
@@ -187,8 +208,8 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 "--enable-hwaccel=h264_nvenc",
                 "--enable-hwaccel=hevc_nvenc",
                 "--nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\"",
-                &format!("--extra-cflags=\"{include_flags}\""),
-                &format!("--extra-ldflags=\"{link_flags}\""),
+                &format!("--extra-cflags=\"{cuda_include_flags}, {ffnvcodec_include_flags}\""),
+                &format!("--extra-ldflags=\"{cuda_link_flags}, {ffnvcodec_link_flags}\""),
             ];
 
             let flags_combined = flags.join(" ");

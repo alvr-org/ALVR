@@ -14,9 +14,9 @@ extern "C" {
 
 void alvr::EncodePipeline::SetParams(FfiDynamicEncoderParams params) {
   if (params.updated) {
-    encoder_ctx->bit_rate = params.bitrate_bps;
-    encoder_ctx->framerate = AVRational{(int)params.framerate, 1};
-    encoder_ctx->rc_buffer_size = params.bitrate_bps / params.framerate * 1.1;
+    encoder_ctx->bit_rate = params.bitrate_bps / params.framerate * 60.0;
+    encoder_ctx->framerate = AVRational{60, 1};
+    encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / 60.0 * 1.1;
     encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
     encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size / 4 * 3;
   }

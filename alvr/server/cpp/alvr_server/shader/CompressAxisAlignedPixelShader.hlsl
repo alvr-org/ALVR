@@ -1,6 +1,6 @@
 // Compress to rectangular slices
 
-#include "FoveatedRendering.hlsli"
+#include "FoveatedRendering.hlsl"
 
 
 

@@ -44,6 +44,16 @@ impl SlidingWindowAverage<usize> {
     }
 }
 
+impl SlidingWindowAverage<u64> {
+    pub fn get_average(&self) -> u64 {
+        if !self.history_buffer.is_empty() {
+            self.history_buffer.iter().sum::<u64>() / self.history_buffer.len() as u64
+        } else {
+            self.initial_value
+        }
+    }
+}
+
 impl SlidingWindowAverage<Duration> {
     pub fn get_average(&self) -> Duration {
         if !self.history_buffer.is_empty() {

@@ -420,7 +420,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet(len as _);
             }
-            BITRATE_MANAGER.lock().report_encoded_frame(len as usize)
+            BITRATE_MANAGER
+                .lock()
+                .report_encoded_frame_size(timestamp, len as usize)
         }
     }
 
@@ -495,6 +497,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 Duration::from_nanos(offset_ns),
             );
         }
+
+        BITRATE_MANAGER.lock().report_frame_resent();
     }
 
     extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {

@@ -106,8 +106,7 @@ impl BitrateManager {
 
                 self.update_needed = true;
 
-                // Note: do not reset decoder_latency_overstep_count just yet. Wait until the next
-                // latency hike
+                self.decoder_latency_overstep_count = 0;
             }
         } else {
             self.decoder_latency_overstep_count = 0;

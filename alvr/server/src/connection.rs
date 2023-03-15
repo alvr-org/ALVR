@@ -866,10 +866,14 @@ async fn connection_pipeline(
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
+                    let decoder_latency = client_stats.video_decode;
                     let network_latency = stats.report_statistics(client_stats);
-                    BITRATE_MANAGER
-                        .lock()
-                        .report_frame_network_latency(timestamp, network_latency);
+
+                    BITRATE_MANAGER.lock().report_frame_latencies(
+                        timestamp,
+                        network_latency,
+                        decoder_latency,
+                    );
                 }
             }
         }

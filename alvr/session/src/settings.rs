@@ -125,34 +125,41 @@ pub struct AdvancedCodecOptions {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
-pub enum BitrateDesc {
+pub enum BitrateMode {
     #[schema(min = 1, max = 1000)]
-    ConstantMbs(u64),
+    ConstantMbps(u64),
     #[serde(rename_all = "camelCase")]
-    AdaptiveWithSaturation {
+    Adaptive {
         #[schema(min = 0.5, max = 2.0, step = 0.05)]
         saturation_multiplier: f32,
 
         #[schema(min = 1, max = 1000, step = 1)]
-        max_bitrate_mbs: Switch<u64>,
+        max_bitrate_mbps: Switch<u64>,
 
         #[schema(min = 1, max = 1000, step = 1)]
-        min_bitrate_mbs: Switch<u64>,
-
-        #[schema(min = 1, max = 50, step = 1)]
-        max_network_latency_ms: Switch<u64>,
+        min_bitrate_mbps: Switch<u64>,
     },
-    #[serde(rename_all = "camelCase")]
-    AdaptiveWithLatency {
-        #[schema(min = 1, max = 50, step = 1)]
-        network_latency_ms: u64,
+}
 
-        #[schema(min = 1, max = 1000, step = 1)]
-        max_bitrate_mbs: Switch<u64>,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BitrateConfig {
+    pub mode: BitrateMode,
 
-        #[schema(min = 1, max = 1000, step = 1)]
-        min_bitrate_mbs: Switch<u64>,
-    },
+    #[schema(advanced, min = 0.01, max = 2.0, step = 0.01)]
+    pub framerate_reset_threshold_multiplier: f32,
+
+    #[schema(advanced, min = 1, max = 50, step = 1)]
+    pub max_network_latency_ms: Switch<u64>,
+
+    #[schema(advanced, min = 1, max = 50)]
+    pub max_decoder_latency_ms: u64,
+
+    #[schema(advanced, min = 1, max = 100)]
+    pub decoder_latency_overstep_frames: u64,
+
+    #[schema(advanced, min = 0.5, max = 1.0)]
+    pub decoder_latency_overstep_multiplier: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
@@ -257,8 +264,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub entropy_coding: EntropyCoding,
 
-    // #[schema(advanced)]
-    // pub video_coding: VideoCoding,
     pub use_10bit_encoder: bool,
 
     #[schema(advanced)]
@@ -267,7 +272,7 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub sw_thread_count: u32,
 
-    pub bitrate: BitrateDesc,
+    pub bitrate: BitrateConfig,
 
     #[schema(advanced)]
     pub advanced_codec_options: AdvancedCodecOptions,
@@ -709,35 +714,30 @@ pub fn session_settings_default() -> SettingsDefault {
             use_10bit_encoder: false,
             force_sw_encoding: false,
             sw_thread_count: 0,
-            bitrate: BitrateDescDefault {
-                ConstantMbs: 30,
-                AdaptiveWithSaturation: BitrateDescAdaptiveWithSaturationDefault {
-                    saturation_multiplier: 0.95,
-                    max_bitrate_mbs: SwitchDefault {
-                        enabled: false,
-                        content: 100,
+            bitrate: BitrateConfigDefault {
+                mode: BitrateModeDefault {
+                    ConstantMbps: 30,
+                    Adaptive: BitrateModeAdaptiveDefault {
+                        saturation_multiplier: 0.95,
+                        max_bitrate_mbps: SwitchDefault {
+                            enabled: false,
+                            content: 100,
+                        },
+                        min_bitrate_mbps: SwitchDefault {
+                            enabled: false,
+                            content: 5,
+                        },
                     },
-                    min_bitrate_mbs: SwitchDefault {
-                        enabled: false,
-                        content: 5,
-                    },
-                    max_network_latency_ms: SwitchDefault {
-                        enabled: false,
-                        content: 10,
-                    },
+                    variant: BitrateModeDefaultVariant::Adaptive,
                 },
-                AdaptiveWithLatency: BitrateDescAdaptiveWithLatencyDefault {
-                    network_latency_ms: 10,
-                    max_bitrate_mbs: SwitchDefault {
-                        enabled: false,
-                        content: 100,
-                    },
-                    min_bitrate_mbs: SwitchDefault {
-                        enabled: false,
-                        content: 5,
-                    },
+                framerate_reset_threshold_multiplier: 0.30,
+                max_network_latency_ms: SwitchDefault {
+                    enabled: false,
+                    content: 8,
                 },
-                variant: BitrateDescDefaultVariant::AdaptiveWithSaturation,
+                max_decoder_latency_ms: 15,
+                decoder_latency_overstep_frames: 15,
+                decoder_latency_overstep_multiplier: 0.95,
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 encoder_quality_preset: EncoderQualityPresetDefault {

@@ -249,18 +249,13 @@ unsafe impl Send for VideoDecoderEnqueuer {}
 
 impl VideoDecoderEnqueuer {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
-    pub fn push_frame_nal(
-        &self,
-        timestamp: Duration,
-        data: &[u8],
-        timeout: Duration,
-    ) -> StrResult<bool> {
+    pub fn push_frame_nal(&self, timestamp: Duration, data: &[u8]) -> StrResult<bool> {
         let Some(decoder) = &*self.inner.lock() else {
             // This might happen only during destruction
             return Ok(false);
         };
 
-        match decoder.dequeue_input_buffer(timeout) {
+        match decoder.dequeue_input_buffer(Duration::ZERO) {
             MediaCodecResult::Ok(mut buffer) => {
                 buffer.buffer_mut()[..data.len()].copy_from_slice(data);
 
@@ -273,8 +268,9 @@ impl VideoDecoderEnqueuer {
 
                 Ok(true)
             }
-            MediaCodecResult::Info(_) => {
-                // Should be TryAgainLater
+            MediaCodecResult::Info(i) => {
+                assert_eq!(i, MediaCodecInfo::TryAgainLater);
+
                 Ok(false)
             }
             MediaCodecResult::Err(e) => fmt_e!("{e}"),

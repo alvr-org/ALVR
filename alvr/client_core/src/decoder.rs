@@ -76,7 +76,13 @@ pub fn push_nal(timestamp: Duration, nal: &[u8]) {
     } else {
         #[cfg(target_os = "android")]
         if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            show_err(decoder.push_frame_nal(timestamp, nal, Duration::from_millis(500)));
+            if !matches!(show_err(decoder.push_frame_nal(timestamp, nal)), Some(true)) {
+                if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
+                    sender
+                        .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                        .ok();
+                }
+            }
         } else if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
             sender
                 .send(alvr_sockets::ClientControlPacket::RequestIdr)

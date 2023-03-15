@@ -27,7 +27,7 @@ const string FFR_COMMON_SHADER_FORMAT = R"glsl(#version 300 es
 
         vec2 EyeToTextureUV(vec2 eyeUV, bool isRightEye) {
             // left: x / 2; right 1 - (x / 2)
-            return vec2(eyeUV.x / 2. + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
+            return vec2(eyeUV.x * 0.5 + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
         }
     )glsl";
 
@@ -39,7 +39,7 @@ const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
             bool isRightEye = uv.x > 0.5;
             vec2 eyeUV = TextureToEyeUV(uv, isRightEye);
 
-            vec2 c0 = (1. - CENTER_SIZE) / 2.;
+            vec2 c0 = (1. - CENTER_SIZE) * 0.5;
             vec2 c1 = (EDGE_RATIO - 1.) * c0 * (CENTER_SHIFT + 1.) / EDGE_RATIO;
             vec2 c2 = (EDGE_RATIO - 1.) * CENTER_SIZE + 1.;
 
@@ -54,6 +54,7 @@ const string DECOMPRESS_AXIS_ALIGNED_FRAGMENT_SHADER = R"glsl(
 
             vec2 loBoundC = c0 * (CENTER_SHIFT + 1.) / c2;
             vec2 hiBoundC = c0 * (CENTER_SHIFT - 1.) / c2 + 1.;
+
             vec2 leftEdge = (-(c1 + c2 * loBoundC) / loBoundC +
                             sqrt(((c1 + c2 * loBoundC) / loBoundC) * ((c1 + c2 * loBoundC) / loBoundC) +
                                 4. * c2 * (1. - EDGE_RATIO) / (EDGE_RATIO * loBoundC) * eyeUV)) /

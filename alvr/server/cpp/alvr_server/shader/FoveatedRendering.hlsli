@@ -18,5 +18,5 @@ float2 EyeToTextureUV(float2 eyeUV, bool isRightEye) {
 	//float2 clampedUV = saturate(eyeUV);
 	// left: x / 2; right 1 - (x / 2)
 	//return float2(clampedUV.x / 2. + float(isRightEye) * (1. - clampedUV.x), clampedUV.y);
-	return float2(eyeUV.x / 2. + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
+	return float2(eyeUV.x * .5 + float(isRightEye) * (1. - eyeUV.x), eyeUV.y);
 }

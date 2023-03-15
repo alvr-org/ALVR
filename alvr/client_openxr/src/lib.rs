@@ -49,6 +49,13 @@ struct StreamingInputContext {
     views_history: Arc<Mutex<VecDeque<HistoryView>>>,
 }
 
+#[derive(Default)]
+struct StreamingInputState {
+    last_ipd: f32,
+    last_left_hand_position: Vec3,
+    last_right_hand_position: Vec3,
+}
+
 #[allow(unused)]
 struct EglContext {
     instance: egl::DynamicInstance<EGL1_4>,
@@ -202,7 +209,10 @@ pub fn create_swapchain(
 
 // This function is allowed to return errors. It can happen when the session is destroyed
 // asynchronously
-fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> StrResult {
+fn update_streaming_input(
+    ctx: &StreamingInputContext,
+    state: &mut StreamingInputState,
+) -> StrResult {
     // Streaming related inputs are updated here. Make sure every input poll is done in this
     // thread
     ctx.xr_session
@@ -229,10 +239,10 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
     }
 
     let ipd = (to_vec3(views[0].pose.position) - to_vec3(views[1].pose.position)).length();
-    if f32::abs(*last_ipd - ipd) > IPD_CHANGE_EPS {
+    if f32::abs(state.last_ipd - ipd) > IPD_CHANGE_EPS {
         alvr_client_core::send_views_config([to_fov(views[0].fov), to_fov(views[1].fov)], ipd);
 
-        *last_ipd = ipd;
+        state.last_ipd = ipd;
     }
 
     // Note: Here is assumed that views are on the same plane and orientation. The head position
@@ -271,12 +281,14 @@ fn update_streaming_input(ctx: &StreamingInputContext, last_ipd: &mut f32) -> St
         &ctx.reference_space.read(),
         tracker_time,
         &ctx.interaction_context.left_hand_source,
+        &mut state.last_left_hand_position,
     )?;
     let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
         &ctx.xr_session,
         &ctx.reference_space.read(),
         tracker_time,
         &ctx.interaction_context.right_hand_source,
+        &mut state.last_right_hand_position,
     )?;
 
     if let Some(motion) = left_hand_motion {
@@ -597,12 +609,11 @@ pub fn entry_point() {
                         };
 
                         streaming_input_thread = Some(thread::spawn(move || {
+                            let mut state = StreamingInputState::default();
+
                             let mut deadline = Instant::now();
-
-                            let mut last_ipd = 0.0;
-
                             while context.is_streaming.value() {
-                                show_err(update_streaming_input(&context, &mut last_ipd));
+                                show_err(update_streaming_input(&context, &mut state));
 
                                 deadline += context.frame_interval / 3;
                                 thread::sleep(deadline.saturating_duration_since(Instant::now()));

@@ -1,5 +1,5 @@
 use crate::{to_pose, to_quat, to_vec3, Platform};
-use alvr_common::*;
+use alvr_common::{glam::Vec3, *};
 use alvr_events::ButtonValue;
 use alvr_sockets::{DeviceMotion, Pose};
 use openxr as xr;
@@ -461,6 +461,7 @@ pub fn get_hand_motion(
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandSource,
+    last_position: &mut Vec3,
 ) -> StrResult<(Option<DeviceMotion>, Option<[Pose; 26]>)> {
     if hand_source
         .grip_action
@@ -472,10 +473,17 @@ pub fn get_hand_motion(
             .relate(reference_space, time)
             .map_err(err!())?;
 
+        if location
+            .location_flags
+            .contains(xr::SpaceLocationFlags::POSITION_TRACKED)
+        {
+            *last_position = to_vec3(location.pose.position);
+        }
+
         let hand_motion = DeviceMotion {
             pose: Pose {
                 orientation: to_quat(location.pose.orientation),
-                position: to_vec3(location.pose.position),
+                position: *last_position,
             },
             linear_velocity: to_vec3(velocity.linear_velocity),
             angular_velocity: to_vec3(velocity.angular_velocity),

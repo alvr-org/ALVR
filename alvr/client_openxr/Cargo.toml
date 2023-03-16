@@ -106,7 +106,7 @@ name = "com.oculus.intent.category.VR"
 value = "vr_only"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.supportedDevices"
-value = "quest|quest2|cambria"
+value = "all"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"

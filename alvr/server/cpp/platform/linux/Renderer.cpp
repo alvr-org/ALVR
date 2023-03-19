@@ -606,7 +606,7 @@ void Renderer::Sync()
     VK_CHECK(vkResetFences(m_dev, 1, &m_fence));
 }
 
-Renderer::Output Renderer::GetOutput()
+Renderer::Output &Renderer::GetOutput()
 {
     return m_output;
 }

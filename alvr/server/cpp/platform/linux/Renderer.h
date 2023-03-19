@@ -64,7 +64,7 @@ public:
 
     void Sync();
 
-    Output GetOutput();
+    Output &GetOutput();
     Timestamps GetTimestamps();
 
     void CaptureInputFrame(const std::string &filename);

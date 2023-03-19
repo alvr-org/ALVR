@@ -490,8 +490,10 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height)
 
     VkMemoryDedicatedAllocateInfo memory_dedicated_info = {};
     memory_dedicated_info.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-    memory_dedicated_info.pNext = &memory_export_info;
     memory_dedicated_info.image = m_output.image;
+    if (d.haveDmaBuf) {
+        memory_dedicated_info.pNext = &memory_export_info;
+    }
 
     VkMemoryAllocateInfo memi = {};
     memi.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -508,47 +510,49 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height)
     VK_CHECK(vkBindImageMemory2(m_dev, 1, &bimi));
 
     // DRM export
-    VkMemoryGetFdInfoKHR memoryGetFdInfo = {};
-    memoryGetFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-    memoryGetFdInfo.memory = m_output.memory;
-    memoryGetFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-    VkResult res = d.vkGetMemoryFdKHR(m_dev, &memoryGetFdInfo, &m_output.drm.fd);
-    if (res != VK_SUCCESS) {
-        std::cout << "vkGetMemoryFdKHR " << result_to_str(res) << std::endl;
-    } else {
-        if (d.haveDrmModifiers) {
-            VkImageDrmFormatModifierPropertiesEXT imageDrmProps = {};
-            imageDrmProps.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
-            d.vkGetImageDrmFormatModifierPropertiesEXT(m_dev, m_output.image, &imageDrmProps);
-            if (res != VK_SUCCESS) {
-                std::cout << "vkGetImageDrmFormatModifierPropertiesEXT " << result_to_str(res) << std::endl;
-            } else {
-                m_output.drm.modifier = imageDrmProps.drmFormatModifier;
-                for (VkDrmFormatModifierPropertiesEXT prop : modifierProps) {
-                    if (prop.drmFormatModifier == m_output.drm.modifier) {
-                        m_output.drm.planes = prop.drmFormatModifierPlaneCount;
+    if (d.haveDmaBuf) {
+        VkMemoryGetFdInfoKHR memoryGetFdInfo = {};
+        memoryGetFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+        memoryGetFdInfo.memory = m_output.memory;
+        memoryGetFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+        VkResult res = d.vkGetMemoryFdKHR(m_dev, &memoryGetFdInfo, &m_output.drm.fd);
+        if (res != VK_SUCCESS) {
+            std::cout << "vkGetMemoryFdKHR " << result_to_str(res) << std::endl;
+        } else {
+            if (d.haveDrmModifiers) {
+                VkImageDrmFormatModifierPropertiesEXT imageDrmProps = {};
+                imageDrmProps.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+                d.vkGetImageDrmFormatModifierPropertiesEXT(m_dev, m_output.image, &imageDrmProps);
+                if (res != VK_SUCCESS) {
+                    std::cout << "vkGetImageDrmFormatModifierPropertiesEXT " << result_to_str(res) << std::endl;
+                } else {
+                    m_output.drm.modifier = imageDrmProps.drmFormatModifier;
+                    for (VkDrmFormatModifierPropertiesEXT prop : modifierProps) {
+                        if (prop.drmFormatModifier == m_output.drm.modifier) {
+                            m_output.drm.planes = prop.drmFormatModifierPlaneCount;
+                        }
                     }
                 }
-            }
-        } else {
-            m_output.drm.modifier = DRM_FORMAT_MOD_INVALID;
-            m_output.drm.planes = 1;
-        }
-
-        for (uint32_t i = 0; i < m_output.drm.planes; i++) {
-            VkImageSubresource subresource = {};
-            if (d.haveDrmModifiers) {
-                subresource.aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << i;
             } else {
-                subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                m_output.drm.modifier = DRM_FORMAT_MOD_INVALID;
+                m_output.drm.planes = 1;
             }
-            VkSubresourceLayout layout;
-            vkGetImageSubresourceLayout(m_dev, m_output.image, &subresource, &layout);
-            m_output.drm.strides[i] = layout.rowPitch;
-            m_output.drm.offsets[i] = layout.offset;
+
+            for (uint32_t i = 0; i < m_output.drm.planes; i++) {
+                VkImageSubresource subresource = {};
+                if (d.haveDrmModifiers) {
+                    subresource.aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT << i;
+                } else {
+                    subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                }
+                VkSubresourceLayout layout;
+                vkGetImageSubresourceLayout(m_dev, m_output.image, &subresource, &layout);
+                m_output.drm.strides[i] = layout.rowPitch;
+                m_output.drm.offsets[i] = layout.offset;
+            }
         }
+        m_output.drm.format = to_drm_format(m_output.imageInfo.format);
     }
-    m_output.drm.format = to_drm_format(m_output.imageInfo.format);
 
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

@@ -34,8 +34,7 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
 
     if (m_pipelines.empty()) {
         RenderPipeline *pipeline = new RenderPipeline(this);
-        pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-        pipeline->SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
+        pipeline->SetShader(QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_LEN);
         m_pipelines.push_back(pipeline);
         AddPipeline(pipeline);
     }
@@ -77,9 +76,8 @@ void FrameRender::setupColorCorrection()
     m_colorCorrectionPushConstants.sharpening = Settings::Instance().m_sharpening;
 
     RenderPipeline *pipeline = new RenderPipeline(this);
-    pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-    pipeline->SetShader(RenderPipeline::FragmentShader, COLOR_SHADER_FRAG_SPV_PTR, COLOR_SHADER_FRAG_SPV_LEN);
-    pipeline->SetPushConstant(RenderPipeline::FragmentShader, &m_colorCorrectionPushConstants, sizeof(m_colorCorrectionPushConstants));
+    pipeline->SetShader(COLOR_SHADER_COMP_SPV_PTR, COLOR_SHADER_COMP_SPV_LEN);
+    pipeline->SetPushConstant(&m_colorCorrectionPushConstants, sizeof(m_colorCorrectionPushConstants));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }
@@ -138,9 +136,8 @@ void FrameRender::setupFoveatedRendering()
     m_height = m_foveatedRenderingPushConstants.optimizedEyeHeight;
 
     RenderPipeline *pipeline = new RenderPipeline(this);
-    pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-    pipeline->SetShader(RenderPipeline::FragmentShader, FFR_SHADER_FRAG_SPV_PTR, FFR_SHADER_FRAG_SPV_LEN);
-    pipeline->SetPushConstant(RenderPipeline::FragmentShader, &m_foveatedRenderingPushConstants, sizeof(m_foveatedRenderingPushConstants));
+    pipeline->SetShader(FFR_SHADER_COMP_SPV_PTR, FFR_SHADER_COMP_SPV_LEN);
+    pipeline->SetPushConstant(&m_foveatedRenderingPushConstants, sizeof(m_foveatedRenderingPushConstants));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }
@@ -159,8 +156,7 @@ void FrameRender::setupCustomShaders(const std::string &stage)
             }
             Info("FrameRender: Adding [%s] shader %s", stage.c_str(), entry.path().filename().c_str());
             RenderPipeline *pipeline = new RenderPipeline(this);
-            pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-            pipeline->SetShader(RenderPipeline::FragmentShader, entry.path().c_str());
+            pipeline->SetShader(entry.path().c_str());
             m_pipelines.push_back(pipeline);
             AddPipeline(pipeline);
         }

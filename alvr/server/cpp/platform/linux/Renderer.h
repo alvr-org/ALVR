@@ -31,13 +31,14 @@ class Renderer
 public:
     struct Output {
         VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkImageCreateInfo imageInfo;
         VkDeviceSize size = 0;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkSemaphore semaphore = VK_NULL_HANDLE;
         // ---
         VkImageView view = VK_NULL_HANDLE;
-        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        VkDescriptorSet descriptor = VK_NULL_HANDLE;
         // ---
         DrmImage drm;
     };
@@ -74,6 +75,7 @@ public:
 // private:
     struct InputImage {
         VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkSemaphore semaphore = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;
@@ -82,10 +84,11 @@ public:
 
     struct StagingImage {
         VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;
-        VkFramebuffer framebuffer = VK_NULL_HANDLE;
-        VkDescriptorSet descriptor = VK_NULL_HANDLE;
+        VkDescriptorSet descriptorSampler = VK_NULL_HANDLE;
+        VkDescriptorSet descriptorStorage = VK_NULL_HANDLE;
     };
 
     void commandBufferBegin();
@@ -118,11 +121,9 @@ public:
     VkQueryPool m_queryPool = VK_NULL_HANDLE;
     VkCommandPool m_commandPool = VK_NULL_HANDLE;
     VkSampler m_sampler = VK_NULL_HANDLE;
-    VkBuffer m_vertexBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory m_vertexMemory = VK_NULL_HANDLE;
-    VkRenderPass m_renderPass = VK_NULL_HANDLE;
     VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayoutSampler = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayoutStorage = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     VkFence m_fence = VK_NULL_HANDLE;
     double m_timestampPeriod = 0;
@@ -134,29 +135,21 @@ public:
 class RenderPipeline
 {
 public:
-    enum ShaderType {
-        VertexShader,
-        FragmentShader
-    };
-
     explicit RenderPipeline(Renderer *render);
     virtual ~RenderPipeline();
 
-    void SetShader(ShaderType type, const char *filename);
-    void SetShader(ShaderType type, const unsigned char *data, unsigned len);
-    void SetPushConstant(ShaderType type, const void *data, uint32_t size);
+    void SetShader(const char *filename);
+    void SetShader(const unsigned char *data, unsigned len);
+    void SetPushConstant(const void *data, uint32_t size);
 
 private:
     void Build();
-    void Render(VkDescriptorSet in, VkFramebuffer out, VkRect2D outSize);
+    void Render(VkDescriptorSet in, VkDescriptorSet out, VkRect2D outSize);
 
     Renderer *r;
-    VkShaderModule m_vertexShader = VK_NULL_HANDLE;
-    VkShaderModule m_fragmentShader = VK_NULL_HANDLE;
-    const void *m_vertexConstant = nullptr;
-    uint32_t m_vertexConstantSize = 0;
-    const void *m_fragmentConstant = nullptr;
-    uint32_t m_fragmentConstantSize = 0;
+    VkShaderModule m_shader = VK_NULL_HANDLE;
+    const void *m_constant = nullptr;
+    uint32_t m_constantSize = 0;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
 

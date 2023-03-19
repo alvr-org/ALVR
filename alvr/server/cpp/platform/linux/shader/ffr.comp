@@ -1,10 +1,8 @@
 #version 450
 
-layout (binding = 0) uniform sampler2D src;
-
-layout (location = 0) in vec2 uv;
-
-layout (location = 0) out vec4 outFragColor;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (set = 0, binding = 0) uniform sampler2D in_img;
+layout (set = 1, binding = 0, rgba8) uniform writeonly image2D out_img;
 
 layout (push_constant) uniform constants
 {
@@ -35,6 +33,9 @@ vec2 EyeToTextureUV(vec2 eyeUV, bool isRightEye)
 
 void main()
 {
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    vec2 uv = (vec2(pos) + 0.5f) / imageSize(out_img);
+
     bool isRightEye = uv.x > 0.5;
     vec2 eyeUV = TextureToEyeUV(uv, isRightEye) / FoveationVars.eyeSizeRatio;
 
@@ -51,7 +52,7 @@ void main()
     vec2 overBound = vec2(eyeUV.x > hiBound.x, eyeUV.y > hiBound.y);
 
     vec2 center = eyeUV * c2 / FoveationVars.edgeRatio + c1;
-    
+
     vec2 d2 = eyeUV * c2;
     vec2 d3 = (eyeUV - 1.) * c2 + 1.;
     vec2 g1 = eyeUV / loBound;
@@ -62,5 +63,5 @@ void main()
 
     vec2 compressedUV = underBound * leftEdge + inBound * center + overBound * rightEdge;
 
-    outFragColor = texture(src, EyeToTextureUV(compressedUV, isRightEye));
+    imageStore(out_img, pos, texture(in_img, EyeToTextureUV(compressedUV, isRightEye)));
 }

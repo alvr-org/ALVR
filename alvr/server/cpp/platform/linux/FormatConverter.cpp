@@ -105,7 +105,7 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
 
     VkDescriptorImageInfo descriptorImageInfo = {};
     descriptorImageInfo.imageView = m_view;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     VkWriteDescriptorSet descriptorWriteSet = {};
     descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

@@ -982,10 +982,11 @@ void RenderPipeline::SetShader(const unsigned char *data, unsigned len)
     VK_CHECK(vkCreateShaderModule(r->m_dev, &moduleInfo, nullptr, &m_shader));
 }
 
-void RenderPipeline::SetPushConstant(const void *data, uint32_t size)
+void RenderPipeline::SetConstants(const void *data, uint32_t size, std::vector<VkSpecializationMapEntry> &&entries)
 {
     m_constant = data;
     m_constantSize = size;
+    m_constantEntries = entries;
 }
 
 void RenderPipeline::Build()
@@ -995,24 +996,26 @@ void RenderPipeline::Build()
         r->m_descriptorLayoutStorage
     };
 
-    VkPushConstantRange pushConstant = {};
-    pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    pushConstant.offset = 0;
-    pushConstant.size = m_constantSize;
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 2;
     pipelineLayoutInfo.pSetLayouts = setLayouts;
-    pipelineLayoutInfo.pushConstantRangeCount = m_constant ? 1 : 0;
-    pipelineLayoutInfo.pPushConstantRanges = m_constant ? &pushConstant : nullptr;
     VK_CHECK(vkCreatePipelineLayout(r->m_dev, &pipelineLayoutInfo, nullptr, &m_pipelineLayout));
+
+    VkSpecializationInfo specInfo = {};
+    specInfo.mapEntryCount = m_constantEntries.size();
+    specInfo.pMapEntries = m_constantEntries.data();
+    specInfo.dataSize = m_constantSize;
+    specInfo.pData = m_constant;
 
     VkPipelineShaderStageCreateInfo stageInfo = {};
     stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     stageInfo.pName = "main";
     stageInfo.module = m_shader;
+    if (m_constant) {
+        stageInfo.pSpecializationInfo = &specInfo;
+    }
 
     VkComputePipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -1026,8 +1029,5 @@ void RenderPipeline::Render(VkDescriptorSet in, VkDescriptorSet out, VkRect2D ou
     const VkDescriptorSet descriptors[] = { in, out };
     vkCmdBindPipeline(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
     vkCmdBindDescriptorSets(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 2, descriptors, 0, nullptr);
-    if (m_constant) {
-        vkCmdPushConstants(r->m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, m_constantSize, m_constant);
-    }
     vkCmdDispatch(r->m_commandBuffer, (outSize.extent.width + 7) / 8, (outSize.extent.height + 7) / 8, 1);
 }

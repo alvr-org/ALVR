@@ -4,15 +4,19 @@ layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (set = 0, binding = 0) uniform sampler2D in_img;
 layout (set = 1, binding = 0, rgba8) uniform writeonly image2D out_img;
 
-layout (push_constant) uniform constants
-{
-    ivec2 targetResolution;
-    ivec2 optimizedResolution;
-    vec2 eyeSizeRatio;
-    vec2 centerSize;
-    vec2 centerShift;
-    vec2 edgeRatio;
-} FoveationVars;
+layout (constant_id = 0) const float eyeSizeRatioX = 0.;
+layout (constant_id = 1) const float eyeSizeRatioY = 0.;
+layout (constant_id = 2) const float centerSizeX = 0.;
+layout (constant_id = 3) const float centerSizeY = 0.;
+layout (constant_id = 4) const float centerShiftX = 0.;
+layout (constant_id = 5) const float centerShiftY = 0.;
+layout (constant_id = 6) const float edgeRatioX = 0.;
+layout (constant_id = 7) const float edgeRatioY = 0.;
+
+const vec2 eyeSizeRatio = vec2(eyeSizeRatioX, eyeSizeRatioY);
+const vec2 centerSize = vec2(centerSizeX, centerSizeY);
+const vec2 centerShift = vec2(centerShiftX, centerShiftY);
+const vec2 edgeRatio = vec2(edgeRatioX, edgeRatioY);
 
 vec2 TextureToEyeUV(vec2 textureUV, bool isRightEye)
 {
@@ -37,21 +41,20 @@ void main()
     vec2 uv = (vec2(pos) + 0.5f) / imageSize(out_img);
 
     bool isRightEye = uv.x > 0.5;
-    vec2 eyeUV = TextureToEyeUV(uv, isRightEye) / FoveationVars.eyeSizeRatio;
+    vec2 eyeUV = TextureToEyeUV(uv, isRightEye) / eyeSizeRatio;
 
-    vec2 c0 = (1. - FoveationVars.centerSize) * .5;
-    vec2 c1 = (FoveationVars.edgeRatio - 1.) * c0 * (FoveationVars.centerShift + 1.) /
-              FoveationVars.edgeRatio;
-    vec2 c2 = (FoveationVars.edgeRatio - 1.) * FoveationVars.centerSize + 1.;
+    vec2 c0 = (1. - centerSize) * .5;
+    vec2 c1 = (edgeRatio - 1.) * c0 * (centerShift + 1.) / edgeRatio;
+    vec2 c2 = (edgeRatio - 1.) * centerSize + 1.;
 
-    vec2 loBound = c0 * (FoveationVars.centerShift + 1.) / c2;
-    vec2 hiBound = c0 * (FoveationVars.centerShift - 1.) / c2 + 1.;
+    vec2 loBound = c0 * (centerShift + 1.) / c2;
+    vec2 hiBound = c0 * (centerShift - 1.) / c2 + 1.;
     vec2 underBound = vec2(eyeUV.x < loBound.x, eyeUV.y < loBound.y);
     vec2 inBound = vec2(loBound.x < eyeUV.x && eyeUV.x < hiBound.x,
                         loBound.y < eyeUV.y && eyeUV.y < hiBound.y);
     vec2 overBound = vec2(eyeUV.x > hiBound.x, eyeUV.y > hiBound.y);
 
-    vec2 center = eyeUV * c2 / FoveationVars.edgeRatio + c1;
+    vec2 center = eyeUV * c2 / edgeRatio + c1;
 
     vec2 d2 = eyeUV * c2;
     vec2 d3 = (eyeUV - 1.) * c2 + 1.;

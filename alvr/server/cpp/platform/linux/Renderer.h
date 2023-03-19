@@ -140,7 +140,7 @@ public:
 
     void SetShader(const char *filename);
     void SetShader(const unsigned char *data, unsigned len);
-    void SetPushConstant(const void *data, uint32_t size);
+    void SetConstants(const void *data, uint32_t size, std::vector<VkSpecializationMapEntry> &&entries);
 
 private:
     void Build();
@@ -150,6 +150,7 @@ private:
     VkShaderModule m_shader = VK_NULL_HANDLE;
     const void *m_constant = nullptr;
     uint32_t m_constantSize = 0;
+    std::vector<VkSpecializationMapEntry> m_constantEntries;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
 

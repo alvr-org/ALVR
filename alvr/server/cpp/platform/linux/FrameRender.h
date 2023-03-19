@@ -23,18 +23,11 @@ private:
         float saturation;
         float gamma;
         float sharpening;
-        float _align;
     };
 
     struct FoveationVars {
-        int32_t targetEyeWidth;
-        int32_t targetEyeHeight;
-        int32_t optimizedEyeWidth;
-        int32_t optimizedEyeHeight;
-
         float eyeWidthRatio;
         float eyeHeightRatio;
-
         float centerSizeX;
         float centerSizeY;
         float centerShiftX;

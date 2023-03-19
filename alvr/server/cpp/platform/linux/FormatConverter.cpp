@@ -229,8 +229,8 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     pipelineInfo.stage = stageInfo;
     VK_CHECK(vkCreateComputePipelines(r->m_dev, nullptr, 1, &pipelineInfo, nullptr, &m_pipeline));
 
-    m_groupCountX = (imageCreateInfo.extent.width + (imageCreateInfo.extent.width & 31)) / 32;
-    m_groupCountY = (imageCreateInfo.extent.height + (imageCreateInfo.extent.height & 31)) / 32;
+    m_groupCountX = (imageCreateInfo.extent.width + 7) / 8;
+    m_groupCountY = (imageCreateInfo.extent.height + 7) / 8;
 }
 
 void FormatConverter::Convert(uint8_t **data, int *linesize)

@@ -50,12 +50,16 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     if (!checkExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
         throw std::runtime_error("Vulkan: Required extension " VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME " not available");
     }
+    if (!checkExtension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
+        throw std::runtime_error("Vulkan: Required extension " VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME " not available");
+    }
 
 #define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
     VK_LOAD_PFN(vkImportSemaphoreFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdKHR);
     VK_LOAD_PFN(vkGetImageDrmFormatModifierPropertiesEXT);
     VK_LOAD_PFN(vkGetCalibratedTimestampsEXT);
+    VK_LOAD_PFN(vkCmdPushDescriptorSetKHR);
 #undef VK_LOAD_PFN
 
     VkPhysicalDeviceProperties props = {};
@@ -86,9 +90,7 @@ Renderer::~Renderer()
     vkDestroyQueryPool(m_dev, m_queryPool, nullptr);
     vkDestroyCommandPool(m_dev, m_commandPool, nullptr);
     vkDestroySampler(m_dev, m_sampler, nullptr);
-    vkDestroyDescriptorPool(m_dev, m_descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(m_dev, m_descriptorLayoutSampler, nullptr);
-    vkDestroyDescriptorSetLayout(m_dev, m_descriptorLayoutStorage, nullptr);
+    vkDestroyDescriptorSetLayout(m_dev, m_descriptorLayout, nullptr);
     vkDestroyFence(m_dev, m_fence, nullptr);
 }
 
@@ -136,34 +138,23 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
     VK_CHECK(vkCreateSampler(m_dev, &samplerInfo, nullptr, &m_sampler));
 
     // Descriptors
-    VkDescriptorSetLayoutBinding descriptorBinding = {};
-    descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    descriptorBinding.descriptorCount = 1;
-    descriptorBinding.pImmutableSamplers = &m_sampler;
+    VkDescriptorSetLayoutBinding descriptorBindings[2] = {};
+    descriptorBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    descriptorBindings[0].descriptorCount = 1;
+    descriptorBindings[0].pImmutableSamplers = &m_sampler;
+    descriptorBindings[0].binding = 0;
+    descriptorBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    descriptorBindings[1].descriptorCount = 1;
+    descriptorBindings[1].binding = 1;
 
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
     descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetLayoutInfo.bindingCount = 1;
-    descriptorSetLayoutInfo.pBindings = &descriptorBinding;
-    VK_CHECK(vkCreateDescriptorSetLayout(m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayoutSampler));
-
-    descriptorBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorBinding.descriptorCount = 1;
-    descriptorBinding.pImmutableSamplers = nullptr;
-    VK_CHECK(vkCreateDescriptorSetLayout(m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayoutStorage));
-
-    VkDescriptorPoolSize descriptorPoolSize = {};
-    descriptorPoolSize.descriptorCount = 128;
-    descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-
-    VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolInfo.maxSets = descriptorPoolSize.descriptorCount;
-    descriptorPoolInfo.poolSizeCount = 1;
-    descriptorPoolInfo.pPoolSizes = &descriptorPoolSize;
-    descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    VK_CHECK(vkCreateDescriptorPool(m_dev, &descriptorPoolInfo, nullptr, &m_descriptorPool));
+    descriptorSetLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+    descriptorSetLayoutInfo.bindingCount = 2;
+    descriptorSetLayoutInfo.pBindings = descriptorBindings;
+    VK_CHECK(vkCreateDescriptorSetLayout(m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout));
 
     // Fence
     VkFenceCreateInfo fenceInfo = {};
@@ -239,27 +230,7 @@ void Renderer::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int ima
     VkImageView view;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &view));
 
-    VkDescriptorSetAllocateInfo descriptorAllocInfo = {};
-    descriptorAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorAllocInfo.descriptorSetCount = 1;
-    descriptorAllocInfo.pSetLayouts = &m_descriptorLayoutSampler;
-    descriptorAllocInfo.descriptorPool = m_descriptorPool;
-    VkDescriptorSet descriptor;
-    VK_CHECK(vkAllocateDescriptorSets(m_dev, &descriptorAllocInfo, &descriptor));
-
-    VkDescriptorImageInfo descriptorImageInfo = {};
-    descriptorImageInfo.imageView = view;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkWriteDescriptorSet descriptorWriteSet = {};
-    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWriteSet.descriptorCount = 1;
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWriteSet.dstSet = descriptor;
-    descriptorWriteSet.pImageInfo = &descriptorImageInfo;
-    vkUpdateDescriptorSets(m_dev, 1, &descriptorWriteSet, 0, nullptr);
-
-    m_images.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view, descriptor});
+    m_images.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view});
 }
 
 void Renderer::AddPipeline(RenderPipeline *pipeline)
@@ -460,25 +431,6 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height)
     viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &m_output.view));
 
-    VkDescriptorSetAllocateInfo descriptorAllocInfo = {};
-    descriptorAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorAllocInfo.descriptorSetCount = 1;
-    descriptorAllocInfo.pSetLayouts = &m_descriptorLayoutStorage;
-    descriptorAllocInfo.descriptorPool = m_descriptorPool;
-    VK_CHECK(vkAllocateDescriptorSets(m_dev, &descriptorAllocInfo, &m_output.descriptor));
-
-    VkDescriptorImageInfo descriptorImageInfo = {};
-    descriptorImageInfo.imageView = m_output.view;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkWriteDescriptorSet descriptorWriteSet = {};
-    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWriteSet.descriptorCount = 1;
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorWriteSet.dstSet = m_output.descriptor;
-    descriptorWriteSet.pImageInfo = &descriptorImageInfo;
-    vkUpdateDescriptorSets(m_dev, 1, &descriptorWriteSet, 0, nullptr);
-
     VkSemaphoreCreateInfo semInfo = {};
     semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VK_CHECK(vkCreateSemaphore(m_dev, &semInfo, nullptr, &m_output.semaphore));
@@ -507,33 +459,33 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
 
     for (size_t i = 0; i < m_pipelines.size(); ++i) {
         VkRect2D rect = {};
-        VkDescriptorSet in = VK_NULL_HANDLE;
-        VkImage inImage = VK_NULL_HANDLE;
+        VkImage in = VK_NULL_HANDLE;
+        VkImageView inView = VK_NULL_HANDLE;
         VkImageLayout *inLayout = nullptr;
-        VkDescriptorSet out = VK_NULL_HANDLE;
-        VkImage outImage = VK_NULL_HANDLE;
+        VkImage out = VK_NULL_HANDLE;
+        VkImageView outView = VK_NULL_HANDLE;
         VkImageLayout *outLayout = nullptr;
         if (i == 0) {
             auto &img = m_images[index];
-            in = img.descriptor;
-            inImage = img.image;
+            in = img.image;
+            inView = img.view;
             inLayout = &img.layout;
         } else {
             auto &img = m_stagingImages[(i - 1) % m_stagingImages.size()];
-            in = img.descriptorSampler;
-            inImage = img.image;
+            in = img.image;
+            inView = img.view;
             inLayout = &img.layout;
         }
         if (i == m_pipelines.size() - 1) {
-            out = m_output.descriptor;
-            outImage = m_output.image;
+            out = m_output.image;
+            outView = m_output.view;
             outLayout = &m_output.layout;
             rect.extent.width = m_output.imageInfo.extent.width;
             rect.extent.height = m_output.imageInfo.extent.height;
         } else {
             auto &img = m_stagingImages[i % m_stagingImages.size()];
-            out = img.descriptorStorage;
-            outImage = img.image;
+            out = img.image;
+            outView = img.view;
             outLayout = &img.layout;
             rect.extent = m_imageSize;
         }
@@ -544,7 +496,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         imageBarrier.subresourceRange.levelCount = 1;
         std::vector<VkImageMemoryBarrier> imageBarriers;
         if (*inLayout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-            imageBarrier.image = inImage;
+            imageBarrier.image = in;
             imageBarrier.oldLayout = *inLayout;
             *inLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             imageBarrier.newLayout = *inLayout;
@@ -553,7 +505,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
             imageBarriers.push_back(imageBarrier);
         }
         if (*outLayout != VK_IMAGE_LAYOUT_GENERAL) {
-            imageBarrier.image = outImage;
+            imageBarrier.image = out;
             imageBarrier.oldLayout = *outLayout;
             *outLayout = VK_IMAGE_LAYOUT_GENERAL;
             imageBarrier.newLayout = *outLayout;
@@ -564,7 +516,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         if (imageBarriers.size()) {
             vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarriers.size(), imageBarriers.data());
         }
-        m_pipelines[i]->Render(in, out, rect);
+        m_pipelines[i]->Render(inView, outView, rect);
     }
 
     vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 1);
@@ -755,37 +707,7 @@ void Renderer::addStagingImage(uint32_t width, uint32_t height)
     VkImageView view;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &view));
 
-    VkDescriptorSetAllocateInfo descriptorAllocInfo = {};
-    descriptorAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorAllocInfo.descriptorSetCount = 1;
-    descriptorAllocInfo.pSetLayouts = &m_descriptorLayoutSampler;
-    descriptorAllocInfo.descriptorPool = m_descriptorPool;
-    VkDescriptorSet descriptorSampler;
-    VK_CHECK(vkAllocateDescriptorSets(m_dev, &descriptorAllocInfo, &descriptorSampler));
-
-    VkDescriptorImageInfo descriptorImageInfo = {};
-    descriptorImageInfo.imageView = view;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    VkWriteDescriptorSet descriptorWriteSet = {};
-    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWriteSet.descriptorCount = 1;
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWriteSet.dstSet = descriptorSampler;
-    descriptorWriteSet.pImageInfo = &descriptorImageInfo;
-    vkUpdateDescriptorSets(m_dev, 1, &descriptorWriteSet, 0, nullptr);
-
-    descriptorAllocInfo.pSetLayouts = &m_descriptorLayoutStorage;
-    VkDescriptorSet descriptorStorage;
-    VK_CHECK(vkAllocateDescriptorSets(m_dev, &descriptorAllocInfo, &descriptorStorage));
-
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorWriteSet.dstSet = descriptorStorage;
-    vkUpdateDescriptorSets(m_dev, 1, &descriptorWriteSet, 0, nullptr);
-
-    m_stagingImages.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, memory, view, descriptorSampler, descriptorStorage});
+    m_stagingImages.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, memory, view});
 }
 
 void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename)
@@ -976,15 +898,10 @@ void RenderPipeline::SetConstants(const void *data, uint32_t size, std::vector<V
 
 void RenderPipeline::Build()
 {
-    const VkDescriptorSetLayout setLayouts[] = {
-        r->m_descriptorLayoutSampler,
-        r->m_descriptorLayoutStorage
-    };
-
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 2;
-    pipelineLayoutInfo.pSetLayouts = setLayouts;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &r->m_descriptorLayout;
     VK_CHECK(vkCreatePipelineLayout(r->m_dev, &pipelineLayoutInfo, nullptr, &m_pipelineLayout));
 
     VkSpecializationInfo specInfo = {};
@@ -1009,10 +926,30 @@ void RenderPipeline::Build()
     VK_CHECK(vkCreateComputePipelines(r->m_dev, nullptr, 1, &pipelineInfo, nullptr, &m_pipeline));
 }
 
-void RenderPipeline::Render(VkDescriptorSet in, VkDescriptorSet out, VkRect2D outSize)
+void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize)
 {
-    const VkDescriptorSet descriptors[] = { in, out };
     vkCmdBindPipeline(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
-    vkCmdBindDescriptorSets(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 2, descriptors, 0, nullptr);
+
+    VkDescriptorImageInfo descriptorImageInfoIn = {};
+    descriptorImageInfoIn.imageView = in;
+    descriptorImageInfoIn.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkDescriptorImageInfo descriptorImageInfoOut = {};
+    descriptorImageInfoOut.imageView = out;
+    descriptorImageInfoOut.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkWriteDescriptorSet descriptorWriteSets[2] = {};
+    descriptorWriteSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWriteSets[0].descriptorCount = 1;
+    descriptorWriteSets[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWriteSets[0].pImageInfo = &descriptorImageInfoIn;
+    descriptorWriteSets[0].dstBinding = 0;
+    descriptorWriteSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWriteSets[1].descriptorCount = 1;
+    descriptorWriteSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWriteSets[1].pImageInfo = &descriptorImageInfoOut;
+    descriptorWriteSets[1].dstBinding = 1;
+    r->d.vkCmdPushDescriptorSetKHR(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 2, descriptorWriteSets);
+
     vkCmdDispatch(r->m_commandBuffer, (outSize.extent.width + 7) / 8, (outSize.extent.height + 7) / 8, 1);
 }

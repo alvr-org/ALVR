@@ -74,16 +74,10 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
 
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
     descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
     descriptorSetLayoutInfo.bindingCount = 2;
     descriptorSetLayoutInfo.pBindings = descriptorBindings;
     VK_CHECK(vkCreateDescriptorSetLayout(r->m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout));
-
-    VkDescriptorSetAllocateInfo descriptorAllocInfo = {};
-    descriptorAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorAllocInfo.descriptorSetCount = 1;
-    descriptorAllocInfo.pSetLayouts = &m_descriptorLayout;
-    descriptorAllocInfo.descriptorPool = r->m_descriptorPool;
-    VK_CHECK(vkAllocateDescriptorSets(r->m_dev, &descriptorAllocInfo, &m_descriptor));
 
     // Input image
     VkImageViewCreateInfo viewInfo = {};
@@ -102,19 +96,6 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
     viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
     VK_CHECK(vkCreateImageView(r->m_dev, &viewInfo, nullptr, &m_view));
-
-    VkDescriptorImageInfo descriptorImageInfo = {};
-    descriptorImageInfo.imageView = m_view;
-    descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkWriteDescriptorSet descriptorWriteSet = {};
-    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWriteSet.descriptorCount = 1;
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWriteSet.dstSet = m_descriptor;
-    descriptorWriteSet.dstBinding = 0;
-    descriptorWriteSet.pImageInfo = &descriptorImageInfo;
-    vkUpdateDescriptorSets(r->m_dev, 1, &descriptorWriteSet, 0, nullptr);
 
     // Output images
     for (int i = 0; i < count; ++i) {
@@ -160,20 +141,6 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
         viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
         viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
         VK_CHECK(vkCreateImageView(r->m_dev, &viewInfo, nullptr, &m_images[i].view));
-
-        VkDescriptorImageInfo descriptorImageInfo = {};
-        descriptorImageInfo.imageView = m_images[i].view;
-        descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        VkWriteDescriptorSet descriptorWriteSet = {};
-        descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWriteSet.descriptorCount = 1;
-        descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorWriteSet.dstSet = m_descriptor;
-        descriptorWriteSet.dstBinding = 1;
-        descriptorWriteSet.dstArrayElement = i;
-        descriptorWriteSet.pImageInfo = &descriptorImageInfo;
-        vkUpdateDescriptorSets(r->m_dev, 1, &descriptorWriteSet, 0, nullptr);
 
         VkImageMemoryBarrier imageBarrier = {};
         imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -242,7 +209,35 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     vkCmdResetQueryPool(m_commandBuffer, m_queryPool, 0, 1);
 
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
-    vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 1, &m_descriptor, 0, nullptr);
+
+    std::vector<VkWriteDescriptorSet> descriptorWriteSets;
+
+    VkDescriptorImageInfo descriptorImageInfoIn = {};
+    descriptorImageInfoIn.imageView = m_view;
+    descriptorImageInfoIn.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkWriteDescriptorSet descriptorWriteSet = {};
+    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWriteSet.descriptorCount = 1;
+    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWriteSet.pImageInfo = &descriptorImageInfoIn;
+    descriptorWriteSet.dstBinding = 0;
+    descriptorWriteSets.push_back(descriptorWriteSet);
+
+    VkDescriptorImageInfo descriptorImageInfoOuts[3] = {};
+    for (int i = 0; i < m_images.size(); ++i) {
+        descriptorImageInfoOuts[i].imageView = m_images[i].view;
+        descriptorImageInfoOuts[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorWriteSet.pImageInfo = &descriptorImageInfoOuts[i];
+        descriptorWriteSet.dstBinding = 1;
+        descriptorWriteSet.dstArrayElement = i;
+        descriptorWriteSets.push_back(descriptorWriteSet);
+    }
+
+    r->d.vkCmdPushDescriptorSetKHR(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, descriptorWriteSets.size(), descriptorWriteSets.data());
+
     vkCmdDispatch(m_commandBuffer, m_groupCountX, m_groupCountY, 1);
 
     vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 0);

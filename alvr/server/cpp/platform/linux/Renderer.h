@@ -38,7 +38,6 @@ public:
         VkSemaphore semaphore = VK_NULL_HANDLE;
         // ---
         VkImageView view = VK_NULL_HANDLE;
-        VkDescriptorSet descriptor = VK_NULL_HANDLE;
         // ---
         DrmImage drm;
     };
@@ -79,7 +78,6 @@ public:
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkSemaphore semaphore = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;
-        VkDescriptorSet descriptor = VK_NULL_HANDLE;
     };
 
     struct StagingImage {
@@ -87,8 +85,6 @@ public:
         VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;
-        VkDescriptorSet descriptorSampler = VK_NULL_HANDLE;
-        VkDescriptorSet descriptorStorage = VK_NULL_HANDLE;
     };
 
     void commandBufferBegin();
@@ -102,6 +98,7 @@ public:
         PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR = nullptr;
         PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT = nullptr;
         PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = nullptr;
+        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
         bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
     } d;
@@ -121,9 +118,7 @@ public:
     VkQueryPool m_queryPool = VK_NULL_HANDLE;
     VkCommandPool m_commandPool = VK_NULL_HANDLE;
     VkSampler m_sampler = VK_NULL_HANDLE;
-    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_descriptorLayoutSampler = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_descriptorLayoutStorage = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     VkFence m_fence = VK_NULL_HANDLE;
     double m_timestampPeriod = 0;
@@ -144,7 +139,7 @@ public:
 
 private:
     void Build();
-    void Render(VkDescriptorSet in, VkDescriptorSet out, VkRect2D outSize);
+    void Render(VkImageView in, VkImageView out, VkRect2D outSize);
 
     Renderer *r;
     VkShaderModule m_shader = VK_NULL_HANDLE;

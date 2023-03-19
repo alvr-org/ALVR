@@ -741,7 +741,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 max_decoder_latency_ms: 15,
                 decoder_latency_overstep_frames: 15,
-                decoder_latency_overstep_multiplier: 0.95,
+                decoder_latency_overstep_multiplier: 0.99,
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 encoder_quality_preset: EncoderQualityPresetDefault {

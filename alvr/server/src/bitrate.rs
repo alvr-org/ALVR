@@ -9,31 +9,34 @@ use std::{
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
+
+//定义一个bitratemanager结构体
 pub struct BitrateManager {
-    config: BitrateConfig,
-    max_history_size: usize,
-    frame_interval_average: SlidingWindowAverage<Duration>,
-    packet_sizes_bits_history: VecDeque<(Duration, usize)>,
-    network_latency_average: SlidingWindowAverage<Duration>,
-    bitrate_average: SlidingWindowAverage<u64>,
-    decoder_latency_overstep_count: usize,
-    last_frame_instant: Instant,
-    last_update_instant: Instant,
-    dynamic_max_bitrate: u64,
-    update_needed: bool,
+    config: BitrateConfig,    //比特率配置
+    max_history_size: usize,    //历史最大值
+    frame_interval_average: SlidingWindowAverage<Duration>,  //帧间隔平均值
+    packet_sizes_bits_history: VecDeque<(Duration, usize)>,   //
+    network_latency_average: SlidingWindowAverage<Duration>,  //网络延迟平均值
+    bitrate_average: SlidingWindowAverage<u64>,      //平均比特率
+    decoder_latency_overstep_count: usize,          //
+    last_frame_instant: Instant,   //上一帧的时刻
+    last_update_instant: Instant,  //上一次更新
+    dynamic_max_bitrate: u64,   //动态最大比特率
+    update_needed: bool,    //更新需求
 }
 
 impl BitrateManager {
+    //构造函数，创建一个实例
     pub fn new(config: BitrateConfig, max_history_size: usize) -> Self {
         Self {
-            config,
+            config,   
             max_history_size,
-            frame_interval_average: SlidingWindowAverage::new(
+            frame_interval_average: SlidingWindowAverage::new(  //对滑动窗口实例化，并把参数：帧间隔初始值16ms和历史最大值给 frame_interval_average
                 Duration::from_millis(16),
                 max_history_size,
             ),
             packet_sizes_bits_history: VecDeque::new(),
-            network_latency_average: SlidingWindowAverage::new(
+            network_latency_average: SlidingWindowAverage::new(//对滑动窗口实例化，并把参数：网络延迟初始值5ms和历史最大值给 network_latency_average
                 Duration::from_millis(5),
                 max_history_size,
             ),

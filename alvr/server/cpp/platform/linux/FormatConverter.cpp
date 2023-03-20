@@ -17,7 +17,6 @@ FormatConverter::~FormatConverter()
 
     vkDestroySemaphore(r->m_dev, m_output.semaphore, nullptr);
 
-    vkDestroySampler(r->m_dev, m_sampler, nullptr);
     vkDestroyQueryPool(r->m_dev, m_queryPool, nullptr);
     vkDestroyDescriptorSetLayout(r->m_dev, m_descriptorLayout, nullptr);
     vkDestroyImageView(r->m_dev, m_view, nullptr);
@@ -30,18 +29,6 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
 {
     m_images.resize(count);
     m_semaphore = semaphore;
-
-    // Sampler
-    VkSamplerCreateInfo samplerInfo = {};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_NEAREST;
-    samplerInfo.minFilter = VK_FILTER_NEAREST;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    VK_CHECK(vkCreateSampler(r->m_dev, &samplerInfo, nullptr, &m_sampler));
 
     // Timestamp query
     VkQueryPoolCreateInfo queryPoolInfo = {};
@@ -63,9 +50,8 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     descriptorBindings[0] = {};
     descriptorBindings[0].binding = 0;
     descriptorBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    descriptorBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorBindings[0].descriptorCount = 1;
-    descriptorBindings[0].pImmutableSamplers = &m_sampler;
     descriptorBindings[1] = {};
     descriptorBindings[1].binding = 1;
     descriptorBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -219,7 +205,7 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     VkWriteDescriptorSet descriptorWriteSet = {};
     descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWriteSet.descriptorCount = 1;
-    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorWriteSet.pImageInfo = &descriptorImageInfoIn;
     descriptorWriteSet.dstBinding = 0;
     descriptorWriteSets.push_back(descriptorWriteSet);

@@ -255,7 +255,7 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height)
     m_output.imageInfo.mipLevels = 1;
     m_output.imageInfo.arrayLayers = 1;
     m_output.imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    m_output.imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    m_output.imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_output.imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 

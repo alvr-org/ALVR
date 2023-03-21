@@ -56,13 +56,11 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   param.i_width = width;
   param.i_height = height;
   param.rc.i_rc_method = X264_RC_ABR;
-  param.i_fps_num = 60;
-  param.i_fps_den = 1;
 
   auto params = FfiDynamicEncoderParams {};
   params.updated = true;
   params.bitrate_bps = 30'000'000;
-  params.framerate = 60.0;
+  params.framerate = Settings::Instance().m_refreshRate;
   SetParams(params);
 
   enc = x264_encoder_open(&param);
@@ -121,9 +119,11 @@ void alvr::EncodePipelineSW::SetParams(FfiDynamicEncoderParams params)
   if (!params.updated) {
     return;
   }
-  int64_t bitrate = params.bitrate_bps / params.framerate * 60; // no variable framerate support in x264
-  param.rc.i_bitrate = bitrate / 1'000 * 1.4; // needs higher value to hit target bitrate
-  param.rc.i_vbv_buffer_size = param.rc.i_bitrate / 60 * 1.1;
+  // x264 doesn't work well with adaptive bitrate/fps
+  param.i_fps_num = Settings::Instance().m_refreshRate;
+  param.i_fps_den = 1;
+  param.rc.i_bitrate = params.bitrate_bps / 1'000 * 1.4; // needs higher value to hit target bitrate
+  param.rc.i_vbv_buffer_size = param.rc.i_bitrate / param.i_fps_num * 1.1;
   param.rc.i_vbv_max_bitrate = param.rc.i_bitrate;
   param.rc.f_vbv_buffer_init = 0.75;
   if (enc) {

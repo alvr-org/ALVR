@@ -893,7 +893,7 @@ void RenderPipeline::SetConstants(const void *data, uint32_t size, std::vector<V
 {
     m_constant = data;
     m_constantSize = size;
-    m_constantEntries = entries;
+    m_constantEntries = std::move(entries);
 }
 
 void RenderPipeline::Build()

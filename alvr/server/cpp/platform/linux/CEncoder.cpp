@@ -263,7 +263,7 @@ void CEncoder::Run() {
           auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
           composed_offset = now - encode_timestamp.cpu;
         } else {
-          Error("Invalid encoder timestamp!");
+          composed_offset = render_timestamps.now - render_timestamps.renderComplete;
         }
 
         if (present_offset < composed_offset) {

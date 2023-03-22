@@ -506,7 +506,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         }
         if (*outLayout != VK_IMAGE_LAYOUT_GENERAL) {
             imageBarrier.image = out;
-            imageBarrier.oldLayout = *outLayout;
+            imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             *outLayout = VK_IMAGE_LAYOUT_GENERAL;
             imageBarrier.newLayout = *outLayout;
             imageBarrier.srcAccessMask = 0;

@@ -15,7 +15,7 @@ struct FfiStreamConfig {
     unsigned int viewHeight;
     const unsigned int *swapchainTextures[2];
     unsigned int swapchainLength;
-    bool enableFoveation;
+    unsigned int enableFoveation;
     float foveationCenterSizeX;
     float foveationCenterSizeY;
     float foveationCenterShiftX;

@@ -83,7 +83,7 @@ pub fn start_stream(
                 swapchain_textures[1].as_ptr(),
             ],
             swapchainLength: swapchain_textures[0].len() as _,
-            enableFoveation: foveated_rendering.is_some(),
+            enableFoveation: foveated_rendering.is_some().into(),
             foveationCenterSizeX: foveated_rendering
                 .as_ref()
                 .map(|f| f.center_size_x)

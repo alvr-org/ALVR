@@ -981,7 +981,9 @@ async fn connection_pipeline(
                     let value = match value {
                         ButtonValue::Binary(value) => FfiButtonValue {
                             type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { binary: value },
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                binary: value.into(),
+                            },
                         },
 
                         ButtonValue::Scalar(value) => FfiButtonValue {

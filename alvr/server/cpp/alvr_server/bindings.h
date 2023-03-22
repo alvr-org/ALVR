@@ -38,7 +38,7 @@ enum FfiOpenvrPropertyType {
 };
 
 union FfiOpenvrPropertyValue {
-    bool bool_;
+    unsigned int bool_;
     float float_;
     int int32;
     unsigned long long uint64;
@@ -66,13 +66,13 @@ enum FfiButtonType {
 struct FfiButtonValue {
     FfiButtonType type;
     union {
-        bool binary;
+        unsigned int binary;
         float scalar;
     };
 };
 
 struct FfiDynamicEncoderParams {
-    bool updated;
+    unsigned int updated;
     unsigned long long bitrate_bps;
     float framerate;
 };

@@ -783,7 +783,7 @@ void streamStartNative(FfiStreamConfig config) {
                        g_ctx.streamTexture.get(),
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.streamSwapchainTextures,
-                       {config.enableFoveation,
+                       {(bool)config.enableFoveation,
                         config.viewWidth,
                         config.viewHeight,
                         config.foveationCenterSizeX,

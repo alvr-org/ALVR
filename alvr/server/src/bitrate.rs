@@ -118,7 +118,7 @@ impl BitrateManager {
             self.last_update_instant = now;
         } else {
             return FfiDynamicEncoderParams {
-                updated: false,
+                updated: 0,
                 bitrate_bps: 0,
                 framerate: 0.0,
             };
@@ -160,7 +160,7 @@ impl BitrateManager {
                 .min(1.0);
 
         FfiDynamicEncoderParams {
-            updated: true,
+            updated: 1,
             bitrate_bps: bitrate_bps as u64,
             framerate,
         }

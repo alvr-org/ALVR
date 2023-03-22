@@ -243,7 +243,7 @@ fn client_thread(
                     window_output.fps = fps;
                     window_output.connected = true;
                     window_output.resolution = view_resolution;
-                    window_output.foveated_rendering = foveated_rendering.is_some();
+                    window_output.foveated_rendering = foveated_rendering.is_some().into();
 
                     let streaming = Arc::clone(&streaming);
                     let input = Arc::clone(&window_input);

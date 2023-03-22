@@ -136,7 +136,9 @@ pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> Ffi
     };
 
     let value = match value {
-        OpenvrPropValue::Bool(bool_) => FfiOpenvrPropertyValue { bool_ },
+        OpenvrPropValue::Bool(bool_) => FfiOpenvrPropertyValue {
+            bool_: bool_.into(),
+        },
         OpenvrPropValue::Float(float_) => FfiOpenvrPropertyValue { float_ },
         OpenvrPropValue::Int32(int32) => FfiOpenvrPropertyValue { int32 },
         OpenvrPropValue::Uint64(uint64) => FfiOpenvrPropertyValue { uint64 },

@@ -211,7 +211,7 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     descriptorWriteSets.push_back(descriptorWriteSet);
 
     VkDescriptorImageInfo descriptorImageInfoOuts[3] = {};
-    for (int i = 0; i < m_images.size(); ++i) {
+    for (size_t i = 0; i < m_images.size(); ++i) {
         descriptorImageInfoOuts[i].imageView = m_images[i].view;
         descriptorImageInfoOuts[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 

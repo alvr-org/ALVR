@@ -70,7 +70,7 @@ void FrameRender::setupColorCorrection()
     std::vector<VkSpecializationMapEntry> entries;
 
 #define ENTRY(x,v) \
-    m_colorCorrectionPushConstants.x = v; \
+    m_colorCorrectionConstants.x = v; \
     entries.push_back({(uint32_t)entries.size(), offsetof(ColorCorrection, x), sizeof(ColorCorrection::x)}); \
 
     ENTRY(renderWidth, m_width);
@@ -84,7 +84,7 @@ void FrameRender::setupColorCorrection()
 
     RenderPipeline *pipeline = new RenderPipeline(this);
     pipeline->SetShader(COLOR_SHADER_COMP_SPV_PTR, COLOR_SHADER_COMP_SPV_LEN);
-    pipeline->SetConstants(&m_colorCorrectionPushConstants, sizeof(m_colorCorrectionPushConstants), std::move(entries));
+    pipeline->SetConstants(&m_colorCorrectionConstants, std::move(entries));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }
@@ -132,7 +132,7 @@ void FrameRender::setupFoveatedRendering()
     std::vector<VkSpecializationMapEntry> entries;
 
 #define ENTRY(x,v) \
-    m_foveatedRenderingPushConstants.x = v; \
+    m_foveatedRenderingConstants.x = v; \
     entries.push_back({(uint32_t)entries.size(), offsetof(FoveationVars, x), sizeof(FoveationVars::x)}); \
 
     ENTRY(eyeWidthRatio, eyeWidthRatioAligned);
@@ -147,7 +147,7 @@ void FrameRender::setupFoveatedRendering()
 
     RenderPipeline *pipeline = new RenderPipeline(this);
     pipeline->SetShader(FFR_SHADER_COMP_SPV_PTR, FFR_SHADER_COMP_SPV_LEN);
-    pipeline->SetConstants(&m_foveatedRenderingPushConstants, sizeof(m_foveatedRenderingPushConstants), std::move(entries));
+    pipeline->SetConstants(&m_foveatedRenderingConstants, std::move(entries));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }

@@ -135,7 +135,13 @@ public:
 
     void SetShader(const char *filename);
     void SetShader(const unsigned char *data, unsigned len);
-    void SetConstants(const void *data, uint32_t size, std::vector<VkSpecializationMapEntry> &&entries);
+
+    template <typename T>
+    void SetConstants(const T *data, std::vector<VkSpecializationMapEntry> &&entries) {
+        m_constant = static_cast<const void*>(data);
+        m_constantSize = sizeof(T);
+        m_constantEntries = std::move(entries);
+    }
 
 private:
     void Build();

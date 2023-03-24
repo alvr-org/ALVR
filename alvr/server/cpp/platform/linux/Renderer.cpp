@@ -889,13 +889,6 @@ void RenderPipeline::SetShader(const unsigned char *data, unsigned len)
     VK_CHECK(vkCreateShaderModule(r->m_dev, &moduleInfo, nullptr, &m_shader));
 }
 
-void RenderPipeline::SetConstants(const void *data, uint32_t size, std::vector<VkSpecializationMapEntry> &&entries)
-{
-    m_constant = data;
-    m_constantSize = size;
-    m_constantEntries = std::move(entries);
-}
-
 void RenderPipeline::Build()
 {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};

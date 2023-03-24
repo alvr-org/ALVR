@@ -80,6 +80,10 @@ impl BitrateManager {
         network_latency: Duration,
         decoder_latency: Duration,
     ) {
+        if network_latency == Duration::ZERO {
+            return;
+        }
+
         while let Some(&(timestamp_, size_bits)) = self.packet_sizes_bits_history.front() {
             if timestamp_ == timestamp {
                 self.bitrate_average

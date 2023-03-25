@@ -36,7 +36,6 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
     void SetButton(uint64_t id, FfiButtonValue value);
 
     bool onPoseUpdate(float predictionS, FfiDeviceMotion motion, const FfiHandSkeleton *hand);
-    std::string GetSerialNumber();
 
     void GetBoneTransform(bool withController,
                           bool isLeftHand,

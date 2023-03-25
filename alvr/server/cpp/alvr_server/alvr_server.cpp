@@ -74,35 +74,33 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         InitDriverLog(vr::VRDriverLog());
 
         this->hmd = std::make_unique<Hmd>();
-        if (vr::VRServerDriverHost()->TrackedDeviceAdded(this->hmd->GetSerialNumber().c_str(),
+        this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)this->hmd.get()});
+        if (vr::VRServerDriverHost()->TrackedDeviceAdded(this->hmd->get_serial_number().c_str(),
                                                          this->hmd->GetDeviceClass(),
                                                          this->hmd.get())) {
-            this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)this->hmd.get()});
         } else {
-            Warn("Failed to HMD device");
+            Warn("Failed to register HMD device");
         }
 
-        if (!Settings::Instance().m_disableController) {
+        if (Settings::Instance().m_enableControllers) {
             this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
             this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
 
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->left_controller->GetSerialNumber().c_str(),
-                    this->left_controller->getControllerDeviceClass(),
-                    this->left_controller.get())) {
-                this->tracked_devices.insert(
-                    {LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
-            } else {
-                Warn("Failed to register left controller");
-            }
+            this->tracked_devices.insert(
+                {LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
+            this->tracked_devices.insert(
+                {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->right_controller->GetSerialNumber().c_str(),
+                    this->left_controller->get_serial_number().c_str(),
+                    this->left_controller->getControllerDeviceClass(),
+                    this->left_controller.get())) {
+                Warn("Failed to register left controller");
+            }
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    this->right_controller->get_serial_number().c_str(),
                     this->right_controller->getControllerDeviceClass(),
                     this->right_controller.get())) {
-                this->tracked_devices.insert(
-                    {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
-            } else {
                 Warn("Failed to register right controller");
             }
         }
@@ -196,6 +194,8 @@ void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportEncoded)(unsigned long long timestamp_ns);
 FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
+unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
+void (*SetOpenvrProps)(unsigned long long deviceID);
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants
@@ -277,8 +277,8 @@ void ShutdownSteamvr() {
     }
 }
 
-void SetOpenvrProperty(unsigned long long top_level_path, FfiOpenvrProperty prop) {
-    auto device_it = g_driver_provider.tracked_devices.find(top_level_path);
+void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop) {
+    auto device_it = g_driver_provider.tracked_devices.find(deviceID);
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
         device_it->second->set_prop(prop);
@@ -291,8 +291,8 @@ void SetViewsConfig(FfiViewsConfig config) {
     }
 }
 
-void SetBattery(unsigned long long top_level_path, float gauge_value, bool is_plugged) {
-    auto device_it = g_driver_provider.tracked_devices.find(top_level_path);
+void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged) {
+    auto device_it = g_driver_provider.tracked_devices.find(deviceID);
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
         vr::VRProperties()->SetFloatProperty(

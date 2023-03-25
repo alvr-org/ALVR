@@ -27,7 +27,7 @@ vr::EVRInitError ViveTrackerProxy::Activate( vr::TrackedDeviceIndex_t unObjectId
     // with existing tools such as OpenVR Space calibrator and be able to calibrate to/from ALVR HMD (and the proxy tracker) space to/from
     // a native HMD/tracked device which is already using "lighthouse" as the tracking system the proxy tracker needs to be in a different
     // tracking system to treat them differently and prevent those tools doing the same space transform to the proxy tracker.
-    vr_properties->SetStringProperty(propertyContainer, vr::Prop_TrackingSystemName_String, Settings::Instance().mTrackingSystemName.c_str());//"lighthouse");
+    vr_properties->SetStringProperty(propertyContainer, vr::Prop_TrackingSystemName_String, "HeadTrackerCustom");//"lighthouse");
     vr_properties->SetStringProperty(propertyContainer, vr::Prop_ModelNumber_String, "Vive Tracker Pro MV");
     vr_properties->SetStringProperty(propertyContainer, vr::Prop_SerialNumber_String, GetSerialNumber()); // Changed
     vr_properties->SetStringProperty(propertyContainer, vr::Prop_RenderModelName_String, "{htc}vr_tracker_vive_1_0");

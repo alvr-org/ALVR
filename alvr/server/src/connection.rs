@@ -14,7 +14,7 @@ use alvr_common::{
     RelaxedAtomic, DEVICE_ID_TO_PATH, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent};
-use alvr_session::{CodecType, FrameSize, OpenvrConfig};
+use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
     ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
@@ -267,33 +267,18 @@ fn try_connect(
     let (mut control_sender, control_receiver) = proto_socket.split();
 
     let mut controllers_mode_idx = 0;
-    let mut controllers_tracking_system_name = "".into();
-    let mut controllers_manufacturer_name = "".into();
-    let mut controllers_model_number = "".into();
-    let mut render_model_name_left_controller = "".into();
-    let mut render_model_name_right_controller = "".into();
-    let mut controllers_serial_number = "".into();
-    let mut controllers_type_left = "".into();
-    let mut controllers_type_right = "".into();
-    let mut controllers_registered_device_type = "".into();
-    let mut controllers_input_profile_path = "".into();
     let mut override_trigger_threshold = false;
     let mut trigger_threshold = 0.0;
     let mut override_grip_threshold = false;
     let mut grip_threshold = 0.0;
-    let mut use_headset_tracking_system = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
-        controllers_mode_idx = config.mode_idx;
-        controllers_tracking_system_name = config.tracking_system_name.clone();
-        controllers_manufacturer_name = config.manufacturer_name.clone();
-        controllers_model_number = config.model_number.clone();
-        render_model_name_left_controller = config.render_model_name_left.clone();
-        render_model_name_right_controller = config.render_model_name_right.clone();
-        controllers_serial_number = config.serial_number.clone();
-        controllers_type_left = config.ctrl_type_left.clone();
-        controllers_type_right = config.ctrl_type_right.clone();
-        controllers_registered_device_type = config.registered_device_type.clone();
-        controllers_input_profile_path = config.input_profile_path.clone();
+        controllers_mode_idx = match config.emulation_mode {
+            ControllersEmulationMode::RiftSTouch => 1,
+            ControllersEmulationMode::ValveIndex => 3,
+            ControllersEmulationMode::ViveWand => 5,
+            ControllersEmulationMode::Quest2Touch => 7,
+            ControllersEmulationMode::ViveTracker => 9,
+        };
         override_trigger_threshold =
             if let Switch::Enabled(config) = config.override_trigger_threshold {
                 trigger_threshold = config.trigger_threshold;
@@ -307,7 +292,6 @@ fn try_connect(
         } else {
             false
         };
-        use_headset_tracking_system = config.use_headset_tracking_system;
         true
     } else {
         false
@@ -353,19 +337,10 @@ fn try_connect(
     let amf_controls = settings.video.advanced_codec_options.amf_controls;
 
     let new_openvr_config = OpenvrConfig {
-        universe_id: settings.headset.universe_id,
-        headset_serial_number: settings.headset.serial_number,
-        headset_tracking_system_name: settings.headset.tracking_system_name,
-        headset_model_number: settings.headset.model_number,
-        headset_driver_version: settings.headset.driver_version,
-        headset_manufacturer_name: settings.headset.manufacturer_name,
-        headset_render_model_name: settings.headset.render_model_name,
-        headset_registered_device_type: settings.headset.registered_device_type,
         eye_resolution_width: stream_view_resolution.x,
         eye_resolution_height: stream_view_resolution.y,
         target_eye_resolution_width: target_view_resolution.x,
         target_eye_resolution_height: target_view_resolution.y,
-        seconds_from_vsync_to_photons: settings.video.seconds_from_vsync_to_photons,
         tracking_ref_only: settings.headset.tracking_ref_only,
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
@@ -385,21 +360,10 @@ fn try_connect(
         sw_thread_count: settings.video.sw_thread_count,
         controllers_enabled,
         controllers_mode_idx,
-        controllers_tracking_system_name,
-        controllers_manufacturer_name,
-        controllers_model_number,
-        render_model_name_left_controller,
-        render_model_name_right_controller,
-        controllers_serial_number,
-        controllers_type_left,
-        controllers_type_right,
-        controllers_registered_device_type,
-        controllers_input_profile_path,
         override_trigger_threshold,
         trigger_threshold,
         override_grip_threshold,
         grip_threshold,
-        use_headset_tracking_system,
         enable_foveated_rendering,
         foveation_center_size_x,
         foveation_center_size_y,
@@ -633,7 +597,7 @@ async fn connection_pipeline(
                     };
                     crate::SetOpenvrProperty(
                         *alvr_common::HEAD_ID,
-                        crate::to_ffi_openvr_prop(
+                        crate::openvr_props::to_ffi_openvr_prop(
                             alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                             alvr_session::OpenvrPropValue::String(device_id),
                         ),
@@ -665,7 +629,7 @@ async fn connection_pipeline(
                     unsafe {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
-                            crate::to_ffi_openvr_prop(
+                            crate::openvr_props::to_ffi_openvr_prop(
                                 alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
                                 alvr_session::OpenvrPropValue::String(default_device_id),
                             ),
@@ -698,7 +662,7 @@ async fn connection_pipeline(
             unsafe {
                 crate::SetOpenvrProperty(
                     *alvr_common::HEAD_ID,
-                    crate::to_ffi_openvr_prop(
+                    crate::openvr_props::to_ffi_openvr_prop(
                         alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
                         alvr_session::OpenvrPropValue::String(microphone_device_id),
                     ),

@@ -44,7 +44,7 @@ union FfiOpenvrPropertyValue {
     unsigned long long uint64;
     float vector3[3];
     double double_;
-    char string[64];
+    char string[256];
 };
 
 struct FfiOpenvrProperty {
@@ -120,6 +120,8 @@ extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long 
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
+extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
+extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
@@ -135,10 +137,10 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
-extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, FfiOpenvrProperty prop);
+extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
-extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
+extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
 
 extern "C" void CaptureFrame();

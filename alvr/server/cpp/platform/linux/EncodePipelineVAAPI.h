@@ -30,6 +30,7 @@ public:
   EncodePipelineVAAPI(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, uint32_t width, uint32_t height);
 
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
+  void SetParams(FfiDynamicEncoderParams params) override;
 
 private:
   Renderer *r = nullptr;

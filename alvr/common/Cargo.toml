@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-glam = { version = "0.22", features = ["serde"] }
+glam = { version = "0.23", features = ["serde"] }
 log = "0.4"
 once_cell = "1"
 parking_lot = "0.12"

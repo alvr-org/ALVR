@@ -4,6 +4,7 @@ mod connection;
 mod dashboard;
 mod haptics;
 mod logging_backend;
+mod openvr_props;
 mod sockets;
 mod statistics;
 mod tracking;
@@ -32,7 +33,7 @@ use alvr_common::{
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
-use alvr_session::{CodecType, OpenvrPropValue, OpenvrPropertyKey};
+use alvr_session::CodecType;
 use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
@@ -121,49 +122,6 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
         y: quat.y,
         z: quat.z,
         w: quat.w,
-    }
-}
-
-pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> FfiOpenvrProperty {
-    let type_ = match value {
-        OpenvrPropValue::Bool(_) => FfiOpenvrPropertyType_Bool,
-        OpenvrPropValue::Float(_) => FfiOpenvrPropertyType_Float,
-        OpenvrPropValue::Int32(_) => FfiOpenvrPropertyType_Int32,
-        OpenvrPropValue::Uint64(_) => FfiOpenvrPropertyType_Uint64,
-        OpenvrPropValue::Vector3(_) => FfiOpenvrPropertyType_Vector3,
-        OpenvrPropValue::Double(_) => FfiOpenvrPropertyType_Double,
-        OpenvrPropValue::String(_) => FfiOpenvrPropertyType_String,
-    };
-
-    let value = match value {
-        OpenvrPropValue::Bool(bool_) => FfiOpenvrPropertyValue {
-            bool_: bool_.into(),
-        },
-        OpenvrPropValue::Float(float_) => FfiOpenvrPropertyValue { float_ },
-        OpenvrPropValue::Int32(int32) => FfiOpenvrPropertyValue { int32 },
-        OpenvrPropValue::Uint64(uint64) => FfiOpenvrPropertyValue { uint64 },
-        OpenvrPropValue::Vector3(vector3) => FfiOpenvrPropertyValue { vector3 },
-        OpenvrPropValue::Double(double_) => FfiOpenvrPropertyValue { double_ },
-        OpenvrPropValue::String(value) => {
-            let c_string = CString::new(value).unwrap();
-            let mut string = [0; 64];
-
-            unsafe {
-                ptr::copy_nonoverlapping(
-                    c_string.as_ptr(),
-                    string.as_mut_ptr(),
-                    c_string.as_bytes_with_nul().len(),
-                );
-            }
-
-            FfiOpenvrPropertyValue { string }
-        }
-    };
-
-    FfiOpenvrProperty {
-        key: key as u32,
-        type_,
-        value,
     }
 }
 
@@ -536,6 +494,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
     ReportEncoded = Some(report_encoded);
+    GetSerialNumber = Some(openvr_props::get_serial_number);
+    SetOpenvrProps = Some(openvr_props::set_device_openvr_props);
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
 
     // cast to usize to allow the variables to cross thread boundaries

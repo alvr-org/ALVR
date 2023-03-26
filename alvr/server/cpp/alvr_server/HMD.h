@@ -24,8 +24,6 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
 
     virtual ~Hmd();
 
-    std::string GetSerialNumber() const;
-
     virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
     virtual void Deactivate();
     virtual void EnterStandby() {}

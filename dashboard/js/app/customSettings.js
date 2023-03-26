@@ -34,8 +34,6 @@ define([
                 setAudioDeviceList();
                 setVideoOptions();
                 setRefreshRate();
-                setHeadsetEmulation();
-                setControllerEmulation();
                 setTheme();
             } catch (error) {
                 Lobibox.notify("error", {

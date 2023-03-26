@@ -1,6 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault};
+use settings_schema::{
+    DictionaryDefault, EntryData, SettingsSchema, Switch, SwitchDefault, VectorDefault,
+};
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
@@ -280,9 +282,6 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub advanced_codec_options: AdvancedCodecOptions,
 
-    #[schema(advanced)]
-    pub seconds_from_vsync_to_photons: f32,
-
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
     pub oculus_foveation_level: OculusFovetionLevel,
     pub dynamic_oculus_foveation: bool,
@@ -356,7 +355,7 @@ pub struct AudioSection {
     pub microphone: Switch<MicrophoneDesc>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase", tag = "type", content = "content")]
 pub enum OpenvrPropValue {
     Bool(bool),
@@ -366,6 +365,36 @@ pub enum OpenvrPropValue {
     Vector3([f32; 3]),
     Double(f64),
     String(String),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenvrPropEntry {
+    pub key: OpenvrPropertyKey,
+    pub value: OpenvrPropValue,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum HeadsetEmulationMode {
+    RiftS,
+    Vive,
+    Quest2,
+    #[serde(rename_all = "camelCase")]
+    Custom {
+        serial_number: String,
+        props: Vec<OpenvrPropEntry>,
+    },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type", content = "content")]
+pub enum ControllersEmulationMode {
+    RiftSTouch,
+    ValveIndex,
+    ViveWand,
+    Quest2Touch,
+    ViveTracker,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -403,46 +432,9 @@ pub struct HapticsConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ControllersDesc {
-    // Dropdown:
-    // Oculus Rift S
-    // Oculus Rift S (no handtracking pinch)
-    // Valve Index
-    // Valve Index (no handtracking pinch)
-    // modeIdx and the following strings must be set accordingly
-    #[schema(placeholder = "controller_mode")]
-    //
-    #[schema(advanced)]
-    pub mode_idx: i32,
+    pub emulation_mode: ControllersEmulationMode,
 
-    #[schema(advanced)]
-    pub tracking_system_name: String,
-
-    #[schema(advanced)]
-    pub manufacturer_name: String,
-
-    #[schema(advanced)]
-    pub model_number: String,
-
-    #[schema(advanced)]
-    pub render_model_name_left: String,
-
-    #[schema(advanced)]
-    pub render_model_name_right: String,
-
-    #[schema(advanced)]
-    pub serial_number: String,
-
-    #[schema(advanced)]
-    pub ctrl_type_left: String,
-
-    #[schema(advanced)]
-    pub ctrl_type_right: String,
-
-    #[schema(advanced)]
-    pub registered_device_type: String,
-
-    #[schema(advanced)]
-    pub input_profile_path: String,
+    pub extra_openvr_props: Vec<OpenvrPropEntry>,
 
     #[schema(min = -50, max = 50, step = 1)]
     pub pose_time_offset_ms: i64,
@@ -472,9 +464,6 @@ pub struct ControllersDesc {
     pub override_grip_threshold: Switch<ControllersGripOverrideDesc>,
 
     pub haptics: Switch<HapticsConfig>,
-
-    #[schema(advanced)]
-    pub use_headset_tracking_system: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -499,35 +488,9 @@ pub enum RotationRecenteringMode {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct HeadsetDesc {
-    #[schema(advanced)]
-    pub mode_idx: u64,
+    pub emulation_mode: HeadsetEmulationMode,
 
-    #[schema(advanced)]
-    pub universe_id: u64,
-
-    // Oculus Rift S or HTC Vive. Should all the following strings accordingly
-    #[schema(placeholder = "headset_emulation_mode")]
-    //
-    #[schema(advanced)]
-    pub serial_number: String,
-
-    #[schema(advanced)]
-    pub tracking_system_name: String,
-
-    #[schema(advanced)]
-    pub model_number: String,
-
-    #[schema(advanced)]
-    pub driver_version: String,
-
-    #[schema(advanced)]
-    pub manufacturer_name: String,
-
-    #[schema(advanced)]
-    pub render_model_name: String,
-
-    #[schema(advanced)]
-    pub registered_device_type: String,
+    pub extra_openvr_props: Vec<OpenvrPropEntry>,
 
     #[schema(advanced)]
     pub tracking_ref_only: bool,
@@ -683,6 +646,30 @@ pub struct Settings {
 }
 
 pub fn session_settings_default() -> SettingsDefault {
+    let socket_buffer = SocketBufferSizeDefault {
+        Custom: 100000,
+        variant: SocketBufferSizeDefaultVariant::Maximum,
+    };
+
+    let default_custom_openvr_props = VectorDefault {
+        element: OpenvrPropEntryDefault {
+            key: OpenvrPropertyKeyDefault {
+                variant: OpenvrPropertyKeyDefaultVariant::TrackingSystemName,
+            },
+            value: OpenvrPropValueDefault {
+                Bool: false,
+                Float: 0.0,
+                Int32: 0,
+                Uint64: 0,
+                Vector3: [0.0, 0.0, 0.0],
+                Double: 0.0,
+                String: "".into(),
+                variant: OpenvrPropValueDefaultVariant::String,
+            },
+        },
+        content: vec![],
+    };
+
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
@@ -800,7 +787,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     ],
                 },
             },
-            seconds_from_vsync_to_photons: 0.005,
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingDescDefault {
@@ -868,31 +854,23 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         headset: HeadsetDescDefault {
-            mode_idx: 2,
-            universe_id: 2,
-            serial_number: "1WMGH000XX0000".into(),
-            tracking_system_name: "oculus".into(),
-            model_number: "Miramar".into(),
-            driver_version: "1.55.0".into(),
-            manufacturer_name: "Oculus".into(),
-            render_model_name: "generic_hmd".into(),
-            registered_device_type: "oculus/1WMGH000XX0000".into(),
+            emulation_mode: HeadsetEmulationModeDefault {
+                Custom: HeadsetEmulationModeCustomDefault {
+                    serial_number: "Unknown".into(),
+                    props: default_custom_openvr_props.clone(),
+                },
+                variant: HeadsetEmulationModeDefaultVariant::Quest2,
+            },
+            extra_openvr_props: default_custom_openvr_props.clone(),
             tracking_ref_only: false,
             enable_vive_tracker_proxy: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
-                    mode_idx: 7,
-                    tracking_system_name: "oculus".into(),
-                    manufacturer_name: "Oculus".into(),
-                    model_number: "Miramar".into(),
-                    render_model_name_left: "oculus_quest2_controller_left".into(),
-                    render_model_name_right: "oculus_quest2_controller_right".into(),
-                    serial_number: "1WMGH000XX0000_Controller".into(),
-                    ctrl_type_left: "oculus_touch".into(),
-                    ctrl_type_right: "oculus_touch".into(),
-                    registered_device_type: "oculus/1WMGH000XX0000_Controller".into(),
-                    input_profile_path: "{oculus}/input/touch_profile.json".into(),
+                    emulation_mode: ControllersEmulationModeDefault {
+                        variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
+                    },
+                    extra_openvr_props: default_custom_openvr_props,
                     pose_time_offset_ms: 20,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
@@ -922,7 +900,6 @@ pub fn session_settings_default() -> SettingsDefault {
                             low_duration_range_multiplier: 0.5,
                         },
                     },
-                    use_headset_tracking_system: false,
                 },
             },
             position_recentering_mode: PositionRecenteringModeDefault {
@@ -945,22 +922,10 @@ pub fn session_settings_default() -> SettingsDefault {
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
             },
-            server_send_buffer_bytes: SocketBufferSizeDefault {
-                Custom: 100000,
-                variant: SocketBufferSizeDefaultVariant::Maximum,
-            },
-            server_recv_buffer_bytes: SocketBufferSizeDefault {
-                Custom: 100000,
-                variant: SocketBufferSizeDefaultVariant::Maximum,
-            },
-            client_send_buffer_bytes: SocketBufferSizeDefault {
-                Custom: 100000,
-                variant: SocketBufferSizeDefaultVariant::Maximum,
-            },
-            client_recv_buffer_bytes: SocketBufferSizeDefault {
-                Custom: 100000,
-                variant: SocketBufferSizeDefaultVariant::Maximum,
-            },
+            server_send_buffer_bytes: socket_buffer.clone(),
+            server_recv_buffer_bytes: socket_buffer.clone(),
+            client_send_buffer_bytes: socket_buffer.clone(),
+            client_recv_buffer_bytes: socket_buffer,
             stream_port: 9944,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),

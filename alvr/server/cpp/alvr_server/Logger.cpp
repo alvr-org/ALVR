@@ -20,7 +20,7 @@ void _log(const char *format, va_list args, void (*logFn)(const char *), bool dr
 #ifndef ALVR_DEBUG_LOG
 	if (driverLog)
 #endif
-		DriverLogVarArgs(format, args);
+		DriverLog(buf);
 }
 
 Exception MakeException(const char *format, ...)

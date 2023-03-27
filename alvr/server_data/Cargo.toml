@@ -13,7 +13,5 @@ alvr_session.workspace = true
 alvr_sockets.workspace = true
 
 cpal = "0.15"
-rhai = { version = "1", features = ["serde", "sync"] }
 serde_json = "1"
-tokio = "1"
 wgpu = "0.15"

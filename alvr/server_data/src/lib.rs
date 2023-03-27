@@ -54,7 +54,6 @@ pub struct ServerDataManager {
     session: SessionDesc,
     settings: Settings,
     session_path: PathBuf,
-    script_engine: rhai::Engine,
     gpu_infos: Vec<AdapterInfo>,
 }
 
@@ -76,13 +75,10 @@ impl ServerDataManager {
             .map(|adapter| adapter.get_info())
             .collect();
 
-        let script_engine = rhai::Engine::new();
-
         Self {
             session: session_desc.clone(),
             settings: session_desc.to_settings(),
             session_path: session_path.to_owned(),
-            script_engine,
             gpu_infos,
         }
     }
@@ -177,20 +173,6 @@ impl ServerDataManager {
         alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
 
         Ok(())
-    }
-
-    pub fn execute_script(&self, code: &str) -> StrResult<String> {
-        // Note: the scope is recreated every time to avoid cross-invocation interference
-        let mut scope = rhai::Scope::new();
-        scope.push_constant_dynamic(
-            "session",
-            rhai::serde::to_dynamic(self.session.clone()).unwrap(),
-        );
-
-        self.script_engine
-            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
-            .map(|d| d.to_string())
-            .map_err(|e| e.to_string())
     }
 
     pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {

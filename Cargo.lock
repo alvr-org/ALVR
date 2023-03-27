@@ -125,8 +125,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c99f64d1e06488f620f932677e24bc6e2897582980441ae90a671415bd7ec2f"
 dependencies = [
  "cfg-if",
- "const-random",
- "getrandom",
  "once_cell",
  "version_check",
 ]
@@ -396,9 +394,7 @@ dependencies = [
  "alvr_session",
  "alvr_sockets",
  "cpal",
- "rhai",
  "serde_json",
- "tokio",
  "wgpu 0.15.1",
 ]
 
@@ -1151,28 +1147,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const-random"
-version = "0.1.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368a7a772ead6ce7e1de82bfb04c485f3db8ec744f72925af5735e29a22cc18e"
-dependencies = [
- "const-random-macro",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "const-random-macro"
-version = "0.1.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d7d6ab3c3a2282db210df5f02c4dab6e0a7057af0fb7ebd4070f30fe05c0ddb"
-dependencies = [
- "getrandom",
- "once_cell",
- "proc-macro-hack",
- "tiny-keccak",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1336,12 +1310,6 @@ dependencies = [
  "servo-fontconfig",
  "winapi",
 ]
-
-[[package]]
-name = "crunchy"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crypto-common"
@@ -2038,13 +2006,13 @@ dependencies = [
 
 [[package]]
 name = "foreign-types-macros"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8469d0d40519bc608ec6863f1cc88f3f1deee15913f2f3b3e573d81ed38cccc"
+checksum = "1a5c6c585bc94aaf2c7b51dd4c2ba22680844aba4c687be581871a6f518c5742"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
 ]
 
 [[package]]
@@ -2371,9 +2339,9 @@ dependencies = [
 
 [[package]]
 name = "glib-macros"
-version = "0.15.11"
+version = "0.15.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25a68131a662b04931e71891fb14aaf65ee4b44d08e8abc10f49e77418c86c64"
+checksum = "10c6ae9f6fa26f4fb2ac16b528d138d971ead56141de489f8111e259b9df3c4a"
 dependencies = [
  "anyhow",
  "heck 0.4.1",
@@ -2605,9 +2573,9 @@ dependencies = [
 
 [[package]]
 name = "gtk3-macros"
-version = "0.15.4"
+version = "0.15.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24f518afe90c23fba585b2d7697856f9e6a7bbc62f65588035e66f6afb01a2e9"
+checksum = "684c0456c086e8e7e9af73ec5b84e35938df394712054550e81558d21c44ab0d"
 dependencies = [
  "anyhow",
  "proc-macro-crate",
@@ -3949,16 +3917,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
-
-[[package]]
 name = "proc-macro2"
-version = "1.0.53"
+version = "1.0.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba466839c78239c09faf015484e5cc04860f88242cff4d03eb038f04b4699b73"
+checksum = "e472a104799c74b514a57226160104aa483546de37e839ec50e3c2e41dd87534"
 dependencies = [
  "unicode-ident",
 ]
@@ -4116,33 +4078,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
-]
-
-[[package]]
-name = "rhai"
-version = "1.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd29fa1f740be6dc91982013957e08c3c4232d7efcfe19e12da87d50bad47758"
-dependencies = [
- "ahash 0.8.3",
- "bitflags",
- "instant",
- "num-traits",
- "rhai_codegen",
- "serde",
- "smallvec",
- "smartstring",
-]
-
-[[package]]
-name = "rhai_codegen"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db74e3fdd29d969a0ec1f8e79171a6f0f71d0429293656901db382d248c4c021"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -4512,21 +4447,6 @@ name = "smallvec"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "smartstring"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
-dependencies = [
- "autocfg",
- "serde",
- "static_assertions",
- "version_check",
-]
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -4785,15 +4705,6 @@ dependencies = [
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi",
-]
-
-[[package]]
-name = "tiny-keccak"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
-dependencies = [
- "crunchy",
 ]
 
 [[package]]

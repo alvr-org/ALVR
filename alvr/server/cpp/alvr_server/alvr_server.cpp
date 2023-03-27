@@ -165,14 +165,12 @@ unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
 const unsigned char *COLOR_CORRECTION_CSO_PTR;
 unsigned int COLOR_CORRECTION_CSO_LEN;
 
-const unsigned char *QUAD_SHADER_VERT_SPV_PTR;
-unsigned int QUAD_SHADER_VERT_SPV_LEN;
-const unsigned char *QUAD_SHADER_FRAG_SPV_PTR;
-unsigned int QUAD_SHADER_FRAG_SPV_LEN;
-const unsigned char *COLOR_SHADER_FRAG_SPV_PTR;
-unsigned int COLOR_SHADER_FRAG_SPV_LEN;
-const unsigned char *FFR_SHADER_FRAG_SPV_PTR;
-unsigned int FFR_SHADER_FRAG_SPV_LEN;
+const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
+unsigned int QUAD_SHADER_COMP_SPV_LEN;
+const unsigned char *COLOR_SHADER_COMP_SPV_PTR;
+unsigned int COLOR_SHADER_COMP_SPV_LEN;
+const unsigned char *FFR_SHADER_COMP_SPV_PTR;
+unsigned int FFR_SHADER_COMP_SPV_LEN;
 const unsigned char *RGBTOYUV420_SHADER_COMP_SPV_PTR;
 unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 

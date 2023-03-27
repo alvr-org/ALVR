@@ -100,10 +100,9 @@ static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
 static COLOR_CORRECTION_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
 
-static QUAD_SHADER_VERT_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.vert.spv");
-static QUAD_SHADER_FRAG_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.frag.spv");
-static COLOR_SHADER_FRAG_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.frag.spv");
-static FFR_SHADER_FRAG_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/ffr.frag.spv");
+static QUAD_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.comp.spv");
+static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.comp.spv");
+static FFR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/ffr.comp.spv");
 static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
     include_bytes!("../cpp/platform/linux/shader/rgbtoyuv420.comp.spv");
 
@@ -289,14 +288,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COMPRESS_AXIS_ALIGNED_CSO_LEN = COMPRESS_AXIS_ALIGNED_CSO.len() as _;
     COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
-    QUAD_SHADER_VERT_SPV_PTR = QUAD_SHADER_VERT_SPV.as_ptr();
-    QUAD_SHADER_VERT_SPV_LEN = QUAD_SHADER_VERT_SPV.len() as _;
-    QUAD_SHADER_FRAG_SPV_PTR = QUAD_SHADER_FRAG_SPV.as_ptr();
-    QUAD_SHADER_FRAG_SPV_LEN = QUAD_SHADER_FRAG_SPV.len() as _;
-    COLOR_SHADER_FRAG_SPV_PTR = COLOR_SHADER_FRAG_SPV.as_ptr();
-    COLOR_SHADER_FRAG_SPV_LEN = COLOR_SHADER_FRAG_SPV.len() as _;
-    FFR_SHADER_FRAG_SPV_PTR = FFR_SHADER_FRAG_SPV.as_ptr();
-    FFR_SHADER_FRAG_SPV_LEN = FFR_SHADER_FRAG_SPV.len() as _;
+    QUAD_SHADER_COMP_SPV_PTR = QUAD_SHADER_COMP_SPV.as_ptr();
+    QUAD_SHADER_COMP_SPV_LEN = QUAD_SHADER_COMP_SPV.len() as _;
+    COLOR_SHADER_COMP_SPV_PTR = COLOR_SHADER_COMP_SPV.as_ptr();
+    COLOR_SHADER_COMP_SPV_LEN = COLOR_SHADER_COMP_SPV.len() as _;
+    FFR_SHADER_COMP_SPV_PTR = FFR_SHADER_COMP_SPV.as_ptr();
+    FFR_SHADER_COMP_SPV_LEN = FFR_SHADER_COMP_SPV.len() as _;
     RGBTOYUV420_SHADER_COMP_SPV_PTR = RGBTOYUV420_SHADER_COMP_SPV.as_ptr();
     RGBTOYUV420_SHADER_COMP_SPV_LEN = RGBTOYUV420_SHADER_COMP_SPV.len() as _;
 

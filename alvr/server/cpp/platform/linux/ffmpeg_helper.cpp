@@ -149,7 +149,8 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
     const bool graphics = queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
-    if (graphics) {
+    const bool compute = queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT;
+    if (compute && (queueFamilyIndex == VK_QUEUE_FAMILY_IGNORED || !graphics)) {
       queueFamilyIndex = i;
     }
     VkDeviceQueueCreateInfo queueInfo = {};

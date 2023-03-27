@@ -54,7 +54,7 @@ public:
   VkInstance instance = VK_NULL_HANDLE;
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
   VkDevice device = VK_NULL_HANDLE;
-  uint32_t queueFamilyIndex;
+  uint32_t queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
   std::vector<const char*> instanceExtensions;
   std::vector<const char*> deviceExtensions;
   bool amd = false;

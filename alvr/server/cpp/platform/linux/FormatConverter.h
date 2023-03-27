@@ -33,10 +33,8 @@ protected:
     void init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen);
 
     Renderer *r;
-    VkSampler m_sampler = VK_NULL_HANDLE;
     VkQueryPool m_queryPool = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
-    VkDescriptorSet m_descriptor = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
     VkImageView m_view = VK_NULL_HANDLE;
     VkSemaphore m_semaphore = VK_NULL_HANDLE;

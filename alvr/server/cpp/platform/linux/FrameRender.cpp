@@ -34,8 +34,7 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
 
     if (m_pipelines.empty()) {
         RenderPipeline *pipeline = new RenderPipeline(this);
-        pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-        pipeline->SetShader(RenderPipeline::FragmentShader, QUAD_SHADER_FRAG_SPV_PTR, QUAD_SHADER_FRAG_SPV_LEN);
+        pipeline->SetShader(QUAD_SHADER_COMP_SPV_PTR, QUAD_SHADER_COMP_SPV_LEN);
         m_pipelines.push_back(pipeline);
         AddPipeline(pipeline);
     }
@@ -68,18 +67,24 @@ uint32_t FrameRender::GetEncodingHeight() const
 
 void FrameRender::setupColorCorrection()
 {
-    m_colorCorrectionPushConstants.renderWidth = m_width;
-    m_colorCorrectionPushConstants.renderHeight = m_height;
-    m_colorCorrectionPushConstants.brightness = Settings::Instance().m_brightness;
-    m_colorCorrectionPushConstants.contrast = Settings::Instance().m_contrast + 1.f;
-    m_colorCorrectionPushConstants.saturation = Settings::Instance().m_saturation + 1.f;
-    m_colorCorrectionPushConstants.gamma = Settings::Instance().m_gamma;
-    m_colorCorrectionPushConstants.sharpening = Settings::Instance().m_sharpening;
+    std::vector<VkSpecializationMapEntry> entries;
+
+#define ENTRY(x,v) \
+    m_colorCorrectionConstants.x = v; \
+    entries.push_back({(uint32_t)entries.size(), offsetof(ColorCorrection, x), sizeof(ColorCorrection::x)}); \
+
+    ENTRY(renderWidth, m_width);
+    ENTRY(renderHeight, m_height);
+    ENTRY(brightness, Settings::Instance().m_brightness);
+    ENTRY(contrast, Settings::Instance().m_contrast + 1.f);
+    ENTRY(saturation, Settings::Instance().m_saturation + 1.f);
+    ENTRY(gamma, Settings::Instance().m_gamma);
+    ENTRY(sharpening, Settings::Instance().m_sharpening);
+#undef ENTRY
 
     RenderPipeline *pipeline = new RenderPipeline(this);
-    pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-    pipeline->SetShader(RenderPipeline::FragmentShader, COLOR_SHADER_FRAG_SPV_PTR, COLOR_SHADER_FRAG_SPV_LEN);
-    pipeline->SetPushConstant(RenderPipeline::FragmentShader, &m_colorCorrectionPushConstants, sizeof(m_colorCorrectionPushConstants));
+    pipeline->SetShader(COLOR_SHADER_COMP_SPV_PTR, COLOR_SHADER_COMP_SPV_LEN);
+    pipeline->SetConstants(&m_colorCorrectionConstants, std::move(entries));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }
@@ -121,26 +126,28 @@ void FrameRender::setupFoveatedRendering()
     float eyeWidthRatioAligned = optimizedEyeWidth/optimizedEyeWidthAligned;
     float eyeHeightRatioAligned = optimizedEyeHeight/optimizedEyeHeightAligned;
 
-    m_foveatedRenderingPushConstants.targetEyeWidth = targetEyeWidth;
-    m_foveatedRenderingPushConstants.targetEyeHeight = targetEyeHeight;
-    m_foveatedRenderingPushConstants.optimizedEyeWidth = optimizedEyeWidthAligned;
-    m_foveatedRenderingPushConstants.optimizedEyeHeight = optimizedEyeHeightAligned;
-    m_foveatedRenderingPushConstants.eyeWidthRatio = eyeWidthRatioAligned;
-    m_foveatedRenderingPushConstants.eyeHeightRatio = eyeHeightRatioAligned;
-    m_foveatedRenderingPushConstants.centerSizeX = centerSizeXAligned;
-    m_foveatedRenderingPushConstants.centerSizeY = centerSizeYAligned;
-    m_foveatedRenderingPushConstants.centerShiftX = centerShiftXAligned;
-    m_foveatedRenderingPushConstants.centerShiftY = centerShiftYAligned;
-    m_foveatedRenderingPushConstants.edgeRatioX = edgeRatioX;
-    m_foveatedRenderingPushConstants.edgeRatioY = edgeRatioY;
+    m_width = optimizedEyeWidthAligned * 2;
+    m_height = optimizedEyeHeightAligned;
 
-    m_width = m_foveatedRenderingPushConstants.optimizedEyeWidth * 2;
-    m_height = m_foveatedRenderingPushConstants.optimizedEyeHeight;
+    std::vector<VkSpecializationMapEntry> entries;
+
+#define ENTRY(x,v) \
+    m_foveatedRenderingConstants.x = v; \
+    entries.push_back({(uint32_t)entries.size(), offsetof(FoveationVars, x), sizeof(FoveationVars::x)}); \
+
+    ENTRY(eyeWidthRatio, eyeWidthRatioAligned);
+    ENTRY(eyeHeightRatio, eyeHeightRatioAligned);
+    ENTRY(centerSizeX, centerSizeXAligned);
+    ENTRY(centerSizeY, centerSizeYAligned);
+    ENTRY(centerShiftX, centerShiftXAligned);
+    ENTRY(centerShiftY, centerShiftYAligned);
+    ENTRY(edgeRatioX, edgeRatioX);
+    ENTRY(edgeRatioY, edgeRatioY);
+#undef ENTRY
 
     RenderPipeline *pipeline = new RenderPipeline(this);
-    pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-    pipeline->SetShader(RenderPipeline::FragmentShader, FFR_SHADER_FRAG_SPV_PTR, FFR_SHADER_FRAG_SPV_LEN);
-    pipeline->SetPushConstant(RenderPipeline::FragmentShader, &m_foveatedRenderingPushConstants, sizeof(m_foveatedRenderingPushConstants));
+    pipeline->SetShader(FFR_SHADER_COMP_SPV_PTR, FFR_SHADER_COMP_SPV_LEN);
+    pipeline->SetConstants(&m_foveatedRenderingConstants, std::move(entries));
     m_pipelines.push_back(pipeline);
     AddPipeline(pipeline);
 }
@@ -159,8 +166,7 @@ void FrameRender::setupCustomShaders(const std::string &stage)
             }
             Info("FrameRender: Adding [%s] shader %s", stage.c_str(), entry.path().filename().c_str());
             RenderPipeline *pipeline = new RenderPipeline(this);
-            pipeline->SetShader(RenderPipeline::VertexShader, QUAD_SHADER_VERT_SPV_PTR, QUAD_SHADER_VERT_SPV_LEN);
-            pipeline->SetShader(RenderPipeline::FragmentShader, entry.path().c_str());
+            pipeline->SetShader(entry.path().c_str());
             m_pipelines.push_back(pipeline);
             AddPipeline(pipeline);
         }

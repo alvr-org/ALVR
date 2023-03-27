@@ -367,8 +367,9 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
     VkImageMemoryBarrier imageBarriers[2];
     imageBarriers[0] = {};
     imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarriers[0].oldLayout = m_render->GetOutput().layout;
+    m_render->GetOutput().layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarriers[0].newLayout = m_render->GetOutput().layout;
     imageBarriers[0].image = m_render->GetOutput().image;
     imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarriers[0].subresourceRange.layerCount = 1;
@@ -380,7 +381,8 @@ void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
     imageBarriers[1] = {};
     imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     imageBarriers[1].oldLayout = static_cast<VkImageLayout>(surfaceVk->eCurrentLayout);
-    imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    surfaceVk->eCurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarriers[1].newLayout = static_cast<VkImageLayout>(surfaceVk->eCurrentLayout);
     imageBarriers[1].image = surfaceVk->hImage;
     imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarriers[1].subresourceRange.layerCount = 1;

@@ -7,8 +7,6 @@ std::string TrackedDevice::get_serial_number() {
     auto buffer = std::vector<char>(size);
     GetSerialNumber(this->device_id, &buffer[0]);
 
-    Warn("serial number: %s", &buffer[0]);
-
     return std::string(&buffer[0]);
 }
 

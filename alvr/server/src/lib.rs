@@ -387,7 +387,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
         if let Some(sender) = &*HAPTICS_SENDER.lock() {
             let haptics = Haptics {
                 device_id,
-                duration: Duration::from_secs_f32(duration_s),
+                duration: Duration::max(Duration::from_secs_f32(duration_s), Duration::ZERO),
                 frequency,
                 amplitude,
             };

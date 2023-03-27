@@ -421,12 +421,6 @@ pub struct HapticsConfig {
 
     #[schema(advanced, min = 0., max = 0.1, step = 0.001)]
     pub min_duration_s: f32,
-
-    #[schema(advanced, min = 1., max = 5., step = 0.1)]
-    pub low_duration_amplitude_multiplier: f32,
-
-    #[schema(advanced, min = 0., max = 1., step = 0.01)]
-    pub low_duration_range_multiplier: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -893,11 +887,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     haptics: SwitchDefault {
                         enabled: true,
                         content: HapticsConfigDefault {
-                            intensity_multiplier: 1.,
-                            amplitude_curve: 0.4,
+                            intensity_multiplier: 1.0,
+                            amplitude_curve: 1.0,
                             min_duration_s: 0.01,
-                            low_duration_amplitude_multiplier: 2.5,
-                            low_duration_range_multiplier: 0.5,
                         },
                     },
                 },

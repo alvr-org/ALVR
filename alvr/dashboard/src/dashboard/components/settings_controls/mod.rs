@@ -14,7 +14,7 @@ pub mod text;
 pub mod vector;
 
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::{DashboardRequest, PathSegment};
+use alvr_sockets::{PathSegment, PathValuePair};
 use eframe::egui::Ui;
 use serde_json as json;
 
@@ -24,11 +24,14 @@ fn set_single_value(
     nesting_info: &NestingInfo,
     leaf: PathSegment,
     new_value: json::Value,
-) -> Option<DashboardRequest> {
+) -> Option<PathValuePair> {
     let mut path = nesting_info.path.clone();
     path.push(leaf);
 
-    Some(DashboardRequest::SetSingleValue { path, new_value })
+    Some(PathValuePair {
+        path,
+        value: new_value,
+    })
 }
 
 fn grid_flow_inline(ui: &mut Ui, allow_inline: bool) {
@@ -110,17 +113,17 @@ impl SettingControl {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         match self {
-            SettingControl::Section(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Choice(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Optional(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Switch(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Boolean(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Text(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Numeric(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::Array(control) => control.ui(ui, session_fragment, allow_inline),
-            SettingControl::None => {
+            Self::Section(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Choice(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Optional(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Switch(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Boolean(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Text(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Numeric(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Array(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::None => {
                 grid_flow_inline(ui, allow_inline);
                 ui.add_enabled_ui(false, |ui| ui.label("Unimplemented UI"));
 

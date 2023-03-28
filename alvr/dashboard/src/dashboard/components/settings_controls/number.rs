@@ -1,6 +1,6 @@
 use super::{reset, NestingInfo};
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{DragValue, Layout, Slider, Ui},
     emath::Align,
@@ -52,7 +52,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
         let mut session_value = session_fragment.as_f64().unwrap();
@@ -63,10 +63,10 @@ impl Control {
             nesting_info: &NestingInfo,
             number: f64,
             ty: NumberType,
-        ) -> Option<DashboardRequest> {
-            Some(DashboardRequest::SetSingleValue {
+        ) -> Option<PathValuePair> {
+            Some(PathValuePair {
                 path: nesting_info.path.clone(),
-                new_value: to_json_value(number, ty),
+                value: to_json_value(number, ty),
             })
         }
 

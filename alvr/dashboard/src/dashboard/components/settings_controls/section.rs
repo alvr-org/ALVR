@@ -4,7 +4,7 @@ use crate::{
     theme::log_colors::{INFO_LIGHT, WARNING_LIGHT},
 };
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::egui::{self, popup, Ui};
 use serde_json as json;
 use std::collections::HashMap;
@@ -74,7 +74,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_block(ui, allow_inline);
 
         let session_fragments_mut = session_fragment.as_object_mut().unwrap();

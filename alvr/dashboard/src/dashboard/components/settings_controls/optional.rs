@@ -1,6 +1,6 @@
 use super::{reset, NestingInfo, SettingControl};
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{Layout, Ui},
     emath::Align,
@@ -42,7 +42,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
         let session_switch_mut = session_fragment.as_object_mut().unwrap();
@@ -56,7 +56,7 @@ impl Control {
 
         let mut request = None;
 
-        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<DashboardRequest> {
+        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
             super::set_single_value(nesting_info, "set".into(), json::Value::Bool(enabled))
         }
 

@@ -1,6 +1,6 @@
 use eframe::egui::{self, Color32, Context, Rounding, Stroke, Visuals};
 
-pub const ACCENT: Color32 = Color32::from_rgb(53, 132, 228);
+pub const ACCENT: Color32 = Color32::from_rgb(134, 171, 241);
 pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
 pub const LIGHTER_BG: Color32 = Color32::from_rgb(36, 36, 36);
 pub const SECTION_BG: Color32 = Color32::from_rgb(36, 36, 36);

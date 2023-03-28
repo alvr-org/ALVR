@@ -5,12 +5,13 @@ use crate::{
     DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
     SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
-use alvr_audio::{AudioDevice, AudioDeviceType};
+use alvr_audio::AudioDevice;
 use alvr_common::{
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot,
     prelude::*,
+    settings_schema::Switch,
     RelaxedAtomic, DEVICE_ID_TO_PATH, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent};
@@ -190,22 +191,32 @@ fn try_connect(
 
     let settings = SERVER_DATA_MANAGER.read().settings().clone();
 
-    let stream_view_resolution = match settings.video.render_resolution {
-        FrameSize::Scale(scale) => streaming_caps.default_view_resolution.as_vec2() * scale,
-        FrameSize::Absolute { width, height } => Vec2::new(width as f32 / 2_f32, height as f32),
-    };
-    let stream_view_resolution = UVec2::new(
-        align32(stream_view_resolution.x),
-        align32(stream_view_resolution.y),
+    fn get_res(config: FrameSize, default_res: UVec2) -> UVec2 {
+        let res = match config {
+            FrameSize::Scale(scale) => default_res.as_vec2() * scale,
+            FrameSize::Absolute { width, height } => {
+                let width = width as f32;
+                Vec2::new(
+                    width / 2_f32,
+                    height.map(|h| h as f32).unwrap_or_else(|| {
+                        let default_res = default_res.as_vec2();
+                        width * default_res.y / default_res.x
+                    }),
+                )
+            }
+        };
+
+        UVec2::new(align32(res.x), align32(res.y))
+    }
+
+    let stream_view_resolution = get_res(
+        settings.video.transcoding_resolution,
+        streaming_caps.default_view_resolution,
     );
 
-    let target_view_resolution = match settings.video.recommended_target_resolution {
-        FrameSize::Scale(scale) => streaming_caps.default_view_resolution.as_vec2() * scale,
-        FrameSize::Absolute { width, height } => Vec2::new(width as f32 / 2_f32, height as f32),
-    };
-    let target_view_resolution = UVec2::new(
-        align32(target_view_resolution.x),
-        align32(target_view_resolution.y),
+    let target_view_resolution = get_res(
+        settings.video.emulated_headset_resolution,
+        streaming_caps.default_view_resolution,
     );
 
     let fps = {
@@ -228,24 +239,25 @@ fn try_connect(
         warn!("Chosen refresh rate not supported. Using {fps}Hz");
     }
 
-    let game_audio_sample_rate = if let Switch::Enabled(game_audio_desc) = settings.audio.game_audio
+    let game_audio_sample_rate = if let Switch::Enabled(game_audio_config) =
+        settings.audio.game_audio
     {
-        let game_audio_device = AudioDevice::new(
+        let game_audio_device = AudioDevice::new_output(
             Some(settings.audio.linux_backend),
-            &game_audio_desc.device_id,
-            AudioDeviceType::Output,
+            game_audio_config.device.as_ref(),
         )
         .map_err(to_int_e!())?;
 
+        #[cfg(not(target_os = "linux"))]
         if let Switch::Enabled(microphone_desc) = settings.audio.microphone {
-            let microphone_device = AudioDevice::new(
+            let (sink, source) = AudioDevice::new_virtual_microphone_pair(
                 Some(settings.audio.linux_backend),
-                &microphone_desc.input_device_id,
-                AudioDeviceType::VirtualMicrophoneInput,
+                microphone_desc.devices,
             )
             .map_err(to_int_e!())?;
-            #[cfg(not(target_os = "linux"))]
-            if alvr_audio::is_same_device(&game_audio_device, &microphone_device) {
+            if alvr_audio::is_same_device(&game_audio_device, &sink)
+                || alvr_audio::is_same_device(&game_audio_device, &source)
+            {
                 return int_fmt_e!("Game audio and microphone cannot point to the same device!");
             }
         }
@@ -575,14 +587,13 @@ async fn connection_pipeline(
     let is_streaming = Arc::new(RelaxedAtomic::new(true));
     let _stream_guard = StreamCloseGuard(Arc::clone(&is_streaming));
 
-    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO).await?;
         Box::pin(async move {
             loop {
-                let device = match AudioDevice::new(
+                let device = match AudioDevice::new_output(
                     Some(settings.audio.linux_backend),
-                    &desc.device_id,
-                    AudioDeviceType::Output,
+                    config.device.as_ref(),
                 ) {
                     Ok(data) => data,
                     Err(e) => {
@@ -591,51 +602,40 @@ async fn connection_pipeline(
                         continue;
                     }
                 };
-                let mute_when_streaming = desc.mute_when_streaming;
+                let mute_when_streaming = config.mute_when_streaming;
 
                 #[cfg(windows)]
-                unsafe {
-                    let device_id = match alvr_audio::get_windows_device_id(&device) {
-                        Ok(data) => data,
-                        Err(_) => continue,
-                    };
-                    crate::SetOpenvrProperty(
-                        *alvr_common::HEAD_ID,
-                        crate::openvr_props::to_ffi_openvr_prop(
-                            alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                            alvr_session::OpenvrPropValue::String(device_id),
-                        ),
-                    )
-                }
-                let new_sender = sender.clone();
-                match alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender)
-                    .await
-                {
-                    Ok(_) => (),
-                    Err(e) => warn!("Audio task exit with error : {e}"),
-                };
-
-                #[cfg(windows)]
-                {
-                    let default_device = match AudioDevice::new(
-                        None,
-                        &alvr_session::AudioDeviceId::Default,
-                        AudioDeviceType::Output,
-                    ) {
-                        Ok(data) => data,
-                        Err(_) => continue,
-                    };
-                    let default_device_id = match alvr_audio::get_windows_device_id(&default_device)
-                    {
-                        Ok(data) => data,
-                        Err(_) => continue,
-                    };
+                if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
                     unsafe {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
                             crate::openvr_props::to_ffi_openvr_prop(
                                 alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                                alvr_session::OpenvrPropValue::String(default_device_id),
+                                alvr_session::OpenvrPropValue::String(id),
+                            ),
+                        )
+                    }
+                } else {
+                    continue;
+                };
+
+                let new_sender = sender.clone();
+                if let Err(e) =
+                    alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender).await
+                {
+                    warn!("Audio task exit with error : {e}")
+                }
+
+                #[cfg(windows)]
+                if let Ok(id) =
+                    alvr_audio::get_windows_device_id(&AudioDevice::new_output(None, None)?)
+                {
+                    unsafe {
+                        crate::SetOpenvrProperty(
+                            *alvr_common::HEAD_ID,
+                            crate::openvr_props::to_ffi_openvr_prop(
+                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                alvr_session::OpenvrPropValue::String(id),
                             ),
                         )
                     }
@@ -645,40 +645,32 @@ async fn connection_pipeline(
     } else {
         Box::pin(future::pending())
     };
-    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.microphone {
-        let input_device = AudioDevice::new(
+    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
+        #[allow(unused_variables)]
+        let (sink, source) = AudioDevice::new_virtual_microphone_pair(
             Some(settings.audio.linux_backend),
-            &desc.input_device_id,
-            AudioDeviceType::VirtualMicrophoneInput,
+            config.devices,
         )?;
         let receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
 
         #[cfg(windows)]
-        {
-            let microphone_device = AudioDevice::new(
-                None,
-                &desc.output_device_id,
-                AudioDeviceType::VirtualMicrophoneOutput {
-                    matching_input_device_name: input_device.name()?,
-                },
-            )?;
-            let microphone_device_id = alvr_audio::get_windows_device_id(&microphone_device)?;
+        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
             unsafe {
                 crate::SetOpenvrProperty(
                     *alvr_common::HEAD_ID,
                     crate::openvr_props::to_ffi_openvr_prop(
                         alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
-                        alvr_session::OpenvrPropValue::String(microphone_device_id),
+                        alvr_session::OpenvrPropValue::String(id),
                     ),
                 )
             }
         }
 
         Box::pin(alvr_audio::play_audio_loop(
-            input_device,
+            sink,
             1,
             microphone_sample_rate,
-            desc.buffering_config,
+            config.buffering,
             receiver,
         ))
     } else {

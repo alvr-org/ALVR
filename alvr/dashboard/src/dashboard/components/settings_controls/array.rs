@@ -1,6 +1,6 @@
 use super::{NestingInfo, SettingControl};
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::egui::Ui;
 use serde_json as json;
 
@@ -29,7 +29,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
         let session_array_mut = session_fragment.as_array_mut().unwrap();

@@ -186,16 +186,18 @@ pub struct ClientStatistics {
     pub total_pipeline_latency: Duration,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PathValuePair {
+    pub path: Vec<PathSegment>,
+    pub value: serde_json::Value,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DashboardRequest {
     Ping,
     GetSession,
     UpdateSession(Box<SessionDesc>),
-    SetSingleValue {
-        path: Vec<PathSegment>,
-        new_value: serde_json::Value,
-    },
-    ExecuteScript(String),
+    SetValues(Vec<PathValuePair>),
     UpdateClientList {
         hostname: String,
         action: ClientListAction,

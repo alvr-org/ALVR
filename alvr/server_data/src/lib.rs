@@ -1,7 +1,7 @@
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
-use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
+use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -152,18 +152,39 @@ impl ServerDataManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_single_value(&mut self, path: Vec<PathSegment>, value: json::Value) -> StrResult {
-        let mut session_json = serde_json::to_value(self.session.clone()).map_err(err!())?;
+    pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> StrResult {
+        let mut session_json = serde_json::to_value(self.session.clone()).unwrap();
 
-        let mut session_ref = &mut session_json;
-        for segment in path {
-            session_ref = match segment {
-                PathSegment::Name(name) => session_ref.get_mut(name).ok_or_else(enone!())?,
-                PathSegment::Index(index) => session_ref.get_mut(index).ok_or_else(enone!())?,
-            };
+        for desc in descs {
+            let mut session_ref = &mut session_json;
+            for segment in &desc.path {
+                session_ref = match segment {
+                    PathSegment::Name(name) => {
+                        if let Some(name) = session_ref.get_mut(name) {
+                            name
+                        } else {
+                            return fmt_e!(
+                                "From path {:?}: segment \"{}\" not found",
+                                desc.path,
+                                name
+                            );
+                        }
+                    }
+                    PathSegment::Index(index) => {
+                        if let Some(index) = session_ref.get_mut(index) {
+                            index
+                        } else {
+                            return fmt_e!(
+                                "From path {:?}: segment [{}] not found",
+                                desc.path,
+                                index
+                            );
+                        }
+                    }
+                };
+            }
+            *session_ref = desc.value.clone();
         }
-
-        *session_ref = value;
 
         // session_json has been updated
         self.session = serde_json::from_value(session_json).map_err(err!())?;

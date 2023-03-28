@@ -25,7 +25,7 @@ pub enum ServerEvent {
 }
 
 enum DataSource {
-    Local(ServerDataManager),
+    Local(Box<ServerDataManager>),
     Remote, // Note: the remote (server) is probably living as a separate process in the same PC
 }
 
@@ -62,7 +62,7 @@ fn report_server_status(
         report_event(context, sender, ServerEvent::PingResponseConnected)
     } else if !connected && matches!(*data_source_lock, DataSource::Remote) {
         info!("Server disconnected");
-        *data_source_lock = DataSource::Local(get_local_data_source());
+        *data_source_lock = DataSource::Local(Box::new(get_local_data_source()));
 
         report_event(context, sender, ServerEvent::PingResponseDisconnected)
     } else {
@@ -99,7 +99,7 @@ pub fn data_interop_thread(
 
     let port = server_data_manager.settings().connection.web_server_port;
 
-    let data_source = Arc::new(Mutex::new(DataSource::Local(server_data_manager)));
+    let data_source = Arc::new(Mutex::new(DataSource::Local(Box::new(server_data_manager))));
 
     let events_thread = thread::spawn({
         let context = context.clone();
@@ -219,16 +219,9 @@ pub fn data_interop_thread(
 
                             report_session(&context, &sender, data_manager);
                         }
-                        DashboardRequest::SetSingleValue { path, new_value } => {
-                            if let Err(e) = data_manager.set_single_value(path.clone(), new_value) {
-                                error!("Path: {path:?}, error: {e}")
-                            }
-
-                            report_session(&context, &sender, data_manager);
-                        }
-                        DashboardRequest::ExecuteScript(code) => {
-                            if let Err(e) = data_manager.execute_script(&code) {
-                                error!("Error executing script: {e}");
+                        DashboardRequest::SetValues(descs) => {
+                            if let Err(e) = data_manager.set_values(descs) {
+                                error!("Failed to set session value: {e}")
                             }
 
                             report_session(&context, &sender, data_manager);

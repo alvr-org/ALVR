@@ -120,16 +120,8 @@ async fn http_api(
                     DashboardRequest::UpdateSession(session) => {
                         *SERVER_DATA_MANAGER.write().session_mut() = *session
                     }
-                    DashboardRequest::SetSingleValue { path, new_value } => {
-                        SERVER_DATA_MANAGER
-                            .write()
-                            .set_single_value(path, new_value)
-                            .ok();
-                    }
-                    DashboardRequest::ExecuteScript(code) => {
-                        if let Err(e) = SERVER_DATA_MANAGER.write().execute_script(&code) {
-                            error!("Error executing script: {e}");
-                        }
+                    DashboardRequest::SetValues(descs) => {
+                        SERVER_DATA_MANAGER.write().set_values(descs).ok();
                     }
                     DashboardRequest::UpdateClientList { hostname, action } => SERVER_DATA_MANAGER
                         .write()

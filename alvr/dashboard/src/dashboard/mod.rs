@@ -9,7 +9,7 @@ use crate::{dashboard::components::StatisticsTab, steamvr_launcher::LAUNCHER, th
 use alvr_common::RelaxedAtomic;
 use alvr_events::EventType;
 use alvr_session::SessionDesc;
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::{DashboardRequest, PathValuePair};
 use eframe::{
     egui::{
         self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
@@ -207,12 +207,12 @@ impl eframe::App for Dashboard {
             CentralPanel::default().show(context, |ui| {
                 if let Some(SetupWizardRequest::Close { finished }) = self.setup_wizard.ui(ui) {
                     if finished {
-                        requests.push(DashboardRequest::SetSingleValue {
+                        requests.push(DashboardRequest::SetValues(vec![PathValuePair {
                             path: alvr_sockets::parse_path(
                                 "session_settings.extra.open_setup_wizard",
                             ),
-                            new_value: serde_json::Value::Bool(false),
-                        });
+                            value: serde_json::Value::Bool(false),
+                        }]))
                     }
 
                     self.setup_wizard_open = false;

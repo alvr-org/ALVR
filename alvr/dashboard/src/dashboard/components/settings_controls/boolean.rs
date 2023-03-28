@@ -1,6 +1,6 @@
 use super::{reset, NestingInfo};
 use crate::dashboard::basic_components;
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{Layout, Ui},
     emath::Align,
@@ -29,7 +29,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
         // todo: can this be written better?
@@ -41,10 +41,10 @@ impl Control {
 
         let mut request = None;
 
-        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<DashboardRequest> {
-            Some(DashboardRequest::SetSingleValue {
+        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
+            Some(PathValuePair {
                 path: nesting_info.path.clone(),
-                new_value: json::Value::Bool(enabled),
+                value: json::Value::Bool(enabled),
             })
         }
 

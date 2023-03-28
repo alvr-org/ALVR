@@ -1,7 +1,7 @@
 use super::{reset, NestingInfo, SettingControl};
 use crate::dashboard::{basic_components, get_id, DisplayString};
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{ComboBox, Layout, Ui},
     emath::Align,
@@ -103,7 +103,7 @@ impl Control {
         ui: &mut Ui,
         session_fragment: &mut json::Value,
         allow_inline: bool,
-    ) -> Option<DashboardRequest> {
+    ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
         let session_variants_mut = session_fragment.as_object_mut().unwrap();
@@ -116,7 +116,7 @@ impl Control {
             unreachable!()
         };
 
-        fn get_request(nesting_info: &NestingInfo, variant: &str) -> Option<DashboardRequest> {
+        fn get_request(nesting_info: &NestingInfo, variant: &str) -> Option<PathValuePair> {
             super::set_single_value(
                 nesting_info,
                 "variant".into(),
@@ -130,13 +130,30 @@ impl Control {
                 if basic_components::button_group_clicked(ui, &self.variant_labels, variant_mut) {
                     request = get_request(&self.nesting_info, variant_mut);
                 }
-            } else {
-                let mut index = self.variant_indices.get(variant_mut).cloned().unwrap();
+            } else if let Some(mut index) = self.variant_indices.get(variant_mut).cloned() {
                 let response = ComboBox::new(self.combobox_id, "").show_index(
                     ui,
                     &mut index,
                     self.variant_labels.len(),
                     |idx| self.variant_labels[idx].display.clone(),
+                );
+                if response.changed() {
+                    *variant_mut = self.variant_labels[index].id.clone();
+                    request = get_request(&self.nesting_info, variant_mut);
+                }
+            } else {
+                let mut index = 0;
+                let response = ComboBox::new(self.combobox_id, "").show_index(
+                    ui,
+                    &mut index,
+                    self.variant_labels.len() + 1,
+                    |idx| {
+                        if idx == 0 {
+                            "Preset not applied".into()
+                        } else {
+                            self.variant_labels[idx - 1].display.clone()
+                        }
+                    },
                 );
                 if response.changed() {
                     *variant_mut = self.variant_labels[index].id.clone();
@@ -155,15 +172,16 @@ impl Control {
             }
         });
 
-        let control = self.variant_controls.get_mut(&*variant_mut).unwrap();
-        if !matches!(control, SettingControl::None) {
-            ui.end_row();
+        if let Some(control) = self.variant_controls.get_mut(&*variant_mut) {
+            if !matches!(control, SettingControl::None) {
+                ui.end_row();
 
-            //fixes "cannot borrow `*session_variants` as mutable more than once at a time"
-            let variant = variant_mut.clone();
-            request = control
-                .ui(ui, &mut session_variants_mut[&variant], false)
-                .or(request);
+                //fixes "cannot borrow `*session_variants` as mutable more than once at a time"
+                let variant = variant_mut.clone();
+                request = control
+                    .ui(ui, &mut session_variants_mut[&variant], false)
+                    .or(request);
+            }
         }
 
         request

@@ -9,9 +9,9 @@ use crate::{
     ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
-use alvr_audio::{AudioDevice, AudioDeviceType};
+use alvr_audio::AudioDevice;
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
-use alvr_session::{settings_schema::Switch, AudioDeviceId, SessionDesc};
+use alvr_session::{settings_schema::Switch, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
     PeerType, ProtoControlSocket, ReceiverBuffer, ServerControlPacket, StreamConfigPacket,
@@ -149,11 +149,10 @@ fn connection_pipeline(
         }
     };
 
-    let microphone_sample_rate =
-        AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
-            .unwrap()
-            .input_sample_rate()
-            .unwrap();
+    let microphone_sample_rate = AudioDevice::new_input(None)
+        .unwrap()
+        .input_sample_rate()
+        .unwrap();
 
     runtime
         .block_on(
@@ -412,16 +411,15 @@ async fn stream_pipeline(
         }
     };
 
-    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(desc) = settings.audio.game_audio {
-        let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Output)
-            .map_err(err!())?;
+    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
+        let device = AudioDevice::new_output(None, None).map_err(err!())?;
 
         let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
         Box::pin(audio::play_audio_loop(
             device,
             2,
             stream_config.game_audio_sample_rate,
-            desc.buffering_config,
+            config.buffering,
             game_audio_receiver,
         ))
     } else {
@@ -429,8 +427,7 @@ async fn stream_pipeline(
     };
 
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new(None, &AudioDeviceId::Default, AudioDeviceType::Input)
-            .map_err(err!())?;
+        let device = AudioDevice::new_input(None).map_err(err!())?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO).await?;
         Box::pin(audio::record_audio_loop(

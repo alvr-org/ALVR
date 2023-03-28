@@ -26,7 +26,9 @@ env_logger = "0.10"
 futures-util = "0.3"
 ico = "0.3"
 runas = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
 sysinfo = { version = "0.28", default-features = false }
 tungstenite = "0.18"
 ureq = { version = "2", features = ["json"] }

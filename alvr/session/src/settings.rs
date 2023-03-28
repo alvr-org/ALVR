@@ -1,7 +1,9 @@
 use alvr_common::{LogSeverity, LogSeverityDefault, LogSeverityDefaultVariant};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use settings_schema::{DictionaryDefault, SettingsSchema, Switch, SwitchDefault, VectorDefault};
+use settings_schema::{
+    DictionaryDefault, OptionalDefault, SettingsSchema, Switch, SwitchDefault, VectorDefault,
+};
 
 include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 
@@ -10,10 +12,10 @@ include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 pub enum FrameSize {
     Scale(#[schema(gui(slider(min = 0.25, max = 2.0, step = 0.01)))] f32),
     Absolute {
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32)))]
+        #[schema(gui(slider(min = 32, max = 0x2000, step = 32, logarithmic)))]
         width: u32,
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32)))]
-        height: u32,
+        #[schema(gui(slider(min = 32, max = 0x2000, step = 32, logarithmic)))]
+        height: Option<u32>,
     },
 }
 
@@ -290,19 +292,15 @@ pub struct VideoDesc {
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
 
-    #[schema(strings(
-        display_name = "Transcoding resolution",
-        help = "Resolution used for encoding and decoding"
-    ))]
+    #[schema(strings(help = "Resolution used for encoding and decoding"))]
     #[schema(flag = "steamvr-restart")]
-    pub render_resolution: FrameSize,
+    pub transcoding_resolution: FrameSize,
 
     #[schema(strings(
-        display_name = "Emulated headset resolution",
-        help = "This is the resolution that SteamVR will use as a baseline for the game rendering"
+        help = "This is the resolution that SteamVR will use as default for the game rendering"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub recommended_target_resolution: FrameSize,
+    pub emulated_headset_resolution: FrameSize,
 
     #[schema(strings(display_name = "Preferred FPS"))]
     #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
@@ -378,11 +376,22 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub color_correction: Switch<ColorCorrectionDesc>,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+#[schema(gui = "button_group")]
+pub enum LinuxAudioBackend {
+    #[schema(strings(display_name = "ALSA"))]
+    Alsa,
+
+    Jack,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum AudioDeviceId {
-    Default,
-    Name(String),
-    Index(u64),
+#[schema(gui = "button_group")]
+pub enum CustomAudioDeviceConfig {
+    #[schema(strings(display_name = "By name (substring)"))]
+    NameSubstring(String),
+    #[schema(strings(display_name = "By index"))]
+    Index(usize),
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -397,42 +406,43 @@ pub struct AudioBufferingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct GameAudioDesc {
-    #[schema(strings(display_name = "Device ID"))]
-    pub device_id: AudioDeviceId,
+pub struct GameAudioConfig {
+    pub device: Option<CustomAudioDeviceConfig>,
     pub mute_when_streaming: bool,
-    pub buffering_config: AudioBufferingConfig,
+    pub buffering: AudioBufferingConfig,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum MicrophoneDevicesConfig {
+    Automatic,
+    VBCable,
+    VoiceMeeter,
+    VoiceMeeterAux,
+    VoiceMeeterVaio3,
+    Custom {
+        #[schema(strings(help = "This device is used by ALVR to output microphone audio"))]
+        sink: CustomAudioDeviceConfig,
+        #[schema(strings(help = "This device is set in SteamVR as the default microphone"))]
+        source: CustomAudioDeviceConfig,
+    },
 }
 
 // Note: sample rate is a free parameter for microphone, because both server and client supports
 // resampling. In contrary, for game audio, the server does not support resampling.
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct MicrophoneDesc {
-    #[schema(strings(display_name = "Input device ID"))]
-    pub input_device_id: AudioDeviceId,
-    #[cfg(not(target_os = "linux"))]
-    #[schema(strings(display_name = "Output device ID"))]
-    pub output_device_id: AudioDeviceId,
-    pub buffering_config: AudioBufferingConfig,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-#[schema(gui = "button_group")]
-pub enum LinuxAudioBackend {
-    #[schema(strings(display_name = "ALSA"))]
-    Alsa,
-
-    Jack,
+pub struct MicrophoneConfig {
+    pub devices: MicrophoneDevicesConfig,
+    pub buffering: AudioBufferingConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct AudioSection {
+pub struct AudioConfig {
     #[schema(strings(help = "ALSA is recommended for most PulseAudio or PipeWire-based setups"))]
     pub linux_backend: LinuxAudioBackend,
 
-    pub game_audio: Switch<GameAudioDesc>,
+    pub game_audio: Switch<GameAudioConfig>,
 
-    pub microphone: Switch<MicrophoneDesc>,
+    pub microphone: Switch<MicrophoneConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
@@ -454,8 +464,10 @@ pub struct OpenvrPropEntry {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum HeadsetEmulationMode {
+    #[schema(strings(display_name = "Rift S"))]
     RiftS,
     Vive,
+    #[schema(strings(display_name = "Quest 2"))]
     Quest2,
     Custom {
         serial_number: String,
@@ -465,9 +477,12 @@ pub enum HeadsetEmulationMode {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum ControllersEmulationMode {
+    #[schema(strings(display_name = "Rift S Touch"))]
     RiftSTouch,
+    #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     ViveWand,
+    #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     ViveTracker,
 }
@@ -721,18 +736,29 @@ No action: All driver registration actions should be performed mnually, ALVR inc
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub video: VideoDesc,
-    pub audio: AudioSection,
+    pub audio: AudioConfig,
     pub headset: HeadsetDesc,
     pub connection: ConnectionDesc,
     pub extra: ExtraDesc,
 }
 
 pub fn session_settings_default() -> SettingsDefault {
-    let socket_buffer = SocketBufferSizeDefault {
-        Custom: 100000,
-        variant: SocketBufferSizeDefaultVariant::Maximum,
+    let resolution = FrameSizeDefault {
+        variant: FrameSizeDefaultVariant::Absolute,
+        Scale: 0.75,
+        Absolute: FrameSizeAbsoluteDefault {
+            width: 2144,
+            height: OptionalDefault {
+                set: false,
+                content: 1072,
+            },
+        },
     };
-
+    let default_custom_audio_device = CustomAudioDeviceConfigDefault {
+        NameSubstring: "".into(),
+        Index: 0,
+        variant: CustomAudioDeviceConfigDefaultVariant::NameSubstring,
+    };
     let default_custom_openvr_props = VectorDefault {
         element: OpenvrPropEntryDefault {
             key: OpenvrPropertyKeyDefault {
@@ -751,26 +777,16 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         content: vec![],
     };
+    let socket_buffer = SocketBufferSizeDefault {
+        Custom: 100000,
+        variant: SocketBufferSizeDefaultVariant::Maximum,
+    };
 
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            render_resolution: FrameSizeDefault {
-                variant: FrameSizeDefaultVariant::Scale,
-                Scale: 0.75,
-                Absolute: FrameSizeAbsoluteDefault {
-                    width: 2880,
-                    height: 1600,
-                },
-            },
-            recommended_target_resolution: FrameSizeDefault {
-                variant: FrameSizeDefaultVariant::Scale,
-                Scale: 0.75,
-                Absolute: FrameSizeAbsoluteDefault {
-                    width: 2880,
-                    height: 1600,
-                },
-            },
+            transcoding_resolution: resolution.clone(),
+            emulated_headset_resolution: resolution,
             preferred_fps: 72.,
             max_buffering_frames: 1.5,
             buffering_history_weight: 0.90,
@@ -900,20 +916,19 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
         },
-        audio: AudioSectionDefault {
+        audio: AudioConfigDefault {
             linux_backend: LinuxAudioBackendDefault {
                 variant: LinuxAudioBackendDefaultVariant::Alsa,
             },
             game_audio: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
-                content: GameAudioDescDefault {
-                    device_id: AudioDeviceIdDefault {
-                        variant: AudioDeviceIdDefaultVariant::Default,
-                        Name: "".into(),
-                        Index: 1,
+                content: GameAudioConfigDefault {
+                    device: OptionalDefault {
+                        set: false,
+                        content: default_custom_audio_device.clone(),
                     },
                     mute_when_streaming: true,
-                    buffering_config: AudioBufferingConfigDefault {
+                    buffering: AudioBufferingConfigDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
@@ -921,19 +936,15 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             microphone: SwitchDefault {
                 enabled: false,
-                content: MicrophoneDescDefault {
-                    input_device_id: AudioDeviceIdDefault {
-                        variant: AudioDeviceIdDefaultVariant::Default,
-                        Name: "".into(),
-                        Index: 1,
+                content: MicrophoneConfigDefault {
+                    devices: MicrophoneDevicesConfigDefault {
+                        Custom: MicrophoneDevicesConfigCustomDefault {
+                            source: default_custom_audio_device.clone(),
+                            sink: default_custom_audio_device,
+                        },
+                        variant: MicrophoneDevicesConfigDefaultVariant::Automatic,
                     },
-                    #[cfg(not(target_os = "linux"))]
-                    output_device_id: AudioDeviceIdDefault {
-                        variant: AudioDeviceIdDefaultVariant::Default,
-                        Name: "".into(),
-                        Index: 1,
-                    },
-                    buffering_config: AudioBufferingConfigDefault {
+                    buffering: AudioBufferingConfigDefault {
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },

@@ -1,0 +1,61 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout (binding = 0) uniform sampler2D in_img;
+layout (binding = 1) uniform writeonly image2D out_img;
+
+layout (constant_id =  0) const uint con0_0 = 0;
+layout (constant_id =  1) const uint con0_1 = 0;
+layout (constant_id =  2) const uint con0_2 = 0;
+layout (constant_id =  3) const uint con0_3 = 0;
+layout (constant_id =  4) const uint con1_0 = 0;
+layout (constant_id =  5) const uint con1_1 = 0;
+layout (constant_id =  6) const uint con1_2 = 0;
+layout (constant_id =  7) const uint con1_3 = 0;
+layout (constant_id =  8) const uint con2_0 = 0;
+layout (constant_id =  9) const uint con2_1 = 0;
+layout (constant_id = 10) const uint con2_2 = 0;
+layout (constant_id = 11) const uint con2_3 = 0;
+layout (constant_id = 12) const uint con3_0 = 0;
+layout (constant_id = 13) const uint con3_1 = 0;
+layout (constant_id = 14) const uint con3_2 = 0;
+layout (constant_id = 15) const uint con3_3 = 0;
+
+const uvec4 con0 = uvec4(con0_0, con0_1, con0_2, con0_3);
+const uvec4 con1 = uvec4(con1_0, con1_1, con1_2, con1_3);
+const uvec4 con2 = uvec4(con2_0, con2_1, con2_2, con2_3);
+const uvec4 con3 = uvec4(con3_0, con3_1, con3_2, con3_3);
+
+#define A_GPU 1
+#define A_GLSL 1
+#define A_HALF 1
+#include "ffx_a.h"
+#define FSR_EASU_H 1
+f16vec4 FsrEasuRH(vec2 p){return f16vec4(textureGather(in_img, p, 0));}
+f16vec4 FsrEasuGH(vec2 p){return f16vec4(textureGather(in_img, p, 1));}
+f16vec4 FsrEasuBH(vec2 p){return f16vec4(textureGather(in_img, p, 2));}
+#include "ffx_fsr1.h"
+
+void easuPass(uvec2 pos)
+{
+    f16vec3 color;
+    FsrEasuH(color, pos, con0, con1, con2, con3);
+    imageStore(out_img, ivec2(pos), vec4(color, 1));
+}
+
+/* https://github.com/Plagman/gamescope/blob/master/src/shaders/cs_easu.comp */
+
+void main()
+{
+    // AMD recommends to use this swizzle and to process 4 pixel per invocation for better cache utilisation
+    uvec2 pos = ARmp8x8(gl_LocalInvocationID.x) + uvec2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
+    easuPass(pos);
+    pos.x += 8u;
+    easuPass(pos);
+    pos.y += 8u;
+    easuPass(pos);
+    pos.x -= 8u;
+    easuPass(pos);
+}

@@ -161,14 +161,26 @@ alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const ch
     queueInfos.push_back(queueInfo);
   }
 
+  {
+    VkPhysicalDeviceVulkan12Features features12 = {};
+    features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    VkPhysicalDeviceFeatures2 features = {};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &features12;
+    vkGetPhysicalDeviceFeatures2(physicalDevice, &features);
+    fp16 = features12.shaderFloat16 && features.features.shaderInt16;
+  }
+
   VkPhysicalDeviceVulkan12Features features12 = {};
   features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
   features12.timelineSemaphore = true;
+  features12.shaderFloat16 = fp16;
 
   VkPhysicalDeviceFeatures2 features = {};
   features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   features.pNext = &features12;
   features.features.samplerAnisotropy = VK_TRUE;
+  features.features.shaderInt16 = fp16;
 
   VkDeviceCreateInfo deviceInfo = {};
   deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

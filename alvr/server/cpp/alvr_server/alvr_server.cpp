@@ -173,6 +173,12 @@ const unsigned char *FFR_SHADER_COMP_SPV_PTR;
 unsigned int FFR_SHADER_COMP_SPV_LEN;
 const unsigned char *RGBTOYUV420_SHADER_COMP_SPV_PTR;
 unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
+const unsigned char *FSR_EASU_SHADER_COMP_SPV_PTR;
+unsigned int FSR_EASU_SHADER_COMP_SPV_LEN;
+const unsigned char *FSR_EASU16_SHADER_COMP_SPV_PTR;
+unsigned int FSR_EASU16_SHADER_COMP_SPV_LEN;
+const unsigned char *FSR_RCAS_SHADER_COMP_SPV_PTR;
+unsigned int FSR_RCAS_SHADER_COMP_SPV_LEN;
 
 const char *g_sessionPath;
 const char *g_driverRootDir;

@@ -1,0 +1,44 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout (binding = 0) uniform sampler2D in_img;
+layout (binding = 1) uniform writeonly image2D out_img;
+
+layout (constant_id = 0) const uint con0_0 = 0;
+layout (constant_id = 1) const uint con0_1 = 0;
+layout (constant_id = 2) const uint con0_2 = 0;
+layout (constant_id = 3) const uint con0_3 = 0;
+
+const uvec4 con0 = uvec4(con0_0, con0_1, con0_2, con0_3);
+
+#define A_GPU 1
+#define A_GLSL 1
+#include "ffx_a.h"
+#define FSR_RCAS_F 1
+vec4 FsrRcasLoadF(ivec2 p) { return texelFetch(in_img, ivec2(p), 0); }
+// our input is already srgb
+void FsrRcasInputF(inout float r, inout float g, inout float b) {}
+#include "ffx_fsr1.h"
+
+void rcasPass(uvec2 pos)
+{
+    vec3 color;
+    FsrRcasF(color.r, color.g, color.b, pos, con0);
+    imageStore(out_img, ivec2(pos), vec4(color, 1));
+}
+
+/* https://github.com/Plagman/gamescope/blob/master/src/shaders/cs_composite_rcas.comp */
+
+void main()
+{
+    // AMD recommends to use this swizzle and to process 4 pixel per invocation for better cache utilisation
+    uvec2 pos = ARmp8x8(gl_LocalInvocationID.x) + uvec2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
+    rcasPass(pos);
+    pos.x += 8u;
+    rcasPass(pos);
+    pos.y += 8u;
+    rcasPass(pos);
+    pos.x -= 8u;
+    rcasPass(pos);
+}

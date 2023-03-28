@@ -35,11 +35,12 @@ static uint32_t to_drm_format(VkFormat format)
     }
 }
 
-Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
+Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions, bool fp16)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
     , m_queueFamilyIndex(queueIdx)
+    , m_fp16(fp16)
 {
     auto checkExtension = [devExtensions](const char *name) {
         return std::find_if(devExtensions.begin(), devExtensions.end(), [name](const char *ext) { return strcmp(ext, name) == 0; }) != devExtensions.end();
@@ -97,8 +98,8 @@ Renderer::~Renderer()
 void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
 {
     m_format = format;
-    m_imageSize.width = width;
-    m_imageSize.height = height;
+    m_stagingSize.width = width;
+    m_stagingSize.height = height;
 
     vkGetDeviceQueue(m_dev, m_queueFamilyIndex, 0, &m_queue);
 
@@ -230,7 +231,7 @@ void Renderer::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int ima
     VkImageView view;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &view));
 
-    m_images.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view});
+    m_images.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view, {imageInfo.extent.width, imageInfo.extent.height}});
 }
 
 void Renderer::AddPipeline(RenderPipeline *pipeline)
@@ -239,7 +240,7 @@ void Renderer::AddPipeline(RenderPipeline *pipeline)
     m_pipelines.push_back(pipeline);
 
     if (m_pipelines.size() > 1 && m_stagingImages.size() < 2) {
-        addStagingImage(m_imageSize.width, m_imageSize.height);
+        addStagingImage(m_stagingSize.width, m_stagingSize.height);
     }
 }
 
@@ -446,7 +447,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         waitInfo.pValues = &waitValue;
         VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
 
-        dumpImage(m_images[index].image, m_images[index].layout, m_imageSize.width, m_imageSize.height, m_inputImageCapture);
+        dumpImage(m_images[index].image, m_images[index].layout, m_images[index].imageSize.width, m_images[index].imageSize.height, m_inputImageCapture);
         m_inputImageCapture.clear();
     }
 
@@ -458,7 +459,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_queryPool, 0);
 
     for (size_t i = 0; i < m_pipelines.size(); ++i) {
-        VkRect2D rect = {};
+        VkExtent2D outSize = {};
         VkImage in = VK_NULL_HANDLE;
         VkImageView inView = VK_NULL_HANDLE;
         VkImageLayout *inLayout = nullptr;
@@ -480,14 +481,14 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
             out = m_output.image;
             outView = m_output.view;
             outLayout = &m_output.layout;
-            rect.extent.width = m_output.imageInfo.extent.width;
-            rect.extent.height = m_output.imageInfo.extent.height;
+            outSize.width = m_output.imageInfo.extent.width;
+            outSize.height = m_output.imageInfo.extent.height;
         } else {
             auto &img = m_stagingImages[i % m_stagingImages.size()];
             out = img.image;
             outView = img.view;
             outLayout = &img.layout;
-            rect.extent = m_imageSize;
+            outSize = m_stagingSize;
         }
         VkImageMemoryBarrier imageBarrier = {};
         imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -516,7 +517,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         if (imageBarriers.size()) {
             vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarriers.size(), imageBarriers.data());
         }
-        m_pipelines[i]->Render(inView, outView, rect);
+        m_pipelines[i]->Render(inView, outView, outSize);
     }
 
     vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 1);
@@ -889,6 +890,12 @@ void RenderPipeline::SetShader(const unsigned char *data, unsigned len)
     VK_CHECK(vkCreateShaderModule(r->m_dev, &moduleInfo, nullptr, &m_shader));
 }
 
+void RenderPipeline::SetPixelsPerGroup(uint32_t x, uint32_t y)
+{
+    m_pixelsGroupX = x;
+    m_pixelsGroupY = y;
+}
+
 void RenderPipeline::Build()
 {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -919,7 +926,7 @@ void RenderPipeline::Build()
     VK_CHECK(vkCreateComputePipelines(r->m_dev, nullptr, 1, &pipelineInfo, nullptr, &m_pipeline));
 }
 
-void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize)
+void RenderPipeline::Render(VkImageView in, VkImageView out, VkExtent2D outSize)
 {
     vkCmdBindPipeline(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
 
@@ -944,5 +951,5 @@ void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize)
     descriptorWriteSets[1].dstBinding = 1;
     r->d.vkCmdPushDescriptorSetKHR(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 2, descriptorWriteSets);
 
-    vkCmdDispatch(r->m_commandBuffer, (outSize.extent.width + 7) / 8, (outSize.extent.height + 7) / 8, 1);
+    vkCmdDispatch(r->m_commandBuffer, (outSize.width + m_pixelsGroupX - 1) / m_pixelsGroupX, (outSize.height + m_pixelsGroupY - 1) / m_pixelsGroupY, 1);
 }

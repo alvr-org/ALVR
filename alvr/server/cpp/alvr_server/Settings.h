@@ -72,6 +72,9 @@ class Settings {
 
     bool m_aggressiveKeyframeResend;
 
+    float m_upscaleFactor;
+    int32_t m_upscaleSharpness;
+
     bool m_enableViveTrackerProxy = false;
     bool m_TrackingRefOnly = false;
     bool m_enableLinuxVulkanAsync;

@@ -61,6 +61,7 @@ public:
   bool intel = false;
   bool nvidia = false;
   std::string devicePath;
+  bool fp16 = false;
 };
 
 class VkFrameCtx

@@ -48,7 +48,7 @@ public:
         uint64_t renderComplete;
     };
 
-    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char *> &devExtensions);
+    explicit Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char *> &devExtensions, bool fp16);
     virtual ~Renderer();
 
     void Startup(uint32_t width, uint32_t height, VkFormat format);
@@ -78,6 +78,7 @@ public:
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VkSemaphore semaphore = VK_NULL_HANDLE;
         VkImageView view = VK_NULL_HANDLE;
+        VkExtent2D imageSize = {0, 0};
     };
 
     struct StagingImage {
@@ -113,8 +114,9 @@ public:
     VkPhysicalDevice m_physDev = VK_NULL_HANDLE;
     VkQueue m_queue = VK_NULL_HANDLE;
     uint32_t m_queueFamilyIndex = 0;
+    bool m_fp16 = false;
     VkFormat m_format = VK_FORMAT_UNDEFINED;
-    VkExtent2D m_imageSize = {0, 0};
+    VkExtent2D m_stagingSize = {0, 0};
     VkQueryPool m_queryPool = VK_NULL_HANDLE;
     VkCommandPool m_commandPool = VK_NULL_HANDLE;
     VkSampler m_sampler = VK_NULL_HANDLE;
@@ -136,6 +138,8 @@ public:
     void SetShader(const char *filename);
     void SetShader(const unsigned char *data, unsigned len);
 
+    void SetPixelsPerGroup(uint32_t x, uint32_t y);
+
     template <typename T>
     void SetConstants(const T *data, std::vector<VkSpecializationMapEntry> &&entries) {
         m_constant = static_cast<const void*>(data);
@@ -145,7 +149,7 @@ public:
 
 private:
     void Build();
-    void Render(VkImageView in, VkImageView out, VkRect2D outSize);
+    void Render(VkImageView in, VkImageView out, VkExtent2D outSize);
 
     Renderer *r;
     VkShaderModule m_shader = VK_NULL_HANDLE;
@@ -154,6 +158,8 @@ private:
     std::vector<VkSpecializationMapEntry> m_constantEntries;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    uint32_t m_pixelsGroupX = 8;
+    uint32_t m_pixelsGroupY = 8;
 
     friend class Renderer;
 };

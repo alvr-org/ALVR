@@ -94,6 +94,9 @@ void Settings::Load() {
 
         m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();
 
+        m_upscaleFactor = config.get("upscale_factor").get<double>();
+        m_upscaleSharpness = config.get("upscale_sharpness").get<int64_t>();
+
         m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
         m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
         m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();

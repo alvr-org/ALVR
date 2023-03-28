@@ -44,5 +44,4 @@ private:
     uint32_t m_height;
     ColorCorrection m_colorCorrectionConstants;
     FoveationVars m_foveatedRenderingConstants;
-    std::vector<RenderPipeline*> m_pipelines;
 };

@@ -50,6 +50,10 @@ fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
 }
 
+fn align(value: f32, a: u32) -> u32 {
+    (value as u32 + a - 1) & !(a - 1)
+}
+
 // Alternate connection trials with manual IPs and clients discovered on the local network
 pub fn handshake_loop(frame_interval_sender: smpsc::Sender<Duration>) -> IntResult {
     let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
@@ -194,6 +198,16 @@ fn try_connect(
         align32(stream_view_resolution.x),
         align32(stream_view_resolution.y),
     );
+    let scaled_stream_view_resolution = UVec2::new(
+        align(
+            stream_view_resolution.x as f32 * settings.video.upscale_factor,
+            32,
+        ),
+        align(
+            stream_view_resolution.y as f32 * settings.video.upscale_factor,
+            32,
+        ),
+    );
 
     let target_view_resolution = match settings.video.recommended_target_resolution {
         FrameSize::Scale(scale) => streaming_caps.default_view_resolution.as_vec2() * scale,
@@ -256,7 +270,7 @@ fn try_connect(
             let session = SERVER_DATA_MANAGER.read().session().clone();
             serde_json::to_string(&session).map_err(to_int_e!())?
         },
-        view_resolution: stream_view_resolution,
+        view_resolution: scaled_stream_view_resolution,
         fps,
         game_audio_sample_rate,
     };
@@ -341,6 +355,8 @@ fn try_connect(
         eye_resolution_height: stream_view_resolution.y,
         target_eye_resolution_width: target_view_resolution.x,
         target_eye_resolution_height: target_view_resolution.y,
+        upscale_factor: settings.video.upscale_factor,
+        upscale_sharpness: settings.video.upscale_sharpness,
         tracking_ref_only: settings.headset.tracking_ref_only,
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,

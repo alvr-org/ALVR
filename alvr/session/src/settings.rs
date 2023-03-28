@@ -247,6 +247,12 @@ pub struct VideoDesc {
     #[schema(advanced)]
     pub recommended_target_resolution: FrameSize,
 
+    #[schema(advanced)]
+    pub upscale_factor: f32,
+
+    #[schema(advanced)]
+    pub upscale_sharpness: u32,
+
     #[schema(placeholder = "display_refresh_rate")]
     //
     #[schema(advanced)]
@@ -683,6 +689,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     height: 1600,
                 },
             },
+            upscale_factor: 1.,
+            upscale_sharpness: 10,
             preferred_fps: 72.,
             max_buffering_frames: 1.5,
             buffering_history_weight: 0.90,

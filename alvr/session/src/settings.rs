@@ -415,9 +415,13 @@ pub struct GameAudioConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum MicrophoneDevicesConfig {
     Automatic,
+    #[schema(strings(display_name = "VB Cable"))]
     VBCable,
+    #[schema(strings(display_name = "VoiceMeeter"))]
     VoiceMeeter,
+    #[schema(strings(display_name = "VoiceMeeter Aux"))]
     VoiceMeeterAux,
+    #[schema(strings(display_name = "VoiceMeeter VAIO3"))]
     VoiceMeeterVaio3,
     Custom {
         #[schema(strings(help = "This device is used by ALVR to output microphone audio"))]

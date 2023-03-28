@@ -162,7 +162,7 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
             microhone_options.push(HigherOrderChoiceOption {
                 display_name: display_name.into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.audio.microphone.enabled".into(), false),
+                    bool_modifier("session_settings.audio.microphone.enabled".into(), true),
                     string_modifier(
                         "session_settings.audio.microphone.content.devices.variant".into(),
                         key,

@@ -132,6 +132,7 @@ EncodePipelineAMF::EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t 
 
     m_amfFactory = AMFContext::get()->factory();
     m_amfContext = AMFContext::get()->context();
+    m_amfContext1 = amf::AMFContext1Ptr(m_amfContext);
 
     amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
     if (m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder) {
@@ -158,26 +159,10 @@ EncodePipelineAMF::EncodePipelineAMF(Renderer *render, uint32_t width, uint32_t 
 
     m_pipeline->Connect(new AMFPipe(m_amfComponents.back(), std::bind(&EncodePipelineAMF::Receive, this, std::placeholders::_1)));
 
-    VkQueryPoolCreateInfo queryPoolInfo = {};
-    queryPoolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-    queryPoolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-    queryPoolInfo.queryCount = 1;
-    VK_CHECK(vkCreateQueryPool(m_render->m_dev, &queryPoolInfo, nullptr, &m_queryPool));
-
-    VkCommandBufferAllocateInfo commandBufferInfo = {};
-    commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    commandBufferInfo.commandPool = m_render->m_commandPool;
-    commandBufferInfo.commandBufferCount = 1;
-    VK_CHECK(vkAllocateCommandBuffers(m_render->m_dev, &commandBufferInfo, &m_commandBuffer));
-
     Debug("Successfully initialized EncodePipelineAMF.\n");
 }
 
-EncodePipelineAMF::~EncodePipelineAMF()
-{
-    vkDestroyQueryPool(m_render->m_dev, m_queryPool, nullptr);
-}
+EncodePipelineAMF::~EncodePipelineAMF() = default;
 
 amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate)
 {
@@ -357,105 +342,34 @@ amf::AMFComponentPtr EncodePipelineAMF::MakePreprocessor(amf::AMF_SURFACE_FORMAT
 
 void EncodePipelineAMF::PushFrame(uint64_t targetTimestampNs, bool idr)
 {
-    amf::AMFSurfacePtr surface;
-    // Surface is cached by AMF.
-
-    AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_VULKAN, m_surfaceFormat, m_renderWidth, m_renderHeight, &surface));
-    amf::AMFVulkanView *viewVk = (amf::AMFVulkanView*)surface->GetPlaneAt(0)->GetNative(); // no reference counting - do not Release()
-    amf::AMFVulkanSurface *surfaceVk = viewVk->pSurface;
-
-    VkImageMemoryBarrier imageBarriers[2];
-    imageBarriers[0] = {};
-    imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarriers[0].oldLayout = m_render->GetOutput().layout;
-    m_render->GetOutput().layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    imageBarriers[0].newLayout = m_render->GetOutput().layout;
-    imageBarriers[0].image = m_render->GetOutput().image;
-    imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarriers[0].subresourceRange.layerCount = 1;
-    imageBarriers[0].subresourceRange.levelCount = 1;
-    imageBarriers[0].srcAccessMask = 0;
-    imageBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageBarriers[1] = {};
-    imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarriers[1].oldLayout = static_cast<VkImageLayout>(surfaceVk->eCurrentLayout);
-    surfaceVk->eCurrentLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageBarriers[1].newLayout = static_cast<VkImageLayout>(surfaceVk->eCurrentLayout);
-    imageBarriers[1].image = surfaceVk->hImage;
-    imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarriers[1].subresourceRange.layerCount = 1;
-    imageBarriers[1].subresourceRange.levelCount = 1;
-    imageBarriers[1].srcAccessMask = 0;
-    imageBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-    VkImageCopy imageCopy;
-    imageCopy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageCopy.srcSubresource.mipLevel = 0;
-    imageCopy.srcSubresource.baseArrayLayer = 0;
-    imageCopy.srcSubresource.layerCount = 1;
-    imageCopy.srcOffset.x = 0;
-    imageCopy.srcOffset.y = 0;
-    imageCopy.srcOffset.z = 0;
-    imageCopy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageCopy.dstSubresource.mipLevel = 0;
-    imageCopy.dstSubresource.baseArrayLayer = 0;
-    imageCopy.dstSubresource.layerCount = 1;
-    imageCopy.dstOffset.x = 0;
-    imageCopy.dstOffset.y = 0;
-    imageCopy.dstOffset.z = 0;
-    imageCopy.extent.width = m_renderWidth;
-    imageCopy.extent.height = m_renderHeight;
-    imageCopy.extent.depth = 1;
-
-    VkCommandBufferBeginInfo commandBufferBegin = {};
-    commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
-
-    vkCmdResetQueryPool(m_commandBuffer, m_queryPool, 0, 1);
-
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, imageBarriers);
-    vkCmdCopyImage(m_commandBuffer, m_render->GetOutput().image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, surfaceVk->hImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-
-    vkCmdWriteTimestamp(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_queryPool, 0);
-
-    vkEndCommandBuffer(m_commandBuffer);
-
-    uint32_t waitCount = 0;
-    VkSemaphore waitSemaphores[2];
-    VkPipelineStageFlags waitStages[2];
-
-    waitSemaphores[waitCount] = m_render->GetOutput().semaphore;
-    waitStages[waitCount] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    waitCount++;
-
-    if (surfaceVk->Sync.bSubmitted) {
-        waitSemaphores[waitCount] = surfaceVk->Sync.hSemaphore;
-        waitStages[waitCount] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        waitCount++;
-    }
-
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = waitCount;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &surfaceVk->Sync.hSemaphore;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_commandBuffer;
-    VK_CHECK(vkQueueSubmit(m_render->m_queue, 1, &submitInfo, nullptr));
-
-    surfaceVk->Sync.bSubmitted = true;
-
     m_targetTimestampNs = targetTimestampNs;
+
+    amf::AMFVulkanSurface surfaceVk;
+    surfaceVk.cbSizeof = sizeof(amf::AMFVulkanSurface);
+    surfaceVk.pNext = nullptr;
+    surfaceVk.hImage = m_render->GetOutput().image;
+    surfaceVk.hMemory = m_render->GetOutput().memory;
+    surfaceVk.iSize = m_render->GetOutput().size;
+    surfaceVk.eFormat = m_render->GetOutput().imageInfo.format;
+    surfaceVk.iWidth = m_render->GetOutput().imageInfo.extent.width;
+    surfaceVk.iHeight = m_render->GetOutput().imageInfo.extent.height;
+    surfaceVk.eCurrentLayout = m_render->GetOutput().layout;
+    surfaceVk.eUsage = amf::AMF_SURFACE_USAGE_TRANSFER_SRC | amf::AMF_SURFACE_USAGE_UNORDERED_ACCESS;
+    surfaceVk.eAccess = amf::AMF_MEMORY_CPU_LOCAL;
+    surfaceVk.Sync.cbSizeof = sizeof(amf::AMFVulkanSync);
+    surfaceVk.Sync.pNext = nullptr;
+    surfaceVk.Sync.hSemaphore = m_render->GetOutput().semaphore;
+    surfaceVk.Sync.bSubmitted = true;
+    surfaceVk.Sync.hFence = nullptr;
+
+    amf::AMFSurfacePtr surface;
+    AMF_THROW_IF(m_amfContext1->CreateSurfaceFromVulkanNative(&surfaceVk, &surface, nullptr));
 
     ApplyFrameProperties(surface, idr);
 
     m_amfComponents.front()->SubmitInput(surface);
+
+    m_render->GetOutput().layout = static_cast<VkImageLayout>(surfaceVk.eCurrentLayout);
 }
 
 bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
@@ -479,10 +393,6 @@ bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
     packet.data = reinterpret_cast<uint8_t *>(m_frameBuffer->GetNative());
     packet.size = static_cast<int>(m_frameBuffer->GetSize());
     packet.pts = m_targetTimestampNs;
-
-    uint64_t query;
-    VK_CHECK(vkGetQueryPoolResults(m_render->m_dev, m_queryPool, 0, 1, sizeof(uint64_t), &query, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
-    timestamp.gpu = query * m_render->m_timestampPeriod;
 
     return true;
 }

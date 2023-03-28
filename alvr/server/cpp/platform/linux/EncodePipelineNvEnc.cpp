@@ -75,14 +75,14 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
 
     switch (settings.m_encoderQualityPreset) {
     case ALVR_QUALITY:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p7", 0);
+        av_opt_set(encoder_ctx->priv_data, "preset", "llhq", 0);
         break;
     case ALVR_BALANCED:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p4", 0);
+        av_opt_set(encoder_ctx->priv_data, "preset", "ll", 0);
         break;
     case ALVR_SPEED:
     default:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p1", 0);
+        av_opt_set(encoder_ctx->priv_data, "preset", "llhp", 0);
         break;
     }
 

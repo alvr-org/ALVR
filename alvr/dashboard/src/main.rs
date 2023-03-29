@@ -8,6 +8,7 @@ mod steamvr_launcher;
 mod theme;
 
 use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
+use alvr_sockets::GpuVendor;
 use dashboard::Dashboard;
 use data_sources::ServerEvent;
 use eframe::{egui, IconData, NativeOptions};
@@ -21,6 +22,28 @@ use std::{
 fn main() {
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
+
+    {
+        let mut data_manager = data_sources::get_local_data_source();
+        if data_manager
+            .get_gpu_vendors()
+            .iter()
+            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        {
+            data_manager
+                .session_mut()
+                .session_settings
+                .extra
+                .patches
+                .linux_async_reprojection = false;
+        }
+
+        if data_manager.session().server_version != *ALVR_VERSION {
+            let mut session_ref = data_manager.session_mut();
+            session_ref.server_version = ALVR_VERSION.clone();
+            session_ref.client_connections.clear();
+        }
+    }
 
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
     let image = ico.entries().first().unwrap().decode().unwrap();

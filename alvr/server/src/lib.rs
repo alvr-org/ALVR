@@ -27,13 +27,13 @@ use alvr_common::{
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
     prelude::*,
-    RelaxedAtomic, ALVR_VERSION,
+    RelaxedAtomic,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::CodecType;
-use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
+use alvr_sockets::{ClientListAction, Haptics, ServerControlPacket};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{
@@ -187,23 +187,6 @@ fn init() {
     logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        // Acquire and drop the data manager lock to create session.json if not present
-        // this is needed until Settings.cpp is replaced with Rust. todo: remove
-        SERVER_DATA_MANAGER.write().session_mut();
-
-        let connections = SERVER_DATA_MANAGER
-            .read()
-            .session()
-            .client_connections
-            .clone();
-        for (hostname, connection) in connections {
-            if !connection.trusted {
-                SERVER_DATA_MANAGER
-                    .write()
-                    .update_client_list(hostname, ClientListAction::RemoveEntry);
-            }
-        }
-
         runtime.spawn(alvr_common::show_err_async(web_server::web_server(
             log_sender,
             events_sender,
@@ -211,27 +194,20 @@ fn init() {
     }
 
     {
-        let mut data_manager = SERVER_DATA_MANAGER.write();
-        if data_manager
-            .get_gpu_vendors()
-            .iter()
-            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        let mut data_manager_lock = SERVER_DATA_MANAGER.write();
+
+        let connections = data_manager_lock.session().client_connections.clone();
+        for (hostname, connection) in connections {
+            if !connection.trusted {
+                data_manager_lock.update_client_list(hostname, ClientListAction::RemoveEntry);
+            }
+        }
+
+        for conn in data_manager_lock
+            .session_mut()
+            .client_connections
+            .values_mut()
         {
-            data_manager
-                .session_mut()
-                .session_settings
-                .extra
-                .patches
-                .linux_async_reprojection = false;
-        }
-
-        if data_manager.session().server_version != *ALVR_VERSION {
-            let mut session_ref = data_manager.session_mut();
-            session_ref.server_version = ALVR_VERSION.clone();
-            session_ref.client_connections.clear();
-        }
-
-        for conn in data_manager.session_mut().client_connections.values_mut() {
             conn.current_ip = None;
         }
     }

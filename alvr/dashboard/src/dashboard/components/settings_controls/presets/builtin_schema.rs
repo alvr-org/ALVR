@@ -35,12 +35,12 @@ pub fn resolution_schema() -> PresetSchemaNode {
         strings: HashMap::new(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
-            ("Very Low", "1536"),
-            ("Low", "1856"),
-            ("Medium", "2144"),
-            ("High", "2592"),
-            ("Ultra", "2816"),
-            ("Extreme", "3040"),
+            ("Very Low (width: 1536)", "1536"),
+            ("Low (width: 1856)", "1856"),
+            ("Medium (width: 2144)", "2144"),
+            ("High (width: 2592)", "2592"),
+            ("Ultra (width: 2816)", "2816"),
+            ("Extreme (width: 3040)", "3040"),
         ]
         .into_iter()
         .map(|(key, value)| HigherOrderChoiceOption {

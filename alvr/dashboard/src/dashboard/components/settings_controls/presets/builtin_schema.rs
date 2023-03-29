@@ -8,23 +8,23 @@ use std::{
     str::FromStr,
 };
 
-fn string_modifier(target_path: String, value: &str) -> PresetModifier {
+fn string_modifier(target_path: &str, value: &str) -> PresetModifier {
     PresetModifier {
-        target_path,
+        target_path: target_path.into(),
         operation: PresetModifierOperation::Assign(serde_json::Value::String(value.into())),
     }
 }
-fn uint_modifier(target_path: String, value: &str) -> PresetModifier {
+fn num_modifier(target_path: &str, value: &str) -> PresetModifier {
     PresetModifier {
-        target_path,
+        target_path: target_path.into(),
         operation: PresetModifierOperation::Assign(serde_json::Value::Number(
             serde_json::Number::from_str(value).unwrap(),
         )),
     }
 }
-fn bool_modifier(target_path: String, value: bool) -> PresetModifier {
+fn bool_modifier(target_path: &str, value: bool) -> PresetModifier {
     PresetModifier {
-        target_path,
+        target_path: target_path.into(),
         operation: PresetModifierOperation::Assign(serde_json::Value::Bool(value)),
     }
 }
@@ -47,28 +47,27 @@ pub fn resolution_schema() -> PresetSchemaNode {
             display_name: key.into(),
             modifiers: [
                 string_modifier(
-                    "session_settings.video.transcoding_view_resolution.variant".into(),
+                    "session_settings.video.transcoding_view_resolution.variant",
                     "Absolute",
                 ),
-                uint_modifier(
-                    "session_settings.video.transcoding_view_resolution.Absolute.width".into(),
+                num_modifier(
+                    "session_settings.video.transcoding_view_resolution.Absolute.width",
                     value,
                 ),
                 bool_modifier(
-                    "session_settings.video.transcoding_view_resolution.Absolute.height.set".into(),
+                    "session_settings.video.transcoding_view_resolution.Absolute.height.set",
                     false,
                 ),
                 string_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.variant".into(),
+                    "session_settings.video.emulated_headset_view_resolution.variant",
                     "Absolute",
                 ),
-                uint_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.Absolute.width".into(),
+                num_modifier(
+                    "session_settings.video.emulated_headset_view_resolution.Absolute.width",
                     value,
                 ),
                 bool_modifier(
-                    "session_settings.video.emulated_headset_view_resolution.Absolute.height.set"
-                        .into(),
+                    "session_settings.video.emulated_headset_view_resolution.Absolute.height.set",
                     false,
                 ),
             ]
@@ -82,12 +81,35 @@ pub fn resolution_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn framerate_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "preferred_framerate".into(),
+        strings: HashMap::new(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [60, 72, 80, 90, 120]
+            .into_iter()
+            .map(|framerate| HigherOrderChoiceOption {
+                display_name: format!("{framerate}Hz"),
+                modifiers: [num_modifier(
+                    "session_settings.video.preferred_fps",
+                    &format!("{:?}", framerate as f32),
+                )]
+                .into_iter()
+                .collect(),
+                content: None,
+            })
+            .collect(),
+        default_option_index: 1,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut game_audio_options = vec![
         HigherOrderChoiceOption {
             display_name: "Disabled".into(),
             modifiers: vec![bool_modifier(
-                "session_settings.audio.game_audio.enabled".into(),
+                "session_settings.audio.game_audio.enabled",
                 false,
             )],
             content: None,
@@ -95,9 +117,9 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
         HigherOrderChoiceOption {
             display_name: "System Default".to_owned(),
             modifiers: vec![
-                bool_modifier("session_settings.audio.game_audio.enabled".into(), true),
+                bool_modifier("session_settings.audio.game_audio.enabled", true),
                 bool_modifier(
-                    "session_settings.audio.game_audio.content.device.set".into(),
+                    "session_settings.audio.game_audio.content.device.set",
                     false,
                 ),
             ],
@@ -109,17 +131,14 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
         game_audio_options.push(HigherOrderChoiceOption {
             display_name: name.clone(),
             modifiers: vec![
-                bool_modifier("session_settings.audio.game_audio.enabled".into(), true),
-                bool_modifier(
-                    "session_settings.audio.game_audio.content.device.set".into(),
-                    true,
-                ),
+                bool_modifier("session_settings.audio.game_audio.enabled", true),
+                bool_modifier("session_settings.audio.game_audio.content.device.set", true),
                 string_modifier(
-                    "session_settings.audio.game_audio.content.device.content.variant".into(),
+                    "session_settings.audio.game_audio.content.device.content.variant",
                     "NameSubstring",
                 ),
                 string_modifier(
-                    "session_settings.audio.game_audio.content.device.content.NameSubstring".into(),
+                    "session_settings.audio.game_audio.content.device.content.NameSubstring",
                     &name,
                 ),
             ],
@@ -146,7 +165,7 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut microhone_options = vec![HigherOrderChoiceOption {
         display_name: "Disabled".to_owned(),
         modifiers: vec![bool_modifier(
-            "session_settings.audio.microphone.enabled".into(),
+            "session_settings.audio.microphone.enabled",
             false,
         )],
         content: None,
@@ -163,9 +182,9 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
             microhone_options.push(HigherOrderChoiceOption {
                 display_name: display_name.into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.audio.microphone.enabled".into(), true),
+                    bool_modifier("session_settings.audio.microphone.enabled", true),
                     string_modifier(
-                        "session_settings.audio.microphone.content.devices.variant".into(),
+                        "session_settings.audio.microphone.content.devices.variant",
                         key,
                     ),
                 ],
@@ -178,12 +197,12 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
             microhone_options.push(HigherOrderChoiceOption {
                 display_name: name.clone(),
                 modifiers: vec![
-                    bool_modifier("session_settings.audio.microphone.enabled".into(), true),
-                    string_modifier(format!("{PREFIX}.variant"), "Custom"),
-                    string_modifier(format!("{PREFIX}.Custom.sink.variant"), "NameSubstring"),
-                    string_modifier(format!("{PREFIX}.Custom.sink.NameSubstring"), &name),
-                    // string_modifier(format!("{PREFIX}.Custom.source.variant"), "NameSubstring"),
-                    // string_modifier(format!("{PREFIX}.Custom.source.NameSubstring"), ""),
+                    bool_modifier("session_settings.audio.microphone.enabled", true),
+                    string_modifier(&format!("{PREFIX}.variant"), "Custom"),
+                    string_modifier(&format!("{PREFIX}.Custom.sink.variant"), "NameSubstring"),
+                    string_modifier(&format!("{PREFIX}.Custom.sink.NameSubstring"), &name),
+                    // string_modifier(&format!("{PREFIX}.Custom.source.variant"), "NameSubstring"),
+                    // string_modifier(&format!("{PREFIX}.Custom.source.NameSubstring"), ""),
                 ],
                 content: None,
             })

@@ -12,6 +12,7 @@ use serde_json as json;
 pub struct SettingsTab {
     presets_grid_id: usize,
     resolution_preset: PresetControl,
+    framerate_preset: PresetControl,
     game_audio_preset: PresetControl,
     microphone_preset: PresetControl,
     advanced_grid_id: usize,
@@ -32,6 +33,7 @@ impl SettingsTab {
         Self {
             presets_grid_id: get_id(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
+            framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             game_audio_preset: PresetControl::new(builtin_schema::null_preset_schema()),
             microphone_preset: PresetControl::new(builtin_schema::null_preset_schema()),
             advanced_grid_id: get_id(),
@@ -44,6 +46,8 @@ impl SettingsTab {
         self.session_settings_json = json::to_value(session_settings).unwrap();
 
         self.resolution_preset
+            .update_session_settings(&self.session_settings_json);
+        self.framerate_preset
             .update_session_settings(&self.session_settings_json);
         self.game_audio_preset
             .update_session_settings(&self.session_settings_json);
@@ -76,6 +80,9 @@ impl SettingsTab {
                     .num_columns(2)
                     .show(ui, |ui| {
                         requests.extend(self.resolution_preset.ui(ui));
+                        ui.end_row();
+
+                        requests.extend(self.framerate_preset.ui(ui));
                         ui.end_row();
 
                         requests.extend(self.game_audio_preset.ui(ui));

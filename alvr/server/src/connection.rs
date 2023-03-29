@@ -191,13 +191,13 @@ fn try_connect(
 
     let settings = SERVER_DATA_MANAGER.read().settings().clone();
 
-    fn get_res(config: FrameSize, default_res: UVec2) -> UVec2 {
+    fn get_view_res(config: FrameSize, default_res: UVec2) -> UVec2 {
         let res = match config {
             FrameSize::Scale(scale) => default_res.as_vec2() * scale,
             FrameSize::Absolute { width, height } => {
                 let width = width as f32;
                 Vec2::new(
-                    width / 2_f32,
+                    width,
                     height.map(|h| h as f32).unwrap_or_else(|| {
                         let default_res = default_res.as_vec2();
                         width * default_res.y / default_res.x
@@ -209,13 +209,13 @@ fn try_connect(
         UVec2::new(align32(res.x), align32(res.y))
     }
 
-    let stream_view_resolution = get_res(
-        settings.video.transcoding_resolution,
+    let stream_view_resolution = get_view_res(
+        settings.video.transcoding_view_resolution,
         streaming_caps.default_view_resolution,
     );
 
-    let target_view_resolution = get_res(
-        settings.video.emulated_headset_resolution,
+    let target_view_resolution = get_view_res(
+        settings.video.emulated_headset_view_resolution,
         streaming_caps.default_view_resolution,
     );
 

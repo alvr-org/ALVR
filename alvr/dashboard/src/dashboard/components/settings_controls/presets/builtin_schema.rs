@@ -35,39 +35,40 @@ pub fn resolution_schema() -> PresetSchemaNode {
         strings: HashMap::new(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
-            ("Very Low (width: 1536)", "1536"),
-            ("Low (width: 1856)", "1856"),
-            ("Medium (width: 2144)", "2144"),
-            ("High (width: 2592)", "2592"),
-            ("Ultra (width: 2816)", "2816"),
-            ("Extreme (width: 3040)", "3040"),
+            ("Very Low (width: 3072)", "1536"),
+            ("Low (width: 3712)", "1856"),
+            ("Medium (width: 4288)", "2144"),
+            ("High (width: 5184)", "2592"),
+            ("Ultra (width: 5632)", "2816"),
+            ("Extreme (width: 6080)", "3040"),
         ]
         .into_iter()
         .map(|(key, value)| HigherOrderChoiceOption {
             display_name: key.into(),
             modifiers: [
                 string_modifier(
-                    "session_settings.video.transcoding_resolution.variant".into(),
+                    "session_settings.video.transcoding_view_resolution.variant".into(),
                     "Absolute",
                 ),
                 uint_modifier(
-                    "session_settings.video.transcoding_resolution.Absolute.width".into(),
+                    "session_settings.video.transcoding_view_resolution.Absolute.width".into(),
                     value,
                 ),
                 bool_modifier(
-                    "session_settings.video.transcoding_resolution.Absolute.height.set".into(),
+                    "session_settings.video.transcoding_view_resolution.Absolute.height.set".into(),
                     false,
                 ),
                 string_modifier(
-                    "session_settings.video.emulated_headset_resolution.variant".into(),
+                    "session_settings.video.emulated_headset_view_resolution.variant".into(),
                     "Absolute",
                 ),
                 uint_modifier(
-                    "session_settings.video.emulated_headset_resolution.Absolute.width".into(),
+                    "session_settings.video.emulated_headset_view_resolution.Absolute.width".into(),
                     value,
                 ),
                 bool_modifier(
-                    "session_settings.video.emulated_headset_resolution.Absolute.height.set".into(),
+                    "session_settings.video.emulated_headset_view_resolution.Absolute.height.set"
+                        .into(),
                     false,
                 ),
             ]

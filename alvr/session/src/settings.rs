@@ -12,9 +12,9 @@ include!(concat!(env!("OUT_DIR"), "/openvr_property_keys.rs"));
 pub enum FrameSize {
     Scale(#[schema(gui(slider(min = 0.25, max = 2.0, step = 0.01)))] f32),
     Absolute {
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32, logarithmic)))]
+        #[schema(gui(slider(min = 32, max = 0x1000, step = 32)))]
         width: u32,
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32, logarithmic)))]
+        #[schema(gui(slider(min = 32, max = 0x1000, step = 32)))]
         height: Option<u32>,
     },
 }
@@ -159,7 +159,7 @@ pub struct AdvancedCodecOptions {
 #[schema(gui = "button_group")]
 pub enum BitrateMode {
     #[schema(strings(display_name = "Constant"))]
-    ConstantMbps(#[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")] u64),
+    ConstantMbps(#[schema(gui(slider(min = 5, max = 1000, logarithmic)), suffix = "Mbps")] u64),
     Adaptive {
         #[schema(strings(
             help = "Percentage of network bandwidth to allocate for video transmission"
@@ -292,15 +292,17 @@ pub struct VideoDesc {
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
 
-    #[schema(strings(help = "Resolution used for encoding and decoding"))]
-    #[schema(flag = "steamvr-restart")]
-    pub transcoding_resolution: FrameSize,
-
     #[schema(strings(
-        help = "This is the resolution that SteamVR will use as default for the game rendering"
+        help = "Resolution used for encoding and decoding. Relative to a single eye view."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub emulated_headset_resolution: FrameSize,
+    pub transcoding_view_resolution: FrameSize,
+
+    #[schema(strings(
+        help = "This is the resolution that SteamVR will use as default for the game rendering. Relative to a single eye view."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub emulated_headset_view_resolution: FrameSize,
 
     #[schema(strings(display_name = "Preferred FPS"))]
     #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
@@ -747,9 +749,9 @@ pub struct Settings {
 }
 
 pub fn session_settings_default() -> SettingsDefault {
-    let resolution = FrameSizeDefault {
+    let view_resolution = FrameSizeDefault {
         variant: FrameSizeDefaultVariant::Absolute,
-        Scale: 0.75,
+        Scale: 1.0,
         Absolute: FrameSizeAbsoluteDefault {
             width: 2144,
             height: OptionalDefault {
@@ -789,8 +791,8 @@ pub fn session_settings_default() -> SettingsDefault {
     SettingsDefault {
         video: VideoDescDefault {
             adapter_index: 0,
-            transcoding_resolution: resolution.clone(),
-            emulated_headset_resolution: resolution,
+            transcoding_view_resolution: view_resolution.clone(),
+            emulated_headset_view_resolution: view_resolution,
             preferred_fps: 72.,
             max_buffering_frames: 1.5,
             buffering_history_weight: 0.90,

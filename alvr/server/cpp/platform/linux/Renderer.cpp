@@ -69,6 +69,8 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
 
 Renderer::~Renderer()
 {
+    vkDeviceWaitIdle(m_dev);
+
     for (const InputImage &image : m_images) {
         vkDestroyImageView(m_dev, image.view, nullptr);
         vkDestroyImage(m_dev, image.image, nullptr);

@@ -355,10 +355,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
-            FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
-        ));
-
         IS_ALIVE.set(true);
 
         let (frame_interval_sender, frame_interval_receiver) = sync::mpsc::channel();

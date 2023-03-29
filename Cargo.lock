@@ -330,22 +330,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_launcher"
-version = "20.0.0-dev08"
-dependencies = [
- "alvr_commands",
- "alvr_common",
- "alvr_filesystem",
- "eframe",
- "env_logger",
- "serde_json",
- "single-instance",
- "sysinfo",
- "ureq",
- "winres",
-]
-
-[[package]]
 name = "alvr_server"
 version = "20.0.0-dev08"
 dependencies = [
@@ -4006,19 +3990,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "single-instance"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4637485391f8545c9d3dbf60f9d9aab27a90c789a700999677583bcb17c8795d"
-dependencies = [
- "libc",
- "nix 0.23.2",
- "thiserror",
- "widestring 0.4.3",
- "winapi",
-]
-
-[[package]]
 name = "slab"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4988,12 +4959,6 @@ dependencies = [
  "libc",
  "once_cell",
 ]
-
-[[package]]
-name = "widestring"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
 
 [[package]]
 name = "widestring"

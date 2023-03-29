@@ -7,39 +7,32 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-alvr_common.workspace = true
-alvr_session.workspace = true
-alvr_events.workspace = true
 alvr_commands.workspace = true
+alvr_common.workspace = true
+alvr_events.workspace = true
 alvr_filesystem.workspace = true
-
-env_logger = "0.10"
-
-egui = "0.20"
-eframe = { version = "0.20", default-features = false, features = ["wgpu", "default_fonts"] }
-
-reqwest = { version = "0.11", features = ["native-tls", "json"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-tokio-tungstenite =  { version = "0.18", features = ["native-tls"] }
-
-fluent = "0.16"
-fluent-syntax = "0.11"
-fluent-langneg = "0.13"
+alvr_server_data.workspace = true
+alvr_session.workspace = true
+alvr_sockets.workspace = true
 
 bincode = "1"
-serde = { version = "1" }
-serde_json = "1"
-settings-schema = { version = "*", features = [
-    "rename_camel_case",
+chrono = "0.4"
+eframe = { version = "0.21", default-features = false, features = [
+    "wgpu",
+    "default_fonts",
 ] }
-unic-langid = "0.9"
-url = "2"
+egui_extras = "0.21"
+env_logger = "0.10"
 futures-util = "0.3"
-
-sysinfo = { version = "0.27", default-features = false }
-
-[target.'cfg(not(target_os = "android"))'.dependencies]
-locale_config = "0.3"
+ico = "0.3"
+runas = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
+sysinfo = { version = "0.28", default-features = false }
+tungstenite = "0.18"
+ureq = { version = "2", features = ["json"] }
+url = "2"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

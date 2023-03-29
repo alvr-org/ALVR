@@ -1,19 +1,27 @@
 mod settings;
 
 pub use settings::*;
+pub use settings_schema;
 
 use alvr_common::{prelude::*, semver::Version, ALVR_VERSION};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
-use settings_schema::SchemaNode;
+use settings_schema::{NumberType, SchemaNode};
 use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
+    path::PathBuf,
 };
 
 // SessionSettings is similar to Settings but it contains every branch, even unused ones. This is
 // the settings representation that the UI uses.
 pub type SessionSettings = settings::SettingsDefault;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DriversBackup {
+    pub alvr_path: PathBuf,
+    pub other_paths: Vec<PathBuf>,
+}
 
 // This structure is used to store the minimum configuration data that ALVR driver needs to
 // initialize OpenVR before having the chance to communicate with a client. When a client is
@@ -87,7 +95,6 @@ pub struct OpenvrConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct ClientConnectionDesc {
     pub display_name: String,
     pub current_ip: Option<IpAddr>,
@@ -96,26 +103,20 @@ pub struct ClientConnectionDesc {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct SessionDesc {
     pub server_version: Version,
-    pub setup_wizard: bool,
-    pub locale: String,
-
-    #[serde(rename = "openvr_config")]
+    pub drivers_backup: Option<DriversBackup>,
     pub openvr_config: OpenvrConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionDesc>,
     pub session_settings: SessionSettings,
-    pub advanced: bool,
 }
 
 impl Default for SessionDesc {
     fn default() -> Self {
         Self {
             server_version: ALVR_VERSION.clone(),
-            setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
-            locale: "system".into(),
+            drivers_backup: None,
             openvr_config: OpenvrConfig {
                 // avoid realistic resolutions, as on first start, on Linux, it
                 // could trigger direct mode on an existing monitor
@@ -134,7 +135,6 @@ impl Default for SessionDesc {
             },
             client_connections: HashMap::new(),
             session_settings: settings::session_settings_default(),
-            advanced: false,
         }
     }
 }
@@ -148,7 +148,7 @@ impl SessionDesc {
     // `session_settings` must be handled separately to do a better job of retrieving data using the
     // settings schema.
     pub fn merge_from_json(&mut self, json_value: &json::Value) -> StrResult {
-        const SESSION_SETTINGS_STR: &str = "sessionSettings";
+        const SESSION_SETTINGS_STR: &str = "session_settings";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
             *self = session_desc;
@@ -165,7 +165,7 @@ impl SessionDesc {
                     extrapolate_session_settings_from_session_settings(
                         &old_session_json[SESSION_SETTINGS_STR],
                         new_session_settings_json,
-                        &settings::settings_schema(settings::session_settings_default()),
+                        &Settings::schema(settings::session_settings_default()),
                     )
                 });
 
@@ -199,11 +199,9 @@ impl SessionDesc {
         }
     }
 
-    // This function requires that settings enums with data have tag = "type" and content = "content", and
-    // enums without data do not have tag and content set.
     pub fn to_settings(&self) -> Settings {
         let session_settings_json = json::to_value(&self.session_settings).unwrap();
-        let schema = settings::settings_schema(settings::session_settings_default());
+        let schema = Settings::schema(settings::session_settings_default());
 
         json::from_value::<Settings>(json_session_settings_to_settings(
             &session_settings_json,
@@ -225,23 +223,21 @@ fn extrapolate_session_settings_from_session_settings(
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
-        SchemaNode::Section { entries } => json::Value::Object(
+        SchemaNode::Section(entries) => json::Value::Object(
             entries
                 .iter()
-                .filter_map(|(field_name, maybe_data)| {
-                    maybe_data.as_ref().map(|data_schema| {
-                        let value_json =
-                            if let Some(new_value_json) = new_session_settings.get(field_name) {
-                                extrapolate_session_settings_from_session_settings(
-                                    &old_session_settings[field_name],
-                                    new_value_json,
-                                    &data_schema.content,
-                                )
-                            } else {
-                                old_session_settings[field_name].clone()
-                            };
-                        (field_name.clone(), value_json)
-                    })
+                .map(|named_entry| {
+                    let value_json =
+                        if let Some(new_value_json) = new_session_settings.get(&named_entry.name) {
+                            extrapolate_session_settings_from_session_settings(
+                                &old_session_settings[&named_entry.name],
+                                new_value_json,
+                                &named_entry.content,
+                            )
+                        } else {
+                            old_session_settings[&named_entry.name].clone()
+                        };
+                    (named_entry.name.clone(), value_json)
                 })
                 .collect(),
         ),
@@ -256,7 +252,7 @@ fn extrapolate_session_settings_from_session_settings(
                         .map(|variant_str| {
                             variants
                                 .iter()
-                                .any(|(variant_name, _)| variant_str == variant_name)
+                                .any(|named_entry| variant_str == named_entry.name)
                         })
                         .is_some()
                 })
@@ -264,19 +260,20 @@ fn extrapolate_session_settings_from_session_settings(
 
             let mut fields: json::Map<_, _> = variants
                 .iter()
-                .filter_map(|(variant_name, maybe_data)| {
-                    maybe_data.as_ref().map(|data_schema| {
-                        let value_json =
-                            if let Some(new_value_json) = new_session_settings.get(variant_name) {
-                                extrapolate_session_settings_from_session_settings(
-                                    &old_session_settings[variant_name],
-                                    new_value_json,
-                                    &data_schema.content,
-                                )
-                            } else {
-                                old_session_settings[variant_name].clone()
-                            };
-                        (variant_name.clone(), value_json)
+                .filter_map(|named_entry| {
+                    named_entry.content.as_ref().map(|data_schema| {
+                        let value_json = if let Some(new_value_json) =
+                            new_session_settings.get(&named_entry.name)
+                        {
+                            extrapolate_session_settings_from_session_settings(
+                                &old_session_settings[&named_entry.name],
+                                new_value_json,
+                                data_schema,
+                            )
+                        } else {
+                            old_session_settings[&named_entry.name].clone()
+                        };
+                        (named_entry.name.clone(), value_json)
                     })
                 })
                 .collect();
@@ -341,17 +338,13 @@ fn extrapolate_session_settings_from_session_settings(
             }
         }
 
-        SchemaNode::Integer { .. } => {
-            if new_session_settings.is_i64() {
-                new_session_settings.clone()
-            } else {
-                old_session_settings.clone()
-            }
-        }
-
-        SchemaNode::Float { .. } => {
-            if new_session_settings.is_number() {
-                new_session_settings.clone()
+        SchemaNode::Number { ty, .. } => {
+            if let Some(value) = new_session_settings.as_f64() {
+                match ty {
+                    NumberType::UnsignedInteger => json::Value::from(value.abs() as u64),
+                    NumberType::SignedInteger => json::Value::from(value as i64),
+                    NumberType::Float => new_session_settings.clone(),
+                }
             } else {
                 old_session_settings.clone()
             }
@@ -436,6 +429,7 @@ fn extrapolate_session_settings_from_session_settings(
                 "content": content_json
             })
         }
+        _ => unreachable!(),
     }
 }
 
@@ -445,19 +439,17 @@ fn json_session_settings_to_settings(
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
-        SchemaNode::Section { entries } => json::Value::Object(
+        SchemaNode::Section(entries) => json::Value::Object(
             entries
                 .iter()
-                .filter_map(|(field_name, maybe_data)| {
-                    maybe_data.as_ref().map(|data_schema| {
-                        (
-                            field_name.clone(),
-                            json_session_settings_to_settings(
-                                &session_settings[field_name],
-                                &data_schema.content,
-                            ),
-                        )
-                    })
+                .map(|named_entry| {
+                    (
+                        named_entry.name.clone(),
+                        json_session_settings_to_settings(
+                            &session_settings[&named_entry.name],
+                            &named_entry.content,
+                        ),
+                    )
                 })
                 .collect(),
         ),
@@ -466,18 +458,16 @@ fn json_session_settings_to_settings(
             let variant = session_settings["variant"].as_str().unwrap();
             let maybe_content = variants
                 .iter()
-                .find(|(variant_name, _)| variant_name == variant)
-                .and_then(|(_, maybe_data)| maybe_data.as_ref())
+                .find(|named_entry| named_entry.name == variant)
+                .and_then(|named_entry| named_entry.content.as_ref())
                 .map(|data_schema| {
-                    json_session_settings_to_settings(
-                        &session_settings[variant],
-                        &data_schema.content,
-                    )
+                    json_session_settings_to_settings(&session_settings[variant], data_schema)
                 });
-            json::json!({
-                "type": variant,
-                "content": maybe_content
-            })
+            if let Some(content) = maybe_content {
+                json::json!({ variant: content })
+            } else {
+                json::Value::String(variant.to_owned())
+            }
         }
 
         SchemaNode::Optional { content, .. } => {
@@ -489,29 +479,19 @@ fn json_session_settings_to_settings(
         }
 
         SchemaNode::Switch { content, .. } => {
-            let state;
-            let maybe_content;
             if session_settings["enabled"].as_bool().unwrap() {
-                state = "enabled";
-                maybe_content = Some(json_session_settings_to_settings(
-                    &session_settings["content"],
-                    content,
-                ))
-            } else {
-                state = "disabled";
-                maybe_content = None;
-            }
+                let content =
+                    json_session_settings_to_settings(&session_settings["content"], content);
 
-            json::json!({
-                "state": state,
-                "content": maybe_content
-            })
+                json::json!({ "Enabled": content })
+            } else {
+                json::Value::String("Disabled".into())
+            }
         }
 
-        SchemaNode::Boolean { .. }
-        | SchemaNode::Integer { .. }
-        | SchemaNode::Float { .. }
-        | SchemaNode::Text { .. } => session_settings.clone(),
+        SchemaNode::Boolean { .. } | SchemaNode::Number { .. } | SchemaNode::Text { .. } => {
+            session_settings.clone()
+        }
 
         SchemaNode::Array(array_schema) => json::Value::Array(
             array_schema
@@ -523,15 +503,53 @@ fn json_session_settings_to_settings(
                 .collect(),
         ),
 
-        SchemaNode::Vector { .. } | SchemaNode::Dictionary { .. } => {
-            session_settings["content"].clone()
-        }
+        SchemaNode::Vector {
+            default_element, ..
+        } => json::to_value(
+            session_settings["content"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|element_json| {
+                    json_session_settings_to_settings(element_json, default_element)
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap(),
+
+        SchemaNode::Dictionary { default_value, .. } => json::to_value(
+            json::from_value::<Vec<(String, json::Value)>>(session_settings["content"].clone())
+                .unwrap()
+                .into_iter()
+                .map(|(key, value_json)| {
+                    (
+                        key,
+                        json_session_settings_to_settings(&value_json, default_value),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
+        .unwrap(),
+        _ => unreachable!(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_manual_session_to_settings() {
+        let default = session_settings_default();
+        let settings_schema = json::to_value(&default).unwrap();
+        let schema = Settings::schema(default);
+
+        let _settings = json::from_value::<Settings>(json_session_settings_to_settings(
+            &settings_schema,
+            &schema,
+        ))
+        .err();
+    }
 
     #[test]
     fn test_session_to_settings() {
@@ -546,12 +564,12 @@ mod tests {
     }
 
     #[test]
-    fn test_session_extrapolation_oculus_go() {
+    fn test_session_extrapolation_diff() {
         let input_json_string = r#"{
-            "sessionSettings": {
+            "session_settings": {
               "fjdshfks":false,
               "video": {
-                "preferredFps": 60.0
+                "preferred_fps": 60.0
               },
               "headset": {
                 "controllers": {

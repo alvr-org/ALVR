@@ -1,49 +1,79 @@
-use super::{SettingControl, SettingsContext, SettingsResponse};
-use egui::{TextEdit, Ui};
+use super::{reset, NestingInfo};
+use alvr_sockets::PathValuePair;
+use eframe::{
+    egui::{Layout, TextEdit, Ui},
+    emath::Align,
+};
 use serde_json as json;
 
-pub struct Text {
-    value: String,
+pub struct Control {
+    nesting_info: NestingInfo,
+    editing_value: Option<String>,
     default: String,
+    default_string: String,
 }
 
-impl Text {
-    pub fn new(default: String, session_fragment: json::Value) -> Self {
+impl Control {
+    pub fn new(nesting_info: NestingInfo, default: String) -> Self {
+        let default_string = format!("\"{default}\"");
+
         Self {
+            nesting_info,
+            editing_value: None,
             default,
-            value: json::from_value(session_fragment).unwrap(),
+            default_string,
         }
     }
-}
 
-impl SettingControl for Text {
-    fn ui(
+    pub fn ui(
         &mut self,
         ui: &mut Ui,
-        session_fragment: json::Value,
-        ctx: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let textbox = TextEdit::singleline(&mut self.value).desired_width(150.0);
-        let res = ui.add(textbox);
+        session_fragment: &mut json::Value,
+        allow_inline: bool,
+    ) -> Option<PathValuePair> {
+        super::grid_flow_inline(ui, allow_inline);
 
-        let response = if res.lost_focus() {
-            Some(super::into_fragment(&self.value))
+        // todo: can this be written better?
+        let text_mut = if let json::Value::String(text) = session_fragment {
+            text
         } else {
-            if !res.has_focus() {
-                self.value = json::from_value(session_fragment).unwrap();
-            }
-
-            None
+            unreachable!()
         };
 
-        super::reset_clicked(
-            ui,
-            &self.value,
-            &self.default,
-            &format!("\"{}\"", self.default),
-            &ctx.t,
-        )
-        .then(|| super::into_fragment(&self.default))
-        .or(response)
+        let mut request = None;
+
+        fn get_request(nesting_info: &NestingInfo, text: &str) -> Option<PathValuePair> {
+            Some(PathValuePair {
+                path: nesting_info.path.clone(),
+                value: json::Value::String(text.to_owned()),
+            })
+        }
+
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            let textbox = if let Some(editing_value_mut) = &mut self.editing_value {
+                TextEdit::singleline(editing_value_mut)
+            } else {
+                TextEdit::singleline(text_mut)
+            };
+
+            let response = ui.add(textbox.desired_width(250.));
+            if response.lost_focus() {
+                if let Some(editing_value_mut) = &mut self.editing_value {
+                    request = get_request(&self.nesting_info, editing_value_mut);
+                    *text_mut = editing_value_mut.clone();
+                }
+
+                self.editing_value = None;
+            }
+            if response.gained_focus() {
+                self.editing_value = Some(text_mut.clone());
+            };
+
+            if reset::reset_button(ui, *text_mut != self.default, &self.default_string).clicked() {
+                request = get_request(&self.nesting_info, &self.default);
+            }
+        });
+
+        request
     }
 }

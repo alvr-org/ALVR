@@ -587,7 +587,6 @@ pub fn entry_point() {
                         foveated_rendering,
                         oculus_foveation_level,
                         dynamic_oculus_foveation,
-                        extra_latency,
                     } => {
                         if exts.fb_display_refresh_rate {
                             xr_session.request_display_refresh_rate(fps).unwrap();

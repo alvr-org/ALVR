@@ -1,148 +1,90 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+mod dashboard;
+mod data_sources;
+mod firewall;
+mod logging_backend;
+mod steamvr_launcher;
+mod theme;
+
+use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
+use alvr_sockets::GpuVendor;
+use dashboard::Dashboard;
+use data_sources::ServerEvent;
+use eframe::{egui, IconData, NativeOptions};
+use ico::IconDir;
 use std::{
+    io::Cursor,
     sync::{mpsc, Arc},
     thread,
 };
 
-mod launcher;
-mod worker;
-
-use alvr_dashboard::dashboard::DashboardResponse;
-
-struct ALVRDashboard {
-    dashboard: alvr_dashboard::dashboard::Dashboard,
-    tx2: mpsc::Sender<GuiMsg>,
-    rx1: mpsc::Receiver<WorkerMsg>,
-}
-
-pub enum GuiMsg {
-    Dashboard(alvr_dashboard::dashboard::DashboardResponse),
-    GetSession,
-    GetDrivers,
-    Quit,
-}
-
-pub enum WorkerMsg {
-    Event(alvr_events::Event),
-    SessionResponse(alvr_session::SessionDesc),
-    DriverResponse(Vec<String>),
-    LostConnection(String),
-    Connected,
-}
-
-impl ALVRDashboard {
-    fn new(
-        cc: &eframe::CreationContext<'_>,
-        tx2: mpsc::Sender<GuiMsg>,
-        rx1: mpsc::Receiver<WorkerMsg>,
-    ) -> Self {
-        tx2.send(GuiMsg::GetSession).unwrap();
-        let session = loop {
-            match rx1.recv().unwrap() {
-                WorkerMsg::SessionResponse(session) => break session,
-                WorkerMsg::LostConnection(_) => break alvr_session::SessionDesc::default(),
-                _ => (),
-            }
-        };
-        tx2.send(GuiMsg::GetDrivers).unwrap();
-        let (drivers, connected) = loop {
-            match rx1.recv().unwrap() {
-                WorkerMsg::DriverResponse(drivers) => break (drivers, None),
-                WorkerMsg::LostConnection(why) => break (Vec::new(), Some(why)),
-                _ => (),
-            }
-        };
-
-        if connected.is_some() {
-            launcher::launch();
-        }
-
-        let mut dashboard = alvr_dashboard::dashboard::Dashboard::new(
-            session,
-            drivers,
-            Arc::new(
-                alvr_dashboard::translation::TranslationBundle::new(
-                    Some("en".to_string()),
-                    r#"{ "en": "English" }"#,
-                    |_language_id| "".to_string(),
-                )
-                .unwrap(),
-            ),
-            connected,
-        );
-        dashboard.setup(&cc.egui_ctx);
-
-        Self {
-            dashboard,
-            tx2,
-            rx1,
-        }
-    }
-}
-
-impl eframe::App for ALVRDashboard {
-    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        for msg in self.rx1.try_iter() {
-            match msg {
-                WorkerMsg::Event(event) => {
-                    self.dashboard.new_event(event);
-                }
-                WorkerMsg::DriverResponse(drivers) => {
-                    self.dashboard.new_drivers(drivers);
-                }
-                WorkerMsg::LostConnection(why) => {
-                    self.dashboard.connection_status(Some(why));
-                }
-                WorkerMsg::Connected => {
-                    self.dashboard.connection_status(None);
-                    self.tx2.send(GuiMsg::GetSession).unwrap();
-                    self.tx2.send(GuiMsg::GetDrivers).unwrap();
-                }
-                WorkerMsg::SessionResponse(session) => {
-                    self.dashboard.new_event(alvr_events::Event {
-                        timestamp: "".to_owned(),
-                        event_type: alvr_events::EventType::Session(Box::new(session)),
-                    });
-                }
-            }
-        }
-
-        match self.dashboard.update(ctx) {
-            Some(response) => {
-                match response {
-                    // These are the responses we don't want to pass to the worker thread
-                    DashboardResponse::PresetInvocation(_) | DashboardResponse::SetupWizard(_) => {
-                        ()
-                    }
-                    _ => {
-                        self.tx2.send(GuiMsg::Dashboard(response)).unwrap();
-                    }
-                }
-            }
-            None => (),
-        }
-    }
-
-    fn on_close_event(&mut self) -> bool {
-        self.tx2.send(GuiMsg::Quit).unwrap();
-        true
-    }
-}
-
 fn main() {
-    env_logger::init();
-    let native_options = eframe::NativeOptions::default();
+    let (server_events_sender, server_events_receiver) = mpsc::channel();
+    logging_backend::init_logging(server_events_sender.clone());
 
-    let (tx1, rx1) = mpsc::channel::<WorkerMsg>();
-    let (tx2, rx2) = mpsc::channel::<GuiMsg>();
+    {
+        let mut data_manager = data_sources::get_local_data_source();
+        if data_manager
+            .get_gpu_vendors()
+            .iter()
+            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        {
+            data_manager
+                .session_mut()
+                .session_settings
+                .extra
+                .patches
+                .linux_async_reprojection = false;
+        }
 
-    let handle = thread::spawn(|| worker::http_thread(tx1, rx2));
+        if data_manager.session().server_version != *ALVR_VERSION {
+            let mut session_ref = data_manager.session_mut();
+            session_ref.server_version = ALVR_VERSION.clone();
+            session_ref.client_connections.clear();
+        }
+    }
+
+    let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
+    let image = ico.entries().first().unwrap().decode().unwrap();
+
+    let data_thread = Arc::new(Mutex::new(None));
+
     eframe::run_native(
-        "ALVR Dashboard",
-        native_options,
-        Box::new(|cc| Box::new(ALVRDashboard::new(cc, tx2, rx1))),
-    );
+        &format!("ALVR Dashboard (server v{})", *ALVR_VERSION),
+        NativeOptions {
+            icon_data: Some(IconData {
+                rgba: image.rgba_data().to_owned(),
+                width: image.width(),
+                height: image.height(),
+            }),
+            initial_window_size: Some(egui::vec2(850.0, 600.0)),
+            centered: true,
+            ..Default::default()
+        },
+        {
+            let data_thread = Arc::clone(&data_thread);
+            Box::new(move |creation_context| {
+                let (dashboard_requests_sender, dashboard_requests_receiver) = mpsc::channel();
 
-    handle.join().unwrap();
+                let context = creation_context.egui_ctx.clone();
+                *data_thread.lock() = Some(thread::spawn(|| {
+                    data_sources::data_interop_thread(
+                        context,
+                        dashboard_requests_receiver,
+                        server_events_sender,
+                    )
+                }));
+
+                Box::new(Dashboard::new(
+                    creation_context,
+                    dashboard_requests_sender,
+                    server_events_receiver,
+                ))
+            })
+        },
+    )
+    .unwrap();
+
+    data_thread.lock().take().unwrap().join().unwrap();
 }

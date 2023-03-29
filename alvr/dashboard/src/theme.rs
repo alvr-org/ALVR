@@ -1,37 +1,43 @@
-use egui::{vec2, Color32, Context, Rounding, Stroke, Visuals};
+use eframe::egui::{self, Color32, Context, Rounding, Stroke, Visuals};
 
-pub const ACCENT: Color32 = Color32::from_rgb(53, 132, 228);
+pub const ACCENT: Color32 = Color32::from_rgb(134, 171, 241);
 pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
 pub const LIGHTER_BG: Color32 = Color32::from_rgb(36, 36, 36);
 pub const SECTION_BG: Color32 = Color32::from_rgb(36, 36, 36);
 pub const DARKER_BG: Color32 = Color32::from_rgb(26, 26, 26);
 pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const SELECTED: Color32 = Color32::from_rgb(120, 174, 237);
-pub const FG: Color32 = Color32::WHITE;
+pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 
-// Colors for the notifications
-pub const DEBUG: Color32 = BG;
-pub const INFO: Color32 = Color32::from_rgb(38, 162, 105);
-pub const WARNING: Color32 = Color32::from_rgb(205, 147, 9);
-pub const ERROR: Color32 = Color32::from_rgb(192, 28, 40);
+pub mod log_colors {
+    use super::ACCENT;
+    use eframe::epaint::Color32;
+
+    pub const ERROR_LIGHT: Color32 = Color32::from_rgb(255, 50, 50);
+    pub const WARNING_LIGHT: Color32 = Color32::from_rgb(205, 147, 9);
+    pub const INFO_LIGHT: Color32 = ACCENT;
+    pub const DEBUG_LIGHT: Color32 = Color32::LIGHT_GRAY;
+    pub const EVENT_LIGHT: Color32 = Color32::GRAY;
+}
 
 // Graph colors
 pub mod graph_colors {
-    use egui::Color32;
+    use eframe::egui::Color32;
 
-    pub const RENDER: Color32 = super::ERROR;
-    pub const NETWORK: Color32 = Color32::from_rgb(94, 92, 100);
-    pub const TRANSCODE: Color32 = super::ACCENT;
-    pub const IDLE: Color32 = super::WARNING;
-    pub const SERVER_FPS: Color32 = Color32::from_rgb(145, 65, 172);
-    pub const CLIENT_FPS: Color32 = Color32::from_rgb(255, 120, 0);
+    pub const RENDER: Color32 = Color32::RED;
+    pub const RENDER_VARIANT: Color32 = Color32::from_rgb(255, 50, 0);
+    pub const NETWORK: Color32 = Color32::DARK_GRAY;
+    pub const TRANSCODE: Color32 = Color32::LIGHT_BLUE;
+    pub const IDLE: Color32 = Color32::YELLOW;
+    pub const SERVER_FPS: Color32 = Color32::LIGHT_BLUE;
+    pub const CLIENT_FPS: Color32 = Color32::KHAKI;
 }
 
 pub fn set_theme(ctx: &Context) {
     let mut style = (*ctx.style()).clone();
     style.spacing.slider_width = 200_f32; // slider width can only be set globally
-    style.spacing.item_spacing = vec2(15.0, 15.0);
-    style.spacing.button_padding = vec2(10.0, 10.0);
+    style.spacing.item_spacing = egui::vec2(15.0, 15.0);
+    style.spacing.button_padding = egui::vec2(10.0, 10.0);
 
     ctx.set_style(style);
 

@@ -371,7 +371,7 @@ pub fn video_decoder_split(
 
             let mime = match config.codec {
                 CodecType::H264 => "video/avc",
-                CodecType::HEVC => "video/hevc",
+                CodecType::Hevc => "video/hevc",
             };
 
             let format = MediaFormat::new();

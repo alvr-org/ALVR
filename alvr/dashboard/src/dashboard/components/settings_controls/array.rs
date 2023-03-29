@@ -1,96 +1,53 @@
-use std::collections::VecDeque;
-
-use crate::translation::TranslationBundle;
-
-use super::{SettingContainer, SettingControl, SettingsContext, SettingsResponse};
-use egui::{Grid, Ui};
+use super::{NestingInfo, SettingControl};
+use alvr_session::settings_schema::SchemaNode;
+use alvr_sockets::PathValuePair;
+use eframe::egui::Ui;
 use serde_json as json;
-use settings_schema::SchemaNode;
 
-pub struct Array {
-    id: String,
-    contents: Vec<(Box<dyn SettingControl>, Box<dyn SettingContainer>)>,
+pub struct Control {
+    controls: Vec<SettingControl>,
 }
 
-impl Array {
-    pub fn new(
-        schema_array: Vec<SchemaNode>,
-        session_fragment: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
-    ) -> Self {
-        let mut session_array = json::from_value::<Vec<json::Value>>(session_fragment).unwrap();
+impl Control {
+    pub fn new(nesting_info: NestingInfo, schema_array: Vec<SchemaNode>) -> Self {
+        let controls = schema_array
+            .into_iter()
+            .enumerate()
+            .map(|(idx, schema)| {
+                let mut nesting_info = nesting_info.clone();
+                nesting_info.path.push(idx.into());
 
-        Self {
-            id: format!("array{}", super::get_id()),
-            contents: schema_array
-                .into_iter()
-                .map(|schema| {
-                    let session_fragment = session_array.remove(0);
-                    (
-                        super::create_setting_control(
-                            schema.clone(),
-                            session_fragment.clone(),
-                            trans_path,
-                            trans,
-                        ),
-                        super::create_setting_container(
-                            schema,
-                            session_fragment,
-                            trans_path,
-                            trans,
-                        ),
-                    )
-                })
-                .collect(),
-        }
+                SettingControl::new(nesting_info, schema)
+            })
+            .collect();
+
+        Self { controls }
     }
-}
 
-impl SettingContainer for Array {
-    fn ui(
+    pub fn ui(
         &mut self,
         ui: &mut Ui,
-        session_fragment: json::Value,
-        ctx: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let session_array = json::from_value::<VecDeque<json::Value>>(session_fragment).unwrap();
+        session_fragment: &mut json::Value,
+        allow_inline: bool,
+    ) -> Option<PathValuePair> {
+        super::grid_flow_inline(ui, allow_inline);
 
-        super::container(ui, |ui| {
-            ui.group(|ui| {
-                Grid::new(&self.id)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        let mut response = None;
-                        for (idx, (control, container)) in self.contents.iter_mut().enumerate() {
-                            let session_fragment = session_array.get(idx).cloned().unwrap();
-                            let entry_response = ui
-                                .horizontal(|ui| control.ui(ui, session_fragment.clone(), ctx))
-                                .inner;
+        let session_array_mut = session_fragment.as_array_mut().unwrap();
 
-                            let entry_response = ui
-                                .horizontal(|ui| container.ui(ui, session_fragment, ctx))
-                                .inner
-                                .or(entry_response);
+        let count = self.controls.len();
 
-                            ui.end_row();
+        let mut request = None;
+        for (idx, control) in self.controls.iter_mut().enumerate() {
+            let allow_inline = idx == 0;
+            request = control
+                .ui(ui, &mut session_array_mut[idx], allow_inline)
+                .or(request);
 
-                            response = response.or_else({
-                                || {
-                                    super::map_fragment(entry_response, |res| {
-                                        let mut session_array = session_array.clone();
-                                        *session_array.get_mut(idx).unwrap() = res;
-                                        session_array
-                                    })
-                                }
-                            });
-                        }
+            if idx != count - 1 {
+                ui.end_row();
+            }
+        }
 
-                        response
-                    })
-                    .inner
-            })
-            .inner
-        })
+        request
     }
 }

@@ -50,7 +50,7 @@ fn build_windows_installer() {
 pub fn package_server(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(Profile::Distribution, gpl, root, true, false, false);
+    build::build_server(Profile::Distribution, gpl, root, true, false);
 
     // Add licenses
     let licenses_dir = afs::server_build_dir().join("licenses");

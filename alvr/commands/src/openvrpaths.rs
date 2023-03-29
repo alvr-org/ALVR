@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-pub fn openvr_source_file_path() -> StrResult<PathBuf> {
+fn openvr_source_file_path() -> StrResult<PathBuf> {
     let path = if cfg!(windows) {
         dirs::cache_dir()
     } else {

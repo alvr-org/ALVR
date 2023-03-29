@@ -1,193 +1,189 @@
-use crate::{dashboard::basic_components, translation::TranslationBundle, LocalizedId};
-
-use super::{
-    EmptyContainer, EmptyControl, SettingContainer, SettingControl, SettingsContext,
-    SettingsResponse,
+use super::{reset, NestingInfo, SettingControl};
+use crate::dashboard::{basic_components, get_id, DisplayString};
+use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
+use alvr_sockets::PathValuePair;
+use eframe::{
+    egui::{ComboBox, Layout, Ui},
+    emath::Align,
 };
-use egui::Ui;
 use serde_json as json;
-use settings_schema::EntryData;
 use std::collections::HashMap;
 
-pub struct ChoiceControl {
-    default: LocalizedId,
-    variant_labels: Vec<LocalizedId>,
-    controls: HashMap<String, (Box<dyn SettingControl>, bool)>,
+fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
+    strings.get("display_name").cloned().unwrap_or_else(|| {
+        let mut chars = id.chars();
+
+        let mut new_chars = vec![chars.next().unwrap()];
+        for c in chars {
+            let new_c = c.to_ascii_lowercase();
+
+            if new_c != c {
+                new_chars.push(' ');
+            }
+
+            new_chars.push(new_c);
+        }
+
+        new_chars.into_iter().collect::<String>()
+    })
 }
 
-impl ChoiceControl {
+pub struct Control {
+    nesting_info: NestingInfo,
+    default_variant: String,
+    default_string: String,
+    variant_labels: Vec<DisplayString>,
+    variant_indices: HashMap<String, usize>,
+    variant_controls: HashMap<String, SettingControl>,
+    gui: ChoiceControlType,
+    combobox_id: usize,
+}
+
+impl Control {
     pub fn new(
+        nesting_info: NestingInfo,
         default: String,
-        variants_schema: Vec<(String, Option<EntryData>)>,
-        session_fragment: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
+        schema_variants: Vec<SchemaEntry<Option<SchemaNode>>>,
+        gui: Option<ChoiceControlType>,
     ) -> Self {
-        let mut session_variants =
-            json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
+        let variant_labels = schema_variants
+            .iter()
+            .map(|entry| DisplayString {
+                id: entry.name.clone(),
+                display: get_display_name(&entry.name, &entry.strings),
+            })
+            .collect::<Vec<_>>();
 
-        Self {
-            default: LocalizedId {
-                id: default.clone(),
-                trans: trans.attribute(trans_path, &default),
-            },
-            variant_labels: variants_schema
+        let default_string = format!(
+            "\"{}\"",
+            variant_labels
                 .iter()
-                .map(|(id, _)| LocalizedId {
-                    id: id.clone(),
-                    trans: trans.attribute(trans_path, id),
-                })
-                .collect(),
-            controls: variants_schema
-                .into_iter()
-                .map(|(id, data)| {
-                    if let Some(data) = data {
-                        (
-                            id.clone(),
-                            (
-                                super::create_setting_control(
-                                    data.content,
-                                    session_variants.remove(&id).unwrap(),
-                                    &format!("{}-{}", trans_path, id),
-                                    trans,
-                                ),
-                                data.advanced,
-                            ),
-                        )
-                    } else {
-                        (id, (Box::new(EmptyControl) as _, false))
-                    }
-                })
-                .collect(),
-        }
-    }
-}
+                .find(|d| d.id == default)
+                .cloned()
+                .unwrap()
+                .display
+        );
 
-impl SettingControl for ChoiceControl {
-    fn ui(
-        &mut self,
-        ui: &mut Ui,
-        session_fragment: json::Value,
-        ctx: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let mut session_variants =
-            json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
-        let mut variant =
-            json::from_value(session_variants.get("variant").cloned().unwrap()).unwrap();
+        let variant_indices = schema_variants
+            .iter()
+            .enumerate()
+            .map(|(idx, entry)| (entry.name.clone(), idx))
+            .collect();
 
-        let response =
-            basic_components::button_group_clicked(ui, &self.variant_labels, &mut variant).then(
-                || {
-                    session_variants
-                        .insert("variant".to_owned(), json::to_value(&variant).unwrap());
+        let variant_controls = schema_variants
+            .into_iter()
+            .map(|entry| {
+                let mut nesting_info = nesting_info.clone();
+                nesting_info.path.push(entry.name.clone().into());
 
-                    super::into_fragment(&session_variants)
-                },
-            );
+                let control = if let Some(schema) = entry.content {
+                    SettingControl::new(nesting_info, schema)
+                } else {
+                    SettingControl::None
+                };
 
-        let response = super::reset_clicked(
-            ui,
-            &variant,
-            &self.default,
-            &format!("\"{}\"", self.default.trans),
-            &ctx.t,
-        )
-        .then(|| {
-            session_variants.insert(
-                "variant".to_owned(),
-                json::to_value(&*self.default).unwrap(),
-            );
-            super::into_fragment(&session_variants)
-        })
-        .or(response);
-
-        let (control, advanced) = self.controls.get_mut(&variant).unwrap();
-        let session_variant = session_variants
-            .get(&variant)
-            .cloned()
-            .unwrap_or(json::Value::Null);
-
-        (!*advanced || ctx.advanced)
-            .then(|| {
-                super::map_fragment(control.ui(ui, session_variant, ctx), |session_variant| {
-                    session_variants.insert(variant, session_variant);
-
-                    session_variants
-                })
+                (entry.name, control)
             })
-            .flatten()
-            .or(response)
-    }
-}
-
-pub struct ChoiceContainer {
-    containers: HashMap<String, (Box<dyn SettingContainer>, bool)>,
-}
-
-impl ChoiceContainer {
-    pub fn new(
-        variants_schema: Vec<(String, Option<EntryData>)>,
-        session_fragment: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
-    ) -> Self {
-        let mut session_variants =
-            json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
+            .collect();
 
         Self {
-            containers: variants_schema
-                .into_iter()
-                .map(|(id, data)| {
-                    if let Some(data) = data {
-                        (
-                            id.clone(),
-                            (
-                                super::create_setting_container(
-                                    data.content,
-                                    session_variants.remove(&id).unwrap(),
-                                    &format!("{}-{}", trans_path, id),
-                                    trans,
-                                ),
-                                data.advanced,
-                            ),
-                        )
-                    } else {
-                        (id, (Box::new(EmptyContainer) as _, false))
-                    }
-                })
-                .collect(),
+            nesting_info,
+            default_variant: default,
+            default_string,
+            variant_labels,
+            variant_indices,
+            variant_controls,
+            gui: gui.unwrap_or(ChoiceControlType::Dropdown),
+            combobox_id: get_id(),
         }
     }
-}
 
-impl SettingContainer for ChoiceContainer {
-    fn ui(
+    pub fn ui(
         &mut self,
         ui: &mut Ui,
-        session_fragment: json::Value,
-        context: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let mut session_variants =
-            json::from_value::<HashMap<String, json::Value>>(session_fragment).unwrap();
-        let variant = json::from_value(session_variants.get("variant").cloned().unwrap()).unwrap();
+        session_fragment: &mut json::Value,
+        allow_inline: bool,
+    ) -> Option<PathValuePair> {
+        super::grid_flow_inline(ui, allow_inline);
 
-        let (control, advanced) = self.containers.get_mut(&variant).unwrap();
-        let session_variant = session_variants
-            .get(&variant)
-            .cloned()
-            .unwrap_or(json::Value::Null);
+        let session_variants_mut = session_fragment.as_object_mut().unwrap();
 
-        (!*advanced || context.advanced)
-            .then(|| {
-                super::map_fragment(
-                    control.ui(ui, session_variant, context),
-                    |session_variant| {
-                        session_variants.insert(variant, session_variant);
+        // todo: can this be written better?
+        let variant_mut = if let json::Value::String(variant) = &mut session_variants_mut["variant"]
+        {
+            variant
+        } else {
+            unreachable!()
+        };
 
-                        session_variants
+        fn get_request(nesting_info: &NestingInfo, variant: &str) -> Option<PathValuePair> {
+            super::set_single_value(
+                nesting_info,
+                "variant".into(),
+                json::Value::String(variant.to_owned()),
+            )
+        }
+
+        let mut request = None;
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            if matches!(&self.gui, ChoiceControlType::ButtonGroup) {
+                if basic_components::button_group_clicked(ui, &self.variant_labels, variant_mut) {
+                    request = get_request(&self.nesting_info, variant_mut);
+                }
+            } else if let Some(mut index) = self.variant_indices.get(variant_mut).cloned() {
+                let response = ComboBox::new(self.combobox_id, "").show_index(
+                    ui,
+                    &mut index,
+                    self.variant_labels.len(),
+                    |idx| self.variant_labels[idx].display.clone(),
+                );
+                if response.changed() {
+                    *variant_mut = self.variant_labels[index].id.clone();
+                    request = get_request(&self.nesting_info, variant_mut);
+                }
+            } else {
+                let mut index = 0;
+                let response = ComboBox::new(self.combobox_id, "").show_index(
+                    ui,
+                    &mut index,
+                    self.variant_labels.len() + 1,
+                    |idx| {
+                        if idx == 0 {
+                            "Preset not applied".into()
+                        } else {
+                            self.variant_labels[idx - 1].display.clone()
+                        }
                     },
-                )
-            })
-            .flatten()
+                );
+                if response.changed() {
+                    *variant_mut = self.variant_labels[index].id.clone();
+                    request = get_request(&self.nesting_info, variant_mut);
+                }
+            }
+
+            if reset::reset_button(
+                ui,
+                *variant_mut != self.default_variant,
+                &self.default_string,
+            )
+            .clicked()
+            {
+                request = get_request(&self.nesting_info, &self.default_variant);
+            }
+        });
+
+        if let Some(control) = self.variant_controls.get_mut(&*variant_mut) {
+            if !matches!(control, SettingControl::None) {
+                ui.end_row();
+
+                //fixes "cannot borrow `*session_variants` as mutable more than once at a time"
+                let variant = variant_mut.clone();
+                request = control
+                    .ui(ui, &mut session_variants_mut[&variant], false)
+                    .or(request);
+            }
+        }
+
+        request
     }
 }

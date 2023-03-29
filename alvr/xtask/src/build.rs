@@ -31,7 +31,6 @@ pub fn build_server(
     gpl: bool,
     root: Option<String>,
     reproducible: bool,
-    experiments: bool,
     keep_config: bool,
 ) {
     let sh = Shell::new().unwrap();
@@ -98,18 +97,6 @@ pub fn build_server(
             )
             .unwrap();
         }
-    }
-
-    // build launcher
-    {
-        let _push_guard = sh.push_dir(afs::crate_dir("launcher"));
-        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
-
-        sh.copy_file(
-            artifacts_dir.join(afs::exec_fname("alvr_launcher")),
-            build_layout.launcher_exe(),
-        )
-        .unwrap();
     }
 
     // Build dashboard
@@ -180,46 +167,10 @@ pub fn build_server(
 
     // copy static resources
     {
-        // copy dashboard
-        command::copy_recursive(
-            &sh,
-            &afs::workspace_dir().join("dashboard"),
-            &build_layout.dashboard_dir(),
-        )
-        .unwrap();
-
-        // copy presets
-        command::copy_recursive(
-            &sh,
-            &afs::crate_dir("xtask").join("resources/presets"),
-            &build_layout.presets_dir(),
-        )
-        .ok();
-
         // copy driver manifest
         sh.copy_file(
             afs::crate_dir("xtask").join("resources/driver.vrdrivermanifest"),
             &build_layout.openvr_driver_manifest(),
-        )
-        .unwrap();
-    }
-
-    // build experiments
-    if experiments {
-        command::copy_recursive(
-            &sh,
-            &afs::workspace_dir().join("experiments/gui/resources/languages"),
-            &build_layout.static_resources_dir.join("languages"),
-        )
-        .unwrap();
-
-        let _push_guard = sh.push_dir(afs::workspace_dir().join("experiments/launcher"));
-        cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
-        sh.copy_file(
-            artifacts_dir.join(afs::exec_fname("launcher")),
-            build_layout
-                .executables_dir
-                .join(afs::exec_fname("experimental_launcher")),
         )
         .unwrap();
     }

@@ -1,126 +1,95 @@
-use super::{SettingContainer, SettingControl, SettingsContext, SettingsResponse};
-use crate::{dashboard::basic_components, translation::TranslationBundle};
-use egui::Ui;
+use super::{reset, NestingInfo, SettingControl};
+use crate::dashboard::basic_components;
+use alvr_session::settings_schema::SchemaNode;
+use alvr_sockets::PathValuePair;
+use eframe::{
+    egui::{Layout, Ui},
+    emath::Align,
+};
 use serde_json as json;
-use settings_schema::{SchemaNode, SwitchDefault};
 
-pub struct SwitchControl {
-    default: bool,
-    advanced: bool,
-    control: Box<dyn SettingControl>,
+pub struct Control {
+    nesting_info: NestingInfo,
+    default_enabled: bool,
+    default_string: String,
+    content_control: Box<SettingControl>,
 }
 
-impl SwitchControl {
+impl Control {
     pub fn new(
+        nesting_info: NestingInfo,
         default_enabled: bool,
-        content_advanced: bool,
         schema_content: SchemaNode,
-        session: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
     ) -> Self {
-        let session = json::from_value::<SwitchDefault<json::Value>>(session).unwrap();
+        let default_string = if default_enabled {
+            "ON".into()
+        } else {
+            "OFF".into()
+        };
+
+        let control = {
+            let mut nesting_info = nesting_info.clone();
+            nesting_info.path.push("content".into());
+
+            SettingControl::new(nesting_info, schema_content)
+        };
+
         Self {
-            default: default_enabled,
-            advanced: content_advanced,
-            control: super::create_setting_control(
-                schema_content,
-                session.content,
-                trans_path,
-                trans,
-            ),
+            nesting_info,
+            default_enabled,
+            default_string,
+            content_control: Box::new(control),
         }
     }
-}
 
-impl SettingControl for SwitchControl {
-    fn ui(
+    pub fn ui(
         &mut self,
         ui: &mut Ui,
-        session_fragment: json::Value,
-        ctx: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let mut session_switch =
-            json::from_value::<SwitchDefault<json::Value>>(session_fragment).unwrap();
-        let response = basic_components::switch(ui, &mut session_switch.enabled)
+        session_fragment: &mut json::Value,
+        allow_inline: bool,
+    ) -> Option<PathValuePair> {
+        super::grid_flow_inline(ui, allow_inline);
+
+        let session_switch_mut = session_fragment.as_object_mut().unwrap();
+
+        // todo: can this be written better?
+        let enabled_mut = if let json::Value::Bool(enabled) = &mut session_switch_mut["enabled"] {
+            enabled
+        } else {
+            unreachable!()
+        };
+
+        let mut request = None;
+
+        fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
+            super::set_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
+        }
+
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+            if basic_components::switch(ui, enabled_mut).clicked() {
+                request = get_request(&self.nesting_info, *enabled_mut);
+            }
+
+            if reset::reset_button(
+                ui,
+                *enabled_mut != self.default_enabled,
+                &self.default_string,
+            )
             .clicked()
-            .then(|| super::into_fragment(&session_switch));
+            {
+                request = get_request(&self.nesting_info, self.default_enabled);
+            }
+        });
 
-        let response = super::reset_clicked(
-            ui,
-            &session_switch.enabled,
-            &self.default,
-            if self.default { "ON" } else { "OFF" },
-            &ctx.t,
-        )
-        .then(|| {
-            session_switch.enabled = self.default;
-            super::into_fragment(&session_switch)
-        })
-        .or(response);
+        if *enabled_mut {
+            ui.end_row();
 
-        (session_switch.enabled && (!self.advanced || ctx.advanced))
-            .then(|| {
-                super::map_fragment(
-                    self.control.ui(ui, session_switch.content.clone(), ctx),
-                    |content| {
-                        session_switch.content = content;
-                        session_switch
-                    },
-                )
-            })
-            .flatten()
-            .or(response)
-    }
-}
-
-pub struct SwitchContainer {
-    advanced: bool,
-    container: Box<dyn SettingContainer>,
-}
-
-impl SwitchContainer {
-    pub fn new(
-        content_advanced: bool,
-        schema_content: SchemaNode,
-        session: json::Value,
-        trans_path: &str,
-        trans: &TranslationBundle,
-    ) -> Self {
-        let session = json::from_value::<SwitchDefault<json::Value>>(session).unwrap();
-        Self {
-            advanced: content_advanced,
-            container: super::create_setting_container(
-                schema_content,
-                session.content,
-                trans_path,
-                trans,
-            ),
+            request = self
+                .content_control
+                .ui(ui, &mut session_switch_mut["content"], false)
+                .or(request);
         }
-    }
-}
 
-impl SettingContainer for SwitchContainer {
-    fn ui(
-        &mut self,
-        ui: &mut Ui,
-        session_fragment: json::Value,
-        context: &SettingsContext,
-    ) -> Option<SettingsResponse> {
-        let mut session_switch =
-            json::from_value::<SwitchDefault<json::Value>>(session_fragment).unwrap();
-
-        (session_switch.enabled && (!self.advanced || context.advanced))
-            .then(|| {
-                super::map_fragment(
-                    self.container
-                        .ui(ui, session_switch.content.clone(), context),
-                    |content| {
-                        session_switch.content = content;
-                        session_switch
-                    },
-                )
-            })
-            .flatten()
+        request
     }
 }

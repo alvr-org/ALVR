@@ -1,136 +1,126 @@
-use super::{Section, SettingsContext, SettingsResponse};
-use crate::{
-    dashboard::{basic_components, DashboardResponse},
-    translation::{SharedTranslation, TranslationBundle},
-    LocalizedId,
+use super::{
+    notice,
+    presets::{builtin_schema, PresetControl},
+    NestingInfo, SettingControl,
 };
-use alvr_session::{SessionDesc, SessionSettings};
-use egui::Ui;
+use crate::dashboard::{get_id, DashboardRequest};
+use alvr_session::{SessionSettings, Settings};
+use alvr_sockets::AudioDevicesList;
+use eframe::egui::{Grid, ScrollArea, Ui};
 use serde_json as json;
-use settings_schema::SchemaNode;
-use std::{collections::HashMap, sync::Arc};
 
 pub struct SettingsTab {
-    selected_tab: String,
-    tab_labels: Vec<LocalizedId>,
-    tab_contents: HashMap<String, Section>,
-    context: SettingsContext,
+    presets_grid_id: usize,
+    resolution_preset: PresetControl,
+    framerate_preset: PresetControl,
+    game_audio_preset: PresetControl,
+    microphone_preset: PresetControl,
+    advanced_grid_id: usize,
+    session_settings_json: json::Value,
+    root_control: SettingControl,
 }
 
 impl SettingsTab {
-    pub fn new(
-        session_settings: &SessionSettings,
-        t: Arc<SharedTranslation>,
-        trans: &TranslationBundle,
-    ) -> Self {
-        let schema = alvr_session::settings_schema(alvr_session::session_settings_default());
-        let mut session = json::from_value::<HashMap<String, json::Value>>(
-            json::to_value(session_settings).unwrap(),
-        )
-        .unwrap();
+    pub fn new() -> Self {
+        let session_settings = alvr_session::session_settings_default();
 
-        if let SchemaNode::Section { entries } = schema {
-            Self {
-                selected_tab: entries[0].0.clone(),
-                tab_labels: entries
-                    .iter()
-                    .map(|(id, _)| LocalizedId {
-                        id: id.clone(),
-                        trans: trans.get(id),
-                    })
-                    .collect(),
-                tab_contents: entries
-                    .into_iter()
-                    .map(|(id, data)| {
-                        if let SchemaNode::Section { entries } = data.unwrap().content {
-                            (
-                                id.clone(),
-                                Section::new(entries, session.remove(&id).unwrap(), &id, trans),
-                            )
-                        } else {
-                            panic!("Invalid schema!")
-                        }
-                    })
-                    .collect(),
-                context: SettingsContext {
-                    advanced: false,
-                    view_width: 0_f32,
-                    t,
-                },
-            }
-        } else {
-            panic!("Invalid schema!")
+        let nesting_info = NestingInfo {
+            path: vec!["session_settings".into()],
+            indentation_level: 0,
+        };
+        let schema = Settings::schema(session_settings.clone());
+
+        Self {
+            presets_grid_id: get_id(),
+            resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
+            framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
+            game_audio_preset: PresetControl::new(builtin_schema::null_preset_schema()),
+            microphone_preset: PresetControl::new(builtin_schema::null_preset_schema()),
+            advanced_grid_id: get_id(),
+            session_settings_json: json::to_value(session_settings).unwrap(),
+            root_control: SettingControl::new(nesting_info, schema),
         }
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, session: &SessionDesc) -> Option<DashboardResponse> {
-        self.context.view_width = ui.available_width();
+    pub fn update_session(&mut self, session_settings: &SessionSettings) {
+        self.session_settings_json = json::to_value(session_settings).unwrap();
 
-        let selected_tab = &mut self.selected_tab;
+        self.resolution_preset
+            .update_session_settings(&self.session_settings_json);
+        self.framerate_preset
+            .update_session_settings(&self.session_settings_json);
+        self.game_audio_preset
+            .update_session_settings(&self.session_settings_json);
+        self.microphone_preset
+            .update_session_settings(&self.session_settings_json);
+    }
 
-        let content = self
-            .tab_contents
-            .iter_mut()
-            .find_map(|(id, section)| (**id == *selected_tab).then(|| section))
-            .unwrap();
+    pub fn update_audio_devices(&mut self, list: AudioDevicesList) {
+        let mut all_devices = list.output.clone();
+        all_devices.extend(list.input);
 
-        let mut session_tabs = json::from_value::<HashMap<String, json::Value>>(
-            json::to_value(&session.session_settings).unwrap(),
-        )
-        .unwrap();
+        self.game_audio_preset = PresetControl::new(builtin_schema::game_audio_schema(all_devices));
+        self.game_audio_preset
+            .update_session_settings(&self.session_settings_json);
 
-        let mut advanced = self.context.advanced;
+        self.microphone_preset = PresetControl::new(builtin_schema::microphone_schema(list.output));
+        self.microphone_preset
+            .update_session_settings(&self.session_settings_json);
+    }
 
-        let response = basic_components::tabs(
-            ui,
-            &self.tab_labels,
-            selected_tab,
-            {
-                let selected_tab = selected_tab.clone();
-                let context = &self.context;
-                move |ui| {
-                    content
-                        .ui_no_indentation(
-                            ui,
-                            session_tabs.get(&selected_tab).cloned().unwrap(),
-                            context,
-                        )
-                        .and_then(|res| match res {
-                            SettingsResponse::SessionFragment(tab_session) => {
-                                session_tabs.insert(selected_tab, tab_session);
+    pub fn ui(&mut self, ui: &mut Ui) -> Option<DashboardRequest> {
+        let mut requests = vec![];
 
-                                let mut session = session.clone();
-                                let session_settings = if let Ok(value) =
-                                    json::from_value(json::to_value(session_tabs).unwrap())
-                                {
-                                    value
-                                } else {
-                                    //Some numeric fields are not properly validated
-                                    println!("Invalid value");
-                                    return None;
-                                };
+        ui.heading("Presets");
+        ScrollArea::new([true, false])
+            .id_source(self.presets_grid_id)
+            .show(ui, |ui| {
+                Grid::new(self.presets_grid_id)
+                    .striped(true)
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        requests.extend(self.resolution_preset.ui(ui));
+                        ui.end_row();
 
-                                session.session_settings = session_settings;
+                        requests.extend(self.framerate_preset.ui(ui));
+                        ui.end_row();
 
-                                Some(DashboardResponse::SessionUpdated(Box::new(session)))
-                            }
-                            SettingsResponse::PresetInvocation(code) => {
-                                Some(DashboardResponse::PresetInvocation(code))
-                            }
-                        })
-                }
-            },
-            {
-                |ui| {
-                    if ui.selectable_label(advanced, "Advanced").clicked() {
-                        advanced = !advanced;
-                    }
-                }
-            },
-        );
+                        requests.extend(self.game_audio_preset.ui(ui));
+                        ui.end_row();
 
-        self.context.advanced = advanced;
+                        requests.extend(self.microphone_preset.ui(ui));
+                        ui.end_row();
+                    })
+            });
 
-        response
+        ui.add_space(15.0);
+
+        ui.horizontal(|ui| {
+            ui.heading("All Settings (Advanced)");
+            notice::notice(ui, "Changing some advanced settings may break ALVR");
+        });
+        ScrollArea::new([true, false])
+            .id_source(self.advanced_grid_id)
+            .show(ui, |ui| {
+                Grid::new(self.advanced_grid_id)
+                    .striped(true)
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        if let Some(request) =
+                            self.root_control
+                                .ui(ui, &mut self.session_settings_json, false)
+                        {
+                            requests.push(request);
+                        }
+
+                        ui.end_row();
+                    })
+            });
+
+        if !requests.is_empty() {
+            Some(DashboardRequest::SetValues(requests))
+        } else {
+            None
+        }
     }
 }

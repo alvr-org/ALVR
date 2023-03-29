@@ -21,6 +21,7 @@ pub use log;
 pub use once_cell;
 pub use parking_lot;
 pub use semver;
+pub use settings_schema;
 
 pub use average::*;
 pub use logging::*;

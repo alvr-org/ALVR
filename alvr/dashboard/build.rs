@@ -1,8 +1,8 @@
 #[cfg(windows)]
 fn main() {
-    let mut res = winres::WindowsResource::new();
-    res.set_icon("res/dashboard.ico");
-    res.compile().unwrap();
+    let mut resource = winres::WindowsResource::new();
+    resource.set_icon("resources/dashboard.ico");
+    resource.compile().unwrap();
 }
 
 #[cfg(not(windows))]

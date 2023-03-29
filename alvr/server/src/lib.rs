@@ -1,7 +1,6 @@
 mod bitrate;
 mod buttons;
 mod connection;
-mod dashboard;
 mod haptics;
 mod logging_backend;
 mod openvr_props;
@@ -28,13 +27,13 @@ use alvr_common::{
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
     prelude::*,
-    RelaxedAtomic, ALVR_VERSION,
+    RelaxedAtomic,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_server_data::ServerDataManager;
 use alvr_session::CodecType;
-use alvr_sockets::{ClientListAction, GpuVendor, Haptics, ServerControlPacket};
+use alvr_sockets::{ClientListAction, Haptics, ServerControlPacket};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{
@@ -63,7 +62,6 @@ static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
     Lazy::new(|| Mutex::new(Runtime::new().ok()));
-static WINDOW: Lazy<Mutex<Option<Arc<WindowType>>>> = Lazy::new(|| Mutex::new(None));
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
@@ -150,106 +148,66 @@ pub fn create_recording_file() {
     }
 }
 
-pub fn shutdown_runtimes() {
-    alvr_events::send_event(EventType::ServerQuitting);
-
-    // Shutsdown all connection runtimes
+pub fn shutdown_tasks() {
+    // Invoke connection runtimes shutdown
+    // todo: block until they shutdown
     IS_ALIVE.set(false);
 
-    if let Some(window_type) = WINDOW.lock().take() {
-        match window_type.as_ref() {
-            WindowType::Alcro(window) => window.close(),
-            WindowType::Browser => (),
-        }
+    if let Some(backup) = SERVER_DATA_MANAGER
+        .write()
+        .session_mut()
+        .drivers_backup
+        .take()
+    {
+        alvr_commands::driver_registration(&backup.other_paths, true).ok();
+        alvr_commands::driver_registration(&[backup.alvr_path], false).ok();
     }
 
     WEBSERVER_RUNTIME.lock().take();
 }
 
-pub fn notify_shutdown_driver() {
+pub fn notify_restart_driver() {
+    alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+
     thread::spawn(|| {
         RESTART_NOTIFIER.notify_waiters();
 
         // give time to the control loop to send the restart packet (not crucial)
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(200));
 
-        shutdown_runtimes();
+        shutdown_tasks();
 
         unsafe { ShutdownSteamvr() };
     });
 }
 
-pub fn notify_restart_driver() {
-    notify_shutdown_driver();
-
-    alvr_commands::restart_steamvr(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
-}
-
-pub fn notify_application_update() {
-    notify_shutdown_driver();
-
-    alvr_commands::invoke_application_update(&FILESYSTEM_LAYOUT.launcher_exe()).ok();
-}
-
 fn init() {
     let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    let (legacy_events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    logging_backend::init_logging(
-        log_sender.clone(),
-        legacy_events_sender.clone(),
-        events_sender.clone(),
-    );
+    logging_backend::init_logging(log_sender.clone(), events_sender.clone());
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        // Acquire and drop the data manager lock to create session.json if not present
-        // this is needed until Settings.cpp is replaced with Rust. todo: remove
-        SERVER_DATA_MANAGER.write().session_mut();
-
-        let connections = SERVER_DATA_MANAGER
-            .read()
-            .session()
-            .client_connections
-            .clone();
-        for (hostname, connection) in connections {
-            if !connection.trusted {
-                SERVER_DATA_MANAGER
-                    .write()
-                    .update_client_list(hostname, ClientListAction::RemoveEntry);
-            }
-        }
-
         runtime.spawn(alvr_common::show_err_async(web_server::web_server(
             log_sender,
-            legacy_events_sender,
             events_sender,
         )));
-
-        thread::spawn(|| alvr_common::show_err(dashboard::ui_thread()));
     }
 
     {
-        let mut data_manager = SERVER_DATA_MANAGER.write();
-        if data_manager
-            .get_gpu_vendors()
-            .iter()
-            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        let mut data_manager_lock = SERVER_DATA_MANAGER.write();
+
+        let connections = data_manager_lock.session().client_connections.clone();
+        for (hostname, connection) in connections {
+            if !connection.trusted {
+                data_manager_lock.update_client_list(hostname, ClientListAction::RemoveEntry);
+            }
+        }
+
+        for conn in data_manager_lock
+            .session_mut()
+            .client_connections
+            .values_mut()
         {
-            data_manager
-                .session_mut()
-                .session_settings
-                .extra
-                .patches
-                .linux_async_reprojection = false;
-        }
-
-        if data_manager.session().server_version != *ALVR_VERSION {
-            let mut session_ref = data_manager.session_mut();
-            session_ref.server_version = ALVR_VERSION.clone();
-            session_ref.client_connections.clear();
-        }
-
-        for conn in data_manager.session_mut().client_connections.values_mut() {
             conn.current_ip = None;
         }
     }
@@ -397,10 +355,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        alvr_common::show_err(alvr_commands::apply_driver_paths_backup(
-            FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone(),
-        ));
-
         IS_ALIVE.set(true);
 
         let (frame_interval_sender, frame_interval_receiver) = sync::mpsc::channel();
@@ -440,7 +394,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn _shutdown_runtime() {
-        shutdown_runtimes();
+        shutdown_tasks();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {

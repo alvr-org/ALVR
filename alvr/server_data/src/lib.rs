@@ -1,11 +1,11 @@
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
-use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment};
+use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap},
     fs,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
@@ -152,18 +152,39 @@ impl ServerDataManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_single_value(&mut self, path: Vec<PathSegment>, value: &str) -> StrResult {
-        let mut session_json = serde_json::to_value(self.session.clone()).map_err(err!())?;
+    pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> StrResult {
+        let mut session_json = serde_json::to_value(self.session.clone()).unwrap();
 
-        let mut session_ref = &mut session_json;
-        for segment in path {
-            session_ref = match segment {
-                PathSegment::Name(name) => session_ref.get_mut(name).ok_or_else(enone!())?,
-                PathSegment::Index(index) => session_ref.get_mut(index).ok_or_else(enone!())?,
-            };
+        for desc in descs {
+            let mut session_ref = &mut session_json;
+            for segment in &desc.path {
+                session_ref = match segment {
+                    PathSegment::Name(name) => {
+                        if let Some(name) = session_ref.get_mut(name) {
+                            name
+                        } else {
+                            return fmt_e!(
+                                "From path {:?}: segment \"{}\" not found",
+                                desc.path,
+                                name
+                            );
+                        }
+                    }
+                    PathSegment::Index(index) => {
+                        if let Some(index) = session_ref.get_mut(index) {
+                            index
+                        } else {
+                            return fmt_e!(
+                                "From path {:?}: segment [{}] not found",
+                                desc.path,
+                                index
+                            );
+                        }
+                    }
+                };
+            }
+            *session_ref = desc.value.clone();
         }
-
-        *session_ref = serde_json::from_str(value).map_err(err!())?;
 
         // session_json has been updated
         self.session = serde_json::from_value(session_json).map_err(err!())?;
@@ -227,12 +248,15 @@ impl ServerDataManager {
 
         let mut updated = false;
         match action {
-            ClientListAction::AddIfMissing => {
+            ClientListAction::AddIfMissing {
+                trusted,
+                manual_ips,
+            } => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionDesc {
-                        trusted: false,
+                        trusted,
                         current_ip: None,
-                        manual_ips: HashSet::new(),
+                        manual_ips: manual_ips.into_iter().collect(),
                         display_name: "Unknown".into(),
                     };
                     new_entry.insert(client_connection_desc);
@@ -254,16 +278,9 @@ impl ServerDataManager {
                     updated = true;
                 }
             }
-            ClientListAction::AddIp(ip) => {
+            ClientListAction::SetManualIps(ips) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().manual_ips.insert(ip);
-
-                    updated = true;
-                }
-            }
-            ClientListAction::RemoveIp(ip) => {
-                if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().manual_ips.remove(&ip);
+                    entry.get_mut().manual_ips = ips.into_iter().collect();
 
                     updated = true;
                 }

@@ -8,12 +8,8 @@ license.workspace = true
 
 [dependencies]
 alvr_common.workspace = true
-
-encoding_rs_io = "0.1"
-rand = "0.8"
-serde_json = "1"
-
-[target.'cfg(not(target_os = "android"))'.dependencies]
 alvr_filesystem.workspace = true
+
 dirs = "5"
-runas = "1"
+encoding_rs_io = "0.1"
+serde_json = "1"

@@ -562,8 +562,6 @@ async fn connection_pipeline(
         .send(Duration::from_secs_f32(1.0 / refresh_rate))
         .ok();
 
-    alvr_events::send_event(EventType::ClientConnected);
-
     {
         let on_connect_script = settings.connection.on_connect_script;
 
@@ -850,7 +848,6 @@ async fn connection_pipeline(
                     .send(&ServerControlPacket::KeepAlive)
                     .await;
                 if let Err(e) = res {
-                    alvr_events::send_event(EventType::ClientDisconnected);
                     info!("Client disconnected. Cause: {e}");
                     break Ok(());
                 }
@@ -959,7 +956,6 @@ async fn connection_pipeline(
                 }
                 Ok(_) => (),
                 Err(e) => {
-                    alvr_events::send_event(EventType::ClientDisconnected);
                     info!("Client disconnected. Cause: {e}");
                     break;
                 }
@@ -974,7 +970,6 @@ async fn connection_pipeline(
     tokio::select! {
         // Spawn new tasks and let the runtime manage threading
         res = spawn_cancelable(receive_loop) => {
-            alvr_events::send_event(EventType::ClientDisconnected);
             if let Err(e) = res {
                 info!("Client disconnected. Cause: {e}" );
             }

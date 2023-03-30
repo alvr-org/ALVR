@@ -204,6 +204,10 @@ pub enum DashboardRequest {
     },
     GetAudioDevices,
     RestartSteamvr,
+    CaptureFrame,
+    InsertIdr,
+    StartRecording,
+    StopRecording,
     Log(LogEvent),
 }
 

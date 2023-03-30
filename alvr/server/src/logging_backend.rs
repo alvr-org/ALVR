@@ -7,23 +7,10 @@ use std::fs;
 use tokio::sync::broadcast::Sender;
 
 // todo: don't stringify events immediately, use Sender<Event>
-pub fn init_logging(log_sender: Sender<String>, events_sender: Sender<Event>) {
+pub fn init_logging(events_sender: Sender<Event>) {
     let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
         let maybe_event = format!("{message}");
-        let log_message = if maybe_event.starts_with('{') {
-            format!("#{}#", maybe_event)
-        } else {
-            maybe_event.clone()
-        };
-        log_sender
-            .send(format!(
-                "{} [{}] {log_message}",
-                chrono::Local::now().format("%H:%M:%S.%f"),
-                record.level()
-            ))
-            .ok();
-
-        let event_type = if maybe_event.starts_with('{') {
+        let event_type = if maybe_event.starts_with('{') && maybe_event.ends_with('}') {
             serde_json::from_str(&maybe_event).unwrap()
         } else {
             EventType::Log(LogEvent {

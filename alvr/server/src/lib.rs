@@ -182,13 +182,11 @@ pub fn notify_restart_driver() {
 }
 
 fn init() {
-    let (log_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    logging_backend::init_logging(log_sender.clone(), events_sender.clone());
+    logging_backend::init_logging(events_sender.clone());
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
         runtime.spawn(alvr_common::show_err_async(web_server::web_server(
-            log_sender,
             events_sender,
         )));
     }

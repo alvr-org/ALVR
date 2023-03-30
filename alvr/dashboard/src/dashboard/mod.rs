@@ -57,6 +57,7 @@ enum Tab {
     Settings,
     Installation,
     Logs,
+    Debug,
     About,
 }
 
@@ -105,6 +106,7 @@ impl Dashboard {
                 (Tab::Settings, "⚙  Settings"),
                 (Tab::Installation, "💾  Installation"),
                 (Tab::Logs, "📝  Logs"),
+                (Tab::Debug, "🐞  Debug"),
                 (Tab::About, "ℹ  About"),
             ]
             .into_iter()
@@ -306,6 +308,11 @@ impl eframe::App for Dashboard {
                                 }
                             }
                             Tab::Logs => self.logs_tab.ui(ui),
+                            Tab::Debug => {
+                                if let Some(request) = components::debug_tab_ui(ui) {
+                                    requests.push(request);
+                                }
+                            }
                             Tab::About => components::about_tab_ui(ui),
                         })
                     })

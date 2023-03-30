@@ -40,7 +40,6 @@ impl Drop for SessionLock<'_> {
     fn drop(&mut self) {
         save_session(self.session_desc, self.session_path).unwrap();
         *self.settings = self.session_desc.to_settings();
-        alvr_events::send_event(EventType::SessionUpdated); // deprecated
         alvr_events::send_event(EventType::Session(Box::new(self.session_desc.clone())));
     }
 }
@@ -307,7 +306,6 @@ impl ServerDataManager {
             self.session.client_connections = client_connections;
 
             save_session(&self.session, &self.session_path).unwrap();
-            alvr_events::send_event(EventType::SessionUpdated); // deprecated
             alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
         }
     }

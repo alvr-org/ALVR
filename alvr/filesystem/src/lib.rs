@@ -64,7 +64,7 @@ pub fn installer_path() -> PathBuf {
 // Layout of the ALVR installation. All paths are absolute
 #[derive(Clone)]
 pub struct Layout {
-    // directory containing the launcher executable
+    // directory containing the dashboard executable
     pub executables_dir: PathBuf,
     // (linux only) directory where alvr_vulkan_layer.so is saved
     pub libraries_dir: PathBuf,
@@ -231,7 +231,7 @@ static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
+pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Layout {
     LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected

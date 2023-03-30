@@ -60,9 +60,7 @@ Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Insta
 
 ## Uninstall
 
-Open `ALVR Launcher.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
-
-If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
+Open `ALVR Dashboard.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
 ## Build from source
 

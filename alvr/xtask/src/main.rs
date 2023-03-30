@@ -23,7 +23,7 @@ SUBCOMMANDS:
     build-server        Build server driver, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header.
-    run-server          Build server and then open the launcher
+    run-server          Build server and then open the dashboard
     package-server      Build server in release mode, make portable version and installer
     package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies.

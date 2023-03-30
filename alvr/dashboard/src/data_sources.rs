@@ -31,7 +31,7 @@ enum DataSource {
 
 pub fn get_local_data_source() -> ServerDataManager {
     let session_file_path =
-        alvr_filesystem::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
             .session();
 
     ServerDataManager::new(&session_file_path)

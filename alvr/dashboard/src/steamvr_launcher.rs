@@ -49,7 +49,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     }
 
     std::os::unix::fs::symlink(
-        afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+        afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
             .vrcompositor_wrapper(),
         &launcher_path,
     )
@@ -68,7 +68,6 @@ fn kill_process(pid: u32) {
         .ok();
 }
 
-// this will not kill the child process "ALVR launcher"
 pub fn maybe_kill_steamvr() {
     let mut system = System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
@@ -128,7 +127,7 @@ impl Launcher {
             };
 
             let alvr_driver_dir =
-                afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+                afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                     .openvr_driver_root_dir;
 
             alvr_commands::driver_registration(&[alvr_driver_dir.clone()], true).ok();
@@ -178,7 +177,7 @@ impl Launcher {
 
     pub fn register_alvr_driver(&self) {
         let alvr_driver_dir =
-            afs::filesystem_layout_from_launcher_exe(&env::current_exe().unwrap())
+            afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                 .openvr_driver_root_dir;
 
         alvr_commands::driver_registration(&[alvr_driver_dir], true).ok();

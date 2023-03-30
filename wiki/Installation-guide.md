@@ -54,7 +54,7 @@ By default ALVR disables other SteamVR drivers before starting. Among these driv
 
 ### Launch ALVR together with SteamVR
 
-You can skip the ALVR Launcher and open ALVR automatically together with SteamVR. Open ALVR, go to the `installation` tab and click on `Register ALVR driver`.
+You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR. Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
 
 ### Use a browser different than Chrome
 

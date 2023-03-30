@@ -133,7 +133,7 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             // adapter. I don't know what happens on laptop which support optimus.
             // Prop_GraphicsAdapterLuid_Uint64 is only for redirect display and is ignored on direct
             // mode driver. So we can't specify an adapter for vrcompositor. m_nAdapterIndex is set
-            // 0 on the launcher.
+            // 0 on the dashboard.
             if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex)) {
                 Error("Could not create graphics device for adapter %d.  Requires a minimum of two "
                       "graphics cards.\n",

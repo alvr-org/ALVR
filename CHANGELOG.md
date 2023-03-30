@@ -3,7 +3,7 @@
 ## Unreleased
 
 * New egui dashboard (by @Kirottu #1247 #1274, @m00nwtchr #1292, @zarik5 ___)
-* Send client log to server (by @zarik5)
+* Send client log to streamer (by @zarik5)
 * New more consistent controller prediction algorithm (by @zarik5)
 * New wiki hosted in the main git tree (by @m00nwtchr #1309)
 * Remove Forward Error Correction (by @zarik5: #1384, #1389; @deiteris: #1386, #1387, #1390)

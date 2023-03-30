@@ -23,22 +23,22 @@ fn build_windows_installer() {
         version = version[..idx].to_owned();
     }
 
-    let server_build_dir = afs::server_build_dir();
+    let streamer_build_dir = afs::streamer_build_dir();
     let wix_source_dir = afs::crate_dir("xtask").join("wix");
     let wix_target_dir = afs::target_dir().join("wix");
     let main_source = wix_source_dir.join("main.wxs");
     let main_object = wix_target_dir.join("main.wixobj");
     let harvested_source = wix_target_dir.join("harvested.wxs");
     let harvested_object = wix_target_dir.join("harvested.wixobj");
-    let alvr_msi = afs::build_dir().join("alvr_server_windows.msi");
+    let alvr_msi = afs::build_dir().join("alvr_streamer_windows.msi");
     let bundle_source = wix_source_dir.join("bundle.wxs");
     let bundle_object = wix_target_dir.join("bundle.wixobj");
     let installer = afs::build_dir().join(format!("ALVR_Installer_v{version}.exe"));
 
-    cmd!(sh, "{heat_cmd} dir {server_build_dir} -ag -sreg -srd -dr APPLICATIONFOLDER -cg BuildFiles -var var.BuildRoot -o {harvested_source}").run().unwrap();
-    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={server_build_dir} -ext WixUtilExtension -dVersion={version} {main_source} {harvested_source} -o {wix_target_dir}\\").run().unwrap();
+    cmd!(sh, "{heat_cmd} dir {streamer_build_dir} -ag -sreg -srd -dr APPLICATIONFOLDER -cg BuildFiles -var var.BuildRoot -o {harvested_source}").run().unwrap();
+    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={streamer_build_dir} -ext WixUtilExtension -dVersion={version} {main_source} {harvested_source} -o {wix_target_dir}\\").run().unwrap();
     cmd!(sh, "{light_cmd} {main_object} {harvested_object} -ext WixUIExtension -ext WixUtilExtension -o {alvr_msi}").run().unwrap();
-    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={server_build_dir} -ext WixUtilExtension -ext WixBalExtension {bundle_source} -o {wix_target_dir}\\").run().unwrap();
+    cmd!(sh, "{candle_cmd} -arch x64 -dBuildRoot={streamer_build_dir} -ext WixUtilExtension -ext WixBalExtension {bundle_source} -o {wix_target_dir}\\").run().unwrap();
     cmd!(
         sh,
         "{light_cmd} {bundle_object} -ext WixUtilExtension -ext WixBalExtension -o {installer}"
@@ -47,13 +47,13 @@ fn build_windows_installer() {
     .unwrap();
 }
 
-pub fn package_server(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
+pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_server(Profile::Distribution, gpl, root, true, false);
+    build::build_streamer(Profile::Distribution, gpl, root, true, false);
 
     // Add licenses
-    let licenses_dir = afs::server_build_dir().join("licenses");
+    let licenses_dir = afs::streamer_build_dir().join("licenses");
     sh.create_dir(&licenses_dir).unwrap();
     sh.copy_file(
         afs::workspace_dir().join("LICENSE"),
@@ -84,24 +84,24 @@ pub fn package_server(gpl: bool, root: Option<String>, appimage: bool, zsync: bo
 
     // Finally package everything
     if cfg!(windows) {
-        command::zip(&sh, &afs::server_build_dir()).unwrap();
+        command::zip(&sh, &afs::streamer_build_dir()).unwrap();
 
         // the wix file broke
         // build_windows_installer();
     } else {
-        command::targz(&sh, &afs::server_build_dir()).unwrap();
+        command::targz(&sh, &afs::streamer_build_dir()).unwrap();
 
         if appimage {
-            package_server_appimage(true, zsync);
+            package_streamer_appimage(true, zsync);
         }
     }
 }
 
-fn package_server_appimage(release: bool, update: bool) {
+fn package_streamer_appimage(release: bool, update: bool) {
     let sh = Shell::new().unwrap();
 
     let appdir = &afs::build_dir().join("ALVR.AppDir");
-    let bin = &afs::build_dir().join("alvr_server_linux");
+    let bin = &afs::build_dir().join("alvr_streamer_linux");
 
     let icon = &afs::workspace_dir().join("resources/alvr.png");
     let desktop = &afs::workspace_dir().join("packaging/freedesktop/alvr.desktop");

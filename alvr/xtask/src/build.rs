@@ -26,7 +26,7 @@ impl Display for Profile {
     }
 }
 
-pub fn build_server(
+pub fn build_streamer(
     profile: Profile,
     gpl: bool,
     root: Option<String>,
@@ -35,7 +35,7 @@ pub fn build_server(
 ) {
     let sh = Shell::new().unwrap();
 
-    let build_layout = Layout::new(&afs::server_build_dir());
+    let build_layout = Layout::new(&afs::streamer_build_dir());
 
     let mut common_flags = vec![];
     match profile {
@@ -59,8 +59,8 @@ pub fn build_server(
         None
     };
 
-    sh.remove_path(&afs::server_build_dir()).unwrap();
-    sh.create_dir(&afs::server_build_dir()).unwrap();
+    sh.remove_path(&afs::streamer_build_dir()).unwrap();
+    sh.create_dir(&afs::streamer_build_dir()).unwrap();
     sh.create_dir(&build_layout.openvr_driver_lib_dir())
         .unwrap();
     sh.create_dir(&build_layout.executables_dir).unwrap();

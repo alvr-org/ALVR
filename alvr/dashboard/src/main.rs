@@ -51,7 +51,7 @@ fn main() {
     let data_thread = Arc::new(Mutex::new(None));
 
     eframe::run_native(
-        &format!("ALVR Dashboard (server v{})", *ALVR_VERSION),
+        &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
         NativeOptions {
             icon_data: Some(IconData {
                 rgba: image.rgba_data().to_owned(),

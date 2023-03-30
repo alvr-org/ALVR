@@ -41,7 +41,7 @@
 - Different wireless devices support different frequencies, standards, speeds, and features; using these to your advantage is key to getting best performance
 
 ## Routing / Switching / Firewalling / General Info
-- Ideally client and server should live on the same logical (layer 2) network and subnet; this allows for no routing overhead, and the correct function of client discovery via mDNS
+- Ideally client and streamer should live on the same logical (layer 2) network and subnet; this allows for no routing overhead, and the correct function of client discovery via mDNS
 - Twisted pair (normal copper ethernet cables) should never be run alongside power cables; this can cause signal noise and result in frame loss and lowered auto-negotiation speeds
 - High quality CAT5E or higher (ideally CAT6A or CAT7) cabling should be used for modern networks
 - In some cases firewall, anti-virus, malware, or EDR (enhanced detection and response) software may interfere with network traffic; Windows Defender and Sophos Endpoint Protection are reported to work without issue

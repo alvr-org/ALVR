@@ -169,7 +169,7 @@ impl StatisticsTab {
                     ui.colored_label(
                         graph_colors::RENDER,
                         &format!(
-                            "Server compositor: {:.2}ms",
+                            "Streamer compositor: {:.2}ms",
                             stats.server_compositor_s * 1000.0
                         ),
                     );
@@ -183,7 +183,7 @@ impl StatisticsTab {
 
         ui.horizontal(|ui| {
             legend_label(ui, "Game render", graph_colors::RENDER_VARIANT);
-            legend_label(ui, "Server compositor", graph_colors::RENDER);
+            legend_label(ui, "Streamer compositor", graph_colors::RENDER);
             legend_label(ui, "Encode", graph_colors::TRANSCODE);
             legend_label(ui, "Network", graph_colors::NETWORK);
             legend_label(ui, "Decode", graph_colors::TRANSCODE);
@@ -287,7 +287,7 @@ impl StatisticsTab {
                 popup::show_tooltip(ui.ctx(), Id::new("client_server_fps_popup"), |ui| {
                     ui.colored_label(
                         graph_colors::SERVER_FPS,
-                        format!("Server FPS: {:.2}", stats.server_fps),
+                        format!("Streamer FPS: {:.2}", stats.server_fps),
                     );
                     ui.colored_label(
                         graph_colors::CLIENT_FPS,
@@ -297,7 +297,7 @@ impl StatisticsTab {
             }
         }
         ui.horizontal(|ui| {
-            legend_label(ui, "Server FPS", graph_colors::SERVER_FPS);
+            legend_label(ui, "Streamer FPS", graph_colors::SERVER_FPS);
             legend_label(ui, "Client FPS", graph_colors::CLIENT_FPS);
         });
     }
@@ -338,7 +338,7 @@ impl StatisticsTab {
             ui[0].label("Client FPS:");
             ui[1].label(&format!("{} FPS", statistics.client_fps));
 
-            ui[0].label("Server FPS:");
+            ui[0].label("Streamer FPS:");
             ui[1].label(&format!("{} FPS", statistics.server_fps));
 
             ui[0].label("Headset battery");

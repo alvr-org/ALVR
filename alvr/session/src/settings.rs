@@ -673,10 +673,10 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     ))]
     pub stream_protocol: SocketProtocol,
 
-    #[schema(strings(display_name = "Server send buffer size"))]
+    #[schema(strings(display_name = "Streamer send buffer size"))]
     pub server_send_buffer_bytes: SocketBufferSize,
 
-    #[schema(strings(display_name = "Server receive buffer size"))]
+    #[schema(strings(display_name = "Streamer receive buffer size"))]
     pub server_recv_buffer_bytes: SocketBufferSize,
 
     #[schema(strings(display_name = "Client send buffer size"))]

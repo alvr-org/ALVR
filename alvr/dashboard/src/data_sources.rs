@@ -138,7 +138,7 @@ pub fn data_interop_thread(
                     match ws.read_message() {
                         Ok(tungstenite::Message::Text(json_string)) => {
                             if let Ok(event) = serde_json::from_str(&json_string) {
-                                debug!("server event received: {event:?}");
+                                debug!("Server event received: {event:?}");
                                 report_event(&context, &sender, ServerEvent::Event(event))?;
                             }
                         }

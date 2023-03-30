@@ -29,14 +29,14 @@ For any problem visit the [troubleshooting page](https://github.com/alvr-org/ALV
 There is also a portable version for the PC that requires more manual steps to make it work.
 
 * Install SteamVR and launch it once.
-* Download `alvr_server_windows.zip` from the latest release [download page](https://github.com/alvr-org/ALVR/releases/latest).
+* Download `alvr_streamer_windows.zip` from the latest release [download page](https://github.com/alvr-org/ALVR/releases/latest).
 * Unzip into a path that contains only ASCII characters and has edit permissions without administrator rights.
 
 ### Nightly
 
 If you want to get new features early or you want to help with testing you can install a nightly version.
 
-Download the latest nightly server [here](https://github.com/alvr-org/ALVR-nightly/releases/latest). Download the latest nightly client from Sidequest ([Quest version](https://sidequestvr.com/app/2281), [Go version](https://sidequestvr.com/app/2580)).
+Download the latest nightly streamer [here](https://github.com/alvr-org/ALVR-nightly/releases/latest). Download the latest nightly client from Sidequest ([Quest version](https://sidequestvr.com/app/2281), [Go version](https://sidequestvr.com/app/2580)).
 
 Since nightly releases can be unstable, for maximum compatibility always use matching versions for PC and headset. They are updated once a day.
 
@@ -77,12 +77,12 @@ Unless you are using a nightly version, make sure all audio streaming options ar
 
 ### Other
 
-* Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu, or download `alvr_server_portable.tar.gz` which has ffmpeg bundled.
+* Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu, or download `alvr_streamer_portable.tar.gz` which has ffmpeg bundled.
 * Install SteamVR, **launch it once** then close it.
-* Download `alvr_server_linux(_portable).tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
+* Download `alvr_streamer_linux(_portable).tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
 * Run `bin/alvr_launcher`
 
-If you do not install the correct version of FFmpeg systemwide, a common problem is the server crashing or failing to show images on the headset because SteamVR loads the wrong version of FFmpeg.
+If you do not install the correct version of FFmpeg systemwide, a common problem is the streamer crashing or failing to show images on the headset because SteamVR loads the wrong version of FFmpeg.
 
 ### Audio Setup
 

@@ -19,15 +19,15 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    prepare-deps        Download and compile server and client external dependencies
-    build-server        Build server driver, then copy binaries to build folder
+    prepare-deps        Download and compile streamer and client external dependencies
+    build-streamer      Build streamer, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header.
-    run-server          Build server and then open the dashboard
-    package-server      Build server in release mode, make portable version and installer
+    run-streamer        Build streamer and then open the dashboard
+    package-streamer    Build streamer in release mode, make portable version and installer
     package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies.
-    bump                Bump server and client package versions
+    bump                Bump streamer and client package versions
     clippy              Show warnings for selected clippy lints
     kill-oculus         Kill all Oculus processes
 
@@ -37,10 +37,10 @@ FLAGS:
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
     --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
-    --appimage          Package as AppImage. For package-server subcommand
-    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
+    --appimage          Package as AppImage. For package-streamer subcommand
+    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-streamer subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
-    --no-rebuild        Do not rebuild the server with run-server
+    --no-rebuild        Do not rebuild the streamer with run-streamer
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
 
 ARGS:
@@ -50,10 +50,10 @@ ARGS:
                         relative paths, which requires conforming to FHS on Linux.
 "#;
 
-pub fn run_server() {
+pub fn run_streamer() {
     let sh = Shell::new().unwrap();
 
-    let dashboard_exe = Layout::new(&afs::server_build_dir()).dashboard_exe();
+    let dashboard_exe = Layout::new(&afs::streamer_build_dir()).dashboard_exe();
 
     cmd!(sh, "{dashboard_exe}").run().unwrap();
 }
@@ -176,16 +176,16 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(profile, gpl, None, false, keep_config),
+                "build-streamer" => build::build_streamer(profile, gpl, None, false, keep_config),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile),
-                "run-server" => {
+                "run-streamer" => {
                     if !no_rebuild {
-                        build::build_server(profile, gpl, None, false, keep_config);
+                        build::build_streamer(profile, gpl, None, false, keep_config);
                     }
-                    run_server();
+                    run_streamer();
                 }
-                "package-server" => packaging::package_server(gpl, root, appimage, zsync),
+                "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
                 "package-client" => build::build_android_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(),
                 "clean" => clean(),

@@ -1,4 +1,4 @@
-# ALVR client and server on separate networks
+# ALVR client and streamer on separate networks
 
 # ALVR v14 and Above
 
@@ -15,7 +15,7 @@ Port-forwarding allows to connect devices that are behind different NATs, i.e. l
 
 You can now use ALVR to connect to your remote PC.
 
-**Note**: The public IP can change often. Every time you want to use ALVR you need to check that your current public IP is the same as the last time. If the IP changed, you can update it using the "Configure client" interface, accessed with the `Configure` button next to your headset name on the server.
+**Note**: The public IP can change often. Every time you want to use ALVR you need to check that your current public IP is the same as the last time. If the IP changed, you can update it using the "Configure client" interface, accessed with the `Configure` button next to your headset name on the streamer.
 
 ## ZeroTier
 
@@ -25,7 +25,7 @@ Comparing this to the port-forwarding method:
 
 Pros:
 * Does not require access to the router interface.
-* You don't need to update the public IP often on the server.
+* You don't need to update the public IP often on the streamer.
 * The connection in encrypted.
 
 Cons: 
@@ -105,17 +105,17 @@ ALVR version Experimental v7 or newer is recommended for this configuration.
 
 This configuration is **NOT** supported in ALVR v12. The latest release to still support this is v11.
 
-To run ALVR client and ALVR server on separate networks (broadcast domains) the following things must be done: 
-1. UDP ports 9943 and 9944 of ALVR server must be accessible from Oculus Quest device (i.e. firewall openings must be made to allow Oculus Quest to connect to ALVR server UDP ports 9943 and 9944). 
-1. Oculus Quest must be connected to computer and command-line `adb shell am startservice -n "com.polygraphene.alvr/.ChangeSettings" --es "targetServers" "10.10.10.10"` must be run in Command Prompt to specify IP address of ALVR server (`10.10.10.10` must be substituted with IP address of ALVR server; the long line is a single command-line).
-1. Next time when ALVR client will be started it should try to connect to the specified ALVR server. ALVR server should display the client in _Server_ tab (the same way local-network clients are displayed).
+To run ALVR client and ALVR streamer on separate networks (broadcast domains) the following things must be done: 
+1. UDP ports 9943 and 9944 of ALVR streamer must be accessible from Oculus Quest device (i.e. firewall openings must be made to allow Oculus Quest to connect to ALVR streamer UDP ports 9943 and 9944). 
+1. Oculus Quest must be connected to computer and command-line `adb shell am startservice -n "com.polygraphene.alvr/.ChangeSettings" --es "targetServers" "10.10.10.10"` must be run in Command Prompt to specify IP address of ALVR streamer (`10.10.10.10` must be substituted with IP address of ALVR streamer; the long line is a single command-line).
+1. Next time when ALVR client will be started it should try to connect to the specified ALVR streamer. ALVR streamer should display the client in _Server_ tab (the same way local-network clients are displayed).
 
 
-ALVR does **NOT** provide any kind of tunnel, NAT traversal etc. UDP ports 9943 and 9944 of ALVR server (VR gaming PC) must be accessible from ALVR client (Oculus Quest) otherwise this won't work. 
+ALVR does **NOT** provide any kind of tunnel, NAT traversal etc. UDP ports 9943 and 9944 of ALVR streamer (VR gaming PC) must be accessible from ALVR client (Oculus Quest) otherwise this won't work. 
 
 
 **Important notes on security!**
-* ALVR protocol does not have any encryption or authentication (apart from ALVR client IP address shown in ALVR server and the requirement to click _Connect_ on ALVR server). 
-* It is recommended to run ALVR via encrypted tunnel (VPN) over the internet. In case VPN is not an option, access to ALVR server (UDP ports 9943 and 9944) should be restricted by Windows Firewall (only connections from known IP addresses of ALVR clients should be allowed) and ALVR server should not be left running unattended. 
+* ALVR protocol does not have any encryption or authentication (apart from ALVR client IP address shown in ALVR streamer and the requirement to click _Connect_ on ALVR streamer). 
+* It is recommended to run ALVR via encrypted tunnel (VPN) over the internet. In case VPN is not an option, access to ALVR streamer (UDP ports 9943 and 9944) should be restricted by Windows Firewall (only connections from known IP addresses of ALVR clients should be allowed) and ALVR streamer should not be left running unattended. 
 * **Warning!** SteamVR allows to control desktop from VR headset (i.e. a **malicious ALVR client could take over the PC**). 
 * As the license states ALVR IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND (see the file `LICENSE` in this GitHub repository for legal text/definition). You are on your own (especially if you run ALVR over the Internet without VPN).

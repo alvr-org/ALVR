@@ -86,7 +86,8 @@ pub fn package_server(gpl: bool, root: Option<String>, appimage: bool, zsync: bo
     if cfg!(windows) {
         command::zip(&sh, &afs::server_build_dir()).unwrap();
 
-        build_windows_installer();
+        // the wix file broke
+        // build_windows_installer();
     } else {
         command::targz(&sh, &afs::server_build_dir()).unwrap();
 

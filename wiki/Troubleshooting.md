@@ -42,7 +42,7 @@ This section has some advice for when ALVR shows an error (or sometimes warning)
 
 If you get a warning pop-up inside the `ALVR Launcher.exe` window saying `clientFoundInvalid`, make sure the version of ALVR you installed on your headset is compatible with the version you're trying to run on your PC.
 
-The latest release can be found [here](https://github.com/alvr-org/ALVR/releases/latest) and contains both the `alvr_client.apk` file for your headset and the `alvr_server_windows.zip` archive with the application for your PC.
+The latest release can be found [here](https://github.com/alvr-org/ALVR/releases/latest) and contains both the `alvr_client.apk` file for your headset and the `alvr_streamer_windows.zip` archive with the application for your PC.
 
 The version of ALVR available on the SideQuest store is compatible with the latest release on GitHub (the previous link). Keep in mind that the version on SideQuest might take us a while to update after a new version is released on GitHub.
 
@@ -71,7 +71,7 @@ ALVR can't see my headset
 
 Here is some advice for issues that can come up even though you don't see any error popup from ALVR.
 
-ALVR on the headset stuck on `Searching for server...`
+ALVR on the headset stuck on `Searching for streamer...`
 ---
 
 This issue can have multiple causes. It is likely that the issue is with the PC ALVR application. See below for more specific issues.
@@ -91,7 +91,7 @@ To fix this, you can try the following:
 * You can also try disabling your firewall for testing, but you shouldn't leave it disabled to use ALVR
 * Open ports 9943 and 9944 on your firewall
 
-If pinging works but you still don't see the client on the server app, then headset and PC might be on separate subnets. To solve this you can add the client manually.
+If pinging works but you still don't see the client on the streamer app, then headset and PC might be on separate subnets. To solve this you can add the client manually.
 In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Add client`.
 
 SteamVR says "headset not detected"
@@ -111,7 +111,7 @@ If you're still getting this message (or otherwise not getting a headset icon in
 
 `Skipping duplicate external driver alvr_server` - This line means another ALVR driver is registered. Go to the installation tab in ALVR and remove all drivers.
 
-`Skipping external driver X:\path\to\your\alvr_server_windows because it is not a directory` - This can happen if you put ALVR in a OneDrive (or a similar service) directory or the path to ALVR contains characters not in UTF-8. Try putting ALVR elsewhere, preferably so that the path to ALVR contains only ASCII characters.
+`Skipping external driver X:\path\to\your\alvr_streamer_windows because it is not a directory` - This can happen if you put ALVR in a OneDrive (or a similar service) directory or the path to ALVR contains characters not in UTF-8. Try putting ALVR elsewhere, preferably so that the path to ALVR contains only ASCII characters.
 
 If you have trouble looking through the logs, none of the tips work, or don't apply to you, feel free to ask on our [Discord](https://discord.gg/KbKk3UM) in the #help channel (you may be asked to post the log there).
 
@@ -124,7 +124,7 @@ This is a situation where you have ALVR open on both headset and PC, you can see
 
 First make sure that SteamVR (more specifically, vrserver.exe) is allowed incoming connections (UDP, port 9944) in your firewall. You can also try disabling your firewall for testing, but you keep it disabled to use ALVR.
 
-You can try restarting ALVR on both the headset and the PC. On the headset, when connecting, you should see the view lagging behind when you turn your head (it drops below 1 fps), this means the headset is getting a response from the server when connecting and is waiting for the video stream to start. If you get no lag in the headset, response from the PC isn't reaching the headset.
+You can try restarting ALVR on both the headset and the PC. On the headset, when connecting, you should see the view lagging behind when you turn your head (it drops below 1 fps), this means the headset is getting a response from the streamer when connecting and is waiting for the video stream to start. If you get no lag in the headset, response from the PC isn't reaching the headset.
 
 ## Common performance-related problems
 
@@ -132,7 +132,7 @@ You can try restarting ALVR on both the headset and the PC. On the headset, when
 
 ![latency graph of overloaded encoder](images/latency-graphs/overloaded-encoder.png)
 
-Symptoms: stuttery playback in the client, server FPS is stable but below the target refresh rate.
+Symptoms: stuttery playback in the client, streamer FPS is stable but below the target refresh rate.
 
 Solution: increase foveation settings or decrease refresh rate.
 
@@ -152,11 +152,11 @@ Symptoms: stream freezes, image is glitchy.
 
 Solution: check that HMD is using 5G frequency and that no other device is connected to the 5G band on your AP, reduce bitrate or use a cable.
 
-### Overloaded server
+### Overloaded streamer
 
-![latency graph of overloaded server](images/latency-graphs/overloaded-server.png)
+![latency graph of overloaded streamer](images/latency-graphs/overloaded-streamer.png)
 
-Symptoms: stuttery playback in the client, server FPS dips or fluctuates below the target refresh rate.
+Symptoms: stuttery playback in the client, streamer FPS dips or fluctuates below the target refresh rate.
 
 Solution:
 

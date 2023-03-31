@@ -2,7 +2,7 @@ use alvr_common::ALVR_VERSION;
 use eframe::egui::{RichText, Ui};
 
 pub fn about_tab_ui(ui: &mut Ui) {
-    ui.label(RichText::new(format!("ALVR server {}", *ALVR_VERSION)).size(30.0));
+    ui.label(RichText::new(format!("ALVR streamer v{}", *ALVR_VERSION)).size(30.0));
     ui.label(
 r#"Stream VR games from your PC to your headset via Wi-Fi.
 ALVR uses technologies like Asynchronous TimeWarp (ATW) and Fixed Foveated Rendering (FFR) for a smoother experience.

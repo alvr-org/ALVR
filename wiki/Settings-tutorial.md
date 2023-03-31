@@ -7,7 +7,7 @@ as well as give you some pointers to troubleshoot common configuration issues.
 
 ## Prerequisites
 
-* You have installed the ALVR server on your PC, and the ALVR client on your HMD.
+* You have installed the ALVR streamer on your PC, and the ALVR client on your HMD.
 * You can reach the SteamVR void (or the SteamVR home) and are able to launch games.
 
 ## Step 1: choose resolution, refresh rate, codec
@@ -26,8 +26,8 @@ A few notes on codec choices:
 
 Enable foveated encoding. Go to the SteamVR void and look closely at the framerate graph under the latency graph in the statistics tab.
 
-* If the server FPS matches the refresh rate you chose in step 1, you can reduce the foveation settings (by increasing the center width/height, or reducing the strength).
-* If the server FPS is lower than the refresh rate you chose in step 1, increase the foveation settings (by decreasing the center width/height, or increasing the strength).
+* If the streamer FPS matches the refresh rate you chose in step 1, you can reduce the foveation settings (by increasing the center width/height, or reducing the strength).
+* If the streamer FPS is lower than the refresh rate you chose in step 1, increase the foveation settings (by decreasing the center width/height, or increasing the strength).
 
 Repeat until you are at the maximum of what your encoder can do.
 

@@ -4,9 +4,9 @@
 
 ### ALVR Client (Headset):
 
-* WiFi must be turned on and connected, otherwise ALVR will not search for the server.
+* WiFi must be turned on and connected, otherwise ALVR will not search for the streamer.
 
-### ALVR Server (PC):
+### ALVR Streamer (PC):
 
 * If your headset is detected, click "Trust." Click "Configure" and add the IP address `127.0.0.1`. Remove the other IP address.
 * If your headset is not detected, click "Add client manually" and use the IP address `127.0.0.1`. Use the hostname displayed on your headset screen.

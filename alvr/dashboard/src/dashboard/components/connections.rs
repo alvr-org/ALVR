@@ -49,7 +49,7 @@ impl ConnectionsTab {
                             ui.add_space(10.0);
                             ui.heading(
                                 RichText::new(
-                                    "The server is not connected! Clients will not be discovered",
+                                    "The streamer is not connected! Clients will not be discovered",
                                 )
                                 .color(Color32::BLACK),
                             );

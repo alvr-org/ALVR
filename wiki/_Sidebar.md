@@ -16,7 +16,7 @@
 
 * [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
 
-* [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks)
+* [ALVR client and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-streamer-on-separate-networks)
 
 * [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 

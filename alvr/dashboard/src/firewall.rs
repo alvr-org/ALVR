@@ -48,11 +48,7 @@ pub fn firewall_rules(add: bool) -> Result<(), i32> {
                 ),
             )
         } else {
-            format!(
-                "{}\n{}",
-                netsh_delete_rule_command_string("ALVR Launcher"),
-                netsh_delete_rule_command_string("SteamVR ALVR vrserver")
-            )
+            netsh_delete_rule_command_string("SteamVR ALVR vrserver")
         };
         fs::write(&script_path, firewall_rules_script_content).map_err(|_| -1)?;
 

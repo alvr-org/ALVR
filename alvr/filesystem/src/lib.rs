@@ -53,8 +53,8 @@ pub fn build_dir() -> PathBuf {
     workspace_dir().join("build")
 }
 
-pub fn server_build_dir() -> PathBuf {
-    build_dir().join(format!("alvr_server_{OS}"))
+pub fn streamer_build_dir() -> PathBuf {
+    build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
 pub fn installer_path() -> PathBuf {

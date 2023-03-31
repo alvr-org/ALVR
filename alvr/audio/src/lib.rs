@@ -51,17 +51,21 @@ fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> StrResult<(De
     let sink = host
         .output_devices()
         .map_err(err!())?
-        .find(|d| d.name().unwrap_or_default() == sink_name)
+        .find(|d| d.name().unwrap_or_default().contains(sink_name))
         .ok_or_else(|| {
             "VB-CABLE or Voice Meeter not found. Please install or reinstall either one".to_owned()
         })?;
 
-    if let Some(source) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
+    if let Some(source_name) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
         Ok((
             sink,
             host.input_devices()
                 .map_err(err!())?
-                .find(|d| d.name().map(|name| &name == source).unwrap_or(false))
+                .find(|d| {
+                    d.name()
+                        .map(|name| name.contains(source_name))
+                        .unwrap_or(false)
+                })
                 .ok_or_else(|| {
                     "Matching output microphone not found. Did you rename it?".to_owned()
                 })?,

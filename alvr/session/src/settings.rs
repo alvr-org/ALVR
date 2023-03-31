@@ -88,6 +88,9 @@ pub enum EntropyCoding {
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct NvencOverrides {
+    #[schema(strings(
+        help = "P1 is the fastest preset and P7 is the preset that produces better quality. P6 and P7 are too slow to be usable."
+    ))]
     #[schema(flag = "streamvr-restart")]
     pub nvenc_quality_preset: EncoderQualityPresetNvidia,
 

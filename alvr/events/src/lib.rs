@@ -64,6 +64,7 @@ pub struct HapticsEvent {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "id", content = "data")]
 pub enum EventType {
     Session(Box<SessionDesc>),
     Statistics(Statistics),
@@ -71,7 +72,6 @@ pub enum EventType {
     Button(ButtonEvent),
     Haptics(HapticsEvent),
     ServerRequestsSelfRestart,
-    ServerQuitting,
     Log(LogEvent),
 }
 

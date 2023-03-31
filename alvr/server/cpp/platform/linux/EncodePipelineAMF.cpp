@@ -214,7 +214,7 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
             break;
         }
 
-        switch (Settings::Instance().m_encoderQualityPreset) {
+        switch (Settings::Instance().m_amdEncoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUALITY_PRESET, AMF_VIDEO_ENCODER_QUALITY_PRESET_QUALITY);
             break;
@@ -259,7 +259,7 @@ amf::AMFComponentPtr EncodePipelineAMF::MakeEncoder(amf::AMF_SURFACE_FORMAT inpu
             break;
         }
 
-        switch (Settings::Instance().m_encoderQualityPreset) {
+        switch (Settings::Instance().m_amdEncoderQualityPreset) {
         case ALVR_QUALITY:
             amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET, AMF_VIDEO_ENCODER_HEVC_QUALITY_PRESET_QUALITY);
             break;

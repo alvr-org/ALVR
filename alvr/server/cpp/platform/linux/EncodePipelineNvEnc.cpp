@@ -73,18 +73,10 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
         break;
     }
 
-    switch (settings.m_encoderQualityPreset) {
-    case ALVR_QUALITY:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p7", 0);
-        break;
-    case ALVR_BALANCED:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p4", 0);
-        break;
-    case ALVR_SPEED:
-    default:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p1", 0);
-        break;
-    }
+    char preset[] = "p0";
+    // replace 0 with preset number
+    preset[1] += settings.m_nvencQualityPreset;
+    av_opt_set(encoder_ctx->priv_data, "preset", preset, 0);
 
     if (settings.m_nvencAdaptiveQuantizationMode == 1) {
         av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);

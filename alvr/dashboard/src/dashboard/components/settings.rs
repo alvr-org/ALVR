@@ -13,6 +13,7 @@ pub struct SettingsTab {
     presets_grid_id: usize,
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
+    encoder_preset: PresetControl,
     game_audio_preset: PresetControl,
     microphone_preset: PresetControl,
     advanced_grid_id: usize,
@@ -34,6 +35,7 @@ impl SettingsTab {
             presets_grid_id: get_id(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
+            encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
             game_audio_preset: PresetControl::new(builtin_schema::null_preset_schema()),
             microphone_preset: PresetControl::new(builtin_schema::null_preset_schema()),
             advanced_grid_id: get_id(),
@@ -48,6 +50,8 @@ impl SettingsTab {
         self.resolution_preset
             .update_session_settings(&self.session_settings_json);
         self.framerate_preset
+            .update_session_settings(&self.session_settings_json);
+        self.encoder_preset
             .update_session_settings(&self.session_settings_json);
         self.game_audio_preset
             .update_session_settings(&self.session_settings_json);
@@ -83,6 +87,9 @@ impl SettingsTab {
                         ui.end_row();
 
                         requests.extend(self.framerate_preset.ui(ui));
+                        ui.end_row();
+
+                        requests.extend(self.encoder_preset.ui(ui));
                         ui.end_row();
 
                         requests.extend(self.game_audio_preset.ui(ui));

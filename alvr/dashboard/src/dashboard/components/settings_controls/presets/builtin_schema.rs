@@ -104,6 +104,44 @@ pub fn framerate_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn encoder_preset_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "encoder_preset".into(),
+        strings: [(
+            "help".into(),
+            "Selecting a quality too high may result in stuttering or still image!".into(),
+        )]
+        .into_iter()
+        .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            ("Speed", "Speed", "P1"),
+            ("Balanced", "Balanced", "P3"),
+            ("Quality", "Quality", "P5"),
+        ]
+        .into_iter()
+        .map(|(key, val_amd, val_nv)| HigherOrderChoiceOption {
+            display_name: key.into(),
+            modifiers: [
+                string_modifier(
+                    "session_settings.video.advanced_codec_options.nvenc_overrides.nvenc_quality_preset.variant",
+                    val_nv,
+                ),
+                string_modifier(
+                    "session_settings.video.advanced_codec_options.amf_controls.amd_encoder_quality_preset.variant",
+                    val_amd,
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            content: None,
+        })
+        .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut game_audio_options = vec![
         HigherOrderChoiceOption {

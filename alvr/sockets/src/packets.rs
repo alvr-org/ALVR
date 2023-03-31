@@ -213,6 +213,5 @@ pub enum DashboardRequest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerResponse {
-    Ok,
     AudioDevices(AudioDevicesList),
 }

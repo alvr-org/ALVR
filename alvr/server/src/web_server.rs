@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::Event;
-use alvr_sockets::DashboardRequest;
+use alvr_sockets::{DashboardRequest, ServerResponse};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -125,7 +125,7 @@ async fn http_api(
                         .update_client_list(hostname, action),
                     DashboardRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
-                            return reply_json(&list);
+                            return reply_json(&ServerResponse::AudioDevices(list));
                         }
                     }
                     DashboardRequest::RestartSteamvr => crate::notify_restart_driver(),

@@ -21,10 +21,22 @@ pub enum FrameSize {
 
 #[repr(u32)]
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub enum EncoderQualityPreset {
+pub enum EncoderQualityPresetAmd {
     Quality = 0,
     Balanced = 1,
     Speed = 2,
+}
+
+#[repr(u32)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum EncoderQualityPresetNvidia {
+    P1 = 1,
+    P2 = 2,
+    P3 = 3,
+    P4 = 4,
+    P5 = 5,
+    P6 = 6,
+    P7 = 7,
 }
 
 #[repr(u32)]
@@ -76,6 +88,9 @@ pub enum EntropyCoding {
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct NvencOverrides {
+    #[schema(flag = "streamvr-restart")]
+    pub nvenc_quality_preset: EncoderQualityPresetNvidia,
+
     pub tuning_preset: NvencTuningPreset,
     #[schema(strings(
         help = "Reduce compression artifacts at the cost of small performance penalty"
@@ -120,6 +135,8 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct AmfControls {
+    #[schema(flag = "streamvr-restart")]
+    pub amd_encoder_quality_preset: EncoderQualityPresetAmd,
     #[schema(flag = "steamvr-restart")]
     pub enable_vbaq: bool,
     #[schema(flag = "steamvr-restart")]
@@ -143,9 +160,6 @@ pub enum MediacodecDataType {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 
 pub struct AdvancedCodecOptions {
-    #[schema(flag = "streamvr-restart")]
-    pub encoder_quality_preset: EncoderQualityPreset,
-
     #[schema(flag = "streamvr-restart")]
     pub nvenc_overrides: NvencOverrides,
 
@@ -835,10 +849,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 decoder_latency_overstep_multiplier: 0.99,
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
-                encoder_quality_preset: EncoderQualityPresetDefault {
-                    variant: EncoderQualityPresetDefaultVariant::Speed,
-                },
                 nvenc_overrides: NvencOverridesDefault {
+                    nvenc_quality_preset: EncoderQualityPresetNvidiaDefault {
+                        variant: EncoderQualityPresetNvidiaDefaultVariant::P1,
+                    },
                     tuning_preset: NvencTuningPresetDefault {
                         variant: NvencTuningPresetDefaultVariant::LowLatency,
                     },
@@ -864,6 +878,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     enable_weighted_prediction: false,
                 },
                 amf_controls: AmfControlsDefault {
+                    amd_encoder_quality_preset: EncoderQualityPresetAmdDefault {
+                        variant: EncoderQualityPresetAmdDefaultVariant::Speed,
+                    },
                     enable_vbaq: false,
                     use_preproc: false,
                     preproc_sigma: 4,

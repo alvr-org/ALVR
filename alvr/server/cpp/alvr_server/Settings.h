@@ -45,7 +45,8 @@ class Settings {
     bool m_usePreproc;
     uint32_t m_preProcSigma;
     uint32_t m_preProcTor;
-    uint32_t m_encoderQualityPreset;
+    uint32_t m_amdEncoderQualityPreset;
+    uint32_t m_nvencQualityPreset;
     uint32_t m_rateControlMode;
     bool m_fillerData;
     uint32_t m_entropyCoding;

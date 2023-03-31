@@ -170,7 +170,7 @@ pub fn build_server(
         // copy driver manifest
         sh.copy_file(
             afs::crate_dir("xtask").join("resources/driver.vrdrivermanifest"),
-            &build_layout.openvr_driver_manifest(),
+            build_layout.openvr_driver_manifest(),
         )
         .unwrap();
     }

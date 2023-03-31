@@ -1,4 +1,5 @@
 #![cfg(target_os = "linux")]
+#![allow(clippy::missing_safety_doc)]
 
 use std::ffi::CString;
 
@@ -6,7 +7,8 @@ use std::ffi::CString;
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
-    dead_code
+    dead_code,
+    clippy::useless_transmute
 )]
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/layer_bindings.rs"));

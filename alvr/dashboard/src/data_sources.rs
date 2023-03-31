@@ -202,8 +202,8 @@ pub fn data_interop_thread(
             .send_json(&request)
         {
             Ok(response) => {
-                if let Ok(ServerResponse::AudioDevices(list)) =
-                    response.into_json::<ServerResponse>()
+                if let Ok(list) =
+                    response.into_json::<AudioDevicesList>()
                 {
                     report_event(&context, &sender, ServerEvent::AudioDevicesUpdated(list)).ok();
                 }

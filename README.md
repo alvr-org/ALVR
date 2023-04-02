@@ -9,19 +9,19 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    VR Headset     |          Support          |
-| :---------------: | :-----------------------: |
-|   Quest 1/2/Pro   |    :heavy_check_mark:     |
-|   Pico 4/Neo 3    |   :heavy_check_mark: *    |
-|   Vive Focus 3    |   :heavy_check_mark: *    |
-|      YVR 1/2      |   :heavy_check_mark: *    |
-| Smartphone/Monado |     :construction: **     |
-|      GearVR       |     :construction: **     |
-|  Google Daydream  | :construction: ** (maybe) |
-|     Oculus Go     |          :x: ***          |
+|      VR Headset       |          Support          |
+| :-------------------: | :-----------------------: |
+|     Quest 1/2/Pro     |    :heavy_check_mark:     |
+|     Pico 4/Neo 3      |   :heavy_check_mark: *    |
+| Vive Focus 3/XR Elite |   :heavy_check_mark: *    |
+|        YVR 1/2        |   :heavy_check_mark: *    |
+|   Smartphone/Monado   |     :construction: **     |
+|        GearVR         | :construction: ** (maybe) |
+|    Google Daydream    | :construction: ** (maybe) |
+|       Oculus Go       |          :x: ***          |
 
 \* : Available on nightly only  
-\** : Coming soon  
+\** : Expected support, no ETA  
 \*** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
 |        PC OS        |       Support        |

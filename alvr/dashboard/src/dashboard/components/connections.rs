@@ -10,10 +10,7 @@ use eframe::{
     emath::{Align, Align2},
     epaint::Color32,
 };
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    thread,
-};
+use std::net::{IpAddr, Ipv4Addr};
 
 struct EditPopupState {
     new_client: bool,
@@ -56,7 +53,7 @@ impl ConnectionsTab {
                         });
                         ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
                             if ui.button("Launch SteamVR").clicked() {
-                                thread::spawn(|| LAUNCHER.lock().launch_steamvr());
+                                LAUNCHER.lock().launch_steamvr();
                             }
                         });
                     });

@@ -163,7 +163,7 @@ impl Launcher {
         }
     }
 
-    pub fn restart_steamvr(&self) {
+    pub fn ensure_steamvr_shutdown(&self) {
         debug!("Waiting for SteamVR to shutdown...");
         let start_time = Instant::now();
         while start_time.elapsed() < SHUTDOWN_TIMEOUT && is_steamvr_running() {
@@ -171,7 +171,10 @@ impl Launcher {
         }
 
         maybe_kill_steamvr();
+    }
 
+    pub fn restart_steamvr(&self) {
+        self.ensure_steamvr_shutdown();
         self.launch_steamvr();
     }
 

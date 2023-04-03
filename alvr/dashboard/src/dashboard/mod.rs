@@ -252,7 +252,7 @@ impl eframe::App for Dashboard {
                                     requests.push(DashboardRequest::RestartSteamvr);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
-                                thread::spawn(|| LAUNCHER.lock().launch_steamvr());
+                                LAUNCHER.lock().launch_steamvr();
                             }
 
                             ui.horizontal(|ui| {

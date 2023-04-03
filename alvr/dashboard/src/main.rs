@@ -8,7 +8,7 @@ mod steamvr_launcher;
 mod theme;
 
 use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
-use alvr_sockets::GpuVendor;
+use alvr_sockets::{DashboardRequest, GpuVendor};
 use dashboard::Dashboard;
 use data_sources::ServerEvent;
 use eframe::{egui, IconData, NativeOptions};
@@ -18,10 +18,12 @@ use std::{
     sync::{mpsc, Arc},
     thread,
 };
+use steamvr_launcher::LAUNCHER;
 
 fn main() {
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
+    let (dashboard_requests_sender, dashboard_requests_receiver) = mpsc::channel();
 
     {
         let mut data_manager = data_sources::get_local_data_source();
@@ -42,6 +44,14 @@ fn main() {
             let mut session_ref = data_manager.session_mut();
             session_ref.server_version = ALVR_VERSION.clone();
             session_ref.client_connections.clear();
+        }
+
+        if data_manager
+            .settings()
+            .extra
+            .open_close_steamvr_with_dashboard
+        {
+            LAUNCHER.lock().launch_steamvr()
         }
     }
 
@@ -64,9 +74,8 @@ fn main() {
         },
         {
             let data_thread = Arc::clone(&data_thread);
+            let dashboard_requests_sender = dashboard_requests_sender.clone();
             Box::new(move |creation_context| {
-                let (dashboard_requests_sender, dashboard_requests_receiver) = mpsc::channel();
-
                 let context = creation_context.egui_ctx.clone();
                 *data_thread.lock() = Some(thread::spawn(|| {
                     data_sources::data_interop_thread(
@@ -85,6 +94,21 @@ fn main() {
         },
     )
     .unwrap();
+
+    if data_sources::get_local_data_source()
+        .settings()
+        .extra
+        .open_close_steamvr_with_dashboard
+    {
+        dashboard_requests_sender
+            .send(DashboardRequest::ShutdownSteamvr)
+            .ok();
+
+        LAUNCHER.lock().ensure_steamvr_shutdown()
+    }
+
+    // This is the signal to shutdown the data thread.
+    drop(dashboard_requests_sender);
 
     data_thread.lock().take().unwrap().join().unwrap();
 }

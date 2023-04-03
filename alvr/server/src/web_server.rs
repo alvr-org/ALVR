@@ -109,6 +109,10 @@ async fn http_api(
             if let Ok(request) = from_request_body::<DashboardRequest>(request).await {
                 match request {
                     DashboardRequest::Ping => (),
+                    DashboardRequest::Log(event) => {
+                        let level = event.severity.into_log_level();
+                        log::log!(level, "{}", event.content);
+                    }
                     DashboardRequest::GetSession => {
                         alvr_events::send_event(alvr_events::EventType::Session(Box::new(
                             SERVER_DATA_MANAGER.read().session().clone(),
@@ -128,15 +132,12 @@ async fn http_api(
                             return reply_json(&ServerResponse::AudioDevices(list));
                         }
                     }
-                    DashboardRequest::RestartSteamvr => crate::notify_restart_driver(),
-                    DashboardRequest::Log(event) => {
-                        let level = event.severity.into_log_level();
-                        log::log!(level, "{}", event.content);
-                    }
                     DashboardRequest::CaptureFrame => unsafe { crate::CaptureFrame() },
                     DashboardRequest::InsertIdr => unsafe { crate::RequestIDR() },
                     DashboardRequest::StartRecording => crate::create_recording_file(),
                     DashboardRequest::StopRecording => *VIDEO_RECORDING_FILE.lock() = None,
+                    DashboardRequest::RestartSteamvr => crate::notify_restart_driver(),
+                    DashboardRequest::ShutdownSteamvr => crate::notify_shutdown_driver(),
                 }
 
                 reply(StatusCode::OK)?

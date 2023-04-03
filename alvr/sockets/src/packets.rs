@@ -195,6 +195,7 @@ pub struct PathValuePair {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DashboardRequest {
     Ping,
+    Log(LogEvent),
     GetSession,
     UpdateSession(Box<SessionDesc>),
     SetValues(Vec<PathValuePair>),
@@ -203,12 +204,12 @@ pub enum DashboardRequest {
         action: ClientListAction,
     },
     GetAudioDevices,
-    RestartSteamvr,
     CaptureFrame,
     InsertIdr,
     StartRecording,
     StopRecording,
-    Log(LogEvent),
+    RestartSteamvr,
+    ShutdownSteamvr,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

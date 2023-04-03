@@ -741,9 +741,12 @@ pub struct ExtraDesc {
         help = r#"This controls the driver registration operations while launching SteamVR.
 Unregister other drivers at startup: This is the recommended option and will handle most interferences from other installed drivers.
 Unregister ALVR at shutdown: This should be used when you want to load other drivers like for full body tracking. Other VR streaming drivers like Virtual Desktop must be manually unregistered or uninstalled.
-No action: All driver registration actions should be performed mnually, ALVR included. This allows to launch SteamVR without launching the dashboard first."#
+No action: All driver registration actions should be performed manually, ALVR included. This allows to launch SteamVR without launching the dashboard first."#
     ))]
     pub driver_launch_action: DriverLaunchAction,
+
+    #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
+    pub open_close_steamvr_with_dashboard: bool,
 
     pub notification_level: LogSeverity,
     pub show_raw_events: bool,
@@ -1069,6 +1072,7 @@ pub fn session_settings_default() -> SettingsDefault {
             driver_launch_action: DriverLaunchActionDefault {
                 variant: DriverLaunchActionDefaultVariant::UnregisterOtherDriversAtStartup,
             },
+            open_close_steamvr_with_dashboard: false,
             notification_level: LogSeverityDefault {
                 variant: if cfg!(debug_assertions) {
                     LogSeverityDefaultVariant::Info

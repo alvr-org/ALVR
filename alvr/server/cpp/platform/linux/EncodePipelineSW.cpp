@@ -9,7 +9,7 @@
 namespace
 {
 
-void x264_log(void *p, int level, const char *fmt, va_list args)
+void x264_log(void *, int level, const char *fmt, va_list args)
 {
     char buf[256];
     vsnprintf(buf, sizeof(buf), fmt, args);

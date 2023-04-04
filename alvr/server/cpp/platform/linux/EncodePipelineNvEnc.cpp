@@ -33,7 +33,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
     int err;
-    vk_frame = std::move(input_frame.make_av_frame(vk_frame_ctx));
+    vk_frame = input_frame.make_av_frame(vk_frame_ctx);
 
     const auto &settings = Settings::Instance();
 

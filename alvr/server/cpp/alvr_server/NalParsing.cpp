@@ -36,7 +36,7 @@ void sendHeaders(unsigned char *&buf, int &len, int nalNum) {
     int foundHeaders = -1; // Offset by 1 header to find the length until the next header
 
     while (headersLen <= len) {
-        if (headersLen + sizeof(NAL_PREFIX_4B) > len) {
+        if (headersLen + sizeof(NAL_PREFIX_4B) > (unsigned)len) {
             cursor++;
             headersLen++;
             continue;
@@ -99,7 +99,7 @@ void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimest
     // Report before the frame is packetized
     ReportEncoded(targetTimestampNs);
 
-    if (len < sizeof(NAL_PREFIX_4B)) {
+    if ((unsigned)len < sizeof(NAL_PREFIX_4B)) {
         return;
     }
 

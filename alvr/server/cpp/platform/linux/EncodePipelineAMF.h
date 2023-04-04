@@ -91,7 +91,6 @@ private:
     int m_refreshRate;
     int m_renderWidth;
     int m_renderHeight;
-    int m_bitrateInMBits;
 
     bool m_hasQueryTimeout = false;
     amf::AMFBufferPtr m_frameBuffer;

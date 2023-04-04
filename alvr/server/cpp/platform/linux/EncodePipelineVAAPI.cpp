@@ -336,7 +336,7 @@ void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)
     params.framerate = Settings::Instance().m_refreshRate;
   }
   encoder_ctx->bit_rate = params.bitrate_bps;
-  encoder_ctx->framerate = AVRational{params.framerate * 1000, 1000};
+  encoder_ctx->framerate = AVRational{int(params.framerate * 1000), 1000};
   encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate * 1.1;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size / 4 * 3;

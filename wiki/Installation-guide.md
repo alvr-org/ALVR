@@ -21,7 +21,7 @@ Headset side:
 * Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
 * You can change settings on the PC in the `Settings` tab. Most of the settings require to restart SteamVR to be applied. Use the apposite button on the bottom right corner.
 
-For any problem visit the [troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
+For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
 
 ## Advanced installation
 

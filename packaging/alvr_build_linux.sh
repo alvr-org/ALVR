@@ -136,7 +136,7 @@ main() {
         # Get the absolute directory the script is running in, and add the repo name
         repoDir="$(dirname "$(realpath "${0}")")/$(basename "${repo}")"
     fi
-    buildDir="${repoDir}/build/alvr_server_linux/"
+    buildDir="${repoDir}/build/alvr_streamer_linux/"
 
     # We need to clone either way for distro-specific bash functions and deb control file
     maybe_clone || log critical 'Unable to clone repository!' 9

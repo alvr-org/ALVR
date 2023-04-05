@@ -29,7 +29,6 @@ prep_debian_server() {
     sudo -s <<SUDOCMDS
 apt -y install ${basePackages[@]}
 yes | mk-build-deps -ir "${tmpDir}/control"
-rm -f 'alvr-build-deps_'*'_amd64.'{'buildinfo','changes'}
 SUDOCMDS
     # shellcheck disable=SC2181
     if [ $? -eq 0 ]; then
@@ -51,7 +50,7 @@ build_debian_server() {
 
     debTmpDir="${tmpDir}/alvr_${debVer}"
     newBins=(
-        'bin/alvr_launcher'
+        'bin/alvr_dashboard'
         'lib64/alvr/bin/linux64/driver_alvr_server.so'
         'lib64/libalvr_vulkan_layer.so'
         'libexec/alvr/vrcompositor-wrapper'
@@ -60,7 +59,7 @@ build_debian_server() {
         'DEBIAN'
         'etc/ufw/applications.d'
         'usr/bin'
-        'usr/share/'{'applications','licenses/alvr'}
+        'usr/share/'{'applications','licenses/alvr','alvr'}
         'usr/lib64'
         'usr/lib/firewalld/services'
         'usr/libexec/alvr/'
@@ -78,7 +77,7 @@ build_debian_server() {
     fi
     # Cargo does NOT like quotes
     # shellcheck disable=SC2086
-    if cargo xtask build-server ${kwArgs['--server-args']:---release --gpl}; then
+    if cargo xtask build-streamer ${kwArgs['--server-args']:---release}; then
         cd - > /dev/null || return 4
     else
         cd - > /dev/null && return 4
@@ -96,7 +95,7 @@ build_debian_server() {
 
     log info 'Copying files and mangling control file version...'
     # Copy build files
-    cp "${buildDir}bin/alvr_launcher" "${debTmpDir}/usr/bin/"
+    cp "${buildDir}bin/alvr_dashboard" "${debTmpDir}/usr/bin/"
     cp -ar "${buildDir}lib64/"*"alvr"* "${debTmpDir}/usr/lib64/"
     cp -ar "${buildDir}libexec/alvr/" "${debTmpDir}/usr/libexec/"
     cp -ar "${buildDir}share/"* "${debTmpDir}/usr/share/"
@@ -111,14 +110,14 @@ build_debian_server() {
     log info 'Generating icons ...'
     for res in 16x16 32x32 48x48 64x64 128x128 256x256; do
         mkdir -p "${debTmpDir}/usr/share/icons/hicolor/${res}/apps"
-        convert "${repoDir}/alvr/launcher/res/launcher.ico" -thumbnail "${res}" -alpha on -background none -flatten "${debTmpDir}/usr/share/icons/hicolor/${res}/apps/alvr.png"
+        convert "${repoDir}/alvr/dashboard/resources/dashboard.ico" -thumbnail "${res}" -alpha on -background none -flatten "${debTmpDir}/usr/share/icons/hicolor/${res}/apps/alvr.png"
     done
 
     log info 'Generating package ...'
     if dpkg-deb --build --root-owner-group "${debTmpDir}"; then
         # dpkg-deb puts the resulting file in the top level directory
         mv "${tmpDir}/alvr_${debVer}.deb" "${repoDir}/build"
-        rm -rf "${repoDir}/build/alvr_server_linux"
+        rm -rf "${repoDir}/build/alvr_streamer_linux"
     else
         log critical 'Unable to create package!' 8
     fi

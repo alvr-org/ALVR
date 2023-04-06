@@ -349,14 +349,15 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::Quest2Touch => {
                     set_string(TrackingSystemName, "oculus");
                     set_string(ManufacturerName, "Oculus");
-                    set_string(ModelNumber, "Miramar");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "Miramar (Left Controller)");
                         set_string(RenderModelName, "oculus_quest2_controller_left");
                         set_string(
                             RegisteredDeviceType,
                             "oculus/1WMHH000X00000_Controller_Left",
                         );
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "Miramar (Right Controller)");
                         set_string(RenderModelName, "oculus_quest2_controller_right");
                         set_string(
                             RegisteredDeviceType,

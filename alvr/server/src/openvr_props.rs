@@ -235,14 +235,15 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::RiftSTouch => {
                     set_string(TrackingSystemName, "oculus");
                     set_string(ManufacturerName, "Oculus");
-                    set_string(ModelNumber, "Oculus Rift S");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "Oculus Rift S (Left Controller)");
                         set_string(RenderModelName, "oculus_rifts_controller_left");
                         set_string(
                             RegisteredDeviceType,
                             "oculus/1WMGH000XX0000_Controller_Left",
                         );
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "Oculus Rift S (Right Controller)");
                         set_string(RenderModelName, "oculus_rifts_controller_right");
                         set_string(
                             RegisteredDeviceType,
@@ -307,8 +308,8 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::ValveIndex => {
                     set_string(TrackingSystemName, "indexcontroller");
                     set_string(ManufacturerName, "Valve");
-                    set_string(ModelNumber, "Knuckles");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "Knuckles (Left Controller)");
                         set_string(
                             RenderModelName,
                             "{indexcontroller}valve_controller_knu_1_0_left",
@@ -318,6 +319,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                             "valve/index_controllerLHR-E217CD00_Left",
                         );
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "Knuckles (Right Controller)");
                         set_string(
                             RenderModelName,
                             "{indexcontroller}valve_controller_knu_1_0_right",
@@ -336,11 +338,12 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::ViveWand => {
                     set_string(TrackingSystemName, "htc");
                     set_string(ManufacturerName, "HTC");
-                    set_string(ModelNumber, "ALVR Remote Controller");
                     set_string(RenderModelName, "vr_controller_vive_1_5");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "ALVR Remote Controller (Left Controller)");
                         set_string(RegisteredDeviceType, "vive_controller_Left");
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "ALVR Remote Controller (Right Controller)");
                         set_string(RegisteredDeviceType, "oculus/vive_controller_Right");
                     }
                     set_string(ControllerType, "vive_controller");
@@ -349,14 +352,15 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::Quest2Touch => {
                     set_string(TrackingSystemName, "oculus");
                     set_string(ManufacturerName, "Oculus");
-                    set_string(ModelNumber, "Miramar");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "Miramar (Left Controller)");
                         set_string(RenderModelName, "oculus_quest2_controller_left");
                         set_string(
                             RegisteredDeviceType,
                             "oculus/1WMHH000X00000_Controller_Left",
                         );
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "Miramar (Right Controller)");
                         set_string(RenderModelName, "oculus_quest2_controller_right");
                         set_string(
                             RegisteredDeviceType,
@@ -420,12 +424,13 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 }
                 ControllersEmulationMode::ViveTracker => {
                     set_string(TrackingSystemName, "lighthouse");
-                    set_string(ModelNumber, "Vive Tracker Pro MV");
                     set_string(RenderModelName, "{htc}vr_tracker_vive_1_0");
                     if device_id == *LEFT_HAND_ID {
+                        set_string(ModelNumber, "Vive Tracker Pro MV (Left Controller)");
                         set_string(RegisteredDeviceType, "ALVR/tracker/left_foot");
                         set_string(ControllerType, "vive_tracker_left_foot");
                     } else if device_id == *RIGHT_HAND_ID {
+                        set_string(ModelNumber, "Vive Tracker Pro MV (Right Controller)");
                         set_string(RegisteredDeviceType, "ALVR/tracker/right_foot");
                         set_string(ControllerType, "vive_tracker_right_foot");
                     }

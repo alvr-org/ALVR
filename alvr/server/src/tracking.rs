@@ -176,8 +176,12 @@ impl TrackingManager {
                 };
                 motion.pose.orientation *= pose_offset.orientation;
                 motion.pose.position += motion.pose.orientation * pose_offset.position;
-                motion.linear_velocity = pose_offset.orientation * motion.linear_velocity;
-                motion.angular_velocity = pose_offset.orientation * motion.angular_velocity;
+
+                motion.linear_velocity = motion
+                    .angular_velocity
+                    .cross(motion.pose.orientation * pose_offset.position);
+                motion.angular_velocity =
+                    motion.pose.orientation.conjugate() * motion.angular_velocity;
 
                 fn cutoff(v: Vec3, threshold: f32) -> Vec3 {
                     if v.length_squared() > threshold * threshold {
@@ -187,10 +191,18 @@ impl TrackingManager {
                     }
                 }
 
-                motion.linear_velocity =
-                    cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
-                motion.angular_velocity =
-                    cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
+                if (device_id == *LEFT_HAND_ID && left_hand_skeleton_enabled)
+                    || (device_id == *RIGHT_HAND_ID && right_hand_skeleton_enabled)
+                {
+                    // On hand tracking, velocities seem to make hands overly jittery
+                    motion.linear_velocity = Vec3::ZERO;
+                    motion.angular_velocity = Vec3::ZERO;
+                } else {
+                    motion.linear_velocity =
+                        cutoff(motion.linear_velocity, config.linear_velocity_cutoff);
+                    motion.angular_velocity =
+                        cutoff(motion.angular_velocity, config.angular_velocity_cutoff);
+                }
 
                 ffi_motions.push(FfiDeviceMotion {
                     deviceID: device_id,

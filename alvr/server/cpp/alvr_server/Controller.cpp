@@ -499,8 +499,34 @@ bool Controller::onPoseUpdate(float predictionS,
         vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_RING], rotRing, 0.0);
         vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_PINKY], rotPinky, 0.0);
     } else {
+        uint64_t currentThumbTouch =
+            m_buttons &
+            (ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH) | ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH) |
+             ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH) | ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH) |
+             ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH));
+        if (m_lastThumbTouch != currentThumbTouch) {
+            m_thumbTouchAnimationProgress += 1.f / ANIMATION_FRAME_COUNT;
+            if (m_thumbTouchAnimationProgress > 1.f) {
+                m_thumbTouchAnimationProgress = 0;
+                m_lastThumbTouch = currentThumbTouch;
+            }
+        } else {
+            m_thumbTouchAnimationProgress = 0;
+        }
+
+        uint64_t currentIndexTouch = m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
+        if (m_lastIndexTouch != currentIndexTouch) {
+            m_indexTouchAnimationProgress += 1.f / ANIMATION_FRAME_COUNT;
+            if (m_indexTouchAnimationProgress > 1.f) {
+                m_indexTouchAnimationProgress = 0;
+                m_lastIndexTouch = currentIndexTouch;
+            }
+        } else {
+            m_indexTouchAnimationProgress = 0;
+        }
+
         switch (Settings::Instance().m_controllerMode) {
-        case 3:
+        case 3: // Valve Index
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_SYSTEM_CLICK],
                 (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_SYSTEM_CLICK)) != 0,
@@ -579,11 +605,21 @@ bool Controller::onPoseUpdate(float predictionS,
             vr_driver_input->UpdateScalarComponent(
                 m_handles[ALVR_INPUT_TRIGGER_VALUE], m_triggerValue, 0.0);
             {
+                float indexCurl = 0.0;
+                if (m_triggerValue > 0.0) {
+                    indexCurl = 0.5 + m_triggerValue * 0.5;
+                } else if (m_lastIndexTouch == 0) {
+                    indexCurl = m_indexTouchAnimationProgress * 0.5;
+                } else {
+                    indexCurl = 0.5 - m_indexTouchAnimationProgress * 0.5;
+                }
                 vr_driver_input->UpdateScalarComponent(
-                    m_handles[ALVR_INPUT_FINGER_INDEX], m_triggerValue, 0.0);
+                    m_handles[ALVR_INPUT_FINGER_INDEX], indexCurl, 0.0);
+
                 vr_driver_input->UpdateScalarComponent(
                     m_handles[ALVR_INPUT_FINGER_MIDDLE], m_gripValue, 0.0);
 
+                // Ring and pinky fingers are not tracked. Infer a more natural pose.
                 if ((m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0 ||
                     (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0 ||
                     (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0 ||
@@ -601,7 +637,7 @@ bool Controller::onPoseUpdate(float predictionS,
                 }
             }
             break;
-        case 5:
+        case 5: // Vive wand
         case 9: // Vive Tracker
             vr_driver_input->UpdateBooleanComponent(
                 m_handles[ALVR_INPUT_TRACKPAD_TOUCH],
@@ -750,76 +786,49 @@ bool Controller::onPoseUpdate(float predictionS,
                 m_handles[ALVR_INPUT_TRIGGER_TOUCH],
                 (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH)) != 0,
                 0.0);
-
-            uint64_t currentThumbTouch =
-                m_buttons &
-                (ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH) | ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH) |
-                 ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH) | ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH) |
-                 ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH));
-            if (m_lastThumbTouch != currentThumbTouch) {
-                m_thumbAnimationProgress += 1.f / ANIMATION_FRAME_COUNT;
-                if (m_thumbAnimationProgress > 1.f) {
-                    m_thumbAnimationProgress = 0;
-                    m_lastThumbTouch = currentThumbTouch;
-                }
-            } else {
-                m_thumbAnimationProgress = 0;
-            }
-
-            uint64_t currentIndexTouch = m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_TRIGGER_TOUCH);
-            if (m_lastIndexTouch != currentIndexTouch) {
-                m_indexAnimationProgress += 1.f / ANIMATION_FRAME_COUNT;
-                if (m_indexAnimationProgress > 1.f) {
-                    m_indexAnimationProgress = 0;
-                    m_lastIndexTouch = currentIndexTouch;
-                }
-            } else {
-                m_indexAnimationProgress = 0;
-            }
-
-            uint64_t lastPoseTouch = m_lastThumbTouch + m_lastIndexTouch;
-
-            vr::VRBoneTransform_t boneTransforms[SKELETON_BONE_COUNT];
-
-            // Perform whatever logic is necessary to convert your device's input into a skeletal
-            // pose, first to create a pose "With Controller", that is as close to the pose of the
-            // user's real hand as possible
-            GetBoneTransform(true,
-                             this->device_id == LEFT_HAND_ID,
-                             m_thumbAnimationProgress,
-                             m_indexAnimationProgress,
-                             lastPoseTouch,
-                             boneTransforms);
-
-            // Then update the WithController pose on the component with those transforms
-            vr::EVRInputError err =
-                vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,
-                                                         vr::VRSkeletalMotionRange_WithController,
-                                                         boneTransforms,
-                                                         SKELETON_BONE_COUNT);
-            if (err != vr::VRInputError_None) {
-                // Handle failure case
-                Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
-            }
-
-            GetBoneTransform(false,
-                             this->device_id == LEFT_HAND_ID,
-                             m_thumbAnimationProgress,
-                             m_indexAnimationProgress,
-                             lastPoseTouch,
-                             boneTransforms);
-
-            // Then update the WithoutController pose on the component
-            err = vr_driver_input->UpdateSkeletonComponent(
-                m_compSkeleton,
-                vr::VRSkeletalMotionRange_WithoutController,
-                boneTransforms,
-                SKELETON_BONE_COUNT);
-            if (err != vr::VRInputError_None) {
-                // Handle failure case
-                Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
-            }
             break;
+        }
+
+        uint64_t lastPoseTouch = m_lastThumbTouch + m_lastIndexTouch;
+
+        vr::VRBoneTransform_t boneTransforms[SKELETON_BONE_COUNT];
+
+        // Perform whatever logic is necessary to convert your device's input into a skeletal
+        // pose, first to create a pose "With Controller", that is as close to the pose of the
+        // user's real hand as possible
+        GetBoneTransform(true,
+                         this->device_id == LEFT_HAND_ID,
+                         m_thumbTouchAnimationProgress,
+                         m_indexTouchAnimationProgress,
+                         lastPoseTouch,
+                         boneTransforms);
+
+        // Then update the WithController pose on the component with those transforms
+        vr::EVRInputError err =
+            vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,
+                                                     vr::VRSkeletalMotionRange_WithController,
+                                                     boneTransforms,
+                                                     SKELETON_BONE_COUNT);
+        if (err != vr::VRInputError_None) {
+            // Handle failure case
+            Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
+        }
+
+        GetBoneTransform(false,
+                         this->device_id == LEFT_HAND_ID,
+                         m_thumbTouchAnimationProgress,
+                         m_indexTouchAnimationProgress,
+                         lastPoseTouch,
+                         boneTransforms);
+
+        // Then update the WithoutController pose on the component
+        err = vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,
+                                                       vr::VRSkeletalMotionRange_WithoutController,
+                                                       boneTransforms,
+                                                       SKELETON_BONE_COUNT);
+        if (err != vr::VRInputError_None) {
+            // Handle failure case
+            Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
         }
     }
 

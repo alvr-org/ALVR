@@ -295,11 +295,13 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
 
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 {
-  avfilter_graph_free(&filter_graph);
-  av_frame_free(&mapped_frame);
-  av_frame_free(&encoder_frame);
-  av_buffer_unref(&hw_ctx);
-  av_buffer_unref(&drm_ctx);
+  // Commented because freeing it here causes a gpu reset, it should be cleaned up away
+  //avcodec_free_context(&encoder_ctx);
+  //avfilter_graph_free(&filter_graph);
+  //av_frame_free(&mapped_frame);
+  //av_frame_free(&encoder_frame);
+  //av_buffer_unref(&hw_ctx);
+  //av_buffer_unref(&drm_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)

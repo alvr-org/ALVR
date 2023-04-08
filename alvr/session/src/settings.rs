@@ -544,11 +544,12 @@ pub struct ControllersDesc {
     pub extra_openvr_props: Vec<OpenvrPropEntry>,
 
     #[schema(strings(
-        display_name = "Pose time offset",
-        help = "This controls how smooth the controllers should track"
+        display_name = "Prediction",
+        help = r"Higher values make the controllers track smoother.
+Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens. Currently this cannot be reliably estimated automatically."
     ))]
-    #[schema(gui(slider(min = -1000, max = 1000, logarithmic)), suffix = "ms")]
-    pub pose_time_offset_ms: i64,
+    #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
+    pub steamvr_pipeline_frames: f32,
 
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "m/s")]
@@ -998,7 +999,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
                     extra_openvr_props: default_custom_openvr_props,
-                    pose_time_offset_ms: 20,
+                    steamvr_pipeline_frames: 4.0,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
                     left_controller_position_offset: [0.0, 0.0, -0.11],

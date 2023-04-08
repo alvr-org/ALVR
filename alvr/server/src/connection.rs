@@ -551,6 +551,11 @@ async fn connection_pipeline(
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size as _,
         Duration::from_secs_f32(1.0 / refresh_rate),
+        if let Switch::Enabled(config) = &settings.headset.controllers {
+            config.steamvr_pipeline_frames
+        } else {
+            0.0
+        },
     ));
 
     *BITRATE_MANAGER.lock() = BitrateManager::new(
@@ -746,16 +751,8 @@ async fn connection_pipeline(
         let mut receiver = stream_socket
             .subscribe_to_stream::<Tracking>(TRACKING)
             .await?;
-        let control_sender = Arc::clone(&control_sender);
         let tracking_manager = Arc::clone(&tracking_manager);
         async move {
-            let tracking_latency_offset_s =
-                if let Switch::Enabled(controllers) = &settings.headset.controllers {
-                    controllers.pose_time_offset_ms
-                } else {
-                    0
-                } as f32
-                    / 1000.;
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
@@ -776,14 +773,13 @@ async fn connection_pipeline(
 
                 drop(tracking_manager_lock);
 
-                let server_prediction_average = if let Some(stats) = &mut *STATISTICS_MANAGER.lock()
-                {
+                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
                     unsafe {
                         crate::SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
-                            tracking_latency_offset_s,
+                            stats.tracker_pose_time_offset().as_secs_f32(),
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
@@ -798,20 +794,7 @@ async fn connection_pipeline(
                             },
                         )
                     };
-
-                    stats.get_server_prediction_average()
-                } else {
-                    Duration::ZERO
-                };
-
-                control_sender
-                    .lock()
-                    .await
-                    .send(&ServerControlPacket::ServerPredictionAverage(
-                        server_prediction_average,
-                    ))
-                    .await
-                    .ok();
+                }
             }
         }
     };

@@ -226,12 +226,8 @@ void DeinitializeStreaming() {
     }
 }
 
-void SendVSync(float frameIntervalS) {
-    vr::Compositor_FrameTiming timings = {sizeof(vr::Compositor_FrameTiming)};
-    vr::VRServerDriverHost()->GetFrameTimings(&timings, 1);
-
-    // Warning: if the vsync offset deviates too much from 0, the latency starts to increase.
-    vr::VRServerDriverHost()->VsyncEvent(-frameIntervalS * timings.m_nNumVSyncsReadyForUse);
+void SendVSync() {
+    vr::VRServerDriverHost()->VsyncEvent(0.0);
 }
 
 void RequestIDR() {

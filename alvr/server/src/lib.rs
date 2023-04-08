@@ -389,7 +389,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 let mut deadline = Instant::now();
 
                 while IS_ALIVE.value() {
-                    unsafe { crate::SendVSync(frame_interval.as_secs_f32()) };
+                    unsafe { crate::SendVSync() };
 
                     while let Ok(interval) = frame_interval_receiver.try_recv() {
                         frame_interval = interval;

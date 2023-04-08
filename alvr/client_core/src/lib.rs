@@ -192,7 +192,7 @@ pub fn get_head_prediction_offset() -> Duration {
 
 pub fn get_tracker_prediction_offset() -> Duration {
     if let Some(stats) = &*STATISTICS_MANAGER.lock() {
-        stats.get_tracker_prediction_offset()
+        stats.tracker_prediction_offset()
     } else {
         Duration::ZERO
     }

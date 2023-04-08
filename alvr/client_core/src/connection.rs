@@ -221,6 +221,12 @@ async fn stream_pipeline(
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size as _,
+        Duration::from_secs_f32(1.0 / stream_config.fps),
+        if let Switch::Enabled(config) = settings.headset.controllers {
+            config.steamvr_pipeline_frames
+        } else {
+            0.0
+        },
     ));
 
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
@@ -513,11 +519,6 @@ async fn stream_pipeline(
                     info!("{SERVER_RESTART_MESSAGE}");
                     set_hud_message(SERVER_RESTART_MESSAGE);
                     break Ok(());
-                }
-                Ok(ServerControlPacket::ServerPredictionAverage(interval)) => {
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_server_prediction_average(interval);
-                    }
                 }
                 Ok(_) => (),
                 Err(e) => {

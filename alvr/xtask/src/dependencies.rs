@@ -104,14 +104,14 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
         &sh,
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n5.1",
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
         &download_path,
     )
     .unwrap();
 
     let final_path = download_path.join("ffmpeg");
 
-    fs::rename(download_path.join("FFmpeg-n5.1"), &final_path).unwrap();
+    fs::rename(download_path.join("FFmpeg-n6.0"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -123,21 +123,16 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--disable-avdevice",
         "--disable-avformat",
         "--disable-swresample",
+        "--disable-swscale",
         "--disable-postproc",
         "--disable-network",
         "--enable-lto",
         "--disable-everything",
         "--enable-encoder=h264_vaapi",
         "--enable-encoder=hevc_vaapi",
-        "--enable-encoder=libx264",
-        "--enable-encoder=libx264rgb",
-        // "--enable-encoder=libx265",
         "--enable-hwaccel=h264_vaapi",
         "--enable-hwaccel=hevc_vaapi",
-        "--enable-filter=scale",
         "--enable-filter=scale_vaapi",
-        "--enable-libx264",
-        // "--enable-libx265",
         "--enable-vulkan",
         "--enable-libdrm",
         "--enable-pic",

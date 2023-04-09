@@ -141,6 +141,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         pkg_config::Config::new().probe("vulkan").unwrap();
+        pkg_config::Config::new().probe("x264").unwrap();
 
         // fail build if there are undefined symbols in final library
         println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");

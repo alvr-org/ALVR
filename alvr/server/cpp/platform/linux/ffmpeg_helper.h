@@ -19,8 +19,6 @@ extern "C" {
   #include <libavutil/hwcontext.h>
   #include <libavutil/hwcontext_vulkan.h>
   #include <libavutil/hwcontext_drm.h>
-
-  #include <libswscale/swscale.h>
 }
 
 #include "Renderer.h"

@@ -546,7 +546,8 @@ pub struct ControllersDesc {
     #[schema(strings(
         display_name = "Prediction",
         help = r"Higher values make the controllers track smoother.
-Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens. Currently this cannot be reliably estimated automatically."
+Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens.
+Currently this cannot be reliably estimated automatically. The correct value should be 2 but 3 is default for smoother tracking at the cost of slight lag."
     ))]
     #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
     pub steamvr_pipeline_frames: f32,
@@ -999,7 +1000,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
                     extra_openvr_props: default_custom_openvr_props,
-                    steamvr_pipeline_frames: 4.0,
+                    steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
                     left_controller_position_offset: [0.0, 0.0, -0.11],

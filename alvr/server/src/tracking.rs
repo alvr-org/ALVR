@@ -177,7 +177,7 @@ impl TrackingManager {
                 motion.pose.orientation *= pose_offset.orientation;
                 motion.pose.position += motion.pose.orientation * pose_offset.position;
 
-                motion.linear_velocity = motion
+                motion.linear_velocity += motion
                     .angular_velocity
                     .cross(motion.pose.orientation * pose_offset.position);
                 motion.angular_velocity =

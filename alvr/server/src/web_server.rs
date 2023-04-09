@@ -165,7 +165,7 @@ async fn http_api(
             };
 
             if let Some(config) = &*DECODER_CONFIG.lock() {
-                sender.send(config.clone()).ok();
+                sender.send(config.config_buffer.clone()).ok();
             }
 
             let res = websocket(request, sender, protocol::Message::Binary).await?;

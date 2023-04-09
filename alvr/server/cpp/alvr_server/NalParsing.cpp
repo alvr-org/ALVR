@@ -58,7 +58,8 @@ void sendHeaders(unsigned char *&buf, int &len, int nalNum) {
     if (foundHeaders != nalNum) {
         return;
     }
-    InitializeDecoder((const unsigned char *)buf, headersLen);
+    // todo: select available codec
+    InitializeDecoder((const unsigned char *)buf, headersLen, Settings::Instance().m_codec);
 
     // move the cursor forward excluding config NALs
     buf = cursor;

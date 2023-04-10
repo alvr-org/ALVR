@@ -269,7 +269,6 @@ async fn stream_pipeline(
     {
         let config = &mut *DECODER_INIT_CONFIG.lock();
 
-        config.codec = settings.video.codec;
         config.max_buffering_frames = settings.video.max_buffering_frames;
         config.buffering_history_weight = settings.video.buffering_history_weight;
         config.options = settings
@@ -512,8 +511,8 @@ async fn stream_pipeline(
     let control_receive_loop = async move {
         loop {
             match control_receiver.recv().await {
-                Ok(ServerControlPacket::InitializeDecoder { config_buffer }) => {
-                    decoder::create_decoder(config_buffer);
+                Ok(ServerControlPacket::InitializeDecoder(config)) => {
+                    decoder::create_decoder(config);
                 }
                 Ok(ServerControlPacket::Restarting) => {
                     info!("{SERVER_RESTART_MESSAGE}");

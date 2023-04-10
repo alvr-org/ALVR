@@ -1,6 +1,7 @@
 use crate::{ClientCoreEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
 use alvr_session::{CodecType, MediacodecDataType};
+use alvr_sockets::DecoderInitializationConfig;
 use std::time::Duration;
 
 #[cfg(target_os = "android")]
@@ -31,22 +32,23 @@ pub static DECODER_DEQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderDequ
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
 
-pub fn create_decoder(config_nal: Vec<u8>) {
-    let config = DECODER_INIT_CONFIG.lock();
+pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
+    let mut config = DECODER_INIT_CONFIG.lock();
+    config.codec = lazy_config.codec;
 
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE
             .lock()
             .push_back(ClientCoreEvent::CreateDecoder {
                 codec: config.codec,
-                config_nal,
+                config_nal: lazy_config.config_buffer,
             });
     } else {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
             let (enqueuer, dequeuer) = crate::platform::video_decoder_split(
                 config.clone(),
-                config_nal,
+                lazy_config.config_buffer,
                 |target_timestamp| {
                     if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
                         stats.report_frame_decoded(target_timestamp);

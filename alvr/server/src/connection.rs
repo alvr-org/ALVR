@@ -866,11 +866,9 @@ async fn connection_pipeline(
                 }
                 Ok(ClientControlPacket::RequestIdr) => {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                        if let Some(config_buffer) = &*DECODER_CONFIG.lock() {
+                        if let Some(config) = &*DECODER_CONFIG.lock() {
                             sender
-                                .send(ServerControlPacket::InitializeDecoder {
-                                    config_buffer: config_buffer.clone(),
-                                })
+                                .send(ServerControlPacket::InitializeDecoder(config.clone()))
                                 .ok();
                         }
                     }

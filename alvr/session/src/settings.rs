@@ -298,9 +298,9 @@ pub struct ColorCorrectionDesc {
 #[schema(gui = "button_group")]
 pub enum CodecType {
     #[schema(strings(display_name = "h264"))]
-    H264,
+    H264 = 0,
     #[schema(strings(display_name = "HEVC"))]
-    Hevc,
+    Hevc = 1,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]

@@ -96,22 +96,24 @@ impl BitrateManager {
             }
         }
 
-        if decoder_latency > Duration::from_millis(self.config.max_decoder_latency_ms) {
-            self.decoder_latency_overstep_count += 1;
+        if let Switch::Enabled(config) = &self.config.decoder_latency_fixer {
+            if decoder_latency > Duration::from_millis(config.max_decoder_latency_ms) {
+                self.decoder_latency_overstep_count += 1;
 
-            if self.decoder_latency_overstep_count
-                == self.config.decoder_latency_overstep_frames as usize
-            {
-                self.dynamic_max_bitrate =
-                    f32::min(self.bitrate_average.get_average(), self.dynamic_max_bitrate)
-                        * self.config.decoder_latency_overstep_multiplier;
+                if self.decoder_latency_overstep_count
+                    == config.decoder_latency_overstep_frames as usize
+                {
+                    self.dynamic_max_bitrate =
+                        f32::min(self.bitrate_average.get_average(), self.dynamic_max_bitrate)
+                            * config.decoder_latency_overstep_multiplier;
 
-                self.update_needed = true;
+                    self.update_needed = true;
 
+                    self.decoder_latency_overstep_count = 0;
+                }
+            } else {
                 self.decoder_latency_overstep_count = 0;
             }
-        } else {
-            self.decoder_latency_overstep_count = 0;
         }
     }
 

@@ -195,16 +195,7 @@ pub enum BitrateMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct BitrateConfig {
-    pub mode: BitrateMode,
-
-    #[schema(gui(slider(min = 0.01, max = 2.0, step = 0.01)))]
-    pub framerate_reset_threshold_multiplier: f32,
-
-    #[schema(strings(display_name = "Maximum network latency"))]
-    #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
-    pub max_network_latency_ms: Switch<u64>,
-
+pub struct DecoderLatencyFixer {
     #[schema(strings(
         display_name = "Maximum decoder latency",
         help = "When the decoder latency goes above this threshold, the bitrate will be reduced"
@@ -224,6 +215,23 @@ pub struct BitrateConfig {
     ))]
     #[schema(gui(slider(min = 0.5, max = 1.0)))]
     pub decoder_latency_overstep_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct BitrateConfig {
+    pub mode: BitrateMode,
+
+    #[schema(gui(slider(min = 0.01, max = 2.0, step = 0.01)))]
+    pub framerate_reset_threshold_multiplier: f32,
+
+    #[schema(strings(display_name = "Maximum network latency"))]
+    #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
+    pub max_network_latency_ms: Switch<u64>,
+
+    #[schema(strings(
+        help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
+    ))]
+    pub decoder_latency_fixer: Switch<DecoderLatencyFixer>,
 }
 
 #[repr(u8)]
@@ -852,9 +860,14 @@ pub fn session_settings_default() -> SettingsDefault {
                     enabled: false,
                     content: 8,
                 },
-                max_decoder_latency_ms: 15,
-                decoder_latency_overstep_frames: 15,
-                decoder_latency_overstep_multiplier: 0.99,
+                decoder_latency_fixer: SwitchDefault {
+                    enabled: true,
+                    content: DecoderLatencyFixerDefault {
+                        max_decoder_latency_ms: 20,
+                        decoder_latency_overstep_frames: 30,
+                        decoder_latency_overstep_multiplier: 0.99,
+                    },
+                },
             },
             advanced_codec_options: AdvancedCodecOptionsDefault {
                 nvenc_overrides: NvencOverridesDefault {

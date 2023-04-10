@@ -241,14 +241,17 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   AVFilterInOut *outputs = avfilter_inout_alloc();
   AVFilterInOut *inputs = avfilter_inout_alloc();
 
-  filter_in = avfilter_graph_alloc_filter(filter_graph, avfilter_get_by_name("buffer"), "in");
-
+  std::stringstream buffer_filter_args;
+  buffer_filter_args << "video_size=" << mapped_frame->width << "x" << mapped_frame->height;
+  buffer_filter_args << ":pix_fmt=" << mapped_frame->format;
+  buffer_filter_args << ":time_base=" << encoder_ctx->time_base.num << "/" << encoder_ctx->time_base.den;
+  if ((err = avfilter_graph_create_filter(&filter_in, avfilter_get_by_name("buffer"), "in", buffer_filter_args.str().c_str(), NULL, filter_graph)))
+  {
+    throw alvr::AvException("filter_in creation failed:", err);
+  }
   AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
   memset(par, 0, sizeof(*par));
-  par->width = mapped_frame->width;
-  par->height = mapped_frame->height;
-  par->time_base = encoder_ctx->time_base;
-  par->format = mapped_frame->format;
+  par->format = AV_PIX_FMT_NONE;
   par->hw_frames_ctx = av_buffer_ref(mapped_frame->hw_frames_ctx);
   av_buffersrc_parameters_set(filter_in, par);
   av_free(par);

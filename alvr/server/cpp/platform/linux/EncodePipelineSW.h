@@ -18,6 +18,7 @@ public:
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
   bool GetEncoded(FramePacket &packet) override;
   void SetParams(FfiDynamicEncoderParams params) override;
+  int GetCodec() override;
 
 private:
   x264_t *enc = nullptr;

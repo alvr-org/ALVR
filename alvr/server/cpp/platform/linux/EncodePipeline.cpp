@@ -82,3 +82,8 @@ bool alvr::EncodePipeline::GetEncoded(FramePacket &packet)
   packet.pts = encoder_packet->pts;
   return true;
 }
+
+int alvr::EncodePipeline::GetCodec()
+{
+  return Settings::Instance().m_codec;
+}

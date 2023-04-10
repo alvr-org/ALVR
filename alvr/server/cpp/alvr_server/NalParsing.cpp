@@ -30,7 +30,7 @@ Sends the (VPS + )SPS + PPS video configuration headers from H.264 or H.265 stre
 NALs. (VPS + )SPS + PPS have short size (8bytes + 28bytes in some environment), so we can assume
 SPS + PPS is contained in first fragment.
 */
-void sendHeaders(unsigned char *&buf, int &len, int nalNum) {
+void sendHeaders(int codec, unsigned char *&buf, int &len, int nalNum) {
     unsigned char *cursor = buf;
     int headersLen = 0;
     int foundHeaders = -1; // Offset by 1 header to find the length until the next header
@@ -58,8 +58,8 @@ void sendHeaders(unsigned char *&buf, int &len, int nalNum) {
     if (foundHeaders != nalNum) {
         return;
     }
-    // todo: select available codec
-    InitializeDecoder((const unsigned char *)buf, headersLen, Settings::Instance().m_codec);
+
+    InitializeDecoder((const unsigned char *)buf, headersLen, codec);
 
     // move the cursor forward excluding config NALs
     buf = cursor;
@@ -77,7 +77,7 @@ void processH264Nals(unsigned char *&buf, int &len) {
         nalType = buf[prefixSize] & 0x1F;
     }
     if (nalType == H264_NAL_TYPE_SPS) {
-        sendHeaders(buf, len, 2); // 2 headers SPS and PPS
+        sendHeaders(ALVR_CODEC_H264, buf, len, 2); // 2 headers SPS and PPS
     }
 }
 
@@ -92,11 +92,11 @@ void processH265Nals(unsigned char *&buf, int &len) {
         nalType = (buf[prefixSize] >> 1) & 0x3F;
     }
     if (nalType == H265_NAL_TYPE_VPS) {
-        sendHeaders(buf, len, 3); // 3 headers VPS, SPS and PPS
+        sendHeaders(ALVR_CODEC_H265, buf, len, 3); // 3 headers VPS, SPS and PPS
     }
 }
 
-void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimestampNs) {
+void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs) {
     // Report before the frame is packetized
     ReportEncoded(targetTimestampNs);
 
@@ -104,7 +104,6 @@ void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimest
         return;
     }
 
-    int codec = Settings::Instance().m_codec;
     if (codec == ALVR_CODEC_H264) {
         processH264Nals(buf, len);
     } else if (codec == ALVR_CODEC_H265) {

@@ -37,12 +37,6 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
 {
   const auto& settings = Settings::Instance();
 
-  if (settings.m_codec == ALVR_CODEC_H265)
-  {
-    // TODO: Make it work?
-    throw std::runtime_error("HEVC is not supported by SW encoder");
-  }
-
   x264_param_default_preset(&param, "ultrafast", "zerolatency");
   x264_param_apply_profile(&param, "high");
 
@@ -129,4 +123,9 @@ void alvr::EncodePipelineSW::SetParams(FfiDynamicEncoderParams params)
   if (enc) {
     x264_encoder_reconfig(enc, &param);
   }
+}
+
+int alvr::EncodePipelineSW::GetCodec()
+{
+  return ALVR_CODEC_H264;
 }

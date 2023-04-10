@@ -144,4 +144,4 @@ extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
 extern "C" void CaptureFrame();
 
 // NalParsing.cpp
-void ParseFrameNals(unsigned char *buf, int len, unsigned long long targetTimestampNs);
+void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs);

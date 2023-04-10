@@ -14,7 +14,7 @@
 VideoEncoderSW::VideoEncoderSW(std::shared_ptr<CD3DRender> d3dRender
 	, int width, int height)
 	: m_d3dRender(d3dRender)
-	, m_codec(static_cast<ALVR_CODEC>(Settings::Instance().m_codec))
+	, m_codec(ALVR_CODEC_H264)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
@@ -39,10 +39,6 @@ void VideoEncoderSW::Initialize() {
 	int err;
 	Debug("Initializing VideoEncoderSW.\n");
 
-	if (m_codec == ALVR_CODEC_H265) {
-		throw MakeException("H.265 encoding is not supported by software encoding.");
-	}
-
 	const auto& settings = Settings::Instance();
 
 	// Query codec
@@ -60,29 +56,24 @@ void VideoEncoderSW::Initialize() {
 	AVDictionary* opt = NULL;
 	av_dict_set(&opt, "preset", "ultrafast", 0);
 	av_dict_set(&opt, "tune", "zerolatency", 0);
-	switch (m_codec) {
-		case ALVR_CODEC_H264:
-			m_codecContext->profile = settings.m_use10bitEncoder ? FF_PROFILE_H264_HIGH_10 : FF_PROFILE_H264_HIGH;
-			switch (settings.m_entropyCoding) {
-				case ALVR_CABAC:
-					av_dict_set(&opt, "coder", "ac", 0);
-					break;
-				case ALVR_CAVLC:
-					av_dict_set(&opt, "coder", "vlc", 0);
-					break;
-			}
+
+	m_codecContext->profile = FF_PROFILE_H264_HIGH;
+	switch (settings.m_entropyCoding) {
+		case ALVR_CABAC:
+			av_dict_set(&opt, "coder", "ac", 0);
 			break;
-		case ALVR_CODEC_H265:
-			m_codecContext->profile = settings.m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
+		case ALVR_CAVLC:
+			av_dict_set(&opt, "coder", "vlc", 0);
 			break;
 	}
+	break;
 
 	m_codecContext->width = m_renderWidth;
 	m_codecContext->height = m_renderHeight;
 	m_codecContext->time_base = AVRational{1, (int)(1e9)};
 	m_codecContext->framerate = AVRational{settings.m_refreshRate, 1};
 	m_codecContext->sample_aspect_ratio = AVRational{1, 1};
-	m_codecContext->pix_fmt = settings.m_use10bitEncoder && m_codec == ALVR_CODEC_H265 ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+	m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
 	m_codecContext->max_b_frames = 0;
 	m_codecContext->gop_size = 0;
 	m_codecContext->bit_rate = m_bitrateInMBits * 1'000'000L;
@@ -209,7 +200,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 			break;
 		}
 		// Send encoded frame to client
-		ParseFrameNals(packet->data, packet->size, packet->pts);
+		ParseFrameNals(m_codec, packet->data, packet->size, packet->pts);
 		//Debug("Sent encoded packet to client");
 		av_packet_free(&packet);
 	}

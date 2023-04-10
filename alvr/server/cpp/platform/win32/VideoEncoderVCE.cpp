@@ -437,7 +437,7 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 		fpOut.write(p, length);
 	}
 
-	ParseFrameNals(reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
+	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

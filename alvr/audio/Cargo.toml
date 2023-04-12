@@ -18,7 +18,7 @@ tokio = "1"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "1"
-windows = { version = "0.46", features = [
+windows = { version = "0.48", features = [
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio_Endpoints",

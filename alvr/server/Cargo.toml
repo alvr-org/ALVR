@@ -60,7 +60,7 @@ spin_sleep = "1.1.1"
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.64"
+bindgen = "0.65"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 

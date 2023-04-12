@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 alvr_filesystem.workspace = true
 
 [build-dependencies]
-bindgen = "0.64"
+bindgen = "0.65"
 cc = { version = "1", features = ["parallel"] }
 pkg-config = "0.3"
 walkdir = "2"

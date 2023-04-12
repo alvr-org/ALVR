@@ -91,7 +91,7 @@ pub struct NvencOverrides {
     #[schema(strings(
         help = "P1 is the fastest preset and P7 is the preset that produces better quality. P6 and P7 are too slow to be usable."
     ))]
-    #[schema(flag = "streamvr-restart")]
+    #[schema(flag = "steamvr-restart")]
     pub nvenc_quality_preset: EncoderQualityPresetNvidia,
 
     pub tuning_preset: NvencTuningPreset,
@@ -138,7 +138,7 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct AmfControls {
-    #[schema(flag = "streamvr-restart")]
+    #[schema(flag = "steamvr-restart")]
     pub amd_encoder_quality_preset: EncoderQualityPresetAmd,
     #[schema(flag = "steamvr-restart")]
     pub enable_vbaq: bool,
@@ -163,10 +163,10 @@ pub enum MediacodecDataType {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 
 pub struct AdvancedCodecOptions {
-    #[schema(flag = "streamvr-restart")]
+    #[schema(flag = "steamvr-restart")]
     pub nvenc_overrides: NvencOverrides,
 
-    #[schema(flag = "streamvr-restart")]
+    #[schema(flag = "steamvr-restart")]
     pub amf_controls: AmfControls,
 
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,

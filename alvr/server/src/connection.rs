@@ -296,14 +296,14 @@ fn try_connect(
             ControllersEmulationMode::ViveTracker => 9,
         };
         override_trigger_threshold =
-            if let Switch::Enabled(config) = config.override_trigger_threshold {
-                trigger_threshold = config.trigger_threshold;
+            if let Switch::Enabled(value) = config.trigger_threshold_override {
+                trigger_threshold = value;
                 true
             } else {
                 false
             };
-        override_grip_threshold = if let Switch::Enabled(config) = config.override_grip_threshold {
-            grip_threshold = config.grip_threshold;
+        override_grip_threshold = if let Switch::Enabled(value) = config.grip_threshold_override {
+            grip_threshold = value;
             true
         } else {
             false
@@ -349,8 +349,8 @@ fn try_connect(
         false
     };
 
-    let nvenc_overrides = settings.video.advanced_codec_options.nvenc_overrides;
-    let amf_controls = settings.video.advanced_codec_options.amf_controls;
+    let nvenc_overrides = settings.video.encoder_config.nvenc;
+    let amf_controls = settings.video.encoder_config.amf;
 
     let new_openvr_config = OpenvrConfig {
         eye_resolution_width: stream_view_resolution.x,
@@ -361,20 +361,24 @@ fn try_connect(
         enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
-        codec: matches!(settings.video.codec, CodecType::Hevc) as _,
-        rate_control_mode: settings.video.rate_control_mode as u32,
-        filler_data: settings.video.filler_data,
-        entropy_coding: settings.video.entropy_coding as u32,
+        codec: matches!(settings.video.preferred_codec, CodecType::Hevc) as _,
+        rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
+        filler_data: settings.video.encoder_config.filler_data,
+        entropy_coding: settings.video.encoder_config.entropy_coding as u32,
         refresh_rate: fps as _,
-        use_10bit_encoder: settings.video.use_10bit_encoder,
+        use_10bit_encoder: settings.video.encoder_config.use_10bit,
         enable_vbaq: amf_controls.enable_vbaq,
         use_preproc: amf_controls.use_preproc,
         preproc_sigma: amf_controls.preproc_sigma,
         preproc_tor: amf_controls.preproc_tor,
-        nvenc_quality_preset: nvenc_overrides.nvenc_quality_preset as u32,
-        amd_encoder_quality_preset: amf_controls.amd_encoder_quality_preset as u32,
-        force_sw_encoding: settings.video.force_sw_encoding,
-        sw_thread_count: settings.video.sw_thread_count,
+        nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
+        amd_encoder_quality_preset: amf_controls.quality_preset as u32,
+        force_sw_encoding: settings
+            .video
+            .encoder_config
+            .software
+            .force_software_encoding,
+        sw_thread_count: settings.video.encoder_config.software.thread_count,
         controllers_enabled,
         controllers_mode_idx,
         override_trigger_threshold,
@@ -394,7 +398,7 @@ fn try_connect(
         saturation,
         gamma,
         sharpening,
-        linux_async_reprojection: settings.extra.patches.linux_async_reprojection,
+        linux_async_reprojection: settings.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
         nvenc_adaptive_quantization_mode: nvenc_overrides.adaptive_quantization_mode as u32,
@@ -412,7 +416,7 @@ fn try_connect(
         rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
         rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
         nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
-        capture_frame_dir: settings.extra.capture_frame_dir,
+        capture_frame_dir: settings.capture.capture_frame_dir,
     };
 
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {
@@ -582,7 +586,7 @@ async fn connection_pipeline(
         }
     }
 
-    if settings.extra.save_video_stream {
+    if settings.capture.save_video_stream {
         crate::create_recording_file();
     }
 
@@ -708,7 +712,7 @@ async fn connection_pipeline(
                 .map(HapticsManager::new);
 
             while let Some(haptics) = data_receiver.recv().await {
-                if settings.extra.log_haptics {
+                if settings.logging.log_haptics {
                     alvr_events::send_event(EventType::Haptics(HapticsEvent {
                         path: DEVICE_ID_TO_PATH
                             .get(&haptics.device_id)
@@ -907,7 +911,7 @@ async fn connection_pipeline(
                     }
                 },
                 Ok(ClientControlPacket::Button { path_id, value }) => {
-                    if settings.extra.log_button_presses {
+                    if settings.logging.log_button_presses {
                         alvr_events::send_event(EventType::Button(ButtonEvent {
                             path: BUTTON_PATH_FROM_ID
                                 .get(&path_id)

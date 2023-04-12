@@ -109,7 +109,7 @@ impl Launcher {
     pub fn launch_steamvr(&self) {
         let mut data_source = data_sources::get_local_data_source();
 
-        let launch_action = &data_source.settings().extra.driver_launch_action;
+        let launch_action = &data_source.settings().steamvr_launcher.driver_launch_action;
 
         if !matches!(launch_action, DriverLaunchAction::NoAction) {
             let other_drivers_paths = if matches!(

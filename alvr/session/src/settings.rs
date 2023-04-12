@@ -87,13 +87,13 @@ pub enum EntropyCoding {
 
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct NvencOverrides {
+pub struct NvencConfig {
     #[schema(strings(
         help = "P1 is the fastest preset and P7 is the preset that produces better quality. P6 and P7 are too slow to be usable."
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub nvenc_quality_preset: EncoderQualityPresetNvidia,
-
+    pub quality_preset: EncoderQualityPresetNvidia,
+    #[schema(flag = "steamvr-restart")]
     pub tuning_preset: NvencTuningPreset,
     #[schema(strings(
         help = "Reduce compression artifacts at the cost of small performance penalty"
@@ -137,10 +137,10 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct AmfControls {
+pub struct AmfConfig {
     #[schema(flag = "steamvr-restart")]
-    pub amd_encoder_quality_preset: EncoderQualityPresetAmd,
-    #[schema(flag = "steamvr-restart")]
+    pub quality_preset: EncoderQualityPresetAmd,
+    #[schema(strings(display_name = "Enable VBAQ"), flag = "steamvr-restart")]
     pub enable_vbaq: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,
@@ -152,24 +152,63 @@ pub struct AmfControls {
     pub preproc_tor: u32,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct SoftwareEncodingConfig {
+    #[schema(strings(
+        display_name = "Force software encoding",
+        help = "Forces the encoder to use CPU instead of GPU"
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub force_software_encoding: bool,
+
+    #[schema(strings(display_name = "Encoder thread count"))]
+    #[schema(flag = "steamvr-restart")]
+    pub thread_count: u32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+
+pub struct EncoderConfig {
+    #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
+VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
+    #[schema(flag = "steamvr-restart")]
+    pub rate_control_mode: RateControlMode,
+
+    #[schema(strings(
+        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub filler_data: bool,
+
+    #[schema(strings(help = r#"CAVLC algorithm is recommended.
+CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
+    #[schema(flag = "steamvr-restart")]
+    pub entropy_coding: EntropyCoding,
+
+    #[schema(strings(
+        display_name = "Reduce color banding",
+        help = "Sets the encoder to use 10 bits per channel instead of 8. Does not work on Linux with Nvidia"
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub use_10bit: bool,
+
+    #[schema(strings(display_name = "NVENC"))]
+    #[schema(flag = "steamvr-restart")]
+    pub nvenc: NvencConfig,
+
+    #[schema(strings(display_name = "AMF"))]
+    #[schema(flag = "steamvr-restart")]
+    pub amf: AmfConfig,
+
+    pub software: SoftwareEncodingConfig,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Debug)]
 pub enum MediacodecDataType {
     Float(f32),
     Int32(i32),
     Int64(i64),
     String(String),
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-
-pub struct AdvancedCodecOptions {
-    #[schema(flag = "steamvr-restart")]
-    pub nvenc_overrides: NvencOverrides,
-
-    #[schema(flag = "steamvr-restart")]
-    pub amf_controls: AmfControls,
-
-    pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -204,17 +243,17 @@ pub struct DecoderLatencyFixer {
     pub max_decoder_latency_ms: u64,
 
     #[schema(strings(
-        display_name = "Decoder latency overstep",
+        display_name = "latency overstep",
         help = "Number of consecutive frames above the threshold to trigger a bitrate reduction"
     ))]
     #[schema(gui(slider(min = 1, max = 100)), suffix = " frames")]
-    pub decoder_latency_overstep_frames: u64,
+    pub latency_overstep_frames: u64,
 
     #[schema(strings(
         help = "Controls how much the bitrate is reduced when the decoder latency goes above the threshold"
     ))]
     #[schema(gui(slider(min = 0.5, max = 1.0)))]
-    pub decoder_latency_overstep_multiplier: f32,
+    pub latency_overstep_multiplier: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -347,50 +386,18 @@ pub struct VideoDesc {
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    pub bitrate: BitrateConfig,
+
     #[schema(strings(
         help = "HEVC may provide better visual fidelity at the cost of increased encoder latency"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub codec: CodecType,
-
-    #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
-VBR: Variable BitRate mode. Not commended because it may throw off the adaptive bitrate algorithm. This is only supported on Windows and only with AMD/Nvidia GPUs"#))]
-    #[schema(flag = "steamvr-restart")]
-    pub rate_control_mode: RateControlMode,
-
-    #[schema(strings(
-        help = r#"In CBR mode, this makes sure the bitrate does not fall below the assigned value. This is mostly useful for debugging."#
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub filler_data: bool,
-
-    #[schema(strings(help = r#"CAVLC algorithm is recommended.
-CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
-    #[schema(flag = "steamvr-restart")]
-    pub entropy_coding: EntropyCoding,
-
-    #[schema(strings(
-        display_name = "Reduce color banding",
-        help = "Sets the encoder to use 10 bits per channel instead of 8. Does not work on Linux with Nvidia"
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub use_10bit_encoder: bool,
-
-    #[schema(strings(
-        display_name = "Force software encoding",
-        help = "Forces the encoder to use CPU instead of GPU"
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub force_sw_encoding: bool,
-
-    #[schema(strings(display_name = "Software encoder thread count"))]
-    #[schema(flag = "steamvr-restart")]
-    pub sw_thread_count: u32,
-
-    pub bitrate: BitrateConfig,
+    pub preferred_codec: CodecType,
 
     #[schema(flag = "steamvr-restart")]
-    pub advanced_codec_options: AdvancedCodecOptions,
+    pub encoder_config: EncoderConfig,
+
+    pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
@@ -519,18 +526,6 @@ pub enum ControllersEmulationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ControllersTriggerOverrideDesc {
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub trigger_threshold: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ControllersGripOverrideDesc {
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub grip_threshold: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HapticsConfig {
     #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
     pub intensity_multiplier: f32,
@@ -583,10 +578,12 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     pub left_hand_tracking_rotation_offset: [f32; 3],
 
     #[schema(flag = "steamvr-restart")]
-    pub override_trigger_threshold: Switch<ControllersTriggerOverrideDesc>,
+    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
+    pub trigger_threshold_override: Switch<f32>,
 
     #[schema(flag = "steamvr-restart")]
-    pub override_grip_threshold: Switch<ControllersGripOverrideDesc>,
+    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
+    pub grip_threshold_override: Switch<f32>,
 
     pub haptics: Switch<HapticsConfig>,
 }
@@ -666,7 +663,7 @@ pub enum SocketBufferSize {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct DisconnectionCriteria {
-    #[schema(strings(display_name = "latency threshold"))]
+    #[schema(strings(display_name = "Latency threshold"))]
     #[schema(gui(slider(min = 20, max = 1000, logarithmic)), suffix = "ms")]
     pub latency_threshold_ms: u64,
 
@@ -703,6 +700,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     #[schema(strings(
         help = "Reduce minimum delay between keyframes from 100ms to 5ms. Use on networks with high packet loss."
     ))]
+    #[schema(flag = "steamvr-restart")]
     pub aggressive_keyframe_resend: bool,
 
     #[schema(strings(
@@ -725,6 +723,16 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct LoggingConfig {
+    #[schema(strings(help = "Write logs into the session_log.txt file."))]
+    pub log_to_disk: bool,
+    pub log_button_presses: bool,
+    pub log_haptics: bool,
+    pub notification_level: LogSeverity,
+    pub show_raw_events: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum DriverLaunchAction {
     UnregisterOtherDriversAtStartup,
     #[schema(strings(display_name = "Unregister ALVR at shutdown"))]
@@ -733,20 +741,7 @@ pub enum DriverLaunchAction {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct Patches {
-    #[schema(strings(help = "AMD users should keep this on. Must be off for Nvidia GPUs!",))]
-    #[schema(flag = "steamvr-restart")]
-    pub linux_async_reprojection: bool,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ExtraDesc {
-    #[schema(strings(help = "Write logs into the session_log.txt file."))]
-    pub log_to_disk: bool,
-    pub log_button_presses: bool,
-    pub log_haptics: bool,
-    pub save_video_stream: bool,
-
+pub struct SteamvrLauncher {
     #[schema(strings(
         help = r#"This controls the driver registration operations while launching SteamVR.
 Unregister other drivers at startup: This is the recommended option and will handle most interferences from other installed drivers.
@@ -757,16 +752,21 @@ No action: All driver registration actions should be performed manually, ALVR in
 
     #[schema(strings(display_name = "Open and close SteamVR with dashboard"))]
     pub open_close_steamvr_with_dashboard: bool,
+}
 
-    pub notification_level: LogSeverity,
-    pub show_raw_events: bool,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct CaptureConfig {
+    pub save_video_stream: bool,
 
     #[schema(flag = "steamvr-restart")]
     pub capture_frame_dir: String,
+}
 
-    pub open_setup_wizard: bool,
-
-    pub patches: Patches,
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct Patches {
+    #[schema(strings(help = "AMD users should keep this on. Must be off for Nvidia GPUs!",))]
+    #[schema(flag = "steamvr-restart")]
+    pub linux_async_reprojection: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -775,7 +775,11 @@ pub struct Settings {
     pub audio: AudioConfig,
     pub headset: HeadsetDesc,
     pub connection: ConnectionDesc,
-    pub extra: ExtraDesc,
+    pub logging: LoggingConfig,
+    pub steamvr_launcher: SteamvrLauncher,
+    pub capture: CaptureConfig,
+    pub patches: Patches,
+    pub open_setup_wizard: bool,
 }
 
 pub fn session_settings_default() -> SettingsDefault {
@@ -826,19 +830,6 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_fps: 72.,
             max_buffering_frames: 1.5,
             buffering_history_weight: 0.90,
-            codec: CodecTypeDefault {
-                variant: CodecTypeDefaultVariant::H264,
-            },
-            rate_control_mode: RateControlModeDefault {
-                variant: RateControlModeDefaultVariant::Cbr,
-            },
-            filler_data: false,
-            entropy_coding: EntropyCodingDefault {
-                variant: EntropyCodingDefaultVariant::Cavlc,
-            },
-            use_10bit_encoder: false,
-            force_sw_encoding: false,
-            sw_thread_count: 0,
             bitrate: BitrateConfigDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
@@ -864,14 +855,25 @@ pub fn session_settings_default() -> SettingsDefault {
                     enabled: true,
                     content: DecoderLatencyFixerDefault {
                         max_decoder_latency_ms: 20,
-                        decoder_latency_overstep_frames: 30,
-                        decoder_latency_overstep_multiplier: 0.99,
+                        latency_overstep_frames: 30,
+                        latency_overstep_multiplier: 0.99,
                     },
                 },
             },
-            advanced_codec_options: AdvancedCodecOptionsDefault {
-                nvenc_overrides: NvencOverridesDefault {
-                    nvenc_quality_preset: EncoderQualityPresetNvidiaDefault {
+            preferred_codec: CodecTypeDefault {
+                variant: CodecTypeDefaultVariant::H264,
+            },
+            encoder_config: EncoderConfigDefault {
+                rate_control_mode: RateControlModeDefault {
+                    variant: RateControlModeDefaultVariant::Cbr,
+                },
+                filler_data: false,
+                entropy_coding: EntropyCodingDefault {
+                    variant: EntropyCodingDefaultVariant::Cavlc,
+                },
+                use_10bit: false,
+                nvenc: NvencConfigDefault {
+                    quality_preset: EncoderQualityPresetNvidiaDefault {
                         variant: EncoderQualityPresetNvidiaDefaultVariant::P1,
                     },
                     tuning_preset: NvencTuningPresetDefault {
@@ -898,8 +900,8 @@ pub fn session_settings_default() -> SettingsDefault {
                     rc_average_bitrate: -1,
                     enable_weighted_prediction: false,
                 },
-                amf_controls: AmfControlsDefault {
-                    amd_encoder_quality_preset: EncoderQualityPresetAmdDefault {
+                amf: AmfConfigDefault {
+                    quality_preset: EncoderQualityPresetAmdDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
                     enable_vbaq: false,
@@ -907,32 +909,36 @@ pub fn session_settings_default() -> SettingsDefault {
                     preproc_sigma: 4,
                     preproc_tor: 7,
                 },
-                mediacodec_extra_options: {
-                    fn int32_default(int32: i32) -> MediacodecDataTypeDefault {
-                        MediacodecDataTypeDefault {
-                            variant: MediacodecDataTypeDefaultVariant::Int32,
-                            Float: 0.0,
-                            Int32: int32,
-                            Int64: 0,
-                            String: "".into(),
-                        }
-                    }
-                    DictionaryDefault {
-                        key: "".into(),
-                        value: int32_default(0),
-                        content: vec![
-                            ("operating-rate".into(), int32_default(i32::MAX)),
-                            ("priority".into(), int32_default(0)),
-                            // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
-                            // cabable, since they are on level 29.
-                            ("low-latency".into(), int32_default(1)),
-                            (
-                                "vendor.qti-ext-dec-low-latency.enable".into(),
-                                int32_default(1),
-                            ),
-                        ],
-                    }
+                software: SoftwareEncodingConfigDefault {
+                    force_software_encoding: false,
+                    thread_count: 0,
                 },
+            },
+            mediacodec_extra_options: {
+                fn int32_default(int32: i32) -> MediacodecDataTypeDefault {
+                    MediacodecDataTypeDefault {
+                        variant: MediacodecDataTypeDefaultVariant::Int32,
+                        Float: 0.0,
+                        Int32: int32,
+                        Int64: 0,
+                        String: "".into(),
+                    }
+                }
+                DictionaryDefault {
+                    key: "".into(),
+                    value: int32_default(0),
+                    content: vec![
+                        ("operating-rate".into(), int32_default(i32::MAX)),
+                        ("priority".into(), int32_default(0)),
+                        // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
+                        // cabable, since they are on level 29.
+                        ("low-latency".into(), int32_default(1)),
+                        (
+                            "vendor.qti-ext-dec-low-latency.enable".into(),
+                            int32_default(1),
+                        ),
+                    ],
+                }
             },
             foveated_rendering: SwitchDefault {
                 enabled: true,
@@ -1020,17 +1026,13 @@ pub fn session_settings_default() -> SettingsDefault {
                     left_controller_rotation_offset: [-20.0, 0.0, 0.0],
                     left_hand_tracking_position_offset: [0.04, -0.02, -0.13],
                     left_hand_tracking_rotation_offset: [0.0, -45.0, -90.0],
-                    override_trigger_threshold: SwitchDefault {
+                    trigger_threshold_override: SwitchDefault {
                         enabled: false,
-                        content: ControllersTriggerOverrideDescDefault {
-                            trigger_threshold: 0.1,
-                        },
+                        content: 0.1,
                     },
-                    override_grip_threshold: SwitchDefault {
+                    grip_threshold_override: SwitchDefault {
                         enabled: false,
-                        content: ControllersGripOverrideDescDefault {
-                            grip_threshold: 0.1,
-                        },
+                        content: 0.1,
                     },
                     haptics: SwitchDefault {
                         enabled: true,
@@ -1079,15 +1081,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
         },
-        extra: ExtraDescDefault {
+        logging: LoggingConfigDefault {
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
             log_haptics: false,
-            save_video_stream: false,
-            driver_launch_action: DriverLaunchActionDefault {
-                variant: DriverLaunchActionDefaultVariant::UnregisterOtherDriversAtStartup,
-            },
-            open_close_steamvr_with_dashboard: false,
             notification_level: LogSeverityDefault {
                 variant: if cfg!(debug_assertions) {
                     LogSeverityDefaultVariant::Info
@@ -1096,15 +1093,24 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             show_raw_events: false,
+        },
+        steamvr_launcher: SteamvrLauncherDefault {
+            driver_launch_action: DriverLaunchActionDefault {
+                variant: DriverLaunchActionDefaultVariant::UnregisterOtherDriversAtStartup,
+            },
+            open_close_steamvr_with_dashboard: false,
+        },
+        capture: CaptureConfigDefault {
+            save_video_stream: false,
             capture_frame_dir: if !cfg!(target_os = "linux") {
                 "/tmp".into()
             } else {
                 "".into()
             },
-            patches: PatchesDefault {
-                linux_async_reprojection: false,
-            },
-            open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
         },
+        patches: PatchesDefault {
+            linux_async_reprojection: false,
+        },
+        open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
     }
 }

@@ -32,7 +32,7 @@ impl NotificationBar {
     }
 
     pub fn update_settings(&mut self, settings: &Settings) {
-        self.min_notification_level = settings.extra.notification_level;
+        self.min_notification_level = settings.logging.notification_level;
     }
 
     pub fn push_notification(&mut self, event: LogEvent) {

@@ -147,7 +147,7 @@ impl eframe::App for Dashboard {
                             self.logs_tab.update_settings(&settings);
                             self.notification_bar.update_settings(&settings);
                             if self.just_opened {
-                                if settings.extra.open_setup_wizard {
+                                if settings.open_setup_wizard {
                                     self.setup_wizard_open = true;
                                 }
 

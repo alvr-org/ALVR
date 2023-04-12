@@ -124,11 +124,11 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
             display_name: key.into(),
             modifiers: [
                 string_modifier(
-                    "session_settings.video.advanced_codec_options.nvenc_overrides.nvenc_quality_preset.variant",
+                    "session_settings.video.encoder_config.nvenc.quality_preset.variant",
                     val_nv,
                 ),
                 string_modifier(
-                    "session_settings.video.advanced_codec_options.amf_controls.amd_encoder_quality_preset.variant",
+                    "session_settings.video.encoder_config.amf.quality_preset.variant",
                     val_amd,
                 ),
             ]

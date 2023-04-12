@@ -125,7 +125,7 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
 }
 
 pub fn create_recording_file() {
-    let codec = SERVER_DATA_MANAGER.read().settings().video.codec;
+    let codec = SERVER_DATA_MANAGER.read().settings().video.preferred_codec;
     let ext = if matches!(codec, CodecType::H264) {
         "h264"
     } else {

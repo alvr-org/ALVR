@@ -271,10 +271,7 @@ async fn stream_pipeline(
 
         config.max_buffering_frames = settings.video.max_buffering_frames;
         config.buffering_history_weight = settings.video.buffering_history_weight;
-        config.options = settings
-            .video
-            .advanced_codec_options
-            .mediacodec_extra_options;
+        config.options = settings.video.mediacodec_extra_options;
     }
 
     let tracking_send_loop = {

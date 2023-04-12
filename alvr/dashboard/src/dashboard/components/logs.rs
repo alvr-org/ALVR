@@ -32,7 +32,7 @@ impl LogsTab {
     }
 
     pub fn update_settings(&mut self, settings: &Settings) {
-        self.show_raw_events = settings.extra.show_raw_events;
+        self.show_raw_events = settings.logging.show_raw_events;
     }
 
     pub fn push_event(&mut self, event: Event) {

@@ -35,7 +35,6 @@ fn main() {
             data_manager
                 .session_mut()
                 .session_settings
-                .extra
                 .patches
                 .linux_async_reprojection = false;
         }
@@ -48,7 +47,7 @@ fn main() {
 
         if data_manager
             .settings()
-            .extra
+            .steamvr_launcher
             .open_close_steamvr_with_dashboard
         {
             LAUNCHER.lock().launch_steamvr()
@@ -97,7 +96,7 @@ fn main() {
 
     if data_sources::get_local_data_source()
         .settings()
-        .extra
+        .steamvr_launcher
         .open_close_steamvr_with_dashboard
     {
         dashboard_requests_sender

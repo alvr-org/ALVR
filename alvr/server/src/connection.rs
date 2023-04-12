@@ -1,6 +1,10 @@
 use crate::{
-    bitrate::BitrateManager, buttons::BUTTON_PATH_FROM_ID, haptics::HapticsManager,
-    sockets::WelcomeSocket, statistics::StatisticsManager, tracking::TrackingManager,
+    bitrate::BitrateManager,
+    buttons::BUTTON_PATH_FROM_ID,
+    haptics::HapticsManager,
+    sockets::WelcomeSocket,
+    statistics::StatisticsManager,
+    tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
     DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
     SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
@@ -12,9 +16,9 @@ use alvr_common::{
     parking_lot,
     prelude::*,
     settings_schema::Switch,
-    RelaxedAtomic, DEVICE_ID_TO_PATH, LEFT_HAND_ID, RIGHT_HAND_ID,
+    RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent};
+use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent, TrackingEvent};
 use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
@@ -763,18 +767,54 @@ async fn connection_pipeline(
 
                 let mut tracking_manager_lock = tracking_manager.lock().await;
 
-                let ffi_motions = tracking_manager_lock.transform_motions(
+                let motions = tracking_manager_lock.transform_motions(
                     &tracking.device_motions,
-                    tracking.left_hand_skeleton.is_some(),
-                    tracking.right_hand_skeleton.is_some(),
+                    [
+                        tracking.hand_skeletons[0].is_some(),
+                        tracking.hand_skeletons[1].is_some(),
+                    ],
                 );
 
-                let ffi_left_hand_skeleton = tracking
-                    .left_hand_skeleton
+                let left_hand_skeleton = tracking.hand_skeletons[0]
                     .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
-                let ffi_right_hand_skeleton = tracking
-                    .right_hand_skeleton
+                let right_hand_skeleton = tracking.hand_skeletons[1]
                     .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
+
+                if settings.logging.log_tracking {
+                    let eye_gazes = [
+                        tracking.eye_gazes[0].map(|p| tracking_manager_lock.recenter_pose(p)),
+                        tracking.eye_gazes[1].map(|p| tracking_manager_lock.recenter_pose(p)),
+                    ];
+
+                    alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
+                        head_motion: motions
+                            .iter()
+                            .find(|(id, _)| *id == *HEAD_ID)
+                            .map(|(_, m)| *m),
+                        controller_motions: [
+                            motions
+                                .iter()
+                                .find(|(id, _)| *id == *LEFT_HAND_ID)
+                                .map(|(_, m)| *m),
+                            motions
+                                .iter()
+                                .find(|(id, _)| *id == *RIGHT_HAND_ID)
+                                .map(|(_, m)| *m),
+                        ],
+                        hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+                        eye_gazes,
+                        fb_face_expression: tracking.fb_face_expression,
+                        htc_eye_expression: tracking.htc_eye_expression,
+                        htc_lip_expression: tracking.htc_lip_expression,
+                    })))
+                }
+
+                let ffi_motions = motions
+                    .into_iter()
+                    .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
+                    .collect::<Vec<_>>();
+                let ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
                 drop(tracking_manager_lock);
 

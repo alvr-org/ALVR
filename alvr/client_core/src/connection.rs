@@ -187,6 +187,19 @@ async fn stream_pipeline(
     server_ip: IpAddr,
     decoder_guard: Arc<Mutex<()>>,
 ) -> StrResult {
+    let settings = {
+        let mut session_desc = SessionDesc::default();
+        session_desc
+            .merge_from_json(&json::from_str(&stream_config.session_desc).map_err(err!())?)?;
+        session_desc.to_settings()
+    };
+
+    let streaming_start_event = ClientCoreEvent::StreamingStarted {
+        view_resolution: stream_config.view_resolution,
+        refresh_rate_hint: stream_config.fps,
+        settings: Box::new(settings.clone()),
+    };
+
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -211,13 +224,6 @@ async fn stream_pipeline(
             return Ok(());
         }
     }
-
-    let settings = {
-        let mut session_desc = SessionDesc::default();
-        session_desc
-            .merge_from_json(&json::from_str(&stream_config.session_desc).map_err(err!())?)?;
-        session_desc.to_settings()
-    };
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size as _,
@@ -309,14 +315,6 @@ async fn stream_pipeline(
 
             Ok(())
         }
-    };
-
-    let streaming_start_event = ClientCoreEvent::StreamingStarted {
-        view_resolution: stream_config.view_resolution,
-        fps: stream_config.fps,
-        foveated_rendering: settings.video.foveated_rendering.into_option(),
-        oculus_foveation_level: settings.video.oculus_foveation_level,
-        dynamic_oculus_foveation: settings.video.dynamic_oculus_foveation,
     };
 
     IS_STREAMING.set(true);

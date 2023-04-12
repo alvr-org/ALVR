@@ -630,6 +630,11 @@ pub struct HeadsetDesc {
     #[schema(flag = "steamvr-restart")]
     pub enable_vive_tracker_proxy: bool,
 
+    pub eye_tracking_fb: bool,
+    pub face_tracking_fb: bool,
+    pub eye_expressions_htc: bool,
+    pub lip_expressions_htc: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersDesc>,
 
@@ -737,6 +742,7 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 pub struct LoggingConfig {
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
+    pub log_tracking: bool,
     pub log_button_presses: bool,
     pub log_haptics: bool,
     pub notification_level: LogSeverity,
@@ -1028,6 +1034,10 @@ pub fn session_settings_default() -> SettingsDefault {
             extra_openvr_props: default_custom_openvr_props.clone(),
             tracking_ref_only: false,
             enable_vive_tracker_proxy: false,
+            eye_tracking_fb: false,
+            face_tracking_fb: false,
+            eye_expressions_htc: false,
+            lip_expressions_htc: false,
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {
@@ -1100,6 +1110,7 @@ pub fn session_settings_default() -> SettingsDefault {
         logging: LoggingConfigDefault {
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
+            log_tracking: false,
             log_haptics: false,
             notification_level: LogSeverityDefault {
                 variant: if cfg!(debug_assertions) {

@@ -176,8 +176,7 @@ This requires administrator rights!",
                     if self.page == Page::Finished {
                         self.finished = true;
                         close_setup_wizard!();
-                    }
-                    else {
+                    } else {
                         self.page = index_to_page(self.page as usize + 1);
                     }
                 }
@@ -190,8 +189,7 @@ This requires administrator rights!",
                 if back_btn.clicked() {
                     if self.page == Page::Welcome {
                         close_setup_wizard!();
-                    }
-                    else {
+                    } else {
                         self.page = index_to_page(self.page as usize - 1);
                     }
                 }

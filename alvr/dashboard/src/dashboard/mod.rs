@@ -194,7 +194,7 @@ impl eframe::App for Dashboard {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
                     ui.add_space(100.0);
-                    ui.heading(RichText::new("StreamVR is restarting").size(30.0));
+                    ui.heading(RichText::new("SteamVR is restarting").size(30.0));
                 });
             });
 

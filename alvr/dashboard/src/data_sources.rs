@@ -113,13 +113,14 @@ pub fn data_interop_thread(
                     &SocketAddr::from_str(&format!("127.0.0.1:{port}")).unwrap(),
                     Duration::from_millis(500),
                 );
-                let socket = match maybe_socket {
-                    Ok(socket) => socket,
-                    Err(_) => {
-                        check_bail(&sender)?;
+                let socket = if let Ok(socket) = maybe_socket {
+                    socket
+                } else {
+                    check_bail(&sender)?;
 
-                        continue;
-                    }
+                    thread::sleep(Duration::from_millis(500));
+
+                    continue;
                 };
 
                 let mut ws = if let Ok((ws, _)) = tungstenite::client(uri, socket) {

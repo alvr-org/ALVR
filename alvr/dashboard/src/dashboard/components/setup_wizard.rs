@@ -161,13 +161,16 @@ This requires administrator rights!",
             ui.add_space(30.0);
             ui.horizontal(|ui| {
                 ui.add_space(15.0);
-                if ui
-                    .add_visible(self.page != Page::Finished, Button::new("Next"))
-                    .clicked()
-                {
-                    self.page = index_to_page(self.page as usize + 1);
-                    if self.page == Page::Finished {
+                if self.page == Page::Finished {
+                    if ui.button("Finish").clicked() {
                         self.finished = true;
+                        response = Some(SetupWizardRequest::Close {
+                            finished: self.finished,
+                        });
+                    }
+                } else {
+                    if ui.button("Next").clicked() {
+                        self.page = index_to_page(self.page as usize + 1);
                     }
                 }
                 if ui

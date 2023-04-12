@@ -171,7 +171,7 @@ This requires administrator rights!",
                     }
                 }
                 if ui
-                    .add_visible(self.page != Page::HardwareRequirements, Button::new("Back"))
+                    .add_visible(self.page != Page::Welcome, Button::new("Back"))
                     .clicked()
                 {
                     self.page = index_to_page(self.page as usize - 1);

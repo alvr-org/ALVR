@@ -66,9 +66,11 @@ static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     let data_lock = SERVER_DATA_MANAGER.read();
+    let settings = data_lock.settings();
     Mutex::new(BitrateManager::new(
-        data_lock.settings().video.bitrate.clone(),
-        data_lock.settings().connection.statistics_history_size as usize,
+        settings.video.bitrate.clone(),
+        settings.connection.statistics_history_size as usize,
+        settings.video.preferred_fps,
     ))
 });
 
@@ -428,7 +430,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             );
         }
 
-        BITRATE_MANAGER.lock().report_frame_resent();
+        BITRATE_MANAGER.lock().report_frame_present();
     }
 
     extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {

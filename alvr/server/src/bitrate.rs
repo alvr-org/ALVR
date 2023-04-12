@@ -10,6 +10,7 @@ const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
     config: BitrateConfig,
+    nominal_framerate: f32,
     max_history_size: usize,
     frame_interval_average: SlidingWindowAverage<Duration>,
     packet_sizes_bits_history: VecDeque<(Duration, usize)>,
@@ -23,9 +24,10 @@ pub struct BitrateManager {
 }
 
 impl BitrateManager {
-    pub fn new(config: BitrateConfig, max_history_size: usize) -> Self {
+    pub fn new(config: BitrateConfig, max_history_size: usize, nominal_framerate: f32) -> Self {
         Self {
             config,
+            nominal_framerate,
             max_history_size,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
@@ -47,22 +49,25 @@ impl BitrateManager {
 
     // Note: This is used to calculate the framerate/frame interval. The frame present is the most
     // accurate event for this use.
-    pub fn report_frame_resent(&mut self) {
+    pub fn report_frame_present(&mut self) {
         let now = Instant::now();
 
         let interval = now - self.last_frame_instant;
         self.last_frame_instant = now;
 
-        // If the latest frame interval deviates too much from the mean,
-        let interval_ratio =
-            interval.as_secs_f32() / self.frame_interval_average.get_average().as_secs_f32();
+        if let Switch::Enabled(config) = &self.config.adapt_to_framerate {
+            let interval_ratio =
+                interval.as_secs_f32() / self.frame_interval_average.get_average().as_secs_f32();
 
-        self.frame_interval_average.submit_sample(interval);
+            self.frame_interval_average.submit_sample(interval);
 
-        if (interval_ratio - 1.0).abs() > self.config.framerate_reset_threshold_multiplier {
-            self.frame_interval_average =
-                SlidingWindowAverage::new(interval, self.max_history_size);
-            self.update_needed = true;
+            if interval_ratio > config.framerate_reset_threshold_multiplier
+                || interval_ratio < 1.0 / config.framerate_reset_threshold_multiplier
+            {
+                self.frame_interval_average =
+                    SlidingWindowAverage::new(interval, self.max_history_size);
+                self.update_needed = true;
+            }
         }
     }
 
@@ -96,7 +101,11 @@ impl BitrateManager {
             }
         }
 
-        if let Switch::Enabled(config) = &self.config.decoder_latency_fixer {
+        if let BitrateMode::Adaptive {
+            decoder_latency_fixer: Switch::Enabled(config),
+            ..
+        } = &self.config.mode
+        {
             if decoder_latency > Duration::from_millis(config.max_decoder_latency_ms) {
                 self.decoder_latency_overstep_count += 1;
 
@@ -127,12 +136,14 @@ impl BitrateManager {
             };
         }
 
-        let mut bitrate_bps = match &self.config.mode {
+        let bitrate_bps = match &self.config.mode {
             BitrateMode::ConstantMbps(bitrate_mbps) => *bitrate_mbps as f32 * 1e6,
             BitrateMode::Adaptive {
                 saturation_multiplier,
                 max_bitrate_mbps,
                 min_bitrate_mbps,
+                max_network_latency_ms,
+                ..
             } => {
                 let mut bitrate_bps = self.bitrate_average.get_average() * saturation_multiplier;
 
@@ -143,24 +154,28 @@ impl BitrateManager {
                     bitrate_bps = f32::max(bitrate_bps, *min as f32 * 1e6);
                 }
 
+                if let Switch::Enabled(max_ms) = max_network_latency_ms {
+                    let multiplier = *max_ms as f32
+                        / 1000.0
+                        / self.network_latency_average.get_average().as_secs_f32();
+                    bitrate_bps = f32::min(bitrate_bps, bitrate_bps * multiplier);
+                }
+
+                bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
+
                 bitrate_bps
             }
         };
 
-        if let Switch::Enabled(max_ms) = &self.config.max_network_latency_ms {
-            let multiplier =
-                *max_ms as f32 / 1000.0 / self.network_latency_average.get_average().as_secs_f32();
-            bitrate_bps = f32::min(bitrate_bps, bitrate_bps * multiplier);
-        }
-
-        bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
-
-        let framerate = 1.0
-            / self
+        let framerate = if self.config.adapt_to_framerate.enabled() {
+            1.0 / self
                 .frame_interval_average
                 .get_average()
                 .as_secs_f32()
-                .min(1.0);
+                .min(1.0)
+        } else {
+            self.nominal_framerate
+        };
 
         FfiDynamicEncoderParams {
             updated: 1,

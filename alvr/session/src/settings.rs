@@ -212,28 +212,6 @@ pub enum MediacodecDataType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(gui = "button_group")]
-pub enum BitrateMode {
-    #[schema(strings(display_name = "Constant"))]
-    ConstantMbps(#[schema(gui(slider(min = 5, max = 1000, logarithmic)), suffix = "Mbps")] u64),
-    Adaptive {
-        #[schema(strings(
-            help = "Percentage of network bandwidth to allocate for video transmission"
-        ))]
-        #[schema(gui(slider(min = 0.5, max = 2.0, step = 0.05)))]
-        saturation_multiplier: f32,
-
-        #[schema(strings(display_name = "Maximum bitrate"))]
-        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
-        max_bitrate_mbps: Switch<u64>,
-
-        #[schema(strings(display_name = "Minimum bitrate"))]
-        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
-        min_bitrate_mbps: Switch<u64>,
-    },
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct DecoderLatencyFixer {
     #[schema(strings(
         display_name = "Maximum decoder latency",
@@ -257,20 +235,53 @@ pub struct DecoderLatencyFixer {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(gui = "button_group")]
+pub enum BitrateMode {
+    #[schema(strings(display_name = "Constant"))]
+    ConstantMbps(#[schema(gui(slider(min = 5, max = 1000, logarithmic)), suffix = "Mbps")] u64),
+    Adaptive {
+        #[schema(strings(
+            help = "Percentage of network bandwidth to allocate for video transmission"
+        ))]
+        #[schema(gui(slider(min = 0.5, max = 2.0, step = 0.05)))]
+        saturation_multiplier: f32,
+
+        #[schema(strings(display_name = "Maximum bitrate"))]
+        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
+        max_bitrate_mbps: Switch<u64>,
+
+        #[schema(strings(display_name = "Minimum bitrate"))]
+        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
+        min_bitrate_mbps: Switch<u64>,
+
+        #[schema(strings(display_name = "Maximum network latency"))]
+        #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
+        max_network_latency_ms: Switch<u64>,
+
+        #[schema(strings(
+            help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
+        ))]
+        decoder_latency_fixer: Switch<DecoderLatencyFixer>,
+    },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct BitrateAdaptiveFramerateConfig {
+    #[schema(strings(
+        help = "If the framerate changes more than this factor, trigger a parameters update"
+    ))]
+    #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.1)))]
+    pub framerate_reset_threshold_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct BitrateConfig {
     pub mode: BitrateMode,
 
-    #[schema(gui(slider(min = 0.01, max = 2.0, step = 0.01)))]
-    pub framerate_reset_threshold_multiplier: f32,
-
-    #[schema(strings(display_name = "Maximum network latency"))]
-    #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
-    pub max_network_latency_ms: Switch<u64>,
-
     #[schema(strings(
-        help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
+        help = "Ensure that the specified bitrate value is respected regardless of the framerate"
     ))]
-    pub decoder_latency_fixer: Switch<DecoderLatencyFixer>,
+    pub adapt_to_framerate: Switch<BitrateAdaptiveFramerateConfig>,
 }
 
 #[repr(u8)]
@@ -843,20 +854,25 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: false,
                             content: 5,
                         },
+                        max_network_latency_ms: SwitchDefault {
+                            enabled: false,
+                            content: 8,
+                        },
+                        decoder_latency_fixer: SwitchDefault {
+                            enabled: true,
+                            content: DecoderLatencyFixerDefault {
+                                max_decoder_latency_ms: 20,
+                                latency_overstep_frames: 30,
+                                latency_overstep_multiplier: 0.99,
+                            },
+                        },
                     },
                     variant: BitrateModeDefaultVariant::Adaptive,
                 },
-                framerate_reset_threshold_multiplier: 0.30,
-                max_network_latency_ms: SwitchDefault {
-                    enabled: false,
-                    content: 8,
-                },
-                decoder_latency_fixer: SwitchDefault {
+                adapt_to_framerate: SwitchDefault {
                     enabled: true,
-                    content: DecoderLatencyFixerDefault {
-                        max_decoder_latency_ms: 20,
-                        latency_overstep_frames: 30,
-                        latency_overstep_multiplier: 0.99,
+                    content: BitrateAdaptiveFramerateConfigDefault {
+                        framerate_reset_threshold_multiplier: 2.0,
                     },
                 },
             },

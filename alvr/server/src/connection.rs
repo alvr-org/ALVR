@@ -565,6 +565,7 @@ async fn connection_pipeline(
     *BITRATE_MANAGER.lock() = BitrateManager::new(
         settings.video.bitrate,
         settings.connection.statistics_history_size as _,
+        refresh_rate,
     );
 
     // todo: dynamic framerate

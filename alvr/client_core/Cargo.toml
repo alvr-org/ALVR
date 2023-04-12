@@ -48,3 +48,6 @@ local-ip-address = "0.5"
 bindgen = "0.64"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
+
+[features]
+link-stdcpp-shared = []

@@ -38,6 +38,9 @@ fn main() {
         println!("cargo:rustc-link-lib=GLESv3");
         println!("cargo:rustc-link-lib=android");
 
+        #[cfg(feature = "link-stdcpp-shared")]
+        println!("cargo:rustc-link-lib=c++_shared");
+
         bindgen::builder()
             .clang_arg("-xc++")
             .header("cpp/bindings.h")

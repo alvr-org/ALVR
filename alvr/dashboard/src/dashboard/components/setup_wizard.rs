@@ -161,18 +161,15 @@ This requires administrator rights!",
             ui.add_space(30.0);
             ui.horizontal(|ui| {
                 ui.add_space(15.0);
-                let mut next_txt = "Next";
                 if self.page == Page::Finished {
-                    next_txt = "Finish";
-                }
-                let next_btn = ui.add(Button::new(next_txt));
-                if next_btn.clicked() {
-                    if self.page == Page::Finished {
+                    if ui.button("Finish").clicked() {
                         self.finished = true;
                         response = Some(SetupWizardRequest::Close {
                             finished: self.finished,
                         });
-                    } else {
+                    }
+                } else {
+                    if ui.button("Next").clicked() {
                         self.page = index_to_page(self.page as usize + 1);
                     }
                 }

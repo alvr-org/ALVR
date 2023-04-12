@@ -70,14 +70,6 @@ impl SetupWizard {
     pub fn ui(&mut self, ui: &mut Ui) -> Option<SetupWizardRequest> {
         let mut response = None;
 
-        macro_rules! close_setup_wizard {
-            () => {
-                response = Some(SetupWizardRequest::Close {
-                    finished: self.finished,
-                });
-            };
-        }
-
         ui.horizontal(|ui| {
             ui.add_space(60.0);
             ui.vertical(|ui| {
@@ -88,7 +80,9 @@ impl SetupWizard {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(15.0);
                 if ui.button("❌").clicked() {
-                    close_setup_wizard!();
+                    response = Some(SetupWizardRequest::Close {
+                        finished: self.finished,
+                    });
                 }
             })
         });
@@ -175,23 +169,18 @@ This requires administrator rights!",
                 if next_btn.clicked() {
                     if self.page == Page::Finished {
                         self.finished = true;
-                        close_setup_wizard!();
+                        response = Some(SetupWizardRequest::Close {
+                            finished: self.finished,
+                        });
                     } else {
                         self.page = index_to_page(self.page as usize + 1);
                     }
                 }
-
-                let mut back_txt = "Back";
-                if self.page == Page::Welcome {
-                    back_txt = "Cancel";
-                }
-                let back_btn = ui.add(Button::new(back_txt));
-                if back_btn.clicked() {
-                    if self.page == Page::Welcome {
-                        close_setup_wizard!();
-                    } else {
-                        self.page = index_to_page(self.page as usize - 1);
-                    }
+                if ui
+                    .add_visible(self.page != Page::Welcome, Button::new("Back"))
+                    .clicked()
+                {
+                    self.page = index_to_page(self.page as usize - 1);
                 }
             });
             ui.separator();

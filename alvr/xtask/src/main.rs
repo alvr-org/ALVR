@@ -42,6 +42,7 @@ FLAGS:
     --nightly           Append nightly tag to versions. For bump subcommand
     --no-rebuild        Do not rebuild the streamer with run-streamer
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
+    --no-stdcpp         Disable linking to libc++_shared with build-client-lib
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -148,9 +149,9 @@ fn main() {
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
         let keep_config = args.contains("--keep-config");
-
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
+        let link_stdcpp = !args.contains("--no-stdcpp");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -178,7 +179,7 @@ fn main() {
                 }
                 "build-streamer" => build::build_streamer(profile, gpl, None, false, keep_config),
                 "build-client" => build::build_android_client(profile),
-                "build-client-lib" => build::build_client_lib(profile),
+                "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
                 "run-streamer" => {
                     if !no_rebuild {
                         build::build_streamer(profile, gpl, None, false, keep_config);
@@ -187,7 +188,7 @@ fn main() {
                 }
                 "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
                 "package-client" => build::build_android_client(Profile::Distribution),
-                "package-client-lib" => packaging::package_client_lib(),
+                "package-client-lib" => packaging::package_client_lib(link_stdcpp),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),

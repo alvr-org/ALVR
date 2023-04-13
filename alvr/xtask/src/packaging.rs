@@ -158,10 +158,10 @@ fn package_streamer_appimage(release: bool, update: bool) {
     cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage").run().unwrap();
 }
 
-pub fn package_client_lib() {
+pub fn package_client_lib(link_stdcpp: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_client_lib(Profile::Distribution);
+    build::build_client_lib(Profile::Distribution, link_stdcpp);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

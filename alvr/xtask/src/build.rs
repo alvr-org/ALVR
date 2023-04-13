@@ -176,7 +176,7 @@ pub fn build_streamer(
     }
 }
 
-pub fn build_client_lib(profile: Profile) {
+pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
     let sh = Shell::new().unwrap();
 
     let build_dir = afs::build_dir().join("alvr_client_core");
@@ -190,6 +190,9 @@ pub fn build_client_lib(profile: Profile) {
         }
         Profile::Release => flags.push("--release"),
         Profile::Debug => (),
+    }
+    if !link_stdcpp {
+        flags.push("--no-default-features");
     }
     let flags_ref = &flags;
 

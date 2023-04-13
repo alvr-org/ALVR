@@ -9,6 +9,10 @@ license.workspace = true
 [lib]
 crate_type = ["rlib", "staticlib", "cdylib"]
 
+[features]
+link-stdcpp-shared = []
+default = ["link-stdcpp-shared"]
+
 [dependencies]
 alvr_audio.workspace = true
 alvr_common.workspace = true
@@ -48,6 +52,3 @@ local-ip-address = "0.5"
 bindgen = "0.65"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
-
-[features]
-link-stdcpp-shared = []

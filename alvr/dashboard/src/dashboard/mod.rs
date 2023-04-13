@@ -210,9 +210,7 @@ impl eframe::App for Dashboard {
                 if let Some(SetupWizardRequest::Close { finished }) = self.setup_wizard.ui(ui) {
                     if finished {
                         requests.push(DashboardRequest::SetValues(vec![PathValuePair {
-                            path: alvr_sockets::parse_path(
-                                "session_settings.extra.open_setup_wizard",
-                            ),
+                            path: alvr_sockets::parse_path("session_settings.open_setup_wizard"),
                             value: serde_json::Value::Bool(false),
                         }]))
                     }

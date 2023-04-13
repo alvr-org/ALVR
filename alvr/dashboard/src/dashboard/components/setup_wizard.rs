@@ -56,14 +56,12 @@ fn page_content(
 
 pub struct SetupWizard {
     page: Page,
-    finished: bool,
 }
 
 impl SetupWizard {
     pub fn new() -> Self {
         Self {
             page: Page::Welcome,
-            finished: false,
         }
     }
 
@@ -80,9 +78,7 @@ impl SetupWizard {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(15.0);
                 if ui.button("❌").clicked() {
-                    response = Some(SetupWizardRequest::Close {
-                        finished: self.finished,
-                    });
+                    response = Some(SetupWizardRequest::Close { finished: false });
                 }
             })
         });
@@ -163,15 +159,10 @@ This requires administrator rights!",
                 ui.add_space(15.0);
                 if self.page == Page::Finished {
                     if ui.button("Finish").clicked() {
-                        self.finished = true;
-                        response = Some(SetupWizardRequest::Close {
-                            finished: self.finished,
-                        });
+                        response = Some(SetupWizardRequest::Close { finished: true });
                     }
-                } else {
-                    if ui.button("Next").clicked() {
-                        self.page = index_to_page(self.page as usize + 1);
-                    }
+                } else if ui.button("Next").clicked() {
+                    self.page = index_to_page(self.page as usize + 1);
                 }
                 if ui
                     .add_visible(self.page != Page::Welcome, Button::new("Back"))

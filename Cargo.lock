@@ -424,7 +424,9 @@ dependencies = [
 name = "alvr_vrcompositor_wrapper"
 version = "21.0.0-dev00"
 dependencies = [
+ "alvr_filesystem",
  "exec",
+ "xshell",
 ]
 
 [[package]]

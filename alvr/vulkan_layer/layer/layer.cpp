@@ -402,6 +402,8 @@ wsi_layer_vkGetInstanceProcAddr(VkInstance instance, const char *funcName) {
     GET_PROC_ADDR(vkGetDisplayModePropertiesKHR);
     GET_PROC_ADDR(vkGetPhysicalDeviceDisplayPlanePropertiesKHR);
     GET_PROC_ADDR(vkAcquireXlibDisplayEXT);
+    GET_PROC_ADDR(vkGetDrmDisplayEXT);
+    GET_PROC_ADDR(vkAcquireDrmDisplayEXT);
     GET_PROC_ADDR(vkGetDisplayPlaneSupportedDisplaysKHR);
     GET_PROC_ADDR(vkCreateDisplayPlaneSurfaceKHR);
     GET_PROC_ADDR(vkCreateDisplayModeKHR);

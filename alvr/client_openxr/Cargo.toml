@@ -18,7 +18,8 @@ alvr_sockets.workspace = true
 
 glow = "0.12"
 khronos-egl = { version = "4", features = ["dynamic"] }
-openxr = { git = "https://github.com/Ralith/openxrs" }
+openxr = { git = "https://github.com/zarik5/openxrs" }
+# openxr = { path = "../../../../openxrs/openxr" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 # note: git version fixes spammy log. upgrade to registry when a new version comes out
@@ -95,8 +96,18 @@ categories = [
 
 # Quest entries
 [[package.metadata.android.uses_feature]]
+name = "oculus.software.eye_tracking"
+required = false
+[[package.metadata.android.uses_feature]]
+name = "oculus.software.face_tracking"
+required = false
+[[package.metadata.android.uses_feature]]
 name = "oculus.software.handtracking"
 required = false
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.EYE_TRACKING"
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.FACE_TRACKING"
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.HAND_TRACKING"
 [[package.metadata.android.uses_permission]]

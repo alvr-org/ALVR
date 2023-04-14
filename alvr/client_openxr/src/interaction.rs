@@ -1,7 +1,6 @@
 use crate::{to_pose, to_quat, to_vec3, Platform};
 use alvr_common::{glam::Vec3, *};
 use alvr_events::ButtonValue;
-use alvr_sockets::{DeviceMotion, Pose};
 use openxr as xr;
 use std::collections::HashMap;
 
@@ -302,19 +301,18 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     map
 }
 
-pub struct StreamingInteractionContext {
+pub struct HandsInteractionContext {
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
-    pub left_hand_source: HandSource,
-    pub right_hand_source: HandSource,
+    pub hand_sources: [HandSource; 2],
 }
 
-pub fn initialize_streaming_interaction(
+pub fn initialize_hands_interaction(
     platform: Platform,
     xr_instance: &xr::Instance,
     xr_system: xr::SystemId,
     xr_session: &xr::Session<xr::AnyGraphics>,
-) -> StreamingInteractionContext {
+) -> HandsInteractionContext {
     let action_set = xr_instance
         .create_action_set("alvr_input", "ALVR input", 0)
         .unwrap();
@@ -424,35 +422,36 @@ pub fn initialize_streaming_interaction(
         .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
-    let (left_hand_tracker, right_hand_tracker) =
-        if xr_instance.supports_hand_tracking(xr_system).unwrap() {
-            (
-                Some(xr_session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
-                Some(xr_session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
-            )
-        } else {
-            (None, None)
-        };
-
-    let left_hand_source = HandSource {
-        grip_action: left_grip_action,
-        grip_space: left_grip_space,
-        skeleton_tracker: left_hand_tracker,
-        vibration_action: left_vibration_action,
+    let (left_hand_tracker, right_hand_tracker) = if xr_instance.exts().ext_hand_tracking.is_some()
+        && xr_instance.supports_hand_tracking(xr_system).unwrap()
+    {
+        (
+            Some(xr_session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
+            Some(xr_session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
+        )
+    } else {
+        (None, None)
     };
 
-    let right_hand_source = HandSource {
-        grip_action: right_grip_action,
-        grip_space: right_grip_space,
-        skeleton_tracker: right_hand_tracker,
-        vibration_action: right_vibration_action,
-    };
+    let hand_sources = [
+        HandSource {
+            grip_action: left_grip_action,
+            grip_space: left_grip_space,
+            skeleton_tracker: left_hand_tracker,
+            vibration_action: left_vibration_action,
+        },
+        HandSource {
+            grip_action: right_grip_action,
+            grip_space: right_grip_space,
+            skeleton_tracker: right_hand_tracker,
+            vibration_action: right_vibration_action,
+        },
+    ];
 
-    StreamingInteractionContext {
+    HandsInteractionContext {
         action_set,
         button_actions,
-        left_hand_source,
-        right_hand_source,
+        hand_sources,
     }
 }
 
@@ -580,4 +579,103 @@ pub fn update_buttons(
     }
 
     Ok(())
+}
+
+pub struct FaceInputContext {
+    pub eye_tracker_fb: Option<xr::EyeTrackerSocial>,
+    pub face_tracker_fb: Option<xr::FaceTrackerFB>,
+    pub eye_tracker_htc: Option<xr::FacialTrackerHTC>,
+    pub lip_tracker_htc: Option<xr::FacialTrackerHTC>,
+}
+
+pub fn initialize_face_input<G>(
+    xr_instance: &xr::Instance,
+    xr_system: xr::SystemId,
+    xr_session: &xr::Session<G>,
+    eye_tracking_fb: bool,
+    face_tracking_fb: bool,
+    eye_expressions_htc: bool,
+    lip_expressions_htc: bool,
+) -> FaceInputContext {
+    let eye_tracker_fb = (eye_tracking_fb
+        && xr_instance.exts().fb_eye_tracking_social.is_some()
+        && xr_instance.supports_social_eye_tracking(xr_system).unwrap())
+    .then(|| xr_session.create_eye_tracker_social().unwrap());
+
+    let face_tracker_fb = (face_tracking_fb
+        && xr_instance.exts().fb_face_tracking.is_some()
+        && xr_instance.supports_fb_face_tracking(xr_system).unwrap())
+    .then(|| xr_session.create_face_tracker_fb().unwrap());
+
+    let eye_tracker_htc = (eye_expressions_htc
+        && xr_instance.exts().htc_facial_tracking.is_some()
+        && xr_instance
+            .supports_htc_eye_facial_tracking(xr_system)
+            .unwrap())
+    .then(|| {
+        xr_session
+            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::EYE_DEFAULT)
+            .unwrap()
+    });
+
+    let lip_tracker_htc = (lip_expressions_htc
+        && xr_instance.exts().htc_facial_tracking.is_some()
+        && xr_instance
+            .supports_htc_lip_facial_tracking(xr_system)
+            .unwrap())
+    .then(|| {
+        xr_session
+            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::LIP_DEFAULT)
+            .unwrap()
+    });
+
+    FaceInputContext {
+        eye_tracker_fb,
+        face_tracker_fb,
+        eye_tracker_htc,
+        lip_tracker_htc,
+    }
+}
+
+pub fn get_eye_gaze(
+    context: &FaceInputContext,
+    reference_space: &xr::Space,
+    time: xr::Time,
+) -> [Option<Pose>; 2] {
+    if let Some(tracker) = &context.eye_tracker_fb {
+        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
+            [
+                gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
+                gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
+            ]
+        } else {
+            [None, None]
+        }
+    } else {
+        [None, None]
+    }
+}
+
+pub fn get_fb_face_expression(context: &FaceInputContext, time: xr::Time) -> Option<Vec<f32>> {
+    context
+        .face_tracker_fb
+        .as_ref()
+        .and_then(|t| t.get_face_expression_weights(time).ok().flatten())
+        .map(|w| w.weights.into_iter().collect())
+}
+
+pub fn get_htc_eye_expression(context: &FaceInputContext) -> Option<Vec<f32>> {
+    context
+        .eye_tracker_htc
+        .as_ref()
+        .and_then(|t| t.get_facial_expressions().ok().flatten())
+        .map(|w| w.weights.into_iter().collect())
+}
+
+pub fn get_htc_lip_expression(context: &FaceInputContext) -> Option<Vec<f32>> {
+    context
+        .lip_tracker_htc
+        .as_ref()
+        .and_then(|t| t.get_facial_expressions().ok().flatten())
+        .map(|w| w.weights.into_iter().collect())
 }

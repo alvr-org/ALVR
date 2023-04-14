@@ -257,6 +257,44 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     })
 }
 
+pub fn eye_face_tracking_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "eye_face_tracking".into(),
+        strings: [("display_name".into(), "Eye and face tracking".into())]
+            .into_iter()
+            .collect(),
+        flags: HashSet::new(),
+        options: [
+            HigherOrderChoiceOption {
+                display_name: "Enabled".into(),
+                modifiers: vec![
+                    bool_modifier("session_settings.headset.eye_tracking_fb", true),
+                    bool_modifier("session_settings.headset.face_tracking_fb", true),
+                    bool_modifier("session_settings.headset.eye_expressions_htc", true),
+                    bool_modifier("session_settings.headset.lip_expressions_htc", true),
+                    bool_modifier("session_settings.logging.log_tracking", true),
+                ],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![
+                    bool_modifier("session_settings.headset.eye_tracking_fb", false),
+                    bool_modifier("session_settings.headset.face_tracking_fb", false),
+                    bool_modifier("session_settings.headset.eye_expressions_htc", false),
+                    bool_modifier("session_settings.headset.lip_expressions_htc", false),
+                    bool_modifier("session_settings.logging.log_tracking", false),
+                ],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+        default_option_index: 1,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn null_preset_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "null".into(),

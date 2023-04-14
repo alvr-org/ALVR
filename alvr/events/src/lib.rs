@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{prelude::*, DeviceMotion, Pose};
 use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -43,6 +43,17 @@ pub struct LogEvent {
     pub content: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TrackingEvent {
+    pub head_motion: Option<DeviceMotion>,
+    pub controller_motions: [Option<DeviceMotion>; 2],
+    pub hand_skeletons: [Option<[Pose; 26]>; 2],
+    pub eye_gazes: [Option<Pose>; 2],
+    pub fb_face_expression: Option<Vec<f32>>,
+    pub htc_eye_expression: Option<Vec<f32>>,
+    pub htc_lip_expression: Option<Vec<f32>>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum ButtonValue {
     Binary(bool),
@@ -69,6 +80,7 @@ pub enum EventType {
     Session(Box<SessionDesc>),
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
+    Tracking(Box<TrackingEvent>),
     Button(ButtonEvent),
     Haptics(HapticsEvent),
     ServerRequestsSelfRestart,

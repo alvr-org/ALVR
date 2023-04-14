@@ -1,6 +1,6 @@
 use alvr_common::{
-    glam::{Quat, UVec2, Vec2, Vec3},
-    Fov, LogSeverity,
+    glam::{UVec2, Vec2},
+    DeviceMotion, Fov, LogSeverity, Pose,
 };
 use alvr_events::{ButtonValue, LogEvent};
 use alvr_session::{CodecType, SessionDesc};
@@ -89,25 +89,16 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
-pub struct Pose {
-    pub orientation: Quat,
-    pub position: Vec3,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
-pub struct DeviceMotion {
-    pub pose: Pose,
-    pub linear_velocity: Vec3,
-    pub angular_velocity: Vec3,
-}
-
-#[derive(Serialize, Deserialize)]
+// Note: eye and face tracking do not respect target_timestamp.
+#[derive(Serialize, Deserialize, Default)]
 pub struct Tracking {
     pub target_timestamp: Duration,
     pub device_motions: Vec<(u64, DeviceMotion)>,
-    pub left_hand_skeleton: Option<[Pose; 26]>,
-    pub right_hand_skeleton: Option<[Pose; 26]>,
+    pub hand_skeletons: [Option<[Pose; 26]>; 2],
+    pub eye_gazes: [Option<Pose>; 2],
+    pub fb_face_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 63]
+    pub htc_eye_expression: Option<Vec<f32>>,
+    pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
 }
 
 #[derive(Serialize, Deserialize)]

@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_mock"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -236,7 +236,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_openxr"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -254,7 +254,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "glam",
  "log",
@@ -279,7 +279,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_dashboard"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "dirs 5.0.0",
  "once_cell",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_data"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -402,14 +402,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "exec",
 ]
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.65.1",
@@ -420,7 +420,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "20.0.0-dev10"
+version = "20.0.0-dev11"
 dependencies = [
  "alvr_filesystem",
  "pico-args",
@@ -646,7 +646,7 @@ checksum = "0e97ce7de6cf12de5d7226c73f5ba9811622f4db3a5b91b55c53e987e5f91cba"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -663,7 +663,7 @@ checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -810,7 +810,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex",
- "syn 2.0.14",
+ "syn 2.0.15",
  "which",
 ]
 
@@ -907,7 +907,7 @@ checksum = "fdde5c9cd29ebd706ce1b35600920a33550e402fc998a2e53ad3b42c3c47a192"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -1286,7 +1286,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "scratch",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -1303,7 +1303,7 @@ checksum = "2345488264226bf682893e25de0769f3360aac9957980ec49361b083ddaa5bc5"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -1462,7 +1462,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 [[package]]
 name = "ecolor"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "bytemuck",
 ]
@@ -1470,7 +1470,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.21.3"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1496,7 +1496,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "accesskit",
  "ahash 0.8.3",
@@ -1508,7 +1508,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1521,7 +1521,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.21.1"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "accesskit_winit",
  "android-activity 0.4.1",
@@ -1537,7 +1537,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1557,7 +1557,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "bytemuck",
 ]
@@ -1598,7 +1598,7 @@ checksum = "9d2c772ccdbdfd1967b4f5d79d17c98ebf92009fdcc838db7aa434462f600c26"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -1617,7 +1617,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.21.0"
-source = "git+https://github.com/emilk/egui#eb0812a9530f77712bf77aad0956f932a3a8f23d"
+source = "git+https://github.com/emilk/egui#c86bfb6e67abf208dccd7e006ccd9c3675edcc2f"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.3",
@@ -1835,7 +1835,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -2281,9 +2281,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be7b54589b581f624f566bf5d8eb2bab1db736c51528720b6bd36b96b55924d"
+checksum = "66b91535aa35fea1523ad1b86cb6b53c28e0ae566ba4a460f4457e936cad7c6f"
 dependencies = [
  "bytes",
  "fnv",
@@ -2428,9 +2428,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hyper"
-version = "0.14.25"
+version = "0.14.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc5e554ff619822309ffd57d8734d77cd5ce6238bc956f037ea06c58238c9899"
+checksum = "ab302d72a6f11a3b910431ff93aae7e773078c769f0a3ef15fb9ec692ed147d4"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -3277,7 +3277,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -3301,7 +3301,7 @@ dependencies = [
 [[package]]
 name = "openxr"
 version = "0.17.1"
-source = "git+https://github.com/Ralith/openxrs#10b6eb18ab0695b1080c1808fc3d6aebd71892fd"
+source = "git+https://github.com/zarik5/openxrs#144c8d4bf4e63741e20c447e00ec46428fae2697"
 dependencies = [
  "libc",
  "libloading",
@@ -3312,7 +3312,7 @@ dependencies = [
 [[package]]
 name = "openxr-sys"
 version = "0.9.3"
-source = "git+https://github.com/Ralith/openxrs#10b6eb18ab0695b1080c1808fc3d6aebd71892fd"
+source = "git+https://github.com/zarik5/openxrs#144c8d4bf4e63741e20c447e00ec46428fae2697"
 dependencies = [
  "libc",
 ]
@@ -3501,7 +3501,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ceca8aaf45b5c46ec7ed39fff75f57290368c1846d33d24a122ca81416ab058"
 dependencies = [
  "proc-macro2",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -3892,14 +3892,14 @@ checksum = "291a097c63d8497e00160b166a967a4a79c64f3facdd01cbd7502231688d77df"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.95"
+version = "1.0.96"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d721eca97ac802aa7777b701877c8004d950fc142651367300d21c1cc0194744"
+checksum = "057d394a50403bcac12672b2b18fb387ab6d289d957dab67dd201875391e52f1"
 dependencies = [
  "itoa",
  "ryu",
@@ -3914,7 +3914,7 @@ checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -4177,9 +4177,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.14"
+version = "2.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf316d5356ed6847742d036f8a39c3b8435cac10bd528a4bd461928a6ab34d5"
+checksum = "a34fcf3e8b60f57e6a14301a2e916d323af98b0ea63c599441eec8558660c822"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4252,7 +4252,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]
@@ -4342,7 +4342,7 @@ checksum = "61a573bdc87985e9d6ddeed1b3d864e8a302c847e40d647746df2f1de209d1ce"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.14",
+ "syn 2.0.15",
 ]
 
 [[package]]

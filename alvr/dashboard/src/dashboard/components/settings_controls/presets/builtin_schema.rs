@@ -266,31 +266,39 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Enabled".into(),
+                display_name: "VRChat Eye OSC".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.eye_tracking_fb", true),
-                    bool_modifier("session_settings.headset.face_tracking_fb", true),
-                    bool_modifier("session_settings.headset.eye_expressions_htc", true),
-                    bool_modifier("session_settings.headset.lip_expressions_htc", true),
-                    bool_modifier("session_settings.logging.log_tracking", true),
+                    bool_modifier("session_settings.headset.face_tracking.enabled", true),
+                    string_modifier(
+                        "session_settings.headset.face_tracking.content.sink.variant",
+                        "VrchatEyeOsc",
+                    ),
                 ],
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
+                display_name: "VRCFaceTracking OSC".into(),
                 modifiers: vec![
-                    bool_modifier("session_settings.headset.eye_tracking_fb", false),
-                    bool_modifier("session_settings.headset.face_tracking_fb", false),
-                    bool_modifier("session_settings.headset.eye_expressions_htc", false),
-                    bool_modifier("session_settings.headset.lip_expressions_htc", false),
-                    bool_modifier("session_settings.logging.log_tracking", false),
+                    bool_modifier("session_settings.headset.face_tracking.enabled", true),
+                    string_modifier(
+                        "session_settings.headset.face_tracking.content.sink.variant",
+                        "VrcFaceTrackingOsc",
+                    ),
                 ],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Disable".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.headset.face_tracking.enabled",
+                    false,
+                )],
                 content: None,
             },
         ]
         .into_iter()
         .collect(),
-        default_option_index: 1,
+        default_option_index: 2,
         gui: ChoiceControlType::ButtonGroup,
     })
 }

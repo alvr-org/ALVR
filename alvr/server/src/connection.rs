@@ -1,6 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     buttons::BUTTON_PATH_FROM_ID,
+    face_tracking::FaceTrackingSink,
     haptics::HapticsManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
@@ -762,6 +763,13 @@ async fn connection_pipeline(
             .await?;
         let tracking_manager = Arc::clone(&tracking_manager);
         async move {
+            let face_tracking_sink = if let Switch::Enabled(config) = settings.headset.face_tracking
+            {
+                Some(FaceTrackingSink::new(config.sink)?)
+            } else {
+                None
+            };
+
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
@@ -780,12 +788,15 @@ async fn connection_pipeline(
                 let right_hand_skeleton = tracking.hand_skeletons[1]
                     .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
 
-                if settings.logging.log_tracking {
-                    let eye_gazes = [
-                        tracking.eye_gazes[0].map(|p| tracking_manager_lock.recenter_pose(p)),
-                        tracking.eye_gazes[1].map(|p| tracking_manager_lock.recenter_pose(p)),
-                    ];
+                // Note: using the raw unrecentered head
+                let local_eye_gazes = tracking
+                    .device_motions
+                    .iter()
+                    .find(|(id, _)| *id == *HEAD_ID)
+                    .map(|(_, m)| tracking::to_local_eyes(m.pose, tracking.face_data.eye_gazes))
+                    .unwrap_or_default();
 
+                if settings.logging.log_tracking {
                     alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
                         head_motion: motions
                             .iter()
@@ -802,11 +813,18 @@ async fn connection_pipeline(
                                 .map(|(_, m)| *m),
                         ],
                         hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
-                        eye_gazes,
-                        fb_face_expression: tracking.fb_face_expression,
-                        htc_eye_expression: tracking.htc_eye_expression,
-                        htc_lip_expression: tracking.htc_lip_expression,
+                        eye_gazes: local_eye_gazes,
+                        fb_face_expression: tracking.face_data.fb_face_expression.clone(),
+                        htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
+                        htc_lip_expression: tracking.face_data.htc_lip_expression.clone(),
                     })))
+                }
+
+                if let Some(sink) = &face_tracking_sink {
+                    let mut face_data = tracking.face_data;
+                    face_data.eye_gazes = local_eye_gazes;
+
+                    sink.send_tracking(face_data);
                 }
 
                 let ffi_motions = motions

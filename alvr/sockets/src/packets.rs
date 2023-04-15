@@ -89,16 +89,21 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-// Note: eye and face tracking do not respect target_timestamp.
+#[derive(Serialize, Deserialize, Default)]
+pub struct FaceData {
+    pub eye_gazes: [Option<Pose>; 2],
+    pub fb_face_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 63]
+    pub htc_eye_expression: Option<Vec<f32>>,
+    pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
+}
+
+// Note: face_data does not respect target_timestamp.
 #[derive(Serialize, Deserialize, Default)]
 pub struct Tracking {
     pub target_timestamp: Duration,
     pub device_motions: Vec<(u64, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
-    pub eye_gazes: [Option<Pose>; 2],
-    pub fb_face_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 63]
-    pub htc_eye_expression: Option<Vec<f32>>,
-    pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
+    pub face_data: FaceData,
 }
 
 #[derive(Serialize, Deserialize)]

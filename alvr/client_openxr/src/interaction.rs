@@ -637,7 +637,7 @@ pub fn initialize_face_input<G>(
     }
 }
 
-pub fn get_eye_gaze(
+pub fn get_eye_gazes(
     context: &FaceInputContext,
     reference_space: &xr::Space,
     time: xr::Time,

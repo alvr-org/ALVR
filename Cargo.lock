@@ -347,6 +347,7 @@ dependencies = [
  "hyper",
  "pkg-config",
  "reqwest",
+ "rosc",
  "serde",
  "serde_json",
  "spin_sleep",
@@ -3719,6 +3720,16 @@ dependencies = [
  "hound",
  "lewton",
  "symphonia",
+]
+
+[[package]]
+name = "rosc"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "859cb80d4adaa48cb01555ccb87463ff96f9d25bce39c83b00a26b1a5c816365"
+dependencies = [
+ "byteorder",
+ "nom",
 ]
 
 [[package]]

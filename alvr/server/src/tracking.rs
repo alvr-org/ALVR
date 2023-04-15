@@ -341,3 +341,14 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
             .unwrap(),
     }
 }
+
+// Head and eyesmust be in the same (nt recentered) convention
+pub fn to_local_eyes(
+    raw_global_head: Pose,
+    raw_global_eyes: [Option<Pose>; 2],
+) -> [Option<Pose>; 2] {
+    [
+        raw_global_eyes[0].map(|e| raw_global_head.inverse() * e),
+        raw_global_eyes[1].map(|e| raw_global_head.inverse() * e),
+    ]
+}

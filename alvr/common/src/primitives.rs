@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +18,26 @@ pub struct Fov {
 pub struct Pose {
     pub orientation: Quat,
     pub position: Vec3,
+}
+
+impl Pose {
+    pub fn inverse(&self) -> Pose {
+        Pose {
+            orientation: self.orientation.conjugate(),
+            position: -self.position,
+        }
+    }
+}
+
+impl Mul<Pose> for Pose {
+    type Output = Pose;
+
+    fn mul(self, rhs: Pose) -> Pose {
+        Pose {
+            orientation: self.orientation * rhs.orientation,
+            position: self.position + self.orientation * rhs.position,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]

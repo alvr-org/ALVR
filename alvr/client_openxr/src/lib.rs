@@ -5,9 +5,10 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     prelude::*,
+    settings_schema::Switch,
     DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_sockets::Tracking;
+use alvr_sockets::{FaceData, Tracking};
 use interaction::{FaceInputContext, HandsInteractionContext};
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
@@ -45,7 +46,7 @@ struct StreamingInputContext {
     xr_instance: xr::Instance,
     xr_session: xr::Session<xr::AnyGraphics>,
     hands_context: Arc<HandsInteractionContext>,
-    face_context: FaceInputContext,
+    face_context: Option<FaceInputContext>,
     reference_space: Arc<RwLock<xr::Space>>,
     views_history: Arc<Mutex<VecDeque<HistoryView>>>,
 }
@@ -298,24 +299,26 @@ fn update_streaming_input(
         device_motions.push((*RIGHT_HAND_ID, motion));
     }
 
-    let eye_poses = interaction::get_eye_gaze(
-        &ctx.face_context,
-        &ctx.reference_space.read(),
-        to_xr_time(now),
-    );
-    let fb_face_expression =
-        interaction::get_fb_face_expression(&ctx.face_context, to_xr_time(now));
-    let htc_eye_expression = interaction::get_htc_eye_expression(&ctx.face_context);
-    let htc_lip_expression = interaction::get_htc_lip_expression(&ctx.face_context);
+    let face_data = if let Some(context) = &ctx.face_context {
+        FaceData {
+            eye_gazes: interaction::get_eye_gazes(
+                context,
+                &ctx.reference_space.read(),
+                to_xr_time(now),
+            ),
+            fb_face_expression: interaction::get_fb_face_expression(context, to_xr_time(now)),
+            htc_eye_expression: interaction::get_htc_eye_expression(context),
+            htc_lip_expression: interaction::get_htc_lip_expression(context),
+        }
+    } else {
+        Default::default()
+    };
 
     alvr_client_core::send_tracking(Tracking {
         target_timestamp,
         device_motions,
         hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
-        eye_gazes: eye_poses,
-        fb_face_expression,
-        htc_eye_expression,
-        htc_lip_expression,
+        face_data,
     });
 
     interaction::update_buttons(
@@ -611,30 +614,35 @@ pub fn entry_point() {
 
                         is_streaming.set(true);
 
-                        // todo: check which permissions are needed for htc
-                        #[cfg(target_os = "android")]
-                        {
-                            if settings.headset.eye_tracking_fb {
-                                alvr_client_core::try_get_permission(
-                                    "com.oculus.permission.EYE_TRACKING",
-                                );
-                            }
-                            if settings.headset.face_tracking_fb {
-                                alvr_client_core::try_get_permission(
-                                    "com.oculus.permission.FACE_TRACKING",
-                                );
-                            }
-                        }
+                        let face_context =
+                            if let Switch::Enabled(config) = settings.headset.face_tracking {
+                                // todo: check which permissions are needed for htc
+                                #[cfg(target_os = "android")]
+                                {
+                                    if config.sources.eye_tracking_fb {
+                                        alvr_client_core::try_get_permission(
+                                            "com.oculus.permission.EYE_TRACKING",
+                                        );
+                                    }
+                                    if config.sources.face_tracking_fb {
+                                        alvr_client_core::try_get_permission(
+                                            "com.oculus.permission.FACE_TRACKING",
+                                        );
+                                    }
+                                }
 
-                        let face_context = interaction::initialize_face_input(
-                            &xr_instance,
-                            xr_system,
-                            &xr_session,
-                            settings.headset.eye_tracking_fb,
-                            settings.headset.face_tracking_fb,
-                            settings.headset.eye_expressions_htc,
-                            settings.headset.lip_expressions_htc,
-                        );
+                                Some(interaction::initialize_face_input(
+                                    &xr_instance,
+                                    xr_system,
+                                    &xr_session,
+                                    config.sources.eye_tracking_fb,
+                                    config.sources.face_tracking_fb,
+                                    config.sources.eye_expressions_htc,
+                                    config.sources.lip_expressions_htc,
+                                ))
+                            } else {
+                                None
+                            };
 
                         let context = StreamingInputContext {
                             platform,

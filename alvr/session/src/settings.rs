@@ -525,6 +525,28 @@ pub enum HeadsetEmulationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct FaceTrackingSources {
+    pub eye_tracking_fb: bool,
+    pub face_tracking_fb: bool,
+    pub eye_expressions_htc: bool,
+    pub lip_expressions_htc: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum FaceTrackingSinkConfig {
+    #[schema(strings(display_name = "VRChat Eye OSC"))]
+    VrchatEyeOsc,
+    #[schema(strings(display_name = "VRCFaceTracking OSC"))]
+    VrcFaceTrackingOsc,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct FaceTrackingConfig {
+    pub sources: FaceTrackingSources,
+    pub sink: FaceTrackingSinkConfig,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum ControllersEmulationMode {
     #[schema(strings(display_name = "Rift S Touch"))]
     RiftSTouch,
@@ -630,10 +652,7 @@ pub struct HeadsetDesc {
     #[schema(flag = "steamvr-restart")]
     pub enable_vive_tracker_proxy: bool,
 
-    pub eye_tracking_fb: bool,
-    pub face_tracking_fb: bool,
-    pub eye_expressions_htc: bool,
-    pub lip_expressions_htc: bool,
+    pub face_tracking: Switch<FaceTrackingConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersDesc>,
@@ -1034,10 +1053,20 @@ pub fn session_settings_default() -> SettingsDefault {
             extra_openvr_props: default_custom_openvr_props.clone(),
             tracking_ref_only: false,
             enable_vive_tracker_proxy: false,
-            eye_tracking_fb: false,
-            face_tracking_fb: false,
-            eye_expressions_htc: false,
-            lip_expressions_htc: false,
+            face_tracking: SwitchDefault {
+                enabled: false,
+                content: FaceTrackingConfigDefault {
+                    sources: FaceTrackingSourcesDefault {
+                        eye_tracking_fb: true,
+                        face_tracking_fb: true,
+                        eye_expressions_htc: true,
+                        lip_expressions_htc: true,
+                    },
+                    sink: FaceTrackingSinkConfigDefault {
+                        variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
+                    },
+                },
+            },
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersDescDefault {

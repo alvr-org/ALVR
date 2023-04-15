@@ -1,6 +1,7 @@
 mod bitrate;
 mod buttons;
 mod connection;
+mod face_tracking;
 mod haptics;
 mod logging_backend;
 mod openvr_props;

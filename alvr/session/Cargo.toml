@@ -6,6 +6,10 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+defaults = ["enable-low-latency"] # Android smartphones crashes enabling this feature (https://github.com/PhoneVR-Developers/alvr-cardboard/issues/5)
+enable-low-latency = []
+
 [dependencies]
 alvr_common.workspace = true
 

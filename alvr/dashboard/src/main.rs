@@ -7,14 +7,14 @@ mod logging_backend;
 mod steamvr_launcher;
 mod theme;
 
-use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
+use alvr_common::{parking_lot::Mutex, prelude::*, ALVR_VERSION};
 use alvr_sockets::{DashboardRequest, GpuVendor};
 use dashboard::Dashboard;
 use data_sources::ServerEvent;
 use eframe::{egui, IconData, NativeOptions};
 use ico::IconDir;
 use std::{
-    io::Cursor,
+    io::{Cursor, Read},
     sync::{mpsc, Arc},
     thread,
 };
@@ -37,6 +37,20 @@ fn main() {
                 .session_settings
                 .patches
                 .linux_async_reprojection = false;
+        } else {
+            #[cfg(target_os = "linux")]
+            {
+                let mut power_info_file =
+                    std::fs::File::open("/sys/class/drm/card0/device/pp_power_profile_mode")
+                        .expect("File not found");
+                let mut power_info = String::new();
+                power_info_file
+                    .read_to_string(&mut power_info)
+                    .unwrap();
+                if !power_info.contains("VR*") {
+                    warn!("Make sure to set the Power Profile to VR!");
+                }
+            }
         }
 
         if data_manager.session().server_version != *ALVR_VERSION {

@@ -44,9 +44,7 @@ fn main() {
                     std::fs::File::open("/sys/class/drm/card0/device/pp_power_profile_mode")
                         .expect("File not found");
                 let mut power_info = String::new();
-                power_info_file
-                    .read_to_string(&mut power_info)
-                    .unwrap();
+                power_info_file.read_to_string(&mut power_info).unwrap();
                 if !power_info.contains("VR*") {
                     warn!("Make sure to set the Power Profile to VR!");
                 }

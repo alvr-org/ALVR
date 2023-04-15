@@ -447,6 +447,8 @@ pub fn video_decoder_split(
             let decoder = Arc::new(FakeThreadSafe(
                 MediaCodec::from_decoder_type(&mime).unwrap(),
             ));
+
+            info!("Using AMediaCoded format:{} ", format);
             decoder
                 .configure(
                     &format,

@@ -765,7 +765,10 @@ async fn connection_pipeline(
         async move {
             let face_tracking_sink = if let Switch::Enabled(config) = settings.headset.face_tracking
             {
-                Some(FaceTrackingSink::new(config.sink)?)
+                Some(FaceTrackingSink::new(
+                    config.sink,
+                    settings.connection.osc_local_port,
+                )?)
             } else {
                 None
             };

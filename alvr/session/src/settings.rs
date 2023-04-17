@@ -535,9 +535,9 @@ pub struct FaceTrackingSources {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum FaceTrackingSinkConfig {
     #[schema(strings(display_name = "VRChat Eye OSC"))]
-    VrchatEyeOsc,
+    VrchatEyeOsc { port: u16 },
     #[schema(strings(display_name = "VRCFaceTracking OSC"))]
-    VrcFaceTrackingOsc,
+    VrcFaceTrackingOsc { port: u16 },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -708,15 +708,17 @@ pub struct DisconnectionCriteria {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ConnectionDesc {
-    pub client_discovery: Switch<DiscoveryConfig>,
-
-    pub web_server_port: u16,
-
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
 TCP: Slower than UDP, but more stable. Pick this if you experience video or audio stutters with UDP."#
     ))]
     pub stream_protocol: SocketProtocol,
+
+    pub client_discovery: Switch<DiscoveryConfig>,
+
+    pub stream_port: u16,
+    pub web_server_port: u16,
+    pub osc_local_port: u16,
 
     #[schema(strings(display_name = "Streamer send buffer size"))]
     pub server_send_buffer_bytes: SocketBufferSize,
@@ -729,8 +731,6 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 
     #[schema(strings(display_name = "Client receive buffer size"))]
     pub client_recv_buffer_bytes: SocketBufferSize,
-
-    pub stream_port: u16,
 
     #[schema(strings(
         help = "Reduce minimum delay between keyframes from 100ms to 5ms. Use on networks with high packet loss."
@@ -1063,6 +1063,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         lip_expressions_htc: true,
                     },
                     sink: FaceTrackingSinkConfigDefault {
+                        VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
+                        VrcFaceTrackingOsc: FaceTrackingSinkConfigVrcFaceTrackingOscDefault { port: 9620 },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
                     },
                 },
@@ -1108,6 +1110,9 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         connection: ConnectionDescDefault {
+            stream_protocol: SocketProtocolDefault {
+                variant: SocketProtocolDefaultVariant::Udp,
+            },
             client_discovery: SwitchDefault {
                 enabled: true,
                 content: DiscoveryConfigDefault {
@@ -1115,14 +1120,12 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             web_server_port: 8082,
-            stream_protocol: SocketProtocolDefault {
-                variant: SocketProtocolDefaultVariant::Udp,
-            },
+            stream_port: 9944,
+            osc_local_port: 9942,
             server_send_buffer_bytes: socket_buffer.clone(),
             server_recv_buffer_bytes: socket_buffer.clone(),
             client_send_buffer_bytes: socket_buffer.clone(),
             client_recv_buffer_bytes: socket_buffer,
-            stream_port: 9944,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),

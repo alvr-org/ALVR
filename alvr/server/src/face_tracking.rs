@@ -1,12 +1,10 @@
 use alvr_common::{glam::EulerRot, prelude::*};
 use alvr_session::FaceTrackingSinkConfig;
-use alvr_sockets::{FaceData, LOCAL_IP};
+use alvr_sockets::FaceData;
 use rosc::{OscMessage, OscPacket, OscType};
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+use std::{f32::consts::PI, net::UdpSocket};
 
-const LOCAL_OSC_PORT: u16 = 9942;
-const VRCHAT_PORT: u16 = 9000;
-const VRC_FACE_TRACKING_PORT: u16 = 9999; // TBD
+const RAD_TO_DEG: f32 = 180.0 / PI;
 
 pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,
@@ -14,15 +12,15 @@ pub struct FaceTrackingSink {
 }
 
 impl FaceTrackingSink {
-    pub fn new(config: FaceTrackingSinkConfig) -> StrResult<Self> {
+    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> StrResult<Self> {
         let port = match config {
-            FaceTrackingSinkConfig::VrchatEyeOsc => VRCHAT_PORT,
-            FaceTrackingSinkConfig::VrcFaceTrackingOsc => VRC_FACE_TRACKING_PORT,
+            FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
+            FaceTrackingSinkConfig::VrcFaceTrackingOsc { port } => port,
         };
 
-        let socket = UdpSocket::bind(SocketAddr::new(LOCAL_IP, LOCAL_OSC_PORT)).map_err(err!())?;
+        let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}")).map_err(err!())?;
         socket
-            .connect(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port))
+            .connect(format!("127.0.0.1:{port}"))
             .map_err(err!())?;
 
         Ok(Self { config, socket })
@@ -42,7 +40,7 @@ impl FaceTrackingSink {
 
     pub fn send_tracking(&self, face_data: FaceData) {
         match self.config {
-            FaceTrackingSinkConfig::VrchatEyeOsc => {
+            FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eye_gazes {
                     let (left_pitch, left_yaw, _) = left.orientation.to_euler(EulerRot::XYZ);
                     let (right_pitch, right_yaw, _) = right.orientation.to_euler(EulerRot::XYZ);
@@ -50,10 +48,10 @@ impl FaceTrackingSink {
                     self.send_osc_message(
                         "/tracking/eye/LeftRightPitchYaw",
                         vec![
-                            OscType::Float(-left_pitch),
-                            OscType::Float(-left_yaw),
-                            OscType::Float(-right_pitch),
-                            OscType::Float(-right_yaw),
+                            OscType::Float(-left_pitch * RAD_TO_DEG),
+                            OscType::Float(-left_yaw * RAD_TO_DEG),
+                            OscType::Float(-right_pitch * RAD_TO_DEG),
+                            OscType::Float(-right_yaw * RAD_TO_DEG),
                         ],
                     );
                 } else if let Some(pose) = face_data.eye_gazes[0].or(face_data.eye_gazes[1]) {
@@ -61,7 +59,10 @@ impl FaceTrackingSink {
 
                     self.send_osc_message(
                         "/tracking/eye/CenterPitchYaw",
-                        vec![OscType::Float(-pitch), OscType::Float(-yaw)],
+                        vec![
+                            OscType::Float(-pitch * RAD_TO_DEG),
+                            OscType::Float(-yaw * RAD_TO_DEG),
+                        ],
                     );
                 }
 
@@ -87,7 +88,7 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTrackingOsc => {
+            FaceTrackingSinkConfig::VrcFaceTrackingOsc { .. } => {
                 if let Some(pose) = face_data.eye_gazes[0] {
                     self.send_osc_message(
                         "/tracking/eye/left/Quat",

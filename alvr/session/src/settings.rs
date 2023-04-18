@@ -1064,7 +1064,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
-                        VrcFaceTrackingOsc: FaceTrackingSinkConfigVrcFaceTrackingOscDefault { port: 9620 },
+                        VrcFaceTrackingOsc: FaceTrackingSinkConfigVrcFaceTrackingOscDefault {
+                            port: 9620,
+                        },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
                     },
                 },

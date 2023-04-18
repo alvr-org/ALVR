@@ -66,7 +66,6 @@ void VideoEncoderSW::Initialize() {
 			av_dict_set(&opt, "coder", "vlc", 0);
 			break;
 	}
-	break;
 
 	m_codecContext->width = m_renderWidth;
 	m_codecContext->height = m_renderHeight;

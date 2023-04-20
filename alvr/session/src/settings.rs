@@ -948,8 +948,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         ("priority".into(), int32_default(0)),
                         // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
                         // cabable, since they are on level 29.
-                        #[cfg(feature = "enable-low-latency")]
-                        ("low-latency".into(), int32_default(1)),
+                        // ("low-latency".into(), int32_default(1)), // Android smartphones crashes enabling this feature (https://github.com/PhoneVR-Developers/alvr-cardboard/issues/5)
                         (
                             "vendor.qti-ext-dec-low-latency.enable".into(),
                             int32_default(1),

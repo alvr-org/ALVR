@@ -200,7 +200,7 @@ pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
 
     cmd!(
         sh,
-        "cargo ndk -t arm64-v8a -t x86_64 -p 26 -o {build_dir} build {flags_ref...}"
+        "cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 26 -o {build_dir} build {flags_ref...}"
     )
     .run()
     .unwrap();

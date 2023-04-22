@@ -87,7 +87,7 @@ pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: 
         command::zip(&sh, &afs::streamer_build_dir()).unwrap();
 
         // the wix file broke
-        // build_windows_installer();
+        build_windows_installer();
     } else {
         command::targz(&sh, &afs::streamer_build_dir()).unwrap();
 

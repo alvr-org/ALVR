@@ -58,7 +58,7 @@
                 <!-- but the ID will not change if the file path it points to doesn"t change.       -->
                 <Shortcut Id="ApplicationStartMenuShortcut" 
                   Name="ALVR" 
-                  Target="[#fil962077914FC1B9B593E440F4A22CAF0C]"
+                  Target="[#filFA06ADD296517EF1582567DBAEADED88]"
                   WorkingDirectory="APPLICATIONFOLDER"/>
                 <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall"/>
                 <RegistryValue Root="HKCU" Key="Software\alvr-org\ALVR" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
@@ -71,7 +71,7 @@
                 <!-- but the ID will not change if the file path it points to doesn"t change.       -->
                 <Shortcut Id="ApplicationDesktopShortcut" 
                   Name="ALVR" 
-                  Target="[#fil962077914FC1B9B593E440F4A22CAF0C]"
+                  Target="[#filFA06ADD296517EF1582567DBAEADED88]"
                   WorkingDirectory="APPLICATIONFOLDER"/>
                 <RegistryValue Root="HKCU" Key="Software\alvr-org\ALVR" Name="desktop" Type="integer" Value="1" KeyPath="yes"/>
             </Component>

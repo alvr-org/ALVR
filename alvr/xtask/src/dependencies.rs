@@ -296,7 +296,7 @@ pub fn build_android_deps(skip_admin_priv: bool) {
         .unwrap();
     cmd!(sh, "rustup target add i686-linux-android")
         .run()
-        .unwrap();    
+        .unwrap();
     cmd!(sh, "cargo install cargo-apk cargo-ndk cbindgen")
         .run()
         .unwrap();

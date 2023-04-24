@@ -210,6 +210,8 @@ pub fn release_wifi_lock() {
 
         env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
             .unwrap();
+        // TODO: all JVM.call_method sometimes result in JavaExceptions, unwrap will only report Error as 'JavaException', ideally before unwrapping
+        // need to call JVM.describe_error() which will actually check if there is an exception and print error to stderr/logcat. Then unwrap.
 
         // wifi_lock is dropped here
     }
@@ -449,6 +451,8 @@ pub fn video_decoder_split(
             let decoder = Arc::new(FakeThreadSafe(
                 MediaCodec::from_decoder_type(&mime).unwrap(),
             ));
+
+            info!("Using AMediaCoded format:{} ", format);
             decoder
                 .configure(
                     &format,

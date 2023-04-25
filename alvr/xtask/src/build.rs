@@ -182,6 +182,8 @@ pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
     let build_dir = afs::build_dir().join("alvr_client_core");
     sh.create_dir(&build_dir).unwrap();
 
+    let strip_flag = matches!(profile, Profile::Debug).then_some("--no-strip");
+
     let mut flags = vec![];
     match profile {
         Profile::Distribution => {
@@ -200,7 +202,7 @@ pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
 
     cmd!(
         sh,
-        "cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 26 -o {build_dir} build {flags_ref...}"
+        "cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 26 {strip_flag...} -o {build_dir} build {flags_ref...}"
     )
     .run()
     .unwrap();

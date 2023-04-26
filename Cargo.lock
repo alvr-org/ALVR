@@ -267,6 +267,7 @@ dependencies = [
 name = "alvr_common"
 version = "20.0.0-dev11"
 dependencies = [
+ "backtrace",
  "glam",
  "log",
  "msgbox",

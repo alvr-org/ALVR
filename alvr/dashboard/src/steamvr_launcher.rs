@@ -155,7 +155,7 @@ impl Launcher {
             }
             #[cfg(not(windows))]
             {
-                Command::new("steam")
+                Command::new("xdg-open")
                     .args(["steam://rungameid/250820"])
                     .spawn()
                     .ok();

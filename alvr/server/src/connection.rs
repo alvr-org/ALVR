@@ -773,6 +773,11 @@ async fn connection_pipeline(
                 None
             };
 
+            let mut track_controllers = 0u32;
+            if let Switch::Enabled(config) = settings.headset.controllers {
+                track_controllers = config.tracked.into();
+            }
+
             loop {
                 let tracking = receiver.recv_header_only().await?;
 
@@ -858,6 +863,7 @@ async fn connection_pipeline(
                             } else {
                                 ptr::null()
                             },
+                            track_controllers,
                         )
                     };
                 }

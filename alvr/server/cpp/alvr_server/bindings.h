@@ -131,7 +131,8 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             const FfiDeviceMotion *deviceMotions,
                             int motionsCount,
                             const FfiHandSkeleton *leftHand,
-                            const FfiHandSkeleton *rightHand);
+                            const FfiHandSkeleton *rightHand,
+                            unsigned int controllersTracked);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 

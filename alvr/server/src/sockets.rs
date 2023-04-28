@@ -35,7 +35,7 @@ impl WelcomeSocket {
             }
         };
 
-        if size == HANDSHAKE_PACKET_SIZE_BYTES
+        if size >= 24
             && &self.buffer[..ALVR_NAME.len()] == ALVR_NAME.as_bytes()
             && self.buffer[ALVR_NAME.len()..16].iter().all(|b| *b == 0)
         {

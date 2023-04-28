@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -162,7 +162,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_commands"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "alvr_filesystem",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "glam",
  "log",
@@ -187,7 +187,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -197,7 +197,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "dirs",
  "once_cell",
@@ -205,7 +205,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_commands",
  "alvr_common",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alcro",
  "alvr_audio",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_data"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -302,14 +302,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "exec",
 ]
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_filesystem",
  "bindgen",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "19.1.0"
+version = "19.1.1"
 dependencies = [
  "alvr_filesystem",
  "pico-args",

@@ -241,18 +241,19 @@ void SetTracking(unsigned long long targetTimestampNs,
                  const FfiDeviceMotion *deviceMotions,
                  int motionsCount,
                  const FfiHandSkeleton *leftHand,
-                 const FfiHandSkeleton *rightHand) {
+                 const FfiHandSkeleton *rightHand,
+                 unsigned int controllersTracked) {
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
             if (g_driver_provider.left_controller && deviceMotions[i].deviceID == LEFT_HAND_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand);
+                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked);
             } else if (g_driver_provider.right_controller &&
                        deviceMotions[i].deviceID == RIGHT_HAND_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand);
+                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked);
             }
         }
     }

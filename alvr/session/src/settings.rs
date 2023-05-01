@@ -573,6 +573,11 @@ pub struct HapticsConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ControllersDesc {
+    #[schema(strings(
+        help = "Turning this off will make the controllers appear powered off. Reconnect HMD to apply."
+    ))]
+    pub tracked: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: ControllersEmulationMode,
 
@@ -1077,6 +1082,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     emulation_mode: ControllersEmulationModeDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
+                    tracked: true,
                     extra_openvr_props: default_custom_openvr_props,
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

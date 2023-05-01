@@ -17,9 +17,9 @@ vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
 
 Controller::Controller(uint64_t deviceID) : TrackedDevice(deviceID) {
     m_pose = vr::DriverPose_t{};
-    m_pose.poseIsValid = true;
-    m_pose.result = vr::TrackingResult_Running_OK;
-    m_pose.deviceIsConnected = true;
+    m_pose.poseIsValid = false;
+    m_pose.deviceIsConnected = false;
+    m_pose.result = vr::TrackingResult_Uninitialized;
 
     m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
@@ -408,7 +408,8 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
 
 bool Controller::onPoseUpdate(float predictionS,
                               FfiDeviceMotion motion,
-                              const FfiHandSkeleton *handSkeleton) {
+                              const FfiHandSkeleton *handSkeleton,
+                              unsigned int controllersTracked) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return false;
     }
@@ -416,10 +417,11 @@ bool Controller::onPoseUpdate(float predictionS,
     auto vr_driver_input = vr::VRDriverInput();
 
     auto pose = vr::DriverPose_t{};
-
-    pose.poseIsValid = true;
-    pose.result = vr::TrackingResult_Running_OK;
-    pose.deviceIsConnected = true;
+    pose.poseIsValid = controllersTracked;
+    pose.deviceIsConnected = controllersTracked;
+    pose.result = controllersTracked
+      ? vr::TrackingResult_Running_OK
+      : vr::TrackingResult_Uninitialized;
 
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);

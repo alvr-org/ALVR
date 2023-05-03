@@ -28,7 +28,6 @@ pub struct VideoStreamingCapabilities {
 pub enum ClientConnectionResult {
     ConnectionAccepted {
         display_name: String,
-        server_ip: IpAddr,
         streaming_capabilities: Option<VideoStreamingCapabilities>,
     },
     ClientStandby,
@@ -199,7 +198,6 @@ pub enum DashboardRequest {
     Ping,
     Log(LogEvent),
     GetSession,
-    UpdateSession(Box<SessionDesc>),
     SetValues(Vec<PathValuePair>),
     UpdateClientList {
         hostname: String,
@@ -215,6 +213,53 @@ pub enum DashboardRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ServerResponse {
+pub enum ServerDashboardResponse {
     AudioDevices(AudioDevicesList),
+}
+
+// Can be reliable or unreliable, has separate raw buffer
+pub enum ClientControlMessage {
+    Ping,
+    GetSession,
+    GetAudioDevices,
+    ClientCapabilities {
+        model_type: String,
+        streaming_capabilities: Option<VideoStreamingCapabilities>,
+    },
+    SetValues(Vec<PathValuePair>),
+    UpdateClientList {
+        hostname: String,
+        action: ClientListAction,
+    },
+    ClientStandby,
+    RequestIdr,
+    PlayspaceSync(Option<Vec2>),
+    ViewsConfig(ViewsConfig),
+    Battery(BatteryPacket),
+    Button {
+        path_id: u64,
+        value: ButtonValue,
+    }, // todo: bundle multiple button changes together
+    ActiveInteractionProfile {
+        device_id: u64,
+        profile_id: u64,
+    },
+    Log {
+        level: LogSeverity,
+        message: String,
+    },
+    Statistics(ClientStatistics),
+    CaptureFrame,
+    StartRecording,
+    StopRecording,
+    RestartSteamvr,
+    ShutdownSteamvr,
+}
+
+pub enum ServerControlMessage {
+    AudioDevices(AudioDevicesList),
+    StreamConfig(StreamConfigPacket),
+    InitializeDecoder(DecoderInitializationConfig),
+    ServerPredictionAverage(Duration),
+    Restarting,
 }

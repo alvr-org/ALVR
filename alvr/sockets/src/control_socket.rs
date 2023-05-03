@@ -1,4 +1,4 @@
-use super::{Ldc, CONTROL_PORT, LOCAL_IP};
+use super::{Ldc, LOCAL_IP};
 use alvr_common::prelude::*;
 use bytes::Bytes;
 use futures::{

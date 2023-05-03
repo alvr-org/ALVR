@@ -10,7 +10,6 @@ mod connection;
 mod decoder;
 mod logging_backend;
 mod platform;
-mod sockets;
 mod statistics;
 mod storage;
 

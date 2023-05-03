@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::Event;
-use alvr_sockets::{DashboardRequest, ServerResponse};
+use alvr_sockets::{DashboardRequest, ServerDashboardResponse};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -118,9 +118,6 @@ async fn http_api(
                             SERVER_DATA_MANAGER.read().session().clone(),
                         )));
                     }
-                    DashboardRequest::UpdateSession(session) => {
-                        *SERVER_DATA_MANAGER.write().session_mut() = *session
-                    }
                     DashboardRequest::SetValues(descs) => {
                         SERVER_DATA_MANAGER.write().set_values(descs).ok();
                     }
@@ -129,7 +126,7 @@ async fn http_api(
                         .update_client_list(hostname, action),
                     DashboardRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
-                            return reply_json(&ServerResponse::AudioDevices(list));
+                            return reply_json(&ServerDashboardResponse::AudioDevices(list));
                         }
                     }
                     DashboardRequest::CaptureFrame => unsafe { crate::CaptureFrame() },

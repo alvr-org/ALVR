@@ -1,16 +1,12 @@
-// Note: for StreamSocket, the client uses a server socket, the server uses a client socket.
-// This is because of certificate management. The server needs to trust a client and its certificate
-//
-// StreamSender and StreamReceiver endpoints allow for convenient conversion of the header to/from
-// bytes while still handling the additional byte buffer with zero copies and extra allocations.
-
-mod tcp;
+mod libp2p;
 mod udp;
 
-use alvr_common::prelude::*;
+use futures::channel::mpsc;
+use ::libp2p::{gossipsub::{IdentTopic, Topic, TopicHash},};
+use alvr_common::{once_cell::sync::Lazy, prelude::*};
 use alvr_session::{SocketBufferSize, SocketProtocol};
 use bytes::{Buf, BufMut, BytesMut};
-use futures::SinkExt;
+// use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::HashMap,
@@ -20,72 +16,10 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
-use tokio::net;
-use tokio::sync::{mpsc, Mutex};
-use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
-pub fn set_socket_buffers(
-    socket: &socket2::Socket,
-    send_buffer_bytes: SocketBufferSize,
-    recv_buffer_bytes: SocketBufferSize,
-) -> StrResult {
-    info!(
-        "Initial socket buffer size: send: {}B, recv: {}B",
-        socket.send_buffer_size().map_err(err!())?,
-        socket.recv_buffer_size().map_err(err!())?
-    );
+enum StreamType {
+    Control,
 
-    {
-        let maybe_size = match send_buffer_bytes {
-            SocketBufferSize::Default => None,
-            SocketBufferSize::Maximum => Some(u32::MAX),
-            SocketBufferSize::Custom(size) => Some(size),
-        };
-
-        if let Some(size) = maybe_size {
-            if let Err(e) = socket.set_send_buffer_size(size as usize) {
-                info!("Error setting socket send buffer: {e}");
-            } else {
-                info!(
-                    "Set socket send buffer succeeded: {}",
-                    socket.send_buffer_size().map_err(err!())?
-                );
-            }
-        }
-    }
-
-    {
-        let maybe_size = match recv_buffer_bytes {
-            SocketBufferSize::Default => None,
-            SocketBufferSize::Maximum => Some(u32::MAX),
-            SocketBufferSize::Custom(size) => Some(size),
-        };
-
-        if let Some(size) = maybe_size {
-            if let Err(e) = socket.set_recv_buffer_size(size as usize) {
-                info!("Error setting socket recv buffer: {e}");
-            } else {
-                info!(
-                    "Set socket recv buffer succeeded: {}",
-                    socket.recv_buffer_size().map_err(err!())?
-                );
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[derive(Clone)]
-enum StreamSendSocket {
-    Udp(UdpStreamSendSocket),
-    Tcp(TcpStreamSendSocket),
-}
-
-enum StreamReceiveSocket {
-    Udp(UdpStreamReceiveSocket),
-    Tcp(TcpStreamReceiveSocket),
 }
 
 pub struct SendBufferLock<'a> {
@@ -113,13 +47,19 @@ impl Drop for SendBufferLock<'_> {
     }
 }
 
+enum StreamSenderInner {
+    Libp2p(mpsc::Sender<(TopicHash, Vec<u8>)>),
+    Udp {
+        max_packet_size: usize,
+        socket: StreamSendSocket,
+        // if the packet index overflows the worst that happens is a false positive packet loss
+        next_packet_index: u32,
+    },
+}
+
 #[derive(Clone)]
 pub struct StreamSender<T> {
-    stream_id: u16,
-    max_packet_size: usize,
-    socket: StreamSendSocket,
-    // if the packet index overflows the worst that happens is a false positive packet loss
-    next_packet_index: u32,
+    topic_hash: ,
     _phantom: PhantomData<T>,
 }
 

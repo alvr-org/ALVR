@@ -11,11 +11,24 @@ alvr_common.workspace = true
 alvr_events.workspace = true
 alvr_session.workspace = true
 
+async-std = "1"
+async-global-executor = "2"
 bincode = "1"
 bytes = "1"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 socket2 = "0.5"
+libp2p = { version = "0.51", features = [
+    "async-std",
+    "gossipsub",
+    "macros",
+    "noise",
+    "request-response",
+    "tcp",
+    "yamux",
+] }
+libp2p-identity = "0.1"
+libp2p-quic = { version = "0.7.0-alpha.3", features = ["async-std"] }
 tokio = { version = "1", features = ["rt", "net", "macros"] }
 tokio-util = { version = "0.7", features = ["codec", "net"] }

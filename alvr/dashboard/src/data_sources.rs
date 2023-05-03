@@ -1,7 +1,7 @@
 use alvr_common::{parking_lot::Mutex, prelude::*, StrResult};
 use alvr_events::{Event, EventType};
 use alvr_server_data::ServerDataManager;
-use alvr_sockets::{AudioDevicesList, DashboardRequest, ServerResponse};
+use alvr_sockets::{AudioDevicesList, DashboardRequest, ServerDashboardResponse};
 use eframe::egui;
 use std::{
     env,
@@ -203,8 +203,8 @@ pub fn data_interop_thread(
             .send_json(&request)
         {
             Ok(response) => {
-                if let Ok(ServerResponse::AudioDevices(list)) =
-                    response.into_json::<ServerResponse>()
+                if let Ok(ServerDashboardResponse::AudioDevices(list)) =
+                    response.into_json::<ServerDashboardResponse>()
                 {
                     report_event(&context, &sender, ServerEvent::AudioDevicesUpdated(list)).ok();
                 }
@@ -213,11 +213,6 @@ pub fn data_interop_thread(
                 if let DataSource::Local(data_manager) = &mut *data_source.lock() {
                     match request {
                         DashboardRequest::GetSession => {
-                            report_session(&context, &sender, data_manager);
-                        }
-                        DashboardRequest::UpdateSession(session) => {
-                            *data_manager.session_mut() = *session;
-
                             report_session(&context, &sender, data_manager);
                         }
                         DashboardRequest::SetValues(descs) => {

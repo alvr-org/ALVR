@@ -461,7 +461,7 @@ fn try_connect(
                         fps,
                         frame_interval_sender
                     ) => {
-                        show_warn(res);
+                        warn!("Connection interrupted: {res:?}");
                     },
                     _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
                     _ = shutdown_detector => (),

@@ -97,6 +97,12 @@ pub struct FaceData {
     pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct VideoPacketHeader {
+    pub timestamp: Duration,
+    pub is_idr: bool,
+}
+
 // Note: face_data does not respect target_timestamp.
 #[derive(Serialize, Deserialize, Default)]
 pub struct Tracking {

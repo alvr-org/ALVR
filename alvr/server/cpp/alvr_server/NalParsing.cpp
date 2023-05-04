@@ -96,7 +96,8 @@ void processH265Nals(unsigned char *&buf, int &len) {
     }
 }
 
-void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs) {
+void ParseFrameNals(
+    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr) {
     // Report before the frame is packetized
     ReportEncoded(targetTimestampNs);
 
@@ -110,5 +111,5 @@ void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long t
         processH265Nals(buf, len);
     }
 
-    VideoSend(targetTimestampNs, buf, len);
+    VideoSend(targetTimestampNs, buf, len, isIdr);
 }

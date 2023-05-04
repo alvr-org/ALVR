@@ -149,4 +149,4 @@ extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(
-    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr);
+    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs);

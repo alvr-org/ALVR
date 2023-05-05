@@ -1,5 +1,5 @@
 [package]
-name = "alvr_server_data"
+name = "alvr_server_io"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,5 +13,8 @@ alvr_session.workspace = true
 alvr_sockets.workspace = true
 
 cpal = { version = "0.15", features = ["jack"] }
+encoding_rs_io = "0.1"
+dirs = "5"
+runas = "1"
 serde_json = "1"
-wgpu = "0.15"
+wgpu = "0.16"

@@ -75,7 +75,3 @@ fn get_single_openvr_path(path_type: &str) -> StrResult<PathBuf> {
 pub fn steamvr_root_dir() -> StrResult<PathBuf> {
     get_single_openvr_path("runtime")
 }
-
-pub fn steam_config_dir() -> StrResult<PathBuf> {
-    get_single_openvr_path("config")
-}

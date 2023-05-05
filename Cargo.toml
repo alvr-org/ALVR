@@ -12,11 +12,10 @@ license = "MIT"
 [workspace.dependencies]
 alvr_audio = { path = "alvr/audio" }
 alvr_client_core = { path = "alvr/client_core" }
-alvr_commands = { path = "alvr/commands" }
 alvr_common = { path = "alvr/common" }
 alvr_events = { path = "alvr/events" }
 alvr_filesystem = { path = "alvr/filesystem" }
-alvr_server_data = { path = "alvr/server_data" }
+alvr_server_io = { path = "alvr/server_io" }
 alvr_session = { path = "alvr/session" }
 alvr_sockets = { path = "alvr/sockets" }
 

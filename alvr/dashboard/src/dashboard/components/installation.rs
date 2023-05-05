@@ -1,5 +1,5 @@
-use crate::{firewall, steamvr_launcher::LAUNCHER, theme};
-use alvr_common::prelude::*;
+use crate::theme;
+use alvr_sockets::{FirewallRulesAction, ServerRequest};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},
     emath::Align,
@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 pub enum InstallationTabRequest {
     OpenSetupWizard,
+    ServerRequest(ServerRequest),
 }
 
 pub struct InstallationTab {
@@ -16,43 +17,32 @@ pub struct InstallationTab {
 
 impl InstallationTab {
     pub fn new() -> Self {
-        let mut this = Self { drivers: vec![] };
-
-        this.update_drivers();
-
-        this
+        Self { drivers: vec![] }
     }
 
-    pub fn update_drivers(&mut self) {
-        if let Ok(paths) = alvr_commands::get_registered_drivers() {
-            self.drivers = paths;
-        }
+    pub fn update_drivers(&mut self, list: Vec<PathBuf>) {
+        self.drivers = list;
     }
 
-    pub fn ui(&mut self, ui: &mut Ui) -> Option<InstallationTabRequest> {
-        let mut response = None;
+    pub fn ui(&mut self, ui: &mut Ui) -> Vec<InstallationTabRequest> {
+        let mut requests = vec![];
         ui.vertical_centered_justified(|ui| {
             if ui.button("Run setup wizard").clicked() {
-                response = Some(InstallationTabRequest::OpenSetupWizard);
+                requests.push(InstallationTabRequest::OpenSetupWizard);
             }
             ui.columns(2, |ui| {
                 if ui[0].button("Add firewall rules").clicked() {
-                    if firewall::firewall_rules(true).is_ok() {
-                        info!("Setting firewall rules succeeded!");
-                    } else {
-                        error!("Setting firewall rules failed!");
-                    }
+                    requests.push(InstallationTabRequest::ServerRequest(
+                        ServerRequest::FirewallRules(FirewallRulesAction::Add),
+                    ));
                 }
                 if ui[1].button("Remove firewall rules").clicked() {
-                    if firewall::firewall_rules(false).is_ok() {
-                        info!("Removing firewall rules succeeded!");
-                    } else {
-                        error!("Removing firewall rules failed!");
-                    }
+                    requests.push(InstallationTabRequest::ServerRequest(
+                        ServerRequest::FirewallRules(FirewallRulesAction::Remove),
+                    ));
                 }
             });
 
-            let mut did_driver_action = false;
             Frame::group(ui.style())
                 .fill(theme::SECTION_BG)
                 .show(ui, |ui| {
@@ -62,8 +52,12 @@ impl InstallationTab {
                             ui.label(driver_path.to_string_lossy());
                             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                 if ui.button("Remove").clicked() {
-                                    LAUNCHER.lock().unregister_driver(driver_path.clone());
-                                    did_driver_action = true;
+                                    requests.push(InstallationTabRequest::ServerRequest(
+                                        ServerRequest::UnregisterDriver(driver_path.clone()),
+                                    ));
+                                    requests.push(InstallationTabRequest::ServerRequest(
+                                        ServerRequest::GetDriverList,
+                                    ));
                                 }
                             });
                             ui.end_row();
@@ -71,15 +65,16 @@ impl InstallationTab {
                     });
 
                     if ui.button("Register ALVR driver").clicked() {
-                        LAUNCHER.lock().register_alvr_driver();
-                        did_driver_action = true;
+                        requests.push(InstallationTabRequest::ServerRequest(
+                            ServerRequest::RegisterAlvrDriver,
+                        ));
+                        requests.push(InstallationTabRequest::ServerRequest(
+                            ServerRequest::GetDriverList,
+                        ));
                     }
                 });
-            if did_driver_action {
-                self.update_drivers();
-            }
         });
 
-        response
+        requests
     }
 }

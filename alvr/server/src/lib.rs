@@ -32,7 +32,7 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
-use alvr_server_data::ServerDataManager;
+use alvr_server_io::ServerDataManager;
 use alvr_session::CodecType;
 use alvr_sockets::{
     ClientListAction, DecoderInitializationConfig, Haptics, ServerControlPacket, VideoPacketHeader,
@@ -53,13 +53,14 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{
     runtime::Runtime,
     sync::{broadcast, mpsc, Notify},
 };
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
-    afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_commands::get_driver_dir().unwrap())
+    afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_server_io::get_driver_dir().unwrap())
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
@@ -115,11 +116,6 @@ static IS_ALIVE: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic:
 static DECODER_CONFIG: Lazy<Mutex<Option<DecoderInitializationConfig>>> =
     Lazy::new(|| Mutex::new(None));
 
-pub enum WindowType {
-    Alcro(alcro::UI),
-    Browser,
-}
-
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
         x: quat.x,
@@ -166,8 +162,8 @@ pub fn shutdown_tasks() {
         .drivers_backup
         .take()
     {
-        alvr_commands::driver_registration(&backup.other_paths, true).ok();
-        alvr_commands::driver_registration(&[backup.alvr_path], false).ok();
+        alvr_server_io::driver_registration(&backup.other_paths, true).ok();
+        alvr_server_io::driver_registration(&[backup.alvr_path], false).ok();
     }
 
     WEBSERVER_RUNTIME.lock().take();
@@ -184,7 +180,24 @@ pub fn notify_shutdown_driver() {
 }
 
 pub fn notify_restart_driver() {
-    alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+    {
+        let mut system = sysinfo::System::new_with_specifics(
+            RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+        );
+        system.refresh_processes();
+
+        if system
+            .processes_by_name(&afs::exec_fname("ALVR Dashboard"))
+            .next()
+            .is_some()
+        {
+            alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+        } else {
+            error!("Cannot restart SteamVR. No dashboard process found on local device.");
+
+            return;
+        }
+    }
 
     thread::spawn(|| {
         RESTART_NOTIFIER.notify_waiters();

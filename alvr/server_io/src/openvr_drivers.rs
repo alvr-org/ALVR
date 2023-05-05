@@ -1,3 +1,4 @@
+use crate::openvrpaths;
 use alvr_common::prelude::*;
 use serde_json as json;
 use std::{
@@ -7,20 +8,20 @@ use std::{
 };
 
 pub fn get_registered_drivers() -> StrResult<Vec<PathBuf>> {
-    Ok(crate::from_openvr_paths(
-        crate::load_openvr_paths_json()?
+    Ok(openvrpaths::from_openvr_paths(
+        openvrpaths::load_openvr_paths_json()?
             .get_mut("external_drivers")
             .ok_or_else(enone!())?,
     ))
 }
 
 pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResult {
-    let mut openvr_paths_json = crate::load_openvr_paths_json()?;
+    let mut openvr_paths_json = openvrpaths::load_openvr_paths_json()?;
     let paths_json_ref = openvr_paths_json
         .get_mut("external_drivers")
         .ok_or_else(enone!())?;
 
-    let mut paths: HashSet<_> = crate::from_openvr_paths(paths_json_ref)
+    let mut paths: HashSet<_> = openvrpaths::from_openvr_paths(paths_json_ref)
         .into_iter()
         .collect();
 
@@ -33,9 +34,10 @@ pub fn driver_registration(driver_paths: &[PathBuf], register: bool) -> StrResul
     }
 
     // write into openvr_paths_json, the other fields are preserved
-    *paths_json_ref = crate::to_openvr_paths(paths.into_iter().collect::<Vec<_>>().as_slice());
+    *paths_json_ref =
+        openvrpaths::to_openvr_paths(paths.into_iter().collect::<Vec<_>>().as_slice());
 
-    crate::save_openvr_paths_json(&openvr_paths_json)
+    openvrpaths::save_openvr_paths_json(&openvr_paths_json)
 }
 
 fn get_driver_dir_from_registered() -> StrResult<PathBuf> {

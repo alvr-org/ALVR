@@ -702,16 +702,6 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct DisconnectionCriteria {
-    #[schema(strings(display_name = "Latency threshold"))]
-    #[schema(gui(slider(min = 20, max = 1000, logarithmic)), suffix = "ms")]
-    pub latency_threshold_ms: u64,
-
-    #[schema(strings(display_name = "Sustain duration"), suffix = "s")]
-    pub sustain_duration_s: u64,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ConnectionDesc {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
@@ -738,7 +728,19 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub client_recv_buffer_bytes: SocketBufferSize,
 
     #[schema(strings(
-        help = "Reduce minimum delay between keyframes from 100ms to 5ms. Use on networks with high packet loss."
+        help = r#"The server discards video packets if it can't push them to the network.
+This could happen on TCP. A IDR frame is requested in this case."#
+    ))]
+    pub max_queued_server_video_frames: usize,
+
+    #[schema(strings(
+        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
+For now works only on Windows+Nvidia"#
+    ))]
+    pub avoid_video_glitching: bool,
+
+    #[schema(strings(
+        help = "Reduce minimum delay between IDR keyframes from 100ms to 5ms. Use on networks with high packet loss."
     ))]
     #[schema(flag = "steamvr-restart")]
     pub aggressive_keyframe_resend: bool,
@@ -758,8 +760,6 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 
     #[schema(suffix = " frames")]
     pub statistics_history_size: u64,
-
-    pub disconnection_criteria: Switch<DisconnectionCriteria>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1134,18 +1134,13 @@ pub fn session_settings_default() -> SettingsDefault {
             server_recv_buffer_bytes: socket_buffer.clone(),
             client_send_buffer_bytes: socket_buffer.clone(),
             client_recv_buffer_bytes: socket_buffer,
+            max_queued_server_video_frames: 3,
+            avoid_video_glitching: true,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),
             packet_size: 1400,
             statistics_history_size: 256,
-            disconnection_criteria: SwitchDefault {
-                enabled: false,
-                content: DisconnectionCriteriaDefault {
-                    latency_threshold_ms: 150,
-                    sustain_duration_s: 3,
-                },
-            },
         },
         logging: LoggingConfigDefault {
             log_to_disk: cfg!(debug_assertions),

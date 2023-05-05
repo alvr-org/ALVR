@@ -15,7 +15,8 @@ use alvr_session::{settings_schema::Switch, SessionDesc};
 use alvr_sockets::{
     spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
     PeerType, ProtoControlSocket, ReceiverBuffer, ServerControlPacket, StreamConfigPacket,
-    StreamSocketBuilder, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    StreamSocketBuilder, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS,
+    TRACKING, VIDEO,
 };
 use futures::future::BoxFuture;
 use serde_json as json;
@@ -320,8 +321,9 @@ async fn stream_pipeline(
     IS_STREAMING.set(true);
 
     let video_receive_loop = {
-        let mut receiver = stream_socket.subscribe_to_stream::<Duration>(VIDEO).await?;
-        let disconnection_critera = settings.connection.disconnection_criteria;
+        let mut receiver = stream_socket
+            .subscribe_to_stream::<VideoPacketHeader>(VIDEO)
+            .await?;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -349,45 +351,39 @@ async fn stream_pipeline(
             EVENT_QUEUE.lock().push_back(streaming_start_event);
 
             let mut receiver_buffer = ReceiverBuffer::new();
-            let mut disconnection_timer_begin = None;
+            let mut stream_corrupted = false;
             loop {
                 receiver.recv_buffer(&mut receiver_buffer).await?;
-                let (timestamp, nal) = receiver_buffer.get()?;
+                let (header, nal) = receiver_buffer.get()?;
 
                 if !IS_RESUMED.value() {
                     break Ok(());
                 }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                    stats.report_video_packet_received(timestamp);
+                    stats.report_video_packet_received(header.timestamp);
                 }
 
-                decoder::push_nal(timestamp, nal);
-
-                if receiver_buffer.had_packet_loss() {
+                if header.is_idr {
+                    stream_corrupted = false;
+                } else if receiver_buffer.had_packet_loss() {
+                    stream_corrupted = true;
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                        sender.send(ClientControlPacket::VideoErrorReport).ok();
+                        sender.send(ClientControlPacket::RequestIdr).ok();
                     }
+                    warn!("Network dropped video packet");
                 }
 
-                if let Switch::Enabled(criteria) = &disconnection_critera {
-                    if let Some(stats) = &*STATISTICS_MANAGER.lock() {
-                        if stats.average_total_pipeline_latency()
-                            < Duration::from_millis(criteria.latency_threshold_ms)
-                        {
-                            disconnection_timer_begin = None;
-                        } else {
-                            let begin = disconnection_timer_begin.unwrap_or_else(Instant::now);
-
-                            if Instant::now()
-                                > begin + Duration::from_secs(criteria.sustain_duration_s)
-                            {
-                                DISCONNECT_NOTIFIER.notify_one();
-                            }
-
-                            disconnection_timer_begin = Some(begin);
+                if !stream_corrupted || !settings.connection.avoid_video_glitching {
+                    if !decoder::push_nal(header.timestamp, nal) {
+                        stream_corrupted = true;
+                        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                            sender.send(ClientControlPacket::RequestIdr).ok();
                         }
+                        warn!("Dropped video packet. Reason: Decoder saturation")
                     }
+                } else {
+                    warn!("Dropped video packet. Reason: Waiting for IDR frame")
                 }
             }
         }

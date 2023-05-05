@@ -44,7 +44,7 @@ void VideoEncoderSW::Initialize() {
 	// Query codec
 	AVCodecID codecId = ToFFMPEGCodec(m_codec);
 	if(!codecId) throw MakeException("Invalid requested codec %d", m_codec);
-	
+
 	const AVCodec *codec = avcodec_find_encoder(codecId);
 	if(codec == NULL) throw MakeException("Could not find codec id %d", codecId);
 

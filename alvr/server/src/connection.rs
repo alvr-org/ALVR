@@ -694,11 +694,12 @@ async fn connection_pipeline(
     let video_send_loop = {
         let mut socket_sender = stream_socket.request_stream(VIDEO).await?;
         async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+            let (data_sender, mut data_receiver) =
+                tmpsc::channel(settings.connection.max_queued_server_video_frames);
             *VIDEO_SENDER.lock() = Some(data_sender);
 
-            while let Some(VideoPacket { timestamp, payload }) = data_receiver.recv().await {
-                socket_sender.send(&timestamp, payload).await.ok();
+            while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
+                socket_sender.send(&header, payload).await.ok();
             }
 
             Ok(())

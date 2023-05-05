@@ -12,6 +12,10 @@ static const char NAL_PREFIX_4B[] = {0x00, 0x00, 0x00, 0x01};
 static const unsigned char H264_NAL_TYPE_SPS = 7;
 static const unsigned char H265_NAL_TYPE_VPS = 32;
 
+static const unsigned char H264_NAL_TYPE_IDR = 5;
+static const unsigned char H265_NAL_TYPE_IDR_W = 19;
+static const unsigned char H265_NAL_TYPE_IDR_N = 20;
+
 static const unsigned char H264_NAL_TYPE_AUD = 9;
 static const unsigned char H265_NAL_TYPE_AUD = 35;
 
@@ -66,7 +70,7 @@ void sendHeaders(int codec, unsigned char *&buf, int &len, int nalNum) {
     len -= headersLen;
 }
 
-void processH264Nals(unsigned char *&buf, int &len) {
+void processH264Nals(unsigned char *&buf, int &len, bool &isIdr) {
     unsigned char prefixSize = getNalPrefixSize(buf);
     unsigned char nalType = buf[prefixSize] & 0x1F;
 
@@ -79,9 +83,14 @@ void processH264Nals(unsigned char *&buf, int &len) {
     if (nalType == H264_NAL_TYPE_SPS) {
         sendHeaders(ALVR_CODEC_H264, buf, len, 2); // 2 headers SPS and PPS
     }
+    if (len > prefixSize) {
+        prefixSize = getNalPrefixSize(buf);
+        nalType = buf[prefixSize] & 0x1F;
+        isIdr = nalType == H264_NAL_TYPE_IDR;
+    }
 }
 
-void processH265Nals(unsigned char *&buf, int &len) {
+void processH265Nals(unsigned char *&buf, int &len, bool &isIdr) {
     unsigned char prefixSize = getNalPrefixSize(buf);
     unsigned char nalType = (buf[prefixSize] >> 1) & 0x3F;
 
@@ -94,9 +103,15 @@ void processH265Nals(unsigned char *&buf, int &len) {
     if (nalType == H265_NAL_TYPE_VPS) {
         sendHeaders(ALVR_CODEC_H265, buf, len, 3); // 3 headers VPS, SPS and PPS
     }
+    if (len > prefixSize) {
+        prefixSize = getNalPrefixSize(buf);
+        nalType = (buf[prefixSize] >> 1) & 0x3F;
+        isIdr = nalType == H265_NAL_TYPE_IDR_W || nalType == H265_NAL_TYPE_IDR_N;
+    }
 }
 
-void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs) {
+void ParseFrameNals(
+    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs) {
     // Report before the frame is packetized
     ReportEncoded(targetTimestampNs);
 
@@ -104,11 +119,12 @@ void ParseFrameNals(int codec, unsigned char *buf, int len, unsigned long long t
         return;
     }
 
+    bool isIdr = false;
     if (codec == ALVR_CODEC_H264) {
-        processH264Nals(buf, len);
+        processH264Nals(buf, len, isIdr);
     } else if (codec == ALVR_CODEC_H265) {
-        processH265Nals(buf, len);
+        processH265Nals(buf, len, isIdr);
     }
 
-    VideoSend(targetTimestampNs, buf, len);
+    VideoSend(targetTimestampNs, buf, len, isIdr);
 }

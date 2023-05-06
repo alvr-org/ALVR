@@ -14,16 +14,13 @@ gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
 
 [dependencies]
 alvr_audio.workspace = true
-alvr_commands.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true
 alvr_filesystem.workspace = true
-alvr_server_data.workspace = true
+alvr_server_io.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-# Basic utilities
-chrono = "0.4"
 # Serialization
 bincode = "1"
 serde = "1"
@@ -51,13 +48,11 @@ tokio = { version = "1", features = [
 ] }
 tokio-tungstenite = "0.18"
 tokio-util = { version = "0.7", features = ["codec"] }
-# Browser interop
-tempfile = "3"
-alcro = "0.5.4"
-webbrowser = "0.8" # this is just for opening links in the default browser
 # Miscellaneous
+chrono = "0.4"
 fern = "0.6"
 spin_sleep = "1.1.1"
+sysinfo = "0.28"
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }

@@ -9,7 +9,7 @@ use crate::{dashboard::components::StatisticsTab, steamvr_launcher::LAUNCHER, th
 use alvr_common::RelaxedAtomic;
 use alvr_events::EventType;
 use alvr_session::SessionDesc;
-use alvr_sockets::{DashboardRequest, PathValuePair};
+use alvr_sockets::{PathValuePair, ServerRequest, ServerResponse};
 use eframe::{
     egui::{
         self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
@@ -76,21 +76,24 @@ pub struct Dashboard {
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
     session: SessionDesc,
-    dashboard_requests_sender: mpsc::Sender<DashboardRequest>,
+    dashboard_requests_sender: mpsc::Sender<ServerRequest>,
     server_events_receiver: mpsc::Receiver<ServerEvent>,
 }
 
 impl Dashboard {
     pub fn new(
         creation_context: &eframe::CreationContext<'_>,
-        dashboard_requests_sender: mpsc::Sender<DashboardRequest>,
+        server_requests_sender: mpsc::Sender<ServerRequest>,
         server_events_receiver: mpsc::Receiver<ServerEvent>,
     ) -> Self {
-        dashboard_requests_sender
-            .send(DashboardRequest::GetSession)
+        server_requests_sender
+            .send(ServerRequest::GetSession)
             .unwrap();
-        dashboard_requests_sender
-            .send(DashboardRequest::GetAudioDevices)
+        server_requests_sender
+            .send(ServerRequest::GetAudioDevices)
+            .unwrap();
+        server_requests_sender
+            .send(ServerRequest::GetDriverList)
             .unwrap();
 
         theme::set_theme(&creation_context.egui_ctx);
@@ -120,7 +123,7 @@ impl Dashboard {
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
             session: SessionDesc::default(),
-            dashboard_requests_sender,
+            dashboard_requests_sender: server_requests_sender,
             server_events_receiver,
         }
     }
@@ -128,6 +131,8 @@ impl Dashboard {
 
 impl eframe::App for Dashboard {
     fn update(&mut self, context: &egui::Context, _: &mut eframe::Frame) {
+        let mut requests = vec![];
+
         for event in self.server_events_receiver.try_iter() {
             match event {
                 ServerEvent::Event(event) => {
@@ -176,16 +181,19 @@ impl eframe::App for Dashboard {
                 }
                 ServerEvent::PingResponseConnected => {
                     self.connected_to_server = true;
-                    self.installation_tab.update_drivers();
+                    requests.push(ServerRequest::GetDriverList);
                 }
                 ServerEvent::PingResponseDisconnected => {
                     self.connected_to_server = false;
-                    self.installation_tab.update_drivers();
+                    requests.push(ServerRequest::GetDriverList);
                 }
-                ServerEvent::AudioDevicesUpdated(list) => {
-                    self.settings_tab.update_audio_devices(list);
+                ServerEvent::ServerResponse(ServerResponse::AudioDevices(list)) => {
+                    self.settings_tab.update_audio_devices(list)
                 }
-                _ => (),
+                ServerEvent::ServerResponse(ServerResponse::DriversList(list)) => {
+                    self.installation_tab.update_drivers(list)
+                }
+                ServerEvent::ChannelTest => (),
             }
         }
 
@@ -203,19 +211,26 @@ impl eframe::App for Dashboard {
 
         self.notification_bar.ui(context);
 
-        let mut requests = vec![];
-
         if self.setup_wizard_open {
             CentralPanel::default().show(context, |ui| {
-                if let Some(SetupWizardRequest::Close { finished }) = self.setup_wizard.ui(ui) {
-                    if finished {
-                        requests.push(DashboardRequest::SetValues(vec![PathValuePair {
-                            path: alvr_sockets::parse_path("session_settings.open_setup_wizard"),
-                            value: serde_json::Value::Bool(false),
-                        }]))
-                    }
+                if let Some(request) = self.setup_wizard.ui(ui) {
+                    match request {
+                        SetupWizardRequest::ServerRequest(request) => {
+                            requests.push(request);
+                        }
+                        SetupWizardRequest::Close { finished } => {
+                            if finished {
+                                requests.push(ServerRequest::SetValues(vec![PathValuePair {
+                                    path: alvr_sockets::parse_path(
+                                        "session_settings.open_setup_wizard",
+                                    ),
+                                    value: serde_json::Value::Bool(false),
+                                }]))
+                            }
 
-                    self.setup_wizard_open = false;
+                            self.setup_wizard_open = false;
+                        }
+                    }
                 }
             });
         } else {
@@ -247,7 +262,7 @@ impl eframe::App for Dashboard {
                             ui.add_space(5.0);
                             if self.connected_to_server {
                                 if ui.button("Restart SteamVR").clicked() {
-                                    requests.push(DashboardRequest::RestartSteamvr);
+                                    requests.push(ServerRequest::RestartSteamvr);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
                                 LAUNCHER.lock().launch_steamvr();
@@ -298,11 +313,15 @@ impl eframe::App for Dashboard {
                                 requests.extend(self.settings_tab.ui(ui));
                             }
                             Tab::Installation => {
-                                if matches!(
-                                    self.installation_tab.ui(ui),
-                                    Some(InstallationTabRequest::OpenSetupWizard)
-                                ) {
-                                    self.setup_wizard_open = true;
+                                for request in self.installation_tab.ui(ui) {
+                                    match request {
+                                        InstallationTabRequest::OpenSetupWizard => {
+                                            self.setup_wizard_open = true
+                                        }
+                                        InstallationTabRequest::ServerRequest(request) => {
+                                            requests.push(request);
+                                        }
+                                    }
                                 }
                             }
                             Tab::Logs => self.logs_tab.ui(ui),

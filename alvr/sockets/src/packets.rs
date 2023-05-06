@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
     net::IpAddr,
+    path::PathBuf,
     time::Duration,
 };
 
@@ -201,7 +202,13 @@ pub struct PathValuePair {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum DashboardRequest {
+pub enum FirewallRulesAction {
+    Add,
+    Remove,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerRequest {
     Ping,
     Log(LogEvent),
     GetSession,
@@ -216,6 +223,10 @@ pub enum DashboardRequest {
     InsertIdr,
     StartRecording,
     StopRecording,
+    FirewallRules(FirewallRulesAction),
+    RegisterAlvrDriver,
+    UnregisterDriver(PathBuf),
+    GetDriverList,
     RestartSteamvr,
     ShutdownSteamvr,
 }
@@ -223,4 +234,5 @@ pub enum DashboardRequest {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerResponse {
     AudioDevices(AudioDevicesList),
+    DriversList(Vec<PathBuf>),
 }

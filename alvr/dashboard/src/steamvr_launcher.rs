@@ -5,7 +5,6 @@ use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
     env,
     marker::PhantomData,
-    path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},
@@ -36,7 +35,7 @@ pub fn is_steamvr_running() -> bool {
 pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
     use std::fs;
 
-    let steamvr_bin_dir = alvr_commands::steamvr_root_dir()?
+    let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
         .join("bin")
         .join("linux64");
     let launcher_path = steamvr_bin_dir.join("vrcompositor");
@@ -117,9 +116,9 @@ impl Launcher {
                 DriverLaunchAction::UnregisterOtherDriversAtStartup
             ) && data_source.session().drivers_backup.is_none()
             {
-                let drivers_paths = alvr_commands::get_registered_drivers().unwrap_or_default();
+                let drivers_paths = alvr_server_io::get_registered_drivers().unwrap_or_default();
 
-                alvr_commands::driver_registration(&drivers_paths, false).ok();
+                alvr_server_io::driver_registration(&drivers_paths, false).ok();
 
                 drivers_paths
             } else {
@@ -130,7 +129,7 @@ impl Launcher {
                 afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                     .openvr_driver_root_dir;
 
-            alvr_commands::driver_registration(&[alvr_driver_dir.clone()], true).ok();
+            alvr_server_io::driver_registration(&[alvr_driver_dir.clone()], true).ok();
 
             data_source.session_mut().drivers_backup = Some(DriversBackup {
                 alvr_path: alvr_driver_dir,
@@ -176,18 +175,6 @@ impl Launcher {
     pub fn restart_steamvr(&self) {
         self.ensure_steamvr_shutdown();
         self.launch_steamvr();
-    }
-
-    pub fn register_alvr_driver(&self) {
-        let alvr_driver_dir =
-            afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-                .openvr_driver_root_dir;
-
-        alvr_commands::driver_registration(&[alvr_driver_dir], true).ok();
-    }
-
-    pub fn unregister_driver(&self, path: PathBuf) {
-        alvr_commands::driver_registration(&[path], false).ok();
     }
 }
 

@@ -1,3 +1,11 @@
+mod firewall;
+mod openvr_drivers;
+mod openvrpaths;
+
+pub use firewall::*;
+pub use openvr_drivers::*;
+pub use openvrpaths::*;
+
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
@@ -146,10 +154,6 @@ impl ServerDataManager {
         &self.settings
     }
 
-    pub fn client_list(&self) -> &HashMap<String, ClientConnectionDesc> {
-        &self.session.client_connections
-    }
-
     // Note: "value" can be any session subtree, in json format.
     pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> StrResult {
         let mut session_json = serde_json::to_value(self.session.clone()).unwrap();
@@ -195,49 +199,8 @@ impl ServerDataManager {
         Ok(())
     }
 
-    pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {
-        return self
-            .gpu_infos
-            .iter()
-            .map(|adapter_info| match adapter_info.vendor {
-                0x10de => GpuVendor::Nvidia,
-                0x1002 => GpuVendor::Amd,
-                _ => GpuVendor::Other,
-            })
-            .collect();
-    }
-
-    pub fn get_gpu_names(&self) -> Vec<String> {
-        return self
-            .gpu_infos
-            .iter()
-            .map(|adapter_info| adapter_info.name.clone())
-            .collect();
-    }
-
-    #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
-    pub fn get_audio_devices_list(&self) -> StrResult<AudioDevicesList> {
-        #[cfg(target_os = "linux")]
-        let host = match self.session.to_settings().audio.linux_backend {
-            alvr_session::LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa),
-            alvr_session::LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack),
-        }
-        .map_err(err!())?;
-        #[cfg(not(target_os = "linux"))]
-        let host = cpal::default_host();
-
-        let output = host
-            .output_devices()
-            .map_err(err!())?
-            .filter_map(|d| d.name().ok())
-            .collect::<Vec<_>>();
-        let input = host
-            .input_devices()
-            .map_err(err!())?
-            .filter_map(|d| d.name().ok())
-            .collect::<Vec<_>>();
-
-        Ok(AudioDevicesList { output, input })
+    pub fn client_list(&self) -> &HashMap<String, ClientConnectionDesc> {
+        &self.session.client_connections
     }
 
     pub fn update_client_list(&mut self, hostname: String, action: ClientListAction) {
@@ -308,5 +271,50 @@ impl ServerDataManager {
             save_session(&self.session, &self.session_path).unwrap();
             alvr_events::send_event(EventType::Session(Box::new(self.session.clone())));
         }
+    }
+
+    pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {
+        return self
+            .gpu_infos
+            .iter()
+            .map(|adapter_info| match adapter_info.vendor {
+                0x10de => GpuVendor::Nvidia,
+                0x1002 => GpuVendor::Amd,
+                _ => GpuVendor::Other,
+            })
+            .collect();
+    }
+
+    pub fn get_gpu_names(&self) -> Vec<String> {
+        return self
+            .gpu_infos
+            .iter()
+            .map(|adapter_info| adapter_info.name.clone())
+            .collect();
+    }
+
+    #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
+    pub fn get_audio_devices_list(&self) -> StrResult<AudioDevicesList> {
+        #[cfg(target_os = "linux")]
+        let host = match self.session.to_settings().audio.linux_backend {
+            alvr_session::LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa),
+            alvr_session::LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack),
+        }
+        .map_err(err!())?;
+        #[cfg(not(target_os = "linux"))]
+        let host = cpal::default_host();
+
+        let output = host
+            .output_devices()
+            .map_err(err!())?
+            .filter_map(|d| d.name().ok())
+            .collect::<Vec<_>>();
+        let input = host
+            .input_devices()
+            .map_err(err!())?
+            .filter_map(|d| d.name().ok())
+            .collect::<Vec<_>>();
+
+        Ok(AudioDevicesList { output, input })
     }
 }

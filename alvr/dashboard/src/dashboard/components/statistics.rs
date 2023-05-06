@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::{dashboard::theme::graph_colors, dashboard::DashboardRequest};
+use crate::{dashboard::theme::graph_colors, dashboard::ServerRequest};
 use alvr_events::{GraphStatistics, Statistics};
 use eframe::egui::{
     emath, popup, pos2, vec2, Align2, Color32, FontId, Frame, Id, Pos2, Rect, RichText, Rounding,
@@ -38,7 +38,7 @@ impl StatisticsTab {
         self.history.push_front(statistics);
     }
 
-    pub fn ui(&mut self, ui: &mut Ui) -> Option<DashboardRequest> {
+    pub fn ui(&mut self, ui: &mut Ui) -> Option<ServerRequest> {
         ui.vertical(|ui| {
             let avaibale_width = ui.available_width();
             self.draw_latency_graph(ui, avaibale_width);

@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::Event;
-use alvr_sockets::{DashboardRequest, ServerResponse};
+use alvr_sockets::{ServerRequest, ServerResponse};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -106,38 +106,60 @@ async fn http_api(
     let mut response = match request.uri().path() {
         // New unified requests
         "/api/dashboard-request" => {
-            if let Ok(request) = from_request_body::<DashboardRequest>(request).await {
+            if let Ok(request) = from_request_body::<ServerRequest>(request).await {
                 match request {
-                    DashboardRequest::Ping => (),
-                    DashboardRequest::Log(event) => {
+                    ServerRequest::Ping => (),
+                    ServerRequest::Log(event) => {
                         let level = event.severity.into_log_level();
                         log::log!(level, "{}", event.content);
                     }
-                    DashboardRequest::GetSession => {
+                    ServerRequest::GetSession => {
                         alvr_events::send_event(alvr_events::EventType::Session(Box::new(
                             SERVER_DATA_MANAGER.read().session().clone(),
                         )));
                     }
-                    DashboardRequest::UpdateSession(session) => {
+                    ServerRequest::UpdateSession(session) => {
                         *SERVER_DATA_MANAGER.write().session_mut() = *session
                     }
-                    DashboardRequest::SetValues(descs) => {
+                    ServerRequest::SetValues(descs) => {
                         SERVER_DATA_MANAGER.write().set_values(descs).ok();
                     }
-                    DashboardRequest::UpdateClientList { hostname, action } => SERVER_DATA_MANAGER
+                    ServerRequest::UpdateClientList { hostname, action } => SERVER_DATA_MANAGER
                         .write()
                         .update_client_list(hostname, action),
-                    DashboardRequest::GetAudioDevices => {
+                    ServerRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
                             return reply_json(&ServerResponse::AudioDevices(list));
                         }
                     }
-                    DashboardRequest::CaptureFrame => unsafe { crate::CaptureFrame() },
-                    DashboardRequest::InsertIdr => unsafe { crate::RequestIDR() },
-                    DashboardRequest::StartRecording => crate::create_recording_file(),
-                    DashboardRequest::StopRecording => *VIDEO_RECORDING_FILE.lock() = None,
-                    DashboardRequest::RestartSteamvr => crate::notify_restart_driver(),
-                    DashboardRequest::ShutdownSteamvr => crate::notify_shutdown_driver(),
+                    ServerRequest::CaptureFrame => unsafe { crate::CaptureFrame() },
+                    ServerRequest::InsertIdr => unsafe { crate::RequestIDR() },
+                    ServerRequest::StartRecording => crate::create_recording_file(),
+                    ServerRequest::StopRecording => *VIDEO_RECORDING_FILE.lock() = None,
+                    ServerRequest::FirewallRules(action) => {
+                        if alvr_server_io::firewall_rules(action).is_ok() {
+                            info!("Setting firewall rules succeeded!");
+                        } else {
+                            error!("Setting firewall rules failed!");
+                        }
+                    }
+                    ServerRequest::RegisterAlvrDriver => {
+                        alvr_server_io::driver_registration(
+                            &[FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone()],
+                            true,
+                        )
+                        .ok();
+                    }
+                    ServerRequest::UnregisterDriver(path) => {
+                        alvr_server_io::driver_registration(&[path], false).ok();
+                    }
+                    ServerRequest::GetDriverList => {
+                        if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                            return reply_json(&ServerResponse::DriversList(list));
+                        }
+                    }
+                    ServerRequest::RestartSteamvr => crate::notify_restart_driver(),
+                    ServerRequest::ShutdownSteamvr => crate::notify_shutdown_driver(),
                 }
 
                 reply(StatusCode::OK)?

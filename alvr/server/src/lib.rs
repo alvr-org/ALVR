@@ -187,7 +187,7 @@ pub fn notify_restart_driver() {
         system.refresh_processes();
 
         if system
-            .processes_by_name(&afs::exec_fname("ALVR Dashboard"))
+            .processes_by_name(afs::dashboard_fname())
             .next()
             .is_some()
         {

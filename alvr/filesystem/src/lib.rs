@@ -61,6 +61,14 @@ pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname("alvr_installer"))
 }
 
+pub fn dashboard_fname() -> &'static str {
+    if cfg!(windows) {
+        "ALVR Dashboard.exe"
+    } else {
+        "alvr_dashboard"
+    }
+}
+
 // Layout of the ALVR installation. All paths are absolute
 #[derive(Clone)]
 pub struct Layout {
@@ -152,12 +160,7 @@ impl Layout {
     }
 
     pub fn dashboard_exe(&self) -> PathBuf {
-        let exe = if cfg!(windows) {
-            "ALVR Dashboard.exe"
-        } else {
-            "alvr_dashboard"
-        };
-        self.executables_dir.join(exe)
+        self.executables_dir.join(dashboard_fname())
     }
 
     pub fn resources_dir(&self) -> PathBuf {

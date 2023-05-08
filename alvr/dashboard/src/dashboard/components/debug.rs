@@ -1,4 +1,4 @@
-use alvr_sockets::ServerRequest;
+use alvr_packets::ServerRequest;
 use eframe::egui::Ui;
 
 pub fn debug_tab_ui(ui: &mut Ui) -> Option<ServerRequest> {

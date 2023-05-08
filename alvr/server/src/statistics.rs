@@ -1,6 +1,6 @@
 use alvr_common::{SlidingWindowAverage, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_events::{EventType, GraphStatistics, Statistics};
-use alvr_sockets::ClientStatistics;
+use alvr_packets::ClientStatistics;
 use std::{
     collections::{HashMap, VecDeque},
     time::{Duration, Instant},

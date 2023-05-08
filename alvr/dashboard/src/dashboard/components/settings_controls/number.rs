@@ -1,6 +1,6 @@
 use super::{reset, NestingInfo};
+use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{NumberType, NumericGuiType};
-use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{DragValue, Layout, Slider, Ui},
     emath::Align,

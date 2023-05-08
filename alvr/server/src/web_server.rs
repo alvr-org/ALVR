@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::Event;
-use alvr_sockets::{ServerRequest, ServerResponse};
+use alvr_packets::{ServerRequest, ServerResponse};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;

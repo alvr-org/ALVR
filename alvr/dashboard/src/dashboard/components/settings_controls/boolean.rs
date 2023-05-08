@@ -1,6 +1,6 @@
 use super::{reset, NestingInfo};
 use crate::dashboard::basic_components;
-use alvr_sockets::PathValuePair;
+use alvr_packets::PathValuePair;
 use eframe::{
     egui::{Layout, Ui},
     emath::Align,

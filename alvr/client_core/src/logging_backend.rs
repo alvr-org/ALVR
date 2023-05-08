@@ -5,7 +5,7 @@ use alvr_common::{
     parking_lot::Mutex,
     LogSeverity,
 };
-use alvr_sockets::ClientControlPacket;
+use alvr_packets::ClientControlPacket;
 use std::time::{Duration, Instant};
 
 const LOG_REPEAT_TIMEOUT: Duration = Duration::from_secs(1);

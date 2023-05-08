@@ -8,7 +8,7 @@ use alvr_common::{
     settings_schema::Switch,
     DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_sockets::{FaceData, Tracking};
+use alvr_packets::{FaceData, Tracking};
 use interaction::{FaceInputContext, HandsInteractionContext};
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;

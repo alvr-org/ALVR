@@ -9,8 +9,8 @@ license.workspace = true
 [dependencies]
 alvr_common.workspace = true
 alvr_events.workspace = true
+alvr_packets.workspace = true
 alvr_session.workspace = true
-alvr_sockets.workspace = true
 
 cpal = { version = "0.15", features = ["jack"] }
 encoding_rs_io = "0.1"

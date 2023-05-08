@@ -8,8 +8,8 @@ use self::components::{
 use crate::{dashboard::components::StatisticsTab, steamvr_launcher::LAUNCHER, theme, ServerEvent};
 use alvr_common::RelaxedAtomic;
 use alvr_events::EventType;
+use alvr_packets::{PathValuePair, ServerRequest, ServerResponse};
 use alvr_session::SessionDesc;
-use alvr_sockets::{PathValuePair, ServerRequest, ServerResponse};
 use eframe::{
     egui::{
         self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
@@ -221,7 +221,7 @@ impl eframe::App for Dashboard {
                         SetupWizardRequest::Close { finished } => {
                             if finished {
                                 requests.push(ServerRequest::SetValues(vec![PathValuePair {
-                                    path: alvr_sockets::parse_path(
+                                    path: alvr_packets::parse_path(
                                         "session_settings.open_setup_wizard",
                                     ),
                                     value: serde_json::Value::Bool(false),

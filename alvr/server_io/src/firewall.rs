@@ -1,8 +1,6 @@
-use std::{env, fs, path::Path, process::Command};
-
-use alvr_sockets::FirewallRulesAction;
-
 use crate::openvrpaths;
+use alvr_packets::FirewallRulesAction;
+use std::{env, fs, path::Path, process::Command};
 
 fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {
     format!(

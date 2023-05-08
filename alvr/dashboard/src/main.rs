@@ -7,7 +7,7 @@ mod steamvr_launcher;
 mod theme;
 
 use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
-use alvr_sockets::{GpuVendor, ServerRequest};
+use alvr_packets::{GpuVendor, ServerRequest};
 use dashboard::Dashboard;
 use data_sources::ServerEvent;
 use eframe::{egui, IconData, NativeOptions};

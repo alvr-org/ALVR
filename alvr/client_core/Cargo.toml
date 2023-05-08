@@ -17,6 +17,7 @@ default = ["link-stdcpp-shared"]
 alvr_audio.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true
+alvr_packets.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 

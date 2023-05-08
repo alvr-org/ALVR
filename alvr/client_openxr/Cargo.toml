@@ -13,8 +13,8 @@ crate_type = ["cdylib"]
 alvr_common.workspace = true
 alvr_client_core.workspace = true
 alvr_events.workspace = true
+alvr_packets.workspace = true
 alvr_session.workspace = true
-alvr_sockets.workspace = true
 
 glow = "0.12"
 khronos-egl = { version = "4", features = ["dynamic"] }

@@ -10,9 +10,9 @@ license.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true
 alvr_filesystem.workspace = true
+alvr_packets.workspace = true
 alvr_server_io.workspace = true
 alvr_session.workspace = true
-alvr_sockets.workspace = true
 
 bincode = "1"
 chrono = "0.4"

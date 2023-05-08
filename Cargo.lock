@@ -177,6 +177,7 @@ dependencies = [
  "alvr_audio",
  "alvr_common",
  "alvr_events",
+ "alvr_packets",
  "alvr_session",
  "alvr_sockets",
  "android_logger",
@@ -207,8 +208,8 @@ version = "20.0.0-dev12"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
+ "alvr_packets",
  "alvr_session",
- "alvr_sockets",
  "eframe",
  "env_logger",
  "rand",
@@ -221,8 +222,8 @@ dependencies = [
  "alvr_client_core",
  "alvr_common",
  "alvr_events",
+ "alvr_packets",
  "alvr_session",
- "alvr_sockets",
  "android-activity 0.4.0",
  "glow",
  "jni 0.21.1",
@@ -254,9 +255,9 @@ dependencies = [
  "alvr_common",
  "alvr_events",
  "alvr_filesystem",
+ "alvr_packets",
  "alvr_server_io",
  "alvr_session",
- "alvr_sockets",
  "bincode",
  "chrono",
  "eframe",
@@ -290,6 +291,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "alvr_packets"
+version = "20.0.0-dev12"
+dependencies = [
+ "alvr_common",
+ "alvr_events",
+ "alvr_session",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "alvr_server"
 version = "20.0.0-dev12"
 dependencies = [
@@ -297,6 +309,7 @@ dependencies = [
  "alvr_common",
  "alvr_events",
  "alvr_filesystem",
+ "alvr_packets",
  "alvr_server_io",
  "alvr_session",
  "alvr_sockets",
@@ -328,8 +341,8 @@ version = "20.0.0-dev12"
 dependencies = [
  "alvr_common",
  "alvr_events",
+ "alvr_packets",
  "alvr_session",
- "alvr_sockets",
  "cpal",
  "dirs 5.0.1",
  "encoding_rs_io",
@@ -355,7 +368,6 @@ name = "alvr_sockets"
 version = "20.0.0-dev12"
 dependencies = [
  "alvr_common",
- "alvr_events",
  "alvr_session",
  "bincode",
  "bytes",

@@ -1,6 +1,6 @@
 use super::{NestingInfo, SettingControl};
+use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::PathValuePair;
 use eframe::egui::Ui;
 use serde_json as json;
 

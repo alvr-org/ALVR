@@ -1,5 +1,5 @@
+use alvr_packets::Haptics;
 use alvr_session::HapticsConfig;
-use alvr_sockets::Haptics;
 use std::time::Duration;
 
 pub struct HapticsManager {

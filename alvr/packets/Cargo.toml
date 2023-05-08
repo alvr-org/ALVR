@@ -1,5 +1,5 @@
 [package]
-name = "alvr_sockets"
+name = "alvr_packets"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,13 +8,8 @@ license.workspace = true
 
 [dependencies]
 alvr_common.workspace = true
+alvr_events.workspace = true
 alvr_session.workspace = true
 
-bincode = "1"
-bytes = "1"
-futures = "0.3"
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-socket2 = "0.5"
-tokio = { version = "1", features = ["rt", "net", "macros"] }
-tokio-util = { version = "0.7", features = ["codec", "net"] }

@@ -1,7 +1,7 @@
 use alvr_common::{parking_lot::Mutex, prelude::*, StrResult};
 use alvr_events::{Event, EventType};
+use alvr_packets::{ServerRequest, ServerResponse};
 use alvr_server_io::ServerDataManager;
-use alvr_sockets::{ServerRequest, ServerResponse};
 use eframe::egui;
 use std::{
     env,

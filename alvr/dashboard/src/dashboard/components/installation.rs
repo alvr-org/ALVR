@@ -1,5 +1,5 @@
 use crate::theme;
-use alvr_sockets::{FirewallRulesAction, ServerRequest};
+use alvr_packets::{FirewallRulesAction, ServerRequest};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},
     emath::Align,

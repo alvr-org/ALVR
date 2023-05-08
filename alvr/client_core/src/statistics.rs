@@ -1,5 +1,5 @@
 use alvr_common::SlidingWindowAverage;
-use alvr_sockets::ClientStatistics;
+use alvr_packets::ClientStatistics;
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},

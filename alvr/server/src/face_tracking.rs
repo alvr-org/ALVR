@@ -1,6 +1,6 @@
 use alvr_common::{glam::EulerRot, prelude::*};
+use alvr_packets::FaceData;
 use alvr_session::FaceTrackingSinkConfig;
-use alvr_sockets::FaceData;
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{f32::consts::PI, net::UdpSocket};
 

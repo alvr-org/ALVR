@@ -11,12 +11,14 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
+use alvr_packets::{
+    BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket,
+    StreamConfigPacket, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS,
+    TRACKING, VIDEO,
+};
 use alvr_session::{settings_schema::Switch, SessionDesc};
 use alvr_sockets::{
-    spawn_cancelable, BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics,
-    PeerType, ProtoControlSocket, ReceiverBuffer, ServerControlPacket, StreamConfigPacket,
-    StreamSocketBuilder, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS,
-    TRACKING, VIDEO,
+    spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSocketBuilder,
 };
 use futures::future::BoxFuture;
 use serde_json as json;

@@ -13,8 +13,8 @@ pub mod switch;
 pub mod text;
 pub mod vector;
 
+use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::{PathSegment, PathValuePair};
 use eframe::egui::Ui;
 use serde_json as json;
 

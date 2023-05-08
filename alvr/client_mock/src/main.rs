@@ -4,8 +4,8 @@ use alvr_common::{
     parking_lot::RwLock,
     DeviceMotion, Pose, RelaxedAtomic, HEAD_ID,
 };
+use alvr_packets::Tracking;
 use alvr_session::CodecType;
-use alvr_sockets::Tracking;
 use eframe::{
     egui::{self, CentralPanel, Context, RichText, Slider},
     Frame, NativeOptions,

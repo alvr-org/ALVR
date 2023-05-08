@@ -1,5 +1,5 @@
 use super::{reset, NestingInfo};
-use alvr_sockets::PathValuePair;
+use alvr_packets::PathValuePair;
 use eframe::{
     egui::{Layout, TextEdit, Ui},
     emath::Align,

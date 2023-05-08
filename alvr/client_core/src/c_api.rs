@@ -10,8 +10,8 @@ use alvr_common::{
     DeviceMotion, Fov, Pose,
 };
 use alvr_events::ButtonValue;
+use alvr_packets::Tracking;
 use alvr_session::{CodecType, FoveatedRenderingDesc};
-use alvr_sockets::Tracking;
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},

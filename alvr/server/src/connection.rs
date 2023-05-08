@@ -20,12 +20,14 @@ use alvr_common::{
     RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent, TrackingEvent};
+use alvr_packets::{
+    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    ServerControlPacket, StreamConfigPacket, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+};
 use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
-    spawn_cancelable, ClientConnectionResult, ClientControlPacket, ClientListAction,
-    ClientStatistics, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
-    ServerControlPacket, StreamConfigPacket, StreamSocketBuilder, Tracking, AUDIO, HAPTICS,
-    KEEPALIVE_INTERVAL, STATISTICS, TRACKING, VIDEO,
+    spawn_cancelable, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
+    StreamSocketBuilder, KEEPALIVE_INTERVAL,
 };
 use futures::future::BoxFuture;
 use std::{

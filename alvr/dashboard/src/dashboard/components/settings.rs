@@ -4,8 +4,8 @@ use super::{
     NestingInfo, SettingControl,
 };
 use crate::dashboard::{get_id, ServerRequest};
+use alvr_packets::AudioDevicesList;
 use alvr_session::{SessionSettings, Settings};
-use alvr_sockets::AudioDevicesList;
 use eframe::egui::{Grid, ScrollArea, Ui};
 use serde_json as json;
 

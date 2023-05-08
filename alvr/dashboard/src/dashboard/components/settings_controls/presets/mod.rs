@@ -5,7 +5,7 @@ pub mod builtin_schema;
 pub mod schema;
 
 use self::schema::PresetSchemaNode;
-use alvr_sockets::PathValuePair;
+use alvr_packets::PathValuePair;
 use eframe::egui::Ui;
 use serde_json as json;
 

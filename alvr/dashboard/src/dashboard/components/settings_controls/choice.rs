@@ -1,7 +1,7 @@
 use super::{reset, NestingInfo, SettingControl};
 use crate::dashboard::{basic_components, get_id, DisplayString};
+use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
-use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{ComboBox, Layout, Ui},
     emath::Align,

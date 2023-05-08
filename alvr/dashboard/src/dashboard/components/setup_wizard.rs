@@ -1,4 +1,4 @@
-use alvr_sockets::{FirewallRulesAction, ServerRequest};
+use alvr_packets::{FirewallRulesAction, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,

@@ -1,7 +1,7 @@
 use super::{reset, NestingInfo, SettingControl};
 use crate::dashboard::basic_components;
+use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
-use alvr_sockets::PathValuePair;
 use eframe::{
     egui::{Layout, Ui},
     emath::Align,

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
 use crate::dashboard::components::{NestingInfo, SettingControl};
-use alvr_sockets::{PathSegment, PathValuePair};
+use alvr_packets::{PathSegment, PathValuePair};
 use eframe::egui::Ui;
 use serde_json as json;
 use settings_schema::{SchemaEntry, SchemaNode};
@@ -30,7 +30,7 @@ impl Control {
                         .iter()
                         .map(|modifier| match &modifier.operation {
                             PresetModifierOperation::Assign(value) => PathValuePair {
-                                path: alvr_sockets::parse_path(&modifier.target_path),
+                                path: alvr_packets::parse_path(&modifier.target_path),
                                 value: value.clone(),
                             },
                         })

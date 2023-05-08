@@ -8,8 +8,8 @@ pub use openvrpaths::*;
 
 use alvr_common::prelude::*;
 use alvr_events::EventType;
+use alvr_packets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
 use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
-use alvr_sockets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{

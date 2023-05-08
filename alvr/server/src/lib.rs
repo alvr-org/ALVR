@@ -32,11 +32,11 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
-use alvr_server_io::ServerDataManager;
-use alvr_session::CodecType;
-use alvr_sockets::{
+use alvr_packets::{
     ClientListAction, DecoderInitializationConfig, Haptics, ServerControlPacket, VideoPacketHeader,
 };
+use alvr_server_io::ServerDataManager;
+use alvr_session::CodecType;
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{

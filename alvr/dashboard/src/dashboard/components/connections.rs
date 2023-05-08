@@ -3,8 +3,8 @@ use crate::{
     steamvr_launcher::LAUNCHER,
     theme::{self, log_colors},
 };
+use alvr_packets::ClientListAction;
 use alvr_session::SessionDesc;
-use alvr_sockets::ClientListAction;
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},

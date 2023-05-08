@@ -1,7 +1,7 @@
 use crate::{ClientCoreEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
+use alvr_packets::DecoderInitializationConfig;
 use alvr_session::{CodecType, MediacodecDataType};
-use alvr_sockets::DecoderInitializationConfig;
 use std::time::Duration;
 
 #[cfg(target_os = "android")]
@@ -62,7 +62,7 @@ pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
 
             if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
                 sender
-                    .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                    .send(alvr_packets::ClientControlPacket::RequestIdr)
                     .ok();
             }
         }

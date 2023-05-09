@@ -5,7 +5,7 @@ use self::components::{
     ConnectionsTab, InstallationTab, InstallationTabRequest, LogsTab, NotificationBar, SettingsTab,
     SetupWizard, SetupWizardRequest,
 };
-use crate::{dashboard::components::StatisticsTab, steamvr_launcher::LAUNCHER, theme, ServerEvent};
+use crate::{dashboard::components::StatisticsTab, theme, ServerEvent};
 use alvr_common::RelaxedAtomic;
 use alvr_events::EventType;
 use alvr_packets::{PathValuePair, ServerRequest, ServerResponse};
@@ -21,7 +21,6 @@ use std::{
     collections::BTreeMap,
     ops::Deref,
     sync::{atomic::AtomicUsize, mpsc, Arc},
-    thread,
 };
 
 #[derive(Clone)]
@@ -165,11 +164,14 @@ impl eframe::App for Dashboard {
                             if !self.server_restarting.value() {
                                 self.server_restarting.set(true);
 
-                                let server_restarting = Arc::clone(&self.server_restarting);
-                                thread::spawn(move || {
-                                    LAUNCHER.lock().restart_steamvr();
+                                #[cfg(not(target_arch = "wasm32"))]
+                                std::thread::spawn({
+                                    let server_restarting = Arc::clone(&self.server_restarting);
+                                    move || {
+                                        crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
 
-                                    server_restarting.set(false);
+                                        server_restarting.set(false);
+                                    }
                                 });
                             }
                         }
@@ -260,12 +262,14 @@ impl eframe::App for Dashboard {
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
                         |ui| {
                             ui.add_space(5.0);
+
+                            #[cfg(not(target_arch = "wasm32"))]
                             if self.connected_to_server {
                                 if ui.button("Restart SteamVR").clicked() {
                                     requests.push(ServerRequest::RestartSteamvr);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
-                                LAUNCHER.lock().launch_steamvr();
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
                             }
 
                             ui.horizontal(|ui| {
@@ -341,6 +345,7 @@ impl eframe::App for Dashboard {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn on_close_event(&mut self) -> bool {
         true
     }

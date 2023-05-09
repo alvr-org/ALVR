@@ -1,25 +1,37 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 mod dashboard;
-mod data_sources;
 mod logging_backend;
-mod steamvr_launcher;
 mod theme;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod data_sources;
+#[cfg(not(target_arch = "wasm32"))]
+mod steamvr_launcher;
+
 use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
-use alvr_packets::{GpuVendor, ServerRequest};
+use alvr_packets::{GpuVendor, ServerRequest, ServerResponse};
 use dashboard::Dashboard;
-use data_sources::ServerEvent;
-use eframe::{egui, IconData, NativeOptions};
+use eframe::egui;
 use ico::IconDir;
 use std::{
     io::Cursor,
     sync::{mpsc, Arc},
     thread,
 };
-use steamvr_launcher::LAUNCHER;
 
+pub enum ServerEvent {
+    PingResponseConnected,
+    PingResponseDisconnected,
+    Event(alvr_events::Event),
+    ServerResponse(ServerResponse),
+    ChannelTest,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
+    use eframe::{IconData, NativeOptions};
+
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
     let (server_requests_sender, server_requests_receiver) = mpsc::channel();
@@ -49,7 +61,7 @@ fn main() {
             .steamvr_launcher
             .open_close_steamvr_with_dashboard
         {
-            LAUNCHER.lock().launch_steamvr()
+            steamvr_launcher::LAUNCHER.lock().launch_steamvr()
         }
     }
 
@@ -102,7 +114,7 @@ fn main() {
             .send(ServerRequest::ShutdownSteamvr)
             .ok();
 
-        LAUNCHER.lock().ensure_steamvr_shutdown()
+        steamvr_launcher::LAUNCHER.lock().ensure_steamvr_shutdown()
     }
 
     // This is the signal to shutdown the data thread.
@@ -110,3 +122,6 @@ fn main() {
 
     data_thread.lock().take().unwrap().join().unwrap();
 }
+
+#[cfg(target_arch = "wasm32")]
+fn main() {}

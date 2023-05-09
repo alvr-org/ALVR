@@ -1,4 +1,4 @@
-use crate::data_sources::ServerEvent;
+use crate::ServerEvent;
 use alvr_common::{log::LevelFilter, parking_lot::Mutex, LogSeverity};
 use alvr_events::{Event, EventType, LogEvent};
 use std::{

@@ -1,3 +1,4 @@
+use crate::ServerEvent;
 use alvr_common::{parking_lot::Mutex, prelude::*, StrResult};
 use alvr_events::{Event, EventType};
 use alvr_packets::{ServerRequest, ServerResponse};
@@ -15,14 +16,6 @@ use std::{
 use tungstenite::http::Uri;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
-
-pub enum ServerEvent {
-    PingResponseConnected,
-    PingResponseDisconnected,
-    Event(alvr_events::Event),
-    ServerResponse(ServerResponse),
-    ChannelTest,
-}
 
 enum DataSource {
     Local(Box<ServerDataManager>),

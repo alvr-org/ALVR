@@ -52,8 +52,8 @@ tokio-util = { version = "0.7", features = ["codec"] }
 # Miscellaneous
 chrono = "0.4"
 fern = "0.6"
-spin_sleep = "1.1.1"
-sysinfo = "0.28"
+spin_sleep = "1"
+sysinfo = { version = "0.29", default-features = false }
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }

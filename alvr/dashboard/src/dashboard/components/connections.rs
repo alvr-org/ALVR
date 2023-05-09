@@ -1,6 +1,5 @@
 use crate::{
     dashboard::ServerRequest,
-    steamvr_launcher::LAUNCHER,
     theme::{self, log_colors},
 };
 use alvr_packets::ClientListAction;
@@ -51,9 +50,11 @@ impl ConnectionsTab {
                                 .color(Color32::BLACK),
                             );
                         });
+
+                        #[cfg(not(target_arch = "wasm32"))]
                         ui.with_layout(Layout::right_to_left(eframe::emath::Align::Center), |ui| {
                             if ui.button("Launch SteamVR").clicked() {
-                                LAUNCHER.lock().launch_steamvr();
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
                             }
                         });
                     });

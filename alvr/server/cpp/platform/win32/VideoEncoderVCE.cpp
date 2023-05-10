@@ -434,7 +434,8 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 		fpOut.write(p, length);
 	}
 
-	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs);
+	// todo: properly detect IDR
+	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs, true);
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

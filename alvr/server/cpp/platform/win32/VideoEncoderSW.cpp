@@ -44,7 +44,7 @@ void VideoEncoderSW::Initialize() {
 	// Query codec
 	AVCodecID codecId = ToFFMPEGCodec(m_codec);
 	if(!codecId) throw MakeException("Invalid requested codec %d", m_codec);
-
+	
 	const AVCodec *codec = avcodec_find_encoder(codecId);
 	if(codec == NULL) throw MakeException("Could not find codec id %d", codecId);
 
@@ -199,7 +199,8 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 			break;
 		}
 		// Send encoded frame to client
-		ParseFrameNals(m_codec, packet->data, packet->size, packet->pts);
+		// todo: properly detect IDR
+		ParseFrameNals(m_codec, packet->data, packet->size, packet->pts, true);
 		//Debug("Sent encoded packet to client");
 		av_packet_free(&packet);
 	}

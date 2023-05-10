@@ -80,6 +80,7 @@ bool alvr::EncodePipeline::GetEncoded(FramePacket &packet)
   packet.data = encoder_packet->data;
   packet.size = encoder_packet->size;
   packet.pts = encoder_packet->pts;
+  packet.flags = encoder_packet->flags;
   return true;
 }
 

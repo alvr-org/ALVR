@@ -1134,7 +1134,7 @@ pub fn session_settings_default() -> SettingsDefault {
             server_recv_buffer_bytes: socket_buffer.clone(),
             client_send_buffer_bytes: socket_buffer.clone(),
             client_recv_buffer_bytes: socket_buffer,
-            max_queued_server_video_frames: 3,
+            max_queued_server_video_frames: 1024,
             avoid_video_glitching: true,
             aggressive_keyframe_resend: false,
             on_connect_script: "".into(),

@@ -88,3 +88,9 @@ int alvr::EncodePipeline::GetCodec()
 {
   return Settings::Instance().m_codec;
 }
+
+bool alvr::EncodePipeline::IsIdr(FramePacket &packet)
+{
+  bool isIdr = packet.flags & AV_PKT_FLAG_KEY != 0;
+  return isIdr;
+}

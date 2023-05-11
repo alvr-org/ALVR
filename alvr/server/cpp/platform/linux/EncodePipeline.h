@@ -37,6 +37,7 @@ public:
   virtual bool GetEncoded(FramePacket &data);
   virtual Timestamp GetTimestamp() { return timestamp; }
   virtual int GetCodec();
+  virtual bool IsIdr(FramePacket &packet);
 
   virtual void SetParams(FfiDynamicEncoderParams params);
   static std::unique_ptr<EncodePipeline> Create(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, VkFrameCtx &vk_frame_ctx, uint32_t width, uint32_t height);

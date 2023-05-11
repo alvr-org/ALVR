@@ -70,6 +70,7 @@ public:
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     bool GetEncoded(FramePacket &packet) override;
     void SetParams(FfiDynamicEncoderParams params) override;
+    bool isIdr(FramePacket &packet) override;
 
 private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);
@@ -83,6 +84,7 @@ private:
     amf::AMFContext1Ptr m_amfContext1;
     std::unique_ptr<AMFPipeline> m_pipeline;
     std::vector<amf::AMFComponentPtr> m_amfComponents;
+    amf::AMFDataPtr m_data;
 
     Renderer *m_render;
     amf::AMF_SURFACE_FORMAT m_surfaceFormat;

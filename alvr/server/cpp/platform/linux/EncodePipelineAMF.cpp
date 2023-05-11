@@ -35,12 +35,11 @@ AMFPipe::~AMFPipe()
 
 void AMFPipe::doPassthrough()
 {
-    amf::AMFDataPtr data;
-    auto res = m_amfComponentSrc->QueryOutput(&data);
+    auto res = m_amfComponentSrc->QueryOutput(&m_data);
     switch (res) {
     case AMF_OK:
-        if (data) {
-            m_receiver(data);
+        if (m_data) {
+            m_receiver(m_data);
         }
         break;
     case AMF_NO_DEVICE:
@@ -442,6 +441,28 @@ void EncodePipelineAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, 
     default:
         throw MakeException("Invalid video codec");
     }
+}
+
+bool EncodePipelineAMF::isIdr(FramePacket &packet) {
+    uint64_t type;
+	if (m_codec == ALVR_CODEC_H264)
+	{
+		data->GetProperty(AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE, &type);
+	}
+	else
+	{
+		data->GetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE, &type);
+	}
+
+	
+	if(m_codec == ALVR_CODEC_H264) {
+		isIdr = ((AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_ENUM)type) == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR ? true : false;
+	}
+	else{
+		isIdr = ((AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_ENUM)type) == AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_IDR ? true : false;
+	}
+
+    return isIdr;
 }
 
 };

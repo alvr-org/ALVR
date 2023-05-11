@@ -434,8 +434,25 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 		fpOut.write(p, length);
 	}
 
-	// todo: properly detect IDR
-	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs, true);
+	uint64_t type;
+	if (m_codec == ALVR_CODEC_H264)
+	{
+		data->GetProperty(AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE, &type);
+	}
+	else
+	{
+		data->GetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE, &type);
+	}
+
+	bool isIdr;
+	if(m_codec == ALVR_CODEC_H264) {
+		isIdr = ((AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_ENUM)type) == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR ? true : false;
+	}
+	else{
+		isIdr = ((AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_ENUM)type) == AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_IDR ? true : false;
+	}
+	
+	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs, isIdr);
 }
 
 void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {

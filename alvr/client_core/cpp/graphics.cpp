@@ -721,6 +721,16 @@ void initGraphicsNative() {
     g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
         false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+    
+    const GLubyte *sVendor, *sRenderer, *sVersion, *sExts;
+
+    GL(sVendor = glGetString(GL_VENDOR));
+    GL(sRenderer = glGetString(GL_RENDERER));
+    GL(sVersion = glGetString(GL_VERSION));
+    GL(sExts = glGetString(GL_EXTENSIONS));
+
+    LOGI("glVendor : %s, glRenderer : %s, glVersion : %s", sVendor, sRenderer, sVersion);
+    LOGI("glExts : %s", sExts);
 }
 
 void destroyGraphicsNative() {

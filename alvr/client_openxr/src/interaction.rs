@@ -1,6 +1,6 @@
 use crate::{to_pose, to_quat, to_vec3, Platform};
 use alvr_common::{glam::Vec3, *};
-use alvr_events::ButtonValue;
+use alvr_packets::ButtonValue;
 use openxr as xr;
 use std::collections::HashMap;
 

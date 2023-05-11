@@ -31,8 +31,9 @@ use alvr_common::{
     prelude::*,
     Fov, RelaxedAtomic,
 };
-use alvr_events::ButtonValue;
-use alvr_packets::{BatteryPacket, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig};
+use alvr_packets::{
+    BatteryPacket, ButtonValue, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig,
+};
 use alvr_session::{CodecType, Settings};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,7 @@
 use alvr_common::{
     glam::{UVec2, Vec2},
-    DeviceMotion, Fov, LogSeverity, Pose,
+    DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
 };
-use alvr_events::{ButtonValue, LogEvent};
 use alvr_session::{CodecType, SessionDesc};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -74,6 +73,12 @@ pub struct BatteryPacket {
     pub is_plugged: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+pub enum ButtonValue {
+    Binary(bool),
+    Scalar(f32),
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
@@ -121,7 +126,7 @@ pub struct Haptics {
     pub amplitude: f32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AudioDevicesList {
     pub output: Vec<String>,
     pub input: Vec<String>,
@@ -209,8 +214,7 @@ pub enum FirewallRulesAction {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ServerRequest {
-    Ping,
-    Log(LogEvent),
+    Log(LogEntry),
     GetSession,
     UpdateSession(Box<SessionDesc>),
     SetValues(Vec<PathValuePair>),
@@ -229,10 +233,4 @@ pub enum ServerRequest {
     GetDriverList,
     RestartSteamvr,
     ShutdownSteamvr,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ServerResponse {
-    AudioDevices(AudioDevicesList),
-    DriversList(Vec<PathBuf>),
 }

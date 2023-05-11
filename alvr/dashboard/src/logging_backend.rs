@@ -1,12 +1,11 @@
-use crate::ServerEvent;
-use alvr_common::{log::LevelFilter, parking_lot::Mutex, LogSeverity};
-use alvr_events::{Event, EventType, LogEvent};
+use alvr_common::{log::LevelFilter, parking_lot::Mutex, LogEntry, LogSeverity};
+use alvr_events::{Event, EventType};
 use std::{
     io::Write,
     sync::{mpsc, Arc},
 };
 
-pub fn init_logging(event_sender: mpsc::Sender<ServerEvent>) {
+pub fn init_logging(event_sender: mpsc::Sender<Event>) {
     let event_sender = Arc::new(Mutex::new(event_sender));
 
     env_logger::Builder::new()
@@ -25,13 +24,13 @@ pub fn init_logging(event_sender: mpsc::Sender<ServerEvent>) {
 
             event_sender
                 .lock()
-                .send(ServerEvent::Event(Event {
+                .send(Event {
                     timestamp: timestamp.clone(),
-                    event_type: EventType::Log(LogEvent {
+                    event_type: EventType::Log(LogEntry {
                         severity: LogSeverity::from_log_level(record.level()),
                         content: format!("{}", record.args()),
                     }),
-                }))
+                })
                 .ok();
 
             writeln!(

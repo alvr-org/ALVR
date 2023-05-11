@@ -9,8 +9,7 @@ use alvr_common::{
     prelude::*,
     DeviceMotion, Fov, Pose,
 };
-use alvr_events::ButtonValue;
-use alvr_packets::Tracking;
+use alvr_packets::{ButtonValue, Tracking};
 use alvr_session::{CodecType, FoveatedRenderingDesc};
 use std::{
     collections::VecDeque,

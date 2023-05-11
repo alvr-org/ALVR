@@ -8,7 +8,6 @@ license.workspace = true
 
 [dependencies]
 alvr_common.workspace = true
-alvr_events.workspace = true
 alvr_session.workspace = true
 
 serde = { version = "1", features = ["derive"] }

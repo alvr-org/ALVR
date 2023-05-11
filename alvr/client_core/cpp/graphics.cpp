@@ -472,7 +472,9 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     if (r == GL_FALSE) {
         GLchar msg[4096];
         GL(glGetProgramInfoLog(program->streamProgram, sizeof(msg), 0, msg));
-        LOGE("Linking program failed: %s\n", msg);
+        LOGE("Linking program failed: %s (%s, %d)\n", msg, __FILE__, __LINE__);
+        LOGE("%s\n%s\n", vertexSource, msg);
+        LOGE("%s\n%s\n", fragmentSource, msg);
         return false;
     }
 

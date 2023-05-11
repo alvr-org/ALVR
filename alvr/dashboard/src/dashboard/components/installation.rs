@@ -55,9 +55,6 @@ impl InstallationTab {
                                     requests.push(InstallationTabRequest::ServerRequest(
                                         ServerRequest::UnregisterDriver(driver_path.clone()),
                                     ));
-                                    requests.push(InstallationTabRequest::ServerRequest(
-                                        ServerRequest::GetDriverList,
-                                    ));
                                 }
                             });
                             ui.end_row();
@@ -67,9 +64,6 @@ impl InstallationTab {
                     if ui.button("Register ALVR driver").clicked() {
                         requests.push(InstallationTabRequest::ServerRequest(
                             ServerRequest::RegisterAlvrDriver,
-                        ));
-                        requests.push(InstallationTabRequest::ServerRequest(
-                            ServerRequest::GetDriverList,
                         ));
                     }
                 });

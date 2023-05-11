@@ -1,7 +1,8 @@
 use alvr_common::{prelude::*, DeviceMotion, Pose};
+use alvr_packets::{AudioDevicesList, ButtonValue};
 use alvr_session::SessionDesc;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct Statistics {
@@ -38,12 +39,6 @@ pub struct GraphStatistics {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LogEvent {
-    pub severity: LogSeverity,
-    pub content: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TrackingEvent {
     pub head_motion: Option<DeviceMotion>,
     pub controller_motions: [Option<DeviceMotion>; 2],
@@ -52,12 +47,6 @@ pub struct TrackingEvent {
     pub fb_face_expression: Option<Vec<f32>>,
     pub htc_eye_expression: Option<Vec<f32>>,
     pub htc_lip_expression: Option<Vec<f32>>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-pub enum ButtonValue {
-    Binary(bool),
-    Scalar(f32),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -77,14 +66,16 @@ pub struct HapticsEvent {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
+    Log(LogEntry),
     Session(Box<SessionDesc>),
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
     Tracking(Box<TrackingEvent>),
     Button(ButtonEvent),
     Haptics(HapticsEvent),
+    AudioDevices(AudioDevicesList),
+    DriversList(Vec<PathBuf>),
     ServerRequestsSelfRestart,
-    Log(LogEvent),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

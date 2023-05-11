@@ -1,6 +1,5 @@
 use crate::theme::{self, log_colors};
-use alvr_common::LogSeverity;
-use alvr_events::LogEvent;
+use alvr_common::{LogEntry, LogSeverity};
 use alvr_session::Settings;
 use eframe::{
     egui::{self, Frame, Label, Layout, RichText, TopBottomPanel},
@@ -35,7 +34,7 @@ impl NotificationBar {
         self.min_notification_level = settings.logging.notification_level;
     }
 
-    pub fn push_notification(&mut self, event: LogEvent) {
+    pub fn push_notification(&mut self, event: LogEntry) {
         let now = Instant::now();
         if event.severity >= self.min_notification_level
             && (now > self.receive_instant + TIMEOUT || event.severity >= self.current_level)

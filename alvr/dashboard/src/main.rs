@@ -9,24 +9,13 @@ mod data_sources;
 #[cfg(not(target_arch = "wasm32"))]
 mod steamvr_launcher;
 
-use alvr_common::{parking_lot::Mutex, ALVR_VERSION};
-use alvr_packets::{GpuVendor, ServerRequest, ServerResponse};
+use alvr_common::ALVR_VERSION;
+use alvr_packets::GpuVendor;
 use dashboard::Dashboard;
+use data_sources::DataSources;
 use eframe::egui;
 use ico::IconDir;
-use std::{
-    io::Cursor,
-    sync::{mpsc, Arc},
-    thread,
-};
-
-pub enum ServerEvent {
-    PingResponseConnected,
-    PingResponseDisconnected,
-    Event(alvr_events::Event),
-    ServerResponse(ServerResponse),
-    ChannelTest,
-}
+use std::{io::Cursor, sync::mpsc};
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
@@ -34,7 +23,6 @@ fn main() {
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
-    let (server_requests_sender, server_requests_receiver) = mpsc::channel();
 
     {
         let mut data_manager = data_sources::get_local_data_source();
@@ -68,8 +56,6 @@ fn main() {
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
     let image = ico.entries().first().unwrap().decode().unwrap();
 
-    let data_thread = Arc::new(Mutex::new(None));
-
     eframe::run_native(
         &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
         NativeOptions {
@@ -83,44 +69,18 @@ fn main() {
             ..Default::default()
         },
         {
-            let data_thread = Arc::clone(&data_thread);
-            let server_requests_sender = server_requests_sender.clone();
             Box::new(move |creation_context| {
-                let context = creation_context.egui_ctx.clone();
-                *data_thread.lock() = Some(thread::spawn(|| {
-                    data_sources::data_interop_thread(
-                        context,
-                        server_requests_receiver,
-                        server_events_sender,
-                    )
-                }));
-
-                Box::new(Dashboard::new(
-                    creation_context,
-                    server_requests_sender,
+                let data_source = DataSources::new(
+                    creation_context.egui_ctx.clone(),
+                    server_events_sender,
                     server_events_receiver,
-                ))
+                );
+
+                Box::new(Dashboard::new(creation_context, data_source))
             })
         },
     )
     .unwrap();
-
-    if data_sources::get_local_data_source()
-        .settings()
-        .steamvr_launcher
-        .open_close_steamvr_with_dashboard
-    {
-        server_requests_sender
-            .send(ServerRequest::ShutdownSteamvr)
-            .ok();
-
-        steamvr_launcher::LAUNCHER.lock().ensure_steamvr_shutdown()
-    }
-
-    // This is the signal to shutdown the data thread.
-    drop(server_requests_sender);
-
-    data_thread.lock().take().unwrap().join().unwrap();
 }
 
 #[cfg(target_arch = "wasm32")]

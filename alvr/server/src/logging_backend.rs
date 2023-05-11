@@ -1,6 +1,6 @@
 use crate::{FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
-use alvr_common::{log::LevelFilter, LogSeverity};
-use alvr_events::{Event, EventType, LogEvent};
+use alvr_common::{log::LevelFilter, LogEntry, LogSeverity};
+use alvr_events::{Event, EventType};
 use chrono::Local;
 use fern::Dispatch;
 use std::fs;
@@ -13,7 +13,7 @@ pub fn init_logging(events_sender: Sender<Event>) {
         let event_type = if maybe_event.starts_with('{') && maybe_event.ends_with('}') {
             serde_json::from_str(&maybe_event).unwrap()
         } else {
-            EventType::Log(LogEvent {
+            EventType::Log(LogEntry {
                 severity: LogSeverity::from_log_level(record.level()),
                 content: message.to_string(),
             })

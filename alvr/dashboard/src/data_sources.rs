@@ -1,7 +1,6 @@
-use crate::ServerEvent;
-use alvr_common::{parking_lot::Mutex, prelude::*, StrResult};
+use alvr_common::{parking_lot::Mutex, prelude::*, RelaxedAtomic};
 use alvr_events::{Event, EventType};
-use alvr_packets::{ServerRequest, ServerResponse};
+use alvr_packets::ServerRequest;
 use alvr_server_io::ServerDataManager;
 use eframe::egui;
 use std::{
@@ -10,7 +9,7 @@ use std::{
     net::{SocketAddr, TcpStream},
     str::FromStr,
     sync::{mpsc, Arc},
-    thread,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 use tungstenite::http::Uri;
@@ -30,76 +29,171 @@ pub fn get_local_data_source() -> ServerDataManager {
     ServerDataManager::new(&session_file_path)
 }
 
-fn report_event(
+fn report_event_local(
     context: &egui::Context,
-    sender: &mpsc::Sender<ServerEvent>,
-    event: ServerEvent,
-) -> StrResult {
-    let res = sender.send(event);
+    sender: &mpsc::Sender<Event>,
+    event_type: EventType,
+) {
+    sender
+        .send(Event {
+            timestamp: "".into(),
+            event_type,
+        })
+        .ok();
     context.request_repaint();
-
-    res.map_err(err!())
 }
 
-fn report_server_status(
+fn report_session_local(
     context: &egui::Context,
-    sender: &mpsc::Sender<ServerEvent>,
-    data_source: &Mutex<DataSource>,
-    connected: bool,
-) -> StrResult {
-    let mut data_source_lock = data_source.lock();
-    if connected && matches!(*data_source_lock, DataSource::Local(_)) {
-        info!("Server connected");
-        *data_source_lock = DataSource::Remote;
-
-        report_event(context, sender, ServerEvent::PingResponseConnected)
-    } else if !connected && matches!(*data_source_lock, DataSource::Remote) {
-        info!("Server disconnected");
-        *data_source_lock = DataSource::Local(Box::new(get_local_data_source()));
-
-        report_event(context, sender, ServerEvent::PingResponseDisconnected)
-    } else {
-        Ok(())
-    }
-}
-
-fn report_session(
-    context: &egui::Context,
-    sender: &mpsc::Sender<ServerEvent>,
+    sender: &mpsc::Sender<Event>,
     data_manager: &mut ServerDataManager,
 ) {
-    report_event(
+    report_event_local(
         context,
         sender,
-        ServerEvent::Event(Event {
-            timestamp: "".into(),
-            event_type: EventType::Session(Box::new(data_manager.session().clone())),
-        }),
+        EventType::Session(Box::new(data_manager.session().clone())),
     )
-    .ok();
 }
 
-fn check_bail(sender: &mpsc::Sender<ServerEvent>) -> StrResult {
-    sender.send(ServerEvent::ChannelTest).map_err(err!())
+pub struct DataSources {
+    running: Arc<RelaxedAtomic>,
+    requests_sender: mpsc::Sender<ServerRequest>,
+    events_receiver: mpsc::Receiver<Event>,
+    server_connected: Arc<RelaxedAtomic>,
+    requests_thread: Option<JoinHandle<()>>,
+    events_thread: Option<JoinHandle<()>>,
+    ping_thread: Option<JoinHandle<()>>,
 }
 
-pub fn data_interop_thread(
-    context: egui::Context,
-    receiver: mpsc::Receiver<ServerRequest>,
-    sender: mpsc::Sender<ServerEvent>,
-) {
-    let server_data_manager = get_local_data_source();
+impl DataSources {
+    pub fn new(
+        context: egui::Context,
+        events_sender: mpsc::Sender<Event>,
+        events_receiver: mpsc::Receiver<Event>,
+    ) -> Self {
+        let running = Arc::new(RelaxedAtomic::new(true));
+        let (requests_sender, requests_receiver) = mpsc::channel();
+        let server_connected = Arc::new(RelaxedAtomic::new(false));
 
-    let port = server_data_manager.settings().connection.web_server_port;
+        let server_data_manager = get_local_data_source();
+        let port = server_data_manager.settings().connection.web_server_port;
+        let data_source = Arc::new(Mutex::new(DataSource::Local(Box::new(server_data_manager))));
 
-    let data_source = Arc::new(Mutex::new(DataSource::Local(Box::new(server_data_manager))));
+        let requests_thread = thread::spawn({
+            let running = Arc::clone(&running);
+            let context = context.clone();
+            let data_source = Arc::clone(&data_source);
+            let events_sender = events_sender.clone();
+            move || {
+                let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
+                let request_agent = ureq::AgentBuilder::new()
+                    .timeout_connect(REQUEST_TIMEOUT)
+                    .build();
 
-    let events_thread = thread::spawn({
-        let context = context.clone();
-        let sender = sender.clone();
-        let data_source = Arc::clone(&data_source);
-        move || -> StrResult {
-            loop {
+                while running.value() {
+                    while let Ok(request) = requests_receiver.try_recv() {
+                        debug!("Dashboard request: {request:?}");
+
+                        if let DataSource::Local(data_manager) = &mut *data_source.lock() {
+                            match request {
+                                ServerRequest::Log(_) => (),
+                                ServerRequest::GetSession => {
+                                    report_session_local(&context, &events_sender, data_manager);
+                                }
+                                ServerRequest::UpdateSession(session) => {
+                                    *data_manager.session_mut() = *session;
+
+                                    report_session_local(&context, &events_sender, data_manager);
+                                }
+                                ServerRequest::SetValues(descs) => {
+                                    if let Err(e) = data_manager.set_values(descs) {
+                                        error!("Failed to set session value: {e}")
+                                    }
+
+                                    report_session_local(&context, &events_sender, data_manager);
+                                }
+                                ServerRequest::UpdateClientList { hostname, action } => {
+                                    data_manager.update_client_list(hostname, action);
+
+                                    report_session_local(&context, &events_sender, data_manager);
+                                }
+                                ServerRequest::GetAudioDevices => {
+                                    if let Ok(list) = data_manager.get_audio_devices_list() {
+                                        report_event_local(
+                                            &context,
+                                            &events_sender,
+                                            EventType::AudioDevices(list),
+                                        )
+                                    }
+                                }
+                                ServerRequest::FirewallRules(action) => {
+                                    if alvr_server_io::firewall_rules(action).is_ok() {
+                                        info!("Setting firewall rules succeeded!");
+                                    } else {
+                                        error!("Setting firewall rules failed!");
+                                    }
+                                }
+                                ServerRequest::RegisterAlvrDriver => {
+                                    let alvr_driver_dir =
+                                        alvr_filesystem::filesystem_layout_from_dashboard_exe(
+                                            &env::current_exe().unwrap(),
+                                        )
+                                        .openvr_driver_root_dir;
+
+                                    alvr_server_io::driver_registration(&[alvr_driver_dir], true)
+                                        .ok();
+
+                                    if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                                        report_event_local(
+                                            &context,
+                                            &events_sender,
+                                            EventType::DriversList(list),
+                                        )
+                                    }
+                                }
+                                ServerRequest::UnregisterDriver(path) => {
+                                    alvr_server_io::driver_registration(&[path], false).ok();
+
+                                    if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                                        report_event_local(
+                                            &context,
+                                            &events_sender,
+                                            EventType::DriversList(list),
+                                        )
+                                    }
+                                }
+                                ServerRequest::GetDriverList => {
+                                    if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                                        report_event_local(
+                                            &context,
+                                            &events_sender,
+                                            EventType::DriversList(list),
+                                        )
+                                    }
+                                }
+                                ServerRequest::CaptureFrame
+                                | ServerRequest::InsertIdr
+                                | ServerRequest::StartRecording
+                                | ServerRequest::StopRecording => {
+                                    warn!("Cannot perform action, streamer is not connected.")
+                                }
+                                ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
+                                    warn!("SteamVR not launched")
+                                }
+                            }
+                        } else {
+                            request_agent.get(&uri).send_json(&request).ok();
+                        }
+                    }
+
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
+        });
+
+        let events_thread = thread::spawn({
+            let running = Arc::clone(&running);
+            move || loop {
                 let uri = Uri::from_str(&format!("ws://127.0.0.1:{port}/api/events")).unwrap();
 
                 let maybe_socket = TcpStream::connect_timeout(
@@ -109,7 +203,9 @@ pub fn data_interop_thread(
                 let socket = if let Ok(socket) = maybe_socket {
                     socket
                 } else {
-                    check_bail(&sender)?;
+                    if !running.value() {
+                        return;
+                    }
 
                     thread::sleep(Duration::from_millis(500));
 
@@ -119,7 +215,9 @@ pub fn data_interop_thread(
                 let mut ws = if let Ok((ws, _)) = tungstenite::client(uri, socket) {
                     ws
                 } else {
-                    check_bail(&sender)?;
+                    if !running.value() {
+                        return;
+                    }
 
                     thread::sleep(Duration::from_millis(500));
 
@@ -128,159 +226,104 @@ pub fn data_interop_thread(
 
                 ws.get_mut().set_nonblocking(true).ok();
 
-                loop {
+                while running.value() {
                     match ws.read_message() {
                         Ok(tungstenite::Message::Text(json_string)) => {
                             if let Ok(event) = serde_json::from_str(&json_string) {
                                 debug!("Server event received: {event:?}");
-                                report_event(&context, &sender, ServerEvent::Event(event))?;
+                                events_sender.send(event).ok();
+                                context.request_repaint();
                             }
                         }
                         Err(e) => {
                             if let tungstenite::Error::Io(e) = e {
                                 if e.kind() == ErrorKind::WouldBlock {
-                                    check_bail(&sender)?;
-
                                     thread::sleep(Duration::from_millis(50));
 
                                     continue;
                                 }
                             }
 
-                            report_server_status(&context, &sender, &data_source, false)?;
                             break;
                         }
                         _ => (),
                     }
                 }
             }
-        }
-    });
+        });
 
-    let dashboard_request_uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
-    let request_agent = ureq::AgentBuilder::new()
-        .timeout_connect(REQUEST_TIMEOUT)
-        .build();
+        let ping_thread = thread::spawn({
+            let running = Arc::clone(&running);
+            let data_source = Arc::clone(&data_source);
+            let server_connected = Arc::clone(&server_connected);
+            move || {
+                const PING_INTERVAL: Duration = Duration::from_secs(1);
+                let mut deadline = Instant::now();
+                let uri = format!("http://127.0.0.1:{port}/api/ping");
 
-    let ping_thread = thread::spawn({
-        let context = context.clone();
-        let sender = sender.clone();
-        let data_source = Arc::clone(&data_source);
-        let request_agent = request_agent.clone();
-        let dashboard_request_uri = dashboard_request_uri.clone();
-        move || -> StrResult {
-            const PING_INTERVAL: Duration = Duration::from_secs(1);
-            let mut deadline = Instant::now();
+                let request_agent = ureq::AgentBuilder::new()
+                    .timeout_connect(REQUEST_TIMEOUT)
+                    .build();
 
-            loop {
-                let response = request_agent
-                    .get(&dashboard_request_uri)
-                    .send_json(&ServerRequest::Ping);
+                loop {
+                    let connected = request_agent.get(&uri).call().is_ok();
 
-                report_server_status(&context, &sender, &data_source, response.is_ok())?;
-
-                deadline += PING_INTERVAL;
-                while Instant::now() < deadline {
-                    check_bail(&sender)?;
-                    thread::sleep(Duration::from_millis(100));
-                }
-            }
-        }
-    });
-
-    while let Ok(request) = receiver.recv() {
-        debug!("Dashboard request: {request:?}");
-
-        match request_agent
-            .get(&dashboard_request_uri)
-            .send_json(&request)
-        {
-            Ok(response) => {
-                if let Ok(response) = response.into_json::<ServerResponse>() {
-                    report_event(&context, &sender, ServerEvent::ServerResponse(response)).ok();
-                }
-            }
-            Err(_) => {
-                if let DataSource::Local(data_manager) = &mut *data_source.lock() {
-                    match request {
-                        ServerRequest::Ping => (),
-                        ServerRequest::Log(_) => (),
-                        ServerRequest::GetSession => {
-                            report_session(&context, &sender, data_manager);
-                        }
-                        ServerRequest::UpdateSession(session) => {
-                            *data_manager.session_mut() = *session;
-
-                            report_session(&context, &sender, data_manager);
-                        }
-                        ServerRequest::SetValues(descs) => {
-                            if let Err(e) = data_manager.set_values(descs) {
-                                error!("Failed to set session value: {e}")
-                            }
-
-                            report_session(&context, &sender, data_manager);
-                        }
-                        ServerRequest::UpdateClientList { hostname, action } => {
-                            data_manager.update_client_list(hostname, action);
-
-                            report_session(&context, &sender, data_manager);
-                        }
-                        ServerRequest::GetAudioDevices => {
-                            if let Ok(list) = data_manager.get_audio_devices_list() {
-                                report_event(
-                                    &context,
-                                    &sender,
-                                    ServerEvent::ServerResponse(ServerResponse::AudioDevices(list)),
-                                )
-                                .ok();
-                            }
-                        }
-                        ServerRequest::FirewallRules(action) => {
-                            if alvr_server_io::firewall_rules(action).is_ok() {
-                                info!("Setting firewall rules succeeded!");
-                            } else {
-                                error!("Setting firewall rules failed!");
-                            }
-                        }
-                        ServerRequest::RegisterAlvrDriver => {
-                            let alvr_driver_dir =
-                                alvr_filesystem::filesystem_layout_from_dashboard_exe(
-                                    &env::current_exe().unwrap(),
-                                )
-                                .openvr_driver_root_dir;
-
-                            alvr_server_io::driver_registration(&[alvr_driver_dir], true).ok();
-                        }
-                        ServerRequest::UnregisterDriver(path) => {
-                            alvr_server_io::driver_registration(&[path], false).ok();
-                        }
-                        ServerRequest::GetDriverList => {
-                            if let Ok(list) = alvr_server_io::get_registered_drivers() {
-                                report_event(
-                                    &context,
-                                    &sender,
-                                    ServerEvent::ServerResponse(ServerResponse::DriversList(list)),
-                                )
-                                .ok();
-                            }
-                        }
-                        ServerRequest::CaptureFrame
-                        | ServerRequest::InsertIdr
-                        | ServerRequest::StartRecording
-                        | ServerRequest::StopRecording => {
-                            warn!("Cannot perform action, streamer is not connected.")
-                        }
-                        ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
-                            warn!("SteamVR not launched")
+                    {
+                        let mut data_source_lock = data_source.lock();
+                        if connected && matches!(*data_source_lock, DataSource::Local(_)) {
+                            info!("Server connected");
+                            *data_source_lock = DataSource::Remote;
+                        } else if !connected && matches!(*data_source_lock, DataSource::Remote) {
+                            info!("Server disconnected");
+                            *data_source_lock =
+                                DataSource::Local(Box::new(get_local_data_source()));
                         }
                     }
-                } else {
-                    warn!("Request has been lost!");
+
+                    server_connected.set(connected);
+
+                    deadline += PING_INTERVAL;
+
+                    while Instant::now() < deadline {
+                        if !running.value() {
+                            return;
+                        }
+                        thread::sleep(Duration::from_millis(100));
+                    }
                 }
             }
+        });
+
+        Self {
+            requests_sender,
+            events_receiver,
+            server_connected,
+            running,
+            requests_thread: Some(requests_thread),
+            events_thread: Some(events_thread),
+            ping_thread: Some(ping_thread),
         }
     }
 
-    events_thread.join().ok();
-    ping_thread.join().ok();
+    pub fn request(&self, request: ServerRequest) {
+        self.requests_sender.send(request).ok();
+    }
+
+    pub fn poll_event(&self) -> Option<Event> {
+        self.events_receiver.try_recv().ok()
+    }
+
+    pub fn server_connected(&self) -> bool {
+        self.server_connected.value()
+    }
+}
+
+impl Drop for DataSources {
+    fn drop(&mut self) {
+        self.running.set(false);
+
+        self.requests_thread.take().unwrap().join().ok();
+        self.events_thread.take().unwrap().join().ok();
+        self.ping_thread.take().unwrap().join().ok();
+    }
 }

@@ -176,7 +176,6 @@ version = "20.0.0-dev12"
 dependencies = [
  "alvr_audio",
  "alvr_common",
- "alvr_events",
  "alvr_packets",
  "alvr_session",
  "alvr_sockets",
@@ -221,7 +220,6 @@ version = "20.0.0-dev12"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
- "alvr_events",
  "alvr_packets",
  "alvr_session",
  "android-activity 0.4.0",
@@ -277,6 +275,7 @@ name = "alvr_events"
 version = "20.0.0-dev12"
 dependencies = [
  "alvr_common",
+ "alvr_packets",
  "alvr_session",
  "serde",
  "serde_json",
@@ -295,7 +294,6 @@ name = "alvr_packets"
 version = "20.0.0-dev12"
 dependencies = [
  "alvr_common",
- "alvr_events",
  "alvr_session",
  "serde",
  "serde_json",

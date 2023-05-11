@@ -19,9 +19,9 @@ use alvr_common::{
     settings_schema::Switch,
     RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_events::{ButtonEvent, ButtonValue, EventType, HapticsEvent, TrackingEvent};
+use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     ServerControlPacket, StreamConfigPacket, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};

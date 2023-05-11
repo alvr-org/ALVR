@@ -3,16 +3,16 @@ use crate::{
     VIDEO_RECORDING_FILE,
 };
 use alvr_common::{log, prelude::*};
-use alvr_events::Event;
-use alvr_packets::{ServerRequest, ServerResponse};
+use alvr_events::{Event, EventType};
+use alvr_packets::ServerRequest;
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
 use hyper::{
-    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
+    header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
     service, Body, Request, Response, StatusCode,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 use serde_json as json;
 use std::net::SocketAddr;
 use tokio::sync::broadcast::{self, error::RecvError};
@@ -25,13 +25,6 @@ fn reply(code: StatusCode) -> StrResult<Response<Body>> {
     Response::builder()
         .status(code)
         .body(Body::empty())
-        .map_err(err!())
-}
-
-fn reply_json<T: Serialize>(obj: &T) -> StrResult<Response<Body>> {
-    Response::builder()
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(json::to_string(obj).map_err(err!())?.into())
         .map_err(err!())
 }
 
@@ -108,13 +101,12 @@ async fn http_api(
         "/api/dashboard-request" => {
             if let Ok(request) = from_request_body::<ServerRequest>(request).await {
                 match request {
-                    ServerRequest::Ping => (),
                     ServerRequest::Log(event) => {
                         let level = event.severity.into_log_level();
                         log::log!(level, "{}", event.content);
                     }
                     ServerRequest::GetSession => {
-                        alvr_events::send_event(alvr_events::EventType::Session(Box::new(
+                        alvr_events::send_event(EventType::Session(Box::new(
                             SERVER_DATA_MANAGER.read().session().clone(),
                         )));
                     }
@@ -129,7 +121,7 @@ async fn http_api(
                         .update_client_list(hostname, action),
                     ServerRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
-                            return reply_json(&ServerResponse::AudioDevices(list));
+                            alvr_events::send_event(EventType::AudioDevices(list));
                         }
                     }
                     ServerRequest::CaptureFrame => unsafe { crate::CaptureFrame() },
@@ -149,13 +141,21 @@ async fn http_api(
                             true,
                         )
                         .ok();
+
+                        if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                            alvr_events::send_event(EventType::DriversList(list));
+                        }
                     }
                     ServerRequest::UnregisterDriver(path) => {
                         alvr_server_io::driver_registration(&[path], false).ok();
+
+                        if let Ok(list) = alvr_server_io::get_registered_drivers() {
+                            alvr_events::send_event(EventType::DriversList(list));
+                        }
                     }
                     ServerRequest::GetDriverList => {
                         if let Ok(list) = alvr_server_io::get_registered_drivers() {
-                            return reply_json(&ServerResponse::DriversList(list));
+                            alvr_events::send_event(EventType::DriversList(list));
                         }
                     }
                     ServerRequest::RestartSteamvr => crate::notify_restart_driver(),
@@ -196,6 +196,7 @@ async fn http_api(
 
             res
         }
+        "/api/ping" => reply(StatusCode::OK)?,
         other_uri => {
             if other_uri.contains("..") {
                 // Attempted tree traversal

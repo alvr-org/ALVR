@@ -33,6 +33,12 @@ impl LogSeverity {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LogEntry {
+    pub severity: LogSeverity,
+    pub content: String,
+}
+
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let err_str = format!(

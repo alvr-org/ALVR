@@ -193,60 +193,54 @@ impl DataSources {
 
         let events_thread = thread::spawn({
             let running = Arc::clone(&running);
-            move || loop {
-                let uri = Uri::from_str(&format!("ws://127.0.0.1:{port}/api/events")).unwrap();
-
-                let maybe_socket = TcpStream::connect_timeout(
-                    &SocketAddr::from_str(&format!("127.0.0.1:{port}")).unwrap(),
-                    Duration::from_millis(500),
-                );
-                let socket = if let Ok(socket) = maybe_socket {
-                    socket
-                } else {
-                    if !running.value() {
-                        return;
-                    }
-
-                    thread::sleep(Duration::from_millis(500));
-
-                    continue;
-                };
-
-                let mut ws = if let Ok((ws, _)) = tungstenite::client(uri, socket) {
-                    ws
-                } else {
-                    if !running.value() {
-                        return;
-                    }
-
-                    thread::sleep(Duration::from_millis(500));
-
-                    continue;
-                };
-
-                ws.get_mut().set_nonblocking(true).ok();
-
+            move || {
                 while running.value() {
-                    match ws.read_message() {
-                        Ok(tungstenite::Message::Text(json_string)) => {
-                            if let Ok(event) = serde_json::from_str(&json_string) {
-                                debug!("Server event received: {event:?}");
-                                events_sender.send(event).ok();
-                                context.request_repaint();
-                            }
-                        }
-                        Err(e) => {
-                            if let tungstenite::Error::Io(e) = e {
-                                if e.kind() == ErrorKind::WouldBlock {
-                                    thread::sleep(Duration::from_millis(50));
+                    let uri = Uri::from_str(&format!("ws://127.0.0.1:{port}/api/events")).unwrap();
 
-                                    continue;
+                    let maybe_socket = TcpStream::connect_timeout(
+                        &SocketAddr::from_str(&format!("127.0.0.1:{port}")).unwrap(),
+                        Duration::from_millis(500),
+                    );
+                    let socket = if let Ok(socket) = maybe_socket {
+                        socket
+                    } else {
+                        thread::sleep(Duration::from_millis(500));
+
+                        continue;
+                    };
+
+                    let mut ws = if let Ok((ws, _)) = tungstenite::client(uri, socket) {
+                        ws
+                    } else {
+                        thread::sleep(Duration::from_millis(500));
+
+                        continue;
+                    };
+
+                    ws.get_mut().set_nonblocking(true).ok();
+
+                    while running.value() {
+                        match ws.read_message() {
+                            Ok(tungstenite::Message::Text(json_string)) => {
+                                if let Ok(event) = serde_json::from_str(&json_string) {
+                                    debug!("Server event received: {event:?}");
+                                    events_sender.send(event).ok();
+                                    context.request_repaint();
                                 }
                             }
+                            Err(e) => {
+                                if let tungstenite::Error::Io(e) = e {
+                                    if e.kind() == ErrorKind::WouldBlock {
+                                        thread::sleep(Duration::from_millis(50));
 
-                            break;
+                                        continue;
+                                    }
+                                }
+
+                                break;
+                            }
+                            _ => (),
                         }
-                        _ => (),
                     }
                 }
             }

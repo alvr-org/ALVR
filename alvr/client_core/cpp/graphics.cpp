@@ -465,16 +465,25 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
         GL(glBindAttribLocation(program->streamProgram,
                                 ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
+        LOGI("Binding ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
     }
 
     GL(glLinkProgram(program->streamProgram));
+
+    GLint loc;
+    for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
+        i++) {
+        GL(loc = glGetAttribLocation(program->streamProgram, ProgramVertexAttributes[i].name));
+        LOGI("Bound ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, loc);
+    }
+
     GL(glGetProgramiv(program->streamProgram, GL_LINK_STATUS, &r));
     if (r == GL_FALSE) {
         GLchar msg[4096];
         GL(glGetProgramInfoLog(program->streamProgram, sizeof(msg), 0, msg));
         LOGE("Linking program failed: %s (%s, %d)\n", msg, __FILE__, __LINE__);
-        LOGE("%s\n%s\n", vertexSource, msg);
-        LOGE("%s\n%s\n", fragmentSource, msg);
+        LOGE("vertexSource: %s\n", vertexSource);
+        LOGE("fragmentSource: %s\n", fragmentSource);
         return false;
     }
 

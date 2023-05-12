@@ -456,8 +456,6 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     }
 
     GL(program->streamProgram = glCreateProgram());
-    GL(glAttachShader(program->streamProgram, program->VertexShader));
-    GL(glAttachShader(program->streamProgram, program->FragmentShader));
 
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
@@ -468,6 +466,8 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
         LOGI("Binding ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
     }
 
+    GL(glAttachShader(program->streamProgram, program->VertexShader));
+    GL(glAttachShader(program->streamProgram, program->FragmentShader));
     GL(glLinkProgram(program->streamProgram));
 
     GLint loc;

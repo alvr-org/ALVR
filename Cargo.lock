@@ -261,6 +261,7 @@ dependencies = [
  "eframe",
  "env_logger",
  "ico",
+ "instant",
  "serde",
  "serde_json",
  "settings-schema",

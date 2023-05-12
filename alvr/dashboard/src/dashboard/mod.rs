@@ -10,12 +10,9 @@ use alvr_common::RelaxedAtomic;
 use alvr_events::EventType;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionDesc;
-use eframe::{
-    egui::{
-        self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
-        Stroke,
-    },
-    epaint::Color32,
+use eframe::egui::{
+    self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
+    Stroke,
 };
 use std::{
     collections::BTreeMap,
@@ -229,12 +226,14 @@ impl eframe::App for Dashboard {
                         }
                     });
 
+                    #[cfg(not(target_arch = "wasm32"))]
                     ui.with_layout(
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
                         |ui| {
+                            use eframe::epaint::Color32;
+
                             ui.add_space(5.0);
 
-                            #[cfg(not(target_arch = "wasm32"))]
                             if connected_to_server {
                                 if ui.button("Restart SteamVR").clicked() {
                                     requests.push(ServerRequest::RestartSteamvr);

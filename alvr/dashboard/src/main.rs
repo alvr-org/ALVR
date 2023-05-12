@@ -9,17 +9,19 @@ mod data_sources;
 #[cfg(not(target_arch = "wasm32"))]
 mod steamvr_launcher;
 
-use alvr_common::ALVR_VERSION;
-use alvr_packets::GpuVendor;
-use dashboard::Dashboard;
+#[cfg(not(target_arch = "wasm32"))]
 use data_sources::DataSources;
-use eframe::egui;
-use ico::IconDir;
-use std::{io::Cursor, sync::mpsc};
+
+use dashboard::Dashboard;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
+    use alvr_common::ALVR_VERSION;
+    use alvr_packets::GpuVendor;
+    use eframe::egui;
     use eframe::{IconData, NativeOptions};
+    use ico::IconDir;
+    use std::{io::Cursor, sync::mpsc};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());

@@ -215,6 +215,9 @@ async fn http_api(
 
                 if let Ok(file) = maybe_file {
                     let mut builder = Response::builder();
+                    if other_uri.ends_with(".js") {
+                        builder = builder.header(CONTENT_TYPE, "text/javascript");
+                    }
                     if other_uri.ends_with(".wasm") {
                         builder = builder.header(CONTENT_TYPE, "application/wasm");
                     }

@@ -34,9 +34,10 @@ ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 eframe = { git = "https://github.com/emilk/egui", default-features = false, features = [
-    'glow', # currently wgpu is broken on web
+    'glow',          # currently wgpu is broken on web
     "default_fonts",
 ] }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

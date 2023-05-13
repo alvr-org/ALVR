@@ -59,6 +59,11 @@ typedef struct {
     GLint Textures[MAX_PROGRAM_TEXTURES];        // Texture%i
 } ovrProgram;
 
+enum ovrProgramType {
+    STREAMER_PROG,
+    LOBBY_PROG    
+};
+
 typedef struct {
     ovrFramebuffer FrameBuffer[2];
     bool SceneCreated;
@@ -85,14 +90,16 @@ enum VertexAttributeLocation {
 typedef struct {
     enum VertexAttributeLocation location;
     const char *name;
+    bool usedInProg[2];
 } ovrVertexAttribute;
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
-    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition"},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor"},
-    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv"},
-    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform"},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal"}};
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true, true}},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true, true}},
+    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform",    {false, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true}}
+};
 
 enum E1test {
     UNIFORM_VIEW_ID,
@@ -420,7 +427,7 @@ void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
 
 static const char *programVersion = "#version 300 es\n";
 
-bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
+bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource, ovrProgramType progType) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -460,10 +467,12 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
          i++) {
-        GL(glBindAttribLocation(program->streamProgram,
+        if (ProgramVertexAttributes[i].usedInProg[progType]) {
+            GL(glBindAttribLocation(program->streamProgram,
                                 ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
-        LOGI("Binding ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+            LOGI("Binding ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+        }
     }
 
     GL(glAttachShader(program->streamProgram, program->VertexShader));
@@ -574,9 +583,9 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     renderer->lobbyScene = new GltfModel();
     renderer->lobbyScene->load();
 
-    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER);
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER, STREAMER_PROG);
 
-    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
+    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
 
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);

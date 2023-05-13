@@ -13,6 +13,10 @@
     do {                                                                                           \
         __android_log_print(ANDROID_LOG_ERROR, "[ALVR Native]", __VA_ARGS__);                        \
     } while (false)
+#define LOGD(...)                                                                                  \
+    do {                                                                                           \
+        __android_log_print(ANDROID_LOG_DEBUG, "[ALVR Native]", __VA_ARGS__);                        \
+    } while (false)
 
 static const char *GlErrorString(GLenum error) {
     switch (error) {
@@ -34,11 +38,14 @@ static const char *GlErrorString(GLenum error) {
 }
 
 [[maybe_unused]] static void GLCheckErrors(const char *file, int line) {
-    const GLenum error = glGetError();
+    GLenum error = glGetError();
     if (error == GL_NO_ERROR) {
         return;
     }
-    LOGE("GL error on %s : %d: %s", file, line, GlErrorString(error));
+    while (error != GL_NO_ERROR) {
+        LOGE("GL error on %s : %d: %s", file, line, GlErrorString(error));
+        error = glGetError();
+    }
     abort();
 }
 

@@ -61,7 +61,8 @@ typedef struct {
 
 enum ovrProgramType {
     STREAMER_PROG,
-    LOBBY_PROG    
+    LOBBY_PROG,
+    MAX_PROGS // Not to be used as a type, just a placeholder for len    
 };
 
 typedef struct {
@@ -90,15 +91,15 @@ enum VertexAttributeLocation {
 typedef struct {
     enum VertexAttributeLocation location;
     const char *name;
-    bool usedInProg[2];
+    bool usedInProg[MAX_PROGS];
 } ovrVertexAttribute;
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
-    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true, true}},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true, false}},
-    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true, true}},
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true,  true }},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true,  false}},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true,  true }},
     {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform",    {false, false}},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true}}
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true }}
 };
 
 enum E1test {
@@ -467,24 +468,18 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
          i++) {
+        // Only bind vertex attributes which are used/active in shader else causes uncessary bugs via compiler optimization/aliasing
         if (ProgramVertexAttributes[i].usedInProg[progType]) {
             GL(glBindAttribLocation(program->streamProgram,
                                 ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
-            LOGI("Binding ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+            LOGD("Binding ProgramVertexAttribute [id.%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
         }
     }
 
     GL(glAttachShader(program->streamProgram, program->VertexShader));
     GL(glAttachShader(program->streamProgram, program->FragmentShader));
     GL(glLinkProgram(program->streamProgram));
-
-    GLint loc;
-    for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
-        i++) {
-        GL(loc = glGetAttribLocation(program->streamProgram, ProgramVertexAttributes[i].name));
-        LOGI("Bound ProgramVertexAttributes[%d] %s to location %d", i, ProgramVertexAttributes[i].name, loc);
-    }
 
     GL(glGetProgramiv(program->streamProgram, GL_LINK_STATUS, &r));
     if (r == GL_FALSE) {

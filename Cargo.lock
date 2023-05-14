@@ -373,7 +373,7 @@ dependencies = [
  "futures",
  "serde",
  "serde_json",
- "socket2 0.5.2",
+ "socket2 0.5.3",
  "tokio",
  "tokio-util",
 ]
@@ -4056,8 +4056,9 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.5.2"
-source = "git+https://github.com/rust-lang/socket2.git#488441a418d7fb591357c5dfc20d0bf8cbcdfb25"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2538b18701741680e0322a2302176d3253a35388e2e62f172f64f4f16605f877"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",

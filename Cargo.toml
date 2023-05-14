@@ -23,6 +23,3 @@ alvr_sockets = { path = "alvr/sockets" }
 [profile.distribution]
 inherits = "release"
 lto = true
-
-[patch.crates-io]
-socket2 = { git = 'https://github.com/rust-lang/socket2.git' } # TODO: Remove patch once a new version is released (maybe in 1-2months)

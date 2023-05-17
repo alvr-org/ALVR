@@ -273,8 +273,7 @@ void CEncoder::Run() {
         ReportPresent(pose->targetTimestampNs, present_offset);
         ReportComposed(pose->targetTimestampNs, composed_offset);
 
-        bool isIdr = packet.flags & AV_PKT_FLAG_KEY != 0;
-        ParseFrameNals(encode_pipeline->GetCodec(), packet.data, packet.size, packet.pts, isIdr);
+        ParseFrameNals(encode_pipeline->GetCodec(), packet.data, packet.size, packet.pts, packet.isIDR);
       }
     }
     catch (std::exception &e) {

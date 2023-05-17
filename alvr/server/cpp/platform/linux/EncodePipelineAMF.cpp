@@ -392,6 +392,14 @@ bool EncodePipelineAMF::GetEncoded(FramePacket &packet)
     packet.data = reinterpret_cast<uint8_t *>(m_frameBuffer->GetNative());
     packet.size = static_cast<int>(m_frameBuffer->GetSize());
     packet.pts = m_targetTimestampNs;
+    std::uint64_t type;
+    if (m_codec == ALVR_CODEC_H264) {
+        m_frameBuffer->GetProperty(AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE, &type);
+        packet.isIDR = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
+    } else {
+        m_frameBuffer->GetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE, &type);
+        packet.isIDR = type == AMF_VIDEO_ENCODER_HEVC_OUTPUT_DATA_TYPE_IDR;
+    }
 
     return true;
 }

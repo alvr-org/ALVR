@@ -905,21 +905,7 @@ pub fn entry_point() {
 
 #[allow(unused)]
 fn xr_runtime_now(xr_instance: &xr::Instance, platform: Platform) -> Option<Duration> {
-    let time_nanos = {
-        #[cfg(target_os = "android")]
-        if platform == Platform::Pico {
-            let mut ts_now = libc::timespec {
-                tv_sec: 0,
-                tv_nsec: 0,
-            };
-            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts_now) };
-            ts_now.tv_sec * 1_000_000_000 + ts_now.tv_nsec
-        } else {
-            xr_instance.now().ok()?.as_nanos()
-        }
-        #[cfg(not(target_os = "android"))]
-        xr_instance.now().ok()?.as_nanos()
-    };
+    let time_nanos = xr_instance.now().ok()?.as_nanos();
 
     (time_nanos > 0).then(|| Duration::from_nanos(time_nanos as _))
 }
@@ -929,14 +915,7 @@ fn xr_runtime_now(xr_instance: &xr::Instance, platform: Platform) -> Option<Dura
 fn android_main(app: android_activity::AndroidApp) {
     use android_activity::{InputStatus, MainEvent, PollEvent};
 
-    let rendering_thread = thread::spawn(|| {
-        // workaround for the Pico runtime
-        let context = ndk_context::android_context();
-        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) }.unwrap();
-        let _env = vm.attach_current_thread().unwrap();
-
-        entry_point();
-    });
+    let rendering_thread = thread::spawn(entry_point);
 
     let mut should_quit = false;
     while !should_quit {

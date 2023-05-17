@@ -59,6 +59,12 @@ typedef struct {
     GLint Textures[MAX_PROGRAM_TEXTURES];        // Texture%i
 } ovrProgram;
 
+enum ovrProgramType {
+    STREAMER_PROG,
+    LOBBY_PROG,
+    MAX_PROGS // Not to be used as a type, just a placeholder for len    
+};
+
 typedef struct {
     ovrFramebuffer FrameBuffer[2];
     bool SceneCreated;
@@ -85,14 +91,16 @@ enum VertexAttributeLocation {
 typedef struct {
     enum VertexAttributeLocation location;
     const char *name;
+    bool usedInProg[MAX_PROGS];
 } ovrVertexAttribute;
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
-    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition"},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor"},
-    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv"},
-    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform"},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal"}};
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true,  true }},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true,  false}},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true,  true }},
+    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform",    {false, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true }}
+};
 
 enum E1test {
     UNIFORM_VIEW_ID,
@@ -420,7 +428,7 @@ void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
 
 static const char *programVersion = "#version 300 es\n";
 
-bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
+bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource, ovrProgramType progType) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -456,23 +464,30 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     }
 
     GL(program->streamProgram = glCreateProgram());
-    GL(glAttachShader(program->streamProgram, program->VertexShader));
-    GL(glAttachShader(program->streamProgram, program->FragmentShader));
 
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
          i++) {
-        GL(glBindAttribLocation(program->streamProgram,
+        // Only bind vertex attributes which are used/active in shader else causes uncessary bugs via compiler optimization/aliasing
+        if (ProgramVertexAttributes[i].usedInProg[progType]) {
+            GL(glBindAttribLocation(program->streamProgram,
                                 ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
+            LOGD("Binding ProgramVertexAttribute [id.%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+        }
     }
 
+    GL(glAttachShader(program->streamProgram, program->VertexShader));
+    GL(glAttachShader(program->streamProgram, program->FragmentShader));
     GL(glLinkProgram(program->streamProgram));
+
     GL(glGetProgramiv(program->streamProgram, GL_LINK_STATUS, &r));
     if (r == GL_FALSE) {
         GLchar msg[4096];
         GL(glGetProgramInfoLog(program->streamProgram, sizeof(msg), 0, msg));
-        LOGE("Linking program failed: %s\n", msg);
+        LOGE("Linking program failed: %s (%s, %d)\n", msg, __FILE__, __LINE__);
+        LOGE("vertexSource: %s\n", vertexSource);
+        LOGE("fragmentSource: %s\n", fragmentSource);
         return false;
     }
 
@@ -563,9 +578,9 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     renderer->lobbyScene = new GltfModel();
     renderer->lobbyScene->load();
 
-    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER);
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER, STREAMER_PROG);
 
-    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
+    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
 
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
@@ -719,6 +734,16 @@ void initGraphicsNative() {
     g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
         false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+    
+    const GLubyte *sVendor, *sRenderer, *sVersion, *sExts;
+
+    GL(sVendor = glGetString(GL_VENDOR));
+    GL(sRenderer = glGetString(GL_RENDERER));
+    GL(sVersion = glGetString(GL_VERSION));
+    GL(sExts = glGetString(GL_EXTENSIONS));
+
+    LOGI("glVendor : %s, glRenderer : %s, glVersion : %s", sVendor, sRenderer, sVersion);
+    LOGI("glExts : %s", sExts);
 }
 
 void destroyGraphicsNative() {

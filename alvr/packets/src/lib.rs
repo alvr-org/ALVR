@@ -80,6 +80,12 @@ pub enum ButtonValue {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ButtonEntry {
+    pub path_id: u64,
+    pub value: ButtonValue,
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
@@ -88,7 +94,7 @@ pub enum ClientControlPacket {
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
     VideoErrorReport, // legacy
-    Button { path_id: u64, value: ButtonValue },
+    Buttons(Vec<ButtonEntry>),
     ActiveInteractionProfile { device_id: u64, profile_id: u64 },
     Log { level: LogSeverity, message: String },
     Reserved(String),

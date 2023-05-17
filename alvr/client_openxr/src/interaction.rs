@@ -1,6 +1,6 @@
 use crate::{to_pose, to_quat, to_vec3, Platform};
 use alvr_common::{glam::Vec3, *};
-use alvr_packets::ButtonValue;
+use alvr_packets::{ButtonEntry, ButtonValue};
 use openxr as xr;
 use std::collections::HashMap;
 
@@ -520,33 +520,67 @@ pub fn get_hand_motion(
 }
 
 // todo: move emulation to server
-fn emulate_missing_button_value(platform: Platform, click_action_id: u64, state: bool) {
-    let scalar_value = ButtonValue::Scalar(if state { 1_f32 } else { 0_f32 });
+fn emulate_missing_button_value(
+    platform: Platform,
+    click_action_id: u64,
+    state: bool,
+) -> Option<ButtonEntry> {
+    let value = ButtonValue::Scalar(if state { 1_f32 } else { 0_f32 });
 
     if platform == Platform::Yvr {
         if click_action_id == *LEFT_SQUEEZE_CLICK_ID {
-            alvr_client_core::send_button(*LEFT_SQUEEZE_VALUE_ID, scalar_value);
+            Some(ButtonEntry {
+                path_id: *LEFT_SQUEEZE_VALUE_ID,
+                value,
+            })
         } else if click_action_id == *RIGHT_SQUEEZE_CLICK_ID {
-            alvr_client_core::send_button(*RIGHT_SQUEEZE_VALUE_ID, scalar_value);
+            Some(ButtonEntry {
+                path_id: *RIGHT_SQUEEZE_VALUE_ID,
+                value,
+            })
+        } else {
+            None
         }
+    } else {
+        None
     }
 }
 
 // todo: use hysteresis
 // todo: move emulation to server
-fn emulate_missing_button_click(platform: Platform, value_action_id: u64, state: f32) {
-    let binary_value = ButtonValue::Binary(state > 0.5);
+fn emulate_missing_button_click(
+    platform: Platform,
+    value_action_id: u64,
+    state: f32,
+) -> Option<ButtonEntry> {
+    let value = ButtonValue::Binary(state > 0.5);
 
     if platform == Platform::Vive {
         if value_action_id == *LEFT_SQUEEZE_VALUE_ID {
-            alvr_client_core::send_button(*LEFT_SQUEEZE_CLICK_ID, binary_value);
+            Some(ButtonEntry {
+                path_id: *LEFT_SQUEEZE_CLICK_ID,
+                value,
+            })
         } else if value_action_id == *LEFT_TRIGGER_VALUE_ID {
-            alvr_client_core::send_button(*LEFT_TRIGGER_CLICK_ID, binary_value);
+            Some(ButtonEntry {
+                path_id: *LEFT_TRIGGER_CLICK_ID,
+                value,
+            })
         } else if value_action_id == *RIGHT_SQUEEZE_VALUE_ID {
-            alvr_client_core::send_button(*RIGHT_SQUEEZE_CLICK_ID, binary_value);
+            Some(ButtonEntry {
+                path_id: *RIGHT_SQUEEZE_CLICK_ID,
+                value,
+            })
         } else if value_action_id == *RIGHT_TRIGGER_VALUE_ID {
-            alvr_client_core::send_button(*RIGHT_TRIGGER_CLICK_ID, binary_value);
+            Some(ButtonEntry {
+                path_id: *RIGHT_TRIGGER_CLICK_ID,
+                value,
+            })
+        } else {
+            None
         }
+    } else {
+        None
     }
 }
 
@@ -554,31 +588,46 @@ pub fn update_buttons(
     platform: Platform,
     xr_session: &xr::Session<xr::AnyGraphics>,
     button_actions: &HashMap<u64, ButtonAction>,
-) -> StrResult {
+) -> StrResult<Vec<ButtonEntry>> {
+    let mut button_entries = Vec::with_capacity(2);
     for (id, action) in button_actions {
         match action {
             ButtonAction::Binary(action) => {
                 let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
 
                 if state.changed_since_last_sync {
-                    alvr_client_core::send_button(*id, ButtonValue::Binary(state.current_state));
+                    button_entries.push(ButtonEntry {
+                        path_id: *id,
+                        value: ButtonValue::Binary(state.current_state),
+                    });
 
-                    emulate_missing_button_value(platform, *id, state.current_state);
+                    if let Some(entry) =
+                        emulate_missing_button_value(platform, *id, state.current_state)
+                    {
+                        button_entries.push(entry);
+                    }
                 }
             }
             ButtonAction::Scalar(action) => {
                 let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
 
                 if state.changed_since_last_sync {
-                    alvr_client_core::send_button(*id, ButtonValue::Scalar(state.current_state));
+                    button_entries.push(ButtonEntry {
+                        path_id: *id,
+                        value: ButtonValue::Scalar(state.current_state),
+                    });
 
-                    emulate_missing_button_click(platform, *id, state.current_state);
+                    if let Some(entry) =
+                        emulate_missing_button_click(platform, *id, state.current_state)
+                    {
+                        button_entries.push(entry);
+                    }
                 }
             }
         }
     }
 
-    Ok(())
+    Ok(button_entries)
 }
 
 pub struct FaceInputContext {

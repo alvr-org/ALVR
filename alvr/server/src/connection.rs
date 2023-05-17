@@ -981,32 +981,43 @@ async fn connection_pipeline(
                         stats.report_battery(packet.device_id, packet.gauge_value);
                     }
                 },
-                Ok(ClientControlPacket::Button { path_id, value }) => {
+                Ok(ClientControlPacket::Buttons(entries)) => {
                     if settings.logging.log_button_presses {
-                        alvr_events::send_event(EventType::Button(ButtonEvent {
-                            path: BUTTON_PATH_FROM_ID
-                                .get(&path_id)
-                                .cloned()
-                                .unwrap_or_else(|| format!("Unknown (ID: {path_id:#16x})")),
-                            value,
-                        }));
+                        alvr_events::send_event(EventType::Buttons(
+                            entries
+                                .iter()
+                                .map(|e| ButtonEvent {
+                                    path: BUTTON_PATH_FROM_ID
+                                        .get(&e.path_id)
+                                        .cloned()
+                                        .unwrap_or_else(|| {
+                                            format!("Unknown (ID: {:#16x})", e.path_id)
+                                        }),
+                                    value: e.value,
+                                })
+                                .collect(),
+                        ));
                     }
 
-                    let value = match value {
-                        ButtonValue::Binary(value) => FfiButtonValue {
-                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                binary: value.into(),
+                    for entry in entries {
+                        let value = match entry.value {
+                            ButtonValue::Binary(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    binary: value.into(),
+                                },
                             },
-                        },
 
-                        ButtonValue::Scalar(value) => FfiButtonValue {
-                            type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { scalar: value },
-                        },
-                    };
+                            ButtonValue::Scalar(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    scalar: value,
+                                },
+                            },
+                        };
 
-                    unsafe { crate::SetButton(path_id, value) };
+                        unsafe { crate::SetButton(entry.path_id, value) };
+                    }
                 }
                 Ok(ClientControlPacket::Log { level, message }) => {
                     info!("Client {client_hostname}: [{level:?}] {message}")

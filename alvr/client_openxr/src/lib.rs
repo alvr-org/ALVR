@@ -321,11 +321,16 @@ fn update_streaming_input(
         face_data,
     });
 
-    interaction::update_buttons(
+    let button_entries = interaction::update_buttons(
         ctx.platform,
         &ctx.xr_session,
         &ctx.hands_context.button_actions,
-    )
+    )?;
+    if !button_entries.is_empty() {
+        alvr_client_core::send_buttons(button_entries);
+    }
+
+    Ok(())
 }
 
 pub fn entry_point() {

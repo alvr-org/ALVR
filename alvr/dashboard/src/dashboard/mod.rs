@@ -163,7 +163,7 @@ impl eframe::App for Dashboard {
                 }
                 EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
-                EventType::Tracking(_) | EventType::Button(_) | EventType::Haptics(_) => (),
+                EventType::Tracking(_) | EventType::Buttons(_) | EventType::Haptics(_) => (),
             }
         }
 

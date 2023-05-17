@@ -71,7 +71,7 @@ pub enum EventType {
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
     Tracking(Box<TrackingEvent>),
-    Button(ButtonEvent),
+    Buttons(Vec<ButtonEvent>),
     Haptics(HapticsEvent),
     AudioDevices(AudioDevicesList),
     DriversList(Vec<PathBuf>),

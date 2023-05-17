@@ -9,7 +9,7 @@ use alvr_common::{
     prelude::*,
     DeviceMotion, Fov, Pose,
 };
-use alvr_packets::{ButtonValue, Tracking};
+use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
 use alvr_session::{CodecType, FoveatedRenderingDesc};
 use std::{
     collections::VecDeque,
@@ -339,7 +339,7 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
         AlvrButtonValue::Scalar(value) => ButtonValue::Scalar(value),
     };
 
-    crate::send_button(path_id, value);
+    crate::send_buttons(vec![ButtonEntry { path_id, value }]);
 }
 
 #[no_mangle]

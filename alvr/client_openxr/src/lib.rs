@@ -915,7 +915,14 @@ fn xr_runtime_now(xr_instance: &xr::Instance, platform: Platform) -> Option<Dura
 fn android_main(app: android_activity::AndroidApp) {
     use android_activity::{InputStatus, MainEvent, PollEvent};
 
-    let rendering_thread = thread::spawn(entry_point);
+    let rendering_thread = thread::spawn(|| {
+        // workaround for the Pico runtime
+        let context = ndk_context::android_context();
+        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) }.unwrap();
+        let _env = vm.attach_current_thread().unwrap();
+
+        entry_point();
+    });
 
     let mut should_quit = false;
     while !should_quit {

@@ -251,7 +251,7 @@ fn get_android_openxr_loaders() {
     // Pico
     command::download_and_extract_zip(
         &sh,
-        "https://sdk.picovr.com/developer-platform/sdk/Pico_OpenXR_SDK_v210.zip",
+        "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
         &temp_dir,
     )
     .unwrap();

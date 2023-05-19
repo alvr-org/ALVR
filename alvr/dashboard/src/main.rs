@@ -18,13 +18,15 @@ use dashboard::Dashboard;
 fn main() {
     use alvr_common::ALVR_VERSION;
     use alvr_packets::GpuVendor;
-    use eframe::egui;
-    use eframe::{IconData, NativeOptions};
+    use eframe::{egui, IconData, NativeOptions};
     use ico::IconDir;
+    use std::env;
     use std::{io::Cursor, sync::mpsc};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
+
+    env::set_var("WINIT_X11_SCALE_FACTOR", "1");
 
     {
         let mut data_manager = data_sources::get_local_data_source();

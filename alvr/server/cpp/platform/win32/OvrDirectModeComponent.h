@@ -32,6 +32,9 @@ public:
 
 	/** Submits queued layers for display. */
 	virtual void Present(vr::SharedTextureHandle_t syncTexture);
+	
+	/** Called after Present to allow driver to take more time until vsync after they've successfully acquired the sync texture in Present.*/
+	virtual void PostPresent();
 
 	void CopyTexture(uint32_t layerCount);
 

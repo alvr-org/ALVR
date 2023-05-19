@@ -194,6 +194,7 @@ void (*ReportEncoded)(unsigned long long timestamp_ns);
 FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
 void (*SetOpenvrProps)(unsigned long long deviceID);
+void (*WaitForVSync)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
     // Initialize path constants

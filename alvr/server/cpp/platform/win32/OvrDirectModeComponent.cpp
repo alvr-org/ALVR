@@ -205,6 +205,10 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	}
 }
 
+void OvrDirectModeComponent::PostPresent() {
+	WaitForVSync();
+}
+
 void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
 	uint64_t presentationTime = GetTimestampUs();

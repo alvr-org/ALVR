@@ -461,16 +461,18 @@ pub fn get_hand_motion(
     time: xr::Time,
     hand_source: &HandSource,
     last_position: &mut Vec3,
-) -> StrResult<(Option<DeviceMotion>, Option<[Pose; 26]>)> {
+) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
     if hand_source
         .grip_action
         .is_active(session, xr::Path::NULL)
-        .map_err(err!())?
+        .unwrap_or(false)
     {
-        let (location, velocity) = hand_source
+        let Ok((location, velocity)) = hand_source
             .grip_space
             .relate(reference_space, time)
-            .map_err(err!())?;
+        else {
+            return (None, None);
+        };
 
         if location
             .location_flags
@@ -488,35 +490,34 @@ pub fn get_hand_motion(
             angular_velocity: to_vec3(velocity.angular_velocity),
         };
 
-        return Ok((Some(hand_motion), None));
+        return (Some(hand_motion), None);
     }
 
-    if let Some(tracker) = &hand_source.skeleton_tracker {
-        // todo: support also velocities in the protocol
-        if let Some((joint_locations, jont_velocities)) = reference_space
+    let Some(tracker) = &hand_source.skeleton_tracker else {
+        return (None, None);
+    };
+
+    let Some((joint_locations, jont_velocities)) = reference_space
             .relate_hand_joints(tracker, time)
-            .map_err(err!())?
-        {
-            let root_motion = DeviceMotion {
-                pose: to_pose(joint_locations[0].pose),
-                linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
-                angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
-            };
+            .ok().flatten()
+        else {
+            return (None, None);
+        };
 
-            let joints = joint_locations
-                .iter()
-                .map(|j| to_pose(j.pose))
-                .collect::<Vec<_>>()
-                .try_into()
-                .unwrap();
+    let root_motion = DeviceMotion {
+        pose: to_pose(joint_locations[0].pose),
+        linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
+        angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
+    };
 
-            Ok((Some(root_motion), Some(joints)))
-        } else {
-            Ok((None, None))
-        }
-    } else {
-        Ok((None, None))
-    }
+    let joints = joint_locations
+        .iter()
+        .map(|j| to_pose(j.pose))
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+
+    (Some(root_motion), Some(joints))
 }
 
 // todo: move emulation to server
@@ -588,12 +589,14 @@ pub fn update_buttons(
     platform: Platform,
     xr_session: &xr::Session<xr::AnyGraphics>,
     button_actions: &HashMap<u64, ButtonAction>,
-) -> StrResult<Vec<ButtonEntry>> {
+) -> Vec<ButtonEntry> {
     let mut button_entries = Vec::with_capacity(2);
     for (id, action) in button_actions {
         match action {
             ButtonAction::Binary(action) => {
-                let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
+                let Ok(state) = action.state(xr_session, xr::Path::NULL) else {
+                    continue;
+                };
 
                 if state.changed_since_last_sync {
                     button_entries.push(ButtonEntry {
@@ -609,7 +612,9 @@ pub fn update_buttons(
                 }
             }
             ButtonAction::Scalar(action) => {
-                let state = action.state(xr_session, xr::Path::NULL).map_err(err!())?;
+                let Ok(state) = action.state(xr_session, xr::Path::NULL) else {
+                    continue;
+                };
 
                 if state.changed_since_last_sync {
                     button_entries.push(ButtonEntry {
@@ -627,7 +632,7 @@ pub fn update_buttons(
         }
     }
 
-    Ok(button_entries)
+    button_entries
 }
 
 pub struct FaceInputContext {
@@ -691,15 +696,15 @@ pub fn get_eye_gazes(
     reference_space: &xr::Space,
     time: xr::Time,
 ) -> [Option<Pose>; 2] {
-    if let Some(tracker) = &context.eye_tracker_fb {
-        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
-            [
-                gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
-                gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
-            ]
-        } else {
-            [None, None]
-        }
+    let Some(tracker) = &context.eye_tracker_fb else {
+        return [None, None]
+    };
+
+    if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
+        [
+            gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
+            gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
+        ]
     } else {
         [None, None]
     }

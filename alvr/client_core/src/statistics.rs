@@ -95,8 +95,15 @@ impl StatisticsManager {
     }
 
     // vsync_queue is the latency between this call and the vsync. it cannot be measured by ALVR and
-    // should be reported by the VR runtime
-    pub fn report_submit(&mut self, target_timestamp: Duration, vsync_queue: Duration) {
+    // should be reported by the VR runtime.
+    // predicted_frame_interval is the frame interval returned by the runtime. this is more stable
+    // any any interval mearued by us.
+    pub fn report_submit(
+        &mut self,
+        target_timestamp: Duration,
+        predicted_frame_interval: Duration,
+        vsync_queue: Duration,
+    ) {
         let now = Instant::now();
 
         if let Some(frame) = self
@@ -118,6 +125,8 @@ impl StatisticsManager {
             let vsync = now + vsync_queue;
             frame.client_stats.frame_interval = vsync.saturating_duration_since(self.prev_vsync);
             self.prev_vsync = vsync;
+
+            frame.client_stats.predicted_frame_interval = predicted_frame_interval
         }
     }
 

@@ -196,7 +196,7 @@ fn tracking_thread(streaming: Arc<RelaxedAtomic>, fps: f32, input: Arc<RwLock<Wi
 
         drop(input_lock);
 
-        loop_deadline += Duration::from_secs_f32(1.0 / fps / 3.0);
+        loop_deadline += Duration::from_secs_f32(1.0 / fps);
         thread::sleep(loop_deadline.saturating_duration_since(Instant::now()))
     }
 }
@@ -271,6 +271,7 @@ fn client_thread(
 
         alvr_client_core::report_submit(
             window_output.current_frame_timestamp,
+            Duration::from_secs_f32(1.0 / window_output.fps),
             Duration::from_millis(input_lock.emulated_vsync_ms),
         );
 

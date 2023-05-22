@@ -398,9 +398,14 @@ pub extern "C" fn alvr_get_tracker_prediction_offset_ns() -> u64 {
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_report_submit(target_timestamp_ns: u64, vsync_queue_ns: u64) {
+pub extern "C" fn alvr_report_submit(
+    target_timestamp_ns: u64,
+    frame_interval_ns: u64,
+    vsync_queue_ns: u64,
+) {
     crate::report_submit(
         Duration::from_nanos(target_timestamp_ns),
+        Duration::from_nanos(frame_interval_ns),
         Duration::from_nanos(vsync_queue_ns),
     );
 }

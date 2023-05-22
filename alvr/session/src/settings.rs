@@ -763,6 +763,37 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct TrackingSubmissionPhaseSyncConfig {
+    #[schema(strings(
+        display_name = "Streamer send buffer size",
+        help = "Backward shift done per submission miss"
+    ))]
+    #[schema(gui(slider(min = 0.01, max = 0.5, step = 0.01)), suffix = "rad")]
+    pub phase_shift_per_miss_rad: f32,
+
+    #[schema(
+        strings(help = "This is the expected number of sumission misses per minute.
+Other misses unrelated to this algorithm are not taken into account.
+A higher value will keep the latency low but it will be more stuttery.")
+    )]
+    #[schema(gui(slider(min = 1, max = 10)), suffix = "rad")]
+    pub misses_per_minute: usize,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct PhaseSyncConfig {
+    #[schema(strings(help = "Identify the best phase to submit tracking data to SteamVR."))]
+    pub tracking_submission: TrackingSubmissionPhaseSyncConfig,
+    //todo:
+    // tracking_polling: used to reduce tracking queue
+    // server_vsync: used to reduce client decoder queue.
+    // client_phase_offset: off by default, waiting time used for clients that don't implement phase sync.
+
+    #[schema(suffix = " frames")]
+    pub history_size: usize,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ConnectionConfig {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
@@ -820,8 +851,14 @@ For now works only on Windows+Nvidia"#
     #[schema(gui(slider(min = 1024, max = 65507, logarithmic)), suffix = "B")]
     pub packet_size: i32,
 
+    #[schema(strings(
+        help = "History size used in client+server StatisticsManager.
+It affects the head and controller latency calculations."
+    ))]
     #[schema(suffix = " frames")]
     pub statistics_history_size: usize,
+
+    pub phase_sync: PhaseSyncConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1233,6 +1270,13 @@ pub fn session_settings_default() -> SettingsDefault {
             on_disconnect_script: "".into(),
             packet_size: 1400,
             statistics_history_size: 256,
+            phase_sync: PhaseSyncConfigDefault {
+                tracking_submission: TrackingSubmissionPhaseSyncConfigDefault {
+                    phase_shift_per_miss_rad: 0.1,
+                    misses_per_minute: 2,
+                },
+                history_size: 256,
+            },
         },
         logging: LoggingConfigDefault {
             log_to_disk: cfg!(debug_assertions),

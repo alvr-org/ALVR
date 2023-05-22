@@ -2,7 +2,7 @@
 // todo: fill out more properties for headset and controllers
 // todo: add more emulation modes
 
-use crate::{FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER};
+use crate::{openvr_props, FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER};
 use alvr_common::{prelude::*, settings_schema::Switch, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue,
@@ -12,6 +12,10 @@ use std::{
     ffi::{c_char, CString},
     ptr,
 };
+
+pub fn set_prop(device_id: u64, key: OpenvrPropertyKey, value: OpenvrPropValue) {
+    unsafe { crate::SetOpenvrProperty(device_id, to_ffi_openvr_prop(key, value)) }
+}
 
 pub fn to_ffi_openvr_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) -> FfiOpenvrProperty {
     let type_ = match value {
@@ -113,9 +117,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
     if device_id == *HEAD_ID {
         fn set_prop(key: OpenvrPropertyKey, value: OpenvrPropValue) {
             info!("Setting head OpenVR prop: {key:?} => {value:?}");
-            unsafe {
-                crate::SetOpenvrProperty(*HEAD_ID, to_ffi_openvr_prop(key, value));
-            }
+            openvr_props::set_prop(*HEAD_ID, key, value);
         }
         fn set_string(key: OpenvrPropertyKey, value: &str) {
             set_prop(key, OpenvrPropValue::String(value.into()));

@@ -5,6 +5,7 @@ mod face_tracking;
 mod haptics;
 mod logging_backend;
 mod openvr_props;
+mod phase_sync;
 mod sockets;
 mod statistics;
 mod tracking;
@@ -38,9 +39,11 @@ use alvr_server_io::ServerDataManager;
 use alvr_session::CodecType;
 use bitrate::BitrateManager;
 use connection::SHOULD_CONNECT_TO_CLIENTS;
+use phase_sync::PhaseSyncManager;
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
+    env::consts::OS,
     ffi::{c_char, c_void, CStr, CString},
     fs::File,
     io::Write,
@@ -77,6 +80,14 @@ static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     Mutex::new(BitrateManager::new(
         settings.video.bitrate.history_size,
         settings.video.preferred_fps,
+    ))
+});
+static PHASE_SYNC_MANAGER: Lazy<Mutex<PhaseSyncManager>> = Lazy::new(|| {
+    let data_lock = SERVER_DATA_MANAGER.read();
+    let settings = data_lock.settings();
+    Mutex::new(PhaseSyncManager::new(
+        settings.connection.statistics_history_size as usize,
+        Duration::from_secs_f32(1.0 / settings.video.preferred_fps),
     ))
 });
 
@@ -426,6 +437,20 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 warn!("Connection thread closed: {e}");
             }
         });
+
+        if OS == "linux" {
+            thread::spawn(|| {
+                while SHOULD_CONNECT_TO_CLIENTS.value() {
+                    unsafe { NotifyVsync() };
+
+                    // Make sure to wait at least 1ms, to avoid double notify because of timing
+                    // jitter
+                    thread::sleep(Duration::from_millis(1));
+
+                    thread::sleep(PHASE_SYNC_MANAGER.lock().duration_until_next_vsync());
+                }
+            });
+        }
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
@@ -472,14 +497,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             .video
             .optimize_game_render_latency
         {
-            let wait_duration = STATISTICS_MANAGER
-                .lock()
-                .as_mut()
-                .map(|stats| stats.duration_until_next_vsync());
-
-            if let Some(duration) = wait_duration {
-                thread::sleep(duration);
-            }
+            thread::sleep(PHASE_SYNC_MANAGER.lock().duration_until_next_vsync());
         }
     }
 

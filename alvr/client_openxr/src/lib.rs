@@ -463,6 +463,7 @@ pub fn entry_point() {
         let mut views_history = VecDeque::new();
 
         let (history_view_sender, history_view_receiver) = mpsc::channel();
+        let mut frame_interval_sender = None;
         let mut reference_space_sender = None::<mpsc::Sender<_>>;
 
         let default_view = xr::View {
@@ -692,10 +693,13 @@ pub fn entry_point() {
 
                         let (sender, reference_space_receiver) = mpsc::channel();
                         reference_space_sender = Some(sender);
+                        let (sender, frame_interval_receiver) = mpsc::channel();
+                        frame_interval_sender = Some(sender);
 
                         streaming_input_thread = Some(thread::spawn(move || {
                             let mut deadline = Instant::now();
-                            let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate_hint);
+                            let mut frame_interval =
+                                Duration::from_secs_f32(1.0 / refresh_rate_hint);
 
                             while is_streaming.value() {
                                 update_streaming_input(&mut context);
@@ -704,7 +708,11 @@ pub fn entry_point() {
                                     context.reference_space = reference_space;
                                 }
 
-                                deadline += frame_interval / 3;
+                                if let Ok(interval) = frame_interval_receiver.try_recv() {
+                                    frame_interval = interval;
+                                }
+
+                                deadline += frame_interval;
                                 thread::sleep(deadline.saturating_duration_since(Instant::now()));
                             }
                         }));
@@ -832,6 +840,10 @@ pub fn entry_point() {
             let vsync_time =
                 Duration::from_nanos(frame_state.predicted_display_time.as_nanos() as _);
 
+            if let Some(sender) = &frame_interval_sender {
+                sender.send(frame_interval).ok();
+            }
+
             xr_frame_stream.begin().unwrap();
 
             if !frame_state.should_render {
@@ -901,7 +913,11 @@ pub fn entry_point() {
 
                 if !hardware_buffer.is_null() {
                     if let Some(now) = xr_runtime_now(&xr_instance) {
-                        alvr_client_core::report_submit(timestamp, vsync_time.saturating_sub(now));
+                        alvr_client_core::report_submit(
+                            timestamp,
+                            frame_interval,
+                            vsync_time.saturating_sub(now),
+                        );
                     }
                 }
 

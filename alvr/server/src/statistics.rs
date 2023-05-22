@@ -46,8 +46,6 @@ pub struct StatisticsManager {
     battery_gauges: HashMap<u64, f32>,
     steamvr_pipeline_latency: Duration,
     total_pipeline_latency_average: SlidingWindowAverage<Duration>,
-    last_vsync_time: Instant,
-    frame_interval: Duration,
 }
 
 impl StatisticsManager {
@@ -77,8 +75,6 @@ impl StatisticsManager {
                 Duration::ZERO,
                 max_history_size,
             ),
-            last_vsync_time: Instant::now(),
-            frame_interval: nominal_server_frame_interval,
         }
     }
 
@@ -282,17 +278,5 @@ impl StatisticsManager {
         // This is the opposite of the client's StatisticsManager::tracker_prediction_offset().
         self.steamvr_pipeline_latency
             .saturating_sub(self.total_pipeline_latency_average.get_average())
-    }
-
-    // NB: this call is non-blocking, waiting should be done externally
-    pub fn duration_until_next_vsync(&mut self) -> Duration {
-        let now = Instant::now();
-
-        // update the last vsync if it's too old
-        while self.last_vsync_time + self.frame_interval < now {
-            self.last_vsync_time += self.frame_interval;
-        }
-
-        (self.last_vsync_time + self.frame_interval).saturating_duration_since(now)
     }
 }

@@ -118,6 +118,7 @@ pub struct StreamSender<T> {
     stream_id: u16,
     max_packet_size: usize,
     socket: StreamSendSocket,
+    header_buffer: Vec<u8>,
     // if the packet index overflows the worst that happens is a false positive packet loss
     next_packet_index: u32,
     _phantom: PhantomData<T>,
@@ -144,35 +145,36 @@ impl<T: Serialize> StreamSender<T> {
         };
     }
 
-    pub async fn send(&mut self, header: &T, buffer: Vec<u8>) -> StrResult {
+    pub async fn send(&mut self, header: &T, payload_buffer: Vec<u8>) -> StrResult {
         // packet layout:
         // [ 2B (stream ID) | 4B (packet index) | 4B (packet shard count) | 4B (shard index)]
         // this escluses length delimited coding, which is handled by the TCP backend
         const OFFSET: usize = 2 + 4 + 4 + 4;
-        let max_payload_size = self.max_packet_size - OFFSET;
+        let max_shard_data_size = self.max_packet_size - OFFSET;
 
-        let data_header_size = bincode::serialized_size(header).map_err(err!()).unwrap() as usize;
-
-        let shards = buffer.chunks(max_payload_size);
-        let shards_count = shards.len() + 1;
-
-        let mut shards_buffer =
-            BytesMut::with_capacity(data_header_size + buffer.len() + shards_count * OFFSET);
-
-        {
-            shards_buffer.put_u16(self.stream_id);
-            shards_buffer.put_u32(self.next_packet_index);
-            shards_buffer.put_u32(shards_count as _);
-            shards_buffer.put_u32(0);
-            shards_buffer.put_slice(&bincode::serialize(header).map_err(err!()).unwrap());
-            self.send_buffer(shards_buffer.split()).await;
+        let header_size = bincode::serialized_size(header).map_err(err!()).unwrap() as usize;
+        self.header_buffer.clear();
+        if self.header_buffer.capacity() < header_size {
+            // If the buffer is empty, with this call we request a capacity of "header_size".
+            self.header_buffer.reserve(header_size);
         }
+        bincode::serialize_into(&mut self.header_buffer, header)
+            .map_err(err!())
+            .unwrap();
+        let header_shards = self.header_buffer.chunks(max_shard_data_size);
 
-        for (shard_index, shard) in shards.enumerate() {
+        let payload_shards = payload_buffer.chunks(max_shard_data_size);
+
+        let total_shards_count = payload_shards.len() + header_shards.len();
+        let mut shards_buffer = BytesMut::with_capacity(
+            header_size + payload_buffer.len() + total_shards_count * OFFSET,
+        );
+
+        for (shard_index, shard) in header_shards.chain(payload_shards).enumerate() {
             shards_buffer.put_u16(self.stream_id);
             shards_buffer.put_u32(self.next_packet_index);
-            shards_buffer.put_u32(shards_count as _);
-            shards_buffer.put_u32((shard_index + 1) as _);
+            shards_buffer.put_u32(total_shards_count as _);
+            shards_buffer.put_u32(shard_index as u32);
             shards_buffer.put_slice(shard);
             self.send_buffer(shards_buffer.split()).await;
         }
@@ -409,6 +411,7 @@ impl StreamSocket {
             stream_id,
             max_packet_size: self.max_packet_size,
             socket: self.send_socket.clone(),
+            header_buffer: vec![],
             next_packet_index: 0,
             _phantom: PhantomData,
         })

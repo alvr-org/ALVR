@@ -1,4 +1,4 @@
-#include "VideoEncoderVCE.h"
+#include "VideoEncoderAMF.h"
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
@@ -6,8 +6,8 @@
 #define AMF_THROW_IF(expr) {AMF_RESULT res = expr;\
 if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, L#expr);}}
 
-const wchar_t *VideoEncoderVCE::START_TIME_PROPERTY = L"StartTimeProperty";
-const wchar_t *VideoEncoderVCE::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
+const wchar_t *VideoEncoderAMF::START_TIME_PROPERTY = L"StartTimeProperty";
+const wchar_t *VideoEncoderAMF::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 
 AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver) 
 	: m_amfComponentSrc(src)
@@ -101,10 +101,10 @@ void AMFPipeline::Run(bool hasQueryTimeout)
 }
 
 //
-// VideoEncoderVCE
+// VideoEncoderAMF
 //
 
-VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
+VideoEncoderAMF::VideoEncoderAMF(std::shared_ptr<CD3DRender> d3dRender
 	, int width, int height)
 	: m_d3dRender(d3dRender)
 	, m_codec(Settings::Instance().m_codec)
@@ -117,9 +117,9 @@ VideoEncoderVCE::VideoEncoderVCE(std::shared_ptr<CD3DRender> d3dRender
 	, m_hasQueryTimeout(false)
 {}
 
-VideoEncoderVCE::~VideoEncoderVCE() {}
+VideoEncoderAMF::~VideoEncoderAMF() {}
 
-amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
+amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
 ) 
 {
@@ -284,7 +284,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeEncoder(
 	return amfEncoder;
 }
 
-amf::AMFComponentPtr VideoEncoderVCE::MakeConverter(
+amf::AMFComponentPtr VideoEncoderAMF::MakeConverter(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat
 ) {
 	amf::AMFComponentPtr amfConverter;
@@ -300,7 +300,7 @@ amf::AMFComponentPtr VideoEncoderVCE::MakeConverter(
 	return amfConverter;
 }
 
-amf::AMFComponentPtr VideoEncoderVCE::MakePreprocessor(
+amf::AMFComponentPtr VideoEncoderAMF::MakePreprocessor(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height
 ) {
 	amf::AMFComponentPtr amfPreprocessor;
@@ -316,9 +316,9 @@ amf::AMFComponentPtr VideoEncoderVCE::MakePreprocessor(
 	return amfPreprocessor;
 }
 
-void VideoEncoderVCE::Initialize()
+void VideoEncoderAMF::Initialize()
 {
-	Debug("Initializing VideoEncoderVCE.\n");
+	Debug("Initializing VideoEncoderAMF.\n");
 	AMF_THROW_IF(g_AMFFactory.Init());
 
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateContext(&m_amfContext));
@@ -353,15 +353,15 @@ void VideoEncoderVCE::Initialize()
 	}
 
 	m_pipeline->Connect(new AMFPipe(
-		m_amfComponents.back(), std::bind(&VideoEncoderVCE::Receive, this, std::placeholders::_1)
+		m_amfComponents.back(), std::bind(&VideoEncoderAMF::Receive, this, std::placeholders::_1)
 	));
 
-	Debug("Successfully initialized VideoEncoderVCE.\n");
+	Debug("Successfully initialized VideoEncoderAMF.\n");
 }
 
-void VideoEncoderVCE::Shutdown()
+void VideoEncoderAMF::Shutdown()
 {
-	Debug("Shutting down VideoEncoderVCE.\n");
+	Debug("Shutting down VideoEncoderAMF.\n");
 
 	delete m_pipeline;
 
@@ -378,10 +378,10 @@ void VideoEncoderVCE::Shutdown()
 	if (fpOut) {
 		fpOut.close();
 	}
-	Debug("Successfully shutdown VideoEncoderVCE.\n");
+	Debug("Successfully shutdown VideoEncoderAMF.\n");
 }
 
-void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
+void VideoEncoderAMF::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
 	amf::AMFSurfacePtr surface;
 	// Surface is cached by AMF.
@@ -417,7 +417,7 @@ void VideoEncoderVCE::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 	m_pipeline->Run(m_hasQueryTimeout);
 }
 
-void VideoEncoderVCE::Receive(AMFDataPtr data)
+void VideoEncoderAMF::Receive(AMFDataPtr data)
 {
 	amf_pts current_time = amf_high_precision_clock();
 	amf_pts start_time = 0;
@@ -450,7 +450,7 @@ void VideoEncoderVCE::Receive(AMFDataPtr data)
 	ParseFrameNals(m_codec, reinterpret_cast<uint8_t *>(p), length, targetTimestampNs, isIdr);
 }
 
-void VideoEncoderVCE::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {
+void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR) {
 	switch (m_codec) {
 	case ALVR_CODEC_H264:
 		// FIXME: This option doesn't work in drivers 22.3.1 - 22.5.1, but works in 22.10.3

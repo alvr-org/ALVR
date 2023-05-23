@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../win32/amf/public/common/AMFFactory.h"
-#include "../win32/amf/public/include/core/VulkanAMF.h"
+#include "../../shared/amf/public/common/AMFFactory.h"
+#include "../../shared/amf/public/include/core/VulkanAMF.h"
 
 namespace alvr
 {

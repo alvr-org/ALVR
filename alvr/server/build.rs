@@ -29,7 +29,11 @@ fn main() {
 
     let common_iter = walkdir::WalkDir::new("cpp")
         .into_iter()
-        .filter_entry(|entry| entry.file_name() != "tools" && entry.file_name() != "platform");
+        .filter_entry(|entry| {
+            entry.file_name() != "tools"
+                && entry.file_name() != "platform"
+                && (!cfg!(target_os = "macos") || entry.file_name() != "amf")
+        });
 
     let platform_iter = walkdir::WalkDir::new(platform).into_iter();
 

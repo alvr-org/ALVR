@@ -42,8 +42,8 @@
 #endif
 			
 			try {
-				Debug("Try to use VideoEncoderVCE.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderVCE>(d3dRender, encoderWidth, encoderHeight);
+				Debug("Try to use VideoEncoderAMF.\n");
+				m_videoEncoder = std::make_shared<VideoEncoderAMF>(d3dRender, encoderWidth, encoderHeight);
 				m_videoEncoder->Initialize();
 				return;
 			}

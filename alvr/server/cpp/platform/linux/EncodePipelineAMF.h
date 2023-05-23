@@ -5,14 +5,14 @@
 #include <functional>
 #include <vulkan/vulkan.h>
 
-#include "../win32/amf/public/common/AMFFactory.h"
-#include "../win32/amf/public/include/components/VideoEncoderVCE.h"
-#include "../win32/amf/public/include/components/VideoEncoderHEVC.h"
-#include "../win32/amf/public/include/components/VideoConverter.h"
-#include "../win32/amf/public/include/components/PreProcessing.h"
-#include "../win32/amf/public/include/core/VulkanAMF.h"
-#include "../win32/amf/public/common/AMFSTL.h"
-#include "../win32/amf/public/common/Thread.h"
+#include "../../shared/amf/public/common/AMFFactory.h"
+#include "../../shared/amf/public/include/components/VideoEncoderVCE.h"
+#include "../../shared/amf/public/include/components/VideoEncoderHEVC.h"
+#include "../../shared/amf/public/include/components/VideoConverter.h"
+#include "../../shared/amf/public/include/components/PreProcessing.h"
+#include "../../shared/amf/public/include/core/VulkanAMF.h"
+#include "../../shared/amf/public/common/AMFSTL.h"
+#include "../../shared/amf/public/common/Thread.h"
 
 typedef std::function<void(amf::AMFDataPtr)> AMFDataReceiver;
 

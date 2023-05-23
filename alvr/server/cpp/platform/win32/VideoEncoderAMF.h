@@ -1,13 +1,13 @@
 #pragma once
 #include "VideoEncoder.h"
 
-#include "amf/public/common/AMFFactory.h"
-#include "amf/public/include/components/VideoEncoderVCE.h"
-#include "amf/public/include/components/VideoEncoderHEVC.h"
-#include "amf/public/include/components/VideoConverter.h"
-#include "amf/public/include/components/PreProcessing.h"
-#include "amf/public/common/AMFSTL.h"
-#include "amf/public/common/Thread.h"
+#include "../../shared/amf/public/common/AMFFactory.h"
+#include "../../shared/amf/public/include/components/VideoEncoderVCE.h"
+#include "../../shared/amf/public/include/components/VideoEncoderHEVC.h"
+#include "../../shared/amf/public/include/components/VideoConverter.h"
+#include "../../shared/amf/public/include/components/PreProcessing.h"
+#include "../../shared/amf/public/common/AMFSTL.h"
+#include "../../shared/amf/public/common/Thread.h"
 
 typedef amf::AMFData * AMFDataPtr;
 typedef std::function<void (AMFDataPtr)> AMFDataReceiver;
@@ -51,13 +51,13 @@ protected:
 
 typedef AMFPipeline* AMFPipelinePtr;
 
-// Video encoder for AMD VCE.
-class VideoEncoderVCE : public VideoEncoder
+// Video encoder for AMD VCE and VCN.
+class VideoEncoderAMF : public VideoEncoder
 {
 public:
-	VideoEncoderVCE(std::shared_ptr<CD3DRender> pD3DRender
+	VideoEncoderAMF(std::shared_ptr<CD3DRender> pD3DRender
 		, int width, int height);
-	~VideoEncoderVCE();
+	~VideoEncoderAMF();
 
 	void Initialize();
 	void Shutdown();

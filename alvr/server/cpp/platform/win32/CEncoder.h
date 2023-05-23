@@ -13,7 +13,7 @@
 #include "FrameRender.h"
 #include "VideoEncoder.h"
 #include "VideoEncoderNVENC.h"
-#include "VideoEncoderVCE.h"
+#include "VideoEncoderAMF.h"
 #ifdef ALVR_GPL
 	#include "VideoEncoderSW.h"
 #endif

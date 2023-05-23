@@ -71,7 +71,6 @@ static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     let data_lock = SERVER_DATA_MANAGER.read();
     let settings = data_lock.settings();
     Mutex::new(BitrateManager::new(
-        settings.video.bitrate.clone(),
         settings.connection.statistics_history_size as usize,
         settings.video.preferred_fps,
     ))
@@ -448,7 +447,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
             );
         }
 
-        BITRATE_MANAGER.lock().report_frame_present();
+        BITRATE_MANAGER.lock().report_frame_present(
+            &SERVER_DATA_MANAGER
+                .read()
+                .settings()
+                .video
+                .bitrate
+                .adapt_to_framerate,
+        );
     }
 
     extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
@@ -467,7 +473,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-        BITRATE_MANAGER.lock().get_encoder_params()
+        BITRATE_MANAGER
+            .lock()
+            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate)
     }
 
     extern "C" fn wait_for_vsync() {

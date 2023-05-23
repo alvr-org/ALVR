@@ -1,6 +1,8 @@
 use crate::FfiDynamicEncoderParams;
 use alvr_common::SlidingWindowAverage;
-use alvr_session::{settings_schema::Switch, BitrateConfig, BitrateMode};
+use alvr_session::{
+    settings_schema::Switch, BitrateAdaptiveFramerateConfig, BitrateConfig, BitrateMode,
+};
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},
@@ -9,7 +11,6 @@ use std::{
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
-    config: BitrateConfig,
     nominal_framerate: f32,
     max_history_size: usize,
     frame_interval_average: SlidingWindowAverage<Duration>,
@@ -24,10 +25,9 @@ pub struct BitrateManager {
 }
 
 impl BitrateManager {
-    pub fn new(config: BitrateConfig, max_history_size: usize, nominal_framerate: f32) -> Self {
+    pub fn new(max_history_size: usize, initial_framerate: f32) -> Self {
         Self {
-            config,
-            nominal_framerate,
+            nominal_framerate: initial_framerate,
             max_history_size,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
@@ -49,13 +49,13 @@ impl BitrateManager {
 
     // Note: This is used to calculate the framerate/frame interval. The frame present is the most
     // accurate event for this use.
-    pub fn report_frame_present(&mut self) {
+    pub fn report_frame_present(&mut self, config: &Switch<BitrateAdaptiveFramerateConfig>) {
         let now = Instant::now();
 
         let interval = now - self.last_frame_instant;
         self.last_frame_instant = now;
 
-        if let Switch::Enabled(config) = &self.config.adapt_to_framerate {
+        if let Some(config) = config.as_option() {
             let interval_ratio =
                 interval.as_secs_f32() / self.frame_interval_average.get_average().as_secs_f32();
 
@@ -80,6 +80,7 @@ impl BitrateManager {
     // latency
     pub fn report_frame_latencies(
         &mut self,
+        config: &BitrateMode,
         timestamp: Duration,
         network_latency: Duration,
         decoder_latency: Duration,
@@ -104,7 +105,7 @@ impl BitrateManager {
         if let BitrateMode::Adaptive {
             decoder_latency_fixer: Switch::Enabled(config),
             ..
-        } = &self.config.mode
+        } = &config
         {
             if decoder_latency > Duration::from_millis(config.max_decoder_latency_ms) {
                 self.decoder_latency_overstep_count += 1;
@@ -124,7 +125,7 @@ impl BitrateManager {
         }
     }
 
-    pub fn get_encoder_params(&mut self) -> FfiDynamicEncoderParams {
+    pub fn get_encoder_params(&mut self, config: &BitrateConfig) -> FfiDynamicEncoderParams {
         let now = Instant::now();
         if self.update_needed || now > self.last_update_instant + UPDATE_INTERVAL {
             self.last_update_instant = now;
@@ -136,7 +137,7 @@ impl BitrateManager {
             };
         }
 
-        let bitrate_bps = match &self.config.mode {
+        let bitrate_bps = match &config.mode {
             BitrateMode::ConstantMbps(bitrate_mbps) => *bitrate_mbps as f32 * 1e6,
             BitrateMode::Adaptive {
                 saturation_multiplier,
@@ -167,7 +168,7 @@ impl BitrateManager {
             }
         };
 
-        let framerate = if self.config.adapt_to_framerate.enabled() {
+        let framerate = if config.adapt_to_framerate.enabled() {
             1.0 / self
                 .frame_interval_average
                 .get_average()

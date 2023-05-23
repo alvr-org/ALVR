@@ -1,7 +1,10 @@
 use super::{NestingInfo, SettingControl, INDENTATION_STEP};
 use crate::{
     dashboard::DisplayString,
-    theme::log_colors::{INFO_LIGHT, WARNING_LIGHT},
+    theme::{
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
+        OK_GREEN,
+    },
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
@@ -24,6 +27,7 @@ struct Entry {
     help: Option<String>,
     // notice: Option<String>,
     steamvr_restart_flag: bool,
+    real_time_flag: bool,
     control: SettingControl,
 }
 
@@ -49,6 +53,7 @@ impl Control {
                 let help = entry.strings.get("help").cloned();
                 // let notice = entry.strings.get("notice").cloned();
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");
+                let real_time_flag = entry.flags.contains("real-time");
 
                 let mut nesting_info = nesting_info.clone();
                 nesting_info.path.push(id.clone().into());
@@ -58,6 +63,7 @@ impl Control {
                     help,
                     // notice,
                     steamvr_restart_flag,
+                    real_time_flag,
                     control: SettingControl::new(nesting_info, entry.content),
                 }
             })
@@ -96,6 +102,15 @@ impl Control {
                         ui.ctx(),
                         egui::Id::new(POPUP_ID),
                         "Changing this setting will make SteamVR restart!\nPlease save your in-game progress first",
+                    );
+                }
+
+                // The emoji is blue but it will be green in the UI
+                if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() { 
+                    popup::show_tooltip_text(
+                        ui.ctx(),
+                        egui::Id::new(POPUP_ID),
+                        "This setting can be changed in real-time during streaming!",
                     );
                 }
             });

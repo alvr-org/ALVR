@@ -217,6 +217,7 @@ pub struct DecoderLatencyFixer {
         display_name = "Maximum decoder latency",
         help = "When the decoder latency goes above this threshold, the bitrate will be reduced"
     ))]
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
     pub max_decoder_latency_ms: u64,
 
@@ -224,12 +225,14 @@ pub struct DecoderLatencyFixer {
         display_name = "latency overstep",
         help = "Number of consecutive frames above the threshold to trigger a bitrate reduction"
     ))]
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1, max = 100)), suffix = " frames")]
     pub latency_overstep_frames: u64,
 
     #[schema(strings(
         help = "Controls how much the bitrate is reduced when the decoder latency goes above the threshold"
     ))]
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0.5, max = 1.0)))]
     pub latency_overstep_multiplier: f32,
 }
@@ -243,24 +246,29 @@ pub enum BitrateMode {
         #[schema(strings(
             help = "Percentage of network bandwidth to allocate for video transmission"
         ))]
+        #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 0.5, max = 2.0, step = 0.05)))]
         saturation_multiplier: f32,
 
         #[schema(strings(display_name = "Maximum bitrate"))]
+        #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
         max_bitrate_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Minimum bitrate"))]
+        #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
         min_bitrate_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Maximum network latency"))]
+        #[schema(flag = "real-time")]
         #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
         max_network_latency_ms: Switch<u64>,
 
         #[schema(strings(
             help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
         ))]
+        #[schema(flag = "real-time")]
         decoder_latency_fixer: Switch<DecoderLatencyFixer>,
     },
 }
@@ -270,17 +278,20 @@ pub struct BitrateAdaptiveFramerateConfig {
     #[schema(strings(
         help = "If the framerate changes more than this factor, trigger a parameters update"
     ))]
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.1)))]
     pub framerate_reset_threshold_multiplier: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct BitrateConfig {
+    #[schema(flag = "real-time")]
     pub mode: BitrateMode,
 
     #[schema(strings(
         help = "Ensure that the specified bitrate value is respected regardless of the framerate"
     ))]
+    #[schema(flag = "real-time")]
     pub adapt_to_framerate: Switch<BitrateAdaptiveFramerateConfig>,
 }
 
@@ -397,6 +408,7 @@ pub struct VideoDesc {
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    #[schema(flag = "real-time")]
     pub bitrate: BitrateConfig,
 
     #[schema(strings(
@@ -560,13 +572,16 @@ pub enum ControllersEmulationMode {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HapticsConfig {
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
     pub intensity_multiplier: f32,
 
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     pub amplitude_curve: f32,
 
     #[schema(strings(display_name = "Minimum duration"))]
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0.0, max = 0.1, step = 0.001)), suffix = "s")]
     pub min_duration_s: f32,
 }
@@ -593,25 +608,31 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
     pub steamvr_pipeline_frames: f32,
 
+    #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "m/s")]
     pub linear_velocity_cutoff: f32,
 
+    #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = 0.0, max = 100.0, step = 1.0)), suffix = "°/s")]
     pub angular_velocity_cutoff: f32,
 
+    #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
     pub left_controller_position_offset: [f32; 3],
 
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_controller_rotation_offset: [f32; 3],
 
+    #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
     #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
     pub left_hand_tracking_position_offset: [f32; 3],
 
+    #[schema(flag = "real-time")]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_hand_tracking_rotation_offset: [f32; 3],
 
@@ -623,6 +644,7 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
     pub grip_threshold_override: Switch<f32>,
 
+    #[schema(flag = "real-time")]
     pub haptics: Switch<HapticsConfig>,
 }
 
@@ -753,6 +775,7 @@ For now works only on Windows+Nvidia"#
     #[schema(strings(
         help = "This script will be ran when the headset disconnects, or when SteamVR shuts down. Env var ACTION will be set to `disconnect`."
     ))]
+    #[schema(flag = "real-time")]
     pub on_disconnect_script: String,
 
     #[schema(gui(slider(min = 1024, max = 65507, logarithmic)), suffix = "B")]
@@ -766,10 +789,15 @@ For now works only on Windows+Nvidia"#
 pub struct LoggingConfig {
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
+    #[schema(flag = "real-time")]
     pub log_tracking: bool,
+    #[schema(flag = "real-time")]
     pub log_button_presses: bool,
+    #[schema(flag = "real-time")]
     pub log_haptics: bool,
+    #[schema(flag = "real-time")]
     pub notification_level: LogSeverity,
+    #[schema(flag = "real-time")]
     pub show_raw_events: bool,
 }
 

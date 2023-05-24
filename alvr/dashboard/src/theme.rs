@@ -9,6 +9,8 @@ pub const SEPARATOR_BG: Color32 = Color32::from_rgb(69, 69, 69);
 pub const SELECTED: Color32 = Color32::from_rgb(120, 174, 237);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 
+pub const OK_GREEN: Color32 = Color32::GREEN;
+
 pub mod log_colors {
     use super::ACCENT;
     use eframe::epaint::Color32;

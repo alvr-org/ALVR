@@ -16,7 +16,7 @@ pub struct Fov {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Default, Debug)]
 pub struct Pose {
-    pub orientation: Quat,
+    pub orientation: Quat, // NB: default Quat is identity
     pub position: Vec3,
 }
 

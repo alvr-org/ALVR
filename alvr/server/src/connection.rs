@@ -2,7 +2,7 @@ use crate::{
     bitrate::BitrateManager,
     buttons::BUTTON_PATH_FROM_ID,
     face_tracking::FaceTrackingSink,
-    haptics::HapticsManager,
+    haptics,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
@@ -562,7 +562,6 @@ async fn connection_pipeline(
     ));
 
     *BITRATE_MANAGER.lock() = BitrateManager::new(
-        settings.video.bitrate,
         settings.connection.statistics_history_size as _,
         refresh_rate,
     );
@@ -697,31 +696,41 @@ async fn connection_pipeline(
 
     let haptics_send_loop = {
         let mut socket_sender = stream_socket.request_stream(HAPTICS).await?;
-        let controllers_desc = settings.headset.controllers.clone();
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *HAPTICS_SENDER.lock() = Some(data_sender);
 
-            let haptics_manager = controllers_desc
-                .into_option()
-                .and_then(|c| c.haptics.into_option())
-                .map(HapticsManager::new);
-
             while let Some(haptics) = data_receiver.recv().await {
-                if settings.logging.log_haptics {
-                    alvr_events::send_event(EventType::Haptics(HapticsEvent {
-                        path: DEVICE_ID_TO_PATH
-                            .get(&haptics.device_id)
-                            .map(|p| (*p).to_owned())
-                            .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
-                        duration: haptics.duration,
-                        frequency: haptics.frequency,
-                        amplitude: haptics.amplitude,
-                    }))
-                }
+                let haptics_config = {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
 
-                if let Some(manager) = &haptics_manager {
-                    socket_sender.send(&manager.map(haptics), vec![]).await.ok();
+                    if data_manager_lock.settings().logging.log_haptics {
+                        alvr_events::send_event(EventType::Haptics(HapticsEvent {
+                            path: DEVICE_ID_TO_PATH
+                                .get(&haptics.device_id)
+                                .map(|p| (*p).to_owned())
+                                .unwrap_or_else(|| {
+                                    format!("Unknown (ID: {:#16x})", haptics.device_id)
+                                }),
+                            duration: haptics.duration,
+                            frequency: haptics.frequency,
+                            amplitude: haptics.amplitude,
+                        }))
+                    }
+
+                    data_manager_lock
+                        .settings()
+                        .headset
+                        .controllers
+                        .as_option()
+                        .and_then(|c| c.haptics.as_option().cloned())
+                };
+
+                if let Some(config) = haptics_config {
+                    socket_sender
+                        .send(&haptics::map_haptics(&config, haptics), vec![])
+                        .await
+                        .ok();
                 }
             }
 
@@ -745,7 +754,7 @@ async fn connection_pipeline(
         });
     }
 
-    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new(&settings.headset)));
+    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
 
     let tracking_receive_loop = {
         let mut receiver = stream_socket
@@ -773,18 +782,26 @@ async fn connection_pipeline(
 
                 let mut tracking_manager_lock = tracking_manager.lock().await;
 
-                let motions = tracking_manager_lock.transform_motions(
-                    &tracking.device_motions,
-                    [
-                        tracking.hand_skeletons[0].is_some(),
-                        tracking.hand_skeletons[1].is_some(),
-                    ],
-                );
+                let motions;
+                let left_hand_skeleton;
+                let right_hand_skeleton;
+                {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    let config = &data_manager_lock.settings().headset;
+                    motions = tracking_manager_lock.transform_motions(
+                        config,
+                        &tracking.device_motions,
+                        [
+                            tracking.hand_skeletons[0].is_some(),
+                            tracking.hand_skeletons[1].is_some(),
+                        ],
+                    );
 
-                let left_hand_skeleton = tracking.hand_skeletons[0]
-                    .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*LEFT_HAND_ID, s));
-                let right_hand_skeleton = tracking.hand_skeletons[1]
-                    .map(|s| tracking_manager_lock.to_openvr_hand_skeleton(*RIGHT_HAND_ID, s));
+                    left_hand_skeleton = tracking.hand_skeletons[0]
+                        .map(|s| tracking::to_openvr_hand_skeleton(config, *LEFT_HAND_ID, s));
+                    right_hand_skeleton = tracking.hand_skeletons[1]
+                        .map(|s| tracking::to_openvr_hand_skeleton(config, *RIGHT_HAND_ID, s));
+                }
 
                 // Note: using the raw unrecentered head
                 let local_eye_gazes = tracking
@@ -794,28 +811,31 @@ async fn connection_pipeline(
                     .map(|(_, m)| tracking::to_local_eyes(m.pose, tracking.face_data.eye_gazes))
                     .unwrap_or_default();
 
-                if settings.logging.log_tracking {
-                    alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
-                        head_motion: motions
-                            .iter()
-                            .find(|(id, _)| *id == *HEAD_ID)
-                            .map(|(_, m)| *m),
-                        controller_motions: [
-                            motions
+                {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    if data_manager_lock.settings().logging.log_tracking {
+                        alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
+                            head_motion: motions
                                 .iter()
-                                .find(|(id, _)| *id == *LEFT_HAND_ID)
+                                .find(|(id, _)| *id == *HEAD_ID)
                                 .map(|(_, m)| *m),
-                            motions
-                                .iter()
-                                .find(|(id, _)| *id == *RIGHT_HAND_ID)
-                                .map(|(_, m)| *m),
-                        ],
-                        hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
-                        eye_gazes: local_eye_gazes,
-                        fb_face_expression: tracking.face_data.fb_face_expression.clone(),
-                        htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
-                        htc_lip_expression: tracking.face_data.htc_lip_expression.clone(),
-                    })))
+                            controller_motions: [
+                                motions
+                                    .iter()
+                                    .find(|(id, _)| *id == *LEFT_HAND_ID)
+                                    .map(|(_, m)| *m),
+                                motions
+                                    .iter()
+                                    .find(|(id, _)| *id == *RIGHT_HAND_ID)
+                                    .map(|(_, m)| *m),
+                            ],
+                            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+                            eye_gazes: local_eye_gazes,
+                            fb_face_expression: tracking.face_data.fb_face_expression.clone(),
+                            htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
+                            htc_lip_expression: tracking.face_data.htc_lip_expression.clone(),
+                        })))
+                    }
                 }
 
                 if let Some(sink) = &face_tracking_sink {
@@ -875,6 +895,7 @@ async fn connection_pipeline(
                     let network_latency = stats.report_statistics(client_stats);
 
                     BITRATE_MANAGER.lock().report_frame_latencies(
+                        &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
                         timestamp,
                         network_latency,
                         decoder_latency,
@@ -923,7 +944,12 @@ async fn connection_pipeline(
                     if !is_tracking_ref_only {
                         playspace_sync_sender.send(packet).ok();
 
-                        tracking_manager.lock().await.recenter();
+                        let data_manager_lock = SERVER_DATA_MANAGER.read();
+                        let config = &data_manager_lock.settings().headset;
+                        tracking_manager.lock().await.recenter(
+                            config.position_recentering_mode,
+                            config.rotation_recentering_mode,
+                        );
                     }
                 }
                 Ok(ClientControlPacket::RequestIdr) => {
@@ -969,21 +995,24 @@ async fn connection_pipeline(
                     }
                 },
                 Ok(ClientControlPacket::Buttons(entries)) => {
-                    if settings.logging.log_button_presses {
-                        alvr_events::send_event(EventType::Buttons(
-                            entries
-                                .iter()
-                                .map(|e| ButtonEvent {
-                                    path: BUTTON_PATH_FROM_ID
-                                        .get(&e.path_id)
-                                        .cloned()
-                                        .unwrap_or_else(|| {
-                                            format!("Unknown (ID: {:#16x})", e.path_id)
-                                        }),
-                                    value: e.value,
-                                })
-                                .collect(),
-                        ));
+                    {
+                        let data_manager_lock = SERVER_DATA_MANAGER.read();
+                        if data_manager_lock.settings().logging.log_button_presses {
+                            alvr_events::send_event(EventType::Buttons(
+                                entries
+                                    .iter()
+                                    .map(|e| ButtonEvent {
+                                        path: BUTTON_PATH_FROM_ID
+                                            .get(&e.path_id)
+                                            .cloned()
+                                            .unwrap_or_else(|| {
+                                                format!("Unknown (ID: {:#16x})", e.path_id)
+                                            }),
+                                        value: e.value,
+                                    })
+                                    .collect(),
+                            ));
+                        }
                     }
 
                     for entry in entries {

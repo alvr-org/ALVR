@@ -55,7 +55,11 @@ use std::{
 use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{
     runtime::Runtime,
-    sync::{broadcast, mpsc, Notify},
+    sync::{
+        broadcast,
+        mpsc::{self, error::TrySendError},
+        Notify,
+    },
 };
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
@@ -378,13 +382,13 @@ pub unsafe extern "C" fn HmdDriverFactory(
                     file.write_all(&payload).ok();
                 }
 
-                if sender
-                    .try_send(VideoPacket {
+                if matches!(
+                    sender.try_send(VideoPacket {
                         header: VideoPacketHeader { timestamp, is_idr },
                         payload,
-                    })
-                    .is_err()
-                {
+                    }),
+                    Err(TrySendError::Full(_))
+                ) {
                     STREAM_CORRUPTED.store(true, Ordering::SeqCst);
                     unsafe { crate::RequestIDR() };
                     warn!("Dropping video packet. Reason: Can't push to network");

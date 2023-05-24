@@ -465,7 +465,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         streaming_caps.microphone_sample_rate,
                         fps,
                     ) => {
-                        warn!("Connection interrupted: {res:?}");
+                        if let Err(e) = res {
+                            warn!("Connection interrupted: {e:?}");
+                        }
                     },
                     _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
                     _ = shutdown_detector => (),

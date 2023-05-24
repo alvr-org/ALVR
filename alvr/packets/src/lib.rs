@@ -27,6 +27,7 @@ pub struct VideoStreamingCapabilities {
 #[derive(Serialize, Deserialize)]
 pub enum ClientConnectionResult {
     ConnectionAccepted {
+        client_protocol_id: u64,
         display_name: String,
         server_ip: IpAddr,
         streaming_capabilities: Option<VideoStreamingCapabilities>,

@@ -164,11 +164,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     );
 
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
+        client_protocol_id,
         display_name,
         streaming_capabilities,
         ..
     } = runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
     {
+        if client_protocol_id != alvr_common::protocol_id() {
+            warn!(
+                "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
+                alvr_common::protocol_id(),
+                client_protocol_id,
+            );
+        }
+
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
             ClientListAction::SetDisplayName(display_name),

@@ -160,6 +160,7 @@ fn connection_pipeline(
     runtime
         .block_on(
             proto_control_socket.send(&ClientConnectionResult::ConnectionAccepted {
+                client_protocol_id: alvr_common::protocol_id(),
                 display_name: platform::device_model(),
                 server_ip,
                 streaming_capabilities: Some(VideoStreamingCapabilities {

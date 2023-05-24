@@ -222,7 +222,7 @@ fn get_android_openxr_loaders() {
         &sh,
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
-            "release-1.0.26/openxr_loader_for_android-1.0.26.aar",
+            "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
         ),
         &temp_dir,
     )
@@ -237,7 +237,7 @@ fn get_android_openxr_loaders() {
     // Quest
     command::download_and_extract_zip(
         &sh,
-        "https://securecdn.oculus.com/binaries/download/?id=5860257274012811",
+        "https://securecdn.oculus.com/binaries/download/?id=6316350341736833", // version 53
         &temp_dir,
     )
     .unwrap();

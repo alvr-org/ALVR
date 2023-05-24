@@ -15,7 +15,7 @@ run_additional_stuff() {
   ./alvr/usr/bin/alvr_dashboard &
   # WIP:
   #./SlimeVR-amd64.appimage &
-  ./arch-alvr/oscalibrator-fork/OpenVR-SpaceCalibrator/openvr-spacecalibrator &
+  #./arch-alvr/oscalibrator-fork/OpenVR-SpaceCalibrator/openvr-spacecalibrator &
 }
 
 run_vrstartup() {

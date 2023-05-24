@@ -1,17 +1,34 @@
 # Changelog
 
-## Unreleased
+## v20.0.0
 
-* New egui dashboard (by @Kirottu #1247 #1274, @m00nwtchr #1292, @zarik5 ___)
-* Send client log to streamer (by @zarik5)
-* New more consistent controller prediction algorithm (by @zarik5)
-* New wiki hosted in the main git tree (by @m00nwtchr #1309)
-* Remove Forward Error Correction (by @zarik5: #1384, #1389; @deiteris: #1386, #1387, #1390)
-* Unified code for NAL parsing (by @deiteris #1403, #1422, #1400, #1402)
-* New OpenXR-based client, support for Vive Focus 3 and Pico 4/Neo 3
+* New OpenXR-based client, add support for Vive Focus 3/XR Elite, Pico 4/Neo 3 and YVR 1/2. Worked on by:
   * @zarik5 #1321
   * @galister #1321, #1442
   * @deiteris #1434, #1439, #1445
+* New egui (OpenGL) dashboard
+  * The launcher is replaced by the new dashboard executable.
+  * by @Kirottu #1247 #1274, @zarik5, @m00nwtchr #1292, @TheComputerNerd88 #1574 #1575 #1576 1582
+* Add position and rotation recentering modes (by @zarik5 #1321)
+  * Defaults to local floor and local yaw.
+* Add support for eye and face tracking (by @zarik5 #1577)
+  * Currently supporting VRChat Eye OSC, VRCFaceTracking support coming soon
+* Reduce game rendering latency (by @zarik5)
+* Apply some settings in real-time (by @zarik5 #1635)
+* New more consistent controller prediction algorithm (by @zarik5 #1561)
+* Controller input fixes (by @zarik5 #1560)
+* Soft-toggle controllers at runtime (by @galister #1600)
+* New wiki hosted in the main git tree (by @m00nwtchr #1309)
+* Send client log to streamer (by @zarik5)
+* Encoder improvements (by @nowrep #1562 #1565 #1568, @deiteris #1403 #1422 #1400 #1402, @zarik5 #1564)
+* Remove Forward Error Correction (by @zarik5: #1384, #1389; @deiteris: #1386, #1387, #1390)
+* Unified code for NAL parsing (by @deiteris #1403, #1422, #1400, #1402)
+* Some tweaks for alvr_client_core compatibility (by @ShootingKing-AM #1580 #1578 #1586 #1624 #1621)
+* Fix server build with clang (by @nowrep)
+
+## v19.1.1
+
+* Relax discovery protocol for future ALVR versions
 
 ## v19.1.0
 

@@ -60,7 +60,7 @@ sleep 2
 
 # installing alvr
 echog "Installing alvr"
-echog "This installation script assumes that you will register alvr as a driver further, so it needs to extract appimage."
+echog "This installation script will download apk client for the headset later, but you shouldn't connect it to alvr during this script installation, leave it to post install."
 wget -q --show-progress "$ALVR_LINK"
 chmod +x "$ALVR_FILENAME"
 ./"$ALVR_FILENAME" --appimage-extract &>/dev/null
@@ -131,4 +131,4 @@ echog "To close vr, press ctrl+c in terminal where start-alvr.sh script is runni
 echor "Very important: to prevent game from looking like it's severily lagging, please turn on legacy reprojection in per-app video settings in steamvr. This improves experience drastically."
 echog "Don't forget to enable Steam Play for all supported titles with latest (non-experimental) proton to make all games visible as playable in Steam."
 echog "Tip: to prevent double-restart due to how client resets it's settings, you can change settings and then put headset to sleep, and power back. This restarts client and server, and prevents double restart."
-echog "Thank you for using the script! Continue with Post-installation notes to configure ALVR and SteamVR"
+echog "Thank you for using the script! Continue with installing alvr apk to headset and with Post-installation notes to configure ALVR and SteamVR"

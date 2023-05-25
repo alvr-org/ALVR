@@ -276,17 +276,17 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 ],
                 content: None,
             },
-            HigherOrderChoiceOption {
-                display_name: "VRCFaceTracking OSC".into(),
-                modifiers: vec![
-                    bool_modifier("session_settings.headset.face_tracking.enabled", true),
-                    string_modifier(
-                        "session_settings.headset.face_tracking.content.sink.variant",
-                        "VrcFaceTrackingOsc",
-                    ),
-                ],
-                content: None,
-            },
+            // HigherOrderChoiceOption {
+            //     display_name: "VRCFaceTracking OSC".into(),
+            //     modifiers: vec![
+            //         bool_modifier("session_settings.headset.face_tracking.enabled", true),
+            //         string_modifier(
+            //             "session_settings.headset.face_tracking.content.sink.variant",
+            //             "VrcFaceTrackingOsc",
+            //         ),
+            //     ],
+            //     content: None,
+            // },
             HigherOrderChoiceOption {
                 display_name: "Disable".into(),
                 modifiers: vec![bool_modifier(
@@ -298,7 +298,7 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 2,
+        default_option_index: 1, // 2
         gui: ChoiceControlType::ButtonGroup,
     })
 }

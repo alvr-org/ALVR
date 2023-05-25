@@ -28,6 +28,7 @@ For installing you only really need couple of dependencies on host:
 4. `pipewire` for fully automatic microphone, `pulseaudio` for basic audio support (automatic microphone is unsupported with it)
 5. For nvidia - `CUDA` (distrobox passes through it and driver as well into the container and CUDA contains NVENC encoder for streaming)
 6. If you don't have `newgidmap` command available, you need to install `shadow-utils`. (packages - ubuntu-like: `newuidmap`, arch-like: `shadow`)
+
 After you have installed required dependencies for your installation from above, open terminal in this repository folder and do:
 
 1. `./setup.sh`

@@ -73,7 +73,7 @@ echog "Scroll all the way down and find 'Driver launch action', set it to 'No ac
 echog "Find 'On connect script' and 'On disconnect script' as well and put $(realpath "$PWD"/../audio-setup.sh) (confirm each of them with enter on text box) into both of them. This is for automatic microphone that will load/unload based on connection to the headset"
 echog "Next time you connect headset, set 'ALVR-MIC-Source' as your default microphone, it will automatically switch to it whenever it shows up."
 echog "Tick 'Open setup wizard' too to prevent popup on dashboard startup."
-echog "After you have done with this, press enter here."
+echor "After you have done with this, press enter here, and don't close alvr dashboard manually."
 read
 cleanup_alvr
 ./alvr/usr/bin/alvr_dashboard &>/dev/null &

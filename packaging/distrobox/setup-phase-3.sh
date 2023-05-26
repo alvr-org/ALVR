@@ -18,7 +18,7 @@ echo "[multilib]" | sudo tee -a /etc/pacman.conf
 echo "Include = /etc/pacman.d/mirrorlist" | sudo tee -a /etc/pacman.conf
 echog "Setting up locales"
 echo "en_US.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen
-sudo pacman -q --noprogressbar -Syu glibc lib32-glibc --noconfirm
+sudo pacman -q --noprogressbar -Syu glibc lib32-glibc xdg-utils --noconfirm
 echo "LANG=en_US.UTF-8" | sudo tee /etc/locale.conf
 echo "LC_ALL=en_US.UTF-8" | sudo tee /etc/locale.conf
 echo "export LANG=en_US.UTF-8 #alvr-distrobox" | tee -a ~/.bashrc

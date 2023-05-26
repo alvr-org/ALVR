@@ -93,7 +93,7 @@ echog "SteamVR overlay is partially broken on Linux (it also doesn't open games,
 wget -q --show-progress -O "$WLXOVERLAY_FILENAME" "$WLXOVERLAY_LINK"
 chmod +x "$WLXOVERLAY_FILENAME"
 if [[ "$WAYLAND_DISPLAY" != "" ]]; then
-   echog "If you're not (on wlroots-based compositor like Sway), it will ask for display to choose. Choose displays if you have more than 1."
+   echog "If you're not (on wlroots-based compositor like Sway), it will ask for display to choose. Choose the one display that contains every other (usually first in list)."
 fi
 ./"$WLXOVERLAY_FILENAME" &>/dev/null &
 if [[ "$WAYLAND_DISPLAY" != "" ]]; then

@@ -20,7 +20,7 @@ fi
 AUDIO_SYSTEM="$(head <specs.conf -2 | tail -1)"
 
 echog "Installing packages for base functionality."
-sudo pacman -q --noprogressbar -Syu git vim base-devel noto-fonts xdg-user-dirs fuse libx264 sdl2 libva-utils --noconfirm || exit 1
+sudo pacman -q --noprogressbar -Syu git vim base-devel noto-fonts xdg-user-dirs fuse libx264 sdl2 libva-utils xorg-server --noconfirm || exit 1
 echog "Installing steam, audio and driver packages."
 if [[ "$GPU" == "amd" ]]; then
    sudo pacman -q --noprogressbar -Syu libva-mesa-driver vulkan-radeon lib32-vulkan-radeon lib32-libva-mesa-driver --noconfirm || exit 1

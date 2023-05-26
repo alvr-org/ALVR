@@ -19,42 +19,39 @@ function get_alvr_playback_sink_id() {
   done
 }
 
-function get_alvr_sink_id() {
-  pactl list short sinks | grep ALVR-MIC-Sink | cut -d$'\t' -f1
+function get_sink_id() {
+  local sink_name
+  sink_name=$1
+  pactl list short sinks | grep "$sink_name" | cut -d$'\t' -f1
 }
 
 function setup_mic() {
   echo "Creating microphone sink & source and linking alvr playback to it"
-  local sink_mic_id
   # This sink is required so that it persistently auto-connects to alvr playback later
-  sink_mic_id=$(pactl load-module module-null-sink sink_name=ALVR-MIC-Sink media.class=Audio/Sink)
-  local source_mic_id
+  pactl load-module module-null-sink sink_name=ALVR-MIC-Sink media.class=Audio/Sink
   # This source is required so that any app can use it as microphone
-  source_mic_id=$(pactl load-module module-null-sink sink_name=ALVR-MIC-Source media.class=Audio/Source/Virtual)
+  pactl load-module module-null-sink sink_name=ALVR-MIC-Source media.class=Audio/Source/Virtual
   # We link them together
   pw-link ALVR-MIC-Sink ALVR-MIC-Source
   # And we assign playback of pipewire alsa playback to created alvr sink
-  pactl move-sink-input "$(get_alvr_playback_sink_id)" "$(get_alvr_sink_id)"
-  echo "$sink_mic_id|$source_mic_id" | tee "/tmp/alvr-mic-ids"
+  pactl move-sink-input "$(get_alvr_playback_sink_id)" "$(get_sink_id ALVR-MIC-Sink)"
 }
 
 function unload_mic() {
   echo "Unloading microphone sink & source"
-  local sink_mic_id
-  sink_mic_id="$(cut -d '|' -f1 /tmp/alvr-mic-ids)"
-  local source_mic_id
-  source_mic_id="$(cut -d '|' -f2 /tmp/alvr-mic-ids)"
-  pactl unload-module "$sink_mic_id"
-  pactl unload-module "$source_mic_id"
+  pw-cli destroy ALVR-MIC-Sink
+  pw-cli destroy ALVR-MIC-Source
 }
 
 case $ACTION in
-	connect)
-		pactl set-sink-mute @DEFAULT_SINK@ 1
-		sleep 1
-		setup_mic
-		;;
-        disconnect)
-                pactl set-sink-mute @DEFAULT_SINK@ 0
-		unload_mic;;
+connect)
+  unload_mic
+  pactl set-sink-mute @DEFAULT_SINK@ 1
+  sleep 1
+  setup_mic
+  ;;
+disconnect)
+  pactl set-sink-mute @DEFAULT_SINK@ 0
+  unload_mic
+  ;;
 esac

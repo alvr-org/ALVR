@@ -903,7 +903,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
-                        saturation_multiplier: 0.95,
+                        saturation_multiplier: 2.0,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,

@@ -1017,8 +1017,8 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingDescDefault {
-                    center_size_x: 0.4,
-                    center_size_y: 0.35,
+                    center_size_x: 0.45,
+                    center_size_y: 0.4,
                     center_shift_x: 0.4,
                     center_shift_y: 0.1,
                     edge_ratio_x: 4.,

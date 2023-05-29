@@ -1,4 +1,5 @@
 #!/bin/bash
+cd $(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
 
 source ./helper-functions.sh
 

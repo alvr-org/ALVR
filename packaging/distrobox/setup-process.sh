@@ -152,5 +152,9 @@ if [[ "$prefix" =~ \  ]]; then
    echor "Please clone or unpack repository into another directory that doesn't contain spaces."
    exit 1
 fi
+
+# Prevent host steam to be used during install, forcefully kill it
+pkill -f steam
+
 phase1_distrobox_podman_install
 phase2_distrobox_container_creation

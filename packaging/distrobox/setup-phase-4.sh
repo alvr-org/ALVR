@@ -48,7 +48,9 @@ echog "Installed base packages and Steam. Opening steam. Please install SteamVR 
 steam &>/dev/null &
 echog "Enabling ctrl+c prevention."
 trap 'echog Oops you have pressed ctrl+c which almost stopped this setup, dont worry, i prevented it from doing that in this moment' 2
-echog "After installing SteamVR, copy (ctrl + shift + c from terminal) and launch command bellow from your host terminal shell (outside this container) and press enter to continue there. This prevents annoying popup (yes/no with asking for superuser) that prevents steamvr from launching automatically."
+echog "Install SteamVR from Steam and press enter here"
+read
+echog "Copy (ctrl + shift + c from terminal) and launch command bellow from your host terminal shell (outside this shell, container) and press enter to continue there. This prevents annoying popup (yes/no with asking for superuser) that prevents steamvr from launching automatically."
 echog "sudo setcap CAP_SYS_NICE+ep '$HOME/.steam/steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher'"
 echog "After you execute that command on host, press enter to continue."
 read

@@ -278,13 +278,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     };
 
     let client_config = StreamConfigPacket {
-        session_desc: {
+        session: {
             let session = SERVER_DATA_MANAGER.read().session().clone();
             serde_json::to_string(&session).map_err(to_int_e!())?
         },
-        view_resolution: stream_view_resolution,
-        fps,
-        game_audio_sample_rate,
+        negotiated: serde_json::json!({
+            "view_resolution": stream_view_resolution,
+            "refresh_rate_hint": fps,
+            "game_audio_sample_rate": game_audio_sample_rate,
+        })
+        .to_string(),
     };
     runtime
         .block_on(proto_socket.send(&client_config))

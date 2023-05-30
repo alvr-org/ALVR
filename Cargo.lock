@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_audio"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_core"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_mock"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -216,7 +216,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_client_openxr"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_client_core",
  "alvr_common",
@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_common"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "backtrace",
  "glam",
@@ -248,7 +248,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_dashboard"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -273,7 +273,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_events"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_packets",
@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_filesystem"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "dirs 5.0.1",
  "once_cell",
@@ -292,7 +292,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_packets"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_audio",
  "alvr_common",
@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_server_io"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_events",
@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_session"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "bytemuck",
@@ -364,7 +364,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_sockets"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_common",
  "alvr_session",
@@ -380,14 +380,14 @@ dependencies = [
 
 [[package]]
 name = "alvr_vrcompositor_wrapper"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "exec",
 ]
 
 [[package]]
 name = "alvr_vulkan_layer"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_filesystem",
  "bindgen 0.65.1",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_xtask"
-version = "20.0.0-dev14"
+version = "20.0.0-dev15"
 dependencies = [
  "alvr_filesystem",
  "pico-args",
@@ -3297,7 +3297,7 @@ dependencies = [
 [[package]]
 name = "openxr"
 version = "0.17.1"
-source = "git+https://github.com/zarik5/openxrs#144c8d4bf4e63741e20c447e00ec46428fae2697"
+source = "git+https://github.com/zarik5/openxrs#2fe331ec5f97f709e8126061503f8922b434bc09"
 dependencies = [
  "libc",
  "libloading 0.7.4",
@@ -3308,7 +3308,7 @@ dependencies = [
 [[package]]
 name = "openxr-sys"
 version = "0.9.3"
-source = "git+https://github.com/zarik5/openxrs#144c8d4bf4e63741e20c447e00ec46428fae2697"
+source = "git+https://github.com/zarik5/openxrs#2fe331ec5f97f709e8126061503f8922b434bc09"
 dependencies = [
  "libc",
 ]

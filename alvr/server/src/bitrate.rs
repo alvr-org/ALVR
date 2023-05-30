@@ -148,12 +148,7 @@ impl BitrateManager {
             } => {
                 let mut bitrate_bps = self.bitrate_average.get_average() * saturation_multiplier;
 
-                if let Switch::Enabled(max) = max_bitrate_mbps {
-                    bitrate_bps = f32::min(bitrate_bps, *max as f32 * 1e6);
-                }
-                if let Switch::Enabled(min) = min_bitrate_mbps {
-                    bitrate_bps = f32::max(bitrate_bps, *min as f32 * 1e6);
-                }
+                bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
 
                 if let Switch::Enabled(max_ms) = max_network_latency_ms {
                     let multiplier = *max_ms as f32
@@ -162,7 +157,12 @@ impl BitrateManager {
                     bitrate_bps = f32::min(bitrate_bps, bitrate_bps * multiplier);
                 }
 
-                bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
+                if let Switch::Enabled(max) = max_bitrate_mbps {
+                    bitrate_bps = f32::min(bitrate_bps, *max as f32 * 1e6);
+                }
+                if let Switch::Enabled(min) = min_bitrate_mbps {
+                    bitrate_bps = f32::max(bitrate_bps, *min as f32 * 1e6);
+                }
 
                 bitrate_bps
             }

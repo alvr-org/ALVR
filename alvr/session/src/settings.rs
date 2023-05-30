@@ -919,8 +919,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         decoder_latency_fixer: SwitchDefault {
                             enabled: true,
                             content: DecoderLatencyFixerDefault {
-                                max_decoder_latency_ms: 20,
-                                latency_overstep_frames: 30,
+                                max_decoder_latency_ms: 30,
+                                latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
                             },
                         },

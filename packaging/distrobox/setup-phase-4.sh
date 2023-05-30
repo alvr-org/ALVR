@@ -46,10 +46,14 @@ sleep 2
 # Ask user for installing steamvr
 echog "Installed base packages and Steam. Opening steam. Please install SteamVR from it."
 steam &>/dev/null &
+echog "Enabling ctrl+c prevention."
+trap 'echog Oops you have pressed ctrl+c which almost stopped this setup, dont worry, i prevented it from doing that in this moment' 2
 echog "After installing SteamVR, copy (ctrl + shift + c from terminal) and launch command bellow from your host terminal shell (outside this container) and press enter to continue there. This prevents annoying popup (yes/no with asking for superuser) that prevents steamvr from launching automatically."
 echog "sudo setcap CAP_SYS_NICE+ep '$HOME/.steam/steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher'"
 echog "After you execute that command on host, press enter to continue."
 read
+echog "Disabling ctrl+c prevention, be careful."
+trap 2
 echog "Now launch SteamVR once and close it."
 echog "At this point you can safely add your external library from the host system ('/home/$USER' is same from inside the script container as from outside)"
 echog "When ready for next step, press enter to continue."

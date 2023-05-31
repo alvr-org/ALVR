@@ -20,13 +20,11 @@ fn main() {
     use alvr_packets::GpuVendor;
     use eframe::{egui, IconData, NativeOptions};
     use ico::IconDir;
-    use std::env;
+    use std::{env, fs};
     use std::{io::Cursor, sync::mpsc};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
-
-    env::set_var("WINIT_X11_SCALE_FACTOR", "1");
 
     {
         let mut data_manager = data_sources::get_local_data_source();
@@ -59,6 +57,14 @@ fn main() {
 
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
     let image = ico.entries().first().unwrap().decode().unwrap();
+
+    // Workaround for the steam deck
+    if fs::read_to_string("/sys/devices/virtual/dmi/id/board_vendor")
+        .map(|vendor| vendor.trim() == "Valve")
+        .unwrap_or(false)
+    {
+        env::set_var("WINIT_X11_SCALE_FACTOR", "1");
+    }
 
     eframe::run_native(
         &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),

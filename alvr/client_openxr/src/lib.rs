@@ -20,7 +20,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use xr::FoveationProfileFB;
 
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
@@ -186,7 +185,7 @@ fn create_xr_session(
 pub fn create_swapchain(
     session: &xr::Session<xr::OpenGlEs>,
     resolution: UVec2,
-    foveation: Option<&FoveationProfileFB>,
+    foveation: Option<&xr::FoveationProfileFB>,
 ) -> xr::Swapchain<xr::OpenGlEs> {
     let swapchain_info = xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,
@@ -564,7 +563,7 @@ pub fn entry_point() {
                         _ => (),
                     },
                     xr::Event::ReferenceSpaceChangePending(event) => {
-                        error!(
+                        info!(
                             "ReferenceSpaceChangePending type: {:?}",
                             event.reference_space_type()
                         );
@@ -859,8 +858,9 @@ pub fn entry_point() {
             swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
             swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
 
+            let mut views = last_good_views.clone();
+
             let display_time;
-            let views;
             let view_resolution;
             if is_streaming.value() {
                 let frame_poll_deadline = Instant::now()
@@ -888,19 +888,11 @@ pub fn entry_point() {
                     views_history.push_back(views);
                 }
 
-                let mut history_views = None;
                 for history_frame in &views_history {
                     if history_frame.timestamp == timestamp {
-                        history_views = Some(history_frame.views.clone());
+                        views = history_frame.views.clone();
                     }
                 }
-
-                views = if let Some(views) = history_views {
-                    last_good_views = views.clone();
-                    views
-                } else {
-                    last_good_views.clone()
-                };
 
                 alvr_client_core::opengl::render_stream(
                     hardware_buffer,
@@ -919,14 +911,17 @@ pub fn entry_point() {
             } else {
                 display_time = vsync_time;
 
-                views = xr_session
+                let (flags, maybe_views) = xr_session
                     .locate_views(
                         xr::ViewConfigurationType::PRIMARY_STEREO,
                         frame_state.predicted_display_time,
                         &reference_space,
                     )
-                    .unwrap()
-                    .1;
+                    .unwrap();
+
+                if flags.contains(xr::ViewStateFlags::ORIENTATION_VALID) {
+                    views = maybe_views;
+                }
 
                 view_resolution = recommended_view_resolution;
 
@@ -954,34 +949,48 @@ pub fn entry_point() {
                     height: view_resolution.y as _,
                 },
             };
-            xr_frame_stream
-                .end(
-                    to_xr_time(display_time),
-                    xr::EnvironmentBlendMode::OPAQUE,
-                    &[&xr::CompositionLayerProjection::new()
-                        .space(&reference_space)
-                        .views(&[
-                            xr::CompositionLayerProjectionView::new()
-                                .pose(views[0].pose)
-                                .fov(views[0].fov)
-                                .sub_image(
-                                    xr::SwapchainSubImage::new()
-                                        .swapchain(&swapchains[0])
-                                        .image_array_index(0)
-                                        .image_rect(rect),
-                                ),
-                            xr::CompositionLayerProjectionView::new()
-                                .pose(views[1].pose)
-                                .fov(views[1].fov)
-                                .sub_image(
-                                    xr::SwapchainSubImage::new()
-                                        .swapchain(&swapchains[1])
-                                        .image_array_index(0)
-                                        .image_rect(rect),
-                                ),
-                        ])],
-                )
-                .unwrap();
+
+            let res = xr_frame_stream.end(
+                to_xr_time(display_time),
+                xr::EnvironmentBlendMode::OPAQUE,
+                &[&xr::CompositionLayerProjection::new()
+                    .space(&reference_space)
+                    .views(&[
+                        xr::CompositionLayerProjectionView::new()
+                            .pose(views[0].pose)
+                            .fov(views[0].fov)
+                            .sub_image(
+                                xr::SwapchainSubImage::new()
+                                    .swapchain(&swapchains[0])
+                                    .image_array_index(0)
+                                    .image_rect(rect),
+                            ),
+                        xr::CompositionLayerProjectionView::new()
+                            .pose(views[1].pose)
+                            .fov(views[1].fov)
+                            .sub_image(
+                                xr::SwapchainSubImage::new()
+                                    .swapchain(&swapchains[1])
+                                    .image_array_index(0)
+                                    .image_rect(rect),
+                            ),
+                    ])],
+            );
+
+            if let Err(e) = res {
+                let time = to_xr_time(display_time);
+                error!("End frame failed! {e}, timestamp: {display_time:?}, time: {time:?}");
+
+                xr_frame_stream
+                    .end(
+                        frame_state.predicted_display_time,
+                        xr::EnvironmentBlendMode::OPAQUE,
+                        &[],
+                    )
+                    .unwrap();
+            }
+
+            last_good_views = views.clone();
         }
     }
 

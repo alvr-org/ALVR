@@ -47,7 +47,7 @@ tokio = { version = "1", features = [
     "net",
     "fs",
 ] }
-tokio-tungstenite = "0.18"
+tokio-tungstenite = "0.19"
 tokio-util = { version = "0.7", features = ["codec"] }
 # Miscellaneous
 chrono = "0.4"

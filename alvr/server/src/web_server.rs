@@ -14,7 +14,7 @@ use hyper::{
 };
 use serde::de::DeserializeOwned;
 use serde_json as json;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, thread};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -162,8 +162,14 @@ async fn http_api(
                             alvr_events::send_event(EventType::DriversList(list));
                         }
                     }
-                    ServerRequest::RestartSteamvr => crate::notify_restart_driver(),
-                    ServerRequest::ShutdownSteamvr => crate::notify_shutdown_driver(),
+                    ServerRequest::RestartSteamvr => {
+                        thread::spawn(crate::restart_driver);
+                    }
+                    ServerRequest::ShutdownSteamvr => {
+                        // This lint is bugged with extern "C"
+                        #[allow(clippy::redundant_closure)]
+                        thread::spawn(|| crate::shutdown_driver());
+                    }
                 }
 
                 reply(StatusCode::OK)?

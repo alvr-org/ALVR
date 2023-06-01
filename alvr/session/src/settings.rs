@@ -247,7 +247,7 @@ pub enum BitrateMode {
             help = "Percentage of network bandwidth to allocate for video transmission"
         ))]
         #[schema(flag = "real-time")]
-        #[schema(gui(slider(min = 0.5, max = 2.0, step = 0.05)))]
+        #[schema(gui(slider(min = 0.5, max = 5.0, step = 0.01)))]
         saturation_multiplier: f32,
 
         #[schema(strings(display_name = "Maximum bitrate"))]
@@ -916,7 +916,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
-                        saturation_multiplier: 0.95,
+                        saturation_multiplier: 1.0,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,
@@ -1030,8 +1030,8 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingDescDefault {
-                    center_size_x: 0.4,
-                    center_size_y: 0.35,
+                    center_size_x: 0.45,
+                    center_size_y: 0.4,
                     center_shift_x: 0.4,
                     center_shift_y: 0.1,
                     edge_ratio_x: 4.,

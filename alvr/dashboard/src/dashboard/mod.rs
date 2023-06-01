@@ -6,7 +6,7 @@ use self::components::{
     SetupWizard, SetupWizardRequest,
 };
 use crate::{dashboard::components::StatisticsTab, theme, DataSources};
-use alvr_common::RelaxedAtomic;
+use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionDesc;
@@ -60,7 +60,8 @@ enum Tab {
 pub struct Dashboard {
     data_sources: DataSources,
     just_opened: bool,
-    server_restarting: Arc<RelaxedAtomic>,
+    server_restarting: Arc<Mutex<bool>>,
+    server_restarting_condvar: Arc<Condvar>,
     selected_tab: Tab,
     tab_labels: BTreeMap<Tab, &'static str>,
     connections_tab: ConnectionsTab,
@@ -85,7 +86,8 @@ impl Dashboard {
         Self {
             data_sources,
             just_opened: true,
-            server_restarting: Arc::new(RelaxedAtomic::new(false)),
+            server_restarting: Arc::new(Mutex::new(false)),
+            server_restarting_condvar: Arc::new(Condvar::new()),
             selected_tab: Tab::Connections,
             tab_labels: [
                 (Tab::Connections, "🔌  Connections"),
@@ -108,6 +110,32 @@ impl Dashboard {
             setup_wizard_open: false,
             session: SessionDesc::default(),
         }
+    }
+
+    // This call may block
+    fn restart_steamvr(&self, requests: &mut Vec<ServerRequest>) {
+        requests.push(ServerRequest::RestartSteamvr);
+
+        let mut server_restarting_lock = self.server_restarting.lock();
+
+        if *server_restarting_lock {
+            self.server_restarting_condvar
+                .wait(&mut server_restarting_lock);
+        }
+
+        *server_restarting_lock = true;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn({
+            let server_restarting = Arc::clone(&self.server_restarting);
+            let condvar = Arc::clone(&self.server_restarting_condvar);
+            move || {
+                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
+
+                *server_restarting.lock() = false;
+                condvar.notify_one();
+            }
+        });
     }
 }
 
@@ -146,28 +174,14 @@ impl eframe::App for Dashboard {
 
                     self.session = *session;
                 }
-                EventType::ServerRequestsSelfRestart => {
-                    if !self.server_restarting.value() {
-                        self.server_restarting.set(true);
-
-                        #[cfg(not(target_arch = "wasm32"))]
-                        std::thread::spawn({
-                            let server_restarting = Arc::clone(&self.server_restarting);
-                            move || {
-                                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
-
-                                server_restarting.set(false);
-                            }
-                        });
-                    }
-                }
+                EventType::ServerRequestsSelfRestart => self.restart_steamvr(&mut requests),
                 EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
                 EventType::Tracking(_) | EventType::Buttons(_) | EventType::Haptics(_) => (),
             }
         }
 
-        if self.server_restarting.value() {
+        if *self.server_restarting.lock() {
             CentralPanel::default().show(context, |ui| {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
@@ -236,7 +250,7 @@ impl eframe::App for Dashboard {
 
                             if connected_to_server {
                                 if ui.button("Restart SteamVR").clicked() {
-                                    requests.push(ServerRequest::RestartSteamvr);
+                                    self.restart_steamvr(&mut requests);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
                                 crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();

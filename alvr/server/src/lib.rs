@@ -28,7 +28,6 @@ use alvr_common::{
     once_cell::sync::{Lazy, OnceCell},
     parking_lot::{Mutex, RwLock},
     prelude::*,
-    RelaxedAtomic,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -38,6 +37,7 @@ use alvr_packets::{
 use alvr_server_io::ServerDataManager;
 use alvr_session::CodecType;
 use bitrate::BitrateManager;
+use connection::SHOULD_CONNECT_TO_CLIENTS;
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -47,7 +47,7 @@ use std::{
     ptr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc, Once,
+        Once,
     },
     thread,
     time::{Duration, Instant},
@@ -97,7 +97,6 @@ static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -112,8 +111,6 @@ static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shad
 static FFR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/ffr.comp.spv");
 static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
     include_bytes!("../cpp/platform/linux/shader/rgbtoyuv420.comp.spv");
-
-static IS_ALIVE: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
 static DECODER_CONFIG: Lazy<Mutex<Option<DecoderInitializationConfig>>> =
     Lazy::new(|| Mutex::new(None));
@@ -153,10 +150,14 @@ pub fn create_recording_file() {
     }
 }
 
-pub fn shutdown_tasks() {
+// This call is blocking
+pub extern "C" fn shutdown_driver() {
     // Invoke connection runtimes shutdown
     // todo: block until they shutdown
-    IS_ALIVE.set(false);
+    SHOULD_CONNECT_TO_CLIENTS.set(false);
+
+    // apply openvr config for the next launch
+    SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
 
     if let Some(backup) = SERVER_DATA_MANAGER
         .write()
@@ -169,48 +170,36 @@ pub fn shutdown_tasks() {
     }
 
     WEBSERVER_RUNTIME.lock().take();
-}
 
-pub fn notify_shutdown_driver() {
-    thread::spawn(|| {
-        SHUTDOWN_NOTIFIER.notify_waiters();
-
-        shutdown_tasks();
-
-        unsafe { ShutdownSteamvr() };
-    });
+    unsafe { ShutdownSteamvr() };
 }
 
 pub fn notify_restart_driver() {
+    let mut system = sysinfo::System::new_with_specifics(
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+    );
+    system.refresh_processes();
+
+    if system
+        .processes_by_name(afs::dashboard_fname())
+        .next()
+        .is_some()
     {
-        let mut system = sysinfo::System::new_with_specifics(
-            RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
-        );
-        system.refresh_processes();
-
-        if system
-            .processes_by_name(afs::dashboard_fname())
-            .next()
-            .is_some()
-        {
-            alvr_events::send_event(EventType::ServerRequestsSelfRestart);
-        } else {
-            error!("Cannot restart SteamVR. No dashboard process found on local device.");
-
-            return;
-        }
+        alvr_events::send_event(EventType::ServerRequestsSelfRestart);
+    } else {
+        error!("Cannot restart SteamVR. No dashboard process found on local device.");
     }
+}
 
-    thread::spawn(|| {
-        RESTART_NOTIFIER.notify_waiters();
+// This call is blocking
+pub fn restart_driver() {
+    SHOULD_CONNECT_TO_CLIENTS.set(false);
+    RESTART_NOTIFIER.notify_waiters();
 
-        // give time to the control loop to send the restart packet (not crucial)
-        thread::sleep(Duration::from_millis(200));
+    // give time to the control loop to send the restart packet (not crucial)
+    thread::sleep(Duration::from_millis(200));
 
-        shutdown_tasks();
-
-        unsafe { ShutdownSteamvr() };
-    });
+    shutdown_driver();
 }
 
 fn init() {
@@ -420,7 +409,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        IS_ALIVE.set(true);
+        SHOULD_CONNECT_TO_CLIENTS.set(true);
 
         thread::spawn(move || {
             if set_default_chap {
@@ -433,10 +422,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 warn!("Connection thread closed: {e}");
             }
         });
-    }
-
-    extern "C" fn _shutdown_runtime() {
-        shutdown_tasks();
     }
 
     unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
@@ -502,7 +487,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     InitializeDecoder = Some(initialize_decoder);
     VideoSend = Some(video_send);
     HapticsSend = Some(haptics_send);
-    ShutdownRuntime = Some(_shutdown_runtime);
+    ShutdownRuntime = Some(shutdown_driver);
     PathStringToHash = Some(path_string_to_hash);
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);

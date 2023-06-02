@@ -2,8 +2,7 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    ConnectionsTab, InstallationTab, InstallationTabRequest, LogsTab, NotificationBar, SettingsTab,
-    SetupWizard, SetupWizardRequest,
+    ConnectionsTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{dashboard::components::StatisticsTab, theme, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
@@ -51,6 +50,7 @@ enum Tab {
     Connections,
     Statistics,
     Settings,
+    #[cfg(not(target_arch = "wasm32"))]
     Installation,
     Logs,
     Debug,
@@ -67,20 +67,17 @@ pub struct Dashboard {
     connections_tab: ConnectionsTab,
     statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
-    installation_tab: InstallationTab,
+    #[cfg(not(target_arch = "wasm32"))]
+    installation_tab: components::InstallationTab,
     logs_tab: LogsTab,
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
-    session: SessionDesc,
+    session: Option<SessionDesc>,
 }
 
 impl Dashboard {
     pub fn new(creation_context: &eframe::CreationContext<'_>, data_sources: DataSources) -> Self {
-        data_sources.request(ServerRequest::GetSession);
-        data_sources.request(ServerRequest::GetAudioDevices);
-        data_sources.request(ServerRequest::GetDriverList);
-
         theme::set_theme(&creation_context.egui_ctx);
 
         Self {
@@ -93,6 +90,7 @@ impl Dashboard {
                 (Tab::Connections, "🔌  Connections"),
                 (Tab::Statistics, "📈  Statistics"),
                 (Tab::Settings, "⚙  Settings"),
+                #[cfg(not(target_arch = "wasm32"))]
                 (Tab::Installation, "💾  Installation"),
                 (Tab::Logs, "📝  Logs"),
                 (Tab::Debug, "🐞  Debug"),
@@ -103,12 +101,13 @@ impl Dashboard {
             connections_tab: ConnectionsTab::new(),
             statistics_tab: StatisticsTab::new(),
             settings_tab: SettingsTab::new(),
-            installation_tab: InstallationTab::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            installation_tab: components::InstallationTab::new(),
             logs_tab: LogsTab::new(),
             notification_bar: NotificationBar::new(),
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
-            session: SessionDesc::default(),
+            session: None,
         }
     }
 
@@ -161,6 +160,7 @@ impl eframe::App for Dashboard {
                 EventType::Session(session) => {
                     let settings = session.to_settings();
 
+                    self.connections_tab.update_client_list(&session);
                     self.settings_tab.update_session(&session.session_settings);
                     self.logs_tab.update_settings(&settings);
                     self.notification_bar.update_settings(&settings);
@@ -172,12 +172,13 @@ impl eframe::App for Dashboard {
                         self.just_opened = false;
                     }
 
-                    self.session = *session;
+                    self.session = Some(*session);
                 }
                 EventType::ServerRequestsSelfRestart => self.restart_steamvr(&mut requests),
                 EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
+                #[cfg(not(target_arch = "wasm32"))]
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
-                EventType::Tracking(_) | EventType::Buttons(_) | EventType::Haptics(_) => (),
+                _ => (),
             }
         }
 
@@ -284,12 +285,7 @@ impl eframe::App for Dashboard {
                         );
                         ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
                             Tab::Connections => {
-                                if let Some(request) =
-                                    self.connections_tab
-                                        .ui(ui, &self.session, connected_to_server)
-                                {
-                                    requests.push(request);
-                                }
+                                requests.extend(self.connections_tab.ui(ui, connected_to_server));
                             }
                             Tab::Statistics => {
                                 if let Some(request) = self.statistics_tab.ui(ui) {
@@ -299,13 +295,16 @@ impl eframe::App for Dashboard {
                             Tab::Settings => {
                                 requests.extend(self.settings_tab.ui(ui));
                             }
+                            #[cfg(not(target_arch = "wasm32"))]
                             Tab::Installation => {
                                 for request in self.installation_tab.ui(ui) {
                                     match request {
-                                        InstallationTabRequest::OpenSetupWizard => {
+                                        components::InstallationTabRequest::OpenSetupWizard => {
                                             self.setup_wizard_open = true
                                         }
-                                        InstallationTabRequest::ServerRequest(request) => {
+                                        components::InstallationTabRequest::ServerRequest(
+                                            request,
+                                        ) => {
                                             requests.push(request);
                                         }
                                     }

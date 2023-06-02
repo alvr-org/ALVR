@@ -4,7 +4,12 @@ use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},
     emath::Align,
 };
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
+
+const DRIVER_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub enum InstallationTabRequest {
     OpenSetupWizard,
@@ -13,11 +18,15 @@ pub enum InstallationTabRequest {
 
 pub struct InstallationTab {
     drivers: Vec<PathBuf>,
+    last_update_instant: Instant,
 }
 
 impl InstallationTab {
     pub fn new() -> Self {
-        Self { drivers: vec![] }
+        Self {
+            drivers: vec![],
+            last_update_instant: Instant::now(),
+        }
     }
 
     pub fn update_drivers(&mut self, list: Vec<PathBuf>) {
@@ -26,6 +35,16 @@ impl InstallationTab {
 
     pub fn ui(&mut self, ui: &mut Ui) -> Vec<InstallationTabRequest> {
         let mut requests = vec![];
+
+        let now = Instant::now();
+        if now > self.last_update_instant + DRIVER_UPDATE_INTERVAL {
+            requests.push(InstallationTabRequest::ServerRequest(
+                ServerRequest::GetDriverList,
+            ));
+
+            self.last_update_instant = now;
+        }
+
         ui.vertical_centered_justified(|ui| {
             if ui.button("Run setup wizard").clicked() {
                 requests.push(InstallationTabRequest::OpenSetupWizard);

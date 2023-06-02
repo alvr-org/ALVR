@@ -9,6 +9,14 @@ use alvr_session::{SessionSettings, Settings};
 use eframe::egui::{Grid, ScrollArea, Ui};
 use serde_json as json;
 
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
+use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
+
+const DATA_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+
 pub struct SettingsTab {
     presets_grid_id: usize,
     resolution_preset: PresetControl,
@@ -20,6 +28,7 @@ pub struct SettingsTab {
     advanced_grid_id: usize,
     session_settings_json: Option<json::Value>,
     root_control: SettingControl,
+    last_update_instant: Instant,
 }
 
 impl SettingsTab {
@@ -41,6 +50,7 @@ impl SettingsTab {
             advanced_grid_id: get_id(),
             session_settings_json: None,
             root_control: SettingControl::new(nesting_info, schema),
+            last_update_instant: Instant::now(),
         }
     }
 
@@ -68,29 +78,31 @@ impl SettingsTab {
         let mut all_devices = list.output.clone();
         all_devices.extend(list.input);
 
-        let settings_json = self
-            .session_settings_json
-            .clone()
-            .unwrap_or_else(|| json::to_value(alvr_session::session_settings_default()).unwrap());
+        if let Some(json) = &self.session_settings_json {
+            let mut preset = PresetControl::new(builtin_schema::game_audio_schema(all_devices));
+            preset.update_session_settings(json);
+            self.game_audio_preset = Some(preset);
 
-        let mut preset = PresetControl::new(builtin_schema::game_audio_schema(all_devices));
-        preset.update_session_settings(&settings_json);
-        self.game_audio_preset = Some(preset);
-
-        let mut preset = PresetControl::new(builtin_schema::microphone_schema(list.output));
-        preset.update_session_settings(&settings_json);
-        self.microphone_preset = Some(preset);
+            let mut preset = PresetControl::new(builtin_schema::microphone_schema(list.output));
+            preset.update_session_settings(json);
+            self.microphone_preset = Some(preset);
+        }
     }
 
     pub fn ui(&mut self, ui: &mut Ui) -> Vec<ServerRequest> {
         let mut requests = vec![];
 
-        if self.session_settings_json.is_none() {
-            requests.push(ServerRequest::GetSession);
-        }
+        let now = Instant::now();
+        if now > self.last_update_instant + DATA_UPDATE_INTERVAL {
+            if self.session_settings_json.is_none() {
+                requests.push(ServerRequest::GetSession);
+            }
 
-        if self.game_audio_preset.is_none() {
-            requests.push(ServerRequest::GetAudioDevices);
+            if self.game_audio_preset.is_none() {
+                requests.push(ServerRequest::GetAudioDevices);
+            }
+
+            self.last_update_instant = now;
         }
 
         let mut path_value_pairs = vec![];

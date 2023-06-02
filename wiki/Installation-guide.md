@@ -88,11 +88,13 @@ Notes:
 
 For installation:
 
-1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git`
+1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git` somewhere in your home directory (steam doesn't like long paths)
 
-2. Carefully follow the [guide](ALVR-in-distrobox.md).
+2. `cd ALVR-Distrobox-Linux-Guide`
 
-3. Any issues related to this installer/various tweaks/bugs should be reported as issue [here](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/issues)
+3. Carefully follow the [guide](ALVR-in-distrobox.md).
+
+4. Any issues related to this installer/various tweaks/bugs should be reported as issue [here](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/issues)
 
 ### Other
 

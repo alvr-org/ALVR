@@ -302,18 +302,3 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
         gui: ChoiceControlType::ButtonGroup,
     })
 }
-
-pub fn null_preset_schema() -> PresetSchemaNode {
-    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "null".into(),
-        strings: HashMap::new(),
-        flags: HashSet::new(),
-        options: vec![HigherOrderChoiceOption {
-            display_name: "null".into(),
-            modifiers: vec![],
-            content: None,
-        }],
-        default_option_index: 0,
-        gui: ChoiceControlType::Dropdown,
-    })
-}

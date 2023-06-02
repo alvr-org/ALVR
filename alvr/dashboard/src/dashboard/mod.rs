@@ -2,11 +2,10 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    ConnectionsTab, InstallationTab, InstallationTabRequest, LogsTab, NotificationBar, SettingsTab,
-    SetupWizard, SetupWizardRequest,
+    ConnectionsTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{dashboard::components::StatisticsTab, theme, DataSources};
-use alvr_common::RelaxedAtomic;
+use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionDesc;
@@ -51,6 +50,7 @@ enum Tab {
     Connections,
     Statistics,
     Settings,
+    #[cfg(not(target_arch = "wasm32"))]
     Installation,
     Logs,
     Debug,
@@ -60,37 +60,37 @@ enum Tab {
 pub struct Dashboard {
     data_sources: DataSources,
     just_opened: bool,
-    server_restarting: Arc<RelaxedAtomic>,
+    server_restarting: Arc<Mutex<bool>>,
+    server_restarting_condvar: Arc<Condvar>,
     selected_tab: Tab,
     tab_labels: BTreeMap<Tab, &'static str>,
     connections_tab: ConnectionsTab,
     statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
-    installation_tab: InstallationTab,
+    #[cfg(not(target_arch = "wasm32"))]
+    installation_tab: components::InstallationTab,
     logs_tab: LogsTab,
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
-    session: SessionDesc,
+    session: Option<SessionDesc>,
 }
 
 impl Dashboard {
     pub fn new(creation_context: &eframe::CreationContext<'_>, data_sources: DataSources) -> Self {
-        data_sources.request(ServerRequest::GetSession);
-        data_sources.request(ServerRequest::GetAudioDevices);
-        data_sources.request(ServerRequest::GetDriverList);
-
         theme::set_theme(&creation_context.egui_ctx);
 
         Self {
             data_sources,
             just_opened: true,
-            server_restarting: Arc::new(RelaxedAtomic::new(false)),
+            server_restarting: Arc::new(Mutex::new(false)),
+            server_restarting_condvar: Arc::new(Condvar::new()),
             selected_tab: Tab::Connections,
             tab_labels: [
                 (Tab::Connections, "🔌  Connections"),
                 (Tab::Statistics, "📈  Statistics"),
                 (Tab::Settings, "⚙  Settings"),
+                #[cfg(not(target_arch = "wasm32"))]
                 (Tab::Installation, "💾  Installation"),
                 (Tab::Logs, "📝  Logs"),
                 (Tab::Debug, "🐞  Debug"),
@@ -101,13 +101,40 @@ impl Dashboard {
             connections_tab: ConnectionsTab::new(),
             statistics_tab: StatisticsTab::new(),
             settings_tab: SettingsTab::new(),
-            installation_tab: InstallationTab::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            installation_tab: components::InstallationTab::new(),
             logs_tab: LogsTab::new(),
             notification_bar: NotificationBar::new(),
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
-            session: SessionDesc::default(),
+            session: None,
         }
+    }
+
+    // This call may block
+    fn restart_steamvr(&self, requests: &mut Vec<ServerRequest>) {
+        requests.push(ServerRequest::RestartSteamvr);
+
+        let mut server_restarting_lock = self.server_restarting.lock();
+
+        if *server_restarting_lock {
+            self.server_restarting_condvar
+                .wait(&mut server_restarting_lock);
+        }
+
+        *server_restarting_lock = true;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn({
+            let server_restarting = Arc::clone(&self.server_restarting);
+            let condvar = Arc::clone(&self.server_restarting_condvar);
+            move || {
+                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
+
+                *server_restarting.lock() = false;
+                condvar.notify_one();
+            }
+        });
     }
 }
 
@@ -133,6 +160,7 @@ impl eframe::App for Dashboard {
                 EventType::Session(session) => {
                     let settings = session.to_settings();
 
+                    self.connections_tab.update_client_list(&session);
                     self.settings_tab.update_session(&session.session_settings);
                     self.logs_tab.update_settings(&settings);
                     self.notification_bar.update_settings(&settings);
@@ -144,30 +172,17 @@ impl eframe::App for Dashboard {
                         self.just_opened = false;
                     }
 
-                    self.session = *session;
+                    self.session = Some(*session);
                 }
-                EventType::ServerRequestsSelfRestart => {
-                    if !self.server_restarting.value() {
-                        self.server_restarting.set(true);
-
-                        #[cfg(not(target_arch = "wasm32"))]
-                        std::thread::spawn({
-                            let server_restarting = Arc::clone(&self.server_restarting);
-                            move || {
-                                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
-
-                                server_restarting.set(false);
-                            }
-                        });
-                    }
-                }
+                EventType::ServerRequestsSelfRestart => self.restart_steamvr(&mut requests),
                 EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
+                #[cfg(not(target_arch = "wasm32"))]
                 EventType::DriversList(list) => self.installation_tab.update_drivers(list),
-                EventType::Tracking(_) | EventType::Buttons(_) | EventType::Haptics(_) => (),
+                _ => (),
             }
         }
 
-        if self.server_restarting.value() {
+        if *self.server_restarting.lock() {
             CentralPanel::default().show(context, |ui| {
                 // todo: find a way to center both vertically and horizontally
                 ui.vertical_centered(|ui| {
@@ -236,7 +251,7 @@ impl eframe::App for Dashboard {
 
                             if connected_to_server {
                                 if ui.button("Restart SteamVR").clicked() {
-                                    requests.push(ServerRequest::RestartSteamvr);
+                                    self.restart_steamvr(&mut requests);
                                 }
                             } else if ui.button("Launch SteamVR").clicked() {
                                 crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
@@ -270,12 +285,7 @@ impl eframe::App for Dashboard {
                         );
                         ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
                             Tab::Connections => {
-                                if let Some(request) =
-                                    self.connections_tab
-                                        .ui(ui, &self.session, connected_to_server)
-                                {
-                                    requests.push(request);
-                                }
+                                requests.extend(self.connections_tab.ui(ui, connected_to_server));
                             }
                             Tab::Statistics => {
                                 if let Some(request) = self.statistics_tab.ui(ui) {
@@ -285,13 +295,16 @@ impl eframe::App for Dashboard {
                             Tab::Settings => {
                                 requests.extend(self.settings_tab.ui(ui));
                             }
+                            #[cfg(not(target_arch = "wasm32"))]
                             Tab::Installation => {
                                 for request in self.installation_tab.ui(ui) {
                                     match request {
-                                        InstallationTabRequest::OpenSetupWizard => {
+                                        components::InstallationTabRequest::OpenSetupWizard => {
                                             self.setup_wizard_open = true
                                         }
-                                        InstallationTabRequest::ServerRequest(request) => {
+                                        components::InstallationTabRequest::ServerRequest(
+                                            request,
+                                        ) => {
                                             requests.push(request);
                                         }
                                     }

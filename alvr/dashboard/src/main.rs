@@ -1,16 +1,22 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+// hide console window on Windows in release
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod dashboard;
-mod logging_backend;
 mod theme;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod data_sources;
+#[cfg(target_arch = "wasm32")]
+mod data_sources_wasm;
+#[cfg(not(target_arch = "wasm32"))]
+mod logging_backend;
 #[cfg(not(target_arch = "wasm32"))]
 mod steamvr_launcher;
 
 #[cfg(not(target_arch = "wasm32"))]
 use data_sources::DataSources;
+#[cfg(target_arch = "wasm32")]
+use data_sources_wasm::DataSources;
 
 use dashboard::Dashboard;
 
@@ -20,13 +26,11 @@ fn main() {
     use alvr_packets::GpuVendor;
     use eframe::{egui, IconData, NativeOptions};
     use ico::IconDir;
-    use std::env;
+    use std::{env, fs};
     use std::{io::Cursor, sync::mpsc};
 
     let (server_events_sender, server_events_receiver) = mpsc::channel();
     logging_backend::init_logging(server_events_sender.clone());
-
-    env::set_var("WINIT_X11_SCALE_FACTOR", "1");
 
     {
         let mut data_manager = data_sources::get_local_data_source();
@@ -60,6 +64,14 @@ fn main() {
     let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
     let image = ico.entries().first().unwrap().decode().unwrap();
 
+    // Workaround for the steam deck
+    if fs::read_to_string("/sys/devices/virtual/dmi/id/board_vendor")
+        .map(|vendor| vendor.trim() == "Valve")
+        .unwrap_or(false)
+    {
+        env::set_var("WINIT_X11_SCALE_FACTOR", "1");
+    }
+
     eframe::run_native(
         &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
         NativeOptions {
@@ -88,4 +100,19 @@ fn main() {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn main() {}
+fn main() {
+    console_error_panic_hook::set_once();
+    wasm_logger::init(wasm_logger::Config::default());
+
+    wasm_bindgen_futures::spawn_local(async {
+        eframe::WebRunner::new()
+            .start("dashboard_canvas", eframe::WebOptions::default(), {
+                Box::new(move |creation_context| {
+                    let context = creation_context.egui_ctx.clone();
+                    Box::new(Dashboard::new(creation_context, DataSources::new(context)))
+                })
+            })
+            .await
+            .ok();
+    });
+}

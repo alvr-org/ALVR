@@ -247,7 +247,7 @@ pub enum BitrateMode {
             help = "Percentage of network bandwidth to allocate for video transmission"
         ))]
         #[schema(flag = "real-time")]
-        #[schema(gui(slider(min = 0.5, max = 2.0, step = 0.05)))]
+        #[schema(gui(slider(min = 0.5, max = 5.0, step = 0.01)))]
         saturation_multiplier: f32,
 
         #[schema(strings(display_name = "Maximum bitrate"))]
@@ -297,12 +297,25 @@ pub struct BitrateConfig {
 
 #[repr(u8)]
 #[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
-pub enum OculusFovetionLevel {
-    None,
-    Low,
-    Medium,
-    High,
-    HighTop,
+pub enum ClientsideFoveationLevel {
+    Low = 1,
+    Medium = 2,
+    High = 3,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum ClientsideFoveationMode {
+    Static { level: ClientsideFoveationLevel },
+    Dynamic { max_level: ClientsideFoveationLevel },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct ClientsideFoveation {
+    pub mode: ClientsideFoveationMode,
+
+    #[schema(strings(display_name = "Foveation offset"))]
+    #[schema(gui(slider(min = -45.0, max = 45.0, step = 0.1)), suffix = "°")]
+    pub vertical_offset_deg: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -425,7 +438,7 @@ pub struct VideoDesc {
     #[schema(flag = "steamvr-restart")]
     pub foveated_rendering: Switch<FoveatedRenderingDesc>,
 
-    pub oculus_foveation_level: OculusFovetionLevel,
+    pub clientside_foveation: Switch<ClientsideFoveation>,
 
     pub dynamic_oculus_foveation: bool,
 
@@ -903,7 +916,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
-                        saturation_multiplier: 0.95,
+                        saturation_multiplier: 1.0,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,
@@ -919,8 +932,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         decoder_latency_fixer: SwitchDefault {
                             enabled: true,
                             content: DecoderLatencyFixerDefault {
-                                max_decoder_latency_ms: 20,
-                                latency_overstep_frames: 30,
+                                max_decoder_latency_ms: 30,
+                                latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
                             },
                         },
@@ -1017,16 +1030,32 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingDescDefault {
-                    center_size_x: 0.4,
-                    center_size_y: 0.35,
+                    center_size_x: 0.45,
+                    center_size_y: 0.4,
                     center_shift_x: 0.4,
                     center_shift_y: 0.1,
                     edge_ratio_x: 4.,
                     edge_ratio_y: 5.,
                 },
             },
-            oculus_foveation_level: OculusFovetionLevelDefault {
-                variant: OculusFovetionLevelDefaultVariant::HighTop,
+            clientside_foveation: SwitchDefault {
+                enabled: true,
+                content: ClientsideFoveationDefault {
+                    mode: ClientsideFoveationModeDefault {
+                        Static: ClientsideFoveationModeStaticDefault {
+                            level: ClientsideFoveationLevelDefault {
+                                variant: ClientsideFoveationLevelDefaultVariant::High,
+                            },
+                        },
+                        Dynamic: ClientsideFoveationModeDynamicDefault {
+                            max_level: ClientsideFoveationLevelDefault {
+                                variant: ClientsideFoveationLevelDefaultVariant::High,
+                            },
+                        },
+                        variant: ClientsideFoveationModeDefaultVariant::Dynamic,
+                    },
+                    vertical_offset_deg: 0.0,
+                },
             },
             dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {

@@ -24,7 +24,7 @@ settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
 
-eframe = { git = "https://github.com/emilk/egui", default-features = false, features = [
+eframe = { version = "0.22", default-features = false, features = [
     "wgpu",
     "default_fonts",
 ] }
@@ -33,11 +33,17 @@ tungstenite = "0.19"
 ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-eframe = { git = "https://github.com/emilk/egui", default-features = false, features = [
+console_error_panic_hook = "0.1"
+eframe = { version = "0.22", default-features = false, features = [
     'glow',          # currently wgpu is broken on web
     "default_fonts",
 ] }
+ewebsock = "0.2"
+futures = "0.3"
+gloo-net = "0.2"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
+wasm-bindgen-futures = "0.4"
+wasm-logger = "0.2"
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

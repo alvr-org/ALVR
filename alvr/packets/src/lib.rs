@@ -37,10 +37,9 @@ pub enum ClientConnectionResult {
 
 #[derive(Serialize, Deserialize)]
 pub struct StreamConfigPacket {
-    pub session_desc: String, // transfer session as string to allow for extrapolation
-    pub view_resolution: UVec2,
-    pub fps: f32,
-    pub game_audio_sample_rate: u32,
+    pub session: String, // JSON session that allows for extrapolation
+    pub negotiated: String, // JSON dictionary containing negotiated configuration. Can be extended
+                         // without a breaking protocol change, but entries can't be removed.
 }
 
 #[derive(Serialize, Deserialize, Clone)]

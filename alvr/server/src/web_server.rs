@@ -1,5 +1,5 @@
 use crate::{
-    DECODER_CONFIG, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
+    DECODER_CONFIG, FILESYSTEM_LAYOUT, RESTART_NOTIFIER, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
     VIDEO_RECORDING_FILE,
 };
 use alvr_common::{log, prelude::*};
@@ -14,7 +14,7 @@ use hyper::{
 };
 use serde::de::DeserializeOwned;
 use serde_json as json;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, thread};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -116,9 +116,13 @@ async fn http_api(
                     ServerRequest::SetValues(descs) => {
                         SERVER_DATA_MANAGER.write().set_values(descs).ok();
                     }
-                    ServerRequest::UpdateClientList { hostname, action } => SERVER_DATA_MANAGER
-                        .write()
-                        .update_client_list(hostname, action),
+                    ServerRequest::UpdateClientList { hostname, action } => {
+                        SERVER_DATA_MANAGER
+                            .write()
+                            .update_client_list(hostname, action);
+
+                        RESTART_NOTIFIER.notify_waiters();
+                    }
                     ServerRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
                             alvr_events::send_event(EventType::AudioDevices(list));
@@ -158,8 +162,14 @@ async fn http_api(
                             alvr_events::send_event(EventType::DriversList(list));
                         }
                     }
-                    ServerRequest::RestartSteamvr => crate::notify_restart_driver(),
-                    ServerRequest::ShutdownSteamvr => crate::notify_shutdown_driver(),
+                    ServerRequest::RestartSteamvr => {
+                        thread::spawn(crate::restart_driver);
+                    }
+                    ServerRequest::ShutdownSteamvr => {
+                        // This lint is bugged with extern "C"
+                        #[allow(clippy::redundant_closure)]
+                        thread::spawn(|| crate::shutdown_driver());
+                    }
                 }
 
                 reply(StatusCode::OK)?

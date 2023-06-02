@@ -7,7 +7,7 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, IS_ALIVE, RESTART_NOTIFIER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER,
     SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::AudioDevice;
@@ -48,6 +48,8 @@ use tokio::{
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
+pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
+    Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 static CONNECTED_CLIENT_HOSTNAMES: Lazy<parking_lot::Mutex<HashSet<String>>> =
     Lazy::new(|| parking_lot::Mutex::new(HashSet::new()));
 static STREAMING_CLIENT_HOSTNAME: Lazy<parking_lot::Mutex<Option<String>>> =
@@ -62,7 +64,7 @@ pub fn handshake_loop() -> IntResult {
     let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
 
     loop {
-        check_interrupt!(IS_ALIVE.value());
+        check_interrupt!(SHOULD_CONNECT_TO_CLIENTS.value());
 
         let manual_client_ips = {
             let connected_hostnames_lock = CONNECTED_CLIENT_HOSTNAMES.lock();
@@ -135,6 +137,145 @@ pub fn handshake_loop() -> IntResult {
         }
 
         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+    }
+}
+
+pub fn contruct_openvr_config() -> OpenvrConfig {
+    let data_manager_lock = SERVER_DATA_MANAGER.read();
+    let old_config = data_manager_lock.session().openvr_config.clone();
+    let settings = data_manager_lock.settings().clone();
+
+    let mut controllers_mode_idx = 0;
+    let mut override_trigger_threshold = false;
+    let mut trigger_threshold = 0.0;
+    let mut override_grip_threshold = false;
+    let mut grip_threshold = 0.0;
+    let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
+        controllers_mode_idx = match config.emulation_mode {
+            ControllersEmulationMode::RiftSTouch => 1,
+            ControllersEmulationMode::ValveIndex => 3,
+            ControllersEmulationMode::ViveWand => 5,
+            ControllersEmulationMode::Quest2Touch => 7,
+            ControllersEmulationMode::ViveTracker => 9,
+        };
+        override_trigger_threshold =
+            if let Switch::Enabled(value) = config.trigger_threshold_override {
+                trigger_threshold = value;
+                true
+            } else {
+                false
+            };
+        override_grip_threshold = if let Switch::Enabled(value) = config.grip_threshold_override {
+            grip_threshold = value;
+            true
+        } else {
+            false
+        };
+        true
+    } else {
+        false
+    };
+
+    let mut foveation_center_size_x = 0.0;
+    let mut foveation_center_size_y = 0.0;
+    let mut foveation_center_shift_x = 0.0;
+    let mut foveation_center_shift_y = 0.0;
+    let mut foveation_edge_ratio_x = 0.0;
+    let mut foveation_edge_ratio_y = 0.0;
+    let enable_foveated_rendering =
+        if let Switch::Enabled(config) = settings.video.foveated_rendering {
+            foveation_center_size_x = config.center_size_x;
+            foveation_center_size_y = config.center_size_y;
+            foveation_center_shift_x = config.center_shift_x;
+            foveation_center_shift_y = config.center_shift_y;
+            foveation_edge_ratio_x = config.edge_ratio_x;
+            foveation_edge_ratio_y = config.edge_ratio_y;
+
+            true
+        } else {
+            false
+        };
+
+    let mut brightness = 0.0;
+    let mut contrast = 0.0;
+    let mut saturation = 0.0;
+    let mut gamma = 0.0;
+    let mut sharpening = 0.0;
+    let enable_color_correction = if let Switch::Enabled(config) = settings.video.color_correction {
+        brightness = config.brightness;
+        contrast = config.contrast;
+        saturation = config.saturation;
+        gamma = config.gamma;
+        sharpening = config.sharpening;
+        true
+    } else {
+        false
+    };
+
+    let nvenc_overrides = settings.video.encoder_config.nvenc;
+    let amf_controls = settings.video.encoder_config.amf;
+
+    OpenvrConfig {
+        tracking_ref_only: settings.headset.tracking_ref_only,
+        enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
+        aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
+        adapter_index: settings.video.adapter_index,
+        codec: matches!(settings.video.preferred_codec, CodecType::Hevc) as _,
+        rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
+        filler_data: settings.video.encoder_config.filler_data,
+        entropy_coding: settings.video.encoder_config.entropy_coding as u32,
+        use_10bit_encoder: settings.video.encoder_config.use_10bit,
+        enable_vbaq: amf_controls.enable_vbaq,
+        use_preproc: amf_controls.use_preproc,
+        preproc_sigma: amf_controls.preproc_sigma,
+        preproc_tor: amf_controls.preproc_tor,
+        nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
+        amd_encoder_quality_preset: amf_controls.quality_preset as u32,
+        force_sw_encoding: settings
+            .video
+            .encoder_config
+            .software
+            .force_software_encoding,
+        sw_thread_count: settings.video.encoder_config.software.thread_count,
+        controllers_enabled,
+        controllers_mode_idx,
+        override_trigger_threshold,
+        trigger_threshold,
+        override_grip_threshold,
+        grip_threshold,
+        enable_foveated_rendering,
+        foveation_center_size_x,
+        foveation_center_size_y,
+        foveation_center_shift_x,
+        foveation_center_shift_y,
+        foveation_edge_ratio_x,
+        foveation_edge_ratio_y,
+        enable_color_correction,
+        brightness,
+        contrast,
+        saturation,
+        gamma,
+        sharpening,
+        linux_async_reprojection: settings.patches.linux_async_reprojection,
+        nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
+        nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
+        nvenc_adaptive_quantization_mode: nvenc_overrides.adaptive_quantization_mode as u32,
+        nvenc_low_delay_key_frame_scale: nvenc_overrides.low_delay_key_frame_scale,
+        nvenc_refresh_rate: nvenc_overrides.refresh_rate,
+        enable_intra_refresh: nvenc_overrides.enable_intra_refresh,
+        intra_refresh_period: nvenc_overrides.intra_refresh_period,
+        intra_refresh_count: nvenc_overrides.intra_refresh_count,
+        max_num_ref_frames: nvenc_overrides.max_num_ref_frames,
+        gop_length: nvenc_overrides.gop_length,
+        p_frame_strategy: nvenc_overrides.p_frame_strategy,
+        nvenc_rate_control_mode: nvenc_overrides.rate_control_mode,
+        rc_buffer_size: nvenc_overrides.rc_buffer_size,
+        rc_initial_delay: nvenc_overrides.rc_initial_delay,
+        rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
+        rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
+        nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
+        capture_frame_dir: settings.capture.capture_frame_dir,
+        ..old_config
     }
 }
 
@@ -278,13 +419,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     };
 
     let client_config = StreamConfigPacket {
-        session_desc: {
+        session: {
             let session = SERVER_DATA_MANAGER.read().session().clone();
             serde_json::to_string(&session).map_err(to_int_e!())?
         },
-        view_resolution: stream_view_resolution,
-        fps,
-        game_audio_sample_rate,
+        negotiated: serde_json::json!({
+            "view_resolution": stream_view_resolution,
+            "refresh_rate_hint": fps,
+            "game_audio_sample_rate": game_audio_sample_rate,
+        })
+        .to_string(),
     };
     runtime
         .block_on(proto_socket.send(&client_config))
@@ -292,142 +436,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let (mut control_sender, control_receiver) = proto_socket.split();
 
-    let mut controllers_mode_idx = 0;
-    let mut override_trigger_threshold = false;
-    let mut trigger_threshold = 0.0;
-    let mut override_grip_threshold = false;
-    let mut grip_threshold = 0.0;
-    let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
-        controllers_mode_idx = match config.emulation_mode {
-            ControllersEmulationMode::RiftSTouch => 1,
-            ControllersEmulationMode::ValveIndex => 3,
-            ControllersEmulationMode::ViveWand => 5,
-            ControllersEmulationMode::Quest2Touch => 7,
-            ControllersEmulationMode::ViveTracker => 9,
-        };
-        override_trigger_threshold =
-            if let Switch::Enabled(value) = config.trigger_threshold_override {
-                trigger_threshold = value;
-                true
-            } else {
-                false
-            };
-        override_grip_threshold = if let Switch::Enabled(value) = config.grip_threshold_override {
-            grip_threshold = value;
-            true
-        } else {
-            false
-        };
-        true
-    } else {
-        false
-    };
-
-    let mut foveation_center_size_x = 0.0;
-    let mut foveation_center_size_y = 0.0;
-    let mut foveation_center_shift_x = 0.0;
-    let mut foveation_center_shift_y = 0.0;
-    let mut foveation_edge_ratio_x = 0.0;
-    let mut foveation_edge_ratio_y = 0.0;
-    let enable_foveated_rendering =
-        if let Switch::Enabled(config) = settings.video.foveated_rendering {
-            foveation_center_size_x = config.center_size_x;
-            foveation_center_size_y = config.center_size_y;
-            foveation_center_shift_x = config.center_shift_x;
-            foveation_center_shift_y = config.center_shift_y;
-            foveation_edge_ratio_x = config.edge_ratio_x;
-            foveation_edge_ratio_y = config.edge_ratio_y;
-
-            true
-        } else {
-            false
-        };
-
-    let mut brightness = 0.0;
-    let mut contrast = 0.0;
-    let mut saturation = 0.0;
-    let mut gamma = 0.0;
-    let mut sharpening = 0.0;
-    let enable_color_correction = if let Switch::Enabled(config) = settings.video.color_correction {
-        brightness = config.brightness;
-        contrast = config.contrast;
-        saturation = config.saturation;
-        gamma = config.gamma;
-        sharpening = config.sharpening;
-        true
-    } else {
-        false
-    };
-
-    let nvenc_overrides = settings.video.encoder_config.nvenc;
-    let amf_controls = settings.video.encoder_config.amf;
-
-    let new_openvr_config = OpenvrConfig {
-        eye_resolution_width: stream_view_resolution.x,
-        eye_resolution_height: stream_view_resolution.y,
-        target_eye_resolution_width: target_view_resolution.x,
-        target_eye_resolution_height: target_view_resolution.y,
-        tracking_ref_only: settings.headset.tracking_ref_only,
-        enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
-        aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
-        adapter_index: settings.video.adapter_index,
-        codec: matches!(settings.video.preferred_codec, CodecType::Hevc) as _,
-        rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
-        filler_data: settings.video.encoder_config.filler_data,
-        entropy_coding: settings.video.encoder_config.entropy_coding as u32,
-        refresh_rate: fps as _,
-        use_10bit_encoder: settings.video.encoder_config.use_10bit,
-        enable_vbaq: amf_controls.enable_vbaq,
-        use_preproc: amf_controls.use_preproc,
-        preproc_sigma: amf_controls.preproc_sigma,
-        preproc_tor: amf_controls.preproc_tor,
-        nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
-        amd_encoder_quality_preset: amf_controls.quality_preset as u32,
-        force_sw_encoding: settings
-            .video
-            .encoder_config
-            .software
-            .force_software_encoding,
-        sw_thread_count: settings.video.encoder_config.software.thread_count,
-        controllers_enabled,
-        controllers_mode_idx,
-        override_trigger_threshold,
-        trigger_threshold,
-        override_grip_threshold,
-        grip_threshold,
-        enable_foveated_rendering,
-        foveation_center_size_x,
-        foveation_center_size_y,
-        foveation_center_shift_x,
-        foveation_center_shift_y,
-        foveation_edge_ratio_x,
-        foveation_edge_ratio_y,
-        enable_color_correction,
-        brightness,
-        contrast,
-        saturation,
-        gamma,
-        sharpening,
-        linux_async_reprojection: settings.patches.linux_async_reprojection,
-        nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
-        nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
-        nvenc_adaptive_quantization_mode: nvenc_overrides.adaptive_quantization_mode as u32,
-        nvenc_low_delay_key_frame_scale: nvenc_overrides.low_delay_key_frame_scale,
-        nvenc_refresh_rate: nvenc_overrides.refresh_rate,
-        enable_intra_refresh: nvenc_overrides.enable_intra_refresh,
-        intra_refresh_period: nvenc_overrides.intra_refresh_period,
-        intra_refresh_count: nvenc_overrides.intra_refresh_count,
-        max_num_ref_frames: nvenc_overrides.max_num_ref_frames,
-        gop_length: nvenc_overrides.gop_length,
-        p_frame_strategy: nvenc_overrides.p_frame_strategy,
-        nvenc_rate_control_mode: nvenc_overrides.rate_control_mode,
-        rc_buffer_size: nvenc_overrides.rc_buffer_size,
-        rc_initial_delay: nvenc_overrides.rc_initial_delay,
-        rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
-        rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
-        nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
-        capture_frame_dir: settings.capture.capture_frame_dir,
-    };
+    let mut new_openvr_config = contruct_openvr_config();
+    new_openvr_config.eye_resolution_width = stream_view_resolution.x;
+    new_openvr_config.eye_resolution_height = stream_view_resolution.y;
+    new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
+    new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
+    new_openvr_config.refresh_rate = fps as _;
 
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {
         SERVER_DATA_MANAGER.write().session_mut().openvr_config = new_openvr_config;
@@ -451,7 +465,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             async move {
                 // this is a bridge between sync and async, skips the needs for a notifier
                 let shutdown_detector = async {
-                    while IS_ALIVE.value() {
+                    while SHOULD_CONNECT_TO_CLIENTS.value() {
                         time::sleep(Duration::from_secs(1)).await;
                     }
                 };

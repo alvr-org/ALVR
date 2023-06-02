@@ -99,8 +99,6 @@ somewhere in your home directory (steam doesn't like long paths)
 
 4. Any issues related to this installer/various tweaks/bugs should be reported as issue [here](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/issues)
 
-In case you want to use nightly release, switch to 
-
 ### Other
 
 * Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu, or download `alvr_streamer_portable.tar.gz` which has ffmpeg bundled.

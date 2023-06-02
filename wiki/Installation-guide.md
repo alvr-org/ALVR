@@ -78,21 +78,21 @@ Unless you are using a nightly version, make sure all audio streaming options ar
 
 ### Semi-automatic arch distrobox guidance
 
-Some notes:
+Notes:
 
 * This is generally recommended way to install ALVR if you're not on arch linux, and can practically work on any distribution. You can of course use it in case you have issues installing it on Arch Linux.
 
 * Guide also contains fixes, tweaks, additional software like desktop overlay to help you run with steamvr better and workaround it's issues.
 
-* It didn't have a big feedback history yet, so if you happen to have issues, please report them into this repository.
+* It didn't have a *huge* feedback history yet, so if you happen to have issues, please report them into the said repository.
 
 For installation:
 
-1. `git clone https://github.com/alvr-org/ALVR.git`
+1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git`
 
-2. `cd ALVR/packaging/distrobox`
+2. Carefully follow the [guide](ALVR-in-distrobox.md).
 
-3. Follow the [[guide|ALVR-in-distrobox]].
+3. Any issues related to this installer/various tweaks/bugs should be reported as issue [here](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/issues)
 
 ### Other
 

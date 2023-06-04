@@ -5,6 +5,8 @@
 #include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
 
+testing = true
+
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, int width, int height)
 	: m_pD3DRender(pD3DRender)
@@ -264,11 +266,11 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize * 1.1;
 	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate_bps);
 	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrate_bps);
-	if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
-		encodeConfig.rcParams.enableAQ = 1;
-	} else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {
-		encodeConfig.rcParams.enableTemporalAQ = 1;
-	}
+	// if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
+	// 	encodeConfig.rcParams.enableAQ = 1;
+	// } else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {
+	// 	encodeConfig.rcParams.enableTemporalAQ = 1;
+	// }
 
 	if (Settings::Instance().m_nvencRateControlMode != -1) {
 		encodeConfig.rcParams.rateControlMode = (NV_ENC_PARAMS_RC_MODE)Settings::Instance().m_nvencRateControlMode;
@@ -285,4 +287,6 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	if (Settings::Instance().m_nvencRcAverageBitrate != -1) {
 		encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
 	}
+
+	encodeConfig.rcParams.qpMapMode = NV_ENC_QP_MAP_EMPHASIS;
 }

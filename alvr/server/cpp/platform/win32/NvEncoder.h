@@ -318,7 +318,7 @@ protected:
     */
     NVENCSTATUS DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR outputBuffer, NV_ENC_PIC_PARAMS *pPicParams);
 
-    NV_ENC_EMPHASIS_MAP_LEVEL GetQpMapLevel(int x, int y, int height, int width);
+    NV_ENC_EMPHASIS_MAP_LEVEL GetQpMapLevel(int x, int y, int width, int height);
 
     /**
     *  @brief This function is used to submit the encode commands to the 

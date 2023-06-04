@@ -563,7 +563,7 @@ NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR 
         for(int y=0; y < GetEncodeHeight(); y+=16){
             for(int x=0; x < GetEncodeWidth(); x+=16){
                 int blockIndex = (y / 16) * (GetEncodeWidth() / 16) + (x / 16);
-                qpDeltaMap[blockIndex] = NV_ENC_EMPHASIS_MAP_LEVEL_1;
+                qpDeltaMap[blockIndex] = GetQpMapLevel(x,y,GetEncodeWidth(),GetEncodeHeight());
 
             }
         }
@@ -574,7 +574,7 @@ NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR 
     return nvStatus; 
 }
 
-NV_ENC_EMPHASIS_MAP_LEVEL NvEncoder::GetQpMapLevel(int x, int y, int height, int width){
+NV_ENC_EMPHASIS_MAP_LEVEL NvEncoder::GetQpMapLevel(int x, int y, int width, int height){
     if(x<width*0.75 && x>width*0.25){
         if(y<height*0.75 && y>height*0.25){
             return NV_ENC_EMPHASIS_MAP_LEVEL_5;

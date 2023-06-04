@@ -555,20 +555,20 @@ NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR 
     picParams.inputHeight = GetEncodeHeight();
     picParams.outputBitstream = outputBuffer;
     picParams.completionEvent = GetCompletionEvent(m_iToSend % m_nEncoderBuffer);
-    if(true){
-        int numBlocks = (GetEncodeWidth()+15)/16*(GetEncodeHeight()+15)/16;
-        int qpDeltaMapSize = numBlocks * sizeof(NV_ENC_EMPHASIS_MAP_LEVEL);
-        NV_ENC_EMPHASIS_MAP_LEVEL* qpDeltaMap = new NV_ENC_EMPHASIS_MAP_LEVEL[qpDeltaMapSize];
+    // if(true){
+    //     int numBlocks = (GetEncodeWidth()+15)/16*(GetEncodeHeight()+15)/16;
+    //     int qpDeltaMapSize = numBlocks * sizeof(NV_ENC_EMPHASIS_MAP_LEVEL);
+    //     NV_ENC_EMPHASIS_MAP_LEVEL* qpDeltaMap = new NV_ENC_EMPHASIS_MAP_LEVEL[qpDeltaMapSize];
 
-        for(int y=0; y < GetEncodeHeight(); y+=16){
-            for(int x=0; x < GetEncodeWidth(); x+=16){
-                int blockIndex = (y / 16) * (GetEncodeWidth() / 16) + (x / 16);
-                //qpDeltaMap[blockIndex] = GetQpMapLevel(x,y,GetEncodeWidth(),GetEncodeHeight());
-                qpDeltaMap[blockIndex] = NV_ENC_EMPHASIS_MAP_LEVEL_0;
+    //     for(int y=0; y < GetEncodeHeight(); y+=16){
+    //         for(int x=0; x < GetEncodeWidth(); x+=16){
+    //             int blockIndex = (y / 16) * (GetEncodeWidth() / 16) + (x / 16);
+    //             //qpDeltaMap[blockIndex] = GetQpMapLevel(x,y,GetEncodeWidth(),GetEncodeHeight());
+    //             qpDeltaMap[blockIndex] = NV_ENC_EMPHASIS_MAP_LEVEL_0;
 
-            }
-        }
-    }
+    //         }
+    //     }
+    // }
 
     NVENCSTATUS nvStatus = m_nvenc.nvEncEncodePicture(m_hEncoder, &picParams);
 

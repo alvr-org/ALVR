@@ -288,5 +288,5 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		encodeConfig.rcParams.averageBitRate = Settings::Instance().m_nvencRcAverageBitrate;
 	}
 
-	encodeConfig.rcParams.qpMapMode = NV_ENC_QP_MAP_EMPHASIS;
+	//encodeConfig.rcParams.qpMapMode = NV_ENC_QP_MAP_EMPHASIS;
 }

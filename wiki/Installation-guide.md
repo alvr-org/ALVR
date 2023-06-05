@@ -59,14 +59,14 @@ Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-thro
 
 ## Linux
 
-### Arch Linux
+### Arch Linux (AUR)
 
 * Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
 * Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
 * Install SteamVR, **launch it once** then close it.
 * Run `alvr_dashboard` or ALVR from your DE's application launcher.
 
-### Semi-automatic Arch Linux distrobox guidance
+### Semi-Automatic Arch Linux distrobox guidance
 
 Notes:
 
@@ -76,7 +76,7 @@ Notes:
 
 * It didn't have a *huge* feedback history yet, so if you happen to have issues, please report them into the said repository.
 
-For installation:
+Installation:
 
 1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git` or download zip from https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide, unpack it
 somewhere in your home directory (steam doesn't like long paths)
@@ -103,7 +103,7 @@ You can get appimage for latest stable version from [here](https://github.com/al
 
 ### Automatic Audio & Microphone Setup
 
-* Must be on v20
+* Must be on v20+
 
 * Enable Game Audio and Microphone in ALVR dashboard.
 

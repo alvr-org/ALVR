@@ -1,6 +1,6 @@
 use crate::openvrpaths;
 use alvr_packets::FirewallRulesAction;
-use std::{env, fs, path::Path, process::Command};
+use std::{env, fs, path::Path};
 
 fn netsh_add_rule_command_string(rule_name: &str, program_path: &Path) -> String {
     format!(
@@ -26,9 +26,10 @@ pub fn firewall_rules(action: FirewallRulesAction) -> Result<(), i32> {
             "remove"
         };
         // run as normal user since we use pkexec to sudo
-        Command::new("bash")
+        runas::Command::new("bash")
             .arg("/usr/libexec/alvr/alvr_fw_config.sh")
             .arg(action)
+            .gui(true)
             .status()
             .map_err(|_| -1)?
     } else {

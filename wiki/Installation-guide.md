@@ -91,6 +91,11 @@ somewhere in your home directory (steam doesn't like long paths)
 
 ### Other
 
+#### AppImage
+You can get appimage for latest stable version from [here](https://github.com/alvr-org/ALVR/releases/latest).
+
+#### Portable tar.gz
+
 * Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu.
 * Install SteamVR, **launch it once** then close it.
 * Download `alvr_streamer_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).

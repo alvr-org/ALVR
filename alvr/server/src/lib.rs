@@ -468,13 +468,20 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn wait_for_vsync() {
-        let wait_duration = STATISTICS_MANAGER
-            .lock()
-            .as_mut()
-            .map(|stats| stats.duration_until_next_vsync());
+        if SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .video
+            .optimize_game_render_latency
+        {
+            let wait_duration = STATISTICS_MANAGER
+                .lock()
+                .as_mut()
+                .map(|stats| stats.duration_until_next_vsync());
 
-        if let Some(duration) = wait_duration {
-            thread::sleep(duration);
+            if let Some(duration) = wait_duration {
+                thread::sleep(duration);
+            }
         }
     }
 

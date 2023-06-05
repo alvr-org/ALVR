@@ -421,6 +421,10 @@ pub struct VideoDesc {
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    #[schema(strings(help = "This works only on Windows"))]
+    #[schema(flag = "real-time")]
+    pub optimize_game_render_latency: bool,
+
     #[schema(flag = "real-time")]
     pub bitrate: BitrateConfig,
 
@@ -910,8 +914,9 @@ pub fn session_settings_default() -> SettingsDefault {
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,
             preferred_fps: 72.,
-            max_buffering_frames: 1.5,
+            max_buffering_frames: 2.0,
             buffering_history_weight: 0.90,
+            optimize_game_render_latency: true,
             bitrate: BitrateConfigDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,

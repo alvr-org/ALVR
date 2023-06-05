@@ -85,9 +85,11 @@ impl BitrateManager {
         network_latency: Duration,
         decoder_latency: Duration,
     ) {
-        if network_latency == Duration::ZERO {
+        if network_latency.is_zero() {
             return;
         }
+
+        self.network_latency_average.submit_sample(network_latency);
 
         while let Some(&(timestamp_, size_bits)) = self.packet_sizes_bits_history.front() {
             if timestamp_ == timestamp {

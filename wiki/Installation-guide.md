@@ -37,17 +37,13 @@ There is also a portable version for the PC that requires more manual steps to m
 
 If you want to get new features early or you want to help with testing you can install a nightly version.
 
-Download the latest nightly streamer [here](https://github.com/alvr-org/ALVR-nightly/releases/latest). Download the latest nightly client from Sidequest ([Quest version](https://sidequestvr.com/app/2281), [Go version](https://sidequestvr.com/app/2580)).
+Download the latest nightly streamer [here](https://github.com/alvr-org/ALVR-nightly/releases/latest). Download the latest nightly client from Sidequest ([download](https://sidequestvr.com/app/2281)).
 
-Since nightly releases can be unstable, for maximum compatibility always use matching versions for PC and headset. They are updated once a day.
+Since nightly releases can be unstable, always use matching versions for PC and headset. They are updated once a day.
 
-### Microphone streaming
+### Windows microphone streaming
 
 To use the microphone you need to install the [VB-CABLE driver](https://vb-audio.com/Cable/). Set "CABLE Output" as the default microphone. Then you can enable the microphone in the ALVR setting, leave "Virtual microphone input" to Default.
-
-### Connect headset and PC on separate networks
-
-Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above).
 
 ### Use ALVR together with third-party drivers
 
@@ -57,30 +53,24 @@ By default ALVR disables other SteamVR drivers before starting. Among these driv
 
 You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR. Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
 
-### Use a browser different than Chrome
-
-ALVR requires a Chromium based browser to correctly display the dashboard. Chrome and Edge work out of the box, but Edge has a few bugs that make ALVR behave weirdly. If you want to use other Chromium based browsers like Brave or Vivaldi you have to add an environment variable `ALCRO_BROWSER_PATH` pointing to the path of the browser executable (for example `C:\Program Files\Vivaldi\Application\vivaldi.exe`). Unfortunately Firefox is not supported.
-
 ### Connect headset and PC via a USB Cable
 
 Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection).
 
 ## Linux
 
-Unless you are using a nightly version, make sure all audio streaming options are disabled.
-
 ### Arch Linux
 
 * Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
 * Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
 * Install SteamVR, **launch it once** then close it.
-* Run `alvr_launcher` or ALVR from your DE's application launcher.
+* Run `alvr_dashboard` or ALVR from your DE's application launcher.
 
-### Semi-automatic arch distrobox guidance
+### Semi-automatic Arch Linux distrobox guidance
 
 Notes:
 
-* This is generally recommended way to install ALVR if you're not on arch linux, and can practically work on any distribution. You can of course use it in case you have issues installing it on Arch Linux.
+* This is generally recommended way to install ALVR on non-arch distributions and can practically work on any distribution. You can of course use it in case you have issues installing or using ALVR even on Arch Linux.
 
 * Guide also contains fixes, tweaks, additional software like desktop overlay to help you run with steamvr better and workaround it's issues.
 
@@ -101,69 +91,24 @@ somewhere in your home directory (steam doesn't like long paths)
 
 ### Other
 
-* Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu, or download `alvr_streamer_portable.tar.gz` which has ffmpeg bundled.
+* Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu.
 * Install SteamVR, **launch it once** then close it.
-* Download `alvr_streamer_linux(_portable).tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
-* Run `bin/alvr_launcher`
+* Download `alvr_streamer_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
+* Run `bin/alvr_dashboard`
 
-If you do not install the correct version of FFmpeg systemwide, a common problem is the streamer crashing or failing to show images on the headset because SteamVR loads the wrong version of FFmpeg.
+### Automatic Audio & Microphone Setup
 
-### Audio Setup
+* Must be on v20
 
-* If you are on PipeWire, install `pipewire-alsa` and `pipewire-pulse`
-* `pavucontrol` and `pactl` (PulseAudio tools used as an example)
+* Enable Game Audio and Microphone in ALVR dashboard.
 
-### Game Audio
-
-* Must be on v19+
-
-* Enable Game Audio in ALVR dashboard.
-
-* Select `pipewire` or `pulse` as the device.
+* Select `pipewire` as the device 
 
 * Connect with headset and wait until streaming starts.
 
-* In `pavucontrol` set the device ALVR is recording from to "Monitor of \<your audio output\>". You might have to set "Show:" to "All Streams" for it to show up.
-
-* Any audio should now be played on the headset. To automatically mute your PC speakers when the headset is streaming, you can use the following script:
+* Download [audio-setup.sh](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/audio-setup.sh) 
+  script and place it in some safe place.
   
-  ```
-  #!/bin/sh
-  case $ACTION in
-          connect)
-                  pactl set-sink-mute @DEFAULT_SINK@ 1;;
-          disconnect)
-                  pactl set-sink-mute @DEFAULT_SINK@ 0;;
-  esac
-  ```
-  
-  Save this text to a file, make it executable (`chmod +x ...`) then put the
-  file name in "on connect script" and "on disconnect script" settings
-  (Connection tab with advanced options shown).
-
-### Microphone
-
-* Run: `pactl load-module module-null-sink sink_name=VirtMain` or, for a
-  permanent setup, add the following to the `context.modules` array in your
-  `~/.config/pipewire/pipewire.conf`:
-  
-  ```
-  {   name = libpipewire-module-loopback
-      args = {
-          node.name = "VirtMain" node.description = "VirtMain" media.name = "VirtMain"
-          audio.position = [ FL FR ]
-          capture.props = {
-              media.class = Audio/Sink
-              node.name = VirtMain.capture
-          }
-      }
-  }
-  ```
-
-* Enable microphone streaming in ALVR dashboard.
-
-* Connect with headset and wait until streaming starts.
-
-* In `pavucontrol` set ALVR Playback to "VirtMain"
-
-* Set "Monitor of VirtMain" as your microphone.
+* Make it executable (`chmod +x audio-setup.sh` or via your file manager through file properties) then put the
+  absolute path to the script in "On connect script" and "On disconnect script" settings, apply paths with enter
+  (Setting -> Scroll all the way to the bottom).

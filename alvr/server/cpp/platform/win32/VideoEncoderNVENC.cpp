@@ -5,7 +5,7 @@
 #include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
 
-testing = true
+bool testing = true;
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
 	, int width, int height)

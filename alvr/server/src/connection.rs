@@ -920,7 +920,7 @@ async fn connection_pipeline(
                     let network_latency = stats.report_statistics(client_stats);
 
                     BITRATE_MANAGER.lock().report_frame_latencies(
-                        &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
+                        &SERVER_DATA_MANAGER.read().settings().video.bitrate,
                         timestamp,
                         network_latency,
                         decoder_latency,

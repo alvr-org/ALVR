@@ -11,10 +11,11 @@ use std::{
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
-    nominal_framerate: f32,
+    nominal_frame_interval: Duration,
     max_history_size: usize,
     frame_interval_average: SlidingWindowAverage<Duration>,
     packet_sizes_bits_history: VecDeque<(Duration, usize)>,
+    last_raw_network_latency: Duration,
     network_latency_average: SlidingWindowAverage<Duration>,
     bitrate_average: SlidingWindowAverage<f32>,
     decoder_latency_overstep_count: usize,
@@ -27,13 +28,14 @@ pub struct BitrateManager {
 impl BitrateManager {
     pub fn new(max_history_size: usize, initial_framerate: f32) -> Self {
         Self {
-            nominal_framerate: initial_framerate,
+            nominal_frame_interval: Duration::from_secs_f32(1.0 / initial_framerate),
             max_history_size,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
                 max_history_size,
             ),
             packet_sizes_bits_history: VecDeque::new(),
+            last_raw_network_latency: Duration::ZERO,
             network_latency_average: SlidingWindowAverage::new(
                 Duration::from_millis(5),
                 max_history_size,
@@ -44,6 +46,17 @@ impl BitrateManager {
             last_update_instant: Instant::now(),
             dynamic_max_bitrate: f32::MAX,
             update_needed: true,
+        }
+    }
+
+    fn calculate_frame_interval(&self, adapt_to_framerate: bool) -> Duration {
+        if adapt_to_framerate {
+            Duration::min(
+                self.frame_interval_average.get_average(),
+                Duration::from_secs(1),
+            )
+        } else {
+            self.nominal_frame_interval
         }
     }
 
@@ -80,19 +93,32 @@ impl BitrateManager {
     // latency
     pub fn report_frame_latencies(
         &mut self,
-        config: &BitrateMode,
+        config: &BitrateConfig,
         timestamp: Duration,
         network_latency: Duration,
         decoder_latency: Duration,
     ) {
-        if network_latency == Duration::ZERO {
+        // The recorded network latency may not represent the exact latency caused by the current
+        // packet, as latency might be added up frame by frame. Do a best effort estimate of what is
+        // the actual network latency for the current frame.
+        let actual_network_latency = network_latency
+            .saturating_sub(self.last_raw_network_latency.saturating_sub(
+                self.calculate_frame_interval(config.adapt_to_framerate.enabled()),
+            ));
+        self.last_raw_network_latency = network_latency;
+        self.network_latency_average
+            .submit_sample(actual_network_latency);
+
+        alvr_common::prelude::error!("{actual_network_latency:?}");
+
+        if actual_network_latency.is_zero() {
             return;
         }
 
         while let Some(&(timestamp_, size_bits)) = self.packet_sizes_bits_history.front() {
             if timestamp_ == timestamp {
                 self.bitrate_average
-                    .submit_sample(size_bits as f32 / network_latency.as_secs_f32());
+                    .submit_sample(size_bits as f32 / actual_network_latency.as_secs_f32());
 
                 self.packet_sizes_bits_history.pop_front();
 
@@ -105,7 +131,7 @@ impl BitrateManager {
         if let BitrateMode::Adaptive {
             decoder_latency_fixer: Switch::Enabled(config),
             ..
-        } = &config
+        } = &config.mode
         {
             if decoder_latency > Duration::from_millis(config.max_decoder_latency_ms) {
                 self.decoder_latency_overstep_count += 1;
@@ -168,15 +194,10 @@ impl BitrateManager {
             }
         };
 
-        let framerate = if config.adapt_to_framerate.enabled() {
-            1.0 / self
-                .frame_interval_average
-                .get_average()
-                .as_secs_f32()
-                .min(1.0)
-        } else {
-            self.nominal_framerate
-        };
+        let framerate = 1.0
+            / self
+                .calculate_frame_interval(config.adapt_to_framerate.enabled())
+                .as_secs_f32();
 
         FfiDynamicEncoderParams {
             updated: 1,

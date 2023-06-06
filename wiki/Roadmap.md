@@ -10,7 +10,7 @@ Create a universal bridge between XR devices.
 
 * Compositor rewrite
     * **Purpose**: add Linux support for FFR and color correction, preparation for sliced encoding
-    * **Status**: FFR and color correction done
+    * **Status**: FFE and color correction done on all platforms
 * Encoder rewrite
     * **Purpose**: support any OS and hardware with a single API, using [Vulkan video extensions](https://www.khronos.org/blog/an-introduction-to-vulkan-video)
     * **Status**: blocked by adoption by AMD and Intel, landing of the feature on stable Nvidia drivers

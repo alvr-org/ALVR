@@ -117,3 +117,5 @@ You can get appimage for latest stable version from [here](https://github.com/al
 * Make it executable (`chmod +x audio-setup.sh` or via your file manager through file properties) then put the
   absolute path to the script in "On connect script" and "On disconnect script" settings, apply paths with enter
   (Setting -> Scroll all the way to the bottom).
+
+* Put headset to sleep and turn it back on, it should automatically create microphone and audio in your system and switch to them.

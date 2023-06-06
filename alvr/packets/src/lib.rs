@@ -2,7 +2,7 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
 };
-use alvr_session::{CodecType, SessionDesc};
+use alvr_session::{CodecType, SessionConfig};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
@@ -222,7 +222,7 @@ pub enum FirewallRulesAction {
 pub enum ServerRequest {
     Log(LogEntry),
     GetSession,
-    UpdateSession(Box<SessionDesc>),
+    UpdateSession(Box<SessionConfig>),
     SetValues(Vec<PathValuePair>),
     UpdateClientList {
         hostname: String,

@@ -319,7 +319,7 @@ pub struct ClientsideFoveation {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct FoveatedRenderingDesc {
+pub struct FoveatedRenderingConfig {
     #[schema(strings(display_name = "Center region width"))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -353,7 +353,7 @@ pub struct FoveatedRenderingDesc {
 
 #[repr(C)]
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
-pub struct ColorCorrectionDesc {
+pub struct ColorCorrectionConfig {
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
     pub brightness: f32,
@@ -386,7 +386,7 @@ pub enum CodecType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct VideoDesc {
+pub struct VideoConfig {
     #[schema(strings(help = "You probably don't want to change this"))]
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
@@ -440,14 +440,14 @@ pub struct VideoDesc {
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
-    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub foveated_rendering: Switch<FoveatedRenderingConfig>,
 
     pub clientside_foveation: Switch<ClientsideFoveation>,
 
     pub dynamic_oculus_foveation: bool,
 
     #[schema(flag = "steamvr-restart")]
-    pub color_correction: Switch<ColorCorrectionDesc>,
+    pub color_correction: Switch<ColorCorrectionConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -604,7 +604,7 @@ pub struct HapticsConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ControllersDesc {
+pub struct ControllersConfig {
     #[schema(strings(
         help = "Turning this off will make the controllers appear powered off. Reconnect HMD to apply."
     ))]
@@ -683,7 +683,7 @@ pub enum RotationRecenteringMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct HeadsetDesc {
+pub struct HeadsetConfig {
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
 
@@ -699,7 +699,7 @@ pub struct HeadsetDesc {
     pub face_tracking: Switch<FaceTrackingConfig>,
 
     #[schema(flag = "steamvr-restart")]
-    pub controllers: Switch<ControllersDesc>,
+    pub controllers: Switch<ControllersConfig>,
 
     #[schema(strings(
         help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
@@ -741,7 +741,7 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ConnectionDesc {
+pub struct ConnectionConfig {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
 TCP: Slower than UDP, but more stable. Pick this if you experience video or audio stutters with UDP."#
@@ -857,10 +857,10 @@ pub struct Patches {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub video: VideoDesc,
+    pub video: VideoConfig,
     pub audio: AudioConfig,
-    pub headset: HeadsetDesc,
-    pub connection: ConnectionDesc,
+    pub headset: HeadsetConfig,
+    pub connection: ConnectionConfig,
     pub logging: LoggingConfig,
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
@@ -909,7 +909,7 @@ pub fn session_settings_default() -> SettingsDefault {
     };
 
     SettingsDefault {
-        video: VideoDescDefault {
+        video: VideoConfigDefault {
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,
@@ -1034,7 +1034,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             foveated_rendering: SwitchDefault {
                 enabled: true,
-                content: FoveatedRenderingDescDefault {
+                content: FoveatedRenderingConfigDefault {
                     center_size_x: 0.45,
                     center_size_y: 0.4,
                     center_shift_x: 0.4,
@@ -1065,7 +1065,7 @@ pub fn session_settings_default() -> SettingsDefault {
             dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
-                content: ColorCorrectionDescDefault {
+                content: ColorCorrectionConfigDefault {
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.5,
@@ -1109,7 +1109,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
         },
-        headset: HeadsetDescDefault {
+        headset: HeadsetConfigDefault {
             emulation_mode: HeadsetEmulationModeDefault {
                 Custom: HeadsetEmulationModeCustomDefault {
                     serial_number: "Unknown".into(),
@@ -1140,7 +1140,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             controllers: SwitchDefault {
                 enabled: true,
-                content: ControllersDescDefault {
+                content: ControllersConfigDefault {
                     emulation_mode: ControllersEmulationModeDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
@@ -1179,7 +1179,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: RotationRecenteringModeDefaultVariant::Yaw,
             },
         },
-        connection: ConnectionDescDefault {
+        connection: ConnectionConfigDefault {
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
             },

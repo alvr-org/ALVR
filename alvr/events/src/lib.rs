@@ -1,6 +1,6 @@
 use alvr_common::{prelude::*, DeviceMotion, Pose};
 use alvr_packets::{AudioDevicesList, ButtonValue};
-use alvr_session::SessionDesc;
+use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
 
@@ -67,7 +67,7 @@ pub struct HapticsEvent {
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
     Log(LogEntry),
-    Session(Box<SessionDesc>),
+    Session(Box<SessionConfig>),
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
     Tracking(Box<TrackingEvent>),

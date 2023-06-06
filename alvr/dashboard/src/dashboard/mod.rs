@@ -8,7 +8,7 @@ use crate::{dashboard::components::StatisticsTab, theme, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
 use alvr_packets::{PathValuePair, ServerRequest};
-use alvr_session::SessionDesc;
+use alvr_session::SessionConfig;
 use eframe::egui::{
     self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
     Stroke,
@@ -73,7 +73,7 @@ pub struct Dashboard {
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
-    session: Option<SessionDesc>,
+    session: Option<SessionConfig>,
 }
 
 impl Dashboard {

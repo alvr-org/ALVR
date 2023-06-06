@@ -3,7 +3,7 @@ use crate::{
     theme::{self, log_colors},
 };
 use alvr_packets::ClientListAction;
-use alvr_session::{ClientConnectionDesc, SessionDesc};
+use alvr_session::{ClientConnectionConfig, SessionConfig};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
@@ -18,8 +18,8 @@ struct EditPopupState {
 }
 
 pub struct ConnectionsTab {
-    new_clients: Option<Vec<(String, ClientConnectionDesc)>>,
-    trusted_clients: Option<Vec<(String, ClientConnectionDesc)>>,
+    new_clients: Option<Vec<(String, ClientConnectionConfig)>>,
+    trusted_clients: Option<Vec<(String, ClientConnectionConfig)>>,
     edit_popup_state: Option<EditPopupState>,
 }
 
@@ -32,7 +32,7 @@ impl ConnectionsTab {
         }
     }
 
-    pub fn update_client_list(&mut self, session: &SessionDesc) {
+    pub fn update_client_list(&mut self, session: &SessionConfig) {
         let (trusted_clients, untrusted_clients) =
             session
                 .client_connections

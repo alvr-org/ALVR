@@ -16,7 +16,7 @@ use alvr_packets::{
     StreamConfigPacket, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS,
     TRACKING, VIDEO,
 };
-use alvr_session::{settings_schema::Switch, SessionDesc};
+use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
     spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSocketBuilder,
 };
@@ -193,7 +193,7 @@ async fn stream_pipeline(
     decoder_guard: Arc<Mutex<()>>,
 ) -> StrResult {
     let settings = {
-        let mut session_desc = SessionDesc::default();
+        let mut session_desc = SessionConfig::default();
         session_desc.merge_from_json(&json::from_str(&stream_config.session).map_err(err!())?)?;
         session_desc.to_settings()
     };

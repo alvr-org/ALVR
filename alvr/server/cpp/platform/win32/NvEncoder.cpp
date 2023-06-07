@@ -558,30 +558,37 @@ NVENCSTATUS NvEncoder::DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR 
     if(true){
         int numBlocks = (GetEncodeWidth()+15)/16*(GetEncodeHeight()+15)/16;
         int qpDeltaMapSize = numBlocks * sizeof(NV_ENC_EMPHASIS_MAP_LEVEL);
-        NV_ENC_EMPHASIS_MAP_LEVEL* qpDeltaMap = new NV_ENC_EMPHASIS_MAP_LEVEL[qpDeltaMapSize];
+        int8_t* qpDeltaMap = new int8_t[qpDeltaMapSize];
 
         for(int y=0; y < GetEncodeHeight(); y+=16){
             for(int x=0; x < GetEncodeWidth(); x+=16){
                 int blockIndex = (y / 16) * (GetEncodeWidth() / 16) + (x / 16);
-                qpDeltaMap[blockIndex] = GetQpMapLevel(x,y,GetEncodeWidth(),GetEncodeHeight());
+                //qpDeltaMap[blockIndex] = GetQpMapLevel(x,y,GetEncodeWidth(),GetEncodeHeight());
+                qpDeltaMap[blockIndex] = 0;
                 //qpDeltaMap[blockIndex] = NV_ENC_EMPHASIS_MAP_LEVEL_0;
 
             }
         }
+        picParams.qpDeltaMap = qpDeltaMap;
+        picParams.qpDeltaMapSize = qpDeltaMapSize;
     }
+    
 
     NVENCSTATUS nvStatus = m_nvenc.nvEncEncodePicture(m_hEncoder, &picParams);
 
     return nvStatus; 
 }
 
-NV_ENC_EMPHASIS_MAP_LEVEL NvEncoder::GetQpMapLevel(int x, int y, int width, int height){
-    if(x<width*0.6 && x>width*0.4){
-        if(y<height*0.6 && y>height*0.4){
-            return NV_ENC_EMPHASIS_MAP_LEVEL_5;
-        }
+int8_t NvEncoder::GetQpMapLevel(int x, int y, int width, int height){
+    // if(x<width*0.7 && x>width*0.3){
+    //     if(y<height*0.7 && y>height*0.3){
+    //         return -30;
+    //     }
+    // }
+    if(x<width*0.5){
+        return -30;
     }
-    return NV_ENC_EMPHASIS_MAP_LEVEL_0;
+    return 20;
 }
 
 void NvEncoder::SendEOS()

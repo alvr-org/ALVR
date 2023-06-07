@@ -292,5 +292,5 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	encodeConfig.rcParams.enableAQ = 0;
 	encodeConfig.rcParams.enableTemporalAQ = 0;
 	encodeConfig.rcParams.rateControlMode = NV_ENC_PARAMS_RC_CONSTQP;
-	encodeConfig.rcParams.constQP = {50,50,50};
+	encodeConfig.rcParams.constQP = {40,40,40};
 }

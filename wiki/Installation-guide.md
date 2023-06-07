@@ -66,7 +66,7 @@ Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-thro
 * Install SteamVR, **launch it once** then close it.
 * Run `alvr_dashboard` or ALVR from your DE's application launcher.
 
-### Semi-Automatic Arch Linux distrobox guidance
+### Semi-Automatic Distrobox installation and guidance
 
 Notes:
 

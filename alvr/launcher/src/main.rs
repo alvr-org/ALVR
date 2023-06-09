@@ -529,7 +529,8 @@ fn worker(rx: Receiver<GuiMsg>, tx: Sender<WorkerMsg>) {
                             #[cfg(target_os = "windows")]
                             InstallationType::Archive => {
                                 let buffer = Cursor::new(buffer);
-                                zip::ZipArchive::new(&buffer)
+                                zip::ZipArchive::new(&mut buffer)
+                                    .expect("Failed to open zip archive")
                                     .extract(&installation_dir)
                                     .expect("Failed to extract streamer");
                             }

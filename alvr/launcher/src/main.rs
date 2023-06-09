@@ -528,7 +528,7 @@ fn worker(rx: Receiver<GuiMsg>, tx: Sender<WorkerMsg>) {
                             InstallationType::Archive => todo!(),
                             #[cfg(target_os = "windows")]
                             InstallationType::Archive => {
-                                let buffer = Cursor::new(buffer);
+                                let mut buffer = Cursor::new(buffer);
                                 zip::ZipArchive::new(&mut buffer)
                                     .expect("Failed to open zip archive")
                                     .extract(&installation_dir)

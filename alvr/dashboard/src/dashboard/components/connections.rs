@@ -183,6 +183,10 @@ impl ConnectionsTab {
                         }
                     });
                     ui.columns(2, |ui| {
+                        if ui[1].button("Cancel").clicked() {
+                            return;
+                        }
+
                         if ui[0].button("Ok").clicked() {
                             let manual_ips =
                                 state.ips.iter().filter_map(|s| s.parse().ok()).collect();
@@ -201,7 +205,7 @@ impl ConnectionsTab {
                                     action: ClientListAction::SetManualIps(manual_ips),
                                 });
                             }
-                        } else if !ui[1].button("Cancel").clicked() {
+                        } else {
                             self.edit_popup_state = Some(state);
                         }
                     })

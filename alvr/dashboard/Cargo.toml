@@ -12,6 +12,7 @@ alvr_events.workspace = true
 alvr_filesystem.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
+alvr_gui_common.workspace = true
 
 bincode = "1"
 chrono = "0.4"

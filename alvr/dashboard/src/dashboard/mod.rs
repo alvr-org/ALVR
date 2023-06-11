@@ -4,9 +4,10 @@ mod components;
 use self::components::{
     ConnectionsTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
-use crate::{dashboard::components::StatisticsTab, theme, DataSources};
+use crate::{dashboard::components::StatisticsTab, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
 use alvr_events::EventType;
+use alvr_gui_common::theme;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
 use eframe::egui::{
@@ -78,7 +79,7 @@ pub struct Dashboard {
 
 impl Dashboard {
     pub fn new(creation_context: &eframe::CreationContext<'_>, data_sources: DataSources) -> Self {
-        theme::set_theme(&creation_context.egui_ctx);
+        alvr_gui_common::theme::set_theme(&creation_context.egui_ctx);
 
         // Audio devices need to be queried early to mitigate buggy/slow hardware queries on Linux.
         data_sources.request(ServerRequest::GetSession);

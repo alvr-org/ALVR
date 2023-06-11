@@ -1,4 +1,4 @@
-use crate::theme::log_colors;
+use alvr_gui_common::theme::log_colors;
 use eframe::{
     egui::{Frame, RichText, Ui},
     epaint::Color32,

@@ -25,7 +25,7 @@ use bindings::*;
 use alvr_common::{
     glam::Quat,
     log,
-    once_cell::sync::{Lazy, OnceCell},
+    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     prelude::*,
 };
@@ -46,7 +46,7 @@ use std::{
     io::Write,
     ptr,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Once,
     },
     thread,
@@ -504,27 +504,5 @@ pub unsafe extern "C" fn HmdDriverFactory(
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
     WaitForVSync = Some(wait_for_vsync);
 
-    // cast to usize to allow the variables to cross thread boundaries
-    let interface_name_usize = interface_name as usize;
-    let return_code_usize = return_code as usize;
-
-    static PTR_USIZE: OnceCell<AtomicUsize> = OnceCell::new();
-    static NUM_TRIALS: OnceCell<AtomicUsize> = OnceCell::new();
-
-    PTR_USIZE.set(AtomicUsize::new(0)).ok();
-    NUM_TRIALS.set(AtomicUsize::new(0)).ok();
-
-    thread::spawn(move || {
-        NUM_TRIALS.get().unwrap().fetch_add(1, Ordering::Relaxed);
-        if NUM_TRIALS.get().unwrap().load(Ordering::Relaxed) <= 1 {
-            PTR_USIZE.get().unwrap().store(
-                CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
-                Ordering::Relaxed,
-            );
-        }
-    })
-    .join()
-    .ok();
-
-    PTR_USIZE.get().unwrap().load(Ordering::Relaxed) as _
+    CppEntryPoint(interface_name, return_code)
 }

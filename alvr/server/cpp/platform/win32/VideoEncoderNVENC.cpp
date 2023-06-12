@@ -1,5 +1,6 @@
 #include "VideoEncoderNVENC.h"
 #include "NvCodecUtils.h"
+#include <opencv2/opencv.hpp>
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
@@ -123,6 +124,8 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		ParseFrameNals(m_codec, packet.data(), (int)packet.size(), targetTimestampNs, insertIDR);
 	}
 }
+
+
 
 void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrate_bps)
 {

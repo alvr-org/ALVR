@@ -1,6 +1,7 @@
 #include "VideoEncoderNVENC.h"
 #include "NvCodecUtils.h"
-#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <fstream> 
 
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
@@ -86,6 +87,7 @@ void VideoEncoderNVENC::Shutdown()
 		fpOut.close();
 	}
 }
+
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {

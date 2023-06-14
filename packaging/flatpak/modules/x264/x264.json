@@ -1,0 +1,13 @@
+{
+    "name": "x264",
+    "config-opts": [
+        "--prefix=/app/utils/alvr",
+        "--enable-shared"
+    ],
+    "sources": [
+        {
+            "type": "git",
+            "url": "https://code.videolan.org/videolan/x264.git"
+        }
+    ]
+}

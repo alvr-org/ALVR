@@ -16,7 +16,7 @@
         "append-path": "/usr/lib/sdk/llvm15/bin:/usr/lib/sdk/rust-stable/bin",
         "append-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
         "prepend-path": "/app/utils/alvr/bin",
-        "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib:/app/utils/alvr/lib",
         "strip": true,
         "env": {
             "PREFIX": "/app/utils/alvr"
@@ -37,10 +37,10 @@
             "buildsystem": "simple",
             "build-options": {
                 "env": {
-                    "CARGO_HOME": "/run/build/alvr/cargo",
-                    "CARGO_NET_OFFLINE": "false",
                     "RUST_BACKTRACE": "full",
-                    "CURL_HOME": "/run/build/alvr"
+                    "CURL_HOME": "/run/build/alvr",
+                    "CPLUS_INCLUDE_PATH": "/app/utils/alvr/include:/run/build/alvr/deps/linux/ffmpeg/alvr_build/include",
+                    "prepend-ld-library-path": "/run/build/alvr/deps/linux/ffmpeg/alvr_build/lib"
                 }
             },
             "build-commands": [
@@ -49,13 +49,13 @@
             ],
             "modules": [
                 "modules/nv-codec-headers/nv-codec-headers.json",
-                "modules/yasm/yasm.json"
+                "modules/yasm/yasm.json",
+                "modules/x264/x264.json"
             ],
             "sources": [
                 {
-                    "type": "git",
-                    "url": "https://github.com/alvr-org/ALVR.git",
-                    "tag": "v20.0.0"
+                    "type": "dir",
+                    "path": "../../"
                 },
                 {
                     "type": "file",

@@ -15,14 +15,14 @@ flatpak install flathub org.flatpak.Builder org.freedesktop.Sdk//22.08
 2. Clone and enter this repository
 
 ```
-git clone https://github.com/CharlieQLe/alvr-flatpak.git
-cd alvr-flatpak
+git clone https://github.com/alvr-org/ALVR.git
+cd ALVR
 ```
 
 3. Build and install the flatpak
 
 ```
-flatpak run org.flatpak.Builder --user --install --force-clean build-dir com.valvesoftware.Steam.Utility.alvr.json
+flatpak run org.flatpak.Builder --user --install --force-clean build-dir packaging/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Usage

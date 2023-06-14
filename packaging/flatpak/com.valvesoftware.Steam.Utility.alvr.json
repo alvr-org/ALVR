@@ -3,7 +3,7 @@
     "branch": "stable",
     "sdk": "org.freedesktop.Sdk//22.08",
     "sdk-extensions": [
-        "org.freedesktop.Sdk.Extension.llvm15",
+        "org.freedesktop.Sdk.Extension.llvm16",
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
     "runtime": "com.valvesoftware.Steam",

@@ -586,10 +586,8 @@ async fn connection_pipeline(
         },
     ));
 
-    *BITRATE_MANAGER.lock() = BitrateManager::new(
-        settings.connection.statistics_history_size as _,
-        refresh_rate,
-    );
+    *BITRATE_MANAGER.lock() =
+        BitrateManager::new(settings.video.bitrate.history_size, refresh_rate);
 
     {
         let on_connect_script = settings.connection.on_connect_script;

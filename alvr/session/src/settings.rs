@@ -306,6 +306,9 @@ pub struct BitrateConfig {
     ))]
     #[schema(flag = "real-time")]
     pub adapt_to_framerate: Switch<BitrateAdaptiveFramerateConfig>,
+
+    #[schema(strings(help = "Controls the smoothness during calculations"))]
+    pub history_size: usize,
 }
 
 #[repr(u8)]
@@ -438,7 +441,6 @@ pub struct VideoConfig {
     #[schema(flag = "real-time")]
     pub optimize_game_render_latency: bool,
 
-    #[schema(flag = "real-time")]
     pub bitrate: BitrateConfig,
 
     #[schema(strings(
@@ -970,6 +972,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         framerate_reset_threshold_multiplier: 2.0,
                     },
                 },
+                history_size: 256,
             },
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,

@@ -227,7 +227,7 @@ pub struct DecoderLatencyLimiter {
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1, max = 100)), suffix = " frames")]
-    pub latency_overstep_frames: u64,
+    pub latency_overstep_frames: usize,
 
     #[schema(strings(
         help = "Controls how much the bitrate is reduced when the decoder latency goes above the threshold"
@@ -814,7 +814,7 @@ For now works only on Windows+Nvidia"#
     pub packet_size: i32,
 
     #[schema(suffix = " frames")]
-    pub statistics_history_size: u64,
+    pub statistics_history_size: usize,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]

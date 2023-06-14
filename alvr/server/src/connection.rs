@@ -577,7 +577,7 @@ async fn connection_pipeline(
     let stream_socket = Arc::new(stream_socket);
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
-        settings.connection.statistics_history_size as _,
+        settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / refresh_rate),
         if let Switch::Enabled(config) = &settings.headset.controllers {
             config.steamvr_pipeline_frames

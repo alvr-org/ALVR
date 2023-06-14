@@ -247,7 +247,7 @@ async fn stream_pipeline(
     }
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
-        settings.connection.statistics_history_size as _,
+        settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / refresh_rate_hint),
         if let Switch::Enabled(config) = settings.headset.controllers {
             config.steamvr_pipeline_frames

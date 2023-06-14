@@ -387,11 +387,15 @@ pub unsafe extern "C" fn HmdDriverFactory(
             }
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                stats.report_video_packet(len as _);
+                let encoder_latency =
+                    stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), len as _);
+
+                BITRATE_MANAGER.lock().report_frame_encoded(
+                    timestamp,
+                    encoder_latency,
+                    len as usize,
+                );
             }
-            BITRATE_MANAGER
-                .lock()
-                .report_encoded_frame_size(timestamp, len as usize)
         }
     }
 
@@ -455,12 +459,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn report_encoded(timestamp_ns: u64) {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_frame_encoded(Duration::from_nanos(timestamp_ns));
-        }
-    }
-
     extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
         BITRATE_MANAGER
             .lock()
@@ -498,7 +496,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     PathStringToHash = Some(path_string_to_hash);
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
-    ReportEncoded = Some(report_encoded);
     GetSerialNumber = Some(openvr_props::get_serial_number);
     SetOpenvrProps = Some(openvr_props::set_device_openvr_props);
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);

@@ -11,10 +11,13 @@ use std::{
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
-    nominal_framerate: f32,
+    nominal_frame_interval: Duration,
     max_history_size: usize,
     frame_interval_average: SlidingWindowAverage<Duration>,
+    // note: why packet_sizes_bits_history is a queue and not a sliding average? Because some
+    // network samples will be dropped but not any packet size sample
     packet_sizes_bits_history: VecDeque<(Duration, usize)>,
+    encoder_latency_average: SlidingWindowAverage<Duration>,
     network_latency_average: SlidingWindowAverage<Duration>,
     bitrate_average: SlidingWindowAverage<f32>,
     decoder_latency_overstep_count: usize,
@@ -27,13 +30,17 @@ pub struct BitrateManager {
 impl BitrateManager {
     pub fn new(max_history_size: usize, initial_framerate: f32) -> Self {
         Self {
-            nominal_framerate: initial_framerate,
+            nominal_frame_interval: Duration::from_secs_f32(1. / initial_framerate),
             max_history_size,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
                 max_history_size,
             ),
             packet_sizes_bits_history: VecDeque::new(),
+            encoder_latency_average: SlidingWindowAverage::new(
+                Duration::from_millis(5),
+                max_history_size,
+            ),
             network_latency_average: SlidingWindowAverage::new(
                 Duration::from_millis(5),
                 max_history_size,
@@ -71,7 +78,14 @@ impl BitrateManager {
         }
     }
 
-    pub fn report_encoded_frame_size(&mut self, timestamp: Duration, size_bytes: usize) {
+    pub fn report_frame_encoded(
+        &mut self,
+        timestamp: Duration,
+        encoder_latency: Duration,
+        size_bytes: usize,
+    ) {
+        self.encoder_latency_average.submit_sample(encoder_latency);
+
         self.packet_sizes_bits_history
             .push_back((timestamp, size_bytes * 8));
     }
@@ -105,7 +119,7 @@ impl BitrateManager {
         }
 
         if let BitrateMode::Adaptive {
-            decoder_latency_fixer: Switch::Enabled(config),
+            decoder_latency_limiter: Switch::Enabled(config),
             ..
         } = &config
         {
@@ -146,6 +160,7 @@ impl BitrateManager {
                 max_bitrate_mbps,
                 min_bitrate_mbps,
                 max_network_latency_ms,
+                encoder_latency_limiter,
                 ..
             } => {
                 let mut bitrate_bps = self.bitrate_average.get_average() * saturation_multiplier;
@@ -159,6 +174,17 @@ impl BitrateManager {
                     bitrate_bps = f32::min(bitrate_bps, bitrate_bps * multiplier);
                 }
 
+                if let Switch::Enabled(config) = encoder_latency_limiter {
+                    let saturation = self.encoder_latency_average.get_average().as_secs_f32()
+                        / self.nominal_frame_interval.as_secs_f32();
+                    if saturation > config.max_saturation_multiplier {
+                        // Note: this assumes linear relationship between bitrate and encoder
+                        // latency but this may not be the case
+                        let multiplier = config.max_saturation_multiplier / saturation;
+                        bitrate_bps = f32::min(bitrate_bps, bitrate_bps * multiplier);
+                    }
+                }
+
                 if let Switch::Enabled(max) = max_bitrate_mbps {
                     bitrate_bps = f32::min(bitrate_bps, *max as f32 * 1e6);
                 }
@@ -170,20 +196,16 @@ impl BitrateManager {
             }
         };
 
-        let framerate = if config.adapt_to_framerate.enabled() {
-            1.0 / self
-                .frame_interval_average
-                .get_average()
-                .as_secs_f32()
-                .min(1.0)
+        let frame_interval = if config.adapt_to_framerate.enabled() {
+            self.frame_interval_average.get_average()
         } else {
-            self.nominal_framerate
+            self.nominal_frame_interval
         };
 
         FfiDynamicEncoderParams {
             updated: 1,
             bitrate_bps: bitrate_bps as u64,
-            framerate,
+            framerate: 1.0 / frame_interval.as_secs_f32().min(1.0),
         }
     }
 }

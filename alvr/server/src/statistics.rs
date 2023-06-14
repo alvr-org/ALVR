@@ -126,21 +126,30 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_frame_encoded(&mut self, target_timestamp: Duration) {
+    // returns encoding interval
+    pub fn report_frame_encoded(
+        &mut self,
+        target_timestamp: Duration,
+        bytes_count: usize,
+    ) -> Duration {
+        self.video_packets_total += 1;
+        self.video_packets_partial_sum += 1;
+        self.video_bytes_total += bytes_count;
+        self.video_bytes_partial_sum += bytes_count;
+
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
             frame.frame_encoded = Instant::now();
-        }
-    }
 
-    pub fn report_video_packet(&mut self, bytes_count: usize) {
-        self.video_packets_total += 1;
-        self.video_packets_partial_sum += 1;
-        self.video_bytes_total += bytes_count;
-        self.video_bytes_partial_sum += bytes_count;
+            frame
+                .frame_encoded
+                .saturating_duration_since(frame.frame_composed)
+        } else {
+            Duration::ZERO
+        }
     }
 
     pub fn report_packet_loss(&mut self) {

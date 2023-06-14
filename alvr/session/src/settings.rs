@@ -212,7 +212,7 @@ pub enum MediacodecDataType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct DecoderLatencyFixer {
+pub struct DecoderLatencyLimiter {
     #[schema(strings(
         display_name = "Maximum decoder latency",
         help = "When the decoder latency goes above this threshold, the bitrate will be reduced"
@@ -235,6 +235,16 @@ pub struct DecoderLatencyFixer {
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 0.5, max = 1.0)))]
     pub latency_overstep_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct EncoderLatencyLimiter {
+    #[schema(strings(
+        help = "Allowed percentage of frame interval to allocate for video encoding"
+    ))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.3, max = 1.0, step = 0.01)))]
+    pub max_saturation_multiplier: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -265,11 +275,14 @@ pub enum BitrateMode {
         #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
         max_network_latency_ms: Switch<u64>,
 
+        #[schema(flag = "real-time")]
+        encoder_latency_limiter: Switch<EncoderLatencyLimiter>,
+
         #[schema(strings(
             help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
         ))]
         #[schema(flag = "real-time")]
-        decoder_latency_fixer: Switch<DecoderLatencyFixer>,
+        decoder_latency_limiter: Switch<DecoderLatencyLimiter>,
     },
 }
 
@@ -934,9 +947,15 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: false,
                             content: 8,
                         },
-                        decoder_latency_fixer: SwitchDefault {
+                        encoder_latency_limiter: SwitchDefault {
                             enabled: true,
-                            content: DecoderLatencyFixerDefault {
+                            content: EncoderLatencyLimiterDefault {
+                                max_saturation_multiplier: 0.9,
+                            },
+                        },
+                        decoder_latency_limiter: SwitchDefault {
+                            enabled: true,
+                            content: DecoderLatencyLimiterDefault {
                                 max_decoder_latency_ms: 30,
                                 latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,

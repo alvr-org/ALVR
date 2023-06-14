@@ -13,10 +13,10 @@
     "separate-locales": false,
     "build-options": {
         "prefix": "/app/utils/alvr",
-        "append-path": "/usr/lib/sdk/llvm15/bin:/usr/lib/sdk/rust-stable/bin",
+        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin",
         "append-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
         "prepend-path": "/app/utils/alvr/bin",
-        "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib:/app/utils/alvr/lib",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm16/lib:/app/utils/alvr/lib",
         "strip": true,
         "env": {
             "PREFIX": "/app/utils/alvr"

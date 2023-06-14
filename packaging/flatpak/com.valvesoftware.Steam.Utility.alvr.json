@@ -1,0 +1,67 @@
+{
+    "id": "com.valvesoftware.Steam.Utility.alvr",
+    "branch": "stable",
+    "sdk": "org.freedesktop.Sdk//22.08",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.llvm15",
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "runtime": "com.valvesoftware.Steam",
+    "runtime-version": "stable",
+    "build-extension": true,
+    "appstream-compose": false,
+    "separate-locales": false,
+    "build-options": {
+        "prefix": "/app/utils/alvr",
+        "append-path": "/usr/lib/sdk/llvm15/bin:/usr/lib/sdk/rust-stable/bin",
+        "append-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
+        "prepend-path": "/app/utils/alvr/bin",
+        "prepend-ld-library-path": "/usr/lib/sdk/llvm15/lib",
+        "strip": true,
+        "env": {
+            "PREFIX": "/app/utils/alvr"
+        },
+        "build-args": [
+            "--share=network"
+        ]
+    },
+    "cleanup": [
+        "/lib/*.a",
+        "/lib/*.la",
+        "/share/doc",
+        "/share/man"
+    ],
+    "modules": [
+        {
+            "name": "alvr",
+            "buildsystem": "simple",
+            "build-options": {
+                "env": {
+                    "CARGO_HOME": "/run/build/alvr/cargo",
+                    "CARGO_NET_OFFLINE": "false",
+                    "RUST_BACKTRACE": "full",
+                    "CURL_HOME": "/run/build/alvr"
+                }
+            },
+            "build-commands": [
+                "cargo xtask prepare-deps --platform linux --no-nvidia",
+                "cargo xtask build-streamer --release"
+            ],
+            "modules": [
+                "modules/nv-codec-headers/nv-codec-headers.json",
+                "modules/yasm/yasm.json"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/alvr-org/ALVR.git",
+                    "tag": "v20.0.0"
+                },
+                {
+                    "type": "file",
+                    "path": ".curlrc"
+                }
+            ]
+        }
+    ]
+}

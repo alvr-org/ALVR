@@ -1,0 +1,14 @@
+{
+    "name": "nv-codec-headers",
+    "buildsystem": "simple",
+    "build-commands": [
+        "make install PREFIX=$PREFIX"
+    ],
+    "sources": [
+        {
+            "type": "git",
+            "url": "https://github.com/FFmpeg/nv-codec-headers.git",
+            "tag": "n12.0.16.0"
+        }
+    ]
+}

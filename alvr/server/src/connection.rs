@@ -275,6 +275,7 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
         rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
         nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
         capture_frame_dir: settings.capture.capture_frame_dir,
+        amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         ..old_config
     }
 }

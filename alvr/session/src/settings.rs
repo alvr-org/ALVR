@@ -211,7 +211,17 @@ pub enum MediacodecDataType {
     String(String),
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct EncoderLatencyLimiter {
+    #[schema(strings(
+        help = "Allowed percentage of frame interval to allocate for video encoding"
+    ))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.3, max = 1.0, step = 0.01)))]
+    pub max_saturation_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct DecoderLatencyLimiter {
     #[schema(strings(
         display_name = "Maximum decoder latency",
@@ -237,17 +247,7 @@ pub struct DecoderLatencyLimiter {
     pub latency_overstep_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct EncoderLatencyLimiter {
-    #[schema(strings(
-        help = "Allowed percentage of frame interval to allocate for video encoding"
-    ))]
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.3, max = 1.0, step = 0.01)))]
-    pub max_saturation_multiplier: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum BitrateMode {
     #[schema(strings(display_name = "Constant"))]
@@ -286,7 +286,7 @@ pub enum BitrateMode {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateAdaptiveFramerateConfig {
     #[schema(strings(
         help = "If the framerate changes more than this factor, trigger a parameters update"
@@ -296,7 +296,7 @@ pub struct BitrateAdaptiveFramerateConfig {
     pub framerate_reset_threshold_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateConfig {
     #[schema(flag = "real-time")]
     pub mode: BitrateMode,
@@ -309,6 +309,13 @@ pub struct BitrateConfig {
 
     #[schema(strings(help = "Controls the smoothness during calculations"))]
     pub history_size: usize,
+
+    #[schema(strings(
+        help = "When this is enabled, an IDR frame is requested after the bitrate is changed.
+This has an effect only on AMD GPUs."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub image_corruption_fix: bool,
 }
 
 #[repr(u8)]
@@ -973,6 +980,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                 },
                 history_size: 256,
+                image_corruption_fix: false,
             },
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,

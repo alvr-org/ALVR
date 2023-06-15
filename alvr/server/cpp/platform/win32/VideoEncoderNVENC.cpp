@@ -131,7 +131,7 @@ void SaveTextureAsBytes(ID3D11DeviceContext* context, ID3D11Texture2D* texture, 
 void SaveTextureAsPNG(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filename_s)
 {
 	ID3D11Device* device;
-	pInputTexture->GetDevice(&device);
+	texture->GetDevice(&device);
 
 	// Get texture description
 	D3D11_TEXTURE2D_DESC desc;
@@ -178,6 +178,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
 		reconfigureParams.reInitEncodeParams = initializeParams;
 		m_NvNecoder->Reconfigure(&reconfigureParams);
+		count++;
 	}
 
 	std::vector<std::vector<uint8_t>> vPacket;
@@ -194,8 +195,8 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\";
 	count++;
-	if(count%1000){
-		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
+	if(count%6){
+		SaveTextureAsPNG(m_pD3DRender->GetContext(),pInputTexture, filename);
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 

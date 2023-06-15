@@ -115,7 +115,7 @@ void SaveTextureAsBytes(ID3D11DeviceContext* context, ID3D11Texture2D* texture, 
     context->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
 
     // Write texture to byte file
-	std::string name = std::to_string(count);
+	std::string name = std::to_string(count) ;
 	std::string name2 = ".bytes";
 	const char* filename = (filename_s+name+name2).c_str();
     std::ofstream file(filename, std::ios::out | std::ios::binary);
@@ -196,7 +196,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\";
 	count++;
 	if(count%6){
-		SaveTextureAsPNG(m_pD3DRender->GetContext(),pInputTexture, filename);
+		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 

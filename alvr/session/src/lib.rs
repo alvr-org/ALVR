@@ -93,6 +93,7 @@ pub struct OpenvrConfig {
     pub rc_average_bitrate: i64,
     pub nvenc_enable_weighted_prediction: bool,
     pub capture_frame_dir: String,
+    pub amd_bitrate_corruption_fix: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

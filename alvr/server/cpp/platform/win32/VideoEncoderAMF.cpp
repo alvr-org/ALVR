@@ -401,6 +401,10 @@ void VideoEncoderAMF::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationT
 			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
 			m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
 		}
+
+		if (Settings::Instance().m_amdBitrateCorruptionFix) {
+			RequestIDR();
+		}
 	}
 
 	AMF_THROW_IF(m_amfContext->AllocSurface(amf::AMF_MEMORY_DX11, m_surfaceFormat, m_renderWidth, m_renderHeight, &surface));

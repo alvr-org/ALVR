@@ -24,6 +24,7 @@ pub struct BitrateManager {
     last_frame_instant: Instant,
     last_update_instant: Instant,
     dynamic_max_bitrate: f32,
+    previous_config: Option<BitrateConfig>,
     update_needed: bool,
 }
 
@@ -50,6 +51,7 @@ impl BitrateManager {
             last_frame_instant: Instant::now(),
             last_update_instant: Instant::now(),
             dynamic_max_bitrate: f32::MAX,
+            previous_config: None,
             update_needed: true,
         }
     }
@@ -143,15 +145,28 @@ impl BitrateManager {
 
     pub fn get_encoder_params(&mut self, config: &BitrateConfig) -> FfiDynamicEncoderParams {
         let now = Instant::now();
-        if self.update_needed || now > self.last_update_instant + UPDATE_INTERVAL {
-            self.last_update_instant = now;
-        } else {
+
+        if self
+            .previous_config
+            .as_ref()
+            .map(|prev| config != prev)
+            .unwrap_or(true)
+        {
+            self.previous_config = Some(config.clone());
+            // Continue method. Always update bitrate in this case
+        } else if !self.update_needed
+            && (now < self.last_update_instant + UPDATE_INTERVAL
+                || matches!(config.mode, BitrateMode::ConstantMbps(_)))
+        {
             return FfiDynamicEncoderParams {
                 updated: 0,
                 bitrate_bps: 0,
                 framerate: 0.0,
             };
         }
+
+        self.last_update_instant = now;
+        self.update_needed = false;
 
         let bitrate_bps = match &config.mode {
             BitrateMode::ConstantMbps(bitrate_mbps) => *bitrate_mbps as f32 * 1e6,

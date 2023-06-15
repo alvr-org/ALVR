@@ -91,37 +91,42 @@ void VideoEncoderNVENC::Shutdown()
 		fpOut.close();
 	}
 }
-// void SaveTextureAsBytes(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filename_s)
-// {
-//     // Get texture description
-//     D3D11_TEXTURE2D_DESC desc;
-//     texture->GetDesc(&desc);
+void SaveTextureAsBytes(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filename_s)
+{
+	ID3D11Device* device;
+	texture->GetDevice(&device);
+    // Get texture description
+    D3D11_TEXTURE2D_DESC desc;
+    texture->GetDesc(&desc);
 
-//     // Create staging texture
-//     D3D11_TEXTURE2D_DESC stagingDesc = desc;
-//     stagingDesc.Usage = D3D11_USAGE_STAGING;
-//     stagingDesc.BindFlags = 0;
-//     stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-//     ID3D11Texture2D* stagingTexture;
-//     device->CreateTexture2D(&stagingDesc, nullptr, &stagingTexture);
+    // Create staging texture
+    D3D11_TEXTURE2D_DESC stagingDesc = desc;
+    stagingDesc.Usage = D3D11_USAGE_STAGING;
+    stagingDesc.BindFlags = 0;
+    stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ID3D11Texture2D* stagingTexture;
+    device->CreateTexture2D(&stagingDesc, nullptr, &stagingTexture);
 
-//     // Copy texture to staging texture
-//     context->CopyResource(stagingTexture, texture);
+    // Copy texture to staging texture
+    context->CopyResource(stagingTexture, texture);
 
-//     // Map staging texture to CPU memory
-//     D3D11_MAPPED_SUBRESOURCE mappedResource;
-//     context->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
+    // Map staging texture to CPU memory
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    context->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
 
-//     // Write texture to byte file
-//     std::ofstream file(filename, std::ios::out | std::ios::binary);
-//     file.write((char*)mappedResource.pData, mappedResource.DepthPitch);
+    // Write texture to byte file
+	std::string name = std::to_string(count);
+	std::string name2 = ".bytes";
+	const char* filename = (filename_s+name+name2).c_str();
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+    file.write((char*)mappedResource.pData, mappedResource.DepthPitch);
 
-//     // Unmap staging texture
-//     context->Unmap(stagingTexture, 0);
+    // Unmap staging texture
+    context->Unmap(stagingTexture, 0);
 
-//     // Release resources
-//     stagingTexture->Release();
-// }
+    // Release resources
+    stagingTexture->Release();
+}
 
 void SaveTextureAsPNG(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filename_s)
 {
@@ -190,7 +195,7 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\";
 	count++;
 	if(count%1000){
-		SaveTextureAsPNG(m_pD3DRender->GetContext(),pInputTexture, filename);
+		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 

@@ -42,12 +42,28 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 	for (int i = 0; i < 3; i++) {
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
 		//LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet CreateTexture2D %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			break;
+		}
 
 		IDXGIResource* pResource;
 		hr = processResource->textures[i]->QueryInterface(__uuidof(IDXGIResource), (void**)&pResource);
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet QueryInterface %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			break;
+		}
 		//LogDriver("QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
 
 		hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet GetSharedHandle %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			pResource->Release();
+			break;
+		}
 		//LogDriver("GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
 
 		m_handleMap.insert(std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i)));

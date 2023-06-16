@@ -33,6 +33,18 @@ fn main() {
         env::var("ALVR_VRCOMPOSITOR_WRAPPER_DIR").unwrap_or_else(|_| "".to_owned())
     );
     println!(
+        "cargo:rustc-env=firewall_script_dir={}",
+        env::var("FIREWALL_SCRIPT_DIR").unwrap_or_else(|_| "".to_owned())
+    );
+    println!(
+        "cargo:rustc-env=firewalld_config_dir={}",
+        env::var("FIREWALLD_CONFIG_DIR").unwrap_or_else(|_| "".to_owned())
+    );
+    println!(
+        "cargo:rustc-env=ufw_config_dir={}",
+        env::var("UFW_CONFIG_DIR").unwrap_or_else(|_| "".to_owned())
+    );
+    println!(
         "cargo:rustc-env=vulkan_layer_manifest_dir={}",
         env::var("ALVR_VULKAN_LAYER_MANIFEST_DIR").unwrap_or_else(|_| "".to_owned())
     );

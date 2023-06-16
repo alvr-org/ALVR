@@ -346,6 +346,7 @@ version = "21.0.0-dev00"
 dependencies = [
  "alvr_common",
  "alvr_events",
+ "alvr_filesystem",
  "alvr_packets",
  "alvr_session",
  "cpal",

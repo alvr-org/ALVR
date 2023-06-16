@@ -9,7 +9,9 @@ Currently, no precompiled builds are available. However, building from source do
 1. Install the Flatpak dependencies 
 
 ```
-flatpak install flathub org.flatpak.Builder org.freedesktop.Sdk//22.08
+flatpak install flathub org.flatpak.Builder org.freedesktop.Sdk//22.08 \
+    org.freedesktop.Sdk.Extension.llvm16//22.08 \
+    org.freedesktop.Sdk.Extension.rust-stable//22.08
 ```
 
 2. Clone and enter this repository

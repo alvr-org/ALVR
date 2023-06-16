@@ -249,8 +249,6 @@ impl eframe::App for Dashboard {
                     ui.with_layout(
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
                         |ui| {
-                            use eframe::epaint::Color32;
-
                             ui.add_space(5.0);
 
                             if connected_to_server {
@@ -263,12 +261,12 @@ impl eframe::App for Dashboard {
 
                             ui.horizontal(|ui| {
                                 ui.add_space(5.0);
-                                ui.label("Streamer:");
+                                ui.label("SteamVR:");
                                 ui.add_space(-10.0);
                                 if connected_to_server {
-                                    ui.label(RichText::new("Connected").color(Color32::GREEN));
+                                    ui.label(RichText::new("Connected").color(theme::OK_GREEN));
                                 } else {
-                                    ui.label(RichText::new("Disconnected").color(Color32::RED));
+                                    ui.label(RichText::new("Disconnected").color(theme::KO_RED));
                                 }
                             })
                         },

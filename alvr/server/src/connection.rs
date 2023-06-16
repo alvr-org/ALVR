@@ -24,7 +24,7 @@ use alvr_packets::{
     ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     ServerControlPacket, StreamConfigPacket, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};
+use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
     StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -506,11 +506,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 }
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard(Arc<RelaxedAtomic>);
+struct StreamCloseGuard {
+    is_streaming: Arc<RelaxedAtomic>,
+    streaming_hostname: String,
+}
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        self.0.set(false);
+        self.is_streaming.set(false);
+
+        SERVER_DATA_MANAGER.write().update_client_list(
+            self.streaming_hostname.clone(),
+            ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+        );
 
         *VIDEO_RECORDING_FILE.lock() = None;
 
@@ -611,7 +619,15 @@ async fn connection_pipeline(
     unsafe { crate::InitializeStreaming() };
 
     let is_streaming = Arc::new(RelaxedAtomic::new(true));
-    let _stream_guard = StreamCloseGuard(Arc::clone(&is_streaming));
+    let _stream_guard = StreamCloseGuard {
+        is_streaming: Arc::clone(&is_streaming),
+        streaming_hostname: client_hostname.clone(),
+    };
+
+    SERVER_DATA_MANAGER.write().update_client_list(
+        client_hostname.clone(),
+        ClientListAction::SetConnectionState(ConnectionState::Streaming),
+    );
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO).await?;

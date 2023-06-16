@@ -10,6 +10,7 @@ pub const SELECTED: Color32 = Color32::from_rgb(120, 174, 237);
 pub const FG: Color32 = Color32::from_rgb(250, 250, 250);
 
 pub const OK_GREEN: Color32 = Color32::GREEN;
+pub const KO_RED: Color32 = Color32::RED;
 
 pub mod log_colors {
     use super::ACCENT;

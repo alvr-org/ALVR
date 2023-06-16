@@ -96,12 +96,20 @@ pub struct OpenvrConfig {
     pub amd_bitrate_corruption_fix: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum ConnectionState {
+    Disconnected,
+    Connected,
+    Streaming,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ClientConnectionConfig {
     pub display_name: String,
     pub current_ip: Option<IpAddr>,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
+    pub connection_state: ConnectionState,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

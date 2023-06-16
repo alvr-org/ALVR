@@ -340,6 +340,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn video_send(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
+        let buffer_size = len as usize;
+
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
         if let Some(sender) = &*VIDEO_SENDER.lock() {
@@ -349,11 +351,11 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
             let timestamp = Duration::from_nanos(timestamp_ns);
 
-            let mut payload = vec![0; len as _];
+            let mut payload = vec![0; buffer_size];
 
             // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
             unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), len as _);
+                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), buffer_size);
             }
 
             if !STREAM_CORRUPTED.load(Ordering::SeqCst)
@@ -388,12 +390,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 let encoder_latency =
-                    stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), len as _);
+                    stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), buffer_size);
 
                 BITRATE_MANAGER.lock().report_frame_encoded(
                     timestamp,
                     encoder_latency,
-                    len as usize,
+                    buffer_size,
                 );
             }
         }
@@ -460,9 +462,17 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-        BITRATE_MANAGER
+        let (params, stats) = BITRATE_MANAGER
             .lock()
-            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate)
+            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate);
+
+        if let Some(stats) = stats {
+            if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {
+                stats_manager.report_nominal_bitrate_stats(stats);
+            }
+        }
+
+        params
     }
 
     extern "C" fn wait_for_vsync() {
@@ -472,6 +482,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             .video
             .optimize_game_render_latency
         {
+            // Note: unlock STATISTICS_MANAGER as soon as possible
             let wait_duration = STATISTICS_MANAGER
                 .lock()
                 .as_mut()

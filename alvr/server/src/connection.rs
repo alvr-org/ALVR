@@ -1031,7 +1031,11 @@ async fn connection_pipeline(
                     crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
 
                     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_battery(packet.device_id, packet.gauge_value);
+                        stats.report_battery(
+                            packet.device_id,
+                            packet.gauge_value,
+                            packet.is_plugged,
+                        );
                     }
                 },
                 Ok(ClientControlPacket::Buttons(entries)) => {

@@ -306,8 +306,9 @@ bool FrameRender::Startup()
 
 	enableFFR = Settings::Instance().m_enableFoveatedRendering;
 	if (enableFFR) {
-		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());
+		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());  
 		m_ffr->Initialize(m_pStagingTexture.Get());
+		m_pCheckingTexture = m_pStagingTexture.Get();
 
 		m_pStagingTexture = m_ffr->GetOutputTexture();
 	}
@@ -465,12 +466,19 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 	if (enableColorCorrection) {
 		m_colorCorrectionPipeline->Render();
 	}
-	ComPtr<ID3D11Texture2D> m_pcheckingTexture = m_pStagingTexture;
+	// ID3D11Texture2D* m_pcheckingTexture;
+	// m_pD3DRender->GetContext()->CopyResource(m_pcheckingTexture, m_pStagingTexture.Get());
 
 	if (enableFFR) {
 		m_ffr->Render();
 	}
 
+	// m_pD3DRender->GetContext()->Unmap(m_pcheckingTexture, 0);
+	// m_pcheckingTexture->Release();
+	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\test.txt";
+	if(m_pStagingTexture.Get()!=m_pCheckingTexture.Get()){
+		HANDLE fileHandle = CreateFileA(filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	}
 	m_pD3DRender->GetContext()->Flush();
 
 	return true;

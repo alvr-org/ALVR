@@ -54,6 +54,7 @@ public:
 private:
 	std::shared_ptr<CD3DRender> m_pD3DRender;
 	ComPtr<ID3D11Texture2D> m_pStagingTexture;
+	ComPtr<ID3D11Texture2D> m_pCheckingTexture;
 
 	ComPtr<ID3D11VertexShader> m_pVertexShader;
 	ComPtr<ID3D11PixelShader> m_pPixelShader;

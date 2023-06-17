@@ -61,8 +61,6 @@ deps
 node_modules
 
 # ignore part of the analysis generated data
-analysis/*.bytes
-analysis/*.png
-analysis/*.exe
+analysis/data/
 
 # The .gitignore for android is project folder.

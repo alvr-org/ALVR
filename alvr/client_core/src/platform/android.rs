@@ -16,7 +16,8 @@ use ndk::{
     media::{
         image_reader::{Image, ImageFormat, ImageReader},
         media_codec::{
-            MediaCodec, MediaCodecDirection, MediaCodecInfo, MediaCodecResult, MediaFormat,
+            DequeuedInputBufferResult, DequeuedOutputBufferInfoResult, MediaCodec,
+            MediaCodecDirection, MediaFormat,
         },
     },
 };
@@ -25,6 +26,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
+    ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -260,8 +262,14 @@ impl VideoDecoderEnqueuer {
         };
 
         match decoder.dequeue_input_buffer(Duration::ZERO) {
-            MediaCodecResult::Ok(mut buffer) => {
-                buffer.buffer_mut()[..data.len()].copy_from_slice(data);
+            Ok(DequeuedInputBufferResult::Buffer(mut buffer)) => {
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        data.as_ptr(),
+                        buffer.buffer_mut().as_mut_ptr().cast(),
+                        data.len(),
+                    )
+                };
 
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
@@ -272,12 +280,8 @@ impl VideoDecoderEnqueuer {
 
                 Ok(true)
             }
-            MediaCodecResult::Info(i) => {
-                assert_eq!(i, MediaCodecInfo::TryAgainLater);
-
-                Ok(false)
-            }
-            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+            Ok(DequeuedInputBufferResult::TryAgainLater) => Ok(false),
+            Err(e) => fmt_e!("{e}"),
         }
     }
 }
@@ -472,7 +476,7 @@ pub fn video_decoder_split(
 
             while running.value() {
                 match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
-                    MediaCodecResult::Ok(buffer) => {
+                    Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
                         // The buffer timestamp is actually nanoseconds
                         let presentation_time_ns = buffer.presentation_time_us();
 
@@ -482,9 +486,9 @@ pub fn video_decoder_split(
                             error!("Decoder dequeue error: {e}");
                         }
                     }
-                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => thread::yield_now(),
-                    MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
-                    MediaCodecResult::Err(e) => {
+                    Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+                    Ok(i) => info!("Decoder dequeue event: {i:?}"),
+                    Err(e) => {
                         error!("Decoder dequeue error: {e}");
 
                         // lessen logcat flood (just in case)

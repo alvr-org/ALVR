@@ -190,9 +190,9 @@ dependencies = [
  "glyph_brush_layout",
  "jni 0.21.1",
  "local-ip-address",
- "ndk 0.7.0 (git+https://github.com/zarik5/android-ndk-rs?rev=dea742a)",
+ "ndk 0.7.0 (git+https://github.com/rust-mobile/ndk)",
  "ndk-context",
- "ndk-sys 0.4.0",
+ "ndk-sys 0.4.0+25.0.8775105 (git+https://github.com/rust-mobile/ndk)",
  "oboe",
  "rand",
  "serde",
@@ -426,8 +426,8 @@ dependencies = [
  "log",
  "ndk 0.7.0 (git+https://github.com/zarik5/android-ndk-rs?rev=dea742a)",
  "ndk-context",
- "ndk-sys 0.4.0+25.0.8775105",
- "num_enum",
+ "ndk-sys 0.4.0+25.0.8775105 (git+https://github.com/zarik5/android-ndk-rs?rev=dea742a)",
+ "num_enum 0.5.11",
 ]
 
 [[package]]
@@ -445,7 +445,7 @@ dependencies = [
  "ndk 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndk-context",
  "ndk-sys 0.4.1+23.1.7779620",
- "num_enum",
+ "num_enum 0.5.11",
 ]
 
 [[package]]
@@ -2951,7 +2951,7 @@ dependencies = [
  "bitflags 1.3.2",
  "jni-sys",
  "ndk-sys 0.4.1+23.1.7779620",
- "num_enum",
+ "num_enum 0.5.11",
  "raw-window-handle",
  "thiserror",
 ]
@@ -2963,8 +2963,21 @@ source = "git+https://github.com/zarik5/android-ndk-rs?rev=dea742a#dea742a27396e
 dependencies = [
  "bitflags 1.3.2",
  "jni-sys",
- "ndk-sys 0.4.0+25.0.8775105",
- "num_enum",
+ "ndk-sys 0.4.0+25.0.8775105 (git+https://github.com/zarik5/android-ndk-rs?rev=dea742a)",
+ "num_enum 0.5.11",
+ "raw-window-handle",
+ "thiserror",
+]
+
+[[package]]
+name = "ndk"
+version = "0.7.0"
+source = "git+https://github.com/rust-mobile/ndk#53aa779718bec8e38fbef4b60a6024ce4b5b1ff0"
+dependencies = [
+ "bitflags 2.3.2",
+ "jni-sys",
+ "ndk-sys 0.4.0+25.0.8775105 (git+https://github.com/rust-mobile/ndk)",
+ "num_enum 0.6.1",
  "raw-window-handle",
  "thiserror",
 ]
@@ -2977,8 +2990,8 @@ checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
 name = "ndk-sys"
-version = "0.4.0"
-source = "git+https://github.com/zarik5/android-ndk-rs?rev=f1d38a0#f1d38a07468c0aecdb325593f2467040e94657d7"
+version = "0.4.0+25.0.8775105"
+source = "git+https://github.com/zarik5/android-ndk-rs?rev=dea742a#dea742a27396ee2bd3b297a27675eda2758dcd01"
 dependencies = [
  "jni-sys",
 ]
@@ -2986,7 +2999,7 @@ dependencies = [
 [[package]]
 name = "ndk-sys"
 version = "0.4.0+25.0.8775105"
-source = "git+https://github.com/zarik5/android-ndk-rs?rev=dea742a#dea742a27396ee2bd3b297a27675eda2758dcd01"
+source = "git+https://github.com/rust-mobile/ndk#53aa779718bec8e38fbef4b60a6024ce4b5b1ff0"
 dependencies = [
  "jni-sys",
 ]
@@ -3133,7 +3146,16 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
- "num_enum_derive",
+ "num_enum_derive 0.5.11",
+]
+
+[[package]]
+name = "num_enum"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a015b430d3c108a207fd776d2e2196aaf8b1cf8cf93253e3a097ff3085076a1"
+dependencies = [
+ "num_enum_derive 0.6.1",
 ]
 
 [[package]]
@@ -3146,6 +3168,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "num_enum_derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96667db765a921f7b295ffee8b60472b686a51d4f21c2ee4ffdb94c7013b65a6"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.18",
 ]
 
 [[package]]

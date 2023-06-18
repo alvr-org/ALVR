@@ -197,9 +197,9 @@ pub fn get_tracker_prediction_offset() -> Duration {
     }
 }
 
-pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
+pub fn report_submit(target_timestamp: Duration, frame_interval: Duration, vsync_queue: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-        stats.report_submit(target_timestamp, vsync_queue);
+        stats.report_submit(target_timestamp, frame_interval, vsync_queue);
 
         if let Some(sender) = &*STATISTICS_SENDER.lock() {
             if let Some(stats) = stats.summary(target_timestamp) {

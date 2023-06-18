@@ -226,12 +226,15 @@ void DeinitializeStreaming() {
     }
 }
 
-void SendVSync() { vr::VRServerDriverHost()->VsyncEvent(0.0); }
-
 void RequestIDR() {
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
         g_driver_provider.hmd->m_encoder->InsertIDR();
     }
+}
+
+// Linux-only
+void NotifyVsync() {
+    // todo
 }
 
 void SetTracking(unsigned long long targetTimestampNs,

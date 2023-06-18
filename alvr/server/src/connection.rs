@@ -2,13 +2,13 @@ use crate::{
     bitrate::BitrateManager,
     buttons::BUTTON_PATH_FROM_ID,
     face_tracking::FaceTrackingSink,
-    haptics,
+    haptics, openvr_props,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, PHASE_SYNC_MANAGER,
+    RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -24,7 +24,10 @@ use alvr_packets::{
     ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     ServerControlPacket, StreamConfigPacket, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
+use alvr_session::{
+    CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig, OpenvrPropValue,
+    OpenvrPropertyKey,
+};
 use alvr_sockets::{
     spawn_cancelable, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
     StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -652,8 +655,8 @@ async fn connection_pipeline(
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
                             crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                                alvr_session::OpenvrPropValue::String(id),
+                                OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                OpenvrPropValue::String(id),
                             ),
                         )
                     }
@@ -676,8 +679,8 @@ async fn connection_pipeline(
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
                             crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                                alvr_session::OpenvrPropValue::String(id),
+                                OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                OpenvrPropValue::String(id),
                             ),
                         )
                     }
@@ -701,8 +704,8 @@ async fn connection_pipeline(
                 crate::SetOpenvrProperty(
                     *alvr_common::HEAD_ID,
                     crate::openvr_props::to_ffi_openvr_prop(
-                        alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
-                        alvr_session::OpenvrPropValue::String(id),
+                        OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
+                        OpenvrPropValue::String(id),
                     ),
                 )
             }
@@ -932,6 +935,7 @@ async fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
+                    let predicted_frame_interval = client_stats.predicted_frame_interval;
                     let network_latency = stats.report_statistics(client_stats);
 
                     BITRATE_MANAGER.lock().report_frame_latencies(
@@ -939,6 +943,17 @@ async fn connection_pipeline(
                         timestamp,
                         network_latency,
                         decoder_latency,
+                    );
+
+                    let mut phase_sync_lock = PHASE_SYNC_MANAGER.lock();
+                    phase_sync_lock.report_predicted_frame_interval(predicted_frame_interval);
+
+                    openvr_props::set_prop(
+                        *HEAD_ID,
+                        OpenvrPropertyKey::DisplayFrequency,
+                        OpenvrPropValue::Float(
+                            1.0 / phase_sync_lock.frame_interval_average().as_secs_f32(),
+                        ),
                     );
                 }
             }

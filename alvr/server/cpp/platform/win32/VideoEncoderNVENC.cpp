@@ -165,6 +165,29 @@ void SaveTextureAsPNG(ID3D11DeviceContext* context, ID3D11Texture2D* texture, st
 	stagingTexture->Release();
 }
 
+void StoreEncodedBuffer(const std::vector<std::vector<uint8_t>>& packets, std::string filename_s)
+{
+	std::string name = std::to_string(count);
+	std::string name2 = ".bin";
+	const char* filename = (filename_s+name+name2).c_str();
+    // Open output file
+    FILE* file = fopen(filename, "wb");
+    if (!file)
+    {
+        printf("Failed to open output file\n");
+        return;
+    }
+
+    // Write packets to output file
+    for (const auto& packet : packets)
+    {
+        fwrite(packet.data(), 1, packet.size(), file);
+    }
+
+    // Close output file
+    fclose(file);
+}
+
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
@@ -193,12 +216,15 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 		Debug("Inserting IDR frame.\n");
 		picParams.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	}
-	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\";
+	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\enc_";
 	count++;
-	if(count%6){
+	if(count%50==0){
 		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
+	if(count%50==0){
+		StoreEncodedBuffer(vPacket, filename);
+	}
 
 	for (std::vector<uint8_t> &packet : vPacket)
 	{

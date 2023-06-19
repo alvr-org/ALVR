@@ -8,7 +8,7 @@ use crate::{
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
     DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
+    SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -1117,6 +1117,16 @@ async fn connection_pipeline(
         res = control_send_loop => res,
 
         _ = RESTART_NOTIFIER.notified() => {
+            control_sender
+                .lock()
+                .await
+                .send(&ServerControlPacket::Restarting)
+                .await
+                .ok();
+
+            Ok(())
+        }
+        _ = SHUTDOWN_NOTIFIER.notified() => {
             control_sender
                 .lock()
                 .await

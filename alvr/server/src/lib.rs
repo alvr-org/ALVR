@@ -97,6 +97,7 @@ static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -155,6 +156,10 @@ pub extern "C" fn shutdown_driver() {
     // Invoke connection runtimes shutdown
     // todo: block until they shutdown
     SHOULD_CONNECT_TO_CLIENTS.set(false);
+    SHUTDOWN_NOTIFIER.notify_waiters();
+
+    // give time to the sockets to communucate with the client
+    thread::sleep(Duration::from_millis(200));
 
     // apply openvr config for the next launch
     SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
@@ -195,9 +200,6 @@ pub fn notify_restart_driver() {
 pub fn restart_driver() {
     SHOULD_CONNECT_TO_CLIENTS.set(false);
     RESTART_NOTIFIER.notify_waiters();
-
-    // give time to the control loop to send the restart packet (not crucial)
-    thread::sleep(Duration::from_millis(200));
 
     shutdown_driver();
 }

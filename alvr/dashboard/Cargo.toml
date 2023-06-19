@@ -40,7 +40,7 @@ eframe = { version = "0.22", default-features = false, features = [
 ] }
 ewebsock = "0.2"
 futures = "0.3"
-gloo-net = "0.2"
+gloo-net = "0.3"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 wasm-bindgen-futures = "0.4"
 wasm-logger = "0.2"

@@ -6,7 +6,7 @@ use std::{
     fs::{self, File, Permissions},
     io::{Cursor, Write},
     mem,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     sync::mpsc::{self, Receiver, Sender},
     thread,
@@ -19,24 +19,40 @@ use eframe::{
 };
 use futures_util::StreamExt;
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "windows"))]
 const DASHBOARD_PATHS: &[&str] = &["ALVR-x86_64.AppImage", "bin/alvr_dashboard"];
 #[cfg(target_os = "windows")]
 const DASHBOARD_PATHS: &[&str] = &["ALVR Dashboard.exe"];
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "windows"))]
 const ADB_EXECUTABLE: &str = "adb";
 #[cfg(target_os = "windows")]
 const ADB_EXECUTABLE: &str = "adb.exe";
 
-#[cfg(target_os = "linux")]
+#[cfg(not(target_os = "windows"))]
 const PLATFORM_TOOLS_DL_LINK: &str =
     "https://dl.google.com/android/repository/platform-tools-latest-linux.zip";
 #[cfg(target_os = "windows")]
 const PLATFORM_TOOLS_DL_LINK: &str =
     "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
 
+const VERSIONS_SUBDIR: &str = "versions";
+
 const APK_NAME: &str = "client.apk";
+
+trait Extended<P> {
+    fn extended(self, path: P) -> Self;
+}
+
+impl<P> Extended<P> for PathBuf
+where
+    P: AsRef<Path>,
+{
+    fn extended(mut self, path: P) -> Self {
+        self.push(path);
+        self
+    }
+}
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 enum InstallationType {
@@ -433,8 +449,9 @@ impl eframe::App for Launcher {
                     });
 
                     for installation in &self.installations {
-                        let mut path = data_dir();
-                        path.push(&installation.version);
+                        let path = data_dir()
+                            .extended(VERSIONS_SUBDIR)
+                            .extended(&installation.version);
 
                         Frame::group(ui.style())
                             .fill(alvr_gui_common::theme::SECTION_BG)
@@ -446,7 +463,7 @@ impl eframe::App for Launcher {
                                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
                                             if ui.button("Launch").clicked() {
                                                 for exec in DASHBOARD_PATHS {
-                                                    path.push(exec);
+                                                    let path = path.clone().extended(exec);
 
                                                     if Command::new(&path).spawn().is_ok() {
                                                         break;
@@ -607,11 +624,9 @@ async fn install_apk(
     }))
     .unwrap();
 
-    let mut installation_dir = data_dir();
-    installation_dir.push(&release.tag);
+    let installation_dir = data_dir().extended(VERSIONS_SUBDIR).extended(&release.tag);
 
-    let mut apk_path = installation_dir.clone();
-    apk_path.push(APK_NAME);
+    let apk_path = installation_dir.clone().extended(APK_NAME);
 
     if !apk_path.exists() {
         let apk_buffer = download(
@@ -643,9 +658,9 @@ async fn install_apk(
     {
         Ok(res) => res,
         Err(_) => {
-            let mut adb_path = data_dir();
-            adb_path.push("platform-tools");
-            adb_path.push(ADB_EXECUTABLE);
+            let adb_path = data_dir()
+                .extended("platform-tools")
+                .extended(ADB_EXECUTABLE);
 
             if !adb_path.exists() {
                 let mut buffer = Cursor::new(
@@ -740,8 +755,8 @@ async fn install(
 
     let buffer = download(tx, "Downloading Streamer", &url, client).await?;
 
-    let mut installation_dir = data_dir();
-    installation_dir.push(&release.tag);
+    let mut installation_dir = data_dir().extended(VERSIONS_SUBDIR).extended(&release.tag);
+
     fs::create_dir_all(&installation_dir)?;
 
     match installation_type {
@@ -753,7 +768,7 @@ async fn install(
             file.write_all(&buffer)?;
             file.set_permissions(Permissions::from_mode(0o755))?;
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(not(target_os = "windows"))]
         InstallationType::Archive => todo!(),
         #[cfg(target_os = "windows")]
         InstallationType::Archive => {
@@ -766,20 +781,19 @@ async fn install(
 
 fn data_dir() -> PathBuf {
     if cfg!(target_os = "linux") {
-        let mut path = PathBuf::from(env::var("HOME").expect("Failed to determine home directory"));
-        path.push(".local/share/ALVR-Launcher");
-        path
+        PathBuf::from(env::var("HOME").expect("Failed to determine home directory"))
+            .extended(".local/share/ALVR-Launcher")
     } else if cfg!(target_os = "windows") {
-        let mut path = env::current_dir().expect("Unable to determine executable directory");
-        path.push("ALVR-Launcher");
-        path
+        env::current_dir()
+            .expect("Unable to determine executable directory")
+            .extended("ALVR-Launcher")
     } else {
         panic!("Unsupported OS")
     }
 }
 
 fn get_installations() -> Vec<Installation> {
-    match fs::read_dir(data_dir()) {
+    match fs::read_dir(data_dir().extended(VERSIONS_SUBDIR)) {
         Ok(entries) => entries
             .into_iter()
             .filter_map(|entry| {
@@ -803,7 +817,7 @@ fn get_installations() -> Vec<Installation> {
             })
             .collect(),
         Err(why) => {
-            eprintln!("Failed to read data dir: {}", why);
+            eprintln!("Failed to read versions dir: {}", why);
             Vec::new()
         }
     }

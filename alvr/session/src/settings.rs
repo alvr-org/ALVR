@@ -289,7 +289,8 @@ pub enum BitrateMode {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateAdaptiveFramerateConfig {
     #[schema(strings(
-        help = "If the framerate changes more than this factor, trigger a parameters update"
+        display_name = "FPS reset threshold multiplier",
+        help = "If the framerate changes more than this factor, trigger a parameters update",
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.1)))]

@@ -10,11 +10,10 @@ use crate::{
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
 };
 use alvr_audio::AudioDevice;
-use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION, HEAD_ID};
+use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
 use alvr_packets::{
-    BatteryPacket, ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket,
-    StreamConfigPacket, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS,
-    TRACKING, VIDEO,
+    ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket, StreamConfigPacket,
+    VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
@@ -22,14 +21,7 @@ use alvr_sockets::{
 };
 use futures::future::BoxFuture;
 use serde_json as json;
-use std::{
-    collections::HashMap,
-    future,
-    net::IpAddr,
-    sync::Arc,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, future, net::IpAddr, sync::Arc, thread, time::Duration};
 use tokio::{
     runtime::Runtime,
     sync::{mpsc as tmpsc, Mutex},
@@ -61,7 +53,6 @@ const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
-const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 fn set_hud_message(message: &str) {
     let message = format!(
@@ -457,24 +448,26 @@ async fn stream_pipeline(
     };
 
     // Poll for events that need a constant thread (mainly for the JNI env)
+    #[cfg(target_os = "android")]
     thread::spawn(|| {
-        #[cfg(target_os = "android")]
-        let vm = platform::vm();
-        #[cfg(target_os = "android")]
-        let _env = vm.attach_current_thread();
+        use std::time::Instant;
+
+        const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
         let mut previous_hmd_battery_status = (0.0, false);
         let mut battery_poll_deadline = Instant::now();
 
+        let battery_manager = platform::android::BatteryManager::new();
+
         while IS_STREAMING.value() {
             if battery_poll_deadline < Instant::now() {
-                let new_hmd_battery_status = platform::battery_status();
+                let new_hmd_battery_status = battery_manager.status();
 
                 if new_hmd_battery_status != previous_hmd_battery_status {
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender
-                            .send(ClientControlPacket::Battery(BatteryPacket {
-                                device_id: *HEAD_ID,
+                            .send(ClientControlPacket::Battery(crate::BatteryPacket {
+                                device_id: *alvr_common::HEAD_ID,
                                 gauge_value: new_hmd_battery_status.0,
                                 is_plugged: new_hmd_battery_status.1,
                             }))
@@ -487,7 +480,7 @@ async fn stream_pipeline(
                 battery_poll_deadline += BATTERY_POLL_INTERVAL;
             }
 
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(500));
         }
     });
 

@@ -17,25 +17,26 @@ fn get_ffmpeg_path() -> PathBuf {
 }
 
 fn main() {
+    let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("cpp");
 
-    #[cfg(windows)]
-    let platform = "cpp/platform/win32";
-    #[cfg(target_os = "linux")]
-    let platform = "cpp/platform/linux";
-    #[cfg(target_os = "macos")]
-    let platform = "cpp/platform/macos";
+    let platform_subpath = match platform_name.as_str() {
+        "windows" => "cpp/platform/win32",
+        "linux" => "cpp/platform/linux",
+        "macos" => "cpp/platform/macos",
+        _ => panic!(),
+    };
 
     let common_iter = walkdir::WalkDir::new("cpp")
         .into_iter()
         .filter_entry(|entry| {
             entry.file_name() != "tools"
                 && entry.file_name() != "platform"
-                && (!cfg!(target_os = "macos") || entry.file_name() != "amf")
+                && (platform_name != "macos" || entry.file_name() != "amf")
         });
 
-    let platform_iter = walkdir::WalkDir::new(platform).into_iter();
+    let platform_iter = walkdir::WalkDir::new(platform_subpath).into_iter();
 
     let cpp_paths = common_iter
         .chain(platform_iter)
@@ -61,18 +62,18 @@ fn main() {
         .include("cpp/openvr/headers")
         .include("cpp");
 
-    #[cfg(windows)]
-    build
-        .debug(false) // This is because we cannot link to msvcrtd (see below)
-        .flag("/std:c++17")
-        .flag("/permissive-")
-        .define("NOMINMAX", None)
-        .define("_WINSOCKAPI_", None)
-        .define("_MBCS", None)
-        .define("_MT", None);
-
-    #[cfg(target_os = "macos")]
-    build.define("__APPLE__", None);
+    if platform_name == "windows" {
+        build
+            .debug(false) // This is because we cannot link to msvcrtd (see below)
+            .flag("/std:c++17")
+            .flag("/permissive-")
+            .define("NOMINMAX", None)
+            .define("_WINSOCKAPI_", None)
+            .define("_MBCS", None)
+            .define("_MT", None);
+    } else if platform_name == "macos" {
+        build.define("__APPLE__", None);
+    }
 
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);

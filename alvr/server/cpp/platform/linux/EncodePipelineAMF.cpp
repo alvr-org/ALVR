@@ -419,6 +419,10 @@ void EncodePipelineAMF::SetParams(FfiDynamicEncoderParams params)
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_PEAK_BITRATE, bitRateIn);
         m_amfComponents.back()->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / m_refreshRate * 1.1);
     }
+
+    if (Settings::Instance().m_amdBitrateCorruptionFix) {
+        RequestIDR();
+    }
 }
 
 void EncodePipelineAMF::Receive(amf::AMFDataPtr data)

@@ -98,9 +98,6 @@ void processH265Nals(unsigned char *&buf, int &len) {
 
 void ParseFrameNals(
     int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr) {
-    // Report before the frame is packetized
-    ReportEncoded(targetTimestampNs);
-
     if ((unsigned)len < sizeof(NAL_PREFIX_4B)) {
         return;
     }

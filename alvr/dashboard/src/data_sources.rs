@@ -175,7 +175,7 @@ impl DataSources {
                                 | ServerRequest::InsertIdr
                                 | ServerRequest::StartRecording
                                 | ServerRequest::StopRecording => {
-                                    warn!("Cannot perform action, streamer is not connected.")
+                                    warn!("Cannot perform action, streamer (SteamVR) is not connected.")
                                 }
                                 ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
                                     warn!("SteamVR not launched")

@@ -1,11 +1,11 @@
 use alvr_common::{prelude::*, DeviceMotion, Pose};
 use alvr_packets::{AudioDevicesList, ButtonValue};
-use alvr_session::SessionDesc;
+use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct Statistics {
+pub struct StatisticsSummary {
     pub video_packets_total: usize,
     pub video_packets_per_sec: usize,
     pub video_mbytes_total: usize,
@@ -19,8 +19,19 @@ pub struct Statistics {
     pub client_fps: u32,
     pub server_fps: u32,
     pub battery_hmd: u32,
-    pub battery_left: u32,
-    pub battery_right: u32,
+    pub hmd_plugged: bool,
+}
+
+// Bitrate statistics minus the empirical output value
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct NominalBitrateStats {
+    pub scaled_calculated_bps: Option<f32>,
+    pub decoder_latency_limiter_bps: Option<f32>,
+    pub network_latency_limiter_bps: Option<f32>,
+    pub encoder_latency_limiter_bps: Option<f32>,
+    pub manual_max_bps: Option<f32>,
+    pub manual_min_bps: Option<f32>,
+    pub requested_bps: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -36,6 +47,8 @@ pub struct GraphStatistics {
     pub vsync_queue_s: f32,
     pub client_fps: f32,
     pub server_fps: f32,
+    pub nominal_bitrate: NominalBitrateStats,
+    pub actual_bitrate_bps: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -67,8 +80,8 @@ pub struct HapticsEvent {
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
     Log(LogEntry),
-    Session(Box<SessionDesc>),
-    Statistics(Statistics),
+    Session(Box<SessionConfig>),
+    StatisticsSummary(StatisticsSummary),
     GraphStatistics(GraphStatistics),
     Tracking(Box<TrackingEvent>),
     Buttons(Vec<ButtonEvent>),

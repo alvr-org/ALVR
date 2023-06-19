@@ -4,7 +4,7 @@ use alvr_common::{
     DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_session::{
-    settings_schema::Switch, HeadsetDesc, PositionRecenteringMode, RotationRecenteringMode,
+    settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
 };
 use std::{
     collections::HashMap,
@@ -13,7 +13,7 @@ use std::{
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
-fn get_hand_skeleton_offsets(config: &HeadsetDesc) -> (Pose, Pose) {
+fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
     let left_offset;
     let right_offset;
     if let Switch::Enabled(controllers) = &config.controllers {
@@ -114,7 +114,7 @@ impl TrackingManager {
     // Performs all kinds of tracking transformations, driven by settings.
     pub fn transform_motions(
         &mut self,
-        config: &HeadsetDesc,
+        config: &HeadsetConfig,
         device_motions: &[(u64, DeviceMotion)],
         hand_skeletons_enabled: [bool; 2],
     ) -> Vec<(u64, DeviceMotion)> {
@@ -224,7 +224,7 @@ impl TrackingManager {
 }
 
 pub fn to_openvr_hand_skeleton(
-    config: &HeadsetDesc,
+    config: &HeadsetConfig,
     device_id: u64,
     hand_skeleton: [Pose; 26],
 ) -> [Pose; 26] {

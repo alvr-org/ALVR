@@ -18,7 +18,6 @@ impl Control {
     pub fn new(schema: HigherOrderChoiceSchema) -> Self {
         let name = schema.name.clone();
 
-        // Compile PresetModifiers to ValueChangeDescs
         let modifiers = schema
             .options
             .iter()

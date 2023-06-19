@@ -10,7 +10,7 @@ use alvr_common::{
     DeviceMotion, Fov, Pose,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
-use alvr_session::{CodecType, FoveatedRenderingDesc};
+use alvr_session::{CodecType, FoveatedRenderingConfig};
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
@@ -522,7 +522,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
     let swapchain_textures =
         convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
-    let foveated_rendering = config.enable_foveation.then_some(FoveatedRenderingDesc {
+    let foveated_rendering = config.enable_foveation.then_some(FoveatedRenderingConfig {
         center_size_x: config.foveation_center_size_x,
         center_size_y: config.foveation_center_size_y,
         center_shift_x: config.foveation_center_shift_x,

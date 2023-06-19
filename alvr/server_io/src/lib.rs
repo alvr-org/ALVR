@@ -9,7 +9,7 @@ pub use openvrpaths::*;
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
-use alvr_session::{ClientConnectionDesc, SessionDesc, Settings};
+use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig, Settings};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -20,26 +20,26 @@ use std::{
 };
 use wgpu::AdapterInfo;
 
-fn save_session(session: &SessionDesc, path: &Path) -> StrResult {
+fn save_session(session: &SessionConfig, path: &Path) -> StrResult {
     fs::write(path, json::to_string_pretty(session).map_err(err!())?).map_err(err!())
 }
 
-// SessionDesc wrapper that saves settings.json and session.json on destruction.
+// SessionConfig wrapper that saves session.json on destruction.
 pub struct SessionLock<'a> {
-    session_desc: &'a mut SessionDesc,
+    session_desc: &'a mut SessionConfig,
     session_path: &'a Path,
     settings: &'a mut Settings,
 }
 
 impl Deref for SessionLock<'_> {
-    type Target = SessionDesc;
-    fn deref(&self) -> &SessionDesc {
+    type Target = SessionConfig;
+    fn deref(&self) -> &SessionConfig {
         self.session_desc
     }
 }
 
 impl DerefMut for SessionLock<'_> {
-    fn deref_mut(&mut self) -> &mut SessionDesc {
+    fn deref_mut(&mut self) -> &mut SessionConfig {
         self.session_desc
     }
 }
@@ -58,7 +58,7 @@ impl Drop for SessionLock<'_> {
 // fixme: the dashboard is doing this wrong because it is holding its own session state. If read and
 // write need to happen on separate threads, a critical region should be implemented.
 pub struct ServerDataManager {
-    session: SessionDesc,
+    session: SessionConfig,
     settings: Settings,
     session_path: PathBuf,
     gpu_infos: Vec<AdapterInfo>,
@@ -90,11 +90,11 @@ impl ServerDataManager {
         }
     }
 
-    fn load_session(session_path: &Path, config_dir: &Path) -> SessionDesc {
+    fn load_session(session_path: &Path, config_dir: &Path) -> SessionConfig {
         let session_string = fs::read_to_string(session_path).unwrap_or_default();
 
         if session_string.is_empty() {
-            return SessionDesc::default();
+            return SessionConfig::default();
         }
 
         let session_json = json::from_str::<json::Value>(&session_string)
@@ -111,12 +111,12 @@ impl ServerDataManager {
 
         if session_json.is_null() {
             fs::write(config_dir.join("session_invalid.json"), &session_string).ok();
-            return SessionDesc::default();
+            return SessionConfig::default();
         }
 
         json::from_value(session_json.clone()).unwrap_or_else(|_| {
             fs::write(config_dir.join("session_old.json"), &session_string).ok();
-            let mut session_desc = SessionDesc::default();
+            let mut session_desc = SessionConfig::default();
             match session_desc.merge_from_json(&session_json) {
                 Ok(_) => info!(
                     "{} {}",
@@ -138,7 +138,7 @@ impl ServerDataManager {
     }
 
     // prefer settings()
-    pub fn session(&self) -> &SessionDesc {
+    pub fn session(&self) -> &SessionConfig {
         &self.session
     }
 
@@ -199,7 +199,7 @@ impl ServerDataManager {
         Ok(())
     }
 
-    pub fn client_list(&self) -> &HashMap<String, ClientConnectionDesc> {
+    pub fn client_list(&self) -> &HashMap<String, ClientConnectionConfig> {
         &self.session.client_connections
     }
 
@@ -215,11 +215,12 @@ impl ServerDataManager {
                 manual_ips,
             } => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
-                    let client_connection_desc = ClientConnectionDesc {
-                        trusted,
+                    let client_connection_desc = ClientConnectionConfig {
+                        display_name: "Unknown".into(),
                         current_ip: None,
                         manual_ips: manual_ips.into_iter().collect(),
-                        display_name: "Unknown".into(),
+                        trusted,
+                        connection_state: ConnectionState::Disconnected,
                     };
                     new_entry.insert(client_connection_desc);
 
@@ -258,6 +259,15 @@ impl ServerDataManager {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     if entry.get().current_ip != current_ip {
                         entry.get_mut().current_ip = current_ip;
+
+                        updated = true;
+                    }
+                }
+            }
+            ClientListAction::SetConnectionState(state) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    if entry.get().connection_state != state {
+                        entry.get_mut().connection_state = state;
 
                         updated = true;
                     }

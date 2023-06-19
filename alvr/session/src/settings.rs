@@ -211,8 +211,18 @@ pub enum MediacodecDataType {
     String(String),
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct DecoderLatencyFixer {
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct EncoderLatencyLimiter {
+    #[schema(strings(
+        help = "Allowed percentage of frame interval to allocate for video encoding"
+    ))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.3, max = 1.0, step = 0.01)))]
+    pub max_saturation_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct DecoderLatencyLimiter {
     #[schema(strings(
         display_name = "Maximum decoder latency",
         help = "When the decoder latency goes above this threshold, the bitrate will be reduced"
@@ -227,7 +237,7 @@ pub struct DecoderLatencyFixer {
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1, max = 100)), suffix = " frames")]
-    pub latency_overstep_frames: u64,
+    pub latency_overstep_frames: usize,
 
     #[schema(strings(
         help = "Controls how much the bitrate is reduced when the decoder latency goes above the threshold"
@@ -237,7 +247,7 @@ pub struct DecoderLatencyFixer {
     pub latency_overstep_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum BitrateMode {
     #[schema(strings(display_name = "Constant"))]
@@ -265,25 +275,29 @@ pub enum BitrateMode {
         #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
         max_network_latency_ms: Switch<u64>,
 
+        #[schema(flag = "real-time")]
+        encoder_latency_limiter: Switch<EncoderLatencyLimiter>,
+
         #[schema(strings(
             help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
         ))]
         #[schema(flag = "real-time")]
-        decoder_latency_fixer: Switch<DecoderLatencyFixer>,
+        decoder_latency_limiter: Switch<DecoderLatencyLimiter>,
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateAdaptiveFramerateConfig {
     #[schema(strings(
-        help = "If the framerate changes more than this factor, trigger a parameters update"
+        display_name = "FPS reset threshold multiplier",
+        help = "If the framerate changes more than this factor, trigger a parameters update",
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.1)))]
     pub framerate_reset_threshold_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateConfig {
     #[schema(flag = "real-time")]
     pub mode: BitrateMode,
@@ -293,6 +307,16 @@ pub struct BitrateConfig {
     ))]
     #[schema(flag = "real-time")]
     pub adapt_to_framerate: Switch<BitrateAdaptiveFramerateConfig>,
+
+    #[schema(strings(help = "Controls the smoothness during calculations"))]
+    pub history_size: usize,
+
+    #[schema(strings(
+        help = "When this is enabled, an IDR frame is requested after the bitrate is changed.
+This has an effect only on AMD GPUs."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub image_corruption_fix: bool,
 }
 
 #[repr(u8)]
@@ -319,7 +343,7 @@ pub struct ClientsideFoveation {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct FoveatedRenderingDesc {
+pub struct FoveatedRenderingConfig {
     #[schema(strings(display_name = "Center region width"))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -353,7 +377,7 @@ pub struct FoveatedRenderingDesc {
 
 #[repr(C)]
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
-pub struct ColorCorrectionDesc {
+pub struct ColorCorrectionConfig {
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
     pub brightness: f32,
@@ -386,7 +410,7 @@ pub enum CodecType {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct VideoDesc {
+pub struct VideoConfig {
     #[schema(strings(help = "You probably don't want to change this"))]
     #[schema(flag = "steamvr-restart")]
     pub adapter_index: u32,
@@ -421,7 +445,10 @@ pub struct VideoDesc {
     #[schema(gui(slider(min = 0.50, max = 0.99, step = 0.01)))]
     pub buffering_history_weight: f32,
 
+    #[schema(strings(help = "This works only on Windows"))]
     #[schema(flag = "real-time")]
+    pub optimize_game_render_latency: bool,
+
     pub bitrate: BitrateConfig,
 
     #[schema(strings(
@@ -436,14 +463,14 @@ pub struct VideoDesc {
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
-    pub foveated_rendering: Switch<FoveatedRenderingDesc>,
+    pub foveated_rendering: Switch<FoveatedRenderingConfig>,
 
     pub clientside_foveation: Switch<ClientsideFoveation>,
 
     pub dynamic_oculus_foveation: bool,
 
     #[schema(flag = "steamvr-restart")]
-    pub color_correction: Switch<ColorCorrectionDesc>,
+    pub color_correction: Switch<ColorCorrectionConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -600,7 +627,7 @@ pub struct HapticsConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ControllersDesc {
+pub struct ControllersConfig {
     #[schema(strings(
         help = "Turning this off will make the controllers appear powered off. Reconnect HMD to apply."
     ))]
@@ -679,7 +706,7 @@ pub enum RotationRecenteringMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct HeadsetDesc {
+pub struct HeadsetConfig {
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
 
@@ -695,7 +722,7 @@ pub struct HeadsetDesc {
     pub face_tracking: Switch<FaceTrackingConfig>,
 
     #[schema(flag = "steamvr-restart")]
-    pub controllers: Switch<ControllersDesc>,
+    pub controllers: Switch<ControllersConfig>,
 
     #[schema(strings(
         help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
@@ -737,7 +764,7 @@ pub enum SocketBufferSize {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct ConnectionDesc {
+pub struct ConnectionConfig {
     #[schema(strings(
         help = r#"UDP: Faster, but less stable than TCP. Try this if your network is well optimized and free of interference.
 TCP: Slower than UDP, but more stable. Pick this if you experience video or audio stutters with UDP."#
@@ -795,7 +822,7 @@ For now works only on Windows+Nvidia"#
     pub packet_size: i32,
 
     #[schema(suffix = " frames")]
-    pub statistics_history_size: u64,
+    pub statistics_history_size: usize,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -853,10 +880,10 @@ pub struct Patches {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    pub video: VideoDesc,
+    pub video: VideoConfig,
     pub audio: AudioConfig,
-    pub headset: HeadsetDesc,
-    pub connection: ConnectionDesc,
+    pub headset: HeadsetConfig,
+    pub connection: ConnectionConfig,
     pub logging: LoggingConfig,
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
@@ -905,13 +932,14 @@ pub fn session_settings_default() -> SettingsDefault {
     };
 
     SettingsDefault {
-        video: VideoDescDefault {
+        video: VideoConfigDefault {
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,
             preferred_fps: 72.,
-            max_buffering_frames: 1.5,
+            max_buffering_frames: 2.0,
             buffering_history_weight: 0.90,
+            optimize_game_render_latency: true,
             bitrate: BitrateConfigDefault {
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
@@ -929,9 +957,15 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: false,
                             content: 8,
                         },
-                        decoder_latency_fixer: SwitchDefault {
+                        encoder_latency_limiter: SwitchDefault {
                             enabled: true,
-                            content: DecoderLatencyFixerDefault {
+                            content: EncoderLatencyLimiterDefault {
+                                max_saturation_multiplier: 0.9,
+                            },
+                        },
+                        decoder_latency_limiter: SwitchDefault {
+                            enabled: true,
+                            content: DecoderLatencyLimiterDefault {
                                 max_decoder_latency_ms: 30,
                                 latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
@@ -946,6 +980,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         framerate_reset_threshold_multiplier: 2.0,
                     },
                 },
+                history_size: 256,
+                image_corruption_fix: false,
             },
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
@@ -1029,7 +1065,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             foveated_rendering: SwitchDefault {
                 enabled: true,
-                content: FoveatedRenderingDescDefault {
+                content: FoveatedRenderingConfigDefault {
                     center_size_x: 0.45,
                     center_size_y: 0.4,
                     center_shift_x: 0.4,
@@ -1060,7 +1096,7 @@ pub fn session_settings_default() -> SettingsDefault {
             dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
-                content: ColorCorrectionDescDefault {
+                content: ColorCorrectionConfigDefault {
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.5,
@@ -1104,7 +1140,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
         },
-        headset: HeadsetDescDefault {
+        headset: HeadsetConfigDefault {
             emulation_mode: HeadsetEmulationModeDefault {
                 Custom: HeadsetEmulationModeCustomDefault {
                     serial_number: "Unknown".into(),
@@ -1135,7 +1171,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             controllers: SwitchDefault {
                 enabled: true,
-                content: ControllersDescDefault {
+                content: ControllersConfigDefault {
                     emulation_mode: ControllersEmulationModeDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
@@ -1174,7 +1210,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: RotationRecenteringModeDefaultVariant::Yaw,
             },
         },
-        connection: ConnectionDescDefault {
+        connection: ConnectionConfigDefault {
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
             },

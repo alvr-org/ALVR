@@ -188,11 +188,11 @@ impl ConnectionsTab {
                         }
                     });
                     ui.columns(2, |ui| {
-                        if ui[1].button("Cancel").clicked() {
+                        if ui[0].button("Cancel").clicked() {
                             return;
                         }
 
-                        if ui[0].button("Ok").clicked() {
+                        if ui[1].button("Save").clicked() {
                             let manual_ips =
                                 state.ips.iter().filter_map(|s| s.parse().ok()).collect();
 

@@ -187,14 +187,16 @@ impl BitrateManager {
                 encoder_latency_limiter,
                 ..
             } => {
-                let mut bitrate_bps = self.bitrate_average.get_average() * saturation_multiplier;
+                let initial_bitrate_average_bps = self.bitrate_average.get_average();
+
+                let mut bitrate_bps = initial_bitrate_average_bps * saturation_multiplier;
                 stats.scaled_calculated_bps = Some(bitrate_bps);
 
                 bitrate_bps = f32::min(bitrate_bps, self.dynamic_max_bitrate);
                 stats.decoder_latency_limiter_bps = Some(self.dynamic_max_bitrate);
 
                 if let Switch::Enabled(max_ms) = max_network_latency_ms {
-                    let max = bitrate_bps * (*max_ms as f32 / 1000.0)
+                    let max = initial_bitrate_average_bps * (*max_ms as f32 / 1000.0)
                         / self.network_latency_average.get_average().as_secs_f32();
                     bitrate_bps = f32::min(bitrate_bps, max);
 
@@ -204,7 +206,8 @@ impl BitrateManager {
                 if let Switch::Enabled(config) = encoder_latency_limiter {
                     let saturation = self.encoder_latency_average.get_average().as_secs_f32()
                         / self.nominal_frame_interval.as_secs_f32();
-                    let max = bitrate_bps * config.max_saturation_multiplier / saturation;
+                    let max =
+                        initial_bitrate_average_bps * config.max_saturation_multiplier / saturation;
                     stats.encoder_latency_limiter_bps = Some(max);
 
                     if saturation > config.max_saturation_multiplier {

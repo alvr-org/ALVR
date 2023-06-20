@@ -267,7 +267,7 @@ pub enum BitrateMode {
 
         #[schema(strings(display_name = "Minimum bitrate"))]
         #[schema(flag = "real-time")]
-        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
+        #[schema(gui(slider(min = 1, max = 100, logarithmic)), suffix = "Mbps")]
         min_bitrate_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Maximum network latency"))]

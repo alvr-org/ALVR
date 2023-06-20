@@ -8,7 +8,7 @@ use crate::{
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
     DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
+    SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -24,7 +24,7 @@ use alvr_packets::{
     ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     ServerControlPacket, StreamConfigPacket, Tracking, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{CodecType, ControllersEmulationMode, FrameSize, OpenvrConfig};
+use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     spawn_cancelable, ControlSocketReceiver, ControlSocketSender, PeerType, ProtoControlSocket,
     StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -275,6 +275,7 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
         rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
         nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
         capture_frame_dir: settings.capture.capture_frame_dir,
+        amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         ..old_config
     }
 }
@@ -505,11 +506,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 }
 
 // close stream on Drop (manual disconnection or execution canceling)
-struct StreamCloseGuard(Arc<RelaxedAtomic>);
+struct StreamCloseGuard {
+    is_streaming: Arc<RelaxedAtomic>,
+    streaming_hostname: String,
+}
 
 impl Drop for StreamCloseGuard {
     fn drop(&mut self) {
-        self.0.set(false);
+        self.is_streaming.set(false);
+
+        SERVER_DATA_MANAGER.write().update_client_list(
+            self.streaming_hostname.clone(),
+            ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+        );
 
         *VIDEO_RECORDING_FILE.lock() = None;
 
@@ -577,7 +586,7 @@ async fn connection_pipeline(
     let stream_socket = Arc::new(stream_socket);
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
-        settings.connection.statistics_history_size as _,
+        settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / refresh_rate),
         if let Switch::Enabled(config) = &settings.headset.controllers {
             config.steamvr_pipeline_frames
@@ -586,10 +595,8 @@ async fn connection_pipeline(
         },
     ));
 
-    *BITRATE_MANAGER.lock() = BitrateManager::new(
-        settings.connection.statistics_history_size as _,
-        refresh_rate,
-    );
+    *BITRATE_MANAGER.lock() =
+        BitrateManager::new(settings.video.bitrate.history_size, refresh_rate);
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -612,7 +619,15 @@ async fn connection_pipeline(
     unsafe { crate::InitializeStreaming() };
 
     let is_streaming = Arc::new(RelaxedAtomic::new(true));
-    let _stream_guard = StreamCloseGuard(Arc::clone(&is_streaming));
+    let _stream_guard = StreamCloseGuard {
+        is_streaming: Arc::clone(&is_streaming),
+        streaming_hostname: client_hostname.clone(),
+    };
+
+    SERVER_DATA_MANAGER.write().update_client_list(
+        client_hostname.clone(),
+        ClientListAction::SetConnectionState(ConnectionState::Streaming),
+    );
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO).await?;
@@ -1016,7 +1031,11 @@ async fn connection_pipeline(
                     crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
 
                     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_battery(packet.device_id, packet.gauge_value);
+                        stats.report_battery(
+                            packet.device_id,
+                            packet.gauge_value,
+                            packet.is_plugged,
+                        );
                     }
                 },
                 Ok(ClientControlPacket::Buttons(entries)) => {
@@ -1098,6 +1117,16 @@ async fn connection_pipeline(
         res = control_send_loop => res,
 
         _ = RESTART_NOTIFIER.notified() => {
+            control_sender
+                .lock()
+                .await
+                .send(&ServerControlPacket::Restarting)
+                .await
+                .ok();
+
+            Ok(())
+        }
+        _ = SHUTDOWN_NOTIFIER.notified() => {
             control_sender
                 .lock()
                 .await

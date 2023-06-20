@@ -16,7 +16,8 @@ use ndk::{
     media::{
         image_reader::{Image, ImageFormat, ImageReader},
         media_codec::{
-            MediaCodec, MediaCodecDirection, MediaCodecInfo, MediaCodecResult, MediaFormat,
+            DequeuedInputBufferResult, DequeuedOutputBufferInfoResult, MediaCodec,
+            MediaCodecDirection, MediaFormat,
         },
     },
 };
@@ -25,6 +26,7 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
+    ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -217,32 +219,83 @@ pub fn release_wifi_lock() {
     }
 }
 
-pub fn battery_status() -> (f32, bool) {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
+pub struct BatteryManager {
+    intent: GlobalRef,
+}
 
-    const BATTERY_PROPERTY_CAPACITY: i32 = 4;
+impl BatteryManager {
+    pub fn new() -> Self {
+        let vm = vm();
+        let mut env = vm.attach_current_thread().unwrap();
 
-    let battery_manager = get_system_service(&mut env, "batterymanager");
-
-    let percentage = env
+        let intent_action_jstring = env
+            .new_string("android.intent.action.BATTERY_CHANGED")
+            .unwrap();
+        let intent_filter = env
+            .new_object(
+                "android/content/IntentFilter",
+                "(Ljava/lang/String;)V",
+                &[(&intent_action_jstring).into()],
+            )
+            .unwrap();
+        let intent = env
         .call_method(
-            &battery_manager,
-            "getIntProperty",
-            "(I)I",
-            &[BATTERY_PROPERTY_CAPACITY.into()],
+            unsafe { JObject::from_raw(context()) },
+            "registerReceiver",
+            "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;",
+            &[(&JObject::null()).into(), (&intent_filter).into()],
         )
         .unwrap()
-        .i()
+        .l()
         .unwrap();
 
-    let is_charging = env
-        .call_method(battery_manager, "isCharging", "()Z", &[])
-        .unwrap()
-        .z()
-        .unwrap();
+        Self {
+            intent: env.new_global_ref(intent).unwrap(),
+        }
+    }
 
-    (percentage as f32 / 100.0, is_charging)
+    // return (normalized gauge, is plugged)
+    pub fn status(&self) -> (f32, bool) {
+        let vm = vm();
+        let mut env = vm.attach_current_thread().unwrap();
+
+        let level_jstring = env.new_string("level").unwrap();
+        let level = env
+            .call_method(
+                self.intent.as_obj(),
+                "getIntExtra",
+                "(Ljava/lang/String;I)I",
+                &[(&level_jstring).into(), (-1).into()],
+            )
+            .unwrap()
+            .i()
+            .unwrap();
+        let scale_jstring = env.new_string("scale").unwrap();
+        let scale = env
+            .call_method(
+                self.intent.as_obj(),
+                "getIntExtra",
+                "(Ljava/lang/String;I)I",
+                &[(&scale_jstring).into(), (-1).into()],
+            )
+            .unwrap()
+            .i()
+            .unwrap();
+
+        let plugged_jstring = env.new_string("plugged").unwrap();
+        let plugged = env
+            .call_method(
+                self.intent.as_obj(),
+                "getIntExtra",
+                "(Ljava/lang/String;I)I",
+                &[(&plugged_jstring).into(), (-1).into()],
+            )
+            .unwrap()
+            .i()
+            .unwrap();
+
+        (level as f32 / scale as f32, plugged > 0)
+    }
 }
 
 pub struct VideoDecoderEnqueuer {
@@ -260,8 +313,14 @@ impl VideoDecoderEnqueuer {
         };
 
         match decoder.dequeue_input_buffer(Duration::ZERO) {
-            MediaCodecResult::Ok(mut buffer) => {
-                buffer.buffer_mut()[..data.len()].copy_from_slice(data);
+            Ok(DequeuedInputBufferResult::Buffer(mut buffer)) => {
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        data.as_ptr(),
+                        buffer.buffer_mut().as_mut_ptr().cast(),
+                        data.len(),
+                    )
+                };
 
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
@@ -272,12 +331,8 @@ impl VideoDecoderEnqueuer {
 
                 Ok(true)
             }
-            MediaCodecResult::Info(i) => {
-                assert_eq!(i, MediaCodecInfo::TryAgainLater);
-
-                Ok(false)
-            }
-            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+            Ok(DequeuedInputBufferResult::TryAgainLater) => Ok(false),
+            Err(e) => fmt_e!("{e}"),
         }
     }
 }
@@ -472,7 +527,7 @@ pub fn video_decoder_split(
 
             while running.value() {
                 match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
-                    MediaCodecResult::Ok(buffer) => {
+                    Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
                         // The buffer timestamp is actually nanoseconds
                         let presentation_time_ns = buffer.presentation_time_us();
 
@@ -482,9 +537,9 @@ pub fn video_decoder_split(
                             error!("Decoder dequeue error: {e}");
                         }
                     }
-                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => thread::yield_now(),
-                    MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
-                    MediaCodecResult::Err(e) => {
+                    Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+                    Ok(i) => info!("Decoder dequeue event: {i:?}"),
+                    Err(e) => {
                         error!("Decoder dequeue error: {e}");
 
                         // lessen logcat flood (just in case)

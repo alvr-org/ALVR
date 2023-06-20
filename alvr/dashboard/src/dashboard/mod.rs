@@ -159,7 +159,7 @@ impl eframe::App for Dashboard {
                 EventType::GraphStatistics(graph_statistics) => self
                     .statistics_tab
                     .update_graph_statistics(graph_statistics),
-                EventType::Statistics(statistics) => {
+                EventType::StatisticsSummary(statistics) => {
                     self.statistics_tab.update_statistics(statistics)
                 }
                 EventType::Session(session) => {
@@ -232,7 +232,7 @@ impl eframe::App for Dashboard {
                         .inner_margin(Margin::same(7.0))
                         .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                 )
-                .exact_width(150.0)
+                .exact_width(145.0)
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);
@@ -250,8 +250,6 @@ impl eframe::App for Dashboard {
                     ui.with_layout(
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
                         |ui| {
-                            use eframe::epaint::Color32;
-
                             ui.add_space(5.0);
 
                             if connected_to_server {
@@ -264,12 +262,12 @@ impl eframe::App for Dashboard {
 
                             ui.horizontal(|ui| {
                                 ui.add_space(5.0);
-                                ui.label("Streamer:");
+                                ui.label("SteamVR:");
                                 ui.add_space(-10.0);
                                 if connected_to_server {
-                                    ui.label(RichText::new("Connected").color(Color32::GREEN));
+                                    ui.label(RichText::new("Connected").color(theme::OK_GREEN));
                                 } else {
-                                    ui.label(RichText::new("Disconnected").color(Color32::RED));
+                                    ui.label(RichText::new("Disconnected").color(theme::KO_RED));
                                 }
                             })
                         },

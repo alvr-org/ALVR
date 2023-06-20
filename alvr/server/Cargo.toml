@@ -57,7 +57,7 @@ sysinfo = { version = "0.29", default-features = false }
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.65"
+bindgen = "0.66"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 

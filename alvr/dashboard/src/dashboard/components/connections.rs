@@ -1,7 +1,7 @@
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
-use alvr_session::{ClientConnectionConfig, SessionConfig};
+use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
@@ -125,6 +125,11 @@ impl ConnectionsTab {
                                             .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
                                         data.display_name
                                     ));
+                                    if data.connection_state == ConnectionState::Disconnected {
+                                        ui.colored_label(Color32::GRAY, "Disconnected");
+                                    } else {
+                                        ui.colored_label(theme::OK_GREEN, "Streaming");
+                                    }
                                 });
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     if ui.button("Remove").clicked() {
@@ -181,7 +186,11 @@ impl ConnectionsTab {
                         }
                     });
                     ui.columns(2, |ui| {
-                        if ui[0].button("Ok").clicked() {
+                        if ui[0].button("Cancel").clicked() {
+                            return;
+                        }
+
+                        if ui[1].button("Save").clicked() {
                             let manual_ips =
                                 state.ips.iter().filter_map(|s| s.parse().ok()).collect();
 
@@ -199,7 +208,7 @@ impl ConnectionsTab {
                                     action: ClientListAction::SetManualIps(manual_ips),
                                 });
                             }
-                        } else if !ui[1].button("Cancel").clicked() {
+                        } else {
                             self.edit_popup_state = Some(state);
                         }
                     })

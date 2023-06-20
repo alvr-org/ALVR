@@ -119,7 +119,6 @@ extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
-extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
 extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);

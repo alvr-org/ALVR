@@ -211,8 +211,18 @@ pub enum MediacodecDataType {
     String(String),
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct DecoderLatencyFixer {
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct EncoderLatencyLimiter {
+    #[schema(strings(
+        help = "Allowed percentage of frame interval to allocate for video encoding"
+    ))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.3, max = 1.0, step = 0.01)))]
+    pub max_saturation_multiplier: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct DecoderLatencyLimiter {
     #[schema(strings(
         display_name = "Maximum decoder latency",
         help = "When the decoder latency goes above this threshold, the bitrate will be reduced"
@@ -227,7 +237,7 @@ pub struct DecoderLatencyFixer {
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1, max = 100)), suffix = " frames")]
-    pub latency_overstep_frames: u64,
+    pub latency_overstep_frames: usize,
 
     #[schema(strings(
         help = "Controls how much the bitrate is reduced when the decoder latency goes above the threshold"
@@ -237,7 +247,7 @@ pub struct DecoderLatencyFixer {
     pub latency_overstep_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum BitrateMode {
     #[schema(strings(display_name = "Constant"))]
@@ -265,25 +275,29 @@ pub enum BitrateMode {
         #[schema(gui(slider(min = 1, max = 50)), suffix = "ms")]
         max_network_latency_ms: Switch<u64>,
 
+        #[schema(flag = "real-time")]
+        encoder_latency_limiter: Switch<EncoderLatencyLimiter>,
+
         #[schema(strings(
             help = "Currently there is a bug where the decoder latency keeps rising when above a certain bitrate"
         ))]
         #[schema(flag = "real-time")]
-        decoder_latency_fixer: Switch<DecoderLatencyFixer>,
+        decoder_latency_limiter: Switch<DecoderLatencyLimiter>,
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateAdaptiveFramerateConfig {
     #[schema(strings(
-        help = "If the framerate changes more than this factor, trigger a parameters update"
+        display_name = "FPS reset threshold multiplier",
+        help = "If the framerate changes more than this factor, trigger a parameters update",
     ))]
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = 1.0, max = 3.0, step = 0.1)))]
     pub framerate_reset_threshold_multiplier: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BitrateConfig {
     #[schema(flag = "real-time")]
     pub mode: BitrateMode,
@@ -293,6 +307,16 @@ pub struct BitrateConfig {
     ))]
     #[schema(flag = "real-time")]
     pub adapt_to_framerate: Switch<BitrateAdaptiveFramerateConfig>,
+
+    #[schema(strings(help = "Controls the smoothness during calculations"))]
+    pub history_size: usize,
+
+    #[schema(strings(
+        help = "When this is enabled, an IDR frame is requested after the bitrate is changed.
+This has an effect only on AMD GPUs."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub image_corruption_fix: bool,
 }
 
 #[repr(u8)]
@@ -425,7 +449,6 @@ pub struct VideoConfig {
     #[schema(flag = "real-time")]
     pub optimize_game_render_latency: bool,
 
-    #[schema(flag = "real-time")]
     pub bitrate: BitrateConfig,
 
     #[schema(strings(
@@ -799,7 +822,7 @@ For now works only on Windows+Nvidia"#
     pub packet_size: i32,
 
     #[schema(suffix = " frames")]
-    pub statistics_history_size: u64,
+    pub statistics_history_size: usize,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -934,9 +957,15 @@ pub fn session_settings_default() -> SettingsDefault {
                             enabled: false,
                             content: 8,
                         },
-                        decoder_latency_fixer: SwitchDefault {
+                        encoder_latency_limiter: SwitchDefault {
                             enabled: true,
-                            content: DecoderLatencyFixerDefault {
+                            content: EncoderLatencyLimiterDefault {
+                                max_saturation_multiplier: 0.9,
+                            },
+                        },
+                        decoder_latency_limiter: SwitchDefault {
+                            enabled: true,
+                            content: DecoderLatencyLimiterDefault {
                                 max_decoder_latency_ms: 30,
                                 latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
@@ -951,6 +980,8 @@ pub fn session_settings_default() -> SettingsDefault {
                         framerate_reset_threshold_multiplier: 2.0,
                     },
                 },
+                history_size: 256,
+                image_corruption_fix: false,
             },
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,

@@ -25,7 +25,7 @@ use bindings::*;
 use alvr_common::{
     glam::Quat,
     log,
-    once_cell::sync::{Lazy, OnceCell},
+    once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     prelude::*,
 };
@@ -46,7 +46,7 @@ use std::{
     io::Write,
     ptr,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Once,
     },
     thread,
@@ -75,7 +75,7 @@ static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     let data_lock = SERVER_DATA_MANAGER.read();
     let settings = data_lock.settings();
     Mutex::new(BitrateManager::new(
-        settings.connection.statistics_history_size as usize,
+        settings.video.bitrate.history_size,
         settings.video.preferred_fps,
     ))
 });
@@ -97,6 +97,7 @@ static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -155,6 +156,10 @@ pub extern "C" fn shutdown_driver() {
     // Invoke connection runtimes shutdown
     // todo: block until they shutdown
     SHOULD_CONNECT_TO_CLIENTS.set(false);
+    SHUTDOWN_NOTIFIER.notify_waiters();
+
+    // give time to the sockets to communucate with the client
+    thread::sleep(Duration::from_millis(200));
 
     // apply openvr config for the next launch
     SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
@@ -195,9 +200,6 @@ pub fn notify_restart_driver() {
 pub fn restart_driver() {
     SHOULD_CONNECT_TO_CLIENTS.set(false);
     RESTART_NOTIFIER.notify_waiters();
-
-    // give time to the control loop to send the restart packet (not crucial)
-    thread::sleep(Duration::from_millis(200));
 
     shutdown_driver();
 }
@@ -340,6 +342,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn video_send(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
+        let buffer_size = len as usize;
+
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
         if let Some(sender) = &*VIDEO_SENDER.lock() {
@@ -349,11 +353,11 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
             let timestamp = Duration::from_nanos(timestamp_ns);
 
-            let mut payload = vec![0; len as _];
+            let mut payload = vec![0; buffer_size];
 
             // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
             unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), len as _);
+                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), buffer_size);
             }
 
             if !STREAM_CORRUPTED.load(Ordering::SeqCst)
@@ -387,11 +391,15 @@ pub unsafe extern "C" fn HmdDriverFactory(
             }
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                stats.report_video_packet(len as _);
+                let encoder_latency =
+                    stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), buffer_size);
+
+                BITRATE_MANAGER.lock().report_frame_encoded(
+                    timestamp,
+                    encoder_latency,
+                    buffer_size,
+                );
             }
-            BITRATE_MANAGER
-                .lock()
-                .report_encoded_frame_size(timestamp, len as usize)
         }
     }
 
@@ -455,16 +463,18 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn report_encoded(timestamp_ns: u64) {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            stats.report_frame_encoded(Duration::from_nanos(timestamp_ns));
-        }
-    }
-
     extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-        BITRATE_MANAGER
+        let (params, stats) = BITRATE_MANAGER
             .lock()
-            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate)
+            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate);
+
+        if let Some(stats) = stats {
+            if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {
+                stats_manager.report_nominal_bitrate_stats(stats);
+            }
+        }
+
+        params
     }
 
     extern "C" fn wait_for_vsync() {
@@ -474,6 +484,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             .video
             .optimize_game_render_latency
         {
+            // Note: unlock STATISTICS_MANAGER as soon as possible
             let wait_duration = STATISTICS_MANAGER
                 .lock()
                 .as_mut()
@@ -498,33 +509,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     PathStringToHash = Some(path_string_to_hash);
     ReportPresent = Some(report_present);
     ReportComposed = Some(report_composed);
-    ReportEncoded = Some(report_encoded);
     GetSerialNumber = Some(openvr_props::get_serial_number);
     SetOpenvrProps = Some(openvr_props::set_device_openvr_props);
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
     WaitForVSync = Some(wait_for_vsync);
 
-    // cast to usize to allow the variables to cross thread boundaries
-    let interface_name_usize = interface_name as usize;
-    let return_code_usize = return_code as usize;
-
-    static PTR_USIZE: OnceCell<AtomicUsize> = OnceCell::new();
-    static NUM_TRIALS: OnceCell<AtomicUsize> = OnceCell::new();
-
-    PTR_USIZE.set(AtomicUsize::new(0)).ok();
-    NUM_TRIALS.set(AtomicUsize::new(0)).ok();
-
-    thread::spawn(move || {
-        NUM_TRIALS.get().unwrap().fetch_add(1, Ordering::Relaxed);
-        if NUM_TRIALS.get().unwrap().load(Ordering::Relaxed) <= 1 {
-            PTR_USIZE.get().unwrap().store(
-                CppEntryPoint(interface_name_usize as _, return_code_usize as _) as _,
-                Ordering::Relaxed,
-            );
-        }
-    })
-    .join()
-    .ok();
-
-    PTR_USIZE.get().unwrap().load(Ordering::Relaxed) as _
+    CppEntryPoint(interface_name, return_code)
 }

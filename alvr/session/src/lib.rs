@@ -93,6 +93,14 @@ pub struct OpenvrConfig {
     pub rc_average_bitrate: i64,
     pub nvenc_enable_weighted_prediction: bool,
     pub capture_frame_dir: String,
+    pub amd_bitrate_corruption_fix: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum ConnectionState {
+    Disconnected,
+    Connected,
+    Streaming,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -101,6 +109,7 @@ pub struct ClientConnectionConfig {
     pub current_ip: Option<IpAddr>,
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
+    pub connection_state: ConnectionState,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

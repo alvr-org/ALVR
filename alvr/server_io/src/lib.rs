@@ -9,7 +9,7 @@ pub use openvrpaths::*;
 use alvr_common::prelude::*;
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
-use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
+use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig, Settings};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -216,10 +216,11 @@ impl ServerDataManager {
             } => {
                 if let Entry::Vacant(new_entry) = maybe_client_entry {
                     let client_connection_desc = ClientConnectionConfig {
-                        trusted,
+                        display_name: "Unknown".into(),
                         current_ip: None,
                         manual_ips: manual_ips.into_iter().collect(),
-                        display_name: "Unknown".into(),
+                        trusted,
+                        connection_state: ConnectionState::Disconnected,
                     };
                     new_entry.insert(client_connection_desc);
 
@@ -258,6 +259,15 @@ impl ServerDataManager {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     if entry.get().current_ip != current_ip {
                         entry.get_mut().current_ip = current_ip;
+
+                        updated = true;
+                    }
+                }
+            }
+            ClientListAction::SetConnectionState(state) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    if entry.get().connection_state != state {
+                        entry.get_mut().connection_state = state;
 
                         updated = true;
                     }

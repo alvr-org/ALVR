@@ -34,12 +34,12 @@ jni = "0.21"
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13"
 jni = "0.21"
-ndk = { git = "https://github.com/zarik5/android-ndk-rs", rev = "dea742a", features = [
+ndk = { git = "https://github.com/rust-mobile/ndk", features = [
     "api-level-26",
     "media",
 ] }
 ndk-context = "0.1"
-ndk-sys = { git = "https://github.com/zarik5/android-ndk-rs", rev = "f1d38a0" }
+ndk-sys = { git = "https://github.com/rust-mobile/ndk" }
 oboe = "0.5" # todo: remove once AudioThread shutdown crash is fixed
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
@@ -49,6 +49,6 @@ env_logger = "0.10"
 local-ip-address = "0.5"
 
 [build-dependencies]
-bindgen = "0.65"
+bindgen = "0.66"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

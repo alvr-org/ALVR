@@ -79,7 +79,7 @@ fn main() {
                 width: image.width(),
                 height: image.height(),
             }),
-            initial_window_size: Some(egui::vec2(900.0, 600.0)),
+            initial_window_size: Some(egui::vec2(870.0, 600.0)),
             centered: true,
             ..Default::default()
         },

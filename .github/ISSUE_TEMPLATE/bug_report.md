@@ -28,10 +28,14 @@ assignees: ''
 
 **GPU**:
 
+**GPU Driver Version**:
+
 **Audio**:
 
 ### Installation
 **ALVR Version**:
+
+**ALVR Settings File**:
 
 **SteamVR Version**:
 

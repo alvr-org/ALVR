@@ -20,19 +20,23 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 	//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
 
 	D3D11_TEXTURE2D_DESC SharedTextureDesc = {};
+	DXGI_FORMAT format = (DXGI_FORMAT)pSwapTextureSetDesc->nFormat;
+	SharedTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	if (format == DXGI_FORMAT_R32G8X24_TYPELESS || format == DXGI_FORMAT_R32_TYPELESS) {
+		SharedTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	}
 	SharedTextureDesc.ArraySize = 1;
 	SharedTextureDesc.MipLevels = 1;
 	SharedTextureDesc.SampleDesc.Count = pSwapTextureSetDesc->nSampleCount;
 	SharedTextureDesc.SampleDesc.Quality = 0;
 	SharedTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	SharedTextureDesc.Format = (DXGI_FORMAT)pSwapTextureSetDesc->nFormat;
+	SharedTextureDesc.Format = format;
 
 	// Some(or all?) applications request larger texture than we specified in GetRecommendedRenderTargetSize.
 	// But, we must create textures in requested size to prevent cropped output. And then we must shrink texture to H.264 movie size.
 	SharedTextureDesc.Width = pSwapTextureSetDesc->nWidth;
 	SharedTextureDesc.Height = pSwapTextureSetDesc->nHeight;
 
-	SharedTextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 	//SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE;
 	SharedTextureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
 
@@ -42,12 +46,28 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 	for (int i = 0; i < 3; i++) {
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
 		//LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet CreateTexture2D %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			break;
+		}
 
 		IDXGIResource* pResource;
 		hr = processResource->textures[i]->QueryInterface(__uuidof(IDXGIResource), (void**)&pResource);
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet QueryInterface %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			break;
+		}
 		//LogDriver("QueryInterface %p res:%d %s", pResource, hr, GetDxErrorStr(hr).c_str());
 
 		hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
+		if (FAILED(hr)) {
+			Error("CreateSwapTextureSet GetSharedHandle %p %ls\n", hr, GetErrorStr(hr).c_str());
+			delete processResource;
+			pResource->Release();
+			break;
+		}
 		//LogDriver("GetSharedHandle %p res:%d %s", processResource->sharedHandles[i], hr, GetDxErrorStr(hr).c_str());
 
 		m_handleMap.insert(std::make_pair(processResource->sharedHandles[i], std::make_pair(processResource, i)));

@@ -87,9 +87,9 @@ pub struct VideoPacket {
 
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static VIDEO_SENDER: Lazy<Mutex<Option<mpsc::Sender<VideoPacket>>>> =
+static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::Sender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static HAPTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
+static HAPTICS_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -346,7 +346,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
-        if let Some(sender) = &*VIDEO_SENDER.lock() {
+        if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
             if is_idr {
                 STREAM_CORRUPTED.store(false, Ordering::SeqCst);
             }
@@ -404,7 +404,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn haptics_send(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-        if let Some(sender) = &*HAPTICS_SENDER.lock() {
+        if let Some(sender) = &*HAPTICS_CHANNEL_SENDER.lock() {
             let haptics = Haptics {
                 device_id,
                 duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),

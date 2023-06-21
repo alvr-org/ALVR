@@ -7,14 +7,15 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_SENDER, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE, VIDEO_SENDER,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_CHANNEL_SENDER, RESTART_NOTIFIER,
+    SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_CHANNEL_SENDER,
+    VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
-    parking_lot,
+    parking_lot::{self, RwLock},
     prelude::*,
     settings_schema::Switch,
     RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -42,7 +43,7 @@ use std::{
 use tokio::{
     runtime::Runtime,
     sync::{mpsc as tmpsc, Mutex},
-    time,
+    task, time,
 };
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
@@ -309,18 +310,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         ..
     } = runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
     {
+        SERVER_DATA_MANAGER.write().update_client_list(
+            client_hostname.clone(),
+            ClientListAction::SetDisplayName(display_name),
+        );
+
         if client_protocol_id != alvr_common::protocol_id() {
             warn!(
                 "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
                 alvr_common::protocol_id(),
                 client_protocol_id,
             );
-        }
 
-        SERVER_DATA_MANAGER.write().update_client_list(
-            client_hostname.clone(),
-            ClientListAction::SetDisplayName(display_name),
-        );
+            return Ok(());
+        }
 
         streaming_capabilities
     } else {
@@ -495,6 +498,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .map_err(to_int_e!())?;
     let stream_socket = Arc::new(stream_socket);
 
+    let mut video_sender = runtime
+        .block_on(stream_socket.request_stream(VIDEO))
+        .map_err(to_int_e!())?;
+    let mut haptics_sender = runtime
+        .block_on(stream_socket.request_stream(HAPTICS))
+        .map_err(to_int_e!())?;
+    let mut tracking_receiver = runtime
+        .block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING))
+        .map_err(to_int_e!())?;
+    let mut statics_receiver = runtime
+        .block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS))
+        .map_err(to_int_e!())?;
+
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = runtime
             .block_on(stream_socket.request_stream(AUDIO))
@@ -507,7 +523,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 ) {
                     Ok(data) => data,
                     Err(e) => {
-                        warn!("New audio device Failed : {e}");
+                        warn!("New audio device failed: {e}");
                         time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
                         continue;
                     }
@@ -590,67 +606,55 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         Box::pin(future::pending())
     };
 
-    let video_send_loop = {
-        let mut socket_sender = runtime
-            .block_on(stream_socket.request_stream(VIDEO))
-            .map_err(to_int_e!())?;
-        async move {
-            let (data_sender, mut data_receiver) =
-                tmpsc::channel(settings.connection.max_queued_server_video_frames);
-            *VIDEO_SENDER.lock() = Some(data_sender);
+    let video_send_loop = async move {
+        let (data_sender, mut data_receiver) =
+            tmpsc::channel(settings.connection.max_queued_server_video_frames);
+        *VIDEO_CHANNEL_SENDER.lock() = Some(data_sender);
 
-            while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
-                socket_sender.send(&header, payload).await.ok();
-            }
-
-            Ok(())
+        while let Some(VideoPacket { header, payload }) = data_receiver.recv().await {
+            video_sender.send(&header, payload).await.ok();
         }
+
+        Ok(())
     };
 
-    let haptics_send_loop = {
-        let mut socket_sender = runtime
-            .block_on(stream_socket.request_stream(HAPTICS))
-            .map_err(to_int_e!())?;
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *HAPTICS_SENDER.lock() = Some(data_sender);
+    let haptics_send_loop = async move {
+        let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+        *HAPTICS_CHANNEL_SENDER.lock() = Some(data_sender);
 
-            while let Some(haptics) = data_receiver.recv().await {
-                let haptics_config = {
-                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+        while let Some(haptics) = data_receiver.recv().await {
+            let haptics_config = {
+                let data_manager_lock = SERVER_DATA_MANAGER.read();
 
-                    if data_manager_lock.settings().logging.log_haptics {
-                        alvr_events::send_event(EventType::Haptics(HapticsEvent {
-                            path: DEVICE_ID_TO_PATH
-                                .get(&haptics.device_id)
-                                .map(|p| (*p).to_owned())
-                                .unwrap_or_else(|| {
-                                    format!("Unknown (ID: {:#16x})", haptics.device_id)
-                                }),
-                            duration: haptics.duration,
-                            frequency: haptics.frequency,
-                            amplitude: haptics.amplitude,
-                        }))
-                    }
-
-                    data_manager_lock
-                        .settings()
-                        .headset
-                        .controllers
-                        .as_option()
-                        .and_then(|c| c.haptics.as_option().cloned())
-                };
-
-                if let Some(config) = haptics_config {
-                    socket_sender
-                        .send(&haptics::map_haptics(&config, haptics), vec![])
-                        .await
-                        .ok();
+                if data_manager_lock.settings().logging.log_haptics {
+                    alvr_events::send_event(EventType::Haptics(HapticsEvent {
+                        path: DEVICE_ID_TO_PATH
+                            .get(&haptics.device_id)
+                            .map(|p| (*p).to_owned())
+                            .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
+                        duration: haptics.duration,
+                        frequency: haptics.frequency,
+                        amplitude: haptics.amplitude,
+                    }))
                 }
-            }
 
-            Ok(())
+                data_manager_lock
+                    .settings()
+                    .headset
+                    .controllers
+                    .as_option()
+                    .and_then(|c| c.haptics.as_option().cloned())
+            };
+
+            if let Some(config) = haptics_config {
+                haptics_sender
+                    .send(&haptics::map_haptics(&config, haptics), vec![])
+                    .await
+                    .ok();
+            }
         }
+
+        Ok(())
     };
 
     let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Option<Vec2>>();
@@ -669,31 +673,36 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         });
     }
 
+    let runtime = Arc::new(RwLock::new(Some(runtime)));
+
     let tracking_manager = Arc::new(parking_lot::Mutex::new(TrackingManager::new()));
 
-    let tracking_receive_loop = {
-        let mut receiver = runtime
-            .block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING))
-            .map_err(to_int_e!())?;
+    let tracking_receive_thread = thread::spawn({
+        let runtime = Arc::clone(&runtime);
         let tracking_manager = Arc::clone(&tracking_manager);
-        async move {
-            let face_tracking_sink = if let Switch::Enabled(config) = settings.headset.face_tracking
-            {
-                Some(FaceTrackingSink::new(
-                    config.sink,
-                    settings.connection.osc_local_port,
-                )?)
-            } else {
-                None
-            };
+        move || {
+            let face_tracking_sink =
+                settings
+                    .headset
+                    .face_tracking
+                    .into_option()
+                    .and_then(|config| {
+                        FaceTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
+                    });
 
             let mut track_controllers = 0u32;
             if let Switch::Enabled(config) = settings.headset.controllers {
                 track_controllers = config.tracked.into();
             }
 
-            loop {
-                let tracking = receiver.recv_header_only().await?;
+            task::block_in_place(|| loop {
+                let Some(tracking) = runtime
+                    .read()
+                    .as_ref()
+                    .and_then(|runtime| runtime.block_on(tracking_receiver.recv_header_only()).ok())
+                else {
+                    return;
+                };
 
                 let mut tracking_manager_lock = tracking_manager.lock();
 
@@ -792,17 +801,21 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         )
                     };
                 }
-            }
+            })
         }
-    };
+    });
 
-    let statistics_receive_loop = {
-        let mut receiver = runtime
-            .block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS))
-            .map_err(to_int_e!())?;
-        async move {
-            loop {
-                let client_stats = receiver.recv_header_only().await?;
+    let statistics_thread = thread::spawn({
+        let runtime = Arc::clone(&runtime);
+        move || {
+            task::block_in_place(|| loop {
+                let Some(client_stats) = runtime
+                    .read()
+                    .as_ref()
+                    .and_then(|runtime| runtime.block_on(statics_receiver.recv_header_only()).ok())
+                else {
+                    return;
+                };
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
@@ -816,9 +829,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         decoder_latency,
                     );
                 }
-            }
+            })
         }
-    };
+    });
 
     let control_sender = Arc::new(Mutex::new(control_sender));
 
@@ -1012,8 +1025,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     };
 
     thread::spawn(move || {
-        runtime.block_on(async move {
-            let res = tokio::select! {
+        let res = runtime.read().as_ref().unwrap().block_on(async move {
+            tokio::select! {
                 // Spawn new tasks and let the runtime manage threading
                 res = spawn_cancelable(receive_loop) => {
                     if let Err(e) = res {
@@ -1025,9 +1038,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 res = spawn_cancelable(game_audio_loop) => res,
                 res = spawn_cancelable(microphone_loop) => res,
                 res = spawn_cancelable(video_send_loop) => res,
-                res = spawn_cancelable(statistics_receive_loop) => res,
                 res = spawn_cancelable(haptics_send_loop) => res,
-                res = spawn_cancelable(tracking_receive_loop) => res,
 
                 // Leave these loops on the current task
                 res = keepalive_loop => res,
@@ -1047,11 +1058,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 _ = SHUTDOWN_NOTIFIER.notified() => Ok(()),
                 _ = DISCONNECT_CLIENT_NOTIFIER.notified() => Ok(()),
                 _ = shutdown_detector => Ok(()),
-            };
-            if let Err(e) = res {
-                warn!("Connection interrupted: {e:?}");
             }
         });
+        if let Err(e) = res {
+            warn!("Connection interrupted: {e:?}");
+        }
+
+        // This requests shutdown from threads
+        *runtime.write() = None;
 
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
@@ -1077,6 +1091,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 warn!("Failed to run disconnect script: {e}");
             }
         }
+
+        // ensure shutdown of threads
+        tracking_receive_thread.join().ok();
+        statistics_thread.join().ok();
 
         CONNECTED_CLIENT_HOSTNAMES.lock().remove(&client_hostname);
     });

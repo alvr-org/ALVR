@@ -14,7 +14,7 @@ use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
 #[cfg(windows)]
 use sysinfo::PidExt;
 
-const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[cfg(windows)]
 pub const CREATE_NO_WINDOW: u32 = 0x0800_0000;

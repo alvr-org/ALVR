@@ -742,6 +742,8 @@ async fn install(
         progress: 0.0,
     }))
     .unwrap();
+
+    #[allow(unreachable_patterns)]
     let url = match installation_type {
         #[cfg(target_os = "linux")]
         InstallationType::AppImage => release.assets.get("ALVR-x86_64.AppImage"),
@@ -749,6 +751,7 @@ async fn install(
         InstallationType::Archive => release.assets.get("alvr_streamer_linux.tar.gz"),
         #[cfg(target_os = "windows")]
         InstallationType::Archive => release.assets.get("alvr_streamer_windows.zip"),
+        _ => unreachable!(),
     }
     .ok_or(anyhow::anyhow!("Unable to determine download link"))?
     .clone();

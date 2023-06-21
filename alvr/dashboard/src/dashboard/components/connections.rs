@@ -1,7 +1,5 @@
-use crate::{
-    dashboard::ServerRequest,
-    theme::{self, log_colors},
-};
+use crate::dashboard::ServerRequest;
+use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{

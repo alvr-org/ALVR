@@ -1,5 +1,5 @@
-use crate::theme::{self, log_colors};
 use alvr_common::{LogEntry, LogSeverity};
+use alvr_gui_common::theme::{self, log_colors};
 use alvr_session::Settings;
 use eframe::{
     egui::{self, Frame, Label, Layout, RichText, TopBottomPanel},

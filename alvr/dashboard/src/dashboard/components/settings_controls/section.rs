@@ -1,10 +1,8 @@
 use super::{NestingInfo, SettingControl, INDENTATION_STEP};
-use crate::{
-    dashboard::DisplayString,
-    theme::{
-        log_colors::{INFO_LIGHT, WARNING_LIGHT},
-        OK_GREEN,
-    },
+use crate::dashboard::DisplayString;
+use alvr_gui_common::theme::{
+    log_colors::{INFO_LIGHT, WARNING_LIGHT},
+    OK_GREEN,
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};

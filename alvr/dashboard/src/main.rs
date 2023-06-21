@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod dashboard;
-mod theme;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod data_sources;

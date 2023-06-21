@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
-use crate::theme::log_colors;
 use alvr_common::LogSeverity;
 use alvr_events::{Event, EventType};
+use alvr_gui_common::theme::log_colors;
 use alvr_session::Settings;
 use eframe::{
     egui::{Grid, ScrollArea, Ui},

@@ -128,43 +128,6 @@ void SaveTextureAsBytes(ID3D11DeviceContext* context, ID3D11Texture2D* texture, 
     stagingTexture->Release();
 }
 
-void SaveTextureAsPNG(ID3D11DeviceContext* context, ID3D11Texture2D* texture, std::string filename_s)
-{
-	ID3D11Device* device;
-	texture->GetDevice(&device);
-
-	// Get texture description
-	D3D11_TEXTURE2D_DESC desc;
-	texture->GetDesc(&desc);
-
-	// Create staging texture
-	D3D11_TEXTURE2D_DESC stagingDesc = desc;
-	stagingDesc.Usage = D3D11_USAGE_STAGING;
-	stagingDesc.BindFlags = 0;
-	stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-	ID3D11Texture2D* stagingTexture;
-	device->CreateTexture2D(&stagingDesc, nullptr, &stagingTexture);
-
-	// Copy texture to staging texture
-	context->CopyResource(stagingTexture, texture);
-
-	// Map staging texture to CPU memory
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	context->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
-
-	std::string name = std::to_string(count);
-	std::string name2 = ".png";
-	const char* filename = (filename_s+name+name2).c_str();
-	// Write texture to PNG file using stb_image_write library
-	stbi_write_png(filename, desc.Width, desc.Height, 4, mappedResource.pData, mappedResource.RowPitch);
-
-	// Unmap staging texture
-	context->Unmap(stagingTexture, 0);
-
-	// Release resources
-	stagingTexture->Release();
-}
-
 void StoreEncodedBuffer(const std::vector<std::vector<uint8_t>>& packets, std::string filename_s)
 {
 	std::string name = std::to_string(count);
@@ -219,14 +182,11 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\enc_";
 	count++;
 	//collect renderred frame
+	bool saveFrame = false;
 	if(count%50==0){
-		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
+		saveFrame = true;
 	}
-	m_NvNecoder->EncodeFrame(vPacket, &picParams);
-	//collect vPacket
-	if(count%50==0){
-		StoreEncodedBuffer(vPacket, filename);
-	}
+	m_NvNecoder->EncodeFrame(vPacket, &picParams, saveFrame, count);
 
 	for (std::vector<uint8_t> &packet : vPacket)
 	{

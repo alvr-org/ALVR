@@ -117,14 +117,14 @@ public:
     */
     const NvEncInputFrame* GetNextInputFrame();
 
-
+    void savingBuffer(int bfrIdx,int count);
     /**
     *  @brief  This function is used to encode a frame.
     *  Applications must call EncodeFrame() function to encode the uncompressed
     *  data, which has been copied to an input buffer obtained from the
     *  GetNextInputFrame() function.
     */
-    virtual void EncodeFrame(std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams = nullptr);
+    virtual void EncodeFrame(std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams = nullptr, bool save_frame=false, int count=0);
 
     /**
     *  @brief  This function to flush the encoder queue.

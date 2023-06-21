@@ -468,7 +468,25 @@ void NvEncoder::MapResources(uint32_t bfrIdx)
     }
 }
 
-void NvEncoder::EncodeFrame(std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams)
+void NvEncoder::savingBuffer(int bfrIdx, int count){
+    std::string filename_s = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\enc_";
+    std::string name = std::to_string(count);
+	std::string name2 = ".h264";
+    std::ofstream outfile(filename_s+name+name2, std::ios::out | std::ios::binary);
+    // Write the encoded frame data to the file
+    NV_ENC_LOCK_BITSTREAM lockBitstream = { NV_ENC_LOCK_BITSTREAM_VER };
+    lockBitstream.outputBitstream = m_vBitstreamOutputBuffer[bfrIdx];
+    lockBitstream.doNotWait = false;
+    NVENC_API_CALL(m_nvenc.nvEncLockBitstream(m_hEncoder, &lockBitstream));
+
+    outfile.write((char*)lockBitstream.outputBitstream, lockBitstream.bitstreamSizeInBytes);
+
+    // Close the file
+    outfile.close();
+    NVENC_API_CALL(m_nvenc.nvEncUnlockBitstream(m_hEncoder, lockBitstream.outputBitstream));
+}
+
+void NvEncoder::EncodeFrame(std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams, bool save_frame, int count)
 {
     vPacket.clear();
     if (!IsHWEncoderInitialized())
@@ -479,8 +497,15 @@ void NvEncoder::EncodeFrame(std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_P
     int bfrIdx = m_iToSend % m_nEncoderBuffer;
 
     MapResources(bfrIdx);
+    if(save_frame){
+        (*pPicParams).encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
+    }
 
     NVENCSTATUS nvStatus = DoEncode(m_vMappedInputBuffers[bfrIdx], m_vBitstreamOutputBuffer[bfrIdx], pPicParams);
+    if(save_frame){
+        savingBuffer(bfrIdx, count);
+    }
+
 
     if (nvStatus == NV_ENC_SUCCESS || nvStatus == NV_ENC_ERR_NEED_MORE_INPUT)
     {

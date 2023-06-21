@@ -120,26 +120,19 @@ void DecodeH264(const char* inputFilename, const char* outputPrefix)
 {
     //av_register_all();
 
-    AVFormatContext* formatContext = nullptr;
-    if (avformat_open_input(&formatContext, inputFilename, nullptr, nullptr) != 0)
+    FILE* inputFile = fopen(inputFilename, "rb");
+    if (!inputFile)
     {
         std::cerr << "Error opening input file\n";
         return;
     }
 
-    if (avformat_find_stream_info(formatContext, nullptr) < 0)
-    {
-        std::cerr << "Error finding stream info\n";
-        avformat_close_input(&formatContext);
-        return;
-    }
+    const AVCodec* codec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
-    AVCodec* codec = nullptr;
-    int streamIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_VIDEO, -1, -1, const_cast<const AVCodec**>(&codec), 0);
-    if (streamIndex < 0)
+    if (!codec)
     {
-        std::cerr << "Error finding video stream\n";
-        avformat_close_input(&formatContext);
+        std::cerr << "Error finding H.264 decoder\n";
+        fclose(inputFile);
         return;
     }
 
@@ -147,15 +140,7 @@ void DecodeH264(const char* inputFilename, const char* outputPrefix)
     if (!codecContext)
     {
         std::cerr << "Error allocating codec context\n";
-        avformat_close_input(&formatContext);
-        return;
-    }
-
-    if (avcodec_parameters_to_context(codecContext, formatContext->streams[streamIndex]->codecpar) < 0)
-    {
-        std::cerr << "Error setting codec parameters\n";
-        avcodec_free_context(&codecContext);
-        avformat_close_input(&formatContext);
+        fclose(inputFile);
         return;
     }
 
@@ -163,7 +148,7 @@ void DecodeH264(const char* inputFilename, const char* outputPrefix)
     {
         std::cerr << "Error opening codec\n";
         avcodec_free_context(&codecContext);
-        avformat_close_input(&formatContext);
+        fclose(inputFile);
         return;
     }
 
@@ -177,45 +162,55 @@ void DecodeH264(const char* inputFilename, const char* outputPrefix)
     {
         std::cerr << "Error allocating frame\n";
         avcodec_free_context(&codecContext);
-        avformat_close_input(&formatContext);
+        fclose(inputFile);
         return;
     }
 
     int frameCount = 0;
-    while (av_read_frame(formatContext, &packet) >= 0)
+    while (!feof(inputFile))
     {
-        if (packet.stream_index == streamIndex)
+        // Read the next frame from the binary file
+        uint8_t buffer[4096];
+        int bytesRead = fread(buffer, 1, sizeof(buffer), inputFile);
+        if (bytesRead <= 0)
         {
-            int ret = avcodec_send_packet(codecContext, &packet);
-            if (ret < 0)
+            break;
+        }
+
+        packet.data = buffer;
+        packet.size = bytesRead;
+
+        int ret = avcodec_send_packet(codecContext, &packet);
+        if (ret < 0)
+        {
+            std::cerr << "Error sending packet to decoder\n";
+            continue;
+        }
+
+        while (ret >= 0)
+        {
+            ret = avcodec_receive_frame(codecContext, frame);
+            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
             {
-                std::cerr << "Error sending packet to decoder\n";
+                break;
+            }
+            else if (ret < 0)
+            {
+                std::cerr << "Error receiving frame from decoder\n";
                 continue;
             }
 
-            while (ret >= 0)
-            {
-                ret = avcodec_receive_frame(codecContext, frame);
-                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-                {
-                    break;
-                }
-                else if (ret < 0)
-                {
-                    std::cerr << "Error receiving frame from decoder\n";
-                    continue;
-                }
-
-                char outputFilename[256];
-                sprintf(outputFilename, "%s_%d.png", outputPrefix, frameCount++);
-                SaveFrameAsPNG(frame, outputFilename);
-            }
+            char outputFilename[256];
+            sprintf(outputFilename, "%s_%d.png", outputPrefix, frameCount++);
+            SaveFrameAsPNG(frame, outputFilename);
         }
-
-        av_packet_unref(&packet);
     }
 
     avcodec_free_context(&codecContext);
-    avformat_close_input(&formatContext);
+    fclose(inputFile);
     av_frame_free(&frame);
+}
+
+int main(){
+    DecodeH264("data/enc_14900.bin", "test.png");
 }

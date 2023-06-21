@@ -218,10 +218,12 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	std::string filename = "C:\\AT\\ALVR\\build\\alvr_streamer_windows\\enc_";
 	count++;
+	//collect renderred frame
 	if(count%50==0){
 		SaveTextureAsBytes(m_pD3DRender->GetContext(),pInputTexture, filename);
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
+	//collect vPacket
 	if(count%50==0){
 		StoreEncodedBuffer(vPacket, filename);
 	}

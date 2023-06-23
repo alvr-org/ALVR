@@ -32,7 +32,7 @@ use alvr_common::{
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_packets::{
-    ClientListAction, DecoderInitializationConfig, Haptics, ServerControlPacket, VideoPacketHeader,
+    ClientListAction, DecoderInitializationConfig, ServerControlPacket, VideoPacketHeader,
 };
 use alvr_server_io::ServerDataManager;
 use alvr_session::CodecType;
@@ -79,8 +79,6 @@ pub struct VideoPacket {
 }
 
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-static HAPTICS_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -332,19 +330,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         });
     }
 
-    extern "C" fn haptics_send(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-        if let Some(sender) = &*HAPTICS_CHANNEL_SENDER.lock() {
-            let haptics = Haptics {
-                device_id,
-                duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
-                frequency,
-                amplitude,
-            };
-
-            sender.send(haptics).ok();
-        }
-    }
-
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
         SHOULD_CONNECT_TO_CLIENTS.set(true);
 
@@ -433,7 +418,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     DriverReadyIdle = Some(driver_ready_idle);
     InitializeDecoder = Some(initialize_decoder);
     VideoSend = Some(connection::send_video);
-    HapticsSend = Some(haptics_send);
+    HapticsSend = Some(connection::send_haptics);
     ShutdownRuntime = Some(shutdown_driver);
     PathStringToHash = Some(path_string_to_hash);
     ReportPresent = Some(report_present);

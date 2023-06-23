@@ -7,9 +7,8 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, HAPTICS_CHANNEL_SENDER, RESTART_NOTIFIER,
-    SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER,
-    VIDEO_RECORDING_FILE,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
+    SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -23,12 +22,13 @@ use alvr_common::{
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
     ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
+    Haptics, ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
-    spawn_cancelable, PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL,
+    spawn_cancelable, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
+    KEEPALIVE_INTERVAL,
 };
 use futures::future::BoxFuture;
 use std::{
@@ -63,6 +63,8 @@ static CONNECTION_RUNTIME: Lazy<parking_lot::RwLock<Option<Runtime>>> =
 static VIDEO_CHANNEL_SENDER: Lazy<
     parking_lot::Mutex<Option<std::sync::mpsc::SyncSender<VideoPacket>>>,
 > = Lazy::new(|| parking_lot::Mutex::new(None));
+static HAPTICS_SENDER: Lazy<parking_lot::Mutex<Option<StreamSender<Haptics>>>> =
+    Lazy::new(|| parking_lot::Mutex::new(None));
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -512,7 +514,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut video_sender = runtime
         .block_on(stream_socket.request_stream(VIDEO))
         .map_err(to_int_e!())?;
-    let mut haptics_sender = runtime
+    let haptics_sender = runtime
         .block_on(stream_socket.request_stream(HAPTICS))
         .map_err(to_int_e!())?;
     let mut tracking_receiver = runtime
@@ -641,6 +643,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let (video_channel_sender, video_channel_receiver) =
         std::sync::mpsc::sync_channel(settings.connection.max_queued_server_video_frames);
     *VIDEO_CHANNEL_SENDER.lock() = Some(video_channel_sender);
+    *HAPTICS_SENDER.lock() = Some(haptics_sender);
 
     let video_send_thread = thread::spawn(move || loop {
         let VideoPacket { header, payload } =
@@ -657,45 +660,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             runtime.block_on(video_sender.send(&header, payload)).ok();
         }
     });
-
-    let haptics_send_loop = async move {
-        let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-        *HAPTICS_CHANNEL_SENDER.lock() = Some(data_sender);
-
-        while let Some(haptics) = data_receiver.recv().await {
-            let haptics_config = {
-                let data_manager_lock = SERVER_DATA_MANAGER.read();
-
-                if data_manager_lock.settings().logging.log_haptics {
-                    alvr_events::send_event(EventType::Haptics(HapticsEvent {
-                        path: DEVICE_ID_TO_PATH
-                            .get(&haptics.device_id)
-                            .map(|p| (*p).to_owned())
-                            .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
-                        duration: haptics.duration,
-                        frequency: haptics.frequency,
-                        amplitude: haptics.amplitude,
-                    }))
-                }
-
-                data_manager_lock
-                    .settings()
-                    .headset
-                    .controllers
-                    .as_option()
-                    .and_then(|c| c.haptics.as_option().cloned())
-            };
-
-            if let Some(config) = haptics_config {
-                haptics_sender
-                    .send(&haptics::map_haptics(&config, haptics), vec![])
-                    .await
-                    .ok();
-            }
-        }
-
-        Ok(())
-    };
 
     let tracking_manager = Arc::new(parking_lot::Mutex::new(TrackingManager::new()));
 
@@ -1057,7 +1021,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     },
                     res = spawn_cancelable(game_audio_loop) => res,
                     res = spawn_cancelable(microphone_loop) => res,
-                    res = spawn_cancelable(haptics_send_loop) => res,
 
                     // Leave these loops on the current task
                     res = keepalive_loop => res,
@@ -1085,6 +1048,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
         // This requests shutdown from threads
         *VIDEO_CHANNEL_SENDER.lock() = None;
+        *HAPTICS_SENDER.lock() = None;
         *CONNECTION_RUNTIME.write() = None;
 
         SERVER_DATA_MANAGER.write().update_client_list(
@@ -1181,5 +1145,47 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
                 .lock()
                 .report_frame_encoded(timestamp, encoder_latency, buffer_size);
         }
+    }
+}
+
+pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
+    let haptics = Haptics {
+        device_id,
+        duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
+        frequency,
+        amplitude,
+    };
+
+    let haptics_config = {
+        let data_manager_lock = SERVER_DATA_MANAGER.read();
+
+        if data_manager_lock.settings().logging.log_haptics {
+            alvr_events::send_event(EventType::Haptics(HapticsEvent {
+                path: DEVICE_ID_TO_PATH
+                    .get(&haptics.device_id)
+                    .map(|p| (*p).to_owned())
+                    .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
+                duration: haptics.duration,
+                frequency: haptics.frequency,
+                amplitude: haptics.amplitude,
+            }))
+        }
+
+        data_manager_lock
+            .settings()
+            .headset
+            .controllers
+            .as_option()
+            .and_then(|c| c.haptics.as_option().cloned())
+    };
+
+    if let (Some(config), Some(runtime), Some(sender)) = (
+        haptics_config,
+        &*CONNECTION_RUNTIME.read(),
+        &mut *HAPTICS_SENDER.lock(),
+    ) {
+        runtime
+            .block_on(sender.send(&haptics::map_haptics(&config, haptics), vec![]))
+            .ok();
     }
 }

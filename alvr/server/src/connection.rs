@@ -811,147 +811,172 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let control_sender = Arc::new(tokio::sync::Mutex::new(control_sender));
 
-    let keepalive_loop = {
+    let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
-        async move {
-            loop {
-                let res = control_sender
-                    .lock()
-                    .await
-                    .send(&ServerControlPacket::KeepAlive)
-                    .await;
+        move || loop {
+            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                let res = runtime.block_on(async {
+                    control_sender
+                        .lock()
+                        .await
+                        .send(&ServerControlPacket::KeepAlive)
+                        .await
+                });
                 if let Err(e) = res {
                     info!("Client disconnected. Cause: {e}");
-                    break Ok(());
-                }
-                time::sleep(KEEPALIVE_INTERVAL).await;
-            }
-        }
-    };
 
-    let control_loop = {
+                    DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+
+                    return;
+                }
+            } else {
+                return;
+            }
+
+            thread::sleep(KEEPALIVE_INTERVAL);
+        }
+    });
+
+    let control_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
-        async move {
-            loop {
-                match control_receiver.recv().await {
-                    Ok(ClientControlPacket::PlayspaceSync(packet)) => {
-                        if !is_tracking_ref_only {
-                            playspace_sync_sender.send(packet).ok();
-
-                            let data_manager_lock = SERVER_DATA_MANAGER.read();
-                            let config = &data_manager_lock.settings().headset;
-                            tracking_manager.lock().recenter(
-                                config.position_recentering_mode,
-                                config.rotation_recentering_mode,
-                            );
-                        }
+        move || loop {
+            let packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                let maybe_packet = runtime.block_on(async {
+                    tokio::select! {
+                        res = control_receiver.recv() => Some(res),
+                        _ = time::sleep(Duration::from_millis(100)) => None,
                     }
-                    Ok(ClientControlPacket::RequestIdr) => {
-                        let maybe_config = DECODER_CONFIG.lock().clone();
-                        if let Some(config) = maybe_config {
-                            control_sender
-                                .lock()
-                                .await
-                                .send(&ServerControlPacket::InitializeDecoder(config))
-                                .await
-                                .ok();
-                        }
-                        unsafe { crate::RequestIDR() }
-                    }
-                    Ok(ClientControlPacket::VideoErrorReport) => {
-                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                            stats.report_packet_loss();
-                        }
-                        unsafe { crate::VideoErrorReportReceive() };
-                    }
-                    Ok(ClientControlPacket::ViewsConfig(config)) => unsafe {
-                        crate::SetViewsConfig(FfiViewsConfig {
-                            fov: [
-                                FfiFov {
-                                    left: config.fov[0].left,
-                                    right: config.fov[0].right,
-                                    up: config.fov[0].up,
-                                    down: config.fov[0].down,
-                                },
-                                FfiFov {
-                                    left: config.fov[1].left,
-                                    right: config.fov[1].right,
-                                    up: config.fov[1].up,
-                                    down: config.fov[1].down,
-                                },
-                            ],
-                            ipd_m: config.ipd_m,
-                        });
-                    },
-                    Ok(ClientControlPacket::Battery(packet)) => unsafe {
-                        crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
-
-                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                            stats.report_battery(
-                                packet.device_id,
-                                packet.gauge_value,
-                                packet.is_plugged,
-                            );
-                        }
-                    },
-                    Ok(ClientControlPacket::Buttons(entries)) => {
-                        {
-                            let data_manager_lock = SERVER_DATA_MANAGER.read();
-                            if data_manager_lock.settings().logging.log_button_presses {
-                                alvr_events::send_event(EventType::Buttons(
-                                    entries
-                                        .iter()
-                                        .map(|e| ButtonEvent {
-                                            path: BUTTON_PATH_FROM_ID
-                                                .get(&e.path_id)
-                                                .cloned()
-                                                .unwrap_or_else(|| {
-                                                    format!("Unknown (ID: {:#16x})", e.path_id)
-                                                }),
-                                            value: e.value,
-                                        })
-                                        .collect(),
-                                ));
-                            }
-                        }
-
-                        for entry in entries {
-                            let value = match entry.value {
-                                ButtonValue::Binary(value) => FfiButtonValue {
-                                    type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                        binary: value.into(),
-                                    },
-                                },
-
-                                ButtonValue::Scalar(value) => FfiButtonValue {
-                                    type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                        scalar: value,
-                                    },
-                                },
-                            };
-
-                            unsafe { crate::SetButton(entry.path_id, value) };
-                        }
-                    }
-                    Ok(ClientControlPacket::Log { level, message }) => {
-                        info!("Client {client_hostname}: [{level:?}] {message}")
-                    }
-                    Ok(_) => (),
-                    Err(e) => {
+                });
+                match maybe_packet {
+                    Some(Ok(packet)) => packet,
+                    Some(Err(e)) => {
                         info!("Client disconnected. Cause: {e}");
+
+                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+
                         break;
                     }
+                    None => continue,
                 }
+            } else {
+                return;
+            };
+
+            match packet {
+                ClientControlPacket::PlayspaceSync(packet) => {
+                    if !is_tracking_ref_only {
+                        playspace_sync_sender.send(packet).ok();
+
+                        let data_manager_lock = SERVER_DATA_MANAGER.read();
+                        let config = &data_manager_lock.settings().headset;
+                        tracking_manager.lock().recenter(
+                            config.position_recentering_mode,
+                            config.rotation_recentering_mode,
+                        );
+                    }
+                }
+                ClientControlPacket::RequestIdr => {
+                    let maybe_config = DECODER_CONFIG.lock().clone();
+                    if let (Some(runtime), Some(config)) =
+                        (&*CONNECTION_RUNTIME.read(), maybe_config)
+                    {
+                        runtime
+                            .block_on(async {
+                                control_sender
+                                    .lock()
+                                    .await
+                                    .send(&ServerControlPacket::InitializeDecoder(config))
+                                    .await
+                            })
+                            .ok();
+                    }
+                    unsafe { crate::RequestIDR() }
+                }
+                ClientControlPacket::VideoErrorReport => {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_packet_loss();
+                    }
+                    unsafe { crate::VideoErrorReportReceive() };
+                }
+                ClientControlPacket::ViewsConfig(config) => unsafe {
+                    crate::SetViewsConfig(FfiViewsConfig {
+                        fov: [
+                            FfiFov {
+                                left: config.fov[0].left,
+                                right: config.fov[0].right,
+                                up: config.fov[0].up,
+                                down: config.fov[0].down,
+                            },
+                            FfiFov {
+                                left: config.fov[1].left,
+                                right: config.fov[1].right,
+                                up: config.fov[1].up,
+                                down: config.fov[1].down,
+                            },
+                        ],
+                        ipd_m: config.ipd_m,
+                    });
+                },
+                ClientControlPacket::Battery(packet) => unsafe {
+                    crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
+
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_battery(
+                            packet.device_id,
+                            packet.gauge_value,
+                            packet.is_plugged,
+                        );
+                    }
+                },
+                ClientControlPacket::Buttons(entries) => {
+                    {
+                        let data_manager_lock = SERVER_DATA_MANAGER.read();
+                        if data_manager_lock.settings().logging.log_button_presses {
+                            alvr_events::send_event(EventType::Buttons(
+                                entries
+                                    .iter()
+                                    .map(|e| ButtonEvent {
+                                        path: BUTTON_PATH_FROM_ID
+                                            .get(&e.path_id)
+                                            .cloned()
+                                            .unwrap_or_else(|| {
+                                                format!("Unknown (ID: {:#16x})", e.path_id)
+                                            }),
+                                        value: e.value,
+                                    })
+                                    .collect(),
+                            ));
+                        }
+                    }
+
+                    for entry in entries {
+                        let value = match entry.value {
+                            ButtonValue::Binary(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    binary: value.into(),
+                                },
+                            },
+
+                            ButtonValue::Scalar(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    scalar: value,
+                                },
+                            },
+                        };
+
+                        unsafe { crate::SetButton(entry.path_id, value) };
+                    }
+                }
+                ClientControlPacket::Log { level, message } => {
+                    info!("Client {client_hostname}: [{level:?}] {message}")
+                }
+                _ => (),
             }
-
-            Ok(())
         }
-    };
-
-    let receive_loop = async move { stream_socket.receive_loop().await };
+    });
 
     {
         let on_connect_script = settings.connection.on_connect_script;
@@ -982,34 +1007,30 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .lock()
         .insert(client_hostname.clone());
 
-    // this is a bridge between sync and async, skips the needs for a notifier
-    let shutdown_detector = async {
-        while SHOULD_CONNECT_TO_CLIENTS.value() {
-            time::sleep(Duration::from_secs(1)).await;
-        }
-    };
-
     thread::spawn(move || {
+        let shutdown_detector = async {
+            while SHOULD_CONNECT_TO_CLIENTS.value() {
+                time::sleep(Duration::from_secs(1)).await;
+            }
+        };
+
         let res = CONNECTION_RUNTIME
             .read()
             .as_ref()
             .unwrap()
             .block_on(async move {
                 tokio::select! {
-                    // Spawn new tasks and let the runtime manage threading
-                    res = spawn_cancelable(receive_loop) => {
+                    res = stream_socket.receive_loop() => {
                         if let Err(e) = res {
                             info!("Client disconnected. Cause: {e}" );
                         }
 
                         Ok(())
                     },
+
+                    // Spawn new tasks and let the runtime manage threading
                     res = spawn_cancelable(game_audio_loop) => res,
                     res = spawn_cancelable(microphone_loop) => res,
-
-                    // Leave these loops on the current task
-                    res = keepalive_loop => res,
-                    res = control_loop => res,
 
                     _ = RESTART_NOTIFIER.notified() => {
                         control_sender
@@ -1064,6 +1085,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         video_send_thread.join().ok();
         tracking_receive_thread.join().ok();
         statistics_thread.join().ok();
+        control_thread.join().ok();
+        keepalive_thread.join().ok();
 
         CONNECTED_CLIENT_HOSTNAMES.lock().remove(&client_hostname);
     });

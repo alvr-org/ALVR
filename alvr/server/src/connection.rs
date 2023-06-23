@@ -14,7 +14,7 @@ use alvr_audio::AudioDevice;
 use alvr_common::{
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
-    parking_lot,
+    parking_lot::{Mutex, RwLock},
     prelude::*,
     settings_schema::Switch,
     RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -40,27 +40,24 @@ use std::{
     ptr,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{self as smpsc, RecvTimeoutError, TrySendError},
+        mpsc::{RecvTimeoutError, SyncSender, TrySendError},
         Arc,
     },
     thread,
     time::Duration,
 };
-use tokio::{runtime::Runtime, time};
+use tokio::{runtime::Runtime, sync::Mutex as TMutex, time};
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-static CONNECTED_CLIENT_HOSTNAMES: Lazy<parking_lot::Mutex<HashSet<String>>> =
-    Lazy::new(|| parking_lot::Mutex::new(HashSet::new()));
-static CONNECTION_RUNTIME: Lazy<parking_lot::RwLock<Option<Runtime>>> =
-    Lazy::new(|| parking_lot::RwLock::new(None));
-static VIDEO_CHANNEL_SENDER: Lazy<
-    parking_lot::Mutex<Option<std::sync::mpsc::SyncSender<VideoPacket>>>,
-> = Lazy::new(|| parking_lot::Mutex::new(None));
-static HAPTICS_SENDER: Lazy<parking_lot::Mutex<Option<StreamSender<Haptics>>>> =
-    Lazy::new(|| parking_lot::Mutex::new(None));
+static CONNECTED_CLIENT_HOSTNAMES: Lazy<Mutex<HashSet<String>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
+static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
+static HAPTICS_SENDER: Lazy<Mutex<Option<StreamSender<Haptics>>>> = Lazy::new(|| Mutex::new(None));
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -615,22 +612,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         Box::pin(future::pending())
     };
 
-    let (playspace_sync_sender, playspace_sync_receiver) = smpsc::channel::<Option<Vec2>>();
-
-    let is_tracking_ref_only = settings.headset.tracking_ref_only;
-    if !is_tracking_ref_only {
-        // use a separate thread because SetChaperone() is blocking
-        thread::spawn(move || {
-            while let Ok(packet) = playspace_sync_receiver.recv() {
-                if let Some(area) = packet {
-                    unsafe { crate::SetChaperone(area.x, area.y) };
-                } else {
-                    unsafe { crate::SetChaperone(2.0, 2.0) };
-                }
-            }
-        });
-    }
-
     // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
     // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
     // Failure to respect this might leave a lingering runtime.
@@ -657,7 +638,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let tracking_manager = Arc::new(parking_lot::Mutex::new(TrackingManager::new()));
+    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
@@ -809,7 +790,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let control_sender = Arc::new(tokio::sync::Mutex::new(control_sender));
+    let control_sender = Arc::new(TMutex::new(control_sender));
 
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
@@ -865,8 +846,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
             match packet {
                 ClientControlPacket::PlayspaceSync(packet) => {
-                    if !is_tracking_ref_only {
-                        playspace_sync_sender.send(packet).ok();
+                    if !settings.headset.tracking_ref_only {
+                        let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
+                        unsafe { crate::SetChaperone(area.x, area.y) };
 
                         let data_manager_lock = SERVER_DATA_MANAGER.read();
                         let config = &data_manager_lock.settings().headset;

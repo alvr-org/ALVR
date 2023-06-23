@@ -45,21 +45,14 @@ use std::{
     fs::File,
     io::Write,
     ptr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Once,
-    },
+    sync::Once,
     thread,
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{
     runtime::Runtime,
-    sync::{
-        broadcast,
-        mpsc::{self, error::TrySendError},
-        Notify,
-    },
+    sync::{broadcast, mpsc, Notify},
 };
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
@@ -86,8 +79,6 @@ pub struct VideoPacket {
 }
 
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::Sender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Haptics>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -341,68 +332,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
         });
     }
 
-    extern "C" fn video_send(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
-        let buffer_size = len as usize;
-
-        // start in the corrupts state, the client didn't receive the initial IDR yet.
-        static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
-        if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
-            if is_idr {
-                STREAM_CORRUPTED.store(false, Ordering::SeqCst);
-            }
-
-            let timestamp = Duration::from_nanos(timestamp_ns);
-
-            let mut payload = vec![0; buffer_size];
-
-            // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
-            unsafe {
-                ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), buffer_size);
-            }
-
-            if !STREAM_CORRUPTED.load(Ordering::SeqCst)
-                || !SERVER_DATA_MANAGER
-                    .read()
-                    .settings()
-                    .connection
-                    .avoid_video_glitching
-            {
-                if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
-                    sender.send(payload.clone()).ok();
-                }
-
-                if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
-                    file.write_all(&payload).ok();
-                }
-
-                if matches!(
-                    sender.try_send(VideoPacket {
-                        header: VideoPacketHeader { timestamp, is_idr },
-                        payload,
-                    }),
-                    Err(TrySendError::Full(_))
-                ) {
-                    STREAM_CORRUPTED.store(true, Ordering::SeqCst);
-                    unsafe { crate::RequestIDR() };
-                    warn!("Dropping video packet. Reason: Can't push to network");
-                }
-            } else {
-                warn!("Dropping video packet. Reason: Waiting for IDR frame");
-            }
-
-            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                let encoder_latency =
-                    stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), buffer_size);
-
-                BITRATE_MANAGER.lock().report_frame_encoded(
-                    timestamp,
-                    encoder_latency,
-                    buffer_size,
-                );
-            }
-        }
-    }
-
     extern "C" fn haptics_send(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
         if let Some(sender) = &*HAPTICS_CHANNEL_SENDER.lock() {
             let haptics = Haptics {
@@ -503,7 +432,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogPeriodically = Some(log_periodically);
     DriverReadyIdle = Some(driver_ready_idle);
     InitializeDecoder = Some(initialize_decoder);
-    VideoSend = Some(video_send);
+    VideoSend = Some(connection::send_video);
     HapticsSend = Some(haptics_send);
     ShutdownRuntime = Some(shutdown_driver);
     PathStringToHash = Some(path_string_to_hash);

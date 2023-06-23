@@ -31,9 +31,7 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
-use alvr_packets::{
-    ClientListAction, DecoderInitializationConfig, ServerControlPacket, VideoPacketHeader,
-};
+use alvr_packets::{ClientListAction, DecoderInitializationConfig, VideoPacketHeader};
 use alvr_server_io::ServerDataManager;
 use alvr_session::CodecType;
 use bitrate::BitrateManager;
@@ -52,7 +50,7 @@ use std::{
 use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{
     runtime::Runtime,
-    sync::{broadcast, mpsc, Notify},
+    sync::{broadcast, Notify},
 };
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
@@ -78,8 +76,6 @@ pub struct VideoPacket {
     pub payload: Vec<u8>,
 }
 
-static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ServerControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
 static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new(None));

@@ -6,9 +6,9 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, CONTROL_CHANNEL_SENDER,
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER,
-    SHUTDOWN_NOTIFIER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG,
+    DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER,
+    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -46,11 +46,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::{
-    runtime::Runtime,
-    sync::{mpsc as tmpsc, Mutex},
-    time,
-};
+use tokio::{runtime::Runtime, time};
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -813,7 +809,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let control_sender = Arc::new(Mutex::new(control_sender));
+    let control_sender = Arc::new(tokio::sync::Mutex::new(control_sender));
 
     let keepalive_loop = {
         let control_sender = Arc::clone(&control_sender);
@@ -833,21 +829,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     };
 
-    let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
-    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
-
-    let control_send_loop = {
-        let control_sender = Arc::clone(&control_sender);
-        async move {
-            while let Some(packet) = control_channel_receiver.recv().await {
-                control_sender.lock().await.send(&packet).await?;
-            }
-
-            Ok(())
-        }
-    };
-
     let control_loop = {
+        let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         async move {
             loop {
@@ -865,12 +848,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         }
                     }
                     Ok(ClientControlPacket::RequestIdr) => {
-                        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                            if let Some(config) = &*DECODER_CONFIG.lock() {
-                                sender
-                                    .send(ServerControlPacket::InitializeDecoder(config.clone()))
-                                    .ok();
-                            }
+                        let maybe_config = DECODER_CONFIG.lock().clone();
+                        if let Some(config) = maybe_config {
+                            control_sender
+                                .lock()
+                                .await
+                                .send(&ServerControlPacket::InitializeDecoder(config))
+                                .await
+                                .ok();
                         }
                         unsafe { crate::RequestIDR() }
                     }
@@ -1025,7 +1010,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     // Leave these loops on the current task
                     res = keepalive_loop => res,
                     res = control_loop => res,
-                    res = control_send_loop => res,
 
                     _ = RESTART_NOTIFIER.notified() => {
                         control_sender

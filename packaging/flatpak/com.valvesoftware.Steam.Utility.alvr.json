@@ -13,10 +13,9 @@
     "separate-locales": false,
     "build-options": {
         "prefix": "/app/utils/alvr",
-        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin",
-        "append-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
-        "prepend-path": "/app/utils/alvr/bin",
-        "prepend-ld-library-path": "/usr/lib/sdk/llvm16/lib:/app/utils/alvr/lib",
+        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin",
+        "prepend-ld-library-path": "/app/utils/alvr/lib",
+        "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
         "strip": true,
         "env": {
             "PREFIX": "/app/utils/alvr"
@@ -39,17 +38,18 @@
                 "env": {
                     "RUST_BACKTRACE": "full",
                     "CURL_HOME": "/run/build/alvr",
-                    "CPLUS_INCLUDE_PATH": "/app/utils/alvr/include:/run/build/alvr/deps/linux/ffmpeg/alvr_build/include",
-                    "prepend-ld-library-path": "/run/build/alvr/deps/linux/ffmpeg/alvr_build/lib"
+                    "CPATH": "/app/utils/alvr/include"
                 }
             },
             "build-commands": [
                 "cargo xtask prepare-deps --platform linux --no-nvidia",
-                "cargo xtask build-streamer --release"
+                "cargo xtask build-streamer --release",
+                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr"
             ],
             "modules": [
                 "modules/nv-codec-headers/nv-codec-headers.json",
                 "modules/yasm/yasm.json",
+                "modules/vulkan-headers/vulkan-headers.json",
                 "modules/x264/x264.json"
             ],
             "sources": [

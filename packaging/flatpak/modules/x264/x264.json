@@ -2,7 +2,6 @@
     "name": "x264",
     "config-opts": [
         "--prefix=/app/utils/alvr",
-        "--enable-lto",
         "--enable-pic",
         "--enable-shared",
         "--disable-cli"

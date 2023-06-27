@@ -134,10 +134,6 @@ pub fn build_streamer(
             }
         }
     } else if cfg!(target_os = "linux") {
-        let firewall_script = afs::workspace_dir().join("packaging/firewall/alvr_fw_config.sh");
-        let firewalld = afs::workspace_dir().join("packaging/firewall/alvr-firewalld.xml");
-        let ufw = afs::workspace_dir().join("packaging/firewall/ufw-alvr");
-
         // build compositor wrapper
         let _push_guard = sh.push_dir(afs::crate_dir("vrcompositor_wrapper"));
         cmd!(sh, "cargo build {common_flags_ref...}").run().unwrap();
@@ -167,6 +163,10 @@ pub fn build_streamer(
             build_layout.vulkan_layer_manifest(),
         )
         .unwrap();
+
+        let firewall_script = afs::crate_dir("xtask").join("firewall/alvr_fw_config.sh");
+        let firewalld = afs::crate_dir("xtask").join("firewall/alvr-firewalld.xml");
+        let ufw = afs::crate_dir("xtask").join("firewall/ufw-alvr");
 
         // copy linux specific firewalls
         sh.copy_file(firewall_script, build_layout.firewall_script())

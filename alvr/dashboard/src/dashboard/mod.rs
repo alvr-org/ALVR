@@ -11,8 +11,7 @@ use alvr_gui_common::theme;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
 use eframe::egui::{
-    self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
-    Stroke,
+    self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, SidePanel, Stroke,
 };
 use std::{
     collections::BTreeMap,
@@ -286,7 +285,7 @@ impl eframe::App for Dashboard {
                             RichText::new(*self.tab_labels.get(&self.selected_tab).unwrap())
                                 .size(25.0),
                         );
-                        ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
+                        match self.selected_tab {
                             Tab::Connections => {
                                 requests.extend(self.connections_tab.ui(ui, connected_to_server));
                             }
@@ -320,7 +319,7 @@ impl eframe::App for Dashboard {
                                 }
                             }
                             Tab::About => components::about_tab_ui(ui),
-                        })
+                        }
                     })
                 });
         }

@@ -4,7 +4,7 @@ use alvr_gui_common::theme;
 use eframe::{
     egui::{
         popup, pos2, vec2, Align2, Color32, FontId, Frame, Id, Painter, Rect, RichText, Rounding,
-        Shape, Stroke, Ui,
+        ScrollArea, Shape, Stroke, Ui,
     },
     emath::RectTransform,
     epaint::Pos2,
@@ -45,7 +45,7 @@ impl StatisticsTab {
 
     pub fn ui(&mut self, ui: &mut Ui) -> Option<ServerRequest> {
         if let Some(stats) = &self.last_statistics_summary {
-            ui.vertical(|ui| {
+            ScrollArea::new([false, true]).show(ui, |ui| {
                 let available_width = ui.available_width();
                 self.draw_latency_graph(ui, available_width);
                 self.draw_fps_graph(ui, available_width);

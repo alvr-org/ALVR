@@ -84,16 +84,19 @@ impl LogsTab {
     }
 
     pub fn ui(&self, ui: &mut Ui) {
-        ScrollArea::both().show(ui, |ui| {
-            Grid::new(0).num_columns(3).striped(true).show(ui, |ui| {
-                for entry in &self.entries {
-                    ui.colored_label(entry.color, &entry.timestamp);
-                    ui.colored_label(entry.color, &entry.ty);
-                    ui.colored_label(entry.color, &entry.message);
+        ScrollArea::both()
+            .stick_to_bottom(true)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                Grid::new(0).num_columns(3).striped(true).show(ui, |ui| {
+                    for entry in &self.entries {
+                        ui.colored_label(entry.color, &entry.timestamp);
+                        ui.colored_label(entry.color, &entry.ty);
+                        ui.colored_label(entry.color, &entry.message);
 
-                    ui.end_row();
-                }
+                        ui.end_row();
+                    }
+                });
             });
-        });
     }
 }

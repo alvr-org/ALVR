@@ -48,7 +48,6 @@
                 "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr"
             ],
             "modules": [
-                "modules/nv-codec-headers/nv-codec-headers.json",
                 "modules/yasm/yasm.json",
                 "modules/vulkan-headers/vulkan-headers.json",
                 "modules/x264/x264.json"

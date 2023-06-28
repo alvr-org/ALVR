@@ -125,7 +125,6 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--disable-swscale",
         "--disable-postproc",
         "--disable-network",
-        "--enable-lto",
         "--disable-everything",
         "--enable-encoder=h264_vaapi",
         "--enable-encoder=hevc_vaapi",

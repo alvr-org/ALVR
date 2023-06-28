@@ -24,7 +24,7 @@ cd ALVR
 3. Build and install the flatpak
 
 ```
-flatpak run org.flatpak.Builder --user --install --force-clean build-dir packaging/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Usage

@@ -42,6 +42,7 @@
                 }
             },
             "build-commands": [
+                "echo 'insecure' >> .curlrc",
                 "cargo xtask prepare-deps --platform linux --no-nvidia",
                 "cargo xtask build-streamer --release",
                 "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr"
@@ -55,11 +56,7 @@
             "sources": [
                 {
                     "type": "dir",
-                    "path": "../../"
-                },
-                {
-                    "type": "file",
-                    "path": ".curlrc"
+                    "path": "../../../"
                 }
             ]
         }

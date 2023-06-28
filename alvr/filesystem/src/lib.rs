@@ -246,6 +246,10 @@ impl Layout {
     pub fn vrcompositor_wrapper(&self) -> PathBuf {
         self.vrcompositor_wrapper_dir.join("vrcompositor-wrapper")
     }
+    
+    pub fn drm_lease_shim(&self) -> PathBuf {
+        self.vrcompositor_wrapper_dir.join("alvr_drm_lease_shim.so")
+    }
 
     pub fn vulkan_layer(&self) -> PathBuf {
         self.libraries_dir.join(dynlib_fname("alvr_vulkan_layer"))

@@ -102,7 +102,7 @@ fn package_streamer_appimage(release: bool, update: bool) {
     let bin = &afs::build_dir().join("alvr_streamer_linux");
 
     let icon = &afs::workspace_dir().join("resources/alvr.png");
-    let desktop = &afs::workspace_dir().join("packaging/freedesktop/alvr.desktop");
+    let desktop = &afs::workspace_dir().join("alvr/xtask/resources/alvr.desktop");
 
     let linuxdeploy = afs::build_dir().join("linuxdeploy-x86_64.AppImage");
 

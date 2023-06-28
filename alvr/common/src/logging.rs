@@ -48,32 +48,31 @@ pub fn set_panic_hook() {
 
         log::error!("{err_str}");
 
-        #[cfg(windows)]
+        #[cfg(not(target_os = "android"))]
         std::thread::spawn(move || {
-            msgbox::create("ALVR panicked", &err_str, msgbox::IconType::Error).ok();
+            rfd::MessageDialog::new()
+                .set_title("ALVR panicked")
+                .set_description(&err_str)
+                .set_level(rfd::MessageLevel::Error)
+                .show();
         });
     }))
 }
 
-pub fn show_w<W: Display>(w: W) {
+pub fn show_w<W: Display + Send + 'static>(w: W) {
     log::warn!("{w}");
 
-    // GDK crashes because of initialization in multiple thread
-    #[cfg(windows)]
-    std::thread::spawn({
-        let warn_string = w.to_string();
-        move || {
-            msgbox::create(
-                "ALVR encountered a non-fatal error",
-                &warn_string,
-                msgbox::IconType::Info,
-            )
-            .ok();
-        }
+    #[cfg(not(target_os = "android"))]
+    std::thread::spawn(move || {
+        rfd::MessageDialog::new()
+            .set_title("ALVR warning")
+            .set_description(&w.to_string())
+            .set_level(rfd::MessageLevel::Warning)
+            .show()
     });
 }
 
-pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
+pub fn show_warn<T, E: Display + Send + 'static>(res: Result<T, E>) -> Option<T> {
     res.map_err(show_w).ok()
 }
 
@@ -81,8 +80,7 @@ pub fn show_warn<T, E: Display>(res: Result<T, E>) -> Option<T> {
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{e}");
 
-    // GDK crashes because of initialization in multiple thread
-    #[cfg(windows)]
+    #[cfg(not(target_os = "android"))]
     {
         // Store the last error shown in a message box. Do not open a new message box if the content
         // of the error has not changed
@@ -97,12 +95,11 @@ fn show_e_block<E: Display>(e: E, blocking: bool) {
             let show_msgbox = {
                 let err_string = err_string.clone();
                 move || {
-                    msgbox::create(
-                        "ALVR encountered an error",
-                        &err_string,
-                        msgbox::IconType::Error,
-                    )
-                    .ok();
+                    rfd::MessageDialog::new()
+                        .set_title("ALVR error")
+                        .set_description(&err_string)
+                        .set_level(rfd::MessageLevel::Error)
+                        .show()
                 }
             };
 

@@ -74,7 +74,7 @@ pub fn dashboard_fname() -> &'static str {
 pub struct Layout {
     // directory containing the dashboard executable
     pub executables_dir: PathBuf,
-    // (linux only) directory where alvr_vulkan_layer.so is saved
+    // (linux only) directory where libalvr_vulkan_layer.so is saved
     pub libraries_dir: PathBuf,
     // parent directory of resources like the dashboard and presets folders
     pub static_resources_dir: PathBuf,

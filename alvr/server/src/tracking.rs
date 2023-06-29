@@ -1,7 +1,9 @@
 use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    prelude::warn,
+    DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, LEFT_TRIGGER_CLICK_ID,
+    RIGHT_HAND_ID, RIGHT_TRIGGER_CLICK_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -265,7 +267,89 @@ pub fn to_openvr_hand_skeleton(
             * Quat::from_euler(EulerRot::YXZ, -FRAC_PI_2, FRAC_PI_2, 0.0),
         position: gj[1].position,
     };
-
+    // test pinch
+    {
+        let thumb_tip: Pose = gj[5];
+        let index_tip: Pose = gj[10];
+        let middle_tip: Pose = gj[15];
+        let ring_tip: Pose = gj[20];
+        let little_tip: Pose = gj[25];
+        let index_pinch = thumb_tip.position.distance(index_tip.position) < 0.010;
+        let middle_pinch = thumb_tip.position.distance(middle_tip.position) < 0.010;
+        let ring_pinch = thumb_tip.position.distance(ring_tip.position) < 0.010;
+        let little_pinch = thumb_tip.position.distance(little_tip.position) < 0.010;
+        if device_id == *LEFT_HAND_ID {
+            if index_pinch {
+                unsafe {
+                    crate::SetButton(
+                        *LEFT_TRIGGER_CLICK_ID,
+                        crate::FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                binary: true.into(),
+                            },
+                        },
+                    )
+                };
+                warn!("thumb/index pinch detected on left hand");
+            } else {
+                unsafe {
+                    crate::SetButton(
+                        *LEFT_TRIGGER_CLICK_ID,
+                        crate::FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                binary: false.into(),
+                            },
+                        },
+                    )
+                }
+                warn!("thumb/index unpinch detected on left hand");
+            }
+            if middle_pinch {
+                warn!("thumb/middle pinch detected on left hand");
+            } else if ring_pinch {
+                warn!("thumb/ring pinch detected on left hand");
+            } else if little_pinch {
+                warn!("thumb/little pinch detected on left hand");
+            }
+        } else {
+            if index_pinch {
+                unsafe {
+                    crate::SetButton(
+                        *RIGHT_TRIGGER_CLICK_ID,
+                        crate::FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                binary: true.into(),
+                            },
+                        },
+                    )
+                }
+                warn!("thumb/index pinch detected on right hand");
+            } else {
+                unsafe {
+                    crate::SetButton(
+                        *RIGHT_TRIGGER_CLICK_ID,
+                        crate::FfiButtonValue {
+                            type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                            __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                binary: false.into(),
+                            },
+                        },
+                    )
+                }
+                warn!("thumb/index unpinch detected on right hand");
+            }
+            if middle_pinch {
+                warn!("thumb/middle pinch detected on right hand");
+            } else if ring_pinch {
+                warn!("thumb/ring pinch detected on right hand");
+            } else if little_pinch {
+                warn!("thumb/little pinch detected on right hand");
+            }
+        }
+    }
     [
         // Palm. NB: this is ignored by SteamVR
         Pose::default(),

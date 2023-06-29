@@ -489,16 +489,20 @@ pub fn get_hand_motion(
             linear_velocity: to_vec3(velocity.linear_velocity),
             angular_velocity: to_vec3(velocity.angular_velocity),
         };
-
-        return (Some(hand_motion), None);
+        if velocity.linear_velocity.x != 0.0
+            && velocity.linear_velocity.y != 0.0
+            && velocity.linear_velocity.z != 0.0
+        {
+            return (Some(hand_motion), None);
+        }
     }
 
     let Some(tracker) = &hand_source.skeleton_tracker else {
         return (None, None);
     };
 
-    let Some((joint_locations, jont_velocities)) = reference_space
-            .relate_hand_joints(tracker, time)
+    let Some(joint_locations) = reference_space
+            .locate_hand_joints(tracker, time)
             .ok().flatten()
         else {
             return (None, None);
@@ -506,8 +510,16 @@ pub fn get_hand_motion(
 
     let root_motion = DeviceMotion {
         pose: to_pose(joint_locations[0].pose),
-        linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
-        angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
+        linear_velocity: Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
+        angular_velocity: Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        },
     };
 
     let joints = joint_locations

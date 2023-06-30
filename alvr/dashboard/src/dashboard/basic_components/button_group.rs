@@ -9,11 +9,13 @@ pub fn button_group_clicked(
 ) -> bool {
     let mut clicked = false;
     for id in options {
-        if ui
-            .selectable_value(selection, (**id).clone(), &id.display)
-            .clicked()
-        {
+        let res = ui.selectable_value(selection, (**id).clone(), &id.display);
+        if res.clicked() {
             clicked = true;
+        }
+
+        if cfg!(debug_assertions) {
+            res.on_hover_text((**id).clone());
         }
     }
 

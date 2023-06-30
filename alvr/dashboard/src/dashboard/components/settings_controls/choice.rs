@@ -131,7 +131,7 @@ impl Control {
                     request = get_request(&self.nesting_info, variant_mut);
                 }
             } else if let Some(mut index) = self.variant_indices.get(variant_mut).cloned() {
-                let response = ComboBox::new(self.combobox_id, "").show_index(
+                let response = ComboBox::from_id_source(self.combobox_id).show_index(
                     ui,
                     &mut index,
                     self.variant_labels.len(),
@@ -141,9 +141,13 @@ impl Control {
                     *variant_mut = self.variant_labels[index].id.clone();
                     request = get_request(&self.nesting_info, variant_mut);
                 }
+
+                if cfg!(debug_assertions) {
+                    response.on_hover_text(&self.variant_labels[index].id);
+                }
             } else {
                 let mut index = 0;
-                let response = ComboBox::new(self.combobox_id, "").show_index(
+                let response = ComboBox::from_id_source(self.combobox_id).show_index(
                     ui,
                     &mut index,
                     self.variant_labels.len() + 1,

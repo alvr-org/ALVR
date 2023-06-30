@@ -510,16 +510,8 @@ pub fn get_hand_motion(
 
     let root_motion = DeviceMotion {
         pose: to_pose(joint_locations[0].pose),
-        linear_velocity: Vec3 {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        },
-        angular_velocity: Vec3 {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        },
+        linear_velocity: Vec3::ZERO,
+        angular_velocity: Vec3::ZERO,
     };
 
     let joints = joint_locations

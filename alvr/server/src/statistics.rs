@@ -6,6 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+use std::error::Error;
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use csv::Writer;
+
+
+use crate::BITRATE_MANAGER;
 const FULL_REPORT_INTERVAL: Duration = Duration::from_millis(500);
 
 pub struct HistoryFrame {
@@ -29,6 +36,24 @@ impl Default for HistoryFrame {
             total_pipeline_latency: Duration::ZERO,
         }
     }
+}
+
+fn write_latency_to_csv(filename: &str, latency_values: [String; 7]) -> Result<(), Box<dyn Error>> {
+    let mut file = OpenOptions::new().write(true).append(true).open(filename)?;
+    let mut writer = Writer::from_writer(file);
+
+    // Write the latency strings in the next row
+    writer.write_record(&[
+        &latency_values[0],
+        &latency_values[1],
+        &latency_values[2],
+        &latency_values[3],
+        &latency_values[4],
+        &latency_values[5],
+        &latency_values[6],
+    ])?;
+
+    Ok(())
 }
 
 pub struct StatisticsManager {
@@ -154,7 +179,7 @@ impl StatisticsManager {
 
     // Called every frame. Some statistics are reported once every frame
     // Returns network latency
-    pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> Duration {
+    pub fn report_statistics(&mut self, client_stats: ClientStatistics,current_bitrate:u64) -> Duration {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -249,6 +274,38 @@ impl StatisticsManager {
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.
+
+            let mut file=OpenOptions::new().append(true).write(true).open(r"C:\Users\13513\Desktop\extract_data1.txt").unwrap();
+
+            let mut interval_trackingReceived_framePresentInVirtualDevice=(game_time_latency.as_secs_f32()*1000.).to_string();//game latency
+            let mut interval_framePresentInVirtualDevice_frameComposited=(server_compositor_latency.as_secs_f32()*1000.).to_string();//composite latency
+            let mut interval_frameComposited_VideoEncoded=(encoder_latency.as_secs_f32() * 1000.).to_string();//encode latency
+            let mut interval_VideoReceivedByClient_VideoDecoded=(client_stats.video_decode.as_secs_f32() * 1000.).to_string();//decode latency
+            let mut interval_network=((network_latency.as_secs_f32()*1000.).to_string());//network latency(interval_trackingsend_trackingreceived+interval_encodedVideoSend_encodedVideoReceived)
+            let mut interval_total_pipeline=(client_stats.total_pipeline_latency.as_secs_f32() * 1000.).to_string();//total pipeline latency
+            let mut bitrate_statistics=current_bitrate.to_string()+"\t";//bitrate bps
+            let latency_strings=[interval_trackingReceived_framePresentInVirtualDevice,interval_framePresentInVirtualDevice_frameComposited,interval_frameComposited_VideoEncoded,interval_VideoReceivedByClient_VideoDecoded,interval_network,interval_total_pipeline,bitrate_statistics];
+            write_latency_to_csv("statistics.csv", latency_strings);
+            //let mut params=BITRATE_MANAGER.lock().get_encoder_params(config);
+
+            //let mut string2=((network_latency.as_secs_f32()*1000.).to_string())+"\t";
+            //let mut string3=current_bitrate.to_string()+"\t";
+            //let mut string4=(encoder_latency.as_secs_f32() * 1000.).to_string()+"\t";
+            //let mut string5=(client_statsf.video_decode.as_secs_f32() * 1000.).to_string()+"\t";
+            //let mut string6=(client_stats.total_pipeline_latency.as_secs_f32() * 1000.).to_string()+"\n";
+
+
+
+            //这里是原来的版本
+            //string1.push_str(&string2);
+            //string1.push_str(&string3);
+            //string1.push_str(&string4);
+            //string1.push_str(&string5);
+            //string1.push_str(&string6);
+
+            //file.write_all(string1.as_bytes()).expect("write false");
+
+
             alvr_events::send_event(EventType::GraphStatistics(GraphStatistics {
                 total_pipeline_latency_s: client_stats.total_pipeline_latency.as_secs_f32(),
                 game_time_s: game_time_latency.as_secs_f32(),

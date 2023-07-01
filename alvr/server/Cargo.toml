@@ -21,7 +21,7 @@ alvr_packets.workspace = true
 alvr_server_io.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
-
+csv = "1.1.6"
 # Serialization
 bincode = "1"
 serde = "1"

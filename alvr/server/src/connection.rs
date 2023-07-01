@@ -45,6 +45,10 @@ use tokio::{
     sync::{mpsc as tmpsc, Mutex},
     time,
 };
+use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
+use csv::WriterBuilder;
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -522,6 +526,25 @@ impl Drop for StreamCloseGuard {
     }
 }
 
+fn create_csv_file(filename: &str) -> Result<(), Box<dyn Error>> {
+    let mut writer = WriterBuilder::new().has_headers(false).from_writer(File::create(filename)?);
+
+    // Write the column names in the first row
+    writer.write_record(&[
+        "game latency",
+        "composite latency",
+        "encode latency",
+        "decode latency",
+        "network latency",
+        "total pipeline latency",
+        "bitrate(bps)",
+    ])?;
+
+    Ok(())
+}
+
+
+
 async fn connection_pipeline(
     client_hostname: String,
     client_ip: IpAddr,
@@ -899,6 +922,10 @@ async fn connection_pipeline(
         let mut receiver = stream_socket
             .subscribe_to_stream::<ClientStatistics>(STATISTICS)
             .await?;
+        let filename = "statistics.csv";
+
+        // Create the CSV file and write the column names
+        create_csv_file(filename);
         async move {
             loop {
                 let client_stats = receiver.recv_header_only().await?;
@@ -906,7 +933,8 @@ async fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
-                    let network_latency = stats.report_statistics(client_stats);
+                    let params=BITRATE_MANAGER.lock().get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate);
+                    let network_latency = stats.report_statistics(client_stats,params.bitrate_bps);
 
                     BITRATE_MANAGER.lock().report_frame_latencies(
                         &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
@@ -1098,3 +1126,5 @@ async fn connection_pipeline(
         }
     }
 }
+
+

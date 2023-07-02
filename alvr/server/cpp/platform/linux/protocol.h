@@ -17,7 +17,7 @@ struct present_packet {
 
 struct init_packet {
     uint32_t num_images;
-    std::array<char, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE> device_name;
+    std::array<uint8_t, VK_UUID_SIZE> device_uuid;
     VkImageCreateInfo image_create_info;
     size_t mem_index;
     pid_t source_pid;

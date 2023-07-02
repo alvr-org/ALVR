@@ -53,18 +53,26 @@ pub fn build_dir() -> PathBuf {
     workspace_dir().join("build")
 }
 
-pub fn server_build_dir() -> PathBuf {
-    build_dir().join(format!("alvr_server_{OS}"))
+pub fn streamer_build_dir() -> PathBuf {
+    build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
 pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname("alvr_installer"))
 }
 
+pub fn dashboard_fname() -> &'static str {
+    if cfg!(windows) {
+        "ALVR Dashboard.exe"
+    } else {
+        "alvr_dashboard"
+    }
+}
+
 // Layout of the ALVR installation. All paths are absolute
 #[derive(Clone)]
 pub struct Layout {
-    // directory containing the launcher executable
+    // directory containing the dashboard executable
     pub executables_dir: PathBuf,
     // (linux only) directory where alvr_vulkan_layer.so is saved
     pub libraries_dir: PathBuf,
@@ -78,6 +86,12 @@ pub struct Layout {
     pub openvr_driver_root_dir: PathBuf,
     // (linux only) parent directory of the executable to wrap vrcompositor
     pub vrcompositor_wrapper_dir: PathBuf,
+    // (linux only) parent directory of the firewall script
+    pub firewall_script_dir: PathBuf,
+    // (linux only) parent directory of the firewalld config
+    pub firewalld_config_dir: PathBuf,
+    // (linux only) parent directory of the ufw config
+    pub ufw_config_dir: PathBuf,
     // (linux only) directory where the vulkan layer manifest is saved
     pub vulkan_layer_manifest_dir: PathBuf,
 }
@@ -121,6 +135,21 @@ impl Layout {
             } else {
                 root.join("libexec/alvr")
             };
+            let firewall_script_dir = if !env!("firewall_script_dir").is_empty() {
+                PathBuf::from(env!("firewall_script_dir"))
+            } else {
+                root.join("libexec/alvr")
+            };
+            let firewalld_config_dir = if !env!("firewalld_config_dir").is_empty() {
+                PathBuf::from(env!("firewalld_config_dir"))
+            } else {
+                root.join("libexec/alvr")
+            };
+            let ufw_config_dir = if !env!("ufw_config_dir").is_empty() {
+                PathBuf::from(env!("ufw_config_dir"))
+            } else {
+                root.join("libexec/alvr")
+            };
             let vulkan_layer_manifest_dir = if !env!("vulkan_layer_manifest_dir").is_empty() {
                 PathBuf::from(env!("vulkan_layer_manifest_dir"))
             } else {
@@ -135,6 +164,9 @@ impl Layout {
                 log_dir,
                 openvr_driver_root_dir,
                 vrcompositor_wrapper_dir,
+                firewall_script_dir,
+                firewalld_config_dir,
+                ufw_config_dir,
                 vulkan_layer_manifest_dir,
             }
         } else {
@@ -146,27 +178,16 @@ impl Layout {
                 log_dir: root.to_owned(),
                 openvr_driver_root_dir: root.to_owned(),
                 vrcompositor_wrapper_dir: root.to_owned(),
+                firewall_script_dir: root.to_owned(),
+                firewalld_config_dir: root.to_owned(),
+                ufw_config_dir: root.to_owned(),
                 vulkan_layer_manifest_dir: root.to_owned(),
             }
         }
     }
 
-    pub fn launcher_exe(&self) -> PathBuf {
-        let exe = if cfg!(windows) {
-            "ALVR Launcher.exe"
-        } else {
-            "alvr_launcher"
-        };
-        self.executables_dir.join(exe)
-    }
-
     pub fn dashboard_exe(&self) -> PathBuf {
-        let exe = if cfg!(windows) {
-            "ALVR Dashboard.exe"
-        } else {
-            "alvr_dashboard"
-        };
-        self.executables_dir.join(exe)
+        self.executables_dir.join(dashboard_fname())
     }
 
     pub fn resources_dir(&self) -> PathBuf {
@@ -230,6 +251,18 @@ impl Layout {
         self.libraries_dir.join(dynlib_fname("alvr_vulkan_layer"))
     }
 
+    pub fn firewall_script(&self) -> PathBuf {
+        self.firewall_script_dir.join("alvr_fw_config.sh")
+    }
+
+    pub fn firewalld_config(&self) -> PathBuf {
+        self.firewalld_config_dir.join("alvr-firewalld.xml")
+    }
+
+    pub fn ufw_config(&self) -> PathBuf {
+        self.ufw_config_dir.join("ufw-alvr")
+    }
+
     pub fn vulkan_layer_manifest(&self) -> PathBuf {
         self.vulkan_layer_manifest_dir.join("alvr_x86_64.json")
     }
@@ -240,7 +273,7 @@ static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable
-pub fn filesystem_layout_from_launcher_exe(path: &Path) -> Layout {
+pub fn filesystem_layout_from_dashboard_exe(path: &Path) -> Layout {
     LAYOUT_FROM_ENV.clone().unwrap_or_else(|| {
         let root = if cfg!(target_os = "linux") {
             // FHS path is expected

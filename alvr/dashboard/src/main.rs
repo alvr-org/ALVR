@@ -1,148 +1,118 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+// hide console window on Windows in release
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{
-    sync::{mpsc, Arc},
-    thread,
-};
+mod dashboard;
+mod theme;
 
-mod launcher;
-mod worker;
+#[cfg(not(target_arch = "wasm32"))]
+mod data_sources;
+#[cfg(target_arch = "wasm32")]
+mod data_sources_wasm;
+#[cfg(not(target_arch = "wasm32"))]
+mod logging_backend;
+#[cfg(not(target_arch = "wasm32"))]
+mod steamvr_launcher;
 
-use alvr_dashboard::dashboard::DashboardResponse;
+#[cfg(not(target_arch = "wasm32"))]
+use data_sources::DataSources;
+#[cfg(target_arch = "wasm32")]
+use data_sources_wasm::DataSources;
 
-struct ALVRDashboard {
-    dashboard: alvr_dashboard::dashboard::Dashboard,
-    tx2: mpsc::Sender<GuiMsg>,
-    rx1: mpsc::Receiver<WorkerMsg>,
-}
+use dashboard::Dashboard;
 
-pub enum GuiMsg {
-    Dashboard(alvr_dashboard::dashboard::DashboardResponse),
-    GetSession,
-    GetDrivers,
-    Quit,
-}
-
-pub enum WorkerMsg {
-    Event(alvr_events::Event),
-    SessionResponse(alvr_session::SessionDesc),
-    DriverResponse(Vec<String>),
-    LostConnection(String),
-    Connected,
-}
-
-impl ALVRDashboard {
-    fn new(
-        cc: &eframe::CreationContext<'_>,
-        tx2: mpsc::Sender<GuiMsg>,
-        rx1: mpsc::Receiver<WorkerMsg>,
-    ) -> Self {
-        tx2.send(GuiMsg::GetSession).unwrap();
-        let session = loop {
-            match rx1.recv().unwrap() {
-                WorkerMsg::SessionResponse(session) => break session,
-                WorkerMsg::LostConnection(_) => break alvr_session::SessionDesc::default(),
-                _ => (),
-            }
-        };
-        tx2.send(GuiMsg::GetDrivers).unwrap();
-        let (drivers, connected) = loop {
-            match rx1.recv().unwrap() {
-                WorkerMsg::DriverResponse(drivers) => break (drivers, None),
-                WorkerMsg::LostConnection(why) => break (Vec::new(), Some(why)),
-                _ => (),
-            }
-        };
-
-        if connected.is_some() {
-            launcher::launch();
-        }
-
-        let mut dashboard = alvr_dashboard::dashboard::Dashboard::new(
-            session,
-            drivers,
-            Arc::new(
-                alvr_dashboard::translation::TranslationBundle::new(
-                    Some("en".to_string()),
-                    r#"{ "en": "English" }"#,
-                    |_language_id| "".to_string(),
-                )
-                .unwrap(),
-            ),
-            connected,
-        );
-        dashboard.setup(&cc.egui_ctx);
-
-        Self {
-            dashboard,
-            tx2,
-            rx1,
-        }
-    }
-}
-
-impl eframe::App for ALVRDashboard {
-    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        for msg in self.rx1.try_iter() {
-            match msg {
-                WorkerMsg::Event(event) => {
-                    self.dashboard.new_event(event);
-                }
-                WorkerMsg::DriverResponse(drivers) => {
-                    self.dashboard.new_drivers(drivers);
-                }
-                WorkerMsg::LostConnection(why) => {
-                    self.dashboard.connection_status(Some(why));
-                }
-                WorkerMsg::Connected => {
-                    self.dashboard.connection_status(None);
-                    self.tx2.send(GuiMsg::GetSession).unwrap();
-                    self.tx2.send(GuiMsg::GetDrivers).unwrap();
-                }
-                WorkerMsg::SessionResponse(session) => {
-                    self.dashboard.new_event(alvr_events::Event {
-                        timestamp: "".to_owned(),
-                        event_type: alvr_events::EventType::Session(Box::new(session)),
-                    });
-                }
-            }
-        }
-
-        match self.dashboard.update(ctx) {
-            Some(response) => {
-                match response {
-                    // These are the responses we don't want to pass to the worker thread
-                    DashboardResponse::PresetInvocation(_) | DashboardResponse::SetupWizard(_) => {
-                        ()
-                    }
-                    _ => {
-                        self.tx2.send(GuiMsg::Dashboard(response)).unwrap();
-                    }
-                }
-            }
-            None => (),
-        }
-    }
-
-    fn on_close_event(&mut self) -> bool {
-        self.tx2.send(GuiMsg::Quit).unwrap();
-        true
-    }
-}
-
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    env_logger::init();
-    let native_options = eframe::NativeOptions::default();
+    use alvr_common::ALVR_VERSION;
+    use alvr_packets::GpuVendor;
+    use eframe::{egui, IconData, NativeOptions};
+    use ico::IconDir;
+    use std::{env, fs};
+    use std::{io::Cursor, sync::mpsc};
 
-    let (tx1, rx1) = mpsc::channel::<WorkerMsg>();
-    let (tx2, rx2) = mpsc::channel::<GuiMsg>();
+    let (server_events_sender, server_events_receiver) = mpsc::channel();
+    logging_backend::init_logging(server_events_sender.clone());
 
-    let handle = thread::spawn(|| worker::http_thread(tx1, rx2));
+    {
+        let mut data_manager = data_sources::get_local_data_source();
+        if data_manager
+            .get_gpu_vendors()
+            .iter()
+            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        {
+            data_manager
+                .session_mut()
+                .session_settings
+                .patches
+                .linux_async_reprojection = false;
+        }
+
+        if data_manager.session().server_version != *ALVR_VERSION {
+            let mut session_ref = data_manager.session_mut();
+            session_ref.server_version = ALVR_VERSION.clone();
+            session_ref.client_connections.clear();
+        }
+
+        if data_manager
+            .settings()
+            .steamvr_launcher
+            .open_close_steamvr_with_dashboard
+        {
+            steamvr_launcher::LAUNCHER.lock().launch_steamvr()
+        }
+    }
+
+    let ico = IconDir::read(Cursor::new(include_bytes!("../resources/dashboard.ico"))).unwrap();
+    let image = ico.entries().first().unwrap().decode().unwrap();
+
+    // Workaround for the steam deck
+    if fs::read_to_string("/sys/devices/virtual/dmi/id/board_vendor")
+        .map(|vendor| vendor.trim() == "Valve")
+        .unwrap_or(false)
+    {
+        env::set_var("WINIT_X11_SCALE_FACTOR", "1");
+    }
+
     eframe::run_native(
-        "ALVR Dashboard",
-        native_options,
-        Box::new(|cc| Box::new(ALVRDashboard::new(cc, tx2, rx1))),
-    );
+        &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
+        NativeOptions {
+            icon_data: Some(IconData {
+                rgba: image.rgba_data().to_owned(),
+                width: image.width(),
+                height: image.height(),
+            }),
+            initial_window_size: Some(egui::vec2(900.0, 600.0)),
+            centered: true,
+            ..Default::default()
+        },
+        {
+            Box::new(move |creation_context| {
+                let data_source = DataSources::new(
+                    creation_context.egui_ctx.clone(),
+                    server_events_sender,
+                    server_events_receiver,
+                );
 
-    handle.join().unwrap();
+                Box::new(Dashboard::new(creation_context, data_source))
+            })
+        },
+    )
+    .unwrap();
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    console_error_panic_hook::set_once();
+    wasm_logger::init(wasm_logger::Config::default());
+
+    wasm_bindgen_futures::spawn_local(async {
+        eframe::WebRunner::new()
+            .start("dashboard_canvas", eframe::WebOptions::default(), {
+                Box::new(move |creation_context| {
+                    let context = creation_context.egui_ctx.clone();
+                    Box::new(Dashboard::new(creation_context, DataSources::new(context)))
+                })
+            })
+            .await
+            .ok();
+    });
 }

@@ -1,53 +1,33 @@
 #pragma once
 
-struct EyeFov {
+struct FfiFov {
     float left;
     float right;
     float up;
     float down;
 };
 
-struct AlvrQuat {
+struct FfiQuat {
     float x;
     float y;
     float z;
     float w;
 };
 
-struct OculusHand {
-    bool enabled;
-    AlvrQuat boneRotations[19];
+struct FfiHandSkeleton {
+    float jointPositions[26][3];
+    FfiQuat jointRotations[26];
 };
 
-struct AlvrDeviceMotion {
+struct FfiDeviceMotion {
     unsigned long long deviceID;
-    AlvrQuat orientation;
+    FfiQuat orientation;
     float position[3];
     float linearVelocity[3];
     float angularVelocity[3];
 };
 
-struct ClientStats {
-    unsigned long long targetTimestampNs;
-    unsigned long long videoDecodeNs;
-    unsigned long long renderingNs;
-    unsigned long long vsyncQueueNs;
-    unsigned long long totalPipelineLatencyNs;
-};
-struct VideoFrame {
-    unsigned int packetCounter;
-    unsigned long long trackingFrameIndex;
-    // FEC decoder needs some value for identify video frame number to detect new frame.
-    // trackingFrameIndex becomes sometimes same value as previous video frame (in case of low
-    // tracking rate).
-    unsigned long long videoFrameIndex;
-    unsigned long long sentTime;
-    unsigned int frameByteSize;
-    unsigned int fecIndex;
-    unsigned short fecPercentage;
-    // char frameBuffer[];
-};
-enum OpenvrPropertyType {
+enum FfiOpenvrPropertyType {
     Bool,
     Float,
     Int32,
@@ -57,38 +37,44 @@ enum OpenvrPropertyType {
     String,
 };
 
-union OpenvrPropertyValue {
-    bool bool_;
+union FfiOpenvrPropertyValue {
+    unsigned int bool_;
     float float_;
     int int32;
     unsigned long long uint64;
     float vector3[3];
     double double_;
-    char string[64];
+    char string[256];
 };
 
-struct OpenvrProperty {
+struct FfiOpenvrProperty {
     unsigned int key;
-    OpenvrPropertyType type;
-    OpenvrPropertyValue value;
+    FfiOpenvrPropertyType type;
+    FfiOpenvrPropertyValue value;
 };
 
-struct ViewsConfigData {
-    EyeFov fov[2];
+struct FfiViewsConfig {
+    FfiFov fov[2];
     float ipd_m;
 };
 
-enum AlvrButtonType {
+enum FfiButtonType {
     BUTTON_TYPE_BINARY,
     BUTTON_TYPE_SCALAR,
 };
 
-struct AlvrButtonValue {
-    AlvrButtonType type;
+struct FfiButtonValue {
+    FfiButtonType type;
     union {
-        bool binary;
+        unsigned int binary;
         float scalar;
     };
+};
+
+struct FfiDynamicEncoderParams {
+    unsigned int updated;
+    unsigned long long bitrate_bps;
+    float framerate;
 };
 
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
@@ -102,14 +88,12 @@ extern "C" unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
 extern "C" const unsigned char *COLOR_CORRECTION_CSO_PTR;
 extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
 
-extern "C" const unsigned char *QUAD_SHADER_VERT_SPV_PTR;
-extern "C" unsigned int QUAD_SHADER_VERT_SPV_LEN;
-extern "C" const unsigned char *QUAD_SHADER_FRAG_SPV_PTR;
-extern "C" unsigned int QUAD_SHADER_FRAG_SPV_LEN;
-extern "C" const unsigned char *COLOR_SHADER_FRAG_SPV_PTR;
-extern "C" unsigned int COLOR_SHADER_FRAG_SPV_LEN;
-extern "C" const unsigned char *FFR_SHADER_FRAG_SPV_PTR;
-extern "C" unsigned int FFR_SHADER_FRAG_SPV_LEN;
+extern "C" const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
+extern "C" unsigned int QUAD_SHADER_COMP_SPV_LEN;
+extern "C" const unsigned char *COLOR_SHADER_COMP_SPV_PTR;
+extern "C" unsigned int COLOR_SHADER_COMP_SPV_LEN;
+extern "C" const unsigned char *FFR_SHADER_COMP_SPV_PTR;
+extern "C" unsigned int FFR_SHADER_COMP_SPV_LEN;
 extern "C" const unsigned char *RGBTOYUV420_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 
@@ -122,8 +106,11 @@ extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
-extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len);
-extern "C" void (*VideoSend)(VideoFrame header, unsigned char *buf, int len);
+extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len, int codec);
+extern "C" void (*VideoSend)(unsigned long long targetTimestampNs,
+                             unsigned char *buf,
+                             int len,
+                             bool isIdr);
 extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,
                                float frequency,
@@ -132,33 +119,35 @@ extern "C" void (*ShutdownRuntime)();
 extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
-extern "C" void (*ReportEncoded)(unsigned long long timestamp_ns);
-extern "C" void (*ReportFecFailure)(int percentage);
+extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
+extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
+extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
+extern "C" void (*WaitForVSync)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
-extern "C" void SendVSync(float frameIntervalS);
+extern "C" void SendVSync();
 extern "C" void RequestIDR();
 extern "C" void RequestConfigNAL();
 extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             float controllerPoseTimeOffsetS,
-                            const AlvrDeviceMotion *deviceMotions,
+                            const FfiDeviceMotion *deviceMotions,
                             int motionsCount,
-                            OculusHand leftHand,
-                            OculusHand rightHand);
-extern "C" void ReportNetworkLatency(unsigned long long latencyUs);
+                            const FfiHandSkeleton *leftHand,
+                            const FfiHandSkeleton *rightHand,
+                            unsigned int controllersTracked);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
-extern "C" void SetOpenvrProperty(unsigned long long topLevelPath, OpenvrProperty prop);
+extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
-extern "C" void SetViewsConfig(ViewsConfigData config);
-extern "C" void SetBattery(unsigned long long topLevelPath, float gauge_value, bool is_plugged);
-extern "C" void SetButton(unsigned long long path, AlvrButtonValue value);
-
-extern "C" void SetBitrateParameters(unsigned long long bitrate_mbs,
-                                     bool adaptive_bitrate_enabled,
-                                     unsigned long long bitrate_max);
+extern "C" void SetViewsConfig(FfiViewsConfig config);
+extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
+extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
 
 extern "C" void CaptureFrame();
+
+// NalParsing.cpp
+void ParseFrameNals(
+    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr);

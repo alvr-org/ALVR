@@ -1,6 +1,6 @@
 **Start here**
 
-* [Installation](https://github.com/alvr-org/ALVR/wiki/Installation)
+* [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide)
 
 * [Settings guide](https://github.com/alvr-org/ALVR/wiki/Settings-guide)
 
@@ -12,21 +12,21 @@
 
 **Configuration**
 
-* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Configuration-Information-and-Recommendations)
+* [Settings tutorial](https://github.com/alvr-org/ALVR/wiki/Settings-tutorial)
 
-* [ALVR client and server on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks)
+* [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
+
+* [ALVR client and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-streamer-on-separate-networks)
 
 * [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 
-* [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/Use-ALVR-through-a-USB-connection)
-
-* [Linux encoders requirements](https://github.com/alvr-org/ALVR/wiki/Linux-encoders-requirements)
+* [ALVR wired setup (ALVR over USB)](https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB))
 
 ***
 
 **Troubleshooting**
 
-* [Issues running and connecting to ALVR](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
+* [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
 
 * [ALVR Checklist before posting a new Issue](https://github.com/alvr-org/ALVR/wiki/ALVR-Checklist)
 

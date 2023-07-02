@@ -2,7 +2,6 @@
 #define ALVRCLIENT_PACKETTYPES_H
 #include <stdint.h>
 #include <assert.h>
-#include "reedsolomon/rs.h"
 #include "../alvr_server/bindings.h"
 
 enum ALVR_CODEC {
@@ -66,52 +65,6 @@ enum ALVR_INPUT {
 	ALVR_INPUT_MAX = ALVR_INPUT_TRACKPAD_FORCE,
 	ALVR_INPUT_COUNT = ALVR_INPUT_MAX + 1
 };
-enum ALVR_HAND {
-	alvrHandBone_Invalid = -1,
-	alvrHandBone_WristRoot = 0,	// root frame of the hand, where the wrist is located
-	alvrHandBone_ForearmStub = 1,	// frame for user's forearm
-	alvrHandBone_Thumb0 = 2,	// thumb trapezium bone
-	alvrHandBone_Thumb1 = 3,	// thumb metacarpal bone
-	alvrHandBone_Thumb2 = 4,	// thumb proximal phalange bone
-	alvrHandBone_Thumb3 = 5,	// thumb distal phalange bone
-	alvrHandBone_Index1 = 6,	// index proximal phalange bone
-	alvrHandBone_Index2 = 7,	// index intermediate phalange bone
-	alvrHandBone_Index3 = 8,	// index distal phalange bone
-	alvrHandBone_Middle1 = 9,	// middle proximal phalange bone
-	alvrHandBone_Middle2 = 10,	// middle intermediate phalange bone
-	alvrHandBone_Middle3 = 11,	// middle distal phalange bone
-	alvrHandBone_Ring1 = 12,	// ring proximal phalange bone
-	alvrHandBone_Ring2 = 13,	// ring intermediate phalange bone
-	alvrHandBone_Ring3 = 14,	// ring distal phalange bone
-	alvrHandBone_Pinky0 = 15,	// pinky metacarpal bone
-	alvrHandBone_Pinky1 = 16,	// pinky proximal phalange bone
-	alvrHandBone_Pinky2 = 17,	// pinky intermediate phalange bone
-	alvrHandBone_Pinky3 = 18,	// pinky distal phalange bone
-	alvrHandBone_MaxSkinnable = 19,
-};
 #define ALVR_BUTTON_FLAG(input) (1ULL << input)
-
-
-static const int ALVR_MAX_VIDEO_BUFFER_SIZE = 1400;
-
-static const int ALVR_FEC_SHARDS_MAX = 20;
-
-inline int CalculateParityShards(int dataShards, int fecPercentage) {
-	int totalParityShards = (dataShards * fecPercentage + 99) / 100;
-	return totalParityShards;
-}
-
-// Calculate how many packet is needed for make signal shard.
-inline int CalculateFECShardPackets(int len, int fecPercentage) {
-	// This reed solomon implementation accept only 255 shards.
-	// Normally, we use ALVR_MAX_VIDEO_BUFFER_SIZE as block_size and single packet becomes single shard.
-	// If we need more than maxDataShards packets, we need to combine multiple packet to make single shrad.
-	// NOTE: Moonlight seems to use only 255 shards for video frame.
-	int maxDataShards = ((ALVR_FEC_SHARDS_MAX - 2) * 100 + 99 + fecPercentage) / (100 + fecPercentage);
-	int minBlockSize = (len + maxDataShards - 1) / maxDataShards;
-	int shardPackets = (minBlockSize + ALVR_MAX_VIDEO_BUFFER_SIZE - 1) / ALVR_MAX_VIDEO_BUFFER_SIZE;
-	assert(maxDataShards + CalculateParityShards(maxDataShards, fecPercentage) <= ALVR_FEC_SHARDS_MAX);
-	return shardPackets;
-}
 
 #endif //ALVRCLIENT_PACKETTYPES_H

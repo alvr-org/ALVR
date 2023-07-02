@@ -9,18 +9,18 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|    VR Headset     |         Support          |
-| :---------------: | :----------------------: |
-|   Quest 1/2/Pro   |    :heavy_check_mark:    |
-|   Pico 4/Neo 3    |     :construction: *     |
-|   Vive Focus 3    |     :construction: *     |
-| Smartphone/Monado |     :construction: *     |
-|      GearVR       |     :construction: *     |
-|  Google Daydream  | :construction: * (maybe) |
-|     Oculus Go     |          :x: **          |
+|      VR Headset       |         Support          |
+| :-------------------: | :----------------------: |
+|     Quest 1/2/Pro     |    :heavy_check_mark:    |
+|     Pico 4/Neo 3      |    :heavy_check_mark:    |
+| Vive Focus 3/XR Elite |    :heavy_check_mark:    |
+|        YVR 1/2        |    :heavy_check_mark:    |
+|   Smartphone/Monado   |     :construction: *     |
+|        GearVR         | :construction: * (maybe) |
+|       Oculus Go       |          :x: **          |
 
-\* : Coming soon  
-\** : Oculus Go support was dropped on v19. Minimum supported OS is Android 8.
+\* : Expected support, no ETA  
+\** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
 |        PC OS        |       Support       |
 | :-----------------: | :-----------------: |
@@ -45,11 +45,11 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
 -   802.11ac 5Ghz wireless or ethernet wired connection  
     -   It is recommended to use 802.11ac 5Ghz for the headset and ethernet for PC  
-    -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-server-on-separate-networks))
+    -   You need to connect both the PC and the headset to same router (or use a routed connection as described [here](https://github.com/alvr-org/ALVR/wiki/ALVR-v14-and-Above))
 
 ## Install
 
-Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Basic-installation).
+Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Installation-guide).
 
 ## Troubleshooting
 
@@ -58,9 +58,7 @@ Follow the installation guide [here](https://github.com/alvr-org/ALVR/wiki/Basic
 
 ## Uninstall
 
-Open `ALVR Launcher.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
-
-If you have a version prior to v12.0 you need to launch `remove_firewall_rules.bat` and `driver_uninstall.bat` in the installation folder.
+Open `ALVR Dashboard.exe`, go to `Installation` tab then press `Remove firewall rules`. Close ALVR window and delete the ALVR folder.
 
 ## Build from source
 

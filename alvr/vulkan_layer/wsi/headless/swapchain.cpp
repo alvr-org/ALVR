@@ -268,16 +268,21 @@ bool swapchain::try_connect() {
         return false; // we will try again next frame
     }
 
-    VkPhysicalDeviceProperties prop;
-    m_device_data.instance_data.disp.GetPhysicalDeviceProperties(m_device_data.physical_device,
-                                                                 &prop);
+    VkPhysicalDeviceVulkan11Properties props11 = {};
+    props11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+
+    VkPhysicalDeviceProperties2 props = {};
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &props11;
+    m_device_data.instance_data.disp.GetPhysicalDeviceProperties2(m_device_data.physical_device,
+                                                                  &props);
 
     init_packet init{.num_images = uint32_t(m_swapchain_images.size()),
-      .device_name = {},
+      .device_uuid = {},
       .image_create_info = m_create_info,
       .mem_index = m_mem_index,
       .source_pid = getpid()};
-    memcpy(init.device_name.data(), prop.deviceName, sizeof(prop.deviceName));
+    memcpy(init.device_uuid.data(), props11.deviceUUID, VK_UUID_SIZE);
     ret = write(m_socket, &init, sizeof(init));
     if (ret == -1) {
         perror("write");

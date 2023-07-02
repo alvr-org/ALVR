@@ -1,6 +1,6 @@
 use alvr_common::{SlidingWindowAverage, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_events::{EventType, GraphStatistics, Statistics};
-use alvr_sockets::ClientStatistics;
+use alvr_packets::ClientStatistics;
 use std::{
     collections::{HashMap, VecDeque},
     time::{Duration, Instant},
@@ -34,7 +34,6 @@ impl Default for HistoryFrame {
 pub struct StatisticsManager {
     history_buffer: VecDeque<HistoryFrame>,
     max_history_size: usize,
-    nominal_server_frame_interval: Duration,
     last_full_report_instant: Instant,
     last_frame_present_instant: Instant,
     last_frame_present_interval: Duration,
@@ -42,20 +41,25 @@ pub struct StatisticsManager {
     video_packets_partial_sum: usize,
     video_bytes_total: usize,
     video_bytes_partial_sum: usize,
-    fec_errors_total: usize,
-    fec_failures_partial_sum: usize,
-    fec_percentage: u32,
+    packets_lost_total: usize,
+    packets_lost_partial_sum: usize,
     battery_gauges: HashMap<u64, f32>,
-    game_render_latency_average: SlidingWindowAverage<Duration>,
+    steamvr_pipeline_latency: Duration,
+    total_pipeline_latency_average: SlidingWindowAverage<Duration>,
+    last_vsync_time: Instant,
+    frame_interval: Duration,
 }
 
 impl StatisticsManager {
     // history size used to calculate average total pipeline latency
-    pub fn new(history_size: usize, nominal_server_frame_interval: Duration) -> Self {
+    pub fn new(
+        max_history_size: usize,
+        nominal_server_frame_interval: Duration,
+        steamvr_pipeline_frames: f32,
+    ) -> Self {
         Self {
             history_buffer: VecDeque::new(),
-            max_history_size: history_size,
-            nominal_server_frame_interval,
+            max_history_size,
             last_full_report_instant: Instant::now(),
             last_frame_present_instant: Instant::now(),
             last_frame_present_interval: Duration::ZERO,
@@ -63,11 +67,18 @@ impl StatisticsManager {
             video_packets_partial_sum: 0,
             video_bytes_total: 0,
             video_bytes_partial_sum: 0,
-            fec_errors_total: 0,
-            fec_failures_partial_sum: 0,
-            fec_percentage: 0,
+            packets_lost_total: 0,
+            packets_lost_partial_sum: 0,
             battery_gauges: HashMap::new(),
-            game_render_latency_average: SlidingWindowAverage::new(history_size),
+            steamvr_pipeline_latency: Duration::from_secs_f32(
+                steamvr_pipeline_frames * nominal_server_frame_interval.as_secs_f32(),
+            ),
+            total_pipeline_latency_average: SlidingWindowAverage::new(
+                Duration::ZERO,
+                max_history_size,
+            ),
+            last_vsync_time: Instant::now(),
+            frame_interval: nominal_server_frame_interval,
         }
     }
 
@@ -115,27 +126,35 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_frame_encoded(&mut self, target_timestamp: Duration) {
+    // returns encoding interval
+    pub fn report_frame_encoded(
+        &mut self,
+        target_timestamp: Duration,
+        bytes_count: usize,
+    ) -> Duration {
+        self.video_packets_total += 1;
+        self.video_packets_partial_sum += 1;
+        self.video_bytes_total += bytes_count;
+        self.video_bytes_partial_sum += bytes_count;
+
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
             .find(|frame| frame.target_timestamp == target_timestamp)
         {
             frame.frame_encoded = Instant::now();
+
+            frame
+                .frame_encoded
+                .saturating_duration_since(frame.frame_composed)
+        } else {
+            Duration::ZERO
         }
     }
 
-    pub fn report_video_packet(&mut self, bytes_count: usize) {
-        self.video_packets_total += 1;
-        self.video_packets_partial_sum += 1;
-        self.video_bytes_total += bytes_count;
-        self.video_bytes_partial_sum += bytes_count;
-    }
-
-    pub fn report_fec_failure(&mut self, fec_percentage: u32) {
-        self.fec_percentage = fec_percentage;
-        self.fec_errors_total += 1;
-        self.fec_failures_partial_sum += 1;
+    pub fn report_packet_loss(&mut self) {
+        self.packets_lost_total += 1;
+        self.packets_lost_partial_sum += 1;
     }
 
     pub fn report_battery(&mut self, device_id: u64, gauge_value: f32) {
@@ -155,8 +174,6 @@ impl StatisticsManager {
             let game_time_latency = frame
                 .frame_present
                 .saturating_duration_since(frame.tracking_received);
-            self.game_render_latency_average
-                .submit_sample(game_time_latency);
 
             let server_compositor_latency = frame
                 .frame_composed
@@ -182,8 +199,16 @@ impl StatisticsManager {
                     + client_stats.vsync_queue,
             );
 
-            let client_fps = 1.0 / client_stats.frame_interval.as_secs_f32().min(1.0);
-            let server_fps = 1.0 / self.last_frame_present_interval.as_secs_f32().min(1.0);
+            let client_fps = 1.0
+                / client_stats
+                    .frame_interval
+                    .max(Duration::from_millis(1))
+                    .as_secs_f32();
+            let server_fps = 1.0
+                / self
+                    .last_frame_present_interval
+                    .max(Duration::from_millis(1))
+                    .as_secs_f32();
 
             if self.last_full_report_instant + FULL_REPORT_INTERVAL < Instant::now() {
                 self.last_full_report_instant += FULL_REPORT_INTERVAL;
@@ -201,9 +226,9 @@ impl StatisticsManager {
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
                     decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
-                    fec_percentage: self.fec_percentage,
-                    fec_errors_total: self.fec_errors_total,
-                    fec_errors_per_sec: (self.fec_failures_partial_sum as f32 / interval_secs) as _,
+                    packets_lost_total: self.packets_lost_total,
+                    packets_lost_per_sec: (self.packets_lost_partial_sum as f32 / interval_secs)
+                        as _,
                     client_fps: client_fps as _,
                     server_fps: server_fps as _,
                     battery_hmd: (self
@@ -228,7 +253,7 @@ impl StatisticsManager {
 
                 self.video_packets_partial_sum = 0;
                 self.video_bytes_partial_sum = 0;
-                self.fec_failures_partial_sum = 0;
+                self.packets_lost_partial_sum = 0;
             }
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
@@ -253,9 +278,21 @@ impl StatisticsManager {
         }
     }
 
-    // Used for controllers/trackers prediction calculation. The head prediction uses a different
-    // pathway
-    pub fn get_server_prediction_average(&self) -> Duration {
-        self.game_render_latency_average.get_average() + self.nominal_server_frame_interval
+    pub fn tracker_pose_time_offset(&self) -> Duration {
+        // This is the opposite of the client's StatisticsManager::tracker_prediction_offset().
+        self.steamvr_pipeline_latency
+            .saturating_sub(self.total_pipeline_latency_average.get_average())
+    }
+
+    // NB: this call is non-blocking, waiting should be done externally
+    pub fn duration_until_next_vsync(&mut self) -> Duration {
+        let now = Instant::now();
+
+        // update the last vsync if it's too old
+        while self.last_vsync_time + self.frame_interval < now {
+            self.last_vsync_time += self.frame_interval;
+        }
+
+        (self.last_vsync_time + self.frame_interval).saturating_duration_since(now)
     }
 }

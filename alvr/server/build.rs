@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use pkg_config;
 use std::{env, path::PathBuf};
 
 fn get_ffmpeg_path() -> PathBuf {
@@ -18,81 +16,27 @@ fn get_ffmpeg_path() -> PathBuf {
     }
 }
 
-#[cfg(feature = "local_ffmpeg")]
-fn do_ffmpeg_config(build: &mut cc::Build) {
-    let ffmpeg_path = get_ffmpeg_path();
-
-    assert!(ffmpeg_path.join("include").exists());
-    build.include(ffmpeg_path.join("include"));
-}
-
-fn do_ffmpeg_config_post() {
-    if cfg!(feature = "local_ffmpeg") {
-        let statik = cfg!(all(feature = "gpl", target_os = "linux"));
-
-        let ffmpeg_path = get_ffmpeg_path();
-        let ffmpeg_lib_path = ffmpeg_path.join("lib");
-
-        assert!(ffmpeg_lib_path.exists());
-
-        println!(
-            "cargo:rustc-link-search=native={}",
-            ffmpeg_lib_path.to_string_lossy()
-        );
-
-        if statik {
-            #[cfg(target_os = "linux")]
-            {
-                let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
-                assert!(ffmpeg_pkg_path.exists());
-
-                let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
-                env::set_var(
-                    "PKG_CONFIG_PATH",
-                    env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
-                        format!("{ffmpeg_pkg_path}:{old}")
-                    }),
-                );
-
-                let pkg = pkg_config::Config::new().statik(statik).to_owned();
-
-                for lib in ["libavutil", "libavfilter", "libavcodec"] {
-                    pkg.probe(lib).unwrap();
-                }
-            }
-        } else {
-            for lib in ["avutil", "avfilter", "avcodec", "swscale"] {
-                println!("cargo:rustc-link-lib={lib}");
-            }
-        }
-    } else {
-        #[cfg(target_os = "linux")]
-        {
-            let pkg = pkg_config::Config::new();
-
-            for lib in ["libavutil", "libavfilter", "libavcodec"] {
-                pkg.probe(lib).unwrap();
-            }
-        }
-    }
-}
-
 fn main() {
+    let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("cpp");
 
-    #[cfg(windows)]
-    let platform = "cpp/platform/win32";
-    #[cfg(target_os = "linux")]
-    let platform = "cpp/platform/linux";
-    #[cfg(target_os = "macos")]
-    let platform = "cpp/platform/macos";
+    let platform_subpath = match platform_name.as_str() {
+        "windows" => "cpp/platform/win32",
+        "linux" => "cpp/platform/linux",
+        "macos" => "cpp/platform/macos",
+        _ => panic!(),
+    };
 
     let common_iter = walkdir::WalkDir::new("cpp")
         .into_iter()
-        .filter_entry(|entry| entry.file_name() != "tools" && entry.file_name() != "platform");
+        .filter_entry(|entry| {
+            entry.file_name() != "tools"
+                && entry.file_name() != "platform"
+                && (platform_name != "macos" || entry.file_name() != "amf")
+        });
 
-    let platform_iter = walkdir::WalkDir::new(platform).into_iter();
+    let platform_iter = walkdir::WalkDir::new(platform_subpath).into_iter();
 
     let cpp_paths = common_iter
         .chain(platform_iter)
@@ -118,31 +62,71 @@ fn main() {
         .include("cpp/openvr/headers")
         .include("cpp");
 
-    #[cfg(windows)]
-    build
-        .debug(false) // This is because we cannot link to msvcrtd (see below)
-        .flag("/std:c++17")
-        .flag("/permissive-")
-        .define("NOMINMAX", None)
-        .define("_WINSOCKAPI_", None)
-        .define("_MBCS", None)
-        .define("_MT", None);
-
-    #[cfg(target_os = "macos")]
-    build.define("__APPLE__", None);
+    if platform_name == "windows" {
+        build
+            .debug(false) // This is because we cannot link to msvcrtd (see below)
+            .flag("/std:c++17")
+            .flag("/permissive-")
+            .define("NOMINMAX", None)
+            .define("_WINSOCKAPI_", None)
+            .define("_MBCS", None)
+            .define("_MT", None);
+    } else if platform_name == "macos" {
+        build.define("__APPLE__", None);
+    }
 
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    #[cfg(feature = "local_ffmpeg")]
-    do_ffmpeg_config(&mut build);
+    let use_ffmpeg = cfg!(feature = "gpl") || cfg!(target_os = "linux");
 
-    #[cfg(all(windows, feature = "gpl"))]
+    if use_ffmpeg {
+        let ffmpeg_path = get_ffmpeg_path();
+
+        assert!(ffmpeg_path.join("include").exists());
+        build.include(ffmpeg_path.join("include"));
+    }
+
+    #[cfg(feature = "gpl")]
     build.define("ALVR_GPL", None);
 
     build.compile("bindings");
 
-    do_ffmpeg_config_post();
+    if use_ffmpeg {
+        let ffmpeg_path = get_ffmpeg_path();
+        let ffmpeg_lib_path = ffmpeg_path.join("lib");
+
+        assert!(ffmpeg_lib_path.exists());
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ffmpeg_lib_path.to_string_lossy()
+        );
+
+        #[cfg(target_os = "linux")]
+        {
+            let ffmpeg_pkg_path = ffmpeg_lib_path.join("pkgconfig");
+            assert!(ffmpeg_pkg_path.exists());
+
+            let ffmpeg_pkg_path = ffmpeg_pkg_path.to_string_lossy().to_string();
+            env::set_var(
+                "PKG_CONFIG_PATH",
+                env::var("PKG_CONFIG_PATH").map_or(ffmpeg_pkg_path.clone(), |old| {
+                    format!("{ffmpeg_pkg_path}:{old}")
+                }),
+            );
+
+            let pkg = pkg_config::Config::new().statik(true).to_owned();
+
+            for lib in ["libavutil", "libavfilter", "libavcodec"] {
+                pkg.probe(lib).unwrap();
+            }
+        }
+        #[cfg(windows)]
+        for lib in ["avutil", "avfilter", "avcodec", "swscale"] {
+            println!("cargo:rustc-link-lib={lib}");
+        }
+    }
 
     bindgen::builder()
         .clang_arg("-xc++")
@@ -162,6 +146,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         pkg_config::Config::new().probe("vulkan").unwrap();
+        pkg_config::Config::new().probe("x264").unwrap();
 
         // fail build if there are undefined symbols in final library
         println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");

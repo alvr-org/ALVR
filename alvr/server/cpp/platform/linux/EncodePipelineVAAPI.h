@@ -31,6 +31,7 @@ public:
 
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
   void GetConfigNAL() override;
+  void SetParams(FfiDynamicEncoderParams params) override;
 
 private:
   Renderer *r = nullptr;

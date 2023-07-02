@@ -11,7 +11,7 @@ namespace alvr
 class TraceWriter : public amf::AMFTraceWriter
 {
 public:
-    void AMF_CDECL_CALL Write(const wchar_t *scope, const wchar_t *message) override
+    void AMF_CDECL_CALL Write(const wchar_t *, const wchar_t *message) override
     {
         Info("AMF: %ls", message);
     }

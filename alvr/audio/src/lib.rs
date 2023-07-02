@@ -1,61 +1,91 @@
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
-use alvr_session::{AudioBufferingConfig, AudioDeviceId, LinuxAudioBackend};
-use alvr_sockets::{StreamReceiver, StreamSender};
+use alvr_session::{
+    AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
+};
+use alvr_sockets::{ReceiverBuffer, StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    BufferSize, Device, Sample, SampleFormat, StreamConfig,
+    BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
 };
 use rodio::{OutputStream, Source};
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     sync::{mpsc as smpsc, Arc},
     thread,
 };
 use tokio::sync::mpsc as tmpsc;
 
-static VIRTUAL_MICROPHONE_PAIRS: Lazy<Vec<(String, String)>> = Lazy::new(|| {
-    vec![
-        ("CABLE Input".into(), "CABLE Output".into()),
-        ("VoiceMeeter Input".into(), "VoiceMeeter Output".into()),
-        (
-            "VoiceMeeter Aux Input".into(),
-            "VoiceMeeter Aux Output".into(),
-        ),
-        (
-            "VoiceMeeter VAIO3 Input".into(),
-            "VoiceMeeter VAIO3 Output".into(),
-        ),
+static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+    [
+        ("CABLE Input", "CABLE Output"),
+        ("VoiceMeeter Input", "VoiceMeeter Output"),
+        ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
+        ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
     ]
+    .into_iter()
+    .collect()
 });
 
-pub enum AudioDeviceType {
-    Output,
-    Input,
-
-    // for the virtual microphone devices, input and output labels are swapped
-    VirtualMicrophoneInput,
-    VirtualMicrophoneOutput { matching_input_device_name: String },
+fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> StrResult<Device> {
+    Ok(match config {
+        CustomAudioDeviceConfig::NameSubstring(name_substring) => host
+            .devices()
+            .map_err(err!())?
+            .find(|d| {
+                d.name()
+                    .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| {
+                format!("Cannot find audio device which name contains \"{name_substring}\"")
+            })?,
+        CustomAudioDeviceConfig::Index(index) => host
+            .devices()
+            .map_err(err!())?
+            .nth(*index)
+            .ok_or_else(|| format!("Cannot find audio device at index {index}"))?,
+    })
 }
 
-impl AudioDeviceType {
-    #[cfg(windows)]
-    fn is_output(&self) -> bool {
-        matches!(self, Self::Output | Self::VirtualMicrophoneInput)
+fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> StrResult<(Device, Device)> {
+    let sink = host
+        .output_devices()
+        .map_err(err!())?
+        .find(|d| d.name().unwrap_or_default().contains(sink_name))
+        .ok_or_else(|| {
+            "VB-CABLE or Voice Meeter not found. Please install or reinstall either one".to_owned()
+        })?;
+
+    if let Some(source_name) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
+        Ok((
+            sink,
+            host.input_devices()
+                .map_err(err!())?
+                .find(|d| {
+                    d.name()
+                        .map(|name| name.contains(source_name))
+                        .unwrap_or(false)
+                })
+                .ok_or_else(|| {
+                    "Matching output microphone not found. Did you rename it?".to_owned()
+                })?,
+        ))
+    } else {
+        unreachable!("Invalid argument")
     }
 }
 
 #[allow(dead_code)]
 pub struct AudioDevice {
     inner: Device,
-    device_type: AudioDeviceType,
+    is_output: bool,
 }
 
 #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
 impl AudioDevice {
-    pub fn new(
+    pub fn new_output(
         linux_backend: Option<LinuxAudioBackend>,
-        id: &AudioDeviceId,
-        device_type: AudioDeviceType,
+        config: Option<&CustomAudioDeviceConfig>,
     ) -> StrResult<Self> {
         #[cfg(target_os = "linux")]
         let host = match linux_backend {
@@ -66,82 +96,89 @@ impl AudioDevice {
         #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
-        let device = match &id {
-            AudioDeviceId::Default => match &device_type {
-                AudioDeviceType::Output => host
-                    .default_output_device()
-                    .ok_or_else(|| "No output audio device found".to_owned())?,
-                AudioDeviceType::Input => host
-                    .default_input_device()
-                    .ok_or_else(|| "No input audio device found".to_owned())?,
-                AudioDeviceType::VirtualMicrophoneInput => host
-                    .output_devices()
-                    .map_err(err!())?
-                    .find(|d| {
-                        d.name()
-                            .map(|name| {
-                                VIRTUAL_MICROPHONE_PAIRS
-                                    .iter()
-                                    .any(|(input_name, _)| name.contains(input_name))
-                            })
-                            .unwrap_or(false)
-                    })
-                    .ok_or_else(|| {
-                        "VB-CABLE or Voice Meeter not found. Please install or reinstall either one"
-                            .to_owned()
-                    })?,
-                AudioDeviceType::VirtualMicrophoneOutput {
-                    matching_input_device_name,
-                } => {
-                    let output_name = VIRTUAL_MICROPHONE_PAIRS
-                        .iter()
-                        .find(|(input_name, _)| matching_input_device_name.contains(input_name))
-                        .map(|(_, output_name)| output_name)
-                        .ok_or_else(|| {
-                            format!(
-                                "Selected input microphone device is unknown. {}",
-                                "Please manually select the matching output microphone device."
-                            )
-                        })?;
-
-                    host.input_devices()
-                        .map_err(err!())?
-                        .find(|d| {
-                            d.name()
-                                .map(|name| name.contains(output_name))
-                                .unwrap_or(false)
-                        })
-                        .ok_or_else(|| {
-                            "Matching output microphone not found. Did you rename it?".to_owned()
-                        })?
-                }
-            },
-            AudioDeviceId::Name(name_substring) => host
-                .devices()
-                .map_err(err!())?
-                .find(|d| {
-                    d.name()
-                        .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
-                        .unwrap_or(false)
-                })
-                .ok_or_else(|| {
-                    format!("Cannot find audio device which name contains \"{name_substring}\"")
-                })?,
-            AudioDeviceId::Index(index) => host
-                .devices()
-                .map_err(err!())?
-                .nth(*index as usize - 1)
-                .ok_or_else(|| format!("Cannot find audio device at index {index}"))?,
+        let device = match config {
+            None => host
+                .default_output_device()
+                .ok_or_else(|| "No output audio device found".to_owned())?,
+            Some(config) => device_from_custom_config(&host, config)?,
         };
 
         Ok(Self {
             inner: device,
-            device_type,
+            is_output: true,
         })
     }
 
-    pub fn name(&self) -> StrResult<String> {
-        self.inner.name().map_err(err!())
+    pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> StrResult<Self> {
+        let host = cpal::default_host();
+
+        let device = match config {
+            None => host
+                .default_input_device()
+                .ok_or_else(|| "No input audio device found".to_owned())?,
+            Some(config) => device_from_custom_config(&host, &config)?,
+        };
+
+        Ok(Self {
+            inner: device,
+            is_output: false,
+        })
+    }
+
+    // returns (sink, source)
+    pub fn new_virtual_microphone_pair(
+        linux_backend: Option<LinuxAudioBackend>,
+        config: MicrophoneDevicesConfig,
+    ) -> StrResult<(Self, Self)> {
+        #[cfg(target_os = "linux")]
+        let host = match linux_backend {
+            Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
+            Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
+            None => cpal::default_host(),
+        };
+        #[cfg(not(target_os = "linux"))]
+        let host = cpal::default_host();
+
+        let (sink, source) = match config {
+            MicrophoneDevicesConfig::Automatic => {
+                let mut pair = Err(String::new());
+                for sink_name in VIRTUAL_MICROPHONE_PAIRS.keys() {
+                    pair = microphone_pair_from_sink_name(&host, sink_name);
+                    if pair.is_ok() {
+                        break;
+                    }
+                }
+
+                pair?
+            }
+            MicrophoneDevicesConfig::VBCable => {
+                microphone_pair_from_sink_name(&host, "CABLE Input")?
+            }
+            MicrophoneDevicesConfig::VoiceMeeter => {
+                microphone_pair_from_sink_name(&host, "VoiceMeeter Input")?
+            }
+            MicrophoneDevicesConfig::VoiceMeeterAux => {
+                microphone_pair_from_sink_name(&host, "VoiceMeeter Aux Input")?
+            }
+            MicrophoneDevicesConfig::VoiceMeeterVaio3 => {
+                microphone_pair_from_sink_name(&host, "VoiceMeeter VAIO3 Input")?
+            }
+            MicrophoneDevicesConfig::Custom { sink, source } => (
+                device_from_custom_config(&host, &sink)?,
+                device_from_custom_config(&host, &source)?,
+            ),
+        };
+
+        Ok((
+            Self {
+                inner: sink,
+                is_output: true,
+            },
+            Self {
+                inner: source,
+                is_output: false,
+            },
+        ))
     }
 
     pub fn input_sample_rate(&self) -> StrResult<u32> {
@@ -287,7 +324,7 @@ pub async fn record_audio_loop(
         let data_sender = data_sender.clone();
         move || {
             #[cfg(windows)]
-            if mute && device.device_type.is_output() {
+            if mute && device.is_output {
                 set_mute_windows_device(&device, true).ok();
             }
 
@@ -304,7 +341,7 @@ pub async fn record_audio_loop(
                                     .chunks_exact(4)
                                     .flat_map(|b| {
                                         f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                            .to_i16()
+                                            .to_sample::<i16>()
                                             .to_ne_bytes()
                                             .to_vec()
                                     })
@@ -336,6 +373,7 @@ pub async fn record_audio_loop(
                                 .ok();
                         }
                     },
+                    None,
                 )
                 .map_err(err!())?;
 
@@ -344,7 +382,7 @@ pub async fn record_audio_loop(
             shutdown_receiver.recv().ok();
 
             #[cfg(windows)]
-            if mute && device.device_type.is_output() {
+            if mute && device.is_output {
                 set_mute_windows_device(&device, false).ok();
             }
 
@@ -361,11 +399,9 @@ pub async fn record_audio_loop(
         }
     });
 
+    // todo: reuse buffers also in the audio callback
     while let Some(maybe_data) = data_receiver.recv().await {
-        let data = maybe_data?;
-        let mut buffer = sender.new_buffer(&(), data.len())?;
-        buffer.get_mut().extend(data);
-        sender.send_buffer(buffer).await.ok();
+        sender.send(&(), maybe_data?).await.ok();
     }
 
     Ok(())
@@ -412,18 +448,20 @@ pub async fn receive_samples_loop(
     batch_frames_count: usize,
     average_buffer_frames_count: usize,
 ) -> StrResult {
+    let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
     loop {
-        let packet = receiver.recv().await?;
+        receiver.recv_buffer(&mut receiver_buffer).await?;
+        let (_, packet) = receiver_buffer.get()?;
+
         let new_samples = packet
-            .buffer
             .chunks_exact(2)
-            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_f32())
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_sample::<f32>())
             .collect::<Vec<_>>();
 
         let mut sample_buffer_ref = sample_buffer.lock();
 
-        if packet.had_packet_loss {
+        if receiver_buffer.had_packet_loss() {
             info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
@@ -440,7 +478,7 @@ pub async fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || packet.had_packet_loss {
+        if sample_buffer_ref.len() == 0 || receiver_buffer.had_packet_loss() {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -454,7 +492,7 @@ pub async fn receive_samples_loop(
                     }
                 }
 
-                if packet.had_packet_loss
+                if receiver_buffer.had_packet_loss()
                     && sample_buffer_ref.len() / channels_count == batch_frames_count
                 {
                     // Add a fade-out to make a cross-fade.

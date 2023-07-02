@@ -104,40 +104,34 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
         &sh,
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n4.4",
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
         &download_path,
     )
     .unwrap();
 
     let final_path = download_path.join("ffmpeg");
 
-    fs::rename(download_path.join("FFmpeg-n4.4"), &final_path).unwrap();
+    fs::rename(download_path.join("FFmpeg-n6.0"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
         "--enable-version3",
         "--enable-static",
-        "--enable-shared",
         "--disable-programs",
         "--disable-doc",
         "--disable-avdevice",
         "--disable-avformat",
         "--disable-swresample",
+        "--disable-swscale",
         "--disable-postproc",
         "--disable-network",
         "--enable-lto",
         "--disable-everything",
         "--enable-encoder=h264_vaapi",
         "--enable-encoder=hevc_vaapi",
-        "--enable-encoder=libx264",
-        "--enable-encoder=libx264rgb",
-        // "--enable-encoder=libx265",
         "--enable-hwaccel=h264_vaapi",
         "--enable-hwaccel=hevc_vaapi",
-        "--enable-filter=scale",
         "--enable-filter=scale_vaapi",
-        "--enable-libx264",
-        // "--enable-libx265",
         "--enable-vulkan",
         "--enable-libdrm",
         "--enable-pic",
@@ -184,8 +178,6 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 "--enable-nonfree",
                 "--enable-cuda-nvcc",
                 "--enable-libnpp",
-                "--enable-hwaccel=h264_nvenc",
-                "--enable-hwaccel=hevc_nvenc",
                 "--nvccflags=\"-gencode arch=compute_52,code=sm_52 -O2\"",
                 &format!("--extra-cflags=\"{include_flags}\""),
                 &format!("--extra-ldflags=\"{link_flags}\""),
@@ -205,34 +197,82 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
             .unwrap();
     }
 
+    // Patches ffmpeg for workarounds and patches that have yet to be unstreamed
+    let ffmpeg_command = "for p in ../../../patches/*; do patch -p1 < $p; done";
+    cmd!(sh, "bash -c {ffmpeg_command}").run().unwrap();
+
     let nproc = cmd!(sh, "nproc").read().unwrap();
     cmd!(sh, "make -j{nproc}").run().unwrap();
     cmd!(sh, "make install").run().unwrap();
 }
 
-fn get_oculus_openxr_mobile_loader() {
+fn get_android_openxr_loaders() {
     let sh = Shell::new().unwrap();
 
-    let temp_sdk_dir = afs::build_dir().join("temp_download");
-
-    // OpenXR SDK v1.0.18. todo: upgrade when new version is available
-    command::download_and_extract_zip(
-        &sh,
-        "https://securecdn.oculus.com/binaries/download/?id=4421717764533443",
-        &temp_sdk_dir,
-    )
-    .unwrap();
-
-    let destination_dir = afs::deps_dir().join("android/oculus_openxr/arm64-v8a");
+    let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
     fs::create_dir_all(&destination_dir).unwrap();
 
+    let temp_dir = afs::build_dir().join("temp_download");
+
+    // Generic
+    command::download_and_extract_zip(
+        &sh,
+        &format!(
+            "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
+            "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
+        ),
+        &temp_dir,
+    )
+    .unwrap();
     fs::copy(
-        temp_sdk_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        temp_dir.join("prefab/modules/openxr_loader/libs/android.arm64-v8a/libopenxr_loader.so"),
         destination_dir.join("libopenxr_loader.so"),
     )
     .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
 
-    fs::remove_dir_all(temp_sdk_dir).ok();
+    // Quest
+    command::download_and_extract_zip(
+        &sh,
+        "https://securecdn.oculus.com/binaries/download/?id=6316350341736833", // version 53
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_quest.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
+
+    // Pico
+    command::download_and_extract_zip(
+        &sh,
+        "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("libs/android.arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_pico.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
+
+    // Yvr
+    command::download_and_extract_zip(
+        &sh,
+        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir
+            .join("yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_yvr.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(temp_dir).ok();
 }
 
 pub fn build_android_deps(skip_admin_priv: bool) {
@@ -245,7 +285,18 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add aarch64-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
+    cmd!(sh, "rustup target add armv7-linux-androideabi")
+        .run()
+        .unwrap();
+    cmd!(sh, "rustup target add x86_64-linux-android")
+        .run()
+        .unwrap();
+    cmd!(sh, "rustup target add i686-linux-android")
+        .run()
+        .unwrap();
+    cmd!(sh, "cargo install cargo-apk cargo-ndk cbindgen")
+        .run()
+        .unwrap();
 
-    get_oculus_openxr_mobile_loader();
+    get_android_openxr_loaders();
 }

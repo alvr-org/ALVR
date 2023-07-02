@@ -1,6 +1,6 @@
 #pragma once
 
-struct EyeInput {
+struct FfiViewInput {
     float orientation[4]; // x, y, z, w
     float position[3];
     float fovLeft;
@@ -10,30 +10,12 @@ struct EyeInput {
     unsigned int swapchainIndex;
 };
 
-struct VideoFrame {
-    unsigned int packetCounter;
-    unsigned long long trackingFrameIndex;
-    // FEC decoder needs some value for identify video frame number to detect new frame.
-    // trackingFrameIndex becomes sometimes same value as previous video frame (in case of low
-    // tracking rate).
-    unsigned long long videoFrameIndex;
-    unsigned long long sentTime;
-    unsigned int frameByteSize;
-    unsigned int fecIndex;
-    unsigned short fecPercentage;
-};
-
-struct OnCreateResult {
-    int streamSurfaceHandle;
-    int loadingSurfaceHandle;
-};
-
-struct StreamConfigInput {
+struct FfiStreamConfig {
     unsigned int viewWidth;
     unsigned int viewHeight;
     const unsigned int *swapchainTextures[2];
     unsigned int swapchainLength;
-    bool enableFoveation;
+    unsigned int enableFoveation;
     float foveationCenterSizeX;
     float foveationCenterSizeY;
     float foveationCenterShiftX;
@@ -56,17 +38,8 @@ extern "C" void prepareLobbyRoom(int viewWidth,
                                  const unsigned int *swapchainTextures[2],
                                  int swapchainLength);
 extern "C" void destroyRenderers();
-extern "C" void streamStartNative(StreamConfigInput config);
+extern "C" void streamStartNative(FfiStreamConfig config);
 extern "C" void updateLobbyHudTexture(const unsigned char *data);
-extern "C" void renderLobbyNative(const EyeInput eyeInputs[2]);
+extern "C" void renderLobbyNative(const FfiViewInput eyeInputs[2]);
 extern "C" void renderStreamNative(void *streamHardwareBuffer,
                                    const unsigned int swapchainIndices[2]);
-
-// nal.h
-extern "C" void initializeNalParser(int codec, bool enableFec);
-extern "C" void notifyNewDecoder();
-extern "C" bool processNalPacket(VideoFrame header,
-                                 const unsigned char *payload,
-                                 int payloadSize,
-                                 bool &outHadFecFailure);
-extern "C" void (*pushNal)(const char *buffer, int length, unsigned long long frameIndex);

@@ -2,60 +2,47 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    AboutTab, ConnectionsTab, InstallationTab, LogsTab, SettingsTab, SetupWizard,
+    ConnectionsTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
-use crate::{
-    dashboard::components::StatisticsTab,
-    theme,
-    translation::{self, TranslationBundle},
+use crate::{dashboard::components::StatisticsTab, theme, DataSources};
+use alvr_common::parking_lot::{Condvar, Mutex};
+use alvr_events::EventType;
+use alvr_packets::{PathValuePair, ServerRequest};
+use alvr_session::SessionConfig;
+use eframe::egui::{
+    self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, ScrollArea, SidePanel,
+    Stroke,
 };
-use alvr_events::{Event, EventSeverity, EventType, LogEvent};
-use alvr_session::{ClientConnectionDesc, LogLevel, SessionDesc};
-use egui::{
-    style::Margin, Align, CentralPanel, Context, Frame, Label, Layout, RichText, ScrollArea,
-    SidePanel, Stroke,
+use std::{
+    collections::BTreeMap,
+    ops::Deref,
+    sync::{atomic::AtomicUsize, Arc},
 };
-use std::{collections::BTreeMap, sync::Arc};
 
-const NOTIFICATION_BAR_HEIGHT: f32 = 30.0;
-
-#[derive(Debug)]
-pub enum FirewallRulesResponse {
-    Add,
-    Remove,
+#[derive(Clone)]
+pub struct DisplayString {
+    pub id: String,
+    pub display: String,
 }
 
-#[derive(Debug)]
-pub enum DriverResponse {
-    RegisterAlvr,
-    Unregister(String),
+impl From<(String, String)> for DisplayString {
+    fn from((id, display): (String, String)) -> Self {
+        Self { id, display }
+    }
 }
 
-#[derive(Debug)]
-pub enum ConnectionsResponse {
-    AddOrUpdate {
-        name: String,
-        client_desc: ClientConnectionDesc,
-    },
-    RemoveEntry(String),
+impl Deref for DisplayString {
+    type Target = String;
+
+    fn deref(&self) -> &String {
+        &self.id
+    }
 }
 
-#[derive(Debug)]
-pub enum SetupWizardResponse {
-    Start,
-    Close,
-}
+fn get_id() -> usize {
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug)]
-pub enum DashboardResponse {
-    Connections(ConnectionsResponse),
-    SessionUpdated(Box<SessionDesc>),
-    PresetInvocation(String),
-    Driver(DriverResponse),
-    Firewall(FirewallRulesResponse),
-    RestartSteamVR,
-    SetupWizard(SetupWizardResponse),
-    UpdateServer { url: String },
+    NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -63,282 +50,299 @@ enum Tab {
     Connections,
     Statistics,
     Settings,
+    #[cfg(not(target_arch = "wasm32"))]
     Installation,
     Logs,
+    Debug,
     About,
 }
 
 pub struct Dashboard {
+    data_sources: DataSources,
+    just_opened: bool,
+    server_restarting: Arc<Mutex<bool>>,
+    server_restarting_condvar: Arc<Condvar>,
     selected_tab: Tab,
     tab_labels: BTreeMap<Tab, &'static str>,
     connections_tab: ConnectionsTab,
     statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
-    installation_tab: InstallationTab,
+    #[cfg(not(target_arch = "wasm32"))]
+    installation_tab: components::InstallationTab,
     logs_tab: LogsTab,
-    about_tab: AboutTab,
-    notification: Option<LogEvent>,
-    setup_wizard: Option<SetupWizard>,
-    session: Box<SessionDesc>,
-    drivers: Vec<String>,
-    connected: Option<String>,
+    notification_bar: NotificationBar,
+    setup_wizard: SetupWizard,
+    setup_wizard_open: bool,
+    session: Option<SessionConfig>,
 }
 
 impl Dashboard {
-    pub fn new(
-        session: SessionDesc,
-        drivers: Vec<String>,
-        translation_bundle: Arc<TranslationBundle>,
-        connected: Option<String>,
-    ) -> Self {
-        let t = translation::get_shared_translation(&translation_bundle);
+    pub fn new(creation_context: &eframe::CreationContext<'_>, data_sources: DataSources) -> Self {
+        theme::set_theme(&creation_context.egui_ctx);
+
+        // Audio devices need to be queried early to mitigate buggy/slow hardware queries on Linux.
+        data_sources.request(ServerRequest::GetSession);
+        data_sources.request(ServerRequest::GetAudioDevices);
 
         Self {
+            data_sources,
+            just_opened: true,
+            server_restarting: Arc::new(Mutex::new(false)),
+            server_restarting_condvar: Arc::new(Condvar::new()),
             selected_tab: Tab::Connections,
             tab_labels: [
-                (Tab::Connections, "🔌 Connections"),
-                (Tab::Statistics, "📈 Statistics"),
-                (Tab::Settings, "⚙ Settings"),
-                (Tab::Installation, "💾 Installation"),
-                (Tab::Logs, "📝 Logs"),
-                (Tab::About, "ℹ About"),
+                (Tab::Connections, "🔌  Connections"),
+                (Tab::Statistics, "📈  Statistics"),
+                (Tab::Settings, "⚙  Settings"),
+                #[cfg(not(target_arch = "wasm32"))]
+                (Tab::Installation, "💾  Installation"),
+                (Tab::Logs, "📝  Logs"),
+                (Tab::Debug, "🐞  Debug"),
+                (Tab::About, "ℹ  About"),
             ]
             .into_iter()
-            .map(|val| val.clone())
             .collect(),
             connections_tab: ConnectionsTab::new(),
             statistics_tab: StatisticsTab::new(),
-            settings_tab: SettingsTab::new(
-                &session.session_settings,
-                Arc::clone(&t),
-                &translation_bundle,
-            ),
-            installation_tab: InstallationTab::new(),
+            settings_tab: SettingsTab::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            installation_tab: components::InstallationTab::new(),
             logs_tab: LogsTab::new(),
-            about_tab: AboutTab::new(),
-            notification: None,
-            setup_wizard: if session.setup_wizard {
-                Some(SetupWizard::new())
-            } else {
-                None
-            },
-            session: Box::new(session),
-            drivers,
-            connected,
+            notification_bar: NotificationBar::new(),
+            setup_wizard: SetupWizard::new(),
+            setup_wizard_open: false,
+            session: None,
         }
     }
 
-    pub fn setup(&mut self, ctx: &Context) {
-        theme::set_theme(ctx);
-    }
+    // This call may block
+    fn restart_steamvr(&self, requests: &mut Vec<ServerRequest>) {
+        requests.push(ServerRequest::RestartSteamvr);
 
-    pub fn new_event(&mut self, event: Event) {
-        match &event.event_type {
-            EventType::GraphStatistics(graph_statistics) => self
-                .statistics_tab
-                .update_graph_statistics(graph_statistics.clone()),
-            EventType::Statistics(statistics) => {
-                self.statistics_tab.update_statistics(statistics.clone())
-            }
-            EventType::Session(session) => {
-                self.session = session.to_owned();
-            }
-            _ => {
-                self.logs_tab.update_logs(event.clone());
-                // Create a notification based on the notification level in the settings
-                // match self.session.to_settings().extra.notification_level {
-                //     LogLevel::Debug => self.notification = Some(log.to_owned()),
-                //     LogLevel::Info => match log.severity {
-                //         EventSeverity::Info | EventSeverity::Warning | EventSeverity::Error => {
-                //             self.notification = Some(log.to_owned())
-                //         }
-                //         _ => (),
-                //     },
-                //     LogLevel::Warning => match log.severity {
-                //         EventSeverity::Warning | EventSeverity::Error => {
-                //             self.notification = Some(log.to_owned())
-                //         }
-                //         _ => (),
-                //     },
-                //     LogLevel::Error => match log.severity {
-                //         EventSeverity::Error => self.notification = Some(log.to_owned()),
-                //         _ => (),
-                //     },
-                // }
-            }
-        }
-    }
+        let mut server_restarting_lock = self.server_restarting.lock();
 
-    pub fn new_drivers(&mut self, drivers: Vec<String>) {
-        self.drivers = drivers;
-    }
-
-    pub fn connection_status(&mut self, status: Option<String>) {
-        self.connected = status;
-    }
-
-    pub fn update(&mut self, ctx: &Context) -> Option<DashboardResponse> {
-        if let Some(status) = &self.connected {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.label(format!("Not connected!\n\n{}", status));
-                });
-            });
-            return None;
+        if *server_restarting_lock {
+            self.server_restarting_condvar
+                .wait(&mut server_restarting_lock);
         }
 
-        let mut response = match &mut self.setup_wizard {
-            Some(setup_wizard) => {
-                egui::CentralPanel::default()
-                    .show(ctx, |ui| setup_wizard.ui(ui))
-                    .inner
+        *server_restarting_lock = true;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn({
+            let server_restarting = Arc::clone(&self.server_restarting);
+            let condvar = Arc::clone(&self.server_restarting_condvar);
+            move || {
+                crate::steamvr_launcher::LAUNCHER.lock().restart_steamvr();
+
+                *server_restarting.lock() = false;
+                condvar.notify_one();
             }
-            None => {
-                if match &self.notification {
-                    Some(log) => {
-                        let (fg, bg) = match log.severity {
-                            EventSeverity::Debug => (theme::FG, theme::DEBUG),
-                            EventSeverity::Info => (theme::BG, theme::INFO),
-                            EventSeverity::Warning => (theme::BG, theme::WARNING),
-                            EventSeverity::Error => (theme::FG, theme::ERROR),
-                        };
-                        egui::TopBottomPanel::bottom("bottom_panel")
-                            .default_height(NOTIFICATION_BAR_HEIGHT)
-                            .min_height(NOTIFICATION_BAR_HEIGHT)
-                            .frame(
-                                Frame::default()
-                                    .inner_margin(Margin::same(5.0))
-                                    .fill(bg)
-                                    .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
-                            )
-                            .show(ctx, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.add(
-                                        Label::new(RichText::new(&log.content).color(fg))
-                                            .wrap(true),
-                                    );
-                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("❌").clicked() {
-                                            true
-                                        } else {
-                                            false
-                                        }
-                                    })
-                                    .inner
-                                })
-                                .inner
-                            })
-                            .inner
-                    }
-                    None => {
-                        egui::TopBottomPanel::bottom("bottom_panel")
-                            .default_height(NOTIFICATION_BAR_HEIGHT)
-                            .min_height(NOTIFICATION_BAR_HEIGHT)
-                            .frame(
-                                Frame::default()
-                                    .inner_margin(Margin::same(5.0))
-                                    .fill(theme::LIGHTER_BG)
-                                    .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
-                            )
-                            .show(ctx, |ui| ui.label("No new notifications"));
-                        false
-                    }
-                } {
-                    self.notification = None;
+        });
+    }
+}
+
+impl eframe::App for Dashboard {
+    fn update(&mut self, context: &egui::Context, _: &mut eframe::Frame) {
+        let mut requests = vec![];
+
+        let connected_to_server = self.data_sources.server_connected();
+
+        while let Some(event) = self.data_sources.poll_event() {
+            self.logs_tab.push_event(event.clone());
+
+            match event.event_type {
+                EventType::Log(event) => {
+                    self.notification_bar.push_notification(event);
                 }
-
-                let mut outer_margin = Margin::default();
-
-                let response = SidePanel::left("side_panel")
-                    .resizable(false)
-                    .frame(
-                        Frame::none()
-                            .fill(theme::LIGHTER_BG)
-                            .inner_margin(Margin::same(7.0))
-                            .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
-                    )
-                    .max_width(150.0)
-                    .show(ctx, |ui| {
-                        ui.heading("ALVR");
-                        egui::warn_if_debug_build(ui);
-
-                        ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                            for (tab, label) in &self.tab_labels {
-                                ui.selectable_value(&mut self.selected_tab, *tab, *label);
-                            }
-                        });
-
-                        ui.with_layout(
-                            Layout::bottom_up(Align::Min).with_cross_justify(true),
-                            |ui| {
-                                ui.add_space(5.0);
-                                if ui.button("Restart SteamVR").clicked() {
-                                    Some(DashboardResponse::RestartSteamVR)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                        .inner
-                    })
-                    .inner;
-
-                let response = CentralPanel::default()
-                    .frame(
-                        Frame::none()
-                            .inner_margin(Margin::same(20.0))
-                            .fill(theme::BG),
-                    )
-                    .show(ctx, |ui| {
-                        ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                            ui.heading(*self.tab_labels.get(&self.selected_tab).unwrap());
-                            ScrollArea::new([true, true]).show(ui, |ui| match self.selected_tab {
-                                Tab::Connections => self.connections_tab.ui(ui, &self.session),
-                                Tab::Statistics => self.statistics_tab.ui(ui),
-                                Tab::Settings => self.settings_tab.ui(ui, &self.session),
-                                Tab::Installation => self.installation_tab.ui(ui, &self.drivers),
-                                Tab::Logs => self.logs_tab.ui(ui),
-                                Tab::About => self.about_tab.ui(ui, &self.session),
-                            })
-                        })
-                        .inner
-                    })
-                    .inner
-                    .inner
-                    .or(response);
-                response
-            }
-        };
-
-        if let Some(_response) = &response {
-            match _response {
-                DashboardResponse::SetupWizard(SetupWizardResponse::Close) => {
-                    self.setup_wizard = None;
-                    let mut session = self.session.to_owned();
-                    session.setup_wizard = false;
-                    response = Some(DashboardResponse::SessionUpdated(session));
+                EventType::GraphStatistics(graph_statistics) => self
+                    .statistics_tab
+                    .update_graph_statistics(graph_statistics),
+                EventType::Statistics(statistics) => {
+                    self.statistics_tab.update_statistics(statistics)
                 }
-                DashboardResponse::SetupWizard(SetupWizardResponse::Start) => {
-                    self.setup_wizard = Some(SetupWizard::new())
+                EventType::Session(session) => {
+                    let settings = session.to_settings();
+
+                    self.connections_tab.update_client_list(&session);
+                    self.settings_tab.update_session(&session.session_settings);
+                    self.logs_tab.update_settings(&settings);
+                    self.notification_bar.update_settings(&settings);
+                    if self.just_opened {
+                        if settings.open_setup_wizard {
+                            self.setup_wizard_open = true;
+                        }
+
+                        self.just_opened = false;
+                    }
+
+                    self.session = Some(*session);
                 }
-                DashboardResponse::Connections(conn) => match conn {
-                    ConnectionsResponse::AddOrUpdate { name, client_desc } => {
-                        self.session
-                            .client_connections
-                            .insert(name.to_owned(), client_desc.to_owned());
-                        response = Some(DashboardResponse::SessionUpdated(self.session.to_owned()));
-                    }
-                    ConnectionsResponse::RemoveEntry(name) => {
-                        self.session.client_connections.remove(name);
-                        response = Some(DashboardResponse::SessionUpdated(self.session.to_owned()));
-                    }
-                },
-
-                DashboardResponse::SessionUpdated(session) => self.session = session.to_owned(),
-
+                EventType::ServerRequestsSelfRestart => self.restart_steamvr(&mut requests),
+                EventType::AudioDevices(list) => self.settings_tab.update_audio_devices(list),
+                #[cfg(not(target_arch = "wasm32"))]
+                EventType::DriversList(list) => self.installation_tab.update_drivers(list),
                 _ => (),
             }
         }
-        response
+
+        if *self.server_restarting.lock() {
+            CentralPanel::default().show(context, |ui| {
+                // todo: find a way to center both vertically and horizontally
+                ui.vertical_centered(|ui| {
+                    ui.add_space(100.0);
+                    ui.heading(RichText::new("SteamVR is restarting").size(30.0));
+                });
+            });
+
+            return;
+        }
+
+        self.notification_bar.ui(context);
+
+        if self.setup_wizard_open {
+            CentralPanel::default().show(context, |ui| {
+                if let Some(request) = self.setup_wizard.ui(ui) {
+                    match request {
+                        SetupWizardRequest::ServerRequest(request) => {
+                            requests.push(request);
+                        }
+                        SetupWizardRequest::Close { finished } => {
+                            if finished {
+                                requests.push(ServerRequest::SetValues(vec![PathValuePair {
+                                    path: alvr_packets::parse_path(
+                                        "session_settings.open_setup_wizard",
+                                    ),
+                                    value: serde_json::Value::Bool(false),
+                                }]))
+                            }
+
+                            self.setup_wizard_open = false;
+                        }
+                    }
+                }
+            });
+        } else {
+            SidePanel::left("side_panel")
+                .resizable(false)
+                .frame(
+                    Frame::none()
+                        .fill(theme::LIGHTER_BG)
+                        .inner_margin(Margin::same(7.0))
+                        .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
+                )
+                .exact_width(150.0)
+                .show(context, |ui| {
+                    ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                        ui.add_space(13.0);
+                        ui.heading(RichText::new("ALVR").size(25.0).strong());
+                        egui::warn_if_debug_build(ui);
+                    });
+
+                    ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                        for (tab, label) in &self.tab_labels {
+                            ui.selectable_value(&mut self.selected_tab, *tab, *label);
+                        }
+                    });
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    ui.with_layout(
+                        Layout::bottom_up(Align::Center).with_cross_justify(true),
+                        |ui| {
+                            ui.add_space(5.0);
+
+                            if connected_to_server {
+                                if ui.button("Restart SteamVR").clicked() {
+                                    self.restart_steamvr(&mut requests);
+                                }
+                            } else if ui.button("Launch SteamVR").clicked() {
+                                crate::steamvr_launcher::LAUNCHER.lock().launch_steamvr();
+                            }
+
+                            ui.horizontal(|ui| {
+                                ui.add_space(5.0);
+                                ui.label("SteamVR:");
+                                ui.add_space(-10.0);
+                                if connected_to_server {
+                                    ui.label(RichText::new("Connected").color(theme::OK_GREEN));
+                                } else {
+                                    ui.label(RichText::new("Disconnected").color(theme::KO_RED));
+                                }
+                            })
+                        },
+                    )
+                });
+
+            CentralPanel::default()
+                .frame(
+                    Frame::none()
+                        .inner_margin(Margin::same(20.0))
+                        .fill(theme::BG),
+                )
+                .show(context, |ui| {
+                    ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
+                        ui.heading(
+                            RichText::new(*self.tab_labels.get(&self.selected_tab).unwrap())
+                                .size(25.0),
+                        );
+                        ScrollArea::new([false, true]).show(ui, |ui| match self.selected_tab {
+                            Tab::Connections => {
+                                requests.extend(self.connections_tab.ui(ui, connected_to_server));
+                            }
+                            Tab::Statistics => {
+                                if let Some(request) = self.statistics_tab.ui(ui) {
+                                    requests.push(request);
+                                }
+                            }
+                            Tab::Settings => {
+                                requests.extend(self.settings_tab.ui(ui));
+                            }
+                            #[cfg(not(target_arch = "wasm32"))]
+                            Tab::Installation => {
+                                for request in self.installation_tab.ui(ui) {
+                                    match request {
+                                        components::InstallationTabRequest::OpenSetupWizard => {
+                                            self.setup_wizard_open = true
+                                        }
+                                        components::InstallationTabRequest::ServerRequest(
+                                            request,
+                                        ) => {
+                                            requests.push(request);
+                                        }
+                                    }
+                                }
+                            }
+                            Tab::Logs => self.logs_tab.ui(ui),
+                            Tab::Debug => {
+                                if let Some(request) = components::debug_tab_ui(ui) {
+                                    requests.push(request);
+                                }
+                            }
+                            Tab::About => components::about_tab_ui(ui),
+                        })
+                    })
+                });
+        }
+
+        for request in requests {
+            self.data_sources.request(request);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn on_close_event(&mut self) -> bool {
+        if crate::data_sources::get_local_data_source()
+            .settings()
+            .steamvr_launcher
+            .open_close_steamvr_with_dashboard
+        {
+            self.data_sources.request(ServerRequest::ShutdownSteamvr);
+
+            crate::steamvr_launcher::LAUNCHER
+                .lock()
+                .ensure_steamvr_shutdown()
+        }
+
+        true
     }
 }

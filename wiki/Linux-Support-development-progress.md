@@ -13,7 +13,7 @@ The PR in the last log was proceeded by [#604](https://github.com/alvr-org/ALVR/
 
 A [PR](https://github.com/alvr-org/ALVR/pull/569) has been made integrating Xytovl's vulkan layer into the main ALVR tree. It doesn't actually stream video yet but it provides a solid base for future work and is compatible with nVidia GPUs.
 
-After you've checked the PR's branch out and [built the server](https://github.com/alvr-org/ALVR/wiki/Build-from-source#build-server), you can build and install the Vulkan layer like this:
+After you've checked the PR's branch out and [built the streamer](https://github.com/alvr-org/ALVR/wiki/Build-from-source#build-streamer), you can build and install the Vulkan layer like this:
 ```
 cd alvr/server/cpp/tools/vulkan-layer
 mkdir build && cd build
@@ -48,7 +48,7 @@ We use SteamVR direct rendering mode on a fake screen, and capture the output of
 See [build from source](Build-from-source)
 
 ## Usage
-Run `build/alvr_server_linux/ALVR Launcher`
+Run `build/alvr_streamer_linux/ALVR Launcher`
 
 On first setup, SteamVR will probably show the VR display on your screen, with the configuration window. If you have dual screen, you can move the configuration window to a visible area (with Alt + drag on most desktop environments).
 
@@ -56,7 +56,7 @@ In the setup, deactivate audio streaming, switch connection to UDP, and deactiva
 
 On the headset, launch the application, then click trust on the configuration window, which will quit.
 
-The headset says that the server will restart, but it will not. You must relaunch it manually.
+The headset says that the streamer will restart, but it will not. You must relaunch it manually.
 
 If you are here, once it is all restarted, you should be able to get the stream on the headset.
 ## 2021-01-15

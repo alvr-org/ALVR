@@ -186,35 +186,42 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   encoder_ctx->width = width;
   encoder_ctx->height = height;
   encoder_ctx->time_base = {1, (int)1e9};
-  encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
   encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
   encoder_ctx->max_b_frames = 0;
   encoder_ctx->gop_size = INT16_MAX;
-  encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
-  encoder_ctx->rc_min_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / settings.m_refreshRate;
+
+  auto params = FfiDynamicEncoderParams {};
+  params.updated = true;
+  params.bitrate_bps = 30'000'000;
+  params.framerate = settings.m_refreshRate;
+  SetParams(params);
 
   encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
   vlVaQualityBits quality = {};
   quality.valid_setting = 1;
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
-  switch (settings.m_encoderQualityPreset)
+  switch (settings.m_amdEncoderQualityPreset)
   {
     case ALVR_QUALITY:
-      quality.preset_mode = PRESET_MODE_QUALITY;
-      encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+      if (vk_ctx.amd) {
+        quality.preset_mode = PRESET_MODE_QUALITY;
+        encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+      }
     break;
     case ALVR_BALANCED:
-      quality.preset_mode = PRESET_MODE_BALANCE;
-      encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+      if (vk_ctx.amd) {
+        quality.preset_mode = PRESET_MODE_BALANCE;
+        encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+      }
     break;
     case ALVR_SPEED:
       default:
-       quality.preset_mode = PRESET_MODE_SPEED;
-       encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+       if (vk_ctx.amd) {
+         quality.preset_mode = PRESET_MODE_SPEED;
+         encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+       }
     break;
   }
 
@@ -236,14 +243,17 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   AVFilterInOut *outputs = avfilter_inout_alloc();
   AVFilterInOut *inputs = avfilter_inout_alloc();
 
-  filter_in = avfilter_graph_alloc_filter(filter_graph, avfilter_get_by_name("buffer"), "in");
-
+  std::stringstream buffer_filter_args;
+  buffer_filter_args << "video_size=" << mapped_frame->width << "x" << mapped_frame->height;
+  buffer_filter_args << ":pix_fmt=" << mapped_frame->format;
+  buffer_filter_args << ":time_base=" << encoder_ctx->time_base.num << "/" << encoder_ctx->time_base.den;
+  if ((err = avfilter_graph_create_filter(&filter_in, avfilter_get_by_name("buffer"), "in", buffer_filter_args.str().c_str(), NULL, filter_graph)))
+  {
+    throw alvr::AvException("filter_in creation failed:", err);
+  }
   AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
   memset(par, 0, sizeof(*par));
-  par->width = mapped_frame->width;
-  par->height = mapped_frame->height;
-  par->time_base = encoder_ctx->time_base;
-  par->format = mapped_frame->format;
+  par->format = AV_PIX_FMT_NONE;
   par->hw_frames_ctx = av_buffer_ref(mapped_frame->hw_frames_ctx);
   av_buffersrc_parameters_set(filter_in, par);
   av_free(par);
@@ -290,11 +300,13 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
 
 alvr::EncodePipelineVAAPI::~EncodePipelineVAAPI()
 {
-  avfilter_graph_free(&filter_graph);
-  av_frame_free(&mapped_frame);
-  av_frame_free(&encoder_frame);
-  av_buffer_unref(&hw_ctx);
-  av_buffer_unref(&drm_ctx);
+  // Commented because freeing it here causes a gpu reset, it should be cleaned up away
+  //avcodec_free_context(&encoder_ctx);
+  //avfilter_graph_free(&filter_graph);
+  //av_frame_free(&mapped_frame);
+  //av_frame_free(&encoder_frame);
+  //av_buffer_unref(&hw_ctx);
+  //av_buffer_unref(&drm_ctx);
 }
 
 void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
@@ -323,4 +335,24 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 
 void alvr::EncodePipelineVAAPI::GetConfigNAL() {
 	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size);
+}
+
+void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)
+{
+  if (!params.updated) {
+    return;
+  }
+  if (Settings::Instance().m_codec == ALVR_CODEC_H265) {
+    // hevc doesn't work well with adaptive bitrate/fps
+    params.framerate = Settings::Instance().m_refreshRate;
+  }
+  encoder_ctx->bit_rate = params.bitrate_bps;
+  encoder_ctx->framerate = AVRational{int(params.framerate * 1000), 1000};
+  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate * 1.1;
+  encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
+  encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size / 4 * 3;
+
+  if (Settings::Instance().m_amdBitrateCorruptionFix) {
+    RequestIDR();
+  }
 }

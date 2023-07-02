@@ -1,7 +1,8 @@
 use crate::{ClientCoreEvent, EVENT_QUEUE};
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, RelaxedAtomic};
+use alvr_packets::DecoderInitializationConfig;
 use alvr_session::{CodecType, MediacodecDataType};
-use std::{ffi::c_char, ptr, time::Duration};
+use std::time::Duration;
 
 #[cfg(target_os = "android")]
 use alvr_common::prelude::*;
@@ -31,22 +32,23 @@ pub static DECODER_DEQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderDequ
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
 
-pub fn create_decoder(config_nal: Vec<u8>) {
-    let config = DECODER_INIT_CONFIG.lock();
+pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
+    let mut config = DECODER_INIT_CONFIG.lock();
+    config.codec = lazy_config.codec;
 
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE
             .lock()
             .push_back(ClientCoreEvent::CreateDecoder {
                 codec: config.codec,
-                config_nal,
+                config_nal: lazy_config.config_buffer,
             });
     } else {
         #[cfg(target_os = "android")]
         if DECODER_ENQUEUER.lock().is_none() {
             let (enqueuer, dequeuer) = crate::platform::video_decoder_split(
                 config.clone(),
-                config_nal,
+                lazy_config.config_buffer,
                 |target_timestamp| {
                     if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
                         stats.report_frame_decoded(target_timestamp);
@@ -60,34 +62,30 @@ pub fn create_decoder(config_nal: Vec<u8>) {
 
             if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
                 sender
-                    .send(alvr_sockets::ClientControlPacket::RequestIdr)
+                    .send(alvr_packets::ClientControlPacket::RequestIdr)
                     .ok();
             }
-
-            unsafe { crate::notifyNewDecoder() };
         }
     }
 }
 
-pub extern "C" fn push_nal(buffer: *const c_char, length: i32, timestamp_ns: u64) {
-    let timestamp = Duration::from_nanos(timestamp_ns);
-
-    let mut nal = vec![0; length as _];
-    unsafe { ptr::copy_nonoverlapping(buffer, nal.as_mut_ptr() as _, length as _) }
-
+// return: frame has been successfully enqueued
+pub fn push_nal(timestamp: Duration, nal: &[u8]) -> bool {
     if EXTERNAL_DECODER.value() {
-        EVENT_QUEUE
-            .lock()
-            .push_back(ClientCoreEvent::FrameReady { timestamp, nal });
+        EVENT_QUEUE.lock().push_back(ClientCoreEvent::FrameReady {
+            timestamp,
+            nal: nal.to_vec(),
+        });
+        true
     } else {
         #[cfg(target_os = "android")]
         if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            show_err(decoder.push_frame_nal(timestamp, &nal, Duration::from_millis(500)));
-        } else if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
-            sender
-                .send(alvr_sockets::ClientControlPacket::RequestConfigNAL)
-                .ok();
+            matches!(show_err(decoder.push_frame_nal(timestamp, nal)), Some(true))
+        } else {
+            false
         }
+        #[cfg(not(target_os = "android"))]
+        false
     }
 }
 

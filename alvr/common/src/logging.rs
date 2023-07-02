@@ -1,10 +1,49 @@
-use std::{backtrace::Backtrace, fmt::Display, future::Future};
+use backtrace::Backtrace;
+use serde::{Deserialize, Serialize};
+use settings_schema::SettingsSchema;
+use std::{fmt::Display, future::Future};
+
+#[derive(
+    SettingsSchema, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
+pub enum LogSeverity {
+    Error = 3,
+    Warning = 2,
+    Info = 1,
+    Debug = 0,
+}
+
+impl LogSeverity {
+    pub fn from_log_level(level: log::Level) -> Self {
+        match level {
+            log::Level::Error => LogSeverity::Error,
+            log::Level::Warn => LogSeverity::Warning,
+            log::Level::Info => LogSeverity::Info,
+            log::Level::Debug | log::Level::Trace => LogSeverity::Debug,
+        }
+    }
+
+    pub fn into_log_level(self) -> log::Level {
+        match self {
+            LogSeverity::Error => log::Level::Error,
+            LogSeverity::Warning => log::Level::Warn,
+            LogSeverity::Info => log::Level::Info,
+            LogSeverity::Debug => log::Level::Debug,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LogEntry {
+    pub severity: LogSeverity,
+    pub content: String,
+}
 
 pub fn set_panic_hook() {
     std::panic::set_hook(Box::new(|panic_info| {
         let err_str = format!(
-            "What happened:\n{panic_info}\n\nBacktrace:\n{}",
-            Backtrace::force_capture()
+            "What happened:\n{panic_info}\n\nBacktrace:\n{:?}",
+            Backtrace::new()
         );
 
         log::error!("{err_str}");

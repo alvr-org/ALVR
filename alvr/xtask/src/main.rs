@@ -19,15 +19,15 @@ USAGE:
     cargo xtask <SUBCOMMAND> [FLAG] [ARGS]
 
 SUBCOMMANDS:
-    prepare-deps        Download and compile server and client external dependencies
-    build-server        Build server driver, then copy binaries to build folder
+    prepare-deps        Download and compile streamer and client external dependencies
+    build-streamer      Build streamer, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header.
-    run-server          Build server and then open the launcher
-    package-server      Build server in release mode, make portable version and installer
+    run-streamer        Build streamer and then open the dashboard
+    package-streamer    Build streamer in release mode, make portable version and installer
     package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies.
-    bump                Bump server and client package versions
+    bump                Bump streamer and client package versions
     clippy              Show warnings for selected clippy lints
     kill-oculus         Kill all Oculus processes
 
@@ -36,14 +36,13 @@ FLAGS:
     --keep-config       Preserve the configuration file between rebuilds (session.json)
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
-    --gpl               Bundle GPL libraries. For build subcommands
-    --experiments       Build unfinished features. For build subcommands
-    --local-ffmpeg      Use local build of ffmpeg in non GPL build. For build subcommands
-    --appimage          Package as AppImage. For package-server subcommand
-    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-server subcommand
+    --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
+    --appimage          Package as AppImage. For package-streamer subcommand
+    --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-streamer subcommand
     --nightly           Append nightly tag to versions. For bump subcommand
-    --no-rebuild        Do not rebuild the server with run-server
+    --no-rebuild        Do not rebuild the streamer with run-streamer
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
+    --no-stdcpp         Disable linking to libc++_shared with build-client-lib
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -52,12 +51,12 @@ ARGS:
                         relative paths, which requires conforming to FHS on Linux.
 "#;
 
-pub fn run_server() {
+pub fn run_streamer() {
     let sh = Shell::new().unwrap();
 
-    let launcher_exe = Layout::new(&afs::server_build_dir()).launcher_exe();
+    let dashboard_exe = Layout::new(&afs::streamer_build_dir()).dashboard_exe();
 
-    cmd!(sh, "{launcher_exe}").run().unwrap();
+    cmd!(sh, "{dashboard_exe}").run().unwrap();
 }
 
 pub fn clean() {
@@ -146,16 +145,13 @@ fn main() {
             Profile::Debug
         };
         let gpl = args.contains("--gpl");
-        let experiments = args.contains("--experiments");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
         let for_ci = args.contains("--ci");
         let keep_config = args.contains("--keep-config");
-
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
-
-        let local_ffmpeg = args.contains("--local-ffmpeg");
+        let link_stdcpp = !args.contains("--no-stdcpp");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -181,36 +177,18 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-server" => build::build_server(
-                    profile,
-                    gpl,
-                    None,
-                    false,
-                    experiments,
-                    local_ffmpeg,
-                    keep_config,
-                ),
-                "build-client" => build::build_quest_client(profile),
-                "build-client-lib" => build::build_client_lib(profile),
-                "run-server" => {
+                "build-streamer" => build::build_streamer(profile, gpl, None, false, keep_config),
+                "build-client" => build::build_android_client(profile),
+                "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
+                "run-streamer" => {
                     if !no_rebuild {
-                        build::build_server(
-                            profile,
-                            gpl,
-                            None,
-                            false,
-                            experiments,
-                            local_ffmpeg,
-                            keep_config,
-                        );
+                        build::build_streamer(profile, gpl, None, false, keep_config);
                     }
-                    run_server();
+                    run_streamer();
                 }
-                "package-server" => {
-                    packaging::package_server(root, gpl, local_ffmpeg, appimage, zsync)
-                }
-                "package-client" => build::build_quest_client(Profile::Distribution),
-                "package-client-lib" => packaging::package_client_lib(),
+                "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
+                "package-client" => build::build_android_client(Profile::Distribution),
+                "package-client-lib" => packaging::package_client_lib(link_stdcpp),
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),

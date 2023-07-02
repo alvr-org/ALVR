@@ -1,6 +1,7 @@
 #include "bindings.h"
 #include "ffr.h"
 #include "gltf_model.h"
+#include "srgb_correction_pass.h"
 #include "utils.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -58,6 +59,12 @@ typedef struct {
     GLint Textures[MAX_PROGRAM_TEXTURES];        // Texture%i
 } ovrProgram;
 
+enum ovrProgramType {
+    STREAMER_PROG,
+    LOBBY_PROG,
+    MAX_PROGS // Not to be used as a type, just a placeholder for len    
+};
+
 typedef struct {
     ovrFramebuffer FrameBuffer[2];
     bool SceneCreated;
@@ -68,7 +75,9 @@ typedef struct {
     GLuint hudTexture;
     GltfModel *lobbyScene;
     std::unique_ptr<FFR> ffr;
+    std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
     bool enableFFR;
+    GLuint streamRenderTexture;
 } ovrRenderer;
 
 enum VertexAttributeLocation {
@@ -82,14 +91,16 @@ enum VertexAttributeLocation {
 typedef struct {
     enum VertexAttributeLocation location;
     const char *name;
+    bool usedInProg[MAX_PROGS];
 } ovrVertexAttribute;
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
-    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition"},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor"},
-    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv"},
-    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform"},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal"}};
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true,  true }},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true,  false}},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true,  true }},
+    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform",    {false, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true }}
+};
 
 enum E1test {
     UNIFORM_VIEW_ID,
@@ -177,12 +188,10 @@ void main()
 )glsl";
 
 static const char FRAGMENT_SHADER[] = R"glsl(
-#extension GL_OES_EGL_image_external_essl3 : enable
-#extension GL_OES_EGL_image_external : enable
 in lowp vec2 uv;
 in lowp vec4 fragmentColor;
 out lowp vec4 outColor;
-uniform %s Texture0;
+uniform sampler2D Texture0;
 void main()
 {
     outColor = texture(Texture0, uv);
@@ -291,8 +300,8 @@ void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
                            const int height) {
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
-        frameBuffer->renderTargets.push_back(
-            std::make_unique<gl_render_utils::Texture>(glRenderTarget, false, width, height));
+        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
+            true, glRenderTarget, false, width, height, GL_SRGB8_ALPHA8, GL_RGBA));
         frameBuffer->renderStates.push_back(
             std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
@@ -419,7 +428,7 @@ void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
 
 static const char *programVersion = "#version 300 es\n";
 
-bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource) {
+bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource, ovrProgramType progType) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -455,23 +464,30 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     }
 
     GL(program->streamProgram = glCreateProgram());
-    GL(glAttachShader(program->streamProgram, program->VertexShader));
-    GL(glAttachShader(program->streamProgram, program->FragmentShader));
 
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
          i++) {
-        GL(glBindAttribLocation(program->streamProgram,
+        // Only bind vertex attributes which are used/active in shader else causes uncessary bugs via compiler optimization/aliasing
+        if (ProgramVertexAttributes[i].usedInProg[progType]) {
+            GL(glBindAttribLocation(program->streamProgram,
                                 ProgramVertexAttributes[i].location,
                                 ProgramVertexAttributes[i].name));
+            LOGD("Binding ProgramVertexAttribute [id.%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+        }
     }
 
+    GL(glAttachShader(program->streamProgram, program->VertexShader));
+    GL(glAttachShader(program->streamProgram, program->FragmentShader));
     GL(glLinkProgram(program->streamProgram));
+
     GL(glGetProgramiv(program->streamProgram, GL_LINK_STATUS, &r));
     if (r == GL_FALSE) {
         GLchar msg[4096];
         GL(glGetProgramInfoLog(program->streamProgram, sizeof(msg), 0, msg));
-        LOGE("Linking program failed: %s\n", msg);
+        LOGE("Linking program failed: %s (%s, %d)\n", msg, __FILE__, __LINE__);
+        LOGE("vertexSource: %s\n", vertexSource);
+        LOGE("fragmentSource: %s\n", fragmentSource);
         return false;
     }
 
@@ -534,11 +550,21 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         Texture *streamTexture,
                         int hudTexture,
                         std::vector<GLuint> textures[2],
-                        FFRData ffrData) {
-    renderer->enableFFR = ffrData.enabled;
-    if (renderer->enableFFR) {
-        renderer->ffr = std::make_unique<FFR>(streamTexture);
-        renderer->ffr->Initialize(ffrData);
+                        FFRData ffrData,
+                        bool isLobby) {
+    if (!isLobby) {
+        renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
+        renderer->enableFFR = ffrData.enabled;
+        if (renderer->enableFFR) {
+            FoveationVars fv = CalculateFoveationVars(ffrData);
+            renderer->srgbCorrectionPass->Initialize(fv.optimizedEyeWidth, fv.optimizedEyeHeight);
+            renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
+            renderer->ffr->Initialize(fv);
+            renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
+        } else {
+            renderer->srgbCorrectionPass->Initialize(width, height);
+            renderer->streamRenderTexture = renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
+        }
     }
 
     // Create the frame buffers.
@@ -552,12 +578,9 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     renderer->lobbyScene = new GltfModel();
     renderer->lobbyScene->load();
 
-    std::string fragment_shader;
-    fragment_shader =
-        string_format(FRAGMENT_SHADER, renderer->enableFFR ? "sampler2D" : "samplerExternalOES");
-    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, fragment_shader.c_str());
+    ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER, STREAMER_PROG);
 
-    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER);
+    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
 
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
@@ -628,10 +651,6 @@ void renderEye(
     } else {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
 
-        glm::mat4 mvpMatrix[2];
-        mvpMatrix[0] = glm::mat4(1.0);
-        mvpMatrix[1] = glm::mat4(1.0);
-
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 
         GL(glUniformMatrix4fv(renderer->streamProgram.UniformLocation[UNIFORM_MVP_MATRIX],
@@ -641,11 +660,7 @@ void renderEye(
 
         GL(glUniform1f(renderer->streamProgram.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
-        if (renderer->enableFFR) {
-            GL(glBindTexture(GL_TEXTURE_2D, renderer->ffr->GetOutputTexture()->GetGLTexture()));
-        } else {
-            GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, renderer->streamTexture->GetGLTexture()));
-        }
+        GL(glBindTexture(GL_TEXTURE_2D, renderer->streamRenderTexture));
 
         GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
 
@@ -660,32 +675,33 @@ void renderEye(
     GL(glUseProgram(0));
 }
 
-void ovrRenderer_RenderFrame(ovrRenderer *renderer, const EyeInput input[2], bool isLobby) {
-    if (renderer->enableFFR) {
-        renderer->ffr->Render();
-    }
-
+void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2], bool isLobby) {
     glm::mat4 mvpMatrix[2];
-    for (int eye = 0; eye < 2; eye++) {
-        auto p = input[eye].position;
-        auto o = input[eye].orientation;
-        auto trans = glm::translate(glm::mat4(1.0), glm::vec3(p[0], p[1], p[2]));
-        auto rot = glm::mat4_cast(glm::quat(o[3], o[0], o[1], o[2]));
-        auto viewInv = glm::inverse(trans * rot);
+    if (isLobby) {
+        for (int eye = 0; eye < 2; eye++) {
+            auto p = input[eye].position;
+            auto o = input[eye].orientation;
+            auto trans = glm::translate(glm::mat4(1.0), glm::vec3(p[0], p[1], p[2]));
+            auto rot = glm::mat4_cast(glm::quat(o[3], o[0], o[1], o[2]));
+            auto viewInv = glm::inverse(trans * rot);
 
-        auto tanl = tan(input[eye].fovLeft);
-        auto tanr = tan(input[eye].fovRight);
-        auto tant = tan(-input[eye].fovUp);
-        auto tanb = tan(-input[eye].fovDown);
-        auto a = 2 / (tanr - tanl);
-        auto b = 2 / (tanb - tant);
-        auto c = (tanr + tanl) / (tanr - tanl);
-        auto d = (tanb + tant) / (tanb - tant);
-        auto proj = glm::mat4(
-            a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
-        proj = glm::transpose(proj);
+            auto tanl = tan(input[eye].fovLeft);
+            auto tanr = tan(input[eye].fovRight);
+            auto tant = tan(input[eye].fovUp);
+            auto tanb = tan(input[eye].fovDown);
+            auto a = 2 / (tanr - tanl);
+            auto b = 2 / (tant - tanb);
+            auto c = (tanr + tanl) / (tanr - tanl);
+            auto d = (tant + tanb) / (tant - tanb);
+            auto proj = glm::mat4(
+                a, 0.f, c, 0.f, 0.f, b, d, 0.f, 0.f, 0.f, -1.f, -2 * NEAR, 0.f, 0.f, -1.f, 0.f);
+            proj = glm::transpose(proj);
 
-        mvpMatrix[eye] = glm::transpose(proj * viewInv);
+            mvpMatrix[eye] = glm::transpose(proj * viewInv);
+        }
+    } else {
+        mvpMatrix[0] = glm::mat4(1.0);
+        mvpMatrix[1] = glm::mat4(1.0);
     }
 
     // Render the eye images.
@@ -715,9 +731,19 @@ void initGraphicsNative() {
     glEGLImageTargetTexture2DOES =
         (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 
-    g_ctx.streamTexture = std::make_unique<Texture>(true);
+    g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
-        false, 1280, 720, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+        false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
+    
+    const GLubyte *sVendor, *sRenderer, *sVersion, *sExts;
+
+    GL(sVendor = glGetString(GL_VENDOR));
+    GL(sRenderer = glGetString(GL_RENDERER));
+    GL(sVersion = glGetString(GL_VERSION));
+    GL(sExts = glGetString(GL_EXTENSIONS));
+
+    LOGI("glVendor : %s, glRenderer : %s, glVersion : %s", sVendor, sRenderer, sVersion);
+    LOGI("glExts : %s", sExts);
 }
 
 void destroyGraphicsNative() {
@@ -745,7 +771,8 @@ void prepareLobbyRoom(int viewWidth,
                        nullptr,
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.lobbySwapchainTextures,
-                       {false});
+                       {false},
+                       true);
 }
 
 // on pause
@@ -760,7 +787,7 @@ void destroyRenderers() {
     }
 }
 
-void streamStartNative(StreamConfigInput config) {
+void streamStartNative(FfiStreamConfig config) {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.release();
@@ -781,7 +808,7 @@ void streamStartNative(StreamConfigInput config) {
                        g_ctx.streamTexture.get(),
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.streamSwapchainTextures,
-                       {config.enableFoveation,
+                       {(bool)config.enableFoveation,
                         config.viewWidth,
                         config.viewHeight,
                         config.foveationCenterSizeX,
@@ -789,7 +816,8 @@ void streamStartNative(StreamConfigInput config) {
                         config.foveationCenterShiftX,
                         config.foveationCenterShiftY,
                         config.foveationEdgeRatioX,
-                        config.foveationEdgeRatioY});
+                        config.foveationEdgeRatioY},
+                       false);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -800,7 +828,7 @@ void updateLobbyHudTexture(const unsigned char *data) {
     memcpy(&g_ctx.hudTextureBitmap[0], data, HUD_TEXTURE_WIDTH * HUD_TEXTURE_HEIGHT * 4);
 }
 
-void renderLobbyNative(const EyeInput eyeInputs[2]) {
+void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
     // update text image
     {
         std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
@@ -824,18 +852,27 @@ void renderLobbyNative(const EyeInput eyeInputs[2]) {
 }
 
 void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchainIndices[2]) {
-    GL(EGLClientBuffer clientBuffer =
-           eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
-    GL(EGLImageKHR image = eglCreateImageKHR(
-           g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
+    auto renderer = g_ctx.streamRenderer.get();
 
-    GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
-    GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+    if (streamHardwareBuffer != 0) {
+        GL(EGLClientBuffer clientBuffer =
+               eglGetNativeClientBufferANDROID((const AHardwareBuffer *)streamHardwareBuffer));
+        GL(EGLImageKHR image = eglCreateImageKHR(
+               g_ctx.eglDisplay, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, nullptr));
 
-    EyeInput eyeInputs[2] = {};
+        GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, g_ctx.streamTexture->GetGLTexture()));
+        GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
+
+        renderer->srgbCorrectionPass->Render();
+        if (renderer->enableFFR) {
+            renderer->ffr->Render();
+        }
+
+        GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    }
+
+    FfiViewInput eyeInputs[2] = {};
     eyeInputs[0].swapchainIndex = swapchainIndices[0];
     eyeInputs[1].swapchainIndex = swapchainIndices[1];
-    ovrRenderer_RenderFrame(g_ctx.streamRenderer.get(), eyeInputs, false);
-
-    GL(eglDestroyImageKHR(g_ctx.eglDisplay, image));
+    ovrRenderer_RenderFrame(renderer, eyeInputs, false);
 }

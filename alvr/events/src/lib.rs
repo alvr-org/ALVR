@@ -1,18 +1,10 @@
-use alvr_common::prelude::*;
-use alvr_session::SessionDesc;
+use alvr_common::{prelude::*, DeviceMotion, Pose};
+use alvr_packets::{AudioDevicesList, ButtonValue};
+use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, time::Duration};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum EventSeverity {
-    Error,
-    Warning,
-    Info,
-    Debug,
-}
-
-// todo: remove some unused statistics
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")] // todo: remove casing conversion
 pub struct Statistics {
     pub video_packets_total: usize,
     pub video_packets_per_sec: usize,
@@ -22,10 +14,9 @@ pub struct Statistics {
     pub network_latency_ms: f32,
     pub encode_latency_ms: f32,
     pub decode_latency_ms: f32,
-    pub fec_percentage: u32,
-    pub fec_errors_total: usize,
-    pub fec_errors_per_sec: usize,
-    pub client_fps: u32, // the name will be fixed after the old dashboard is removed
+    pub packets_lost_total: usize,
+    pub packets_lost_per_sec: usize,
+    pub client_fps: u32,
     pub server_fps: u32,
     pub battery_hmd: u32,
     pub battery_left: u32,
@@ -33,7 +24,6 @@ pub struct Statistics {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")] // todo: remove casing conversion
 pub struct GraphStatistics {
     pub total_pipeline_latency_s: f32,
     pub game_time_s: f32,
@@ -49,15 +39,14 @@ pub struct GraphStatistics {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LogEvent {
-    pub severity: EventSeverity,
-    pub content: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum ButtonValue {
-    Binary(bool),
-    Scalar(f32),
+pub struct TrackingEvent {
+    pub head_motion: Option<DeviceMotion>,
+    pub controller_motions: [Option<DeviceMotion>; 2],
+    pub hand_skeletons: [Option<[Pose; 26]>; 2],
+    pub eye_gazes: [Option<Pose>; 2],
+    pub fb_face_expression: Option<Vec<f32>>,
+    pub htc_eye_expression: Option<Vec<f32>>,
+    pub htc_lip_expression: Option<Vec<f32>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -66,25 +55,27 @@ pub struct ButtonEvent {
     pub value: ButtonValue,
 }
 
-// Event is serialized as #{ "id": "..." [, "data": ...] }#
-// Pound signs are used to identify start and finish of json
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HapticsEvent {
+    pub path: String,
+    pub duration: Duration,
+    pub frequency: f32,
+    pub amplitude: f32,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "id", content = "data")]
 pub enum EventType {
-    Session(Box<SessionDesc>),
-    SessionUpdated, // deprecated
-    ClientFoundOk,
-    ClientFoundInvalid,
-    ClientFoundWrongVersion(String),
-    ClientConnected,
-    ClientDisconnected,
-    UpdateDownloadedBytesCount(usize),
-    UpdateDownloadError,
+    Log(LogEntry),
+    Session(Box<SessionConfig>),
     Statistics(Statistics),
     GraphStatistics(GraphStatistics),
-    Button(ButtonEvent),
-    ServerQuitting,
-    Log(LogEvent),
+    Tracking(Box<TrackingEvent>),
+    Buttons(Vec<ButtonEvent>),
+    Haptics(HapticsEvent),
+    AudioDevices(AudioDevicesList),
+    DriversList(Vec<PathBuf>),
+    ServerRequestsSelfRestart,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

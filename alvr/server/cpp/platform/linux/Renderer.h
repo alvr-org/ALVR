@@ -30,14 +30,14 @@ class Renderer
 {
 public:
     struct Output {
-        VkImage image;
+        VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkImageCreateInfo imageInfo;
-        VkDeviceSize size;
-        VkDeviceMemory memory;
-        VkSemaphore semaphore;
+        VkDeviceSize size = 0;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
         // ---
-        VkImageView view;
-        VkFramebuffer framebuffer;
+        VkImageView view = VK_NULL_HANDLE;
         // ---
         DrmImage drm;
     };
@@ -63,7 +63,7 @@ public:
 
     void Sync();
 
-    Output GetOutput();
+    Output &GetOutput();
     Timestamps GetTimestamps();
 
     void CaptureInputFrame(const std::string &filename);
@@ -73,19 +73,18 @@ public:
 
 // private:
     struct InputImage {
-        VkImage image;
-        VkDeviceMemory memory;
-        VkSemaphore semaphore;
-        VkImageView view;
-        VkDescriptorSet descriptor;
+        VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkSemaphore semaphore = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
     };
 
     struct StagingImage {
-        VkImage image;
-        VkDeviceMemory memory;
-        VkImageView view;
-        VkFramebuffer framebuffer;
-        VkDescriptorSet descriptor;
+        VkImage image = VK_NULL_HANDLE;
+        VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
     };
 
     void commandBufferBegin();
@@ -95,10 +94,11 @@ public:
     uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const;
 
     struct {
-        PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR;
-        PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR;
-        PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT;
-        PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT;
+        PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR = nullptr;
+        PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR = nullptr;
+        PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT = nullptr;
+        PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = nullptr;
+        PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
         bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
     } d;
@@ -108,24 +108,20 @@ public:
     std::vector<StagingImage> m_stagingImages;
     std::vector<RenderPipeline*> m_pipelines;
 
-    VkInstance m_inst;
-    VkDevice m_dev;
-    VkPhysicalDevice m_physDev;
-    VkQueue m_queue;
-    uint32_t m_queueFamilyIndex;
-    VkFormat m_format;
-    VkExtent2D m_imageSize;
-    VkQueryPool m_queryPool;
-    VkCommandPool m_commandPool;
-    VkSampler m_sampler;
-    VkBuffer m_vertexBuffer;
-    VkDeviceMemory m_vertexMemory;
-    VkRenderPass m_renderPass;
-    VkDescriptorPool m_descriptorPool;
-    VkDescriptorSetLayout m_descriptorLayout;
-    VkCommandBuffer m_commandBuffer;
-    VkFence m_fence;
-    double m_timestampPeriod;
+    VkInstance m_inst = VK_NULL_HANDLE;
+    VkDevice m_dev = VK_NULL_HANDLE;
+    VkPhysicalDevice m_physDev = VK_NULL_HANDLE;
+    VkQueue m_queue = VK_NULL_HANDLE;
+    uint32_t m_queueFamilyIndex = 0;
+    VkFormat m_format = VK_FORMAT_UNDEFINED;
+    VkExtent2D m_imageSize = {0, 0};
+    VkQueryPool m_queryPool = VK_NULL_HANDLE;
+    VkCommandPool m_commandPool = VK_NULL_HANDLE;
+    VkSampler m_sampler = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_descriptorLayout = VK_NULL_HANDLE;
+    VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
+    VkFence m_fence = VK_NULL_HANDLE;
+    double m_timestampPeriod = 0;
 
     std::string m_inputImageCapture;
     std::string m_outputImageCapture;
@@ -134,29 +130,28 @@ public:
 class RenderPipeline
 {
 public:
-    enum ShaderType {
-        VertexShader,
-        FragmentShader
-    };
-
     explicit RenderPipeline(Renderer *render);
     virtual ~RenderPipeline();
 
-    void SetShader(ShaderType type, const char *filename);
-    void SetShader(ShaderType type, const unsigned char *data, unsigned len);
-    void SetPushConstant(ShaderType type, const void *data, uint32_t size);
+    void SetShader(const char *filename);
+    void SetShader(const unsigned char *data, unsigned len);
+
+    template <typename T>
+    void SetConstants(const T *data, std::vector<VkSpecializationMapEntry> &&entries) {
+        m_constant = static_cast<const void*>(data);
+        m_constantSize = sizeof(T);
+        m_constantEntries = std::move(entries);
+    }
 
 private:
     void Build();
-    void Render(VkDescriptorSet in, VkFramebuffer out, VkRect2D outSize);
+    void Render(VkImageView in, VkImageView out, VkRect2D outSize);
 
     Renderer *r;
-    VkShaderModule m_vertexShader = VK_NULL_HANDLE;
-    VkShaderModule m_fragmentShader = VK_NULL_HANDLE;
-    const void *m_vertexConstant = nullptr;
-    uint32_t m_vertexConstantSize = 0;
-    const void *m_fragmentConstant = nullptr;
-    uint32_t m_fragmentConstantSize = 0;
+    VkShaderModule m_shader = VK_NULL_HANDLE;
+    const void *m_constant = nullptr;
+    uint32_t m_constantSize = 0;
+    std::vector<VkSpecializationMapEntry> m_constantEntries;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
 

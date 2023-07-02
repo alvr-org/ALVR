@@ -10,26 +10,22 @@ license = "MIT"
 crate-type = ["cdylib"]
 
 [features]
-gpl = ["local_ffmpeg"]
-local_ffmpeg = []
+gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
 
 [dependencies]
 alvr_audio.workspace = true
-alvr_commands.workspace = true
 alvr_common.workspace = true
 alvr_events.workspace = true
 alvr_filesystem.workspace = true
-alvr_server_data.workspace = true
+alvr_packets.workspace = true
+alvr_server_io.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-# Basic utilities
-chrono = "0.4"
 # Serialization
 bincode = "1"
 serde = "1"
 serde_json = "1"
-settings-schema = { version = "0.0.1", features = ["rename_camel_case"] }
 # Networking and async
 bytes = "1"
 futures = "0.3"
@@ -42,6 +38,7 @@ hyper = { version = "0.14", features = [
     "tcp",
 ] }
 reqwest = "0.11"
+rosc = "0.10"
 tokio = { version = "1", features = [
     "rt-multi-thread",
     "macros",
@@ -50,22 +47,19 @@ tokio = { version = "1", features = [
     "net",
     "fs",
 ] }
-tokio-tungstenite = "0.18"
+tokio-tungstenite = "0.19"
 tokio-util = { version = "0.7", features = ["codec"] }
-# Browser interop
-tempfile = "3"
-alcro = "0.5.4"
-webbrowser = "0.8" # this is just for opening links in the default browser
 # Miscellaneous
+chrono = "0.4"
 fern = "0.6"
-winit = "0.27" # needed to get the screen size
-spin_sleep = "1.1.1"
+spin_sleep = "1"
+sysinfo = { version = "0.29", default-features = false }
 
 [build-dependencies]
 alvr_filesystem = { path = "../filesystem" }
-bindgen = "0.63"
+bindgen = "0.65"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"
 
-[target.'cfg(unix)'.build-dependencies]
+[target.'cfg(target_os = "linux")'.build-dependencies]
 pkg-config = "0.3"

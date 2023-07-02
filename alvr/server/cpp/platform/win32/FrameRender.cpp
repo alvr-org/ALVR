@@ -225,7 +225,7 @@ bool FrameRender::Startup()
 	//
 
 	// BlendState for first layer.
-	// Some VR apps (like StreamVR Home beta) submit the texture that alpha is zero on all pixels.
+	// Some VR apps (like SteamVR Home beta) submit the texture that alpha is zero on all pixels.
 	// So we need to ignore alpha of first layer.
 	D3D11_BLEND_DESC BlendDesc;
 	ZeroMemory(&BlendDesc, sizeof(BlendDesc));

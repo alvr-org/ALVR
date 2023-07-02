@@ -14,13 +14,12 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <iostream>
+#include <fstream>
 
 #include "ALVR-common/packet_types.h"
-#include "alvr_server/ClientConnection.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Settings.h"
-#include "alvr_server/Statistics.h"
 #include "protocol.h"
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
@@ -31,9 +30,8 @@ extern "C" {
 #include <libavutil/avutil.h>
 }
 
-CEncoder::CEncoder(std::shared_ptr<ClientConnection> listener,
-                   std::shared_ptr<PoseHistory> poseHistory)
-    : m_listener(listener), m_poseHistory(poseHistory) {}
+CEncoder::CEncoder(std::shared_ptr<PoseHistory> poseHistory)
+    : m_poseHistory(poseHistory) {}
 
 CEncoder::~CEncoder() { Stop(); }
 
@@ -89,7 +87,7 @@ void av_logfn(void*, int level, const char* data, va_list va)
 #ifdef DEBUG
           AV_LOG_DEBUG)
 #else
-          AV_LOG_VERBOSE)
+          AV_LOG_INFO)
 #endif
     return;
 
@@ -213,7 +211,7 @@ void CEncoder::Run() {
           deviceExtensions = alvr::AMFContext::get()->requiredDeviceExtensions();
       }
 
-      alvr::VkContext vk_ctx(init.device_name.data(), deviceExtensions);
+      alvr::VkContext vk_ctx(init.device_uuid.data(), deviceExtensions);
 
       FrameRender render(vk_ctx, init, m_fds);
       auto output = render.CreateOutput();
@@ -224,13 +222,10 @@ void CEncoder::Run() {
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
-      std::vector<uint8_t> encoded_data;
       while (not m_exiting) {
         read_latest(client, (char *)&frame_info, sizeof(frame_info), m_exiting);
 
-        if (m_listener->GetStatistics()->CheckBitrateUpdated()) {
-          m_encodePipeline->SetBitrate(m_listener->GetStatistics()->GetBitrate() * 1000000L); // in bits;
-        }
+        encode_pipeline->SetParams(GetDynamicEncoderParams());
 
         auto pose = m_poseHistory->GetBestPoseMatch((const vr::HmdMatrix34_t&)frame_info.pose);
         if (!pose)
@@ -250,9 +245,8 @@ void CEncoder::Run() {
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 
-        encoded_data.clear();
-        uint64_t pts;
-        if (!m_encodePipeline->GetEncoded(encoded_data, &pts)) {
+        alvr::FramePacket packet;
+        if (!encode_pipeline->GetEncoded(packet)) {
           Error("Failed to get encoded data!");
           continue;
         }
@@ -269,7 +263,7 @@ void CEncoder::Run() {
           auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
           composed_offset = now - encode_timestamp.cpu;
         } else {
-          Error("Invalid encoder timestamp!");
+          composed_offset = render_timestamps.now - render_timestamps.renderComplete;
         }
 
         if (present_offset < composed_offset) {
@@ -279,10 +273,7 @@ void CEncoder::Run() {
         ReportPresent(pose->targetTimestampNs, present_offset);
         ReportComposed(pose->targetTimestampNs, composed_offset);
 
-        m_listener->SendVideo(encoded_data.data(), encoded_data.size(), pts);
-
-        m_listener->GetStatistics()->EncodeOutput();
-
+        ParseFrameNals(encode_pipeline->GetCodec(), packet.data, packet.size, packet.pts, packet.isIDR);
       }
     }
     catch (std::exception &e) {

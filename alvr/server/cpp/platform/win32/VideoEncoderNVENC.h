@@ -2,7 +2,6 @@
 
 #include <memory>
 #include "shared/d3drender.h"
-#include "alvr_server/ClientConnection.h"
 #include "VideoEncoder.h"
 #include "NvEncoderD3D11.h"
 
@@ -16,7 +15,6 @@ class VideoEncoderNVENC : public VideoEncoder
 {
 public:
 	VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-		, std::shared_ptr<ClientConnection> listener
 		, int width, int height);
 	~VideoEncoderNVENC();
 
@@ -27,15 +25,13 @@ public:
 	
 	void GetConfigNAL();
 private:
-	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits);
+	void FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrate_bps);
 
 
 	std::ofstream fpOut;
 	std::shared_ptr<NvEncoder> m_NvNecoder;
 
 	std::shared_ptr<CD3DRender> m_pD3DRender;
-
-	std::shared_ptr<ClientConnection> m_Listener;
 
 	int m_codec;
 	int m_refreshRate;

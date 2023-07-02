@@ -16,7 +16,8 @@ use ndk::{
     media::{
         image_reader::{Image, ImageFormat, ImageReader},
         media_codec::{
-            MediaCodec, MediaCodecDirection, MediaCodecInfo, MediaCodecResult, MediaFormat,
+            DequeuedInputBufferResult, DequeuedOutputBufferInfoResult, MediaCodec,
+            MediaCodecDirection, MediaFormat,
         },
     },
 };
@@ -25,10 +26,13 @@ use std::{
     ffi::c_void,
     net::{IpAddr, Ipv4Addr},
     ops::Deref,
+    ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
+
+pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 
 static WIFI_LOCK: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 
@@ -56,7 +60,7 @@ pub fn context() -> jobject {
 
 fn get_api_level() -> i32 {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")
         .unwrap()
@@ -64,18 +68,18 @@ fn get_api_level() -> i32 {
         .unwrap()
 }
 
-pub fn try_get_microphone_permission() {
+pub fn try_get_permission(permission: &str) {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
-    let mic_perm_jstring = env.new_string("android.permission.RECORD_AUDIO").unwrap();
+    let mic_perm_jstring = env.new_string(permission).unwrap();
 
     let permission_status = env
         .call_method(
             unsafe { JObject::from_raw(context()) },
             "checkSelfPermission",
             "(Ljava/lang/String;)I",
-            &[mic_perm_jstring.into()],
+            &[(&mic_perm_jstring).into()],
         )
         .unwrap()
         .i()
@@ -91,7 +95,7 @@ pub fn try_get_microphone_permission() {
             unsafe { JObject::from_raw(context()) },
             "requestPermissions",
             "([Ljava/lang/String;I)V",
-            &[unsafe { JObject::from_raw(perm_array) }.into(), 0.into()],
+            &[(&perm_array).into(), 0.into()],
         )
         .unwrap();
 
@@ -101,26 +105,40 @@ pub fn try_get_microphone_permission() {
 
 pub fn device_model() -> String {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
-    let jdevice_name = env
+    let jname = env
         .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
         .unwrap()
         .l()
         .unwrap();
-    let device_name_raw = env.get_string(jdevice_name.into()).unwrap();
+    let name_raw = env.get_string((&jname).into()).unwrap();
 
-    device_name_raw.to_string_lossy().as_ref().to_owned()
+    name_raw.to_string_lossy().as_ref().to_owned()
 }
 
-fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {
+pub fn manufacturer_name() -> String {
+    let vm = vm();
+    let mut env = vm.attach_current_thread().unwrap();
+
+    let jname = env
+        .get_static_field("android/os/Build", "MANUFACTURER", "Ljava/lang/String;")
+        .unwrap()
+        .l()
+        .unwrap();
+    let name_raw = env.get_string((&jname).into()).unwrap();
+
+    name_raw.to_string_lossy().as_ref().to_owned()
+}
+
+fn get_system_service<'a>(env: &mut JNIEnv<'a>, service_name: &str) -> JObject<'a> {
     let service_str = env.new_string(service_name).unwrap();
 
     env.call_method(
         unsafe { JObject::from_raw(context()) },
         "getSystemService",
         "(Ljava/lang/String;)Ljava/lang/Object;",
-        &[service_str.into()],
+        &[(&service_str).into()],
     )
     .unwrap()
     .l()
@@ -130,9 +148,9 @@ fn get_system_service<'a>(env: &JNIEnv<'a>, service_name: &str) -> JObject<'a> {
 // Note: tried and failed to use libc
 pub fn local_ip() -> IpAddr {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
-    let wifi_manager = get_system_service(&env, "wifi");
+    let wifi_manager = get_system_service(&mut env, "wifi");
     let wifi_info = env
         .call_method(
             wifi_manager,
@@ -160,7 +178,7 @@ pub fn acquire_wifi_lock() {
 
     if maybe_wifi_lock.is_none() {
         let vm = vm();
-        let env = vm.attach_current_thread().unwrap();
+        let mut env = vm.attach_current_thread().unwrap();
 
         let wifi_mode = if get_api_level() >= 29 {
             // Recommended for virtual reality since it disables WIFI scans
@@ -169,19 +187,19 @@ pub fn acquire_wifi_lock() {
             3 // WIFI_MODE_FULL_HIGH_PERF
         };
 
-        let wifi_manager = get_system_service(&env, "wifi");
+        let wifi_manager = get_system_service(&mut env, "wifi");
         let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
         let wifi_lock = env
             .call_method(
                 wifi_manager,
                 "createWifiLock",
                 "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[wifi_mode.into(), wifi_lock_jstring.into()],
+                &[wifi_mode.into(), (&wifi_lock_jstring).into()],
             )
             .unwrap()
             .l()
             .unwrap();
-        env.call_method(wifi_lock, "acquire", "()V", &[]).unwrap();
+        env.call_method(&wifi_lock, "acquire", "()V", &[]).unwrap();
 
         *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());
     }
@@ -190,10 +208,12 @@ pub fn acquire_wifi_lock() {
 pub fn release_wifi_lock() {
     if let Some(wifi_lock) = WIFI_LOCK.lock().take() {
         let vm = vm();
-        let env = vm.attach_current_thread().unwrap();
+        let mut env = vm.attach_current_thread().unwrap();
 
         env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
             .unwrap();
+        // TODO: all JVM.call_method sometimes result in JavaExceptions, unwrap will only report Error as 'JavaException', ideally before unwrapping
+        // need to call JVM.describe_error() which will actually check if there is an exception and print error to stderr/logcat. Then unwrap.
 
         // wifi_lock is dropped here
     }
@@ -201,15 +221,15 @@ pub fn release_wifi_lock() {
 
 pub fn battery_status() -> (f32, bool) {
     let vm = vm();
-    let env = vm.attach_current_thread().unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
 
     const BATTERY_PROPERTY_CAPACITY: i32 = 4;
 
-    let battery_manager = get_system_service(&env, "batterymanager");
+    let battery_manager = get_system_service(&mut env, "batterymanager");
 
     let percentage = env
         .call_method(
-            battery_manager,
+            &battery_manager,
             "getIntProperty",
             "(I)I",
             &[BATTERY_PROPERTY_CAPACITY.into()],
@@ -235,20 +255,21 @@ unsafe impl Send for VideoDecoderEnqueuer {}
 
 impl VideoDecoderEnqueuer {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
-    pub fn push_frame_nal(
-        &self,
-        timestamp: Duration,
-        data: &[u8],
-        timeout: Duration,
-    ) -> StrResult<bool> {
+    pub fn push_frame_nal(&self, timestamp: Duration, data: &[u8]) -> StrResult<bool> {
         let Some(decoder) = &*self.inner.lock() else {
             // This might happen only during destruction
             return Ok(false);
         };
 
-        match decoder.dequeue_input_buffer(timeout) {
-            MediaCodecResult::Ok(mut buffer) => {
-                buffer.buffer_mut()[..data.len()].copy_from_slice(data);
+        match decoder.dequeue_input_buffer(Duration::ZERO) {
+            Ok(DequeuedInputBufferResult::Buffer(mut buffer)) => {
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        data.as_ptr(),
+                        buffer.buffer_mut().as_mut_ptr().cast(),
+                        data.len(),
+                    )
+                };
 
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
@@ -259,11 +280,8 @@ impl VideoDecoderEnqueuer {
 
                 Ok(true)
             }
-            MediaCodecResult::Info(_) => {
-                // Should be TryAgainLater
-                Ok(false)
-            }
-            MediaCodecResult::Err(e) => fmt_e!("{e}"),
+            Ok(DequeuedInputBufferResult::TryAgainLater) => Ok(false),
+            Err(e) => fmt_e!("{e}"),
         }
     }
 }
@@ -319,8 +337,8 @@ impl VideoDecoderDequeuer {
                     .cast(),
             ))
         } else {
-            warn!("Video frame queue underflow!");
-
+            // TODO: add back when implementing proper phase sync
+            //warn!("Video frame queue underflow!");
             None
         }
     }
@@ -361,7 +379,7 @@ pub fn video_decoder_split(
 
             let mime = match config.codec {
                 CodecType::H264 => "video/avc",
-                CodecType::HEVC => "video/hevc",
+                CodecType::Hevc => "video/hevc",
             };
 
             let format = MediaFormat::new();
@@ -379,9 +397,6 @@ pub fn video_decoder_split(
                 }
             }
 
-            let acquired_image = Arc::new(Mutex::new(Ok(None)));
-            let image_acquired_notifier = Arc::new(Condvar::new());
-
             let mut image_reader = ImageReader::new_with_usage(
                 1,
                 1,
@@ -393,12 +408,40 @@ pub fn video_decoder_split(
 
             image_reader
                 .set_image_listener(Box::new({
-                    let acquired_image = Arc::clone(&acquired_image);
-                    let image_acquired_notifier = Arc::clone(&image_acquired_notifier);
+                    let image_queue = Arc::clone(&image_queue);
                     move |image_reader| {
-                        let mut acquired_image_lock = acquired_image.lock();
-                        *acquired_image_lock = image_reader.acquire_next_image();
-                        image_acquired_notifier.notify_one();
+                        let mut image_queue_lock = image_queue.lock();
+
+                        if image_queue_lock.len() > available_buffering_frames {
+                            warn!("Video frame queue overflow!");
+                            image_queue_lock.pop_front();
+                        }
+
+                        match &mut image_reader.acquire_next_image() {
+                            Ok(image @ Some(_)) => {
+                                let image = image.take().unwrap();
+                                let timestamp =
+                                    Duration::from_nanos(image.get_timestamp().unwrap() as u64);
+
+                                dequeued_frame_callback(timestamp);
+
+                                image_queue_lock.push_back(QueuedImage {
+                                    timestamp,
+                                    image,
+                                    in_use: false,
+                                });
+                            }
+                            Ok(None) => {
+                                error!("ImageReader error: No buffer available");
+
+                                image_queue_lock.clear();
+                            }
+                            Err(e) => {
+                                error!("ImageReader error: {e}");
+
+                                image_queue_lock.clear();
+                            }
+                        }
                     }
                 }))
                 .unwrap();
@@ -412,6 +455,8 @@ pub fn video_decoder_split(
             let decoder = Arc::new(FakeThreadSafe(
                 MediaCodec::from_decoder_type(&mime).unwrap(),
             ));
+
+            info!("Using AMediaCoded format:{} ", format);
             decoder
                 .configure(
                     &format,
@@ -430,59 +475,20 @@ pub fn video_decoder_split(
             }
 
             while running.value() {
-                if image_queue.lock().len() > available_buffering_frames {
-                    warn!("Video frame queue overflow!");
-
-                    image_queue.lock().clear();
-
-                    continue;
-                }
-
-                let mut acquired_image_ref = acquired_image.lock();
-
                 match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
-                    MediaCodecResult::Ok(buffer) => {
+                    Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
                         // The buffer timestamp is actually nanoseconds
-                        let timestamp = Duration::from_nanos(buffer.presentation_time_us() as _);
+                        let presentation_time_ns = buffer.presentation_time_us();
 
-                        if let Err(e) = decoder.release_output_buffer(buffer, true) {
+                        if let Err(e) =
+                            decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
+                        {
                             error!("Decoder dequeue error: {e}");
-
-                            continue;
-                        }
-
-                        dequeued_frame_callback(timestamp);
-
-                        // Note: parking_lot::Condvar has no spurious wakeups
-                        image_acquired_notifier.wait(&mut acquired_image_ref);
-
-                        match &mut *acquired_image_ref {
-                            Ok(image @ Some(_)) => {
-                                image_queue.lock().push_back(QueuedImage {
-                                    timestamp,
-                                    image: image.take().unwrap(),
-                                    in_use: false,
-                                });
-                            }
-                            Ok(None) => {
-                                error!("ImageReader error: No buffer available");
-
-                                image_queue.lock().clear();
-
-                                continue;
-                            }
-                            Err(e) => {
-                                error!("ImageReader error: {e}");
-
-                                image_queue.lock().clear();
-
-                                continue;
-                            }
                         }
                     }
-                    MediaCodecResult::Info(MediaCodecInfo::TryAgainLater) => (),
-                    MediaCodecResult::Info(i) => info!("Decoder dequeue event: {i:?}"),
-                    MediaCodecResult::Err(e) => {
+                    Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+                    Ok(i) => info!("Decoder dequeue event: {i:?}"),
+                    Err(e) => {
                         error!("Decoder dequeue error: {e}");
 
                         // lessen logcat flood (just in case)

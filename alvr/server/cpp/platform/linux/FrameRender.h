@@ -23,18 +23,11 @@ private:
         float saturation;
         float gamma;
         float sharpening;
-        float _align;
     };
 
     struct FoveationVars {
-        int32_t targetEyeWidth;
-        int32_t targetEyeHeight;
-        int32_t optimizedEyeWidth;
-        int32_t optimizedEyeHeight;
-
         float eyeWidthRatio;
         float eyeHeightRatio;
-
         float centerSizeX;
         float centerSizeY;
         float centerShiftX;
@@ -49,7 +42,7 @@ private:
 
     uint32_t m_width;
     uint32_t m_height;
-    ColorCorrection m_colorCorrectionPushConstants;
-    FoveationVars m_foveatedRenderingPushConstants;
+    ColorCorrection m_colorCorrectionConstants;
+    FoveationVars m_foveatedRenderingConstants;
     std::vector<RenderPipeline*> m_pipelines;
 };

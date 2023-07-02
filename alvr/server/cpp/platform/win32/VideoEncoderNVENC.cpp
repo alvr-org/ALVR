@@ -1,23 +1,20 @@
 #include "VideoEncoderNVENC.h"
 #include "NvCodecUtils.h"
 
-#include "alvr_server/Statistics.h"
 #include "alvr_server/Logger.h"
 #include "alvr_server/Settings.h"
 #include "alvr_server/Utils.h"
 
 VideoEncoderNVENC::VideoEncoderNVENC(std::shared_ptr<CD3DRender> pD3DRender
-	, std::shared_ptr<ClientConnection> listener
 	, int width, int height)
 	: m_pD3DRender(pD3DRender)
-	, m_Listener(listener)
 	, m_codec(Settings::Instance().m_codec)
 	, m_refreshRate(Settings::Instance().m_refreshRate)
 	, m_renderWidth(width)
 	, m_renderHeight(height)
-	, m_bitrateInMBits(Settings::Instance().mEncodeBitrateMBs)
+	, m_bitrateInMBits(30)
 {
-	
+
 }
 
 VideoEncoderNVENC::~VideoEncoderNVENC()
@@ -30,7 +27,7 @@ void VideoEncoderNVENC::Initialize()
 	//
 
 	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
-	
+
 	if (Settings::Instance().m_use10bitEncoder) {
 		format = NV_ENC_BUFFER_FORMAT_ABGR10;
 	}
@@ -48,11 +45,11 @@ void VideoEncoderNVENC::Initialize()
 	NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
 	initializeParams.encodeConfig = &encodeConfig;
 
-	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
-	   
+	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
+
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
-	} 
+	}
 	catch (NVENCException e) {
 		if (e.getErrorCode() == NV_ENC_ERR_INVALID_PARAM) {
 			throw MakeException("This GPU does not support H.265 encoding. (NvEncoderCuda NV_ENC_ERR_INVALID_PARAM)");
@@ -89,17 +86,16 @@ void VideoEncoderNVENC::Shutdown()
 
 void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR)
 {
-	if (m_Listener) {
-		if (m_Listener->GetStatistics()->CheckBitrateUpdated()) {
-			m_bitrateInMBits = m_Listener->GetStatistics()->GetBitrate();
-			NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
-			NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
-			initializeParams.encodeConfig = &encodeConfig;
-			FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000);
-			NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
-			reconfigureParams.reInitEncodeParams = initializeParams;
-			m_NvNecoder->Reconfigure(&reconfigureParams);
-		}
+	auto params = GetDynamicEncoderParams();
+	if (params.updated) {
+		m_bitrateInMBits = params.bitrate_bps / 1'000'000;
+		NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
+		NV_ENC_CONFIG encodeConfig = { NV_ENC_CONFIG_VER };
+		initializeParams.encodeConfig = &encodeConfig;
+		FillEncodeConfig(initializeParams, params.framerate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
+		NV_ENC_RECONFIGURE_PARAMS reconfigureParams = { NV_ENC_RECONFIGURE_PARAMS_VER };
+		reconfigureParams.reInitEncodeParams = initializeParams;
+		m_NvNecoder->Reconfigure(&reconfigureParams);
 	}
 
 	std::vector<std::vector<uint8_t>> vPacket;
@@ -116,36 +112,49 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 	}
 	m_NvNecoder->EncodeFrame(vPacket, &picParams);
 
-	if (m_Listener) {
-		m_Listener->GetStatistics()->EncodeOutput();
-	}
-
 	for (std::vector<uint8_t> &packet : vPacket)
 	{
 		if (fpOut) {
 			fpOut.write(reinterpret_cast<char*>(packet.data()), packet.size());
 		}
-		if (m_Listener) {
-			m_Listener->SendVideo(packet.data(), (int)packet.size(), targetTimestampNs);
-		}
+
+		ParseFrameNals(m_codec, packet.data(), (int)packet.size(), targetTimestampNs, insertIDR);
 	}
 }
 
-void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrateBits)
+void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrate_bps)
 {
 	auto &encodeConfig = *initializeParams.encodeConfig;
 	GUID encoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
 
+	GUID qualityPreset;
 	// See recommended NVENC settings for low-latency encoding.
 	// https://docs.nvidia.com/video-technologies/video-codec-sdk/nvenc-video-encoder-api-prog-guide/#recommended-nvenc-settings
-	GUID qualityPreset = NV_ENC_PRESET_P1_GUID;
-	if (Settings::Instance().m_encoderQualityPreset == ALVR_QUALITY) {
-		qualityPreset = NV_ENC_PRESET_P7_GUID;
-	} else if (Settings::Instance().m_encoderQualityPreset == ALVR_BALANCED) {
-		qualityPreset = NV_ENC_PRESET_P4_GUID;
-	} else if (Settings::Instance().m_encoderQualityPreset == ALVR_SPEED) {
-		qualityPreset = NV_ENC_PRESET_P1_GUID;
-	}
+	switch (Settings::Instance().m_nvencQualityPreset) {
+		case 7:
+			qualityPreset = NV_ENC_PRESET_P7_GUID;
+			break;
+		case 6:
+			qualityPreset = NV_ENC_PRESET_P6_GUID;
+			break;
+		case 5:
+			qualityPreset = NV_ENC_PRESET_P5_GUID;
+			break;
+		case 4:
+			qualityPreset = NV_ENC_PRESET_P4_GUID;
+			break;
+		case 3:
+			qualityPreset = NV_ENC_PRESET_P3_GUID;
+			break;
+		case 2:
+			qualityPreset = NV_ENC_PRESET_P2_GUID;
+			break;
+		case 1:
+		default:
+			qualityPreset = NV_ENC_PRESET_P1_GUID;
+			break;
+  }
+
 	NV_ENC_TUNING_INFO tuningPreset = static_cast<NV_ENC_TUNING_INFO>(Settings::Instance().m_nvencTuningPreset);
 
 	m_NvNecoder->CreateDefaultEncoderParams(&initializeParams, encoderGUID, qualityPreset, tuningPreset);
@@ -177,7 +186,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;
 		config.repeatSPSPPS = 1;
 		config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
-		
+
 		if (Settings::Instance().m_nvencIntraRefreshPeriod != -1) {
 			config.intraRefreshPeriod = Settings::Instance().m_nvencIntraRefreshPeriod;
 		}
@@ -196,7 +205,11 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		config.maxNumRefFrames = maxNumRefFrames;
 		config.idrPeriod = gopLength;
-	} 
+
+		if (Settings::Instance().m_fillerData) {
+			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
+		}
+	}
 	else {
 		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
 		config.repeatSPSPPS = 1;
@@ -214,6 +227,10 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 
 		if (Settings::Instance().m_use10bitEncoder) {
 			encodeConfig.encodeCodecConfig.hevcConfig.pixelBitDepthMinus8 = 2;
+		}
+
+		if (Settings::Instance().m_fillerData) {
+			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
 	}
 
@@ -236,17 +253,17 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	}
 	encodeConfig.rcParams.multiPass = static_cast<NV_ENC_MULTI_PASS>(Settings::Instance().m_nvencMultiPass);
 	encodeConfig.rcParams.lowDelayKeyFrameScale = 1;
-	
+
 	if (Settings::Instance().m_nvencLowDelayKeyFrameScale != -1) {
 		encodeConfig.rcParams.lowDelayKeyFrameScale = Settings::Instance().m_nvencLowDelayKeyFrameScale;
 	}
-	
-	uint32_t maxFrameSize = static_cast<uint32_t>(bitrateBits / refreshRate);
+
+	uint32_t maxFrameSize = static_cast<uint32_t>(bitrate_bps / refreshRate);
 	Debug("VideoEncoderNVENC: maxFrameSize=%d bits\n", maxFrameSize);
-	encodeConfig.rcParams.vbvBufferSize = maxFrameSize;
-	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize;
-	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrateBits);
-	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrateBits);
+	encodeConfig.rcParams.vbvBufferSize = maxFrameSize * 1.1;
+	encodeConfig.rcParams.vbvInitialDelay = maxFrameSize * 1.1;
+	encodeConfig.rcParams.maxBitRate = static_cast<uint32_t>(bitrate_bps);
+	encodeConfig.rcParams.averageBitRate = static_cast<uint32_t>(bitrate_bps);
 	if (Settings::Instance().m_nvencAdaptiveQuantizationMode == SpatialAQ) {
 		encodeConfig.rcParams.enableAQ = 1;
 	} else if (Settings::Instance().m_nvencAdaptiveQuantizationMode == TemporalAQ) {

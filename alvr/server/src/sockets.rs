@@ -1,5 +1,4 @@
 use alvr_common::{prelude::*, StrResult, *};
-use alvr_events::EventType;
 use alvr_sockets::{CONTROL_PORT, HANDSHAKE_PACKET_SIZE_BYTES, LOCAL_IP};
 use std::{
     io::ErrorKind,
@@ -44,14 +43,10 @@ impl WelcomeSocket {
             let received_protocol_id = u64::from_le_bytes(protocol_id_bytes);
 
             if received_protocol_id != alvr_common::protocol_id() {
-                let message = format!(
-                    "Expected protocol ID {}, Found {received_protocol_id}",
-                    alvr_common::protocol_id()
-                );
-                alvr_events::send_event(EventType::ClientFoundWrongVersion(message.clone()));
-                warn!("Found incompatible client! Upgrade or downgrade");
+                warn!("Found incompatible client! Upgrade or downgrade\nExpected protocol ID {}, Found {received_protocol_id}",
+                alvr_common::protocol_id());
 
-                return int_fmt_e!("{message}");
+                return interrupt();
             }
 
             let mut hostname_bytes = [0; 32];
@@ -62,13 +57,10 @@ impl WelcomeSocket {
                 .to_owned();
 
             Ok((hostname, address.ip()))
-        } else if &self.buffer[..16] == b"\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00ALVR" {
-            alvr_events::send_event(EventType::ClientFoundWrongVersion("v14 to v18".into()));
-
-            interrupt()
-        } else if &self.buffer[..5] == b"\x01ALVR" {
-            // People might still download the client from the polygraphene reposiory
-            alvr_events::send_event(EventType::ClientFoundWrongVersion("v11 or previous".into()));
+        } else if &self.buffer[..16] == b"\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00ALVR"
+            || &self.buffer[..5] == b"\x01ALVR"
+        {
+            warn!("Found old client. Upgrade");
 
             interrupt()
         } else {

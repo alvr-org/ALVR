@@ -5,14 +5,14 @@
 #include <functional>
 #include <vulkan/vulkan.h>
 
-#include "../win32/amf/public/common/AMFFactory.h"
-#include "../win32/amf/public/include/components/VideoEncoderVCE.h"
-#include "../win32/amf/public/include/components/VideoEncoderHEVC.h"
-#include "../win32/amf/public/include/components/VideoConverter.h"
-#include "../win32/amf/public/include/components/PreProcessing.h"
-#include "../win32/amf/public/include/core/VulkanAMF.h"
-#include "../win32/amf/public/common/AMFSTL.h"
-#include "../win32/amf/public/common/Thread.h"
+#include "../../shared/amf/public/common/AMFFactory.h"
+#include "../../shared/amf/public/include/components/VideoEncoderVCE.h"
+#include "../../shared/amf/public/include/components/VideoEncoderHEVC.h"
+#include "../../shared/amf/public/include/components/VideoConverter.h"
+#include "../../shared/amf/public/include/components/PreProcessing.h"
+#include "../../shared/amf/public/include/core/VulkanAMF.h"
+#include "../../shared/amf/public/common/AMFSTL.h"
+#include "../../shared/amf/public/common/Thread.h"
 
 typedef std::function<void(amf::AMFDataPtr)> AMFDataReceiver;
 
@@ -68,9 +68,10 @@ public:
     ~EncodePipelineAMF();
 
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
-    bool GetEncoded(std::vector<uint8_t> &out, uint64_t *pts) override;
-    void SetBitrate(int64_t bitrate) override;
+    bool GetEncoded(FramePacket &packet) override;
+    void SetParams(FfiDynamicEncoderParams params) override;
     void GetConfigNAL() override;
+
 private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);
     amf::AMFComponentPtr MakePreprocessor(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height);
@@ -80,23 +81,21 @@ private:
 
     amf::AMFFactory *m_amfFactory = nullptr;
     amf::AMFContextPtr m_amfContext;
+    amf::AMFContext1Ptr m_amfContext1;
     std::unique_ptr<AMFPipeline> m_pipeline;
     std::vector<amf::AMFComponentPtr> m_amfComponents;
 
     Renderer *m_render;
-    VkQueryPool m_queryPool = VK_NULL_HANDLE;
-    VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
-
     amf::AMF_SURFACE_FORMAT m_surfaceFormat;
 
     int m_codec;
     int m_refreshRate;
     int m_renderWidth;
     int m_renderHeight;
-    int m_bitrateInMBits;
 
     bool m_hasQueryTimeout = false;
-    std::vector<uint8_t> m_outBuffer;
+
+    amf::AMFBufferPtr m_frameBuffer;
     uint64_t m_targetTimestampNs;
 };
 

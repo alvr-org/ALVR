@@ -7,10 +7,6 @@ extern uint64_t HEAD_ID;
 extern uint64_t LEFT_HAND_ID;
 extern uint64_t RIGHT_HAND_ID;
 
-extern uint64_t OCULUS_CONTROLLER_PROFILE_ID;
-extern uint64_t INDEX_CONTROLLER_PROFILE_ID;
-extern uint64_t VIVE_CONTROLLER_PROFILE_ID;
-
 extern uint64_t MENU_CLICK_ID;
 extern uint64_t A_CLICK_ID;
 extern uint64_t A_TOUCH_ID;

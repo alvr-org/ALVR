@@ -1,0 +1,17 @@
+[package]
+name = "alvr_client_mock"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_common.workspace = true
+alvr_client_core.workspace = true
+alvr_packets.workspace = true
+alvr_session.workspace = true
+
+eframe = "0.22"
+env_logger = "0.10"
+rand = "0.8"

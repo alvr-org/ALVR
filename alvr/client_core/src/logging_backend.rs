@@ -3,9 +3,9 @@ use alvr_common::{
     log::{Level, Record},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
+    LogSeverity,
 };
-use alvr_events::EventSeverity;
-use alvr_sockets::ClientControlPacket;
+use alvr_packets::ClientControlPacket;
 use std::time::{Duration, Instant};
 
 const LOG_REPEAT_TIMEOUT: Duration = Duration::from_secs(1);
@@ -28,10 +28,10 @@ pub fn init_logging() {
     fn send_log(record: &Record) {
         if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
             let level = match record.level() {
-                Level::Error => EventSeverity::Error,
-                Level::Warn => EventSeverity::Warning,
-                Level::Info => EventSeverity::Info,
-                _ => EventSeverity::Debug,
+                Level::Error => LogSeverity::Error,
+                Level::Warn => LogSeverity::Warning,
+                Level::Info => LogSeverity::Info,
+                _ => LogSeverity::Debug,
             };
 
             let message = format!("{}", record.args());
@@ -46,7 +46,7 @@ pub fn init_logging() {
                 if last_log_event_lock.repetition_times > 1 {
                     sender
                         .send(ClientControlPacket::Log {
-                            level: EventSeverity::Info,
+                            level: LogSeverity::Info,
                             message: format!(
                                 "Last log line repeated {} times",
                                 last_log_event_lock.repetition_times
@@ -77,7 +77,7 @@ pub fn init_logging() {
                     send_log(&record);
                     std::fmt::write(f, *record.args())
                 })
-                .with_min_level(Level::Info),
+                .with_max_level(alvr_common::log::LevelFilter::Info),
         );
     }
     #[cfg(not(target_os = "android"))]

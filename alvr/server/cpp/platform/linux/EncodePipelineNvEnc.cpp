@@ -7,7 +7,6 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
-#include <libswscale/swscale.h>
 }
 
 namespace {
@@ -33,7 +32,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
     int err;
-    vk_frame = std::move(input_frame.make_av_frame(vk_frame_ctx));
+    vk_frame = input_frame.make_av_frame(vk_frame_ctx);
 
     const auto &settings = Settings::Instance();
 
@@ -73,18 +72,10 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
         break;
     }
 
-    switch (settings.m_encoderQualityPreset) {
-    case ALVR_QUALITY:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p7", 0);
-        break;
-    case ALVR_BALANCED:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p4", 0);
-        break;
-    case ALVR_SPEED:
-    default:
-        av_opt_set(encoder_ctx->priv_data, "preset", "p1", 0);
-        break;
-    }
+    char preset[] = "p0";
+    // replace 0 with preset number
+    preset[1] += settings.m_nvencQualityPreset;
+    av_opt_set(encoder_ctx->priv_data, "preset", preset, 0);
 
     if (settings.m_nvencAdaptiveQuantizationMode == 1) {
         av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);
@@ -99,6 +90,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     av_opt_set_int(encoder_ctx->priv_data, "tune", settings.m_nvencTuningPreset, 0);
     av_opt_set_int(encoder_ctx->priv_data, "zerolatency", 1, 0);
     av_opt_set_int(encoder_ctx->priv_data, "delay", 0, 0);
+    av_opt_set_int(encoder_ctx->priv_data, "forced-idr", 1, 0);
 
     /**
      * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
@@ -118,7 +110,11 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
-    encoder_ctx->bit_rate = settings.mEncodeBitrateMBs * 1000 * 1000;
+    auto params = FfiDynamicEncoderParams {};
+    params.updated = true;
+    params.bitrate_bps = 30'000'000;
+    params.framerate = 60.0;
+    SetParams(params);
 
     encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 

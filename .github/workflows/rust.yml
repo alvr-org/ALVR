@@ -92,20 +92,24 @@ jobs:
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r22b
+          ndk-version: r25c
 
       - name: Install deps
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-ndk
+          args: cargo-apk
+        
+        # Create folder without content to make the build succeed
+      - run: |
+          mkdir -p deps/android_openxr/arm64-v8a
 
-      - name: Build client lib
+      - name: Build client
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        working-directory: ./alvr/client_core
+        working-directory: ./alvr/client_openxr
         run:
-          cargo ndk -t arm64-v8a build
+          cargo apk build
 
   tests:
     runs-on: ubuntu-latest

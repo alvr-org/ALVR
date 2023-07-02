@@ -1,20 +1,14 @@
-use egui::{Button, Ui};
-use serde::Serialize;
+use eframe::{
+    egui::{Button, Layout, Response, Ui},
+    emath::Align,
+};
 
-use crate::translation::SharedTranslation;
+pub fn reset_button(ui: &mut Ui, enabled: bool, default_str: &str) -> Response {
+    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        ui.add_space(5.0);
 
-pub fn reset_clicked<T: PartialEq + Serialize>(
-    ui: &mut Ui,
-    value: &T,
-    default: &T,
-    default_trans: &str,
-    t: &SharedTranslation,
-) -> bool {
-    ui.add(Button::new("⟲").sense(if *value != *default {
-        egui::Sense::click()
-    } else {
-        egui::Sense::hover()
-    }))
-    .on_hover_text(format!("{} {}", t.reset_to, default_trans))
-    .clicked()
+        ui.add_enabled(enabled, Button::new("⟲"))
+            .on_hover_text(format!("Reset to {}", default_str))
+    })
+    .inner
 }

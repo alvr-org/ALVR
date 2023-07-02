@@ -7,11 +7,10 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     prelude::*,
-    Fov,
+    DeviceMotion, Fov, Pose,
 };
-use alvr_events::ButtonValue;
-use alvr_session::{CodecType, FoveatedRenderingDesc};
-use alvr_sockets::{DeviceMotion, Tracking};
+use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
+use alvr_session::{CodecType, FoveatedRenderingConfig};
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
@@ -41,7 +40,7 @@ pub enum AlvrEvent {
     StreamingStarted {
         view_width: u32,
         view_height: u32,
-        fps: f32,
+        refresh_rate_hint: f32,
         enable_foveation: bool,
         foveation_center_size_x: f32,
         foveation_center_size_y: f32,
@@ -49,9 +48,6 @@ pub enum AlvrEvent {
         foveation_center_shift_y: f32,
         foveation_edge_ratio_x: f32,
         foveation_edge_ratio_y: f32,
-        oculus_foveation_level: i32,
-        dynamic_oculus_foveation: bool,
-        extra_latency: bool,
     },
     StreamingStopped,
     Haptics {
@@ -92,12 +88,6 @@ pub struct AlvrDeviceMotion {
     position: [f32; 3],
     linear_velocity: [f32; 3],
     angular_velocity: [f32; 3],
-}
-
-#[repr(C)]
-pub struct OculusHand {
-    enabled: bool,
-    bone_rotations: [AlvrQuat; 19],
 }
 
 #[allow(dead_code)]
@@ -193,44 +183,35 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
             }
             ClientCoreEvent::StreamingStarted {
                 view_resolution,
-                fps,
-                foveated_rendering,
-                oculus_foveation_level,
-                dynamic_oculus_foveation,
-                extra_latency,
-            } => AlvrEvent::StreamingStarted {
-                view_width: view_resolution.x,
-                view_height: view_resolution.y,
-                fps,
-                enable_foveation: foveated_rendering.is_some(),
-                foveation_center_size_x: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.center_size_x)
-                    .unwrap_or_default(),
-                foveation_center_size_y: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.center_size_y)
-                    .unwrap_or_default(),
-                foveation_center_shift_x: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.center_shift_x)
-                    .unwrap_or_default(),
-                foveation_center_shift_y: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.center_shift_y)
-                    .unwrap_or_default(),
-                foveation_edge_ratio_x: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.edge_ratio_x)
-                    .unwrap_or_default(),
-                foveation_edge_ratio_y: foveated_rendering
-                    .as_ref()
-                    .map(|f| f.edge_ratio_y)
-                    .unwrap_or_default(),
-                oculus_foveation_level: oculus_foveation_level as i32,
-                dynamic_oculus_foveation,
-                extra_latency,
-            },
+                refresh_rate_hint,
+                settings,
+            } => {
+                let foveated_rendering = settings.video.foveated_rendering.as_option();
+                AlvrEvent::StreamingStarted {
+                    view_width: view_resolution.x,
+                    view_height: view_resolution.y,
+                    refresh_rate_hint,
+                    enable_foveation: foveated_rendering.is_some(),
+                    foveation_center_size_x: foveated_rendering
+                        .map(|f| f.center_size_x)
+                        .unwrap_or_default(),
+                    foveation_center_size_y: foveated_rendering
+                        .map(|f| f.center_size_y)
+                        .unwrap_or_default(),
+                    foveation_center_shift_x: foveated_rendering
+                        .map(|f| f.center_shift_x)
+                        .unwrap_or_default(),
+                    foveation_center_shift_y: foveated_rendering
+                        .map(|f| f.center_shift_y)
+                        .unwrap_or_default(),
+                    foveation_edge_ratio_x: foveated_rendering
+                        .map(|f| f.edge_ratio_x)
+                        .unwrap_or_default(),
+                    foveation_edge_ratio_y: foveated_rendering
+                        .map(|f| f.edge_ratio_y)
+                        .unwrap_or_default(),
+                }
+            }
             ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
             ClientCoreEvent::Haptics {
                 device_id,
@@ -344,7 +325,11 @@ pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged
 
 #[no_mangle]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
-    crate::send_playspace(Vec2::new(width, height));
+    if width != 0.0 && height != 0.0 {
+        crate::send_playspace(Some(Vec2::new(width, height)));
+    } else {
+        crate::send_playspace(None);
+    }
 }
 
 #[no_mangle]
@@ -354,7 +339,7 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
         AlvrButtonValue::Scalar(value) => ButtonValue::Scalar(value),
     };
 
-    crate::send_button(path_id, value);
+    crate::send_buttons(vec![ButtonEntry { path_id, value }]);
 }
 
 #[no_mangle]
@@ -362,27 +347,9 @@ pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
-    left_oculus_hand: OculusHand,
-    right_oculus_hand: OculusHand,
 ) {
-    fn from_tracking_quat(quat: AlvrQuat) -> Quat {
+    fn from_capi_quat(quat: AlvrQuat) -> Quat {
         Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
-    }
-
-    fn from_oculus_hand(hand: OculusHand) -> Option<[Quat; 19]> {
-        hand.enabled.then(|| {
-            let vec = hand
-                .bone_rotations
-                .iter()
-                .cloned()
-                .map(from_tracking_quat)
-                .collect::<Vec<_>>();
-
-            let mut array = [Quat::IDENTITY; 19];
-            array.copy_from_slice(&vec);
-
-            array
-        })
     }
 
     let mut raw_motions = vec![AlvrDeviceMotion::default(); device_motions_count as _];
@@ -400,8 +367,10 @@ pub extern "C" fn alvr_send_tracking(
             (
                 motion.device_id,
                 DeviceMotion {
-                    orientation: from_tracking_quat(motion.orientation),
-                    position: Vec3::from_slice(&motion.position),
+                    pose: Pose {
+                        orientation: from_capi_quat(motion.orientation),
+                        position: Vec3::from_slice(&motion.position),
+                    },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
                     angular_velocity: Vec3::from_slice(&motion.angular_velocity),
                 },
@@ -412,8 +381,7 @@ pub extern "C" fn alvr_send_tracking(
     let tracking = Tracking {
         target_timestamp: Duration::from_nanos(target_timestamp_ns),
         device_motions,
-        left_hand_skeleton: from_oculus_hand(left_oculus_hand),
-        right_hand_skeleton: from_oculus_hand(right_oculus_hand),
+        ..Default::default()
     };
 
     crate::send_tracking(tracking);
@@ -560,7 +528,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
     let swapchain_textures =
         convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
-    let foveated_rendering = config.enable_foveation.then_some(FoveatedRenderingDesc {
+    let foveated_rendering = config.enable_foveation.then_some(FoveatedRenderingConfig {
         center_size_x: config.foveation_center_size_x,
         center_size_y: config.foveation_center_size_y,
         center_shift_x: config.foveation_center_shift_x,
@@ -579,8 +547,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs).orientation;
             let f = (*view_inputs).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,
@@ -594,8 +564,10 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
             let o = (*view_inputs.offset(1)).orientation;
             let f = (*view_inputs.offset(1)).fov;
             RenderViewInput {
-                orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                position: Vec3::from_array((*view_inputs.offset(1)).position),
+                pose: Pose {
+                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+                    position: Vec3::from_array((*view_inputs.offset(1)).position),
+                },
                 fov: Fov {
                     left: f.left,
                     right: f.right,

@@ -1,0 +1,13 @@
+#version 450
+
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (binding = 0) uniform sampler2D in_img;
+layout (binding = 1, rgba8) uniform writeonly image2D out_img;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    vec2 npos = (vec2(pos) + 0.5f) / imageSize(out_img);
+    vec4 res = texture(in_img, npos);
+    imageStore(out_img, pos, res);
+}

@@ -4,7 +4,7 @@
 #include <mutex>
 #include <optional>
 
-void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, AlvrDeviceMotion motion) {
+void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
 	// Put pose history buffer
 	TrackingHistoryFrame history;
 	history.targetTimestampNs = targetTimestampNs;

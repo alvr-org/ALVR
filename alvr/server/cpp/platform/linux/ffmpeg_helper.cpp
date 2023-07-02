@@ -36,7 +36,7 @@ std::string alvr::AvException::makemsg(const std::string & msg, int averror)
   return msg + " " + av_msg;
 }
 
-alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*> &requiredDeviceExtensions)
+alvr::VkContext::VkContext(const uint8_t *deviceUUID, const std::vector<const char*> &requiredDeviceExtensions)
 {
   std::vector<const char*> instance_extensions = {
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
@@ -94,14 +94,20 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
   VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data()));
   for (VkPhysicalDevice dev : physicalDevices) {
-    VkPhysicalDeviceProperties props;
-    vkGetPhysicalDeviceProperties(dev, &props);
-    if (strcmp(props.deviceName, deviceName) == 0) {
+    VkPhysicalDeviceVulkan11Properties props11 = {};
+    props11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+
+    VkPhysicalDeviceProperties2 props = {};
+    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props.pNext = &props11;
+    vkGetPhysicalDeviceProperties2(dev, &props);
+    if (memcmp(props11.deviceUUID, deviceUUID, VK_UUID_SIZE) == 0) {
       physicalDevice = dev;
       break;
     }
   }
   if (!physicalDevice && !physicalDevices.empty()) {
+    Warn("Falling back to first device");
     physicalDevice = physicalDevices[0];
   }
   if (!physicalDevice) {
@@ -116,6 +122,8 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   deviceProps.pNext = &drmProps;
   vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProps);
 
+  amd = deviceProps.properties.vendorID == 0x1002;
+  intel = deviceProps.properties.vendorID == 0x8086;
   nvidia = deviceProps.properties.vendorID == 0x10de;
   Info("Using Vulkan device %s", deviceProps.properties.deviceName);
 
@@ -141,7 +149,8 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
   for (uint32_t i = 0; i < queueFamilyProperties.size(); ++i) {
     const bool graphics = queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
-    if (graphics) {
+    const bool compute = queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT;
+    if (compute && (queueFamilyIndex == VK_QUEUE_FAMILY_IGNORED || !graphics)) {
       queueFamilyIndex = i;
     }
     VkDeviceQueueCreateInfo queueInfo = {};
@@ -209,13 +218,11 @@ alvr::VkContext::VkContext(const char *deviceName, const std::vector<const char*
   vkctx->nb_tx_queues = 1;
   vkctx->queue_family_comp_index = queueFamilyIndex;
   vkctx->nb_comp_queues = 1;
-#if LIBAVUTIL_VERSION_MAJOR >= 57
   vkctx->get_proc_addr = vkGetInstanceProcAddr;
   vkctx->queue_family_encode_index = -1;
   vkctx->nb_encode_queues = 0;
   vkctx->queue_family_decode_index = -1;
   vkctx->nb_decode_queues = 0;
-#endif
 
   char **inst_extensions = (char**)malloc(sizeof(char*) * instanceExtensions.size());
   for (uint32_t i = 0; i < instanceExtensions.size(); ++i) {
@@ -309,9 +316,7 @@ alvr::VkFrame::VkFrame(
 
   VkSemaphoreCreateInfo semInfo = {};
   semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-#if LIBAVUTIL_VERSION_MAJOR >= 57
   semInfo.pNext = &timelineInfo;
-#endif
   vkCreateSemaphore(device, &semInfo, nullptr, &av_vkframe->sem[0]);
 }
 

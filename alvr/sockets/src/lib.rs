@@ -1,5 +1,4 @@
 mod control_socket;
-mod packets;
 mod stream_socket;
 
 use std::{
@@ -8,7 +7,6 @@ use std::{
 };
 
 pub use control_socket::*;
-pub use packets::*;
 pub use stream_socket::*;
 
 pub const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);

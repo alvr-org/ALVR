@@ -1,3 +1,5 @@
+# Real time video upscaling experiments
+
 # Why?
 
 The Quest can display a resolution close to 4k. Rendering a game, encoding and decoding these kinds of resolutions is very taxing on both the PC and the Quest. So usually a lower resolution image displayed on the Quest.

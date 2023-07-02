@@ -89,6 +89,7 @@ pub struct ButtonEntry {
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
+    RequestConfigNAL,
     KeepAlive,
     StreamReady,
     ViewsConfig(ViewsConfig),

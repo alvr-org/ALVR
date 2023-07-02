@@ -154,6 +154,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		switch (Settings::Instance().m_rateControlMode) {
 			case ALVR_CBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);
+				// Required for CBR to work correctly
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FILLER_DATA_ENABLE, Settings::Instance().m_fillerData);
 				break;
 			case ALVR_VBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
@@ -216,6 +218,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		switch (Settings::Instance().m_rateControlMode) {
 			case ALVR_CBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR);
+				// Required for CBR to work correctly
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_FILLER_DATA_ENABLE, Settings::Instance().m_fillerData);
 				break;
 			case ALVR_VBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);

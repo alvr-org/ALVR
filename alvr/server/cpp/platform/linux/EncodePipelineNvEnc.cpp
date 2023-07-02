@@ -148,5 +148,5 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
 }
 
 void alvr::EncodePipelineNvEnc::GetConfigNAL() {
-	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size);
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size, GetCodec());
 }

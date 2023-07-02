@@ -247,7 +247,7 @@ AVCodecID VideoEncoderSW::ToFFMPEGCodec(ALVR_CODEC codec) {
 }
 
 void VideoEncoderSW::GetConfigNAL() {
-	InitializeDecoder(m_codecContext->extradata, m_codecContext->extradata_size);
+	InitializeDecoder(m_codecContext->extradata, m_codecContext->extradata_size, m_codec);
 }
 
 #endif // ALVR_GPL

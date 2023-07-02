@@ -334,7 +334,7 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 }
 
 void alvr::EncodePipelineVAAPI::GetConfigNAL() {
-	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size);
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size, GetCodec());
 }
 
 void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)

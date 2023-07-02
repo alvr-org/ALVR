@@ -290,5 +290,5 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 void VideoEncoderNVENC::GetConfigNAL() {
 	std::vector<uint8_t> header;
 	m_NvNecoder->GetSequenceParams(header);
-	InitializeDecoder(header.data(), header.size());
+	InitializeDecoder(header.data(), header.size(), m_codec);
 }

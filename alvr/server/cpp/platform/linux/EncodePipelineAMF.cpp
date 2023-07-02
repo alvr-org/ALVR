@@ -458,7 +458,7 @@ void EncodePipelineAMF::GetConfigNAL() {
 		m_amfComponents.back()->GetProperty(AMF_VIDEO_ENCODER_HEVC_EXTRADATA, &var);
 	}
 	amf::AMFBufferPtr buffer(var.pInterface);
-	InitializeDecoder(reinterpret_cast<unsigned char *>(buffer->GetNative()), buffer->GetSize());
+	InitializeDecoder(reinterpret_cast<unsigned char *>(buffer->GetNative()), buffer->GetSize(), GetCodec());
 }
 
 };

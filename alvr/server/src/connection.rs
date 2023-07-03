@@ -314,8 +314,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         display_name,
         streaming_capabilities,
         ..
-    } = runtime.block_on(proto_socket.recv()).map_err(to_int_e!())?
-    {
+    } = runtime.block_on(async {
+        tokio::select! {
+            res = proto_socket.recv() => res.map_err(to_int_e!()),
+            _ = time::sleep(Duration::from_secs(1)) => {
+                int_fmt_e!("Timeout while waiting on client response")
+            }
+        }
+    })? {
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
             ClientListAction::SetDisplayName(display_name),
@@ -460,10 +466,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .block_on(control_sender.send(&ServerControlPacket::StartStream))
         .map_err(to_int_e!())?;
 
-    match runtime
-        .block_on(control_receiver.recv())
-        .map_err(to_int_e!())
-    {
+    match runtime.block_on(async {
+        tokio::select! {
+            res = control_receiver.recv() => res.map_err(to_int_e!()),
+            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout"),
+        }
+    }) {
         Ok(ClientControlPacket::StreamReady) => (),
         Ok(_) => {
             return int_fmt_e!("Got unexpected packet waiting for stream ack");
@@ -661,7 +669,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 let Some(tracking) = CONNECTION_RUNTIME
                     .read()
                     .as_ref()
-                    .and_then(|runtime| runtime.block_on(tracking_receiver.recv_header_only()).ok())
+                    .and_then(|runtime| runtime.block_on(async {
+                        tokio::select! {
+                            res = tracking_receiver.recv_header_only() => res.ok(),
+                            _ = time::sleep(Duration::from_millis(100)) => None,
+                        }
+                    }))
                 else {
                     return;
                 };
@@ -771,7 +784,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         let Some(client_stats) = CONNECTION_RUNTIME
                 .read()
                 .as_ref()
-                .and_then(|runtime| runtime.block_on(statics_receiver.recv_header_only()).ok())
+                .and_then(|runtime| runtime.block_on(async {
+                    tokio::select! {
+                        res = statics_receiver.recv_header_only() => res.ok(),
+                        _ = time::sleep(Duration::from_millis(100)) => None,
+                    }
+                }))
             else {
                 return;
             };

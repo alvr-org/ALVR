@@ -203,6 +203,8 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
     }
     let common_flags_ref = &common_flags;
 
+    sh.create_dir(afs::launcher_build_dir()).unwrap();
+
     cmd!(sh, "cargo build -p alvr_launcher {common_flags_ref...}")
         .run()
         .unwrap();

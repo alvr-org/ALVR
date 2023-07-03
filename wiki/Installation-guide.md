@@ -101,6 +101,9 @@ You can get appimage for latest stable version from [here](https://github.com/al
 * Download `alvr_streamer_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
 * Run `bin/alvr_dashboard`
 
+#### Flatpak
+For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Flatpak)
+
 ### Automatic Audio & Microphone Setup
 
 * Must be on v20+

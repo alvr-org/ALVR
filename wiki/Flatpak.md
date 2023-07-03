@@ -12,13 +12,15 @@
 
 5. Any scripts that affect the host will run within the sandbox
 
-6. Sometimes, a new instance of Steam will launch when launching the dashboard. To fix this, close both ALVR and Steam then launch Steam. As soon as Steam is opens to the storefront, launch the ALVR dashboard.
+6. Sometimes, a new instance of Steam will launch when launching the dashboard. To fix this, close both ALVR and Steam then launch Steam. As soon as Steam opens to the storefront, launch the ALVR dashboard.
 
 7. The ALVR Dashboard is not available in the Applications menu. To run the dashboard, run the following command to run `alvr_dashboard` in the Steam Flatpak environment:
 
 ```
 flatpak run --command=alvr_dashboard com.valvesoftware.Steam
 ```
+
+8. This only works with the Steam Flatpak. For non-Flatpak Steam, use the AppImage instead
 
 ## Dependencies
 
@@ -61,7 +63,7 @@ cd ALVR
 Once inside the repository, simply run the following command to build and install the Flatpak.
 
 ```
-flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run --command="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Notes

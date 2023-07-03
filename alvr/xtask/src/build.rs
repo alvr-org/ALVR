@@ -60,7 +60,6 @@ pub fn build_streamer(
     };
 
     sh.remove_path(&afs::streamer_build_dir()).unwrap();
-    sh.create_dir(&afs::streamer_build_dir()).unwrap();
     sh.create_dir(&build_layout.openvr_driver_lib_dir())
         .unwrap();
     sh.create_dir(&build_layout.executables_dir).unwrap();
@@ -185,6 +184,36 @@ pub fn build_streamer(
         )
         .unwrap();
     }
+}
+
+pub fn build_launcher(profile: Profile, reproducible: bool) {
+    let sh = Shell::new().unwrap();
+
+    let mut common_flags = vec![];
+    match profile {
+        Profile::Distribution => {
+            common_flags.push("--profile");
+            common_flags.push("distribution");
+        }
+        Profile::Release => common_flags.push("--release"),
+        Profile::Debug => (),
+    }
+    if reproducible {
+        common_flags.push("--locked");
+    }
+    let common_flags_ref = &common_flags;
+
+    cmd!(sh, "cargo build -p alvr_launcher {common_flags_ref...}")
+        .run()
+        .unwrap();
+
+    sh.copy_file(
+        afs::target_dir()
+            .join(profile.to_string())
+            .join(afs::exec_fname("alvr_launcher")),
+        afs::launcher_build_exe_path(),
+    )
+    .unwrap();
 }
 
 pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {

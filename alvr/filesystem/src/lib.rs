@@ -57,6 +57,14 @@ pub fn streamer_build_dir() -> PathBuf {
     build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
+pub fn launcher_build_dir() -> PathBuf {
+    build_dir().join(format!("alvr_launcher_{OS}"))
+}
+
+pub fn launcher_build_exe_path() -> PathBuf {
+    launcher_build_dir().join(exec_fname("ALVR Launcher"))
+}
+
 pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname("alvr_installer"))
 }

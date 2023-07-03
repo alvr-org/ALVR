@@ -3,7 +3,10 @@ use crate::{
     command, version,
 };
 use alvr_filesystem as afs;
-use std::path::PathBuf;
+use std::{
+    env::consts::OS,
+    path::{Path, PathBuf},
+};
 use xshell::{cmd, Shell};
 
 fn build_windows_installer() {
@@ -45,54 +48,6 @@ fn build_windows_installer() {
     )
     .run()
     .unwrap();
-}
-
-pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
-    let sh = Shell::new().unwrap();
-
-    build::build_streamer(Profile::Distribution, gpl, root, true, false);
-
-    // Add licenses
-    let licenses_dir = afs::streamer_build_dir().join("licenses");
-    sh.create_dir(&licenses_dir).unwrap();
-    sh.copy_file(
-        afs::workspace_dir().join("LICENSE"),
-        licenses_dir.join("ALVR.txt"),
-    )
-    .unwrap();
-    sh.copy_file(
-        afs::crate_dir("server").join("LICENSE-Valve"),
-        licenses_dir.join("Valve.txt"),
-    )
-    .unwrap();
-    if gpl {
-        sh.copy_file(
-            afs::deps_dir().join("windows/ffmpeg/LICENSE.txt"),
-            licenses_dir.join("FFmpeg.txt"),
-        )
-        .ok();
-    }
-
-    // Gather licenses with cargo about
-    cmd!(sh, "cargo install cargo-about").run().unwrap();
-    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
-    let licenses_content = cmd!(sh, "cargo about generate {licenses_template}")
-        .read()
-        .unwrap();
-    sh.write_file(licenses_dir.join("dependencies.html"), licenses_content)
-        .unwrap();
-
-    // Finally package everything
-    if cfg!(windows) {
-        command::zip(&sh, &afs::streamer_build_dir()).unwrap();
-        build_windows_installer();
-    } else {
-        command::targz(&sh, &afs::streamer_build_dir()).unwrap();
-
-        if appimage {
-            package_streamer_appimage(true, zsync);
-        }
-    }
 }
 
 fn package_streamer_appimage(release: bool, update: bool) {
@@ -154,6 +109,79 @@ fn package_streamer_appimage(release: bool, update: bool) {
     sh.change_dir(afs::build_dir());
 
     cmd!(&sh, "{linuxdeploy} --appdir={appdir} -i{icon} -d{desktop} --deploy-deps-only={appdir}/usr/lib64/alvr/bin/linux64/driver_alvr_server.so --deploy-deps-only={appdir}/usr/lib64/libalvr_vulkan_layer.so --output appimage").run().unwrap();
+}
+
+pub fn include_licenses(root_path: &Path, gpl: bool) {
+    let sh = Shell::new().unwrap();
+
+    // Add licenses
+    let licenses_dir = root_path.join("licenses");
+    sh.create_dir(&licenses_dir).unwrap();
+    sh.copy_file(
+        afs::workspace_dir().join("LICENSE"),
+        licenses_dir.join("ALVR.txt"),
+    )
+    .unwrap();
+    sh.copy_file(
+        afs::crate_dir("server").join("LICENSE-Valve"),
+        licenses_dir.join("Valve.txt"),
+    )
+    .unwrap();
+    if gpl {
+        sh.copy_file(
+            afs::deps_dir().join("windows/ffmpeg/LICENSE.txt"),
+            licenses_dir.join("FFmpeg.txt"),
+        )
+        .ok();
+    }
+
+    // Gather licenses with cargo about
+    cmd!(sh, "cargo install cargo-about").run().unwrap();
+    let licenses_template = afs::crate_dir("xtask").join("licenses_template.hbs");
+    let licenses_content = cmd!(sh, "cargo about generate {licenses_template}")
+        .read()
+        .unwrap();
+    sh.write_file(licenses_dir.join("dependencies.html"), licenses_content)
+        .unwrap();
+}
+
+pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
+    let sh = Shell::new().unwrap();
+
+    build::build_streamer(Profile::Distribution, gpl, root, true, false);
+
+    include_licenses(&afs::streamer_build_dir(), gpl);
+
+    if OS == "windows" {
+        command::zip(&sh, &afs::streamer_build_dir()).unwrap();
+
+        // todo: remove installer
+        build_windows_installer();
+    } else {
+        command::targz(&sh, &afs::streamer_build_dir()).unwrap();
+
+        if appimage {
+            package_streamer_appimage(true, zsync);
+        }
+    }
+}
+
+pub fn package_launcher() {
+    let sh = Shell::new().unwrap();
+
+    build::build_launcher(Profile::Distribution, true);
+
+    include_licenses(&afs::launcher_build_dir(), false);
+
+    if OS == "windows" {
+        command::zip(&sh, &afs::launcher_build_dir()).unwrap();
+
+        // todo: installer
+    } else {
+        command::targz(&sh, &afs::launcher_build_dir()).unwrap();
+
+        // todo: appimage
+    }
 }
 
 pub fn package_client_lib(link_stdcpp: bool) {

@@ -784,12 +784,10 @@ fn data_dir() -> PathBuf {
     if cfg!(target_os = "linux") {
         PathBuf::from(env::var("HOME").expect("Failed to determine home directory"))
             .extended(".local/share/ALVR-Launcher")
-    } else if cfg!(target_os = "windows") {
+    } else {
         env::current_dir()
             .expect("Unable to determine executable directory")
             .extended("ALVR-Launcher")
-    } else {
-        panic!("Unsupported OS")
     }
 }
 

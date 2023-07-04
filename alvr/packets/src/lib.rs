@@ -15,7 +15,6 @@ pub const TRACKING: u16 = 0;
 pub const HAPTICS: u16 = 1;
 pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
-pub const STATISTICS: u16 = 4;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
@@ -85,15 +84,39 @@ pub struct ButtonEntry {
     pub value: ButtonValue,
 }
 
+#[derive(Serialize, Deserialize, Default)]
+pub struct VideoFramePresentedPacket {
+    pub target_timestamp: Duration,
+    pub decoder_queue: Duration,
+    pub rendering: Duration,
+    pub vsync_queue: Duration,
+    pub total_pipeline_latency: Duration,
+    pub frame_interval: Duration,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum ClientStatistics {
+    VideoPacketDropped,
+    VideoPacketDroppedDecoder,
+    VideoFrameDecoded {
+        target_timestamp: Duration,
+        decode: Duration,
+    },
+    VideoFramePresented(VideoFramePresentedPacket),
+    VideoFrameReprojected {
+        frame_interval: Duration,
+    },
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
     KeepAlive,
     StreamReady,
+    ClientStatistics(ClientStatistics),
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
-    VideoErrorReport, // legacy
     Buttons(Vec<ButtonEntry>),
     ActiveInteractionProfile { device_id: u64, profile_id: u64 },
     Log { level: LogSeverity, message: String },
@@ -194,17 +217,6 @@ pub enum ClientListAction {
     RemoveEntry,
     UpdateCurrentIp(Option<IpAddr>),
     SetConnectionState(ConnectionState),
-}
-
-#[derive(Serialize, Deserialize, Default, Clone)]
-pub struct ClientStatistics {
-    pub target_timestamp: Duration, // identifies the frame
-    pub frame_interval: Duration,
-    pub video_decode: Duration,
-    pub video_decoder_queue: Duration,
-    pub rendering: Duration,
-    pub vsync_queue: Duration,
-    pub total_pipeline_latency: Duration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

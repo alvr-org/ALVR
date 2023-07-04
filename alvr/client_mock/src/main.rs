@@ -272,6 +272,7 @@ fn client_thread(
         alvr_client_core::report_submit(
             window_output.current_frame_timestamp,
             Duration::from_millis(input_lock.emulated_vsync_ms),
+            Duration::from_secs_f32(1. / window_output.fps),
         );
 
         drop(input_lock);

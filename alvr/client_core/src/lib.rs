@@ -50,8 +50,6 @@ static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(||
 
 static TRACKING_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
-static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
-    Lazy::new(|| Mutex::new(None));
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
@@ -197,17 +195,39 @@ pub fn get_tracker_prediction_offset() -> Duration {
     }
 }
 
-pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
+pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration, frame_interval: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-        stats.report_submit(target_timestamp, vsync_queue);
+        let maybe_present_packet =
+            stats.report_submit(target_timestamp, vsync_queue, frame_interval);
 
-        if let Some(sender) = &*STATISTICS_SENDER.lock() {
-            if let Some(stats) = stats.summary(target_timestamp) {
-                sender.send(stats).ok();
-            } else {
-                error!("Statistics summary not ready!");
+        if let Some(packet) = maybe_present_packet {
+            if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                sender
+                    .send(ClientControlPacket::ClientStatistics(
+                        ClientStatistics::VideoFramePresented(packet),
+                    ))
+                    .ok();
             }
+        } else {
+            warn!("Statistics summary not ready!");
         }
+    }
+}
+
+pub fn report_reprojected(frame_interval: Duration) {
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender
+        .send(ClientControlPacket::ClientStatistics(
+            ClientStatistics::VideoFramePresented(packet),
+        ))
+        .ok();
+    
+        sender.send(ClientControlPacket::Reserved(
+            serde_json::to_string(&ClientControlPacket::ClientStatistics(
+                ClientStatistics::VideoFrameReprojected { frame_interval },
+            ))
+            .unwrap(),
+        ));
     }
 }
 

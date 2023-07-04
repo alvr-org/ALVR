@@ -1,6 +1,6 @@
 use alvr_common::{SlidingWindowAverage, HEAD_ID};
 use alvr_events::{EventType, GraphStatistics, NominalBitrateStats, StatisticsSummary};
-use alvr_packets::ClientStatistics;
+use alvr_packets::{ClientStatistics, VideoFramePresentedPacket};
 use std::{
     collections::{HashMap, VecDeque},
     time::{Duration, Instant},
@@ -178,13 +178,15 @@ impl StatisticsManager {
         self.last_nominal_bitrate_stats = stats;
     }
 
+    // report_
+
     // Called every frame. Some statistics are reported once every frame
     // Returns network latency
-    pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> Duration {
+    pub fn report_statistics(&mut self, client_present_stats: VideoFramePresentedPacket) -> Duration {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
-            .find(|frame| frame.target_timestamp == client_stats.target_timestamp)
+            .find(|frame| frame.target_timestamp == client_present_stats.target_timestamp)
         {
             let total_pipeline_latency = client_stats.total_pipeline_latency;
             self.total_pipeline_latency_average
@@ -212,14 +214,14 @@ impl StatisticsManager {
                 game_time_latency
                     + server_compositor_latency
                     + encoder_latency
-                    + client_stats.video_decode
-                    + client_stats.video_decoder_queue
-                    + client_stats.rendering
-                    + client_stats.vsync_queue,
+                    + client_present_stats.video_decode
+                    + client_present_stats.video_decoder_queue
+                    + client_present_stats.rendering
+                    + client_present_stats.vsync_queue,
             );
 
             let client_fps = 1.0
-                / client_stats
+                / client_present_stats
                     .frame_interval
                     .max(Duration::from_millis(1))
                     .as_secs_f32();
@@ -241,10 +243,10 @@ impl StatisticsManager {
                     video_mbytes_total: (self.video_bytes_total as f32 / 1e6) as usize,
                     video_mbits_per_sec: self.video_bytes_partial_sum as f32 / interval_secs * 8.
                         / 1e6,
-                    total_latency_ms: client_stats.total_pipeline_latency.as_secs_f32() * 1000.,
+                    total_latency_ms: client_present_stats.total_pipeline_latency.as_secs_f32() * 1000.,
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,
-                    decode_latency_ms: client_stats.video_decode.as_secs_f32() * 1000.,
+                    decode_latency_ms: client_present_stats.video_decode.as_secs_f32() * 1000.,
                     packets_lost_total: self.packets_lost_total,
                     packets_lost_per_sec: (self.packets_lost_partial_sum as f32 / interval_secs)
                         as _,
@@ -281,15 +283,15 @@ impl StatisticsManager {
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.
             alvr_events::send_event(EventType::GraphStatistics(GraphStatistics {
-                total_pipeline_latency_s: client_stats.total_pipeline_latency.as_secs_f32(),
+                total_pipeline_latency_s: client_present_stats.total_pipeline_latency.as_secs_f32(),
                 game_time_s: game_time_latency.as_secs_f32(),
                 server_compositor_s: server_compositor_latency.as_secs_f32(),
                 encoder_s: encoder_latency.as_secs_f32(),
                 network_s: network_latency.as_secs_f32(),
-                decoder_s: client_stats.video_decode.as_secs_f32(),
-                decoder_queue_s: client_stats.video_decoder_queue.as_secs_f32(),
-                client_compositor_s: client_stats.rendering.as_secs_f32(),
-                vsync_queue_s: client_stats.vsync_queue.as_secs_f32(),
+                decoder_s: client_present_stats.video_decode.as_secs_f32(),
+                decoder_queue_s: client_present_stats.video_decoder_queue.as_secs_f32(),
+                client_compositor_s: client_present_stats.rendering.as_secs_f32(),
+                vsync_queue_s: client_present_stats.vsync_queue.as_secs_f32(),
                 client_fps,
                 server_fps,
                 nominal_bitrate: self.last_nominal_bitrate_stats.clone(),

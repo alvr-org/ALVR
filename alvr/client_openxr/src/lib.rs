@@ -901,8 +901,14 @@ pub fn entry_point() {
 
                 if !hardware_buffer.is_null() {
                     if let Some(now) = xr_runtime_now(&xr_instance) {
-                        alvr_client_core::report_submit(timestamp, vsync_time.saturating_sub(now));
+                        alvr_client_core::report_submit(
+                            timestamp,
+                            vsync_time.saturating_sub(now),
+                            frame_interval,
+                        );
                     }
+                } else {
+                    alvr_client_core::report_reprojected(frame_interval);
                 }
 
                 display_time = timestamp;

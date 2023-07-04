@@ -23,7 +23,7 @@ use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
     ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
     Haptics, ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
-    STATISTICS, TRACKING, VIDEO,
+    TRACKING, VIDEO,
 };
 use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
@@ -521,9 +521,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let mut tracking_receiver = runtime
         .block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING))
         .map_err(to_int_e!())?;
-    let mut statics_receiver = runtime
-        .block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS))
-        .map_err(to_int_e!())?;
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = runtime
@@ -780,33 +777,33 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let statistics_thread = thread::spawn(move || loop {
-        let Some(client_stats) = CONNECTION_RUNTIME
-                .read()
-                .as_ref()
-                .and_then(|runtime| runtime.block_on(async {
-                    tokio::select! {
-                        res = statics_receiver.recv_header_only() => res.ok(),
-                        _ = time::sleep(Duration::from_millis(100)) => None,
-                    }
-                }))
-            else {
-                return;
-            };
+    // let statistics_thread = thread::spawn(move || loop {
+    //     let Some(client_stats) = CONNECTION_RUNTIME
+    //             .read()
+    //             .as_ref()
+    //             .and_then(|runtime| runtime.block_on(async {
+    //                 tokio::select! {
+    //                     res = statics_receiver.recv_header_only() => res.ok(),
+    //                     _ = time::sleep(Duration::from_millis(100)) => None,
+    //                 }
+    //             }))
+    //         else {
+    //             return;
+    //         };
 
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            let timestamp = client_stats.target_timestamp;
-            let decoder_latency = client_stats.video_decode;
-            let network_latency = stats.report_statistics(client_stats);
+    //     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+    //         let timestamp = client_stats.target_timestamp;
+    //         let decoder_latency = client_stats.video_decode;
+    //         let network_latency = stats.report_statistics(client_stats);
 
-            BITRATE_MANAGER.lock().report_frame_latencies(
-                &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
-                timestamp,
-                network_latency,
-                decoder_latency,
-            );
-        }
-    });
+    //         BITRATE_MANAGER.lock().report_frame_latencies(
+    //             &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
+    //             timestamp,
+    //             network_latency,
+    //             decoder_latency,
+    //         );
+    //     }
+    // });
 
     let control_sender = Arc::new(TMutex::new(control_sender));
 
@@ -892,6 +889,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                             .ok();
                     }
                     unsafe { crate::RequestIDR() }
+                }
+                ClientControlPacket::ClientStatistics(ClientStatistics::VideoPacketDroppedNetwork) => {
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        stats.report_packet_loss();
+                    }
+                    unsafe { crate::VideoErrorReportReceive() };
                 }
                 ClientControlPacket::VideoErrorReport => {
                     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
@@ -1084,7 +1087,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         // ensure shutdown of threads
         video_send_thread.join().ok();
         tracking_receive_thread.join().ok();
-        statistics_thread.join().ok();
         control_thread.join().ok();
         keepalive_thread.join().ok();
 

@@ -7,13 +7,13 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
     ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
-    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, STATISTICS_SENDER, TRACKING_SENDER,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER, TRACKING_SENDER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket, StreamConfigPacket,
-    VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, TRACKING, VIDEO,
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
@@ -315,20 +315,6 @@ async fn stream_pipeline(
         }
     };
 
-    let statistics_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(STATISTICS).await?;
-        async move {
-            let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-            *STATISTICS_SENDER.lock() = Some(data_sender);
-
-            while let Some(stats) = data_receiver.recv().await {
-                socket_sender.send(&stats, vec![]).await.ok();
-            }
-
-            Ok(())
-        }
-    };
-
     IS_STREAMING.set(true);
 
     let video_receive_loop = {
@@ -550,7 +536,6 @@ async fn stream_pipeline(
         res = spawn_cancelable(game_audio_loop) => res,
         res = spawn_cancelable(microphone_loop) => res,
         res = spawn_cancelable(tracking_send_loop) => res,
-        res = spawn_cancelable(statistics_send_loop) => res,
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = spawn_cancelable(control_send_loop) => res,

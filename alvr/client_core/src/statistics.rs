@@ -1,20 +1,21 @@
 use alvr_common::SlidingWindowAverage;
-use alvr_packets::ClientStatistics;
+use alvr_packets::{ClientStatistics, VideoFramePresentedPacket};
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},
 };
 
 struct HistoryFrame {
+    target_timestamp: Duration,
     input_acquired: Instant,
     video_packet_received: Instant,
-    client_stats: ClientStatistics,
+    video_frame_decoded: Instant,
+    video_frame_dequeued: Instant,
 }
 
 pub struct StatisticsManager {
     history_buffer: VecDeque<HistoryFrame>,
     max_history_size: usize,
-    prev_vsync: Instant,
     total_pipeline_latency_average: SlidingWindowAverage<Duration>,
     steamvr_pipeline_latency: Duration,
 }
@@ -28,7 +29,6 @@ impl StatisticsManager {
         Self {
             max_history_size,
             history_buffer: VecDeque::new(),
-            prev_vsync: Instant::now(),
             total_pipeline_latency_average: SlidingWindowAverage::new(
                 Duration::ZERO,
                 max_history_size,
@@ -40,19 +40,19 @@ impl StatisticsManager {
     }
 
     pub fn report_input_acquired(&mut self, target_timestamp: Duration) {
+        let now = Instant::now();
+
         if !self
             .history_buffer
             .iter()
-            .any(|frame| frame.client_stats.target_timestamp == target_timestamp)
+            .any(|frame| frame.target_timestamp == target_timestamp)
         {
             self.history_buffer.push_front(HistoryFrame {
-                input_acquired: Instant::now(),
-                // this is just a placeholder because Instant does not have a default value
-                video_packet_received: Instant::now(),
-                client_stats: ClientStatistics {
-                    target_timestamp,
-                    ..Default::default()
-                },
+                target_timestamp,
+                input_acquired: now,
+                video_packet_received: now,
+                video_frame_decoded: now,
+                video_frame_dequeued: now,
             });
         }
 
@@ -62,70 +62,64 @@ impl StatisticsManager {
     }
 
     pub fn report_video_packet_received(&mut self, target_timestamp: Duration) {
+        let now = Instant::now();
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
+            .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.video_packet_received = Instant::now();
+            frame.video_packet_received = now;
         }
     }
 
-    pub fn report_frame_decoded(&mut self, target_timestamp: Duration) {
+    // returns: decoding duration
+    pub fn report_frame_decoded(&mut self, target_timestamp: Duration) -> Option<Duration> {
+        let now = Instant::now();
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
+            .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.client_stats.video_decode =
-                Instant::now().saturating_duration_since(frame.video_packet_received);
+            frame.video_frame_decoded = now;
+
+            Some(frame.video_frame_decoded - frame.video_packet_received)
+        } else {
+            None
         }
     }
 
     pub fn report_compositor_start(&mut self, target_timestamp: Duration) {
+        let now = Instant::now();
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
+            .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.client_stats.video_decoder_queue = Instant::now().saturating_duration_since(
-                frame.video_packet_received + frame.client_stats.video_decode,
-            );
+            frame.video_frame_dequeued = now;
         }
     }
 
     // vsync_queue is the latency between this call and the vsync. it cannot be measured by ALVR and
     // should be reported by the VR runtime
-    pub fn report_submit(&mut self, target_timestamp: Duration, vsync_queue: Duration) {
+    pub fn report_submit(&mut self, target_timestamp: Duration, vsync_queue: Duration, frame_interval: Duration) -> Option<VideoFramePresentedPacket>{
         let now = Instant::now();
 
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
+            .find(|frame| frame.target_timestamp == target_timestamp)
         {
-            frame.client_stats.rendering = now.saturating_duration_since(
-                frame.video_packet_received
-                    + frame.client_stats.video_decode
-                    + frame.client_stats.video_decoder_queue,
-            );
-            frame.client_stats.vsync_queue = vsync_queue;
-            frame.client_stats.total_pipeline_latency =
-                now.saturating_duration_since(frame.input_acquired) + vsync_queue;
-            self.total_pipeline_latency_average
-                .submit_sample(frame.client_stats.total_pipeline_latency);
+            let mut packet = VideoFramePresentedPacket::default();
+            packet.target_timestamp = target_timestamp;
+            packet.decoder_queue = frame.video_frame_dequeued.saturating_duration_since(frame.video_frame_decoded);
+            packet.rendering = now.saturating_duration_since(frame.video_frame_dequeued);
+            packet.vsync_queue = vsync_queue;
+            packet.total_pipeline_latency = now.saturating_duration_since(frame.input_acquired) + vsync_queue;
 
-            let vsync = now + vsync_queue;
-            frame.client_stats.frame_interval = vsync.saturating_duration_since(self.prev_vsync);
-            self.prev_vsync = vsync;
+            Some(packet)
+        } else {
+            None
         }
-    }
-
-    pub fn summary(&self, target_timestamp: Duration) -> Option<ClientStatistics> {
-        self.history_buffer
-            .iter()
-            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
-            .map(|frame| frame.client_stats.clone())
     }
 
     // latency used for head prediction

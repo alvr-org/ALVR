@@ -510,6 +510,13 @@ pub fn get_hand_motion(
         return (None, None);
     };
 
+    if !location
+        .location_flags
+        .contains(xr::SpaceLocationFlags::ORIENTATION_TRACKED)
+    {
+        return (None, None);
+    }
+
     if location
         .location_flags
         .contains(xr::SpaceLocationFlags::POSITION_TRACKED)

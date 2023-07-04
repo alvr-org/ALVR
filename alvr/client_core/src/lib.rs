@@ -48,9 +48,9 @@ use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
-static TRACKING_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
+static TRACKING_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
-static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
+static STATISTICS_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
     Lazy::new(|| Mutex::new(None));
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -176,7 +176,7 @@ pub fn send_buttons(entries: Vec<ButtonEntry>) {
 }
 
 pub fn send_tracking(tracking: Tracking) {
-    if let Some(sender) = &*TRACKING_SENDER.lock() {
+    if let Some(sender) = &*TRACKING_CHANNEL_SENDER.lock() {
         sender.send(tracking).ok();
     }
 }
@@ -201,7 +201,7 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_submit(target_timestamp, vsync_queue);
 
-        if let Some(sender) = &*STATISTICS_SENDER.lock() {
+        if let Some(sender) = &*STATISTICS_CHANNEL_SENDER.lock() {
             if let Some(stats) = stats.summary(target_timestamp) {
                 sender.send(stats).ok();
             } else {

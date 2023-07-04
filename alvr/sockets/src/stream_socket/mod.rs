@@ -406,28 +406,28 @@ pub struct StreamSocket {
 }
 
 impl StreamSocket {
-    pub async fn request_stream<T>(&self, stream_id: u16) -> StrResult<StreamSender<T>> {
-        Ok(StreamSender {
+    pub fn request_stream<T>(&self, stream_id: u16) -> StreamSender<T> {
+        StreamSender {
             stream_id,
             max_packet_size: self.max_packet_size,
             socket: self.send_socket.clone(),
             header_buffer: vec![],
             next_packet_index: 0,
             _phantom: PhantomData,
-        })
+        }
     }
 
-    pub async fn subscribe_to_stream<T>(&self, stream_id: u16) -> StrResult<StreamReceiver<T>> {
+    pub async fn subscribe_to_stream<T>(&self, stream_id: u16) -> StreamReceiver<T> {
         let (sender, receiver) = mpsc::unbounded_channel();
         self.packet_queues.lock().await.insert(stream_id, sender);
 
-        Ok(StreamReceiver {
+        StreamReceiver {
             receiver,
             next_packet_shards: HashMap::new(),
             next_packet_shards_count: None,
             next_packet_index: 0,
             _phantom: PhantomData,
-        })
+        }
     }
 
     pub async fn receive_loop(&self) -> StrResult {

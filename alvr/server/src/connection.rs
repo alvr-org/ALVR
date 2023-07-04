@@ -504,7 +504,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     settings.connection.server_recv_buffer_bytes,
                     settings.connection.packet_size as _,
                 ) => res,
-                _ = time::sleep(Duration::from_secs(5)) => {
+                _ = time::sleep(Duration::from_secs(1)) => {
                     fmt_e!("Timeout while setting up streams")
                 }
             }
@@ -512,23 +512,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .map_err(to_int_e!())?;
     let stream_socket = Arc::new(stream_socket);
 
-    let mut video_sender = runtime
-        .block_on(stream_socket.request_stream(VIDEO))
-        .map_err(to_int_e!())?;
-    let haptics_sender = runtime
-        .block_on(stream_socket.request_stream(HAPTICS))
-        .map_err(to_int_e!())?;
-    let mut tracking_receiver = runtime
-        .block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING))
-        .map_err(to_int_e!())?;
-    let mut statics_receiver = runtime
-        .block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS))
-        .map_err(to_int_e!())?;
+    let mut tracking_receiver =
+        runtime.block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING));
+    let mut statics_receiver =
+        runtime.block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS));
+
+    let mut video_sender = stream_socket.request_stream(VIDEO);
+    let haptics_sender = stream_socket.request_stream(HAPTICS);
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let sender = runtime
-            .block_on(stream_socket.request_stream(AUDIO))
-            .map_err(to_int_e!())?;
+        let sender = stream_socket.request_stream(AUDIO);
         Box::pin(async move {
             loop {
                 let device = match AudioDevice::new_output(
@@ -592,9 +585,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             config.devices,
         )
         .map_err(to_int_e!())?;
-        let receiver = runtime
-            .block_on(stream_socket.subscribe_to_stream(AUDIO))
-            .map_err(to_int_e!())?;
+        let receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
@@ -666,17 +657,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             }
 
             loop {
-                let Some(tracking) = CONNECTION_RUNTIME
-                    .read()
-                    .as_ref()
-                    .and_then(|runtime| runtime.block_on(async {
+                let maybe_tracking = CONNECTION_RUNTIME.read().as_ref().and_then(|runtime| {
+                    runtime.block_on(async {
                         tokio::select! {
-                            res = tracking_receiver.recv_header_only() => res.ok(),
-                            _ = time::sleep(Duration::from_millis(100)) => None,
+                            res = tracking_receiver.recv_header_only() => Some(res),
+                            _ = time::sleep(Duration::from_millis(500)) => None,
                         }
-                    }))
-                else {
-                    return;
+                    })
+                });
+                let tracking = match maybe_tracking {
+                    Some(Ok(tracking)) => tracking,
+                    Some(Err(_)) => return,
+                    None => continue,
                 };
 
                 let mut tracking_manager_lock = tracking_manager.lock();
@@ -781,18 +773,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     });
 
     let statistics_thread = thread::spawn(move || loop {
-        let Some(client_stats) = CONNECTION_RUNTIME
-                .read()
-                .as_ref()
-                .and_then(|runtime| runtime.block_on(async {
-                    tokio::select! {
-                        res = statics_receiver.recv_header_only() => res.ok(),
-                        _ = time::sleep(Duration::from_millis(100)) => None,
-                    }
-                }))
-            else {
-                return;
-            };
+        let maybe_client_stats = CONNECTION_RUNTIME.read().as_ref().and_then(|runtime| {
+            runtime.block_on(async {
+                tokio::select! {
+                    res = statics_receiver.recv_header_only() => Some(res),
+                    _ = time::sleep(Duration::from_millis(500)) => None,
+                }
+            })
+        });
+        let client_stats = match maybe_client_stats {
+            Some(Ok(stats)) => stats,
+            Some(Err(_)) => return,
+            None => continue,
+        };
 
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
             let timestamp = client_stats.target_timestamp;
@@ -844,7 +837,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 let maybe_packet = runtime.block_on(async {
                     tokio::select! {
                         res = control_receiver.recv() => Some(res),
-                        _ = time::sleep(Duration::from_millis(100)) => None,
+                        _ = time::sleep(Duration::from_millis(500)) => None,
                     }
                 });
                 match maybe_packet {
@@ -854,7 +847,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
                         DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
 
-                        break;
+                        return;
                     }
                     None => continue,
                 }

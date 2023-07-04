@@ -163,9 +163,12 @@ fn connection_pipeline(
             }),
         )
         .map_err(to_int_e!())?;
-    let config_packet = runtime
-        .block_on(proto_control_socket.recv::<StreamConfigPacket>())
-        .map_err(to_int_e!())?;
+    let config_packet = runtime.block_on(async {
+        tokio::select! {
+            res = proto_control_socket.recv::<StreamConfigPacket>() => res.map_err(to_int_e!()),
+            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout waiting for stream config"),
+        }
+    })?;
 
     runtime
         .block_on(stream_pipeline(
@@ -215,7 +218,10 @@ async fn stream_pipeline(
     let (control_sender, mut control_receiver) = proto_socket.split();
     let control_sender = Arc::new(Mutex::new(control_sender));
 
-    match control_receiver.recv().await {
+    match tokio::select! {
+        res = control_receiver.recv() => res,
+        _ = time::sleep(Duration::from_secs(1)) => fmt_e!("Timeout"),
+    } {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
             set_hud_message(STREAM_STARTING_MESSAGE);
@@ -247,13 +253,18 @@ async fn stream_pipeline(
         },
     ));
 
-    let stream_socket_builder = StreamSocketBuilder::listen_for_server(
+    let stream_socket_builder_future = StreamSocketBuilder::listen_for_server(
         settings.connection.stream_port,
         settings.connection.stream_protocol,
         settings.connection.client_send_buffer_bytes,
         settings.connection.client_recv_buffer_bytes,
-    )
-    .await?;
+    );
+    let stream_socket_builder = tokio::select! {
+        res = stream_socket_builder_future => res?,
+        _ = time::sleep(Duration::from_secs(1)) => {
+            return fmt_e!("Timeout while binding stream socket");
+        }
+    };
 
     if let Err(e) = control_sender
         .lock()
@@ -266,13 +277,14 @@ async fn stream_pipeline(
         return Ok(());
     }
 
+    let stream_socket_future = stream_socket_builder.accept_from_server(
+        server_ip,
+        settings.connection.stream_port,
+        settings.connection.packet_size as _,
+    );
     let stream_socket = tokio::select! {
-        res = stream_socket_builder.accept_from_server(
-            server_ip,
-            settings.connection.stream_port,
-            settings.connection.packet_size as _
-        ) => res?,
-        _ = time::sleep(Duration::from_secs(5)) => {
+        res = stream_socket_future => res?,
+        _ = time::sleep(Duration::from_secs(1)) => {
             return fmt_e!("Timeout while setting up streams");
         }
     };
@@ -293,7 +305,7 @@ async fn stream_pipeline(
     }
 
     let tracking_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(TRACKING).await?;
+        let mut socket_sender = stream_socket.request_stream(TRACKING);
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *TRACKING_SENDER.lock() = Some(data_sender);
@@ -316,7 +328,7 @@ async fn stream_pipeline(
     };
 
     let statistics_send_loop = {
-        let mut socket_sender = stream_socket.request_stream(STATISTICS).await?;
+        let mut socket_sender = stream_socket.request_stream(STATISTICS);
         async move {
             let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
             *STATISTICS_SENDER.lock() = Some(data_sender);
@@ -334,7 +346,7 @@ async fn stream_pipeline(
     let video_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<VideoPacketHeader>(VIDEO)
-            .await?;
+            .await;
         async move {
             let _decoder_guard = decoder_guard.lock().await;
 
@@ -401,9 +413,7 @@ async fn stream_pipeline(
     };
 
     let haptics_receive_loop = {
-        let mut receiver = stream_socket
-            .subscribe_to_stream::<Haptics>(HAPTICS)
-            .await?;
+        let mut receiver = stream_socket.subscribe_to_stream::<Haptics>(HAPTICS).await;
         async move {
             loop {
                 let haptics = receiver.recv_header_only().await?;
@@ -421,7 +431,7 @@ async fn stream_pipeline(
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let device = AudioDevice::new_output(None, None).map_err(err!())?;
 
-        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await?;
+        let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO).await;
         Box::pin(audio::play_audio_loop(
             device,
             2,
@@ -436,7 +446,7 @@ async fn stream_pipeline(
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
         let device = AudioDevice::new_input(None).map_err(err!())?;
 
-        let microphone_sender = stream_socket.request_stream(AUDIO).await?;
+        let microphone_sender = stream_socket.request_stream(AUDIO);
         Box::pin(audio::record_audio_loop(
             device,
             1,

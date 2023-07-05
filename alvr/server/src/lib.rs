@@ -33,7 +33,7 @@ use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_packets::{ClientListAction, DecoderInitializationConfig, VideoPacketHeader};
 use alvr_server_io::ServerDataManager;
-use alvr_session::CodecType;
+use alvr_session::{CodecType, ConnectionState};
 use bitrate::BitrateManager;
 use connection::SHOULD_CONNECT_TO_CLIENTS;
 use statistics::StatisticsManager;
@@ -141,10 +141,33 @@ pub extern "C" fn shutdown_driver() {
     // Invoke connection runtimes shutdown
     // todo: block until they shutdown
     SHOULD_CONNECT_TO_CLIENTS.set(false);
-    SHUTDOWN_NOTIFIER.notify_waiters();
 
-    // give time to the sockets to communucate with the client
-    thread::sleep(Duration::from_millis(200));
+    {
+        let mut data_manager_lock = SERVER_DATA_MANAGER.write();
+
+        let hostnames = data_manager_lock
+            .client_list()
+            .iter()
+            .filter_map(|(hostname, info)| {
+                (!matches!(
+                    info.connection_state,
+                    ConnectionState::Disconnected | ConnectionState::Disconnecting { .. }
+                ))
+                .then(|| hostname.clone())
+            })
+            .collect::<Vec<_>>();
+
+        for hostname in hostnames {
+            data_manager_lock.update_client_list(
+                hostname,
+                ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
+                    should_be_removed: false,
+                }),
+            );
+        }
+    }
+
+    SHUTDOWN_NOTIFIER.notify_waiters();
 
     // apply openvr config for the next launch
     SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
@@ -157,6 +180,15 @@ pub extern "C" fn shutdown_driver() {
     {
         alvr_server_io::driver_registration(&backup.other_paths, true).ok();
         alvr_server_io::driver_registration(&[backup.alvr_path], false).ok();
+    }
+
+    while SERVER_DATA_MANAGER
+        .read()
+        .client_list()
+        .iter()
+        .any(|(_, info)| info.connection_state != ConnectionState::Disconnected)
+    {
+        thread::sleep(Duration::from_millis(100));
     }
 
     WEBSERVER_RUNTIME.lock().take();
@@ -199,24 +231,7 @@ fn init() {
         )));
     }
 
-    {
-        let mut data_manager_lock = SERVER_DATA_MANAGER.write();
-
-        let connections = data_manager_lock.session().client_connections.clone();
-        for (hostname, connection) in connections {
-            if !connection.trusted {
-                data_manager_lock.update_client_list(hostname, ClientListAction::RemoveEntry);
-            }
-        }
-
-        for conn in data_manager_lock
-            .session_mut()
-            .client_connections
-            .values_mut()
-        {
-            conn.current_ip = None;
-        }
-    }
+    SERVER_DATA_MANAGER.write().clean_client_list();
 
     unsafe {
         g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())

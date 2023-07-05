@@ -1,10 +1,11 @@
 use crate::{
-    DECODER_CONFIG, FILESYSTEM_LAYOUT, RESTART_NOTIFIER, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
-    VIDEO_RECORDING_FILE,
+    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
+    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::{Event, EventType};
-use alvr_packets::ServerRequest;
+use alvr_packets::{ClientListAction, ServerRequest};
+use alvr_session::ConnectionState;
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -117,11 +118,27 @@ async fn http_api(
                         SERVER_DATA_MANAGER.write().set_values(descs).ok();
                     }
                     ServerRequest::UpdateClientList { hostname, action } => {
-                        SERVER_DATA_MANAGER
-                            .write()
-                            .update_client_list(hostname, action);
+                        let mut data_manager = SERVER_DATA_MANAGER.write();
+                        if matches!(action, ClientListAction::RemoveEntry) {
+                            if let Some(entry) = data_manager.client_list().get(&hostname) {
+                                if entry.connection_state != ConnectionState::Disconnected {
+                                    data_manager.update_client_list(
+                                        hostname.clone(),
+                                        ClientListAction::SetConnectionState(
+                                            ConnectionState::Disconnecting {
+                                                should_be_removed: true,
+                                            },
+                                        ),
+                                    );
+                                } else {
+                                    data_manager.update_client_list(hostname, action);
+                                }
+                            }
+                        } else {
+                            data_manager.update_client_list(hostname, action);
+                        }
 
-                        RESTART_NOTIFIER.notify_waiters();
+                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
                     }
                     ServerRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {

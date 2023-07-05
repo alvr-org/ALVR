@@ -283,6 +283,29 @@ impl ServerDataManager {
         }
     }
 
+    pub fn client_hostnames(&self) -> Vec<String> {
+        self.session.client_connections.keys().cloned().collect()
+    }
+
+    // Run at the start of dashboard or server
+    pub fn clean_client_list(&mut self) {
+        let connections = self.client_list().clone();
+        for (hostname, connection) in connections {
+            if connection.trusted {
+                self.update_client_list(
+                    hostname,
+                    ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+                )
+            } else {
+                self.update_client_list(hostname, ClientListAction::RemoveEntry);
+            }
+        }
+
+        for hostname in self.client_hostnames() {
+            self.update_client_list(hostname.clone(), ClientListAction::UpdateCurrentIp(None));
+        }
+    }
+
     pub fn get_gpu_vendors(&self) -> Vec<GpuVendor> {
         return self
             .gpu_infos
@@ -328,3 +351,5 @@ impl ServerDataManager {
         Ok(AudioDevicesList { output, input })
     }
 }
+
+pub fn prepare_client_list() {}

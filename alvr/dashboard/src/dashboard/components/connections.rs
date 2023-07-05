@@ -125,10 +125,22 @@ impl ConnectionsTab {
                                             .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
                                         data.display_name
                                     ));
-                                    if data.connection_state == ConnectionState::Disconnected {
-                                        ui.colored_label(Color32::GRAY, "Disconnected");
-                                    } else {
-                                        ui.colored_label(theme::OK_GREEN, "Streaming");
+                                    match data.connection_state {
+                                        ConnectionState::Disconnected => {
+                                            ui.colored_label(Color32::GRAY, "Disconnected")
+                                        }
+                                        ConnectionState::Connecting => ui
+                                            .colored_label(log_colors::WARNING_LIGHT, "Connecting"),
+                                        ConnectionState::Connected => {
+                                            ui.colored_label(theme::OK_GREEN, "Connected")
+                                        }
+                                        ConnectionState::Streaming => {
+                                            ui.colored_label(theme::OK_GREEN, "Streaming")
+                                        }
+                                        ConnectionState::Disconnecting { .. } => ui.colored_label(
+                                            log_colors::WARNING_LIGHT,
+                                            "Disconnecting",
+                                        ),
                                     }
                                 });
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

@@ -32,7 +32,7 @@ use alvr_sockets::{
 };
 use futures::future::BoxFuture;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     future,
     io::Write,
     net::IpAddr,
@@ -52,8 +52,6 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-static CONNECTED_CLIENT_HOSTNAMES: Lazy<Mutex<HashSet<String>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
 static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
 static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -210,20 +208,24 @@ pub fn handshake_loop() -> IntResult {
     loop {
         check_interrupt!(SHOULD_CONNECT_TO_CLIENTS.value());
 
-        let manual_client_ips = {
-            let connected_hostnames_lock = CONNECTED_CLIENT_HOSTNAMES.lock();
+        let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
-            for (hostname, connection_info) in SERVER_DATA_MANAGER.read().client_list() {
-                if !connected_hostnames_lock.contains(hostname) {
-                    for ip in &connection_info.manual_ips {
-                        manual_client_ips.insert(*ip, hostname.clone());
-                    }
+            for (hostname, connection_info) in SERVER_DATA_MANAGER
+                .read()
+                .client_list()
+                .iter()
+                .filter(|(_, info)| info.connection_state == ConnectionState::Disconnected)
+            {
+                for ip in &connection_info.manual_ips {
+                    manual_client_ips.insert(*ip, hostname.clone());
                 }
             }
             manual_client_ips
         };
 
-        if !manual_client_ips.is_empty() && try_connect(manual_client_ips).is_ok() {
+        if !available_manual_client_ips.is_empty()
+            && try_connect(available_manual_client_ips).is_ok()
+        {
             thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             continue;
         }
@@ -271,7 +273,15 @@ pub fn handshake_loop() -> IntResult {
             };
 
             // do not attempt connection if the client is already connected
-            if trusted && !CONNECTED_CLIENT_HOSTNAMES.lock().contains(&client_hostname) {
+            if trusted
+                && SERVER_DATA_MANAGER
+                    .read()
+                    .client_list()
+                    .get(&client_hostname)
+                    .unwrap()
+                    .connection_state
+                    == ConnectionState::Disconnected
+            {
                 if let Err(e) =
                     try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
                 {
@@ -303,6 +313,40 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     // Safety: this never panics because client_ip is picked from client_ips keys
     let client_hostname = client_ips.remove(&client_ip).unwrap();
+
+    struct DropGuard {
+        hostname: String,
+    }
+    impl Drop for DropGuard {
+        fn drop(&mut self) {
+            let mut data_manager_lock = SERVER_DATA_MANAGER.write();
+            if let Some(entry) = data_manager_lock.client_list().get(&self.hostname) {
+                if entry.connection_state
+                    == (ConnectionState::Disconnecting {
+                        should_be_removed: true,
+                    })
+                {
+                    data_manager_lock
+                        .update_client_list(self.hostname.clone(), ClientListAction::RemoveEntry);
+
+                    return;
+                }
+            }
+
+            data_manager_lock.update_client_list(
+                self.hostname.clone(),
+                ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+            );
+        }
+    }
+    let _connection_drop_guard = DropGuard {
+        hostname: client_hostname.clone(),
+    };
+
+    SERVER_DATA_MANAGER.write().update_client_list(
+        client_hostname.clone(),
+        ClientListAction::SetConnectionState(ConnectionState::Connecting),
+    );
 
     SERVER_DATA_MANAGER.write().update_client_list(
         client_hostname.clone(),
@@ -657,18 +701,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             }
 
             loop {
-                let maybe_tracking = CONNECTION_RUNTIME.read().as_ref().and_then(|runtime| {
-                    runtime.block_on(async {
+                let tracking = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                    let maybe_tracking = runtime.block_on(async {
                         tokio::select! {
                             res = tracking_receiver.recv_header_only() => Some(res),
-                            _ = time::sleep(Duration::from_millis(500)) => None,
+                            _ = time::sleep(Duration::from_millis(100)) => None,
                         }
-                    })
-                });
-                let tracking = match maybe_tracking {
-                    Some(Ok(tracking)) => tracking,
-                    Some(Err(_)) => return,
-                    None => continue,
+                    });
+                    match maybe_tracking {
+                        Some(Ok(tracking)) => tracking,
+                        Some(Err(_)) => return,
+                        None => continue,
+                    }
+                } else {
+                    return;
                 };
 
                 let mut tracking_manager_lock = tracking_manager.lock();
@@ -773,18 +819,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     });
 
     let statistics_thread = thread::spawn(move || loop {
-        let maybe_client_stats = CONNECTION_RUNTIME.read().as_ref().and_then(|runtime| {
-            runtime.block_on(async {
+        let client_stats = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+            let maybe_client_stats = runtime.block_on(async {
                 tokio::select! {
                     res = statics_receiver.recv_header_only() => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
+                    _ = time::sleep(Duration::from_millis(100)) => None,
                 }
-            })
-        });
-        let client_stats = match maybe_client_stats {
-            Some(Ok(stats)) => stats,
-            Some(Err(_)) => return,
-            None => continue,
+            });
+            match maybe_client_stats {
+                Some(Ok(stats)) => stats,
+                Some(Err(_)) => return,
+                None => continue,
+            }
+        } else {
+            return;
         };
 
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
@@ -805,6 +853,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
+        let client_hostname = client_hostname.clone();
         move || loop {
             if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
                 let res = runtime.block_on(async {
@@ -817,6 +866,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 if let Err(e) = res {
                     info!("Client disconnected. Cause: {e}");
 
+                    SERVER_DATA_MANAGER.write().update_client_list(
+                        client_hostname,
+                        ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
+                            should_be_removed: false,
+                        }),
+                    );
                     DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
 
                     return;
@@ -837,7 +892,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 let maybe_packet = runtime.block_on(async {
                     tokio::select! {
                         res = control_receiver.recv() => Some(res),
-                        _ = time::sleep(Duration::from_millis(500)) => None,
+                        _ = time::sleep(Duration::from_millis(100)) => None,
                     }
                 });
                 match maybe_packet {
@@ -845,6 +900,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     Some(Err(e)) => {
                         info!("Client disconnected. Cause: {e}");
 
+                        SERVER_DATA_MANAGER.write().update_client_list(
+                            client_hostname,
+                            ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
+                                should_be_removed: false,
+                            }),
+                        );
                         DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
 
                         return;
@@ -992,15 +1053,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     unsafe { crate::InitializeStreaming() };
 
     SERVER_DATA_MANAGER.write().update_client_list(
-        client_hostname.clone(),
+        client_hostname,
         ClientListAction::SetConnectionState(ConnectionState::Streaming),
     );
 
-    CONNECTED_CLIENT_HOSTNAMES
-        .lock()
-        .insert(client_hostname.clone());
-
     thread::spawn(move || {
+        let _connection_drop_guard = _connection_drop_guard;
+
         let shutdown_detector = async {
             while SHOULD_CONNECT_TO_CLIENTS.value() {
                 time::sleep(Duration::from_secs(1)).await;
@@ -1049,11 +1108,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         *HAPTICS_SENDER.lock() = None;
         *CONNECTION_RUNTIME.write() = None;
 
-        SERVER_DATA_MANAGER.write().update_client_list(
-            client_hostname.clone(),
-            ClientListAction::SetConnectionState(ConnectionState::Disconnected),
-        );
-
         *VIDEO_RECORDING_FILE.lock() = None;
 
         unsafe { crate::DeinitializeStreaming() };
@@ -1080,8 +1134,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         statistics_thread.join().ok();
         control_thread.join().ok();
         keepalive_thread.join().ok();
-
-        CONNECTED_CLIENT_HOSTNAMES.lock().remove(&client_hostname);
     });
 
     Ok(())

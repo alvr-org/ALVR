@@ -33,6 +33,9 @@ fn main() {
 
     {
         let mut data_manager = data_sources::get_local_data_source();
+
+        data_manager.clean_client_list();
+
         if data_manager
             .get_gpu_vendors()
             .iter()

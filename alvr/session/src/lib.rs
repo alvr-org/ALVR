@@ -99,8 +99,10 @@ pub struct OpenvrConfig {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
+    Connecting,
     Connected,
     Streaming,
+    Disconnecting { should_be_removed: bool },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

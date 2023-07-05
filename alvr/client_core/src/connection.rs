@@ -7,20 +7,25 @@ use crate::{
     statistics::StatisticsManager,
     storage::Config,
     ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
-    IS_RESUMED, IS_STREAMING, STATISTICS_CHANNEL_SENDER, STATISTICS_MANAGER,
-    TRACKING_CHANNEL_SENDER,
+    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    glam::UVec2, once_cell::sync::Lazy, parking_lot::RwLock, prelude::*, ALVR_VERSION,
+    glam::UVec2,
+    once_cell::sync::Lazy,
+    parking_lot::{Mutex, RwLock},
+    prelude::*,
+    ALVR_VERSION,
 };
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket, StreamConfigPacket,
-    VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
+    ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
+    StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS,
+    STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
-    spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSocketBuilder,
+    spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender,
+    StreamSocketBuilder,
 };
 use futures::future::BoxFuture;
 use serde_json as json;
@@ -54,6 +59,10 @@ const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
 pub static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
+pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
+    Lazy::new(|| Mutex::new(None));
+pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
+    Lazy::new(|| Mutex::new(None));
 
 fn set_hud_message(message: &str) {
     let message = format!(
@@ -91,6 +100,8 @@ pub fn connection_lifecycle_loop(
                     }
                 }
             }
+        } else {
+            debug!("Skip try connection because the device is sleeping");
         }
 
         thread::sleep(CONNECTION_RETRY_INTERVAL);
@@ -289,8 +300,8 @@ fn connection_pipeline(
         config.options = settings.video.mediacodec_extra_options;
     }
 
-    let mut tracking_sender = stream_socket.request_stream(TRACKING);
-    let mut statistics_sender = stream_socket.request_stream(STATISTICS);
+    let tracking_sender = stream_socket.request_stream(TRACKING);
+    let statistics_sender = stream_socket.request_stream(STATISTICS);
     let mut video_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO));
     let mut haptics_receiver =
@@ -325,41 +336,12 @@ fn connection_pipeline(
         Box::pin(future::pending())
     };
 
-    let tracking_send_loop = async move {
-        let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-        *TRACKING_CHANNEL_SENDER.lock() = Some(data_sender);
-
-        while let Some(tracking) = data_receiver.recv().await {
-            tracking_sender.send(&tracking, vec![]).await.ok();
-
-            // Note: this is not the best place to report the acquired input. Instead it should
-            // be done as soon as possible (or even just before polling the input). Instead this
-            // is reported late to partially compensate for lack of network latency measurement,
-            // so the server can just use total_pipeline_latency as the postTimeoffset.
-            // This hack will be removed once poseTimeOffset can be calculated more accurately.
-            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                stats.report_input_acquired(tracking.target_timestamp);
-            }
-        }
-
-        Ok(())
-    };
-
-    let statistics_send_loop = async move {
-        let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
-        *STATISTICS_CHANNEL_SENDER.lock() = Some(data_sender);
-
-        while let Some(stats) = data_receiver.recv().await {
-            statistics_sender.send(&stats, vec![]).await.ok();
-        }
-
-        Ok(())
-    };
-
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
     // function MUST be infallible
     IS_STREAMING.set(true);
     *CONNECTION_RUNTIME.write() = Some(runtime);
+    *TRACKING_SENDER.lock() = Some(tracking_sender);
+    *STATISTICS_SENDER.lock() = Some(statistics_sender);
 
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -518,8 +500,6 @@ fn connection_pipeline(
             },
             res = spawn_cancelable(game_audio_loop) => res,
             res = spawn_cancelable(microphone_loop) => res,
-            res = spawn_cancelable(tracking_send_loop) => res,
-            res = spawn_cancelable(statistics_send_loop) => res,
             res = spawn_cancelable(video_receive_loop) => res,
             res = spawn_cancelable(haptics_receive_loop) => res,
             res = spawn_cancelable(control_send_loop) => res,
@@ -534,6 +514,8 @@ fn connection_pipeline(
 
     IS_STREAMING.set(false);
     CONNECTION_RUNTIME.write().take();
+    TRACKING_SENDER.lock().take();
+    STATISTICS_SENDER.lock().take();
 
     EVENT_QUEUE
         .lock()

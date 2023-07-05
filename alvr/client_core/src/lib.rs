@@ -31,10 +31,9 @@ use alvr_common::{
     prelude::*,
     Fov, RelaxedAtomic,
 };
-use alvr_packets::{
-    BatteryPacket, ButtonEntry, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig,
-};
+use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
+use connection::{CONNECTION_RUNTIME, STATISTICS_SENDER, TRACKING_SENDER};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
@@ -48,10 +47,6 @@ use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
 
-static TRACKING_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
-    Lazy::new(|| Mutex::new(None));
-static STATISTICS_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
-    Lazy::new(|| Mutex::new(None));
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
@@ -176,8 +171,14 @@ pub fn send_buttons(entries: Vec<ButtonEntry>) {
 }
 
 pub fn send_tracking(tracking: Tracking) {
-    if let Some(sender) = &*TRACKING_CHANNEL_SENDER.lock() {
-        sender.send(tracking).ok();
+    if let (Some(runtime), Some(sender)) =
+        (&*CONNECTION_RUNTIME.read(), &mut *TRACKING_SENDER.lock())
+    {
+        runtime.block_on(sender.send(&tracking, vec![])).ok();
+
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_input_acquired(tracking.target_timestamp);
+        }
     }
 }
 
@@ -201,9 +202,11 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_submit(target_timestamp, vsync_queue);
 
-        if let Some(sender) = &*STATISTICS_CHANNEL_SENDER.lock() {
+        if let (Some(runtime), Some(sender)) =
+            (&*CONNECTION_RUNTIME.read(), &mut *STATISTICS_SENDER.lock())
+        {
             if let Some(stats) = stats.summary(target_timestamp) {
-                sender.send(stats).ok();
+                runtime.block_on(sender.send(&stats, vec![])).ok();
             } else {
                 error!("Statistics summary not ready!");
             }

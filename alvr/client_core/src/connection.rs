@@ -11,7 +11,9 @@ use crate::{
     TRACKING_CHANNEL_SENDER,
 };
 use alvr_audio::AudioDevice;
-use alvr_common::{glam::UVec2, prelude::*, ALVR_VERSION};
+use alvr_common::{
+    glam::UVec2, once_cell::sync::Lazy, parking_lot::RwLock, prelude::*, ALVR_VERSION,
+};
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, Haptics, ServerControlPacket, StreamConfigPacket,
     VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
@@ -23,11 +25,7 @@ use alvr_sockets::{
 use futures::future::BoxFuture;
 use serde_json as json;
 use std::{collections::HashMap, future, sync::Arc, thread, time::Duration};
-use tokio::{
-    runtime::Runtime,
-    sync::{mpsc as tmpsc, Mutex},
-    time,
-};
+use tokio::{runtime::Runtime, sync::mpsc as tmpsc, time};
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -55,6 +53,8 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
+pub static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
+
 fn set_hud_message(message: &str) {
     let message = format!(
         "ALVR v{}\nhostname: {}\nIP: {}\n\n{message}",
@@ -74,17 +74,13 @@ pub fn connection_lifecycle_loop(
 ) -> IntResult {
     set_hud_message(INITIAL_MESSAGE);
 
-    let decoder_guard = Arc::new(Mutex::new(()));
-
     loop {
         check_interrupt!(IS_ALIVE.value());
 
         if IS_RESUMED.value() {
-            if let Err(e) = connection_pipeline(
-                recommended_view_resolution,
-                supported_refresh_rates.clone(),
-                Arc::clone(&decoder_guard),
-            ) {
+            if let Err(e) =
+                connection_pipeline(recommended_view_resolution, supported_refresh_rates.clone())
+            {
                 match e {
                     InterruptibleError::Interrupted => return Ok(()),
                     InterruptibleError::Other(_) => {
@@ -104,7 +100,6 @@ pub fn connection_lifecycle_loop(
 fn connection_pipeline(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
-    decoder_guard: Arc<Mutex<()>>,
 ) -> IntResult {
     let runtime = Runtime::new().map_err(to_int_e!())?;
 
@@ -213,7 +208,7 @@ fn connection_pipeline(
     ));
 
     let (control_sender, mut control_receiver) = proto_control_socket.split();
-    let control_sender = Arc::new(Mutex::new(control_sender));
+    let control_sender = Arc::new(tokio::sync::Mutex::new(control_sender));
 
     match runtime.block_on(async {
         tokio::select! {
@@ -364,33 +359,11 @@ fn connection_pipeline(
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
     // function MUST be infallible
     IS_STREAMING.set(true);
+    *CONNECTION_RUNTIME.write() = Some(runtime);
+
+    EVENT_QUEUE.lock().push_back(streaming_start_event);
 
     let video_receive_loop = async move {
-        let _decoder_guard = decoder_guard.lock().await;
-
-        // close stream on Drop (manual disconnection or execution canceling)
-        struct StreamCloseGuard;
-
-        impl Drop for StreamCloseGuard {
-            fn drop(&mut self) {
-                EVENT_QUEUE
-                    .lock()
-                    .push_back(ClientCoreEvent::StreamingStopped);
-
-                IS_STREAMING.set(false);
-
-                #[cfg(target_os = "android")]
-                {
-                    *crate::decoder::DECODER_ENQUEUER.lock() = None;
-                    *crate::decoder::DECODER_DEQUEUER.lock() = None;
-                }
-            }
-        }
-
-        let _stream_guard = StreamCloseGuard;
-
-        EVENT_QUEUE.lock().push_back(streaming_start_event);
-
         let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
         loop {
@@ -530,34 +503,47 @@ fn connection_pipeline(
 
     let receive_loop = async move { stream_socket.receive_loop().await };
 
-    runtime
-        .block_on(async {
-            // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
-            tokio::select! {
-                res = spawn_cancelable(receive_loop) => {
-                    if let Err(e) = res {
-                        info!("Server disconnected. Cause: {e}");
-                    }
-                    set_hud_message(
-                        SERVER_DISCONNECTED_MESSAGE
-                    );
+    let res = CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
+        // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
+        tokio::select! {
+            res = spawn_cancelable(receive_loop) => {
+                if let Err(e) = res {
+                    info!("Server disconnected. Cause: {e}");
+                }
+                set_hud_message(
+                    SERVER_DISCONNECTED_MESSAGE
+                );
 
-                    Ok(())
-                },
-                res = spawn_cancelable(game_audio_loop) => res,
-                res = spawn_cancelable(microphone_loop) => res,
-                res = spawn_cancelable(tracking_send_loop) => res,
-                res = spawn_cancelable(statistics_send_loop) => res,
-                res = spawn_cancelable(video_receive_loop) => res,
-                res = spawn_cancelable(haptics_receive_loop) => res,
-                res = spawn_cancelable(control_send_loop) => res,
+                Ok(())
+            },
+            res = spawn_cancelable(game_audio_loop) => res,
+            res = spawn_cancelable(microphone_loop) => res,
+            res = spawn_cancelable(tracking_send_loop) => res,
+            res = spawn_cancelable(statistics_send_loop) => res,
+            res = spawn_cancelable(video_receive_loop) => res,
+            res = spawn_cancelable(haptics_receive_loop) => res,
+            res = spawn_cancelable(control_send_loop) => res,
 
-                // keep these loops on the current task
-                res = keepalive_sender_loop => res,
-                res = control_receive_loop => res,
+            // keep these loops on the current task
+            res = keepalive_sender_loop => res,
+            res = control_receive_loop => res,
 
-                _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
-            }
-        })
-        .map_err(to_int_e!())
+            _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
+        }
+    });
+
+    IS_STREAMING.set(false);
+    CONNECTION_RUNTIME.write().take();
+
+    EVENT_QUEUE
+        .lock()
+        .push_back(ClientCoreEvent::StreamingStopped);
+
+    #[cfg(target_os = "android")]
+    {
+        *crate::decoder::DECODER_ENQUEUER.lock() = None;
+        *crate::decoder::DECODER_DEQUEUER.lock() = None;
+    }
+
+    res.map_err(to_int_e!())
 }

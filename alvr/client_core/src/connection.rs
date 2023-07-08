@@ -29,6 +29,8 @@ use std::{
     sync::Arc,
     thread,
     time::{Duration, Instant},
+    net::TcpStream,
+    io::{Read, Write},
 };
 use tokio::{
     runtime::Runtime,
@@ -337,6 +339,31 @@ async fn stream_pipeline(
             Ok(())
         }
     };
+    //bandwidth packet recev (wz) wz bandwidth
+    let bandwidth_packet_loop={
+        let mut stream = TcpStream::connect(server_ip.to_string()+":8080").unwrap();
+        println!("{}",server_ip.to_string()+":8080");
+        async move {
+            // receive and respond to multiple probe packets
+            //let num_packets = 10;
+            let packet_size = 100;
+            let mut recv_packet = vec![0; packet_size];
+            //let mut send_packet = vec![0; packet_size];
+
+            loop{
+                // receive the probe packet from the server
+                stream.read_exact(&mut recv_packet).unwrap();
+
+                // send the probe packet back to the server
+                stream.write_all(&recv_packet).unwrap();
+    
+                //println!("Packet {} received and responded", i);
+            } 
+            
+        }
+        
+    };
+
 
     IS_STREAMING.set(true);
 
@@ -372,7 +399,12 @@ async fn stream_pipeline(
 
             let mut receiver_buffer = ReceiverBuffer::new();
             let mut stream_corrupted = false;
+            //calculate packet loss rate
+            let mut total_packets = 0;
+            let mut lost_packets = 0;
+            let mut last_time = Instant::now();
             loop {
+                //在这里放置一个timer，每秒积累loss值÷总数得到packetlossrate，在statistics中添加report plr 用对应的timestamp找到对应的frame的clientstats中存入plr send回server，÷0的情况
                 receiver.recv_buffer(&mut receiver_buffer).await?;
                 let (header, nal) = receiver_buffer.get()?;
 
@@ -381,6 +413,7 @@ async fn stream_pipeline(
                 }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                    total_packets+=1;
                     stats.report_video_packet_received(header.timestamp);
                 }
 
@@ -388,10 +421,28 @@ async fn stream_pipeline(
                     stream_corrupted = false;
                 } else if receiver_buffer.had_packet_loss() {
                     stream_corrupted = true;
+                    lost_packets+=1;
                     if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
                         sender.send(ClientControlPacket::RequestIdr).ok();
                     }
                     warn!("Network dropped video packet");
+                }
+                let elapsed = last_time.elapsed();
+                if elapsed >= Duration::from_millis(300) {
+                    let mut packet_loss_rate=0.0;
+                    if total_packets!=0{
+                        packet_loss_rate = lost_packets as f64 / total_packets as f64;
+                    }
+                    
+                    //println!("Packet loss rate: {:.2}%", packet_loss_rate * 100.0);
+                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        
+                        stats.report_plr(header.timestamp, packet_loss_rate);
+                    }
+                    // Reset counters and timer
+                    total_packets = 0;
+                    lost_packets = 0;
+                    last_time = Instant::now();
                 }
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
@@ -561,6 +612,7 @@ async fn stream_pipeline(
         res = spawn_cancelable(video_receive_loop) => res,
         res = spawn_cancelable(haptics_receive_loop) => res,
         res = spawn_cancelable(control_send_loop) => res,
+        res = spawn_cancelable(bandwidth_packet_loop) => res,//wz
 
         // keep these loops on the current task
         res = keepalive_sender_loop => res,

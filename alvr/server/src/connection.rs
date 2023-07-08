@@ -38,7 +38,10 @@ use std::{
     ptr,
     sync::{mpsc as smpsc, Arc},
     thread,
-    time::Duration,
+    time::{Duration,SystemTime, UNIX_EPOCH},
+    net::{TcpListener, TcpStream},
+    io::{Read, Write},
+
 };
 use tokio::{
     runtime::Runtime,
@@ -538,6 +541,7 @@ fn create_csv_file(filename: &str) -> Result<(), Box<dyn Error>> {
         "network latency",
         "total pipeline latency",
         "bitrate(bps)",
+        "plr",
     ])?;
 
     Ok(())
@@ -578,8 +582,8 @@ async fn connection_pipeline(
             client_ip,
             settings.connection.stream_port,
             settings.connection.stream_protocol,
-            settings.connection.server_send_buffer_bytes,
-            settings.connection.server_recv_buffer_bytes,
+            settings.connection.server_send_buffer_bytes,//wuze_send_size
+            settings.connection.server_recv_buffer_bytes,//wuze_recev_size
             settings.connection.packet_size as _,
         ) => res?,
         _ = time::sleep(Duration::from_secs(5)) => {
@@ -917,7 +921,7 @@ async fn connection_pipeline(
             }
         }
     };
-
+    let mut bandwidth_global=u64::default();
     let statistics_receive_loop = {
         let mut receiver = stream_socket
             .subscribe_to_stream::<ClientStatistics>(STATISTICS)
@@ -934,7 +938,7 @@ async fn connection_pipeline(
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
                     let params=BITRATE_MANAGER.lock().get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate);
-                    let network_latency = stats.report_statistics(client_stats,params.bitrate_bps);
+                    let network_latency = stats.report_statistics(client_stats,params.bitrate_bps,bandwidth_global);
 
                     BITRATE_MANAGER.lock().report_frame_latencies(
                         &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
@@ -943,6 +947,44 @@ async fn connection_pipeline(
                         decoder_latency,
                     );
                 }
+            }
+        }
+    };
+    //wz bandwidth
+    let bandwidth_packet_send_loop={
+        let listener = TcpListener::bind("0.0.0.0:8080").unwrap();
+        
+        // send a probe packet with a payload size of 100 bytes
+        let probe_packet = vec![0; 100];
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut file = File::create("bandwidth.csv").unwrap();
+        async move {
+            loop {
+                
+
+                // record the timestamp of the sent packet
+                let send_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros() as u64;
+
+                // send the probe packet to the client
+                stream.write_all(&probe_packet).unwrap();
+
+                // receive the probe packet back from the client
+                let mut recv_packet = vec![0; 100];
+                stream.read_exact(&mut recv_packet).unwrap();
+
+                // record the timestamp of the received packet
+                let recv_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_micros() as u64;
+
+                // calculate the inter-arrival time
+                let inter_arrival_time = recv_time - send_time;
+
+                // calculate the available bandwidth in bits per second
+                let payload_size = probe_packet.len() as u64;
+                let bandwidth = (payload_size * 8 * 1_000_000) / inter_arrival_time;
+
+                println!("Available bandwidth: {} bps", bandwidth);
+                bandwidth_global=bandwidth;
+                writeln!(file, "{}", bandwidth).unwrap();
             }
         }
     };
@@ -1108,6 +1150,7 @@ async fn connection_pipeline(
         res = spawn_cancelable(statistics_receive_loop) => res,
         res = spawn_cancelable(haptics_send_loop) => res,
         res = spawn_cancelable(tracking_receive_loop) => res,
+        res = spawn_cancelable(bandwidth_packet_send_loop) => res,//wz
 
         // Leave these loops on the current task
         res = keepalive_loop => res,

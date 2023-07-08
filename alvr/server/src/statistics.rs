@@ -38,7 +38,7 @@ impl Default for HistoryFrame {
     }
 }
 
-fn write_latency_to_csv(filename: &str, latency_values: [String; 7]) -> Result<(), Box<dyn Error>> {
+fn write_latency_to_csv(filename: &str, latency_values: [String; 9]) -> Result<(), Box<dyn Error>> {
     let mut file = OpenOptions::new().write(true).append(true).open(filename)?;
     let mut writer = Writer::from_writer(file);
 
@@ -51,6 +51,8 @@ fn write_latency_to_csv(filename: &str, latency_values: [String; 7]) -> Result<(
         &latency_values[4],
         &latency_values[5],
         &latency_values[6],
+        &latency_values[7],
+        &latency_values[8],
     ])?;
 
     Ok(())
@@ -179,7 +181,8 @@ impl StatisticsManager {
 
     // Called every frame. Some statistics are reported once every frame
     // Returns network latency
-    pub fn report_statistics(&mut self, client_stats: ClientStatistics,current_bitrate:u64) -> Duration {
+    pub fn report_statistics(&mut self, client_stats: ClientStatistics,current_bitrate:u64,bandwidth:u64) -> Duration {
+        //在这里接收clientstatistics中如果有plr则output到csvfile中
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -275,7 +278,7 @@ impl StatisticsManager {
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.
 
-            let mut file=OpenOptions::new().append(true).write(true).open(r"C:\Users\13513\Desktop\extract_data1.txt").unwrap();
+            //let mut file=OpenOptions::new().append(true).write(true).open(r"C:\Users\13513\Desktop\extract_data1.txt").unwrap();
 
             let mut interval_trackingReceived_framePresentInVirtualDevice=(game_time_latency.as_secs_f32()*1000.).to_string();//game latency
             let mut interval_framePresentInVirtualDevice_frameComposited=(server_compositor_latency.as_secs_f32()*1000.).to_string();//composite latency
@@ -283,8 +286,15 @@ impl StatisticsManager {
             let mut interval_VideoReceivedByClient_VideoDecoded=(client_stats.video_decode.as_secs_f32() * 1000.).to_string();//decode latency
             let mut interval_network=((network_latency.as_secs_f32()*1000.).to_string());//network latency(interval_trackingsend_trackingreceived+interval_encodedVideoSend_encodedVideoReceived)
             let mut interval_total_pipeline=(client_stats.total_pipeline_latency.as_secs_f32() * 1000.).to_string();//total pipeline latency
-            let mut bitrate_statistics=current_bitrate.to_string()+"\t";//bitrate bps
-            let latency_strings=[interval_trackingReceived_framePresentInVirtualDevice,interval_framePresentInVirtualDevice_frameComposited,interval_frameComposited_VideoEncoded,interval_VideoReceivedByClient_VideoDecoded,interval_network,interval_total_pipeline,bitrate_statistics];
+            let mut bitrate_statistics=current_bitrate.to_string();//bitrate bps
+            let mut plr="interval".to_string();
+            if client_stats.flag_plr{
+                plr=(client_stats.plr*100.0).to_string()+"%";//pakcet loss rate record every second
+            }
+            //let mut bdw=bandwidth.to_string();
+            //let mut plr=(client_stats.plr*100.0).to_string()+"%"+"\t";//pakcet loss rate record every second
+            let mut bdw=(current_bitrate as f64)/(1.0-client_stats.plr)/((network_latency.as_secs_f32()*1000.)as f64);//bitrate/(1-plr)/network latency
+            let latency_strings=[interval_trackingReceived_framePresentInVirtualDevice,interval_framePresentInVirtualDevice_frameComposited,interval_frameComposited_VideoEncoded,interval_VideoReceivedByClient_VideoDecoded,interval_network,interval_total_pipeline,bitrate_statistics,plr,bdw.to_string()];
             write_latency_to_csv("statistics.csv", latency_strings);
             //let mut params=BITRATE_MANAGER.lock().get_encoder_params(config);
 

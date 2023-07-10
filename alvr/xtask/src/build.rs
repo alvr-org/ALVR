@@ -143,6 +143,11 @@ pub fn build_streamer(
             build_layout.vrcompositor_wrapper(),
         )
         .unwrap();
+        sh.copy_file(
+            artifacts_dir.join("alvr_drm_lease_shim.so"),
+            build_layout.drm_lease_shim(),
+        )
+        .unwrap();
 
         // build vulkan layer
         let _push_guard = sh.push_dir(afs::crate_dir("vulkan_layer"));

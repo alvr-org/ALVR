@@ -49,7 +49,7 @@ static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(||
 
 static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static DISCONNECT_SERVER_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));

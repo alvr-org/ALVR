@@ -7,8 +7,8 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG,
-    DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, SHUTDOWN_NOTIFIER,
-    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
+    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -1032,6 +1032,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
+    let lifecycle_check_thread = thread::spawn(|| {
+        while SHOULD_CONNECT_TO_CLIENTS.value() && CONNECTION_RUNTIME.read().is_some() {
+            thread::sleep(Duration::from_millis(500));
+        }
+
+        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+    });
+
     {
         let on_connect_script = settings.connection.on_connect_script;
 
@@ -1059,12 +1067,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     thread::spawn(move || {
         let _connection_drop_guard = _connection_drop_guard;
-
-        let shutdown_detector = async {
-            while SHOULD_CONNECT_TO_CLIENTS.value() {
-                time::sleep(Duration::from_secs(1)).await;
-            }
-        };
 
         let res = CONNECTION_RUNTIME
             .read()
@@ -1094,9 +1096,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
                         Ok(())
                     }
-                    _ = SHUTDOWN_NOTIFIER.notified() => Ok(()),
                     _ = DISCONNECT_CLIENT_NOTIFIER.notified() => Ok(()),
-                    _ = shutdown_detector => Ok(()),
                 }
             });
         if let Err(e) = res {
@@ -1104,9 +1104,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
 
         // This requests shutdown from threads
+        *CONNECTION_RUNTIME.write() = None;
         *VIDEO_CHANNEL_SENDER.lock() = None;
         *HAPTICS_SENDER.lock() = None;
-        *CONNECTION_RUNTIME.write() = None;
 
         *VIDEO_RECORDING_FILE.lock() = None;
 
@@ -1134,6 +1134,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         statistics_thread.join().ok();
         control_thread.join().ok();
         keepalive_thread.join().ok();
+        lifecycle_check_thread.join().ok();
     });
 
     Ok(())

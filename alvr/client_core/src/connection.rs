@@ -6,7 +6,7 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
+    ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_SERVER_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
     IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
 };
 use alvr_audio::AudioDevice;
@@ -348,13 +348,9 @@ fn connection_pipeline(
     let video_receive_loop = async move {
         let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
-        loop {
+        while IS_STREAMING.value() {
             video_receiver.recv_buffer(&mut receiver_buffer).await?;
             let (header, nal) = receiver_buffer.get()?;
-
-            if !IS_RESUMED.value() {
-                break Ok(());
-            }
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet_received(header.timestamp);
@@ -382,6 +378,8 @@ fn connection_pipeline(
                 warn!("Dropped video packet. Reason: Waiting for IDR frame")
             }
         }
+
+        Ok(())
     };
 
     let haptics_receive_loop = async move {
@@ -485,6 +483,14 @@ fn connection_pipeline(
 
     let receive_loop = async move { stream_socket.receive_loop().await };
 
+    let lifecycle_check_thread = thread::spawn(|| {
+        while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
+            thread::sleep(Duration::from_millis(100));
+        }
+
+        DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+    });
+
     let res = CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
         // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
         tokio::select! {
@@ -508,7 +514,7 @@ fn connection_pipeline(
             res = keepalive_sender_loop => res,
             res = control_receive_loop => res,
 
-            _ = DISCONNECT_NOTIFIER.notified() => Ok(()),
+            _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
         }
     });
 
@@ -526,6 +532,8 @@ fn connection_pipeline(
         *crate::decoder::DECODER_ENQUEUER.lock() = None;
         *crate::decoder::DECODER_DEQUEUER.lock() = None;
     }
+
+    lifecycle_check_thread.join().ok();
 
     res.map_err(to_int_e!())
 }

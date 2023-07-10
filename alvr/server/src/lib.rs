@@ -82,7 +82,6 @@ static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new
 
 static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static SHUTDOWN_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -167,7 +166,7 @@ pub extern "C" fn shutdown_driver() {
         }
     }
 
-    SHUTDOWN_NOTIFIER.notify_waiters();
+    DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
 
     // apply openvr config for the next launch
     SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();

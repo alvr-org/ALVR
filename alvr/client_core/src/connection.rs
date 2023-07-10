@@ -29,7 +29,13 @@ use alvr_sockets::{
 };
 use futures::future::BoxFuture;
 use serde_json as json;
-use std::{collections::HashMap, future, sync::Arc, thread, time::Duration};
+use std::{
+    collections::HashMap,
+    future,
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 use tokio::{runtime::Runtime, sync::mpsc as tmpsc, time};
 
 #[cfg(target_os = "android")]
@@ -427,8 +433,6 @@ fn connection_pipeline(
     // Poll for events that need a constant thread (mainly for the JNI env)
     #[cfg(target_os = "android")]
     thread::spawn(|| {
-        use std::time::Instant;
-
         const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(5);
 
         let mut previous_hmd_battery_status = (0.0, false);
@@ -461,25 +465,37 @@ fn connection_pipeline(
         }
     });
 
-    let keepalive_sender_loop = {
+    let keepalive_sender_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
-        async move {
+        move || {
+            let mut deadline = Instant::now();
             loop {
-                let res = control_sender
-                    .lock()
-                    .await
-                    .send(&ClientControlPacket::KeepAlive)
-                    .await;
-                if let Err(e) = res {
-                    info!("Server disconnected. Cause: {e}");
-                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                    break Ok(());
+                if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                    let res = runtime.block_on(async {
+                        control_sender
+                            .lock()
+                            .await
+                            .send(&ClientControlPacket::KeepAlive)
+                            .await
+                    });
+                    if let Err(e) = res {
+                        info!("Server disconnected. Cause: {e}");
+                        set_hud_message(SERVER_DISCONNECTED_MESSAGE);
+                        DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+
+                        return;
+                    }
+                } else {
+                    return;
                 }
 
-                time::sleep(NETWORK_KEEPALIVE_INTERVAL).await;
+                deadline += NETWORK_KEEPALIVE_INTERVAL;
+                while Instant::now() < deadline && IS_STREAMING.value() {
+                    thread::sleep(Duration::from_millis(500));
+                }
             }
         }
-    };
+    });
 
     let control_send_loop = async move {
         while let Some(packet) = control_channel_receiver.recv().await {
@@ -514,7 +530,7 @@ fn connection_pipeline(
 
     let lifecycle_check_thread = thread::spawn(|| {
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(500));
         }
 
         DISCONNECT_SERVER_NOTIFIER.notify_waiters();
@@ -537,8 +553,6 @@ fn connection_pipeline(
             res = spawn_cancelable(microphone_loop) => res,
             res = spawn_cancelable(control_send_loop) => res,
 
-            // keep these loops on the current task
-            res = keepalive_sender_loop => res,
             res = control_receive_loop => res,
 
             _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
@@ -562,6 +576,7 @@ fn connection_pipeline(
 
     video_receive_thread.join().ok();
     haptics_receive_thread.join().ok();
+    keepalive_sender_thread.join().ok();
     lifecycle_check_thread.join().ok();
 
     res.map_err(to_int_e!())

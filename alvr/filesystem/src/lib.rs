@@ -246,7 +246,7 @@ impl Layout {
     pub fn vrcompositor_wrapper(&self) -> PathBuf {
         self.vrcompositor_wrapper_dir.join("vrcompositor-wrapper")
     }
-    
+
     pub fn drm_lease_shim(&self) -> PathBuf {
         self.vrcompositor_wrapper_dir.join("alvr_drm_lease_shim.so")
     }

@@ -1,5 +1,3 @@
-use alvr_filesystem;
-
 #[cfg(target_os = "linux")]
 fn main() {
     let argv0 = std::env::args().next().unwrap();

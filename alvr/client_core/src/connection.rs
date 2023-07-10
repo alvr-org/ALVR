@@ -6,8 +6,7 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, CONTROL_CHANNEL_SENDER, DISCONNECT_SERVER_NOTIFIER, EVENT_QUEUE, IS_ALIVE,
-    IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
+    ClientCoreEvent, EVENT_QUEUE, IS_ALIVE, IS_RESUMED, IS_STREAMING, STATISTICS_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -32,11 +31,11 @@ use serde_json as json;
 use std::{
     collections::HashMap,
     future,
-    sync::Arc,
+    sync::{mpsc, Arc},
     thread,
     time::{Duration, Instant},
 };
-use tokio::{runtime::Runtime, sync::mpsc as tmpsc, time};
+use tokio::{runtime::Runtime, sync::Notify, time};
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -64,10 +63,17 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
+static DISCONNECT_SERVER_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+
 pub static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
 pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
+    Lazy::new(|| Mutex::new(None));
+
+// Note: the ControlSocketSender cannot be shared directly. this is because it is used inside the
+// logging callback and that could lead to double lock.
+pub static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::Sender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 
 fn set_hud_message(message: &str) {
@@ -224,8 +230,7 @@ fn connection_pipeline(
         },
     ));
 
-    let (control_sender, mut control_receiver) = proto_control_socket.split();
-    let control_sender = Arc::new(tokio::sync::Mutex::new(control_sender));
+    let (mut control_sender, mut control_receiver) = proto_control_socket.split();
 
     match runtime.block_on(async {
         tokio::select! {
@@ -267,13 +272,7 @@ fn connection_pipeline(
         }
     })?;
 
-    if let Err(e) = runtime.block_on(async {
-        control_sender
-            .lock()
-            .await
-            .send(&ClientControlPacket::StreamReady)
-            .await
-    }) {
+    if let Err(e) = runtime.block_on(control_sender.send(&ClientControlPacket::StreamReady)) {
         info!("Server disconnected. Cause: {e}");
         set_hud_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
@@ -293,10 +292,6 @@ fn connection_pipeline(
     let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
-
-    // create this before initializing the stream on cpp side
-    let (control_channel_sender, mut control_channel_receiver) = tmpsc::unbounded_channel();
-    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
     {
         let config = &mut *DECODER_INIT_CONFIG.lock();
@@ -348,6 +343,9 @@ fn connection_pipeline(
     *CONNECTION_RUNTIME.write() = Some(runtime);
     *TRACKING_SENDER.lock() = Some(tracking_sender);
     *STATISTICS_SENDER.lock() = Some(statistics_sender);
+
+    let (control_channel_sender, control_channel_receiver) = mpsc::channel();
+    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
 
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -465,33 +463,29 @@ fn connection_pipeline(
         }
     });
 
-    let keepalive_sender_thread = thread::spawn({
-        let control_sender = Arc::clone(&control_sender);
-        move || {
-            let mut deadline = Instant::now();
-            loop {
-                if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                    let res = runtime.block_on(async {
-                        control_sender
-                            .lock()
-                            .await
-                            .send(&ClientControlPacket::KeepAlive)
-                            .await
-                    });
-                    if let Err(e) = res {
-                        info!("Server disconnected. Cause: {e}");
-                        set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                        DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+    let keepalive_sender_thread = thread::spawn(move || {
+        let mut deadline = Instant::now();
+        while IS_STREAMING.value() {
+            if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+                sender.send(ClientControlPacket::KeepAlive).ok();
+            }
 
-                        return;
-                    }
-                } else {
+            deadline += NETWORK_KEEPALIVE_INTERVAL;
+            while Instant::now() < deadline && IS_STREAMING.value() {
+                thread::sleep(Duration::from_millis(500));
+            }
+        }
+    });
+
+    let control_send_thread = thread::spawn(move || {
+        while let Ok(packet) = control_channel_receiver.recv() {
+            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                if let Err(e) = runtime.block_on(control_sender.send(&packet)) {
+                    info!("Server disconnected. Cause: {e}");
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
+                    DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+
                     return;
-                }
-
-                deadline += NETWORK_KEEPALIVE_INTERVAL;
-                while Instant::now() < deadline && IS_STREAMING.value() {
-                    thread::sleep(Duration::from_millis(500));
                 }
             }
         }
@@ -532,14 +526,6 @@ fn connection_pipeline(
         }
     });
 
-    let control_send_loop = async move {
-        while let Some(packet) = control_channel_receiver.recv().await {
-            control_sender.lock().await.send(&packet).await.ok();
-        }
-
-        Ok(())
-    };
-
     let receive_loop = async move { stream_socket.receive_loop().await };
 
     let lifecycle_check_thread = thread::spawn(|| {
@@ -565,7 +551,6 @@ fn connection_pipeline(
             },
             res = spawn_cancelable(game_audio_loop) => res,
             res = spawn_cancelable(microphone_loop) => res,
-            res = spawn_cancelable(control_send_loop) => res,
 
             _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
         }
@@ -575,6 +560,7 @@ fn connection_pipeline(
     *CONNECTION_RUNTIME.write() = None;
     *TRACKING_SENDER.lock() = None;
     *STATISTICS_SENDER.lock() = None;
+    *CONTROL_CHANNEL_SENDER.lock() = None;
 
     EVENT_QUEUE
         .lock()
@@ -589,6 +575,7 @@ fn connection_pipeline(
     video_receive_thread.join().ok();
     haptics_receive_thread.join().ok();
     control_receive_thread.join().ok();
+    control_send_thread.join().ok();
     keepalive_sender_thread.join().ok();
     lifecycle_check_thread.join().ok();
 

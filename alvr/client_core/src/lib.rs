@@ -33,7 +33,7 @@ use alvr_common::{
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
-use connection::{CONNECTION_RUNTIME, STATISTICS_SENDER, TRACKING_SENDER};
+use connection::{CONNECTION_RUNTIME, CONTROL_CHANNEL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
@@ -43,13 +43,8 @@ use std::{
     time::Duration,
 };
 use storage::Config;
-use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
-
-static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-static DISCONNECT_SERVER_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));

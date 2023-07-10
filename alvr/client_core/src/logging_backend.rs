@@ -1,4 +1,4 @@
-use crate::CONTROL_CHANNEL_SENDER;
+use crate::connection::CONTROL_CHANNEL_SENDER;
 use alvr_common::{
     log::{Level, Record},
     once_cell::sync::Lazy,

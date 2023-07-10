@@ -345,12 +345,30 @@ fn connection_pipeline(
 
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
-    let video_receive_loop = async move {
+    let video_receive_thread = thread::spawn(move || {
         let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
-        while IS_STREAMING.value() {
-            video_receiver.recv_buffer(&mut receiver_buffer).await?;
-            let (header, nal) = receiver_buffer.get()?;
+        loop {
+            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                let res = runtime.block_on(async {
+                    tokio::select! {
+                        res = video_receiver.recv_buffer(&mut receiver_buffer) => Some(res),
+                        _ = time::sleep(Duration::from_secs(1)) => None,
+                    }
+                });
+
+                match res {
+                    Some(Ok(())) => (),
+                    Some(Err(_)) => return,
+                    None => continue,
+                }
+            } else {
+                return;
+            }
+
+            let Ok((header, nal)) = receiver_buffer.get() else {
+                return
+            };
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                 stats.report_video_packet_received(header.timestamp);
@@ -378,22 +396,33 @@ fn connection_pipeline(
                 warn!("Dropped video packet. Reason: Waiting for IDR frame")
             }
         }
+    });
 
-        Ok(())
-    };
-
-    let haptics_receive_loop = async move {
-        loop {
-            let haptics = haptics_receiver.recv_header_only().await?;
-
-            EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-                device_id: haptics.device_id,
-                duration: haptics.duration,
-                frequency: haptics.frequency,
-                amplitude: haptics.amplitude,
+    let haptics_receive_thread = thread::spawn(move || loop {
+        let haptics = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+            let res = runtime.block_on(async {
+                tokio::select! {
+                    res = haptics_receiver.recv_header_only() => Some(res),
+                    _ = time::sleep(Duration::from_secs(1)) => None,
+                }
             });
-        }
-    };
+
+            match res {
+                Some(Ok(packet)) => packet,
+                Some(Err(_)) => return,
+                None => continue,
+            }
+        } else {
+            return;
+        };
+
+        EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
+            device_id: haptics.device_id,
+            duration: haptics.duration,
+            frequency: haptics.frequency,
+            amplitude: haptics.amplitude,
+        });
+    });
 
     // Poll for events that need a constant thread (mainly for the JNI env)
     #[cfg(target_os = "android")]
@@ -506,8 +535,6 @@ fn connection_pipeline(
             },
             res = spawn_cancelable(game_audio_loop) => res,
             res = spawn_cancelable(microphone_loop) => res,
-            res = spawn_cancelable(video_receive_loop) => res,
-            res = spawn_cancelable(haptics_receive_loop) => res,
             res = spawn_cancelable(control_send_loop) => res,
 
             // keep these loops on the current task
@@ -533,6 +560,8 @@ fn connection_pipeline(
         *crate::decoder::DECODER_DEQUEUER.lock() = None;
     }
 
+    video_receive_thread.join().ok();
+    haptics_receive_thread.join().ok();
     lifecycle_check_thread.join().ok();
 
     res.map_err(to_int_e!())

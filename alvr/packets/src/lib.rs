@@ -54,7 +54,7 @@ pub enum ServerControlPacket {
     InitializeDecoder(DecoderInitializationConfig),
     Restarting,
     KeepAlive,
-    ServerPredictionAverage(Duration),
+    ServerPredictionAverage(Duration), // todo: remove
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }

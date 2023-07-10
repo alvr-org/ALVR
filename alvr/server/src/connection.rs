@@ -667,7 +667,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
     let video_send_thread = thread::spawn(move || loop {
         let VideoPacket { header, payload } =
-            match video_channel_receiver.recv_timeout(Duration::from_millis(100)) {
+            match video_channel_receiver.recv_timeout(Duration::from_millis(500)) {
                 Ok(packet) => packet,
                 Err(RecvTimeoutError::Timeout) => continue,
                 Err(RecvTimeoutError::Disconnected) => return,
@@ -705,7 +705,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     let maybe_tracking = runtime.block_on(async {
                         tokio::select! {
                             res = tracking_receiver.recv_header_only() => Some(res),
-                            _ = time::sleep(Duration::from_millis(100)) => None,
+                            _ = time::sleep(Duration::from_millis(500)) => None,
                         }
                     });
                     match maybe_tracking {
@@ -823,7 +823,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             let maybe_client_stats = runtime.block_on(async {
                 tokio::select! {
                     res = statics_receiver.recv_header_only() => Some(res),
-                    _ = time::sleep(Duration::from_millis(100)) => None,
+                    _ = time::sleep(Duration::from_millis(500)) => None,
                 }
             });
             match maybe_client_stats {
@@ -892,7 +892,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 let maybe_packet = runtime.block_on(async {
                     tokio::select! {
                         res = control_receiver.recv() => Some(res),
-                        _ = time::sleep(Duration::from_millis(100)) => None,
+                        _ = time::sleep(Duration::from_millis(500)) => None,
                     }
                 });
                 match maybe_packet {

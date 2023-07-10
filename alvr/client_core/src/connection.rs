@@ -230,7 +230,7 @@ fn connection_pipeline(
     match runtime.block_on(async {
         tokio::select! {
             res = control_receiver.recv() => res,
-            _ = time::sleep(Duration::from_millis(1)) => fmt_e!("Timeout"),
+            _ = time::sleep(Duration::from_secs(1)) => fmt_e!("Timeout"),
         }
     }) {
         Ok(ServerControlPacket::StartStream) => {
@@ -263,7 +263,7 @@ fn connection_pipeline(
     let stream_socket_builder = runtime.block_on(async {
         tokio::select! {
             res = listen_for_server_future => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_millis(1)) => int_fmt_e!("Timeout while binding stream socket"),
+            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout while binding stream socket"),
         }
     })?;
 
@@ -359,7 +359,7 @@ fn connection_pipeline(
                 let res = runtime.block_on(async {
                     tokio::select! {
                         res = video_receiver.recv_buffer(&mut receiver_buffer) => Some(res),
-                        _ = time::sleep(Duration::from_secs(1)) => None,
+                        _ = time::sleep(Duration::from_millis(500)) => None,
                     }
                 });
 
@@ -409,7 +409,7 @@ fn connection_pipeline(
             let res = runtime.block_on(async {
                 tokio::select! {
                     res = haptics_receiver.recv_header_only() => Some(res),
-                    _ = time::sleep(Duration::from_secs(1)) => None,
+                    _ = time::sleep(Duration::from_millis(500)) => None,
                 }
             });
 
@@ -497,33 +497,47 @@ fn connection_pipeline(
         }
     });
 
+    let control_receive_thread = thread::spawn(move || loop {
+        let maybe_packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+            runtime.block_on(async {
+                tokio::select! {
+                    res = control_receiver.recv() => Some(res),
+                    _ = time::sleep(Duration::from_millis(500)) => None,
+                }
+            })
+        } else {
+            return;
+        };
+
+        match maybe_packet {
+            Some(Ok(ServerControlPacket::InitializeDecoder(config))) => {
+                decoder::create_decoder(config);
+            }
+            Some(Ok(ServerControlPacket::Restarting)) => {
+                info!("{SERVER_RESTART_MESSAGE}");
+                set_hud_message(SERVER_RESTART_MESSAGE);
+                DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+
+                return;
+            }
+            Some(Ok(_)) => (),
+            Some(Err(e)) => {
+                info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
+                set_hud_message(SERVER_DISCONNECTED_MESSAGE);
+                DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+
+                return;
+            }
+            None => (),
+        }
+    });
+
     let control_send_loop = async move {
         while let Some(packet) = control_channel_receiver.recv().await {
             control_sender.lock().await.send(&packet).await.ok();
         }
 
         Ok(())
-    };
-
-    let control_receive_loop = async move {
-        loop {
-            match control_receiver.recv().await {
-                Ok(ServerControlPacket::InitializeDecoder(config)) => {
-                    decoder::create_decoder(config);
-                }
-                Ok(ServerControlPacket::Restarting) => {
-                    info!("{SERVER_RESTART_MESSAGE}");
-                    set_hud_message(SERVER_RESTART_MESSAGE);
-                    break Ok(());
-                }
-                Ok(_) => (),
-                Err(e) => {
-                    info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
-                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                    break Ok(());
-                }
-            }
-        }
     };
 
     let receive_loop = async move { stream_socket.receive_loop().await };
@@ -553,16 +567,14 @@ fn connection_pipeline(
             res = spawn_cancelable(microphone_loop) => res,
             res = spawn_cancelable(control_send_loop) => res,
 
-            res = control_receive_loop => res,
-
             _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
         }
     });
 
     IS_STREAMING.set(false);
-    CONNECTION_RUNTIME.write().take();
-    TRACKING_SENDER.lock().take();
-    STATISTICS_SENDER.lock().take();
+    *CONNECTION_RUNTIME.write() = None;
+    *TRACKING_SENDER.lock() = None;
+    *STATISTICS_SENDER.lock() = None;
 
     EVENT_QUEUE
         .lock()
@@ -576,6 +588,7 @@ fn connection_pipeline(
 
     video_receive_thread.join().ok();
     haptics_receive_thread.join().ok();
+    control_receive_thread.join().ok();
     keepalive_sender_thread.join().ok();
     lifecycle_check_thread.join().ok();
 

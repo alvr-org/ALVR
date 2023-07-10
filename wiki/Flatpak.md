@@ -63,7 +63,13 @@ cd ALVR
 Once inside the repository, simply run the following command to build and install the Flatpak.
 
 ```
-flatpak run --command="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+```
+
+If ALVR is not cloned under the home directory, permission to access the directory may need to be given to the build command. An example of this is given below.
+
+```
+flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Notes

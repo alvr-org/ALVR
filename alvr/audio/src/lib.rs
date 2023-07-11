@@ -1,4 +1,8 @@
-use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
+use alvr_common::{
+    once_cell::sync::Lazy,
+    parking_lot::{Mutex, RwLock},
+    prelude::*,
+};
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
 };
@@ -12,8 +16,9 @@ use std::{
     collections::{HashMap, VecDeque},
     sync::{mpsc as smpsc, Arc},
     thread,
+    time::Duration,
 };
-use tokio::sync::mpsc as tmpsc;
+use tokio::{runtime::Runtime, sync::mpsc as tmpsc, time};
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
@@ -441,7 +446,8 @@ pub fn get_next_frame_batch(
 // underflow, overflow, packet loss). In case the computation takes too much time, the audio
 // callback will gracefully handle an interruption, and the callback timing and sound wave
 // continuity will not be affected.
-pub async fn receive_samples_loop(
+pub fn receive_samples_loop(
+    runtime: &RwLock<Option<Runtime>>,
     mut receiver: StreamReceiver<()>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
     channels_count: usize,
@@ -451,7 +457,22 @@ pub async fn receive_samples_loop(
     let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
     loop {
-        receiver.recv_buffer(&mut receiver_buffer).await?;
+        if let Some(runtime) = &*runtime.read() {
+            let res = runtime.block_on(async {
+                tokio::select! {
+                    res = receiver.recv_buffer(&mut receiver_buffer) => Some(res),
+                    _ = time::sleep(Duration::from_millis(500)) => None,
+                }
+            });
+            match res {
+                Some(Ok(())) => (),
+                Some(err_res) => return err_res.map_err(err!()),
+                None => continue,
+            }
+        } else {
+            return Ok(());
+        }
+
         let (_, packet) = receiver_buffer.get()?;
 
         let new_samples = packet
@@ -585,7 +606,8 @@ impl Iterator for StreamingSource {
     }
 }
 
-pub async fn play_audio_loop(
+pub fn play_audio_loop(
+    runtime: &RwLock<Option<Runtime>>,
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
@@ -601,34 +623,28 @@ pub async fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    // Store the stream in a thread (because !Send)
-    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
-    thread::spawn({
-        let sample_buffer = Arc::clone(&sample_buffer);
-        move || -> StrResult {
-            let (_stream, handle) = OutputStream::try_from_device(&device.inner).map_err(err!())?;
+    let (_stream, handle) = OutputStream::try_from_device(&device.inner).map_err(err!())?;
 
-            let source = StreamingSource {
-                sample_buffer,
-                current_batch: vec![],
-                current_batch_cursor: 0,
-                channels_count: channels_count as _,
-                sample_rate,
-                batch_frames_count,
-            };
-            handle.play_raw(source).map_err(err!())?;
-
-            shutdown_receiver.recv().ok();
-            Ok(())
-        }
-    });
+    handle
+        .play_raw(StreamingSource {
+            sample_buffer: Arc::clone(&sample_buffer),
+            current_batch: vec![],
+            current_batch_cursor: 0,
+            channels_count: channels_count as _,
+            sample_rate,
+            batch_frames_count,
+        })
+        .map_err(err!())?;
 
     receive_samples_loop(
+        runtime,
         receiver,
         sample_buffer,
         channels_count as _,
         batch_frames_count,
         average_buffer_frames_count,
     )
-    .await
+    .ok();
+
+    Ok(())
 }

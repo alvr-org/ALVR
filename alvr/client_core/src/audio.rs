@@ -1,5 +1,8 @@
 use alvr_audio::AudioDevice;
-use alvr_common::{parking_lot::Mutex, prelude::*};
+use alvr_common::{
+    parking_lot::{Mutex, RwLock},
+    prelude::*,
+};
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 use oboe::{
@@ -13,7 +16,7 @@ use std::{
     sync::{mpsc as smpsc, Arc},
     thread,
 };
-use tokio::sync::mpsc as tmpsc;
+use tokio::{runtime::Runtime, sync::mpsc as tmpsc};
 
 struct RecorderCallback {
     sender: tmpsc::UnboundedSender<Vec<u8>>,
@@ -115,7 +118,8 @@ impl AudioOutputCallback for PlayerCallback {
 }
 
 #[allow(unused_variables)]
-pub async fn play_audio_loop(
+pub fn play_audio_loop(
+    runtime: &RwLock<Option<Runtime>>,
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
@@ -134,45 +138,37 @@ pub async fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    // store the stream in a thread (because !Send) and extract the playback handle
-    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
-    thread::spawn({
-        let sample_buffer = Arc::clone(&sample_buffer);
-        move || -> StrResult {
-            let mut stream = AudioStreamBuilder::default()
-                .set_shared()
-                .set_performance_mode(PerformanceMode::LowLatency)
-                .set_sample_rate(sample_rate as _)
-                .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
-                .set_stereo()
-                .set_f32()
-                .set_frames_per_callback(batch_frames_count as _)
-                .set_output()
-                .set_usage(Usage::Game)
-                .set_callback(PlayerCallback {
-                    sample_buffer,
-                    batch_frames_count,
-                })
-                .open_stream()
-                .map_err(err!())?;
+    let mut stream = AudioStreamBuilder::default()
+        .set_shared()
+        .set_performance_mode(PerformanceMode::LowLatency)
+        .set_sample_rate(sample_rate as _)
+        .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
+        .set_stereo()
+        .set_f32()
+        .set_frames_per_callback(batch_frames_count as _)
+        .set_output()
+        .set_usage(Usage::Game)
+        .set_callback(PlayerCallback {
+            sample_buffer: Arc::clone(&sample_buffer),
+            batch_frames_count,
+        })
+        .open_stream()
+        .map_err(err!())?;
 
-            stream.start().map_err(err!())?;
-
-            shutdown_receiver.recv().ok();
-
-            // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
-            stream.stop_with_timeout(0).ok();
-
-            Ok(())
-        }
-    });
+    stream.start().map_err(err!())?;
 
     alvr_audio::receive_samples_loop(
+        runtime,
         receiver,
         sample_buffer,
         2,
         batch_frames_count,
         average_buffer_frames_count,
     )
-    .await
+    .ok();
+
+    // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
+    stream.stop_with_timeout(0).ok();
+
+    Ok(())
 }

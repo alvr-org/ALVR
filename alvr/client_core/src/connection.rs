@@ -301,27 +301,13 @@ fn connection_pipeline(
         config.options = settings.video.mediacodec_extra_options;
     }
 
-    let tracking_sender = stream_socket.request_stream(TRACKING);
-    let statistics_sender = stream_socket.request_stream(STATISTICS);
     let mut video_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO));
+    let game_audio_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
+    let tracking_sender = stream_socket.request_stream(TRACKING);
     let mut haptics_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<Haptics>(HAPTICS));
-
-    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None, None).map_err(to_int_e!())?;
-
-        let game_audio_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
-        Box::pin(audio::play_audio_loop(
-            device,
-            2,
-            game_audio_sample_rate,
-            config.buffering,
-            game_audio_receiver,
-        ))
-    } else {
-        Box::pin(future::pending())
-    };
+    let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
         let device = AudioDevice::new_input(None).map_err(to_int_e!())?;
@@ -401,6 +387,23 @@ fn connection_pipeline(
             }
         }
     });
+
+    let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
+        let device = AudioDevice::new_output(None, None).map_err(to_int_e!())?;
+
+        thread::spawn(move || {
+            alvr_common::show_err(audio::play_audio_loop(
+                &CONNECTION_RUNTIME,
+                device,
+                2,
+                game_audio_sample_rate,
+                config.buffering,
+                game_audio_receiver,
+            ));
+        })
+    } else {
+        thread::spawn(|| ())
+    };
 
     let haptics_receive_thread = thread::spawn(move || loop {
         let haptics = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
@@ -526,8 +529,6 @@ fn connection_pipeline(
         }
     });
 
-    let receive_loop = async move { stream_socket.receive_loop().await };
-
     let lifecycle_check_thread = thread::spawn(|| {
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
             thread::sleep(Duration::from_millis(500));
@@ -537,6 +538,7 @@ fn connection_pipeline(
     });
 
     let res = CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
+        let receive_loop = async move { stream_socket.receive_loop().await };
         // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
         tokio::select! {
             res = spawn_cancelable(receive_loop) => {
@@ -549,7 +551,6 @@ fn connection_pipeline(
 
                 Ok(())
             },
-            res = spawn_cancelable(game_audio_loop) => res,
             res = spawn_cancelable(microphone_loop) => res,
 
             _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
@@ -573,6 +574,7 @@ fn connection_pipeline(
     }
 
     video_receive_thread.join().ok();
+    game_audio_thread.join().ok();
     haptics_receive_thread.join().ok();
     control_receive_thread.join().ok();
     control_send_thread.join().ok();

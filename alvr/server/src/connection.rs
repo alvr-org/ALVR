@@ -556,13 +556,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         .map_err(to_int_e!())?;
     let stream_socket = Arc::new(stream_socket);
 
+    let mut video_sender = stream_socket.request_stream(VIDEO);
+    let microphone_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
     let mut tracking_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING));
+    let haptics_sender = stream_socket.request_stream(HAPTICS);
     let mut statics_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS));
-
-    let mut video_sender = stream_socket.request_stream(VIDEO);
-    let haptics_sender = stream_socket.request_stream(HAPTICS);
 
     let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
         let sender = stream_socket.request_stream(AUDIO);
@@ -622,38 +622,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     } else {
         Box::pin(future::pending())
     };
-    let microphone_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.microphone {
-        #[allow(unused_variables)]
-        let (sink, source) = AudioDevice::new_virtual_microphone_pair(
-            Some(settings.audio.linux_backend),
-            config.devices,
-        )
-        .map_err(to_int_e!())?;
-        let receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
-
-        #[cfg(windows)]
-        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            unsafe {
-                crate::SetOpenvrProperty(
-                    *alvr_common::HEAD_ID,
-                    crate::openvr_props::to_ffi_openvr_prop(
-                        alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
-                        alvr_session::OpenvrPropValue::String(id),
-                    ),
-                )
-            }
-        }
-
-        Box::pin(alvr_audio::play_audio_loop(
-            sink,
-            1,
-            streaming_caps.microphone_sample_rate,
-            config.buffering,
-            receiver,
-        ))
-    } else {
-        Box::pin(future::pending())
-    };
 
     // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
     // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
@@ -680,6 +648,41 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             runtime.block_on(video_sender.send(&header, payload)).ok();
         }
     });
+
+    let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
+        #[allow(unused_variables)]
+        let (sink, source) = AudioDevice::new_virtual_microphone_pair(
+            Some(settings.audio.linux_backend),
+            config.devices,
+        )
+        .map_err(to_int_e!())?;
+
+        #[cfg(windows)]
+        if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
+            unsafe {
+                crate::SetOpenvrProperty(
+                    *alvr_common::HEAD_ID,
+                    crate::openvr_props::to_ffi_openvr_prop(
+                        alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
+                        alvr_session::OpenvrPropValue::String(id),
+                    ),
+                )
+            }
+        }
+
+        thread::spawn(move || {
+            alvr_common::show_err(alvr_audio::play_audio_loop(
+                &CONNECTION_RUNTIME,
+                sink,
+                1,
+                streaming_caps.microphone_sample_rate,
+                config.buffering,
+                microphone_receiver,
+            ));
+        })
+    } else {
+        thread::spawn(|| ())
+    };
 
     let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
 
@@ -1084,7 +1087,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
                     // Spawn new tasks and let the runtime manage threading
                     res = spawn_cancelable(game_audio_loop) => res,
-                    res = spawn_cancelable(microphone_loop) => res,
 
                     _ = RESTART_NOTIFIER.notified() => {
                         control_sender
@@ -1130,6 +1132,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
         // ensure shutdown of threads
         video_send_thread.join().ok();
+        microphone_thread.join().ok();
         tracking_receive_thread.join().ok();
         statistics_thread.join().ok();
         control_thread.join().ok();

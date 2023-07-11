@@ -24,10 +24,6 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v1
 
-      - uses: crazy-max/ghaction-chocolatey@v1
-        with:
-          args: install vulkan-sdk
-
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -172,10 +172,9 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           sudo apt-get update
-          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev flatpak
+          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev flatpak flatpak-builder
           cp alvr/xtask/deb/cuda.pc /usr/share/pkgconfig
           sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y --noninteractive flathub org.flatpak.Builder
           cargo xtask prepare-deps --platform linux
           
       - name: Build and package ALVR (.tar.gz)
@@ -222,7 +221,7 @@ jobs:
       - name: Build and package ALVR flatpak (.flatpak)
         id: build_flatpak
         run: |
-          sudo flatpak run org.flatpak.Builder --repo=.flatpak-repo --install-deps-from=flathub --force-clean --default-branch=stable --arch=x86_64 .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+          sudo flatpak-builder --repo=.flatpak-repo --install-deps-from=flathub --force-clean --default-branch=stable --arch=x86_64 .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
           flatpak build-bundle .flatpak-repo com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
 
       - name: Upload flatpak streamer for Linux

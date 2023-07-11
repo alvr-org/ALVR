@@ -219,6 +219,7 @@ jobs:
 
   build_linux_flatpak:
     runs-on: ubuntu-latest
+    needs: [prepare_release]
     container:
       image: bilelmoussaoui/flatpak-github-actions:gnome-44
       options: --privileged

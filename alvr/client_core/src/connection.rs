@@ -91,25 +91,17 @@ fn set_hud_message(message: &str) {
 pub fn connection_lifecycle_loop(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
-) -> IntResult {
+) {
     set_hud_message(INITIAL_MESSAGE);
 
-    loop {
-        check_interrupt!(IS_ALIVE.value());
-
+    while IS_ALIVE.value() {
         if IS_RESUMED.value() {
             if let Err(e) =
                 connection_pipeline(recommended_view_resolution, supported_refresh_rates.clone())
             {
-                match e {
-                    InterruptibleError::Interrupted => return Ok(()),
-                    InterruptibleError::Other(_) => {
-                        let message =
-                            format!("Connection error:\n{e}\nCheck the PC for more details");
-                        error!("{message}");
-                        set_hud_message(&message);
-                    }
-                }
+                let message = format!("Connection error:\n{e}\nCheck the PC for more details");
+                error!("Connection error: {message}");
+                set_hud_message(&message);
             }
         } else {
             debug!("Skip try connection because the device is sleeping");
@@ -122,18 +114,18 @@ pub fn connection_lifecycle_loop(
 fn connection_pipeline(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
-) -> IntResult {
-    let runtime = Runtime::new().map_err(to_int_e!())?;
+) -> ConResult {
+    let runtime = Runtime::new().map_err(to_con_e!())?;
 
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let announcer_socket = AnnouncerSocket::new(&config.hostname).map_err(to_int_e!())?;
-        let listener_socket = runtime
-            .block_on(alvr_sockets::get_server_listener())
-            .map_err(to_int_e!())?;
+        let announcer_socket = AnnouncerSocket::new(&config.hostname).map_err(to_con_e!())?;
+        let listener_socket = alvr_sockets::get_server_listener(&runtime).map_err(to_con_e!())?;
 
         loop {
-            check_interrupt!(IS_ALIVE.value());
+            if !IS_ALIVE.value() {
+                return Ok(());
+            }
 
             if let Err(e) = announcer_socket.broadcast() {
                 warn!("Broadcast error: {e}");
@@ -147,16 +139,11 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            let maybe_pair = runtime.block_on(async {
-                tokio::select! {
-                    maybe_pair = ProtoControlSocket::connect_to(PeerType::Server(&listener_socket)) => {
-                        maybe_pair.map_err(to_int_e!())
-                    },
-                    _ = time::sleep(DISCOVERY_RETRY_PAUSE) => Err(InterruptibleError::Interrupted)
-                }
-            });
-
-            if let Ok(pair) = maybe_pair {
+            if let Ok(pair) = ProtoControlSocket::connect_to(
+                &runtime,
+                DISCOVERY_RETRY_PAUSE,
+                PeerType::Server(&listener_socket),
+            ) {
                 break pair;
             }
         }
@@ -178,9 +165,10 @@ fn connection_pipeline(
         .input_sample_rate()
         .unwrap();
 
-    runtime
-        .block_on(
-            proto_control_socket.send(&ClientConnectionResult::ConnectionAccepted {
+    proto_control_socket
+        .send(
+            &runtime,
+            &ClientConnectionResult::ConnectionAccepted {
                 client_protocol_id: alvr_common::protocol_id(),
                 display_name: platform::device_model(),
                 server_ip,
@@ -189,27 +177,24 @@ fn connection_pipeline(
                     supported_refresh_rates,
                     microphone_sample_rate,
                 }),
-            }),
+            },
         )
-        .map_err(to_int_e!())?;
-    let config_packet = runtime.block_on(async {
-        tokio::select! {
-            res = proto_control_socket.recv::<StreamConfigPacket>() => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout waiting for stream config"),
-        }
-    })?;
+        .map_err(to_con_e!())?;
+    let config_packet = proto_control_socket
+        .recv::<StreamConfigPacket>(&runtime, Duration::from_secs(1))
+        .map_err(to_con_e!())?;
 
     let settings = {
         let mut session_desc = SessionConfig::default();
         session_desc
-            .merge_from_json(&json::from_str(&config_packet.session).map_err(to_int_e!())?)
-            .map_err(to_int_e!())?;
+            .merge_from_json(&json::from_str(&config_packet.session).map_err(to_con_e!())?)
+            .map_err(to_con_e!())?;
         session_desc.to_settings()
     };
 
     let negotiated_config =
         json::from_str::<HashMap<String, json::Value>>(&config_packet.negotiated)
-            .map_err(to_int_e!())?;
+            .map_err(to_con_e!())?;
 
     let view_resolution = negotiated_config
         .get("view_resolution")
@@ -242,12 +227,7 @@ fn connection_pipeline(
 
     let (mut control_sender, mut control_receiver) = proto_control_socket.split();
 
-    match runtime.block_on(async {
-        tokio::select! {
-            res = control_receiver.recv() => res,
-            _ = time::sleep(Duration::from_secs(1)) => fmt_e!("Timeout"),
-        }
-    }) {
+    match control_receiver.recv(&runtime, Duration::from_secs(1)) {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
             set_hud_message(STREAM_STARTING_MESSAGE);
@@ -277,12 +257,12 @@ fn connection_pipeline(
     );
     let stream_socket_builder = runtime.block_on(async {
         tokio::select! {
-            res = listen_for_server_future => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout while binding stream socket"),
+            res = listen_for_server_future => res.map_err(to_con_e!()),
+            _ = time::sleep(Duration::from_secs(1)) => con_fmt_e!("Timeout while binding stream socket"),
         }
     })?;
 
-    if let Err(e) = runtime.block_on(control_sender.send(&ClientControlPacket::StreamReady)) {
+    if let Err(e) = control_sender.send(&runtime, &ClientControlPacket::StreamReady) {
         info!("Server disconnected. Cause: {e}");
         set_hud_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
@@ -295,8 +275,8 @@ fn connection_pipeline(
     );
     let stream_socket = runtime.block_on(async {
         tokio::select! {
-            res = accept_from_server_future => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_secs(2)) => int_fmt_e!("Timeout while setting up streams")
+            res = accept_from_server_future => res.map_err(to_con_e!()),
+            _ = time::sleep(Duration::from_secs(2)) => con_fmt_e!("Timeout while setting up streams")
         }
     })?;
     let stream_socket = Arc::new(stream_socket);
@@ -385,7 +365,7 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None, None).map_err(to_int_e!())?;
+        let device = AudioDevice::new_output(None, None).map_err(to_con_e!())?;
 
         thread::spawn(move || {
             alvr_common::show_err(audio::play_audio_loop(
@@ -402,7 +382,7 @@ fn connection_pipeline(
     };
 
     let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new_input(None).map_err(to_int_e!())?;
+        let device = AudioDevice::new_input(None).map_err(to_con_e!())?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO);
 
@@ -504,7 +484,7 @@ fn connection_pipeline(
     let control_send_thread = thread::spawn(move || {
         while let Ok(packet) = control_channel_receiver.recv() {
             if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                if let Err(e) = runtime.block_on(control_sender.send(&packet)) {
+                if let Err(e) = control_sender.send(runtime, &packet) {
                     info!("Server disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
@@ -519,21 +499,16 @@ fn connection_pipeline(
 
     let control_receive_thread = thread::spawn(move || loop {
         let maybe_packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            runtime.block_on(async {
-                tokio::select! {
-                    res = control_receiver.recv() => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
-                }
-            })
+            control_receiver.recv(runtime, Duration::from_millis(500))
         } else {
             return;
         };
 
         match maybe_packet {
-            Some(Ok(ServerControlPacket::InitializeDecoder(config))) => {
+            Ok(ServerControlPacket::InitializeDecoder(config)) => {
                 decoder::create_decoder(config);
             }
-            Some(Ok(ServerControlPacket::Restarting)) => {
+            Ok(ServerControlPacket::Restarting) => {
                 info!("{SERVER_RESTART_MESSAGE}");
                 set_hud_message(SERVER_RESTART_MESSAGE);
                 if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
@@ -542,8 +517,9 @@ fn connection_pipeline(
 
                 return;
             }
-            Some(Ok(_)) => (),
-            Some(Err(e)) => {
+            Ok(_) => (),
+            Err(ConnectionError::Timeout) => (),
+            Err(e) => {
                 info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                 set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                 if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
@@ -552,7 +528,6 @@ fn connection_pipeline(
 
                 return;
             }
-            None => (),
         }
     });
 

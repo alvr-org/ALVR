@@ -106,7 +106,6 @@ pub fn initialize(
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
         connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
-            .ok();
     }));
 }
 

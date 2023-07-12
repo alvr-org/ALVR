@@ -42,7 +42,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::{runtime::Runtime, sync::Mutex as TMutex, time};
+use tokio::{runtime::Runtime, time};
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -208,12 +208,16 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
-pub fn handshake_loop() -> IntResult {
-    let mut welcome_socket = WelcomeSocket::new().map_err(to_int_e!())?;
+pub fn handshake_loop() {
+    let mut welcome_socket = match WelcomeSocket::new(RETRY_CONNECT_MIN_INTERVAL) {
+        Ok(socket) => socket,
+        Err(e) => {
+            error!("Failed to create discovery socket: {e}");
+            return;
+        }
+    };
 
-    loop {
-        check_interrupt!(SHOULD_CONNECT_TO_CLIENTS.value());
-
+    while SHOULD_CONNECT_TO_CLIENTS.value() {
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
             for (hostname, connection_info) in SERVER_DATA_MANAGER
@@ -243,14 +247,13 @@ pub fn handshake_loop() -> IntResult {
             .client_discovery
             .clone();
         if let Switch::Enabled(config) = discovery_config {
-            let (client_hostname, client_ip) = match welcome_socket.recv_non_blocking() {
+            let (client_hostname, client_ip) = match welcome_socket.recv() {
                 Ok(pair) => pair,
                 Err(e) => {
-                    if let InterruptibleError::Other(e) = e {
+                    if let ConnectionError::Other(e) = e {
                         warn!("UDP handshake listening error: {e}");
                     }
 
-                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;
                 }
             };
@@ -300,22 +303,14 @@ pub fn handshake_loop() -> IntResult {
     }
 }
 
-fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
-    let runtime = Runtime::new().map_err(to_int_e!())?;
+fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
+    let runtime = Runtime::new().map_err(to_con_e!())?;
 
-    let (mut proto_socket, client_ip) = runtime
-        .block_on(async {
-            let get_proto_socket = ProtoControlSocket::connect_to(PeerType::AnyClient(
-                client_ips.keys().cloned().collect(),
-            ));
-            tokio::select! {
-                proto_socket = get_proto_socket => proto_socket,
-                _ = time::sleep(Duration::from_secs(1)) => {
-                    fmt_e!("Control socket failed to connect")
-                }
-            }
-        })
-        .map_err(to_int_e!())?;
+    let (mut proto_socket, client_ip) = ProtoControlSocket::connect_to(
+        &runtime,
+        Duration::from_secs(1),
+        PeerType::AnyClient(client_ips.keys().cloned().collect()),
+    )?;
 
     let (disconnect_sender, disconnect_receiver) = mpsc::channel();
     *DISCONNECT_CLIENT_NOTIFIER.lock() = Some(disconnect_sender);
@@ -369,14 +364,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         display_name,
         streaming_capabilities,
         ..
-    } = runtime.block_on(async {
-        tokio::select! {
-            res = proto_socket.recv() => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_secs(1)) => {
-                int_fmt_e!("Timeout while waiting on client response")
-            }
-        }
-    })? {
+    } = proto_socket
+        .recv(&runtime, Duration::from_secs(1))
+        .map_err(to_con_e!())?
+    {
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
             ClientListAction::SetDisplayName(display_name),
@@ -401,7 +392,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
         streaming_caps
     } else {
-        return int_fmt_e!("Only streaming clients are supported for now");
+        return con_fmt_e!("Only streaming clients are supported for now");
     };
 
     let settings = SERVER_DATA_MANAGER.read().settings().clone();
@@ -461,7 +452,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             Some(settings.audio.linux_backend),
             game_audio_config.device.as_ref(),
         )
-        .map_err(to_int_e!())?;
+        .map_err(to_con_e!())?;
 
         #[cfg(not(target_os = "linux"))]
         if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
@@ -469,15 +460,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 Some(settings.audio.linux_backend),
                 microphone_desc.devices.clone(),
             )
-            .map_err(to_int_e!())?;
+            .map_err(to_con_e!())?;
             if alvr_audio::is_same_device(&game_audio_device, &sink)
                 || alvr_audio::is_same_device(&game_audio_device, &source)
             {
-                return int_fmt_e!("Game audio and microphone cannot point to the same device!");
+                return con_fmt_e!("Game audio and microphone cannot point to the same device!");
             }
         }
 
-        game_audio_device.input_sample_rate().map_err(to_int_e!())?
+        game_audio_device.input_sample_rate().map_err(to_con_e!())?
     } else {
         0
     };
@@ -485,7 +476,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let client_config = StreamConfigPacket {
         session: {
             let session = SERVER_DATA_MANAGER.read().session().clone();
-            serde_json::to_string(&session).map_err(to_int_e!())?
+            serde_json::to_string(&session).map_err(to_con_e!())?
         },
         negotiated: serde_json::json!({
             "view_resolution": stream_view_resolution,
@@ -494,9 +485,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         })
         .to_string(),
     };
-    runtime
-        .block_on(proto_socket.send(&client_config))
-        .map_err(to_int_e!())?;
+    proto_socket
+        .send(&runtime, &client_config)
+        .map_err(to_con_e!())?;
 
     let (mut control_sender, mut control_receiver) = proto_socket.split();
 
@@ -510,29 +501,24 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {
         SERVER_DATA_MANAGER.write().session_mut().openvr_config = new_openvr_config;
 
-        runtime
-            .block_on(control_sender.send(&ServerControlPacket::Restarting))
+        control_sender
+            .send(&runtime, &ServerControlPacket::Restarting)
             .ok();
 
         crate::notify_restart_driver();
     }
 
-    runtime
-        .block_on(control_sender.send(&ServerControlPacket::StartStream))
-        .map_err(to_int_e!())?;
+    control_sender
+        .send(&runtime, &ServerControlPacket::StartStream)
+        .map_err(to_con_e!())?;
 
-    match runtime.block_on(async {
-        tokio::select! {
-            res = control_receiver.recv() => res.map_err(to_int_e!()),
-            _ = time::sleep(Duration::from_secs(1)) => int_fmt_e!("Timeout"),
-        }
-    }) {
+    match control_receiver.recv(&runtime, Duration::from_secs(1)) {
         Ok(ClientControlPacket::StreamReady) => (),
         Ok(_) => {
-            return int_fmt_e!("Got unexpected packet waiting for stream ack");
+            return con_fmt_e!("Got unexpected packet waiting for stream ack");
         }
         Err(e) => {
-            return int_fmt_e!("Error while waiting for stream ack: {e}");
+            return con_fmt_e!("Error while waiting for stream ack: {e}");
         }
     }
 
@@ -564,7 +550,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 }
             }
         })
-        .map_err(to_int_e!())?;
+        .map_err(to_con_e!())?;
     let stream_socket = Arc::new(stream_socket);
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
@@ -668,7 +654,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             Some(settings.audio.linux_backend),
             config.devices,
         )
-        .map_err(to_int_e!())?;
+        .map_err(to_con_e!())?;
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
@@ -865,20 +851,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let control_sender = Arc::new(TMutex::new(control_sender));
+    let control_sender = Arc::new(Mutex::new(control_sender));
 
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || loop {
             if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = runtime.block_on(async {
-                    control_sender
-                        .lock()
-                        .await
-                        .send(&ServerControlPacket::KeepAlive)
-                        .await
-                });
+                let res = control_sender
+                    .lock()
+                    .send(runtime, &ServerControlPacket::KeepAlive);
                 if let Err(e) = res {
                     info!("Client disconnected. Cause: {e}");
 
@@ -907,15 +889,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         let client_hostname = client_hostname.clone();
         move || loop {
             let packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let maybe_packet = runtime.block_on(async {
-                    tokio::select! {
-                        res = control_receiver.recv() => Some(res),
-                        _ = time::sleep(Duration::from_millis(500)) => None,
-                    }
-                });
-                match maybe_packet {
-                    Some(Ok(packet)) => packet,
-                    Some(Err(e)) => {
+                match control_receiver.recv(runtime, Duration::from_millis(500)) {
+                    Ok(packet) => packet,
+                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::Other(e)) => {
                         info!("Client disconnected. Cause: {e}");
 
                         SERVER_DATA_MANAGER.write().update_client_list(
@@ -930,7 +907,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
                         return;
                     }
-                    None => continue,
                 }
             } else {
                 return;
@@ -955,14 +931,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                     if let (Some(runtime), Some(config)) =
                         (&*CONNECTION_RUNTIME.read(), maybe_config)
                     {
-                        runtime
-                            .block_on(async {
-                                control_sender
-                                    .lock()
-                                    .await
-                                    .send(&ServerControlPacket::InitializeDecoder(config))
-                                    .await
-                            })
+                        control_sender
+                            .lock()
+                            .send(runtime, &ServerControlPacket::InitializeDecoder(config))
                             .ok();
                     }
                     unsafe { crate::RequestIDR() }
@@ -1127,14 +1098,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         let res = disconnect_receiver.recv();
         if matches!(res, Ok(ClientDisconnectRequest::ServerRestart)) {
             if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                runtime
-                    .block_on(async {
-                        control_sender
-                            .lock()
-                            .await
-                            .send(&ServerControlPacket::Restarting)
-                            .await
-                    })
+                control_sender
+                    .lock()
+                    .send(runtime, &ServerControlPacket::Restarting)
                     .ok();
             }
         }

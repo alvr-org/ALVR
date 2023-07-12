@@ -11,8 +11,8 @@ use std::{
 
 pub mod prelude {
     pub use crate::{
-        check_interrupt, enone, err, err_dbg, fmt_e, int_e, int_fmt_e, interrupt, logging::*,
-        to_int_e, IntResult, InterruptibleError, StrResult,
+        con_e, con_fmt_e, enone, err, err_dbg, fmt_e, logging::*, timeout, to_con_e, ConResult,
+        ConnectionError, StrResult,
     };
     pub use log::{debug, error, info, warn};
 }
@@ -33,32 +33,22 @@ pub const ALVR_NAME: &str = "ALVR";
 
 pub type StrResult<T = ()> = Result<T, String>;
 
-pub enum InterruptibleError {
-    Interrupted,
+pub enum ConnectionError {
+    Timeout,
     Other(String),
 }
-impl Display for InterruptibleError {
+impl Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InterruptibleError::Interrupted => write!(f, "Action interrupted"),
-            InterruptibleError::Other(s) => write!(f, "{}", s),
+            ConnectionError::Timeout => write!(f, "Timeout"),
+            ConnectionError::Other(s) => write!(f, "{}", s),
         }
     }
 }
-pub type IntResult<T = ()> = Result<T, InterruptibleError>;
+pub type ConResult<T = ()> = Result<T, ConnectionError>;
 
-pub fn interrupt<T>() -> IntResult<T> {
-    Err(InterruptibleError::Interrupted)
-}
-
-/// Bail out if interrupted
-#[macro_export]
-macro_rules! check_interrupt {
-    ($running:expr) => {
-        if !$running {
-            return interrupt();
-        }
-    };
+pub fn timeout<T>() -> ConResult<T> {
+    Err(ConnectionError::Timeout)
 }
 
 // Simple wrapper for AtomicBool when using Ordering::Relaxed. Deref cannot be implemented (cannot

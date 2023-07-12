@@ -6,8 +6,12 @@ use futures::{
     SinkExt, StreamExt,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{marker::PhantomData, net::IpAddr};
-use tokio::net::{TcpListener, TcpStream};
+use std::{marker::PhantomData, net::IpAddr, time::Duration};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    runtime::Runtime,
+    time,
+};
 use tokio_util::codec::Framed;
 
 pub struct ControlSocketSender<T> {
@@ -16,9 +20,11 @@ pub struct ControlSocketSender<T> {
 }
 
 impl<S: Serialize> ControlSocketSender<S> {
-    pub async fn send(&mut self, packet: &S) -> StrResult {
+    pub fn send(&mut self, runtime: &Runtime, packet: &S) -> StrResult {
         let packet_bytes = bincode::serialize(packet).map_err(err!())?;
-        self.inner.send(packet_bytes.into()).await.map_err(err!())
+        runtime
+            .block_on(self.inner.send(packet_bytes.into()))
+            .map_err(err!())
     }
 }
 
@@ -28,20 +34,22 @@ pub struct ControlSocketReceiver<T> {
 }
 
 impl<R: DeserializeOwned> ControlSocketReceiver<R> {
-    pub async fn recv(&mut self) -> StrResult<R> {
-        let packet_bytes = self
-            .inner
-            .next()
-            .await
-            .ok_or_else(enone!())?
-            .map_err(err!())?;
-        bincode::deserialize(&packet_bytes).map_err(err!())
+    pub fn recv(&mut self, runtime: &Runtime, timeout: Duration) -> ConResult<R> {
+        let packet_bytes = runtime.block_on(async {
+            tokio::select! {
+                res = self.inner.next() => {
+                    res.map(|p| p.map_err(to_con_e!())).ok_or_else(enone!()).map_err(to_con_e!())
+                }
+                _ = time::sleep(timeout) => alvr_common::timeout(),
+            }
+        })??;
+        bincode::deserialize(&packet_bytes).map_err(to_con_e!())
     }
 }
 
-pub async fn get_server_listener() -> StrResult<TcpListener> {
-    TcpListener::bind((LOCAL_IP, CONTROL_PORT))
-        .await
+pub fn get_server_listener(runtime: &Runtime) -> StrResult<TcpListener> {
+    runtime
+        .block_on(TcpListener::bind((LOCAL_IP, CONTROL_PORT)))
         .map_err(err!())
 }
 
@@ -57,43 +65,64 @@ pub enum PeerType<'a> {
 }
 
 impl ProtoControlSocket {
-    pub async fn connect_to(peer: PeerType<'_>) -> StrResult<(Self, IpAddr)> {
+    pub fn connect_to(
+        runtime: &Runtime,
+        timeout: Duration,
+        peer: PeerType<'_>,
+    ) -> ConResult<(Self, IpAddr)> {
         let socket = match peer {
             PeerType::AnyClient(ips) => {
                 let client_addresses = ips
                     .iter()
                     .map(|&ip| (ip, CONTROL_PORT).into())
                     .collect::<Vec<_>>();
-                TcpStream::connect(client_addresses.as_slice())
-                    .await
-                    .map_err(err!())?
+                runtime.block_on(async {
+                    tokio::select! {
+                        res = TcpStream::connect(client_addresses.as_slice()) => res.map_err(to_con_e!()),
+                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                    }
+                })?
             }
             PeerType::Server(listener) => {
-                let (socket, _) = listener.accept().await.map_err(err!())?;
+                let (socket, _) = runtime.block_on(async {
+                    tokio::select! {
+                        res = listener.accept() => res.map_err(to_con_e!()),
+                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                    }
+                })?;
                 socket
             }
         };
 
-        socket.set_nodelay(true).map_err(err!())?;
-        let peer_ip = socket.peer_addr().map_err(err!())?.ip();
+        socket.set_nodelay(true).map_err(to_con_e!())?;
+        let peer_ip = socket.peer_addr().map_err(to_con_e!())?.ip();
         let socket = Framed::new(socket, Ldc::new());
 
         Ok((Self { inner: socket }, peer_ip))
     }
 
-    pub async fn send<S: Serialize>(&mut self, packet: &S) -> StrResult {
+    pub fn send<S: Serialize>(&mut self, runtime: &Runtime, packet: &S) -> StrResult {
         let packet_bytes = bincode::serialize(packet).map_err(err!())?;
-        self.inner.send(packet_bytes.into()).await.map_err(err!())
+        runtime
+            .block_on(self.inner.send(packet_bytes.into()))
+            .map_err(err!())
     }
 
-    pub async fn recv<R: DeserializeOwned>(&mut self) -> StrResult<R> {
-        let packet_bytes = self
-            .inner
-            .next()
-            .await
-            .ok_or_else(enone!())?
-            .map_err(err!())?;
-        bincode::deserialize(&packet_bytes).map_err(err!())
+    pub fn recv<R: DeserializeOwned>(
+        &mut self,
+        runtime: &Runtime,
+        timeout: Duration,
+    ) -> ConResult<R> {
+        let packet_bytes = runtime.block_on(async {
+            tokio::select! {
+                res = self.inner.next() => {
+                    res.map(|p| p.map_err(to_con_e!())).ok_or_else(enone!()).map_err(to_con_e!())
+                }
+                _ = time::sleep(timeout) => Ok(alvr_common::timeout()),
+            }
+        })??;
+
+        bincode::deserialize(&packet_bytes).map_err(to_con_e!())
     }
 
     pub fn split<S: Serialize, R: DeserializeOwned>(

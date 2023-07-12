@@ -346,14 +346,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
 
         thread::spawn(move || {
             if set_default_chap {
-                // call this when inside a new tokio thread. Calling this on the parent thread will
-                // crash SteamVR
+                // call this when inside a new thread. Calling this on the parent thread will crash
+                // SteamVR
                 unsafe { SetChaperone(2.0, 2.0) };
             }
 
-            if let Err(InterruptibleError::Other(e)) = connection::handshake_loop() {
-                warn!("Connection thread closed: {e}");
-            }
+            connection::handshake_loop();
         });
     }
 

@@ -170,27 +170,27 @@ macro_rules! enone {
 }
 
 #[macro_export]
-macro_rules! int_fmt_e {
+macro_rules! con_fmt_e {
     ($($args:tt)+) => {
-        Err(InterruptibleError::Other(format!($($args)+)))
+        Err(ConnectionError::Other(format!($($args)+)))
     };
 }
 
 #[macro_export]
-macro_rules! int_e {
+macro_rules! con_e {
     () => {
         |e| match e {
-            InterruptibleError::Interrupted => InterruptibleError::Interrupted,
-            InterruptibleError::Other(e) => {
-                InterruptibleError::Other(format!("At {}:{}: {e}", file!(), line!()))
+            ConnectionError::Timeout => ConnectionError::Timeout,
+            ConnectionError::Other(e) => {
+                ConnectionError::Other(format!("At {}:{}: {e}", file!(), line!()))
             }
         }
     };
 }
 
 #[macro_export]
-macro_rules! to_int_e {
+macro_rules! to_con_e {
     () => {
-        |e| InterruptibleError::Other(format!("At {}:{}: {e}", file!(), line!()))
+        |e| ConnectionError::Other(format!("At {}:{}: {e}", file!(), line!()))
     };
 }

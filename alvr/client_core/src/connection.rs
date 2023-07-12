@@ -32,7 +32,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio::{runtime::Runtime, sync::Notify, time};
+use tokio::{runtime::Runtime, time};
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -60,7 +60,8 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
-static DISCONNECT_SERVER_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
+    Lazy::new(|| Mutex::new(None));
 
 pub static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
@@ -160,6 +161,17 @@ fn connection_pipeline(
             }
         }
     };
+
+    let (disconnect_sender, disconnect_receiver) = mpsc::channel();
+    *DISCONNECT_SERVER_NOTIFIER.lock() = Some(disconnect_sender);
+
+    struct DropGuard;
+    impl Drop for DropGuard {
+        fn drop(&mut self) {
+            *DISCONNECT_SERVER_NOTIFIER.lock() = None;
+        }
+    }
+    let _connection_drop_guard = DropGuard;
 
     let microphone_sample_rate = AudioDevice::new_input(None)
         .unwrap()
@@ -495,7 +507,9 @@ fn connection_pipeline(
                 if let Err(e) = runtime.block_on(control_sender.send(&packet)) {
                     info!("Server disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                    DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+                    if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+                        notifier.send(()).ok();
+                    }
 
                     return;
                 }
@@ -522,7 +536,9 @@ fn connection_pipeline(
             Some(Ok(ServerControlPacket::Restarting)) => {
                 info!("{SERVER_RESTART_MESSAGE}");
                 set_hud_message(SERVER_RESTART_MESSAGE);
-                DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+                if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+                    notifier.send(()).ok();
+                }
 
                 return;
             }
@@ -530,7 +546,9 @@ fn connection_pipeline(
             Some(Err(e)) => {
                 info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                 set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+                if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+                    notifier.send(()).ok();
+                }
 
                 return;
             }
@@ -551,7 +569,9 @@ fn connection_pipeline(
                 Some(Err(e)) => {
                     info!("Client disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                    DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+                    if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+                        notifier.send(()).ok();
+                    }
 
                     return;
                 }
@@ -565,14 +585,13 @@ fn connection_pipeline(
             thread::sleep(Duration::from_millis(500));
         }
 
-        DISCONNECT_SERVER_NOTIFIER.notify_waiters();
-    });
-
-    CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
-        tokio::select! {
-            _ = DISCONNECT_SERVER_NOTIFIER.notified() => (),
+        if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+            notifier.send(()).ok();
         }
     });
+
+    // Block here
+    disconnect_receiver.recv().ok();
 
     IS_STREAMING.set(false);
     *CONNECTION_RUNTIME.write() = None;

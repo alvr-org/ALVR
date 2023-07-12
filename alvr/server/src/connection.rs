@@ -887,7 +887,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
-    let control_thread = thread::spawn({
+    let control_receive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || loop {
@@ -1035,6 +1035,37 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         }
     });
 
+    let stream_receive_thread = thread::spawn({
+        let client_hostname = client_hostname.clone();
+        move || {
+            while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                let res = runtime.block_on(async {
+                    tokio::select! {
+                        res = stream_socket.recv() => Some(res),
+                        _ = time::sleep(Duration::from_millis(500)) => None,
+                    }
+                });
+                match res {
+                    Some(Ok(())) => (),
+                    Some(Err(e)) => {
+                        info!("Client disconnected. Cause: {e}");
+
+                        SERVER_DATA_MANAGER.write().update_client_list(
+                            client_hostname,
+                            ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
+                                should_be_removed: false,
+                            }),
+                        );
+                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+
+                        return;
+                    }
+                    None => continue,
+                }
+            }
+        }
+    });
+
     let lifecycle_check_thread = thread::spawn(|| {
         while SHOULD_CONNECT_TO_CLIENTS.value() && CONNECTION_RUNTIME.read().is_some() {
             thread::sleep(Duration::from_millis(500));
@@ -1077,12 +1108,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             .unwrap()
             .block_on(async move {
                 tokio::select! {
-                    res = stream_socket.receive_loop() => {
-                        if let Err(e) = res {
-                            info!("Client disconnected. Cause: {e}" );
-                        }
-                    },
-
                     _ = RESTART_NOTIFIER.notified() => {
                         control_sender
                             .lock()
@@ -1126,7 +1151,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         microphone_thread.join().ok();
         tracking_receive_thread.join().ok();
         statistics_thread.join().ok();
-        control_thread.join().ok();
+        control_receive_thread.join().ok();
+        stream_receive_thread.join().ok();
         keepalive_thread.join().ok();
         lifecycle_check_thread.join().ok();
     });

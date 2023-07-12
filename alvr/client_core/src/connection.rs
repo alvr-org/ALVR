@@ -23,8 +23,7 @@ use alvr_packets::{
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
-    spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender,
-    StreamSocketBuilder,
+    PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender, StreamSocketBuilder,
 };
 use serde_json as json;
 use std::{
@@ -539,6 +538,28 @@ fn connection_pipeline(
         }
     });
 
+    let stream_receive_thread = thread::spawn(move || {
+        while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+            let res = runtime.block_on(async {
+                tokio::select! {
+                    res = stream_socket.recv() => Some(res),
+                    _ = time::sleep(Duration::from_millis(500)) => None,
+                }
+            });
+            match res {
+                Some(Ok(())) => (),
+                Some(Err(e)) => {
+                    info!("Client disconnected. Cause: {e}");
+                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
+                    DISCONNECT_SERVER_NOTIFIER.notify_waiters();
+
+                    return;
+                }
+                None => continue,
+            }
+        }
+    });
+
     let lifecycle_check_thread = thread::spawn(|| {
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
             thread::sleep(Duration::from_millis(500));
@@ -548,17 +569,7 @@ fn connection_pipeline(
     });
 
     CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
-        let receive_loop = async move { stream_socket.receive_loop().await };
-        // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
         tokio::select! {
-            res = spawn_cancelable(receive_loop) => {
-                if let Err(e) = res {
-                    info!("Server disconnected. Cause: {e}");
-                }
-                set_hud_message(
-                    SERVER_DISCONNECTED_MESSAGE
-                );
-            },
             _ = DISCONNECT_SERVER_NOTIFIER.notified() => (),
         }
     });
@@ -583,8 +594,9 @@ fn connection_pipeline(
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
     haptics_receive_thread.join().ok();
-    control_receive_thread.join().ok();
     control_send_thread.join().ok();
+    control_receive_thread.join().ok();
+    stream_receive_thread.join().ok();
     keepalive_sender_thread.join().ok();
     lifecycle_check_thread.join().ok();
 

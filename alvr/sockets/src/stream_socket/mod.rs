@@ -430,13 +430,13 @@ impl StreamSocket {
         }
     }
 
-    pub async fn receive_loop(&self) -> StrResult {
-        match self.receive_socket.lock().await.take().unwrap() {
+    pub async fn recv(&self) -> StrResult {
+        match self.receive_socket.lock().await.as_mut().unwrap() {
             StreamReceiveSocket::Udp(socket) => {
-                udp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
+                udp::recv(socket, Arc::clone(&self.packet_queues)).await
             }
             StreamReceiveSocket::Tcp(socket) => {
-                tcp::receive_loop(socket, Arc::clone(&self.packet_queues)).await
+                tcp::recv(socket, Arc::clone(&self.packet_queues)).await
             }
         }
     }

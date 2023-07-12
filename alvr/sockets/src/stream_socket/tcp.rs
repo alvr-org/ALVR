@@ -67,18 +67,20 @@ pub async fn connect_to_client(
     Ok((Arc::new(Mutex::new(send_socket)), receive_socket))
 }
 
-pub async fn receive_loop(
-    mut socket: TcpStreamReceiveSocket,
+pub async fn recv(
+    socket: &mut TcpStreamReceiveSocket,
     packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
-    while let Some(maybe_packet) = socket.next().await {
+    if let Some(maybe_packet) = socket.next().await {
         let mut packet = maybe_packet.map_err(err!())?;
 
         let stream_id = packet.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
             enqueuer.send(packet).map_err(err!())?;
         }
-    }
 
-    Ok(())
+        Ok(())
+    } else {
+        fmt_e!("Socket closed")
+    }
 }

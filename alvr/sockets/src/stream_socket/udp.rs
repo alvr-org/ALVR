@@ -67,22 +67,25 @@ pub async fn connect(
     ))
 }
 
-pub async fn receive_loop(
-    mut socket: UdpStreamReceiveSocket,
+pub async fn recv(
+    socket: &mut UdpStreamReceiveSocket,
     packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
 ) -> StrResult {
-    while let Some(maybe_packet) = socket.inner.next().await {
+    if let Some(maybe_packet) = socket.inner.next().await {
         let (mut packet_bytes, address) = maybe_packet.map_err(err!())?;
 
         if address != socket.peer_addr {
-            continue;
+            // Non fatal
+            return Ok(());
         }
 
         let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
             enqueuer.send(packet_bytes).map_err(err!())?;
         }
-    }
 
-    Ok(())
+        Ok(())
+    } else {
+        fmt_e!("Socket closed")
+    }
 }

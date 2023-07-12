@@ -35,7 +35,7 @@ use alvr_packets::{ClientListAction, DecoderInitializationConfig, VideoPacketHea
 use alvr_server_io::ServerDataManager;
 use alvr_session::{CodecType, ConnectionState};
 use bitrate::BitrateManager;
-use connection::SHOULD_CONNECT_TO_CLIENTS;
+use connection::{ClientDisconnectRequest, DISCONNECT_CLIENT_NOTIFIER, SHOULD_CONNECT_TO_CLIENTS};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -48,10 +48,7 @@ use std::{
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
-use tokio::{
-    runtime::Runtime,
-    sync::{broadcast, Notify},
-};
+use tokio::{runtime::Runtime, sync::broadcast};
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
     afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_server_io::get_driver_dir().unwrap())
@@ -80,8 +77,8 @@ static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
     Lazy::new(|| Mutex::new(None));
 static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new(None));
 
-static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+// static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+// static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -166,7 +163,9 @@ pub extern "C" fn shutdown_driver() {
         }
     }
 
-    DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+    if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+        notifier.send(ClientDisconnectRequest::ServerShutdown).ok();
+    }
 
     // apply openvr config for the next launch
     SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
@@ -215,7 +214,9 @@ pub fn notify_restart_driver() {
 // This call is blocking
 pub fn restart_driver() {
     SHOULD_CONNECT_TO_CLIENTS.set(false);
-    RESTART_NOTIFIER.notify_waiters();
+    if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+        notifier.send(ClientDisconnectRequest::ServerRestart).ok();
+    }
 
     shutdown_driver();
 }

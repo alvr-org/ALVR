@@ -1,6 +1,6 @@
 use crate::{
-    DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
-    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    connection::ClientDisconnectRequest, DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER,
+    FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{log, prelude::*};
 use alvr_events::{Event, EventType};
@@ -138,7 +138,9 @@ async fn http_api(
                             data_manager.update_client_list(hostname, action);
                         }
 
-                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+                        if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+                            notifier.send(ClientDisconnectRequest::Disconnect).ok();
+                        }
                     }
                     ServerRequest::GetAudioDevices => {
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {

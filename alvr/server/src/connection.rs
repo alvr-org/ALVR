@@ -7,8 +7,7 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG,
-    DISCONNECT_CLIENT_NOTIFIER, RESTART_NOTIFIER, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
-    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -37,7 +36,7 @@ use std::{
     ptr,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{RecvTimeoutError, SyncSender, TrySendError},
+        mpsc::{self, RecvTimeoutError, SyncSender, TrySendError},
         Arc,
     },
     thread,
@@ -54,6 +53,15 @@ static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
 static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<StreamSender<Haptics>>>> = Lazy::new(|| Mutex::new(None));
+
+pub enum ClientDisconnectRequest {
+    Disconnect,
+    ServerShutdown,
+    ServerRestart,
+}
+
+pub static DISCONNECT_CLIENT_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<ClientDisconnectRequest>>>> =
+    Lazy::new(|| Mutex::new(None));
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -309,6 +317,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
         })
         .map_err(to_int_e!())?;
 
+    let (disconnect_sender, disconnect_receiver) = mpsc::channel();
+    *DISCONNECT_CLIENT_NOTIFIER.lock() = Some(disconnect_sender);
+
     // Safety: this never panics because client_ip is picked from client_ips keys
     let client_hostname = client_ips.remove(&client_ip).unwrap();
 
@@ -335,6 +346,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                 self.hostname.clone(),
                 ClientListAction::SetConnectionState(ConnectionState::Disconnected),
             );
+
+            *DISCONNECT_CLIENT_NOTIFIER.lock() = None;
         }
     }
     let _connection_drop_guard = DropGuard {
@@ -875,7 +888,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                             should_be_removed: false,
                         }),
                     );
-                    DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+                    if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+                        notifier.send(ClientDisconnectRequest::Disconnect).ok();
+                    }
 
                     return;
                 }
@@ -909,7 +924,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                                 should_be_removed: false,
                             }),
                         );
-                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+                        if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+                            notifier.send(ClientDisconnectRequest::Disconnect).ok();
+                        }
 
                         return;
                     }
@@ -1056,7 +1073,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                                 should_be_removed: false,
                             }),
                         );
-                        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+
+                        if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+                            notifier.send(ClientDisconnectRequest::Disconnect).ok();
+                        }
 
                         return;
                     }
@@ -1071,7 +1091,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             thread::sleep(Duration::from_millis(500));
         }
 
-        DISCONNECT_CLIENT_NOTIFIER.notify_waiters();
+        if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+            notifier.send(ClientDisconnectRequest::Disconnect).ok();
+        }
     });
 
     {
@@ -1102,23 +1124,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     thread::spawn(move || {
         let _connection_drop_guard = _connection_drop_guard;
 
-        CONNECTION_RUNTIME
-            .read()
-            .as_ref()
-            .unwrap()
-            .block_on(async move {
-                tokio::select! {
-                    _ = RESTART_NOTIFIER.notified() => {
+        let res = disconnect_receiver.recv();
+        if matches!(res, Ok(ClientDisconnectRequest::ServerRestart)) {
+            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                runtime
+                    .block_on(async {
                         control_sender
                             .lock()
                             .await
                             .send(&ServerControlPacket::Restarting)
                             .await
-                            .ok();
-                    }
-                    _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
-                }
-            });
+                    })
+                    .ok();
+            }
+        }
 
         // This requests shutdown from threads
         *CONNECTION_RUNTIME.write() = None;

@@ -1,4 +1,4 @@
-use alvr_audio::AudioDevice;
+use alvr_audio::{AudioDevice, AudioRecordState};
 use alvr_common::{
     parking_lot::{Mutex, RwLock},
     prelude::*,
@@ -10,16 +10,13 @@ use oboe::{
     AudioStream, AudioStreamBuilder, DataCallbackResult, InputPreset, Mono, PerformanceMode,
     SampleRateConversionQuality, Stereo, Usage,
 };
-use std::{
-    collections::VecDeque,
-    mem,
-    sync::{mpsc as smpsc, Arc},
-    thread,
-};
-use tokio::{runtime::Runtime, sync::mpsc as tmpsc};
+use std::{collections::VecDeque, mem, sync::Arc, thread, time::Duration};
+use tokio::runtime::Runtime;
 
 struct RecorderCallback {
-    sender: tmpsc::UnboundedSender<Vec<u8>>,
+    runtime: Arc<RwLock<Option<Runtime>>>,
+    sender: StreamSender<()>,
+    state: Arc<Mutex<AudioRecordState>>,
 }
 
 impl AudioInputCallback for RecorderCallback {
@@ -36,56 +33,65 @@ impl AudioInputCallback for RecorderCallback {
             sample_buffer.extend(&frame.to_ne_bytes());
         }
 
-        self.sender.send(sample_buffer).ok();
+        if let Some(runtime) = &*self.runtime.read() {
+            runtime.block_on(self.sender.send(&(), sample_buffer)).ok();
 
-        DataCallbackResult::Continue
+            DataCallbackResult::Continue
+        } else {
+            *self.state.lock() = AudioRecordState::ShouldStop;
+
+            DataCallbackResult::Stop
+        }
+    }
+
+    fn on_error_before_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
+        *self.state.lock() = AudioRecordState::Err(error.to_string());
     }
 }
 
 #[allow(unused_variables)]
-pub async fn record_audio_loop(
-    device: AudioDevice,
+pub fn record_audio_blocking(
+    runtime: Arc<RwLock<Option<Runtime>>>,
+    sender: StreamSender<()>,
+    device: &AudioDevice,
     channels_count: u16,
     mute: bool,
-    mut sender: StreamSender<()>,
 ) -> StrResult {
     let sample_rate = device.input_sample_rate()?;
 
-    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
-    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel();
+    let state = Arc::new(Mutex::new(AudioRecordState::Recording));
 
-    thread::spawn(move || -> StrResult {
-        let mut stream = AudioStreamBuilder::default()
-            .set_shared()
-            .set_performance_mode(PerformanceMode::LowLatency)
-            .set_sample_rate(sample_rate as _)
-            .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
-            .set_mono()
-            .set_i16()
-            .set_input()
-            .set_usage(Usage::VoiceCommunication)
-            .set_input_preset(InputPreset::VoiceCommunication)
-            .set_callback(RecorderCallback {
-                sender: data_sender,
-            })
-            .open_stream()
-            .map_err(err!())?;
+    let mut stream = AudioStreamBuilder::default()
+        .set_shared()
+        .set_performance_mode(PerformanceMode::LowLatency)
+        .set_sample_rate(sample_rate as _)
+        .set_sample_rate_conversion_quality(SampleRateConversionQuality::Fastest)
+        .set_mono()
+        .set_i16()
+        .set_input()
+        .set_usage(Usage::VoiceCommunication)
+        .set_input_preset(InputPreset::VoiceCommunication)
+        .set_callback(RecorderCallback {
+            runtime: Arc::clone(&runtime),
+            sender,
+            state: Arc::clone(&state),
+        })
+        .open_stream()
+        .map_err(err!())?;
 
-        stream.start().map_err(err!())?;
+    let mut res = stream.start().map_err(err!());
 
-        shutdown_receiver.recv().ok();
+    if res.is_ok() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
+            thread::sleep(Duration::from_millis(500))
+        }
 
-        // This call gets stuck if the headset goes to sleep, but finishes when the headset wakes up
-        stream.stop_with_timeout(0).ok();
-
-        Ok(())
-    });
-
-    while let Some(data) = data_receiver.recv().await {
-        sender.send(&(), data).await.ok();
+        if let AudioRecordState::Err(e) = state.lock().clone() {
+            res = Err(e);
+        }
     }
 
-    Ok(())
+    res
 }
 
 struct PlayerCallback {

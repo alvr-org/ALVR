@@ -27,13 +27,10 @@ use alvr_packets::{
 };
 use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
-    spawn_cancelable, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
-    KEEPALIVE_INTERVAL,
+    PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
 };
-use futures::future::BoxFuture;
 use std::{
     collections::HashMap,
-    future,
     io::Write,
     net::IpAddr,
     process::Command,
@@ -52,7 +49,8 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
+static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
+    Lazy::new(|| Arc::new(RwLock::new(None)));
 static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<StreamSender<Haptics>>>> = Lazy::new(|| Mutex::new(None));
@@ -557,71 +555,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     let stream_socket = Arc::new(stream_socket);
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
+    let game_audio_sender = stream_socket.request_stream(AUDIO);
     let microphone_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
     let mut tracking_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING));
     let haptics_sender = stream_socket.request_stream(HAPTICS);
     let mut statics_receiver =
         runtime.block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS));
-
-    let game_audio_loop: BoxFuture<_> = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let sender = stream_socket.request_stream(AUDIO);
-        Box::pin(async move {
-            loop {
-                let device = match AudioDevice::new_output(
-                    Some(settings.audio.linux_backend),
-                    config.device.as_ref(),
-                ) {
-                    Ok(data) => data,
-                    Err(e) => {
-                        warn!("New audio device failed: {e}");
-                        time::sleep(RETRY_CONNECT_MIN_INTERVAL).await;
-                        continue;
-                    }
-                };
-                let mute_when_streaming = config.mute_when_streaming;
-
-                #[cfg(windows)]
-                if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                    unsafe {
-                        crate::SetOpenvrProperty(
-                            *alvr_common::HEAD_ID,
-                            crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                                alvr_session::OpenvrPropValue::String(id),
-                            ),
-                        )
-                    }
-                } else {
-                    continue;
-                };
-
-                let new_sender = sender.clone();
-                if let Err(e) =
-                    alvr_audio::record_audio_loop(device, 2, mute_when_streaming, new_sender).await
-                {
-                    warn!("Audio task exit with error : {e}")
-                }
-
-                #[cfg(windows)]
-                if let Ok(id) =
-                    alvr_audio::get_windows_device_id(&AudioDevice::new_output(None, None)?)
-                {
-                    unsafe {
-                        crate::SetOpenvrProperty(
-                            *alvr_common::HEAD_ID,
-                            crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
-                                alvr_session::OpenvrPropValue::String(id),
-                            ),
-                        )
-                    }
-                }
-            }
-        })
-    } else {
-        Box::pin(future::pending())
-    };
 
     // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
     // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
@@ -648,6 +588,66 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
             runtime.block_on(video_sender.send(&header, payload)).ok();
         }
     });
+
+    let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
+        thread::spawn(move || {
+            while CONNECTION_RUNTIME.read().is_some() {
+                let device = match AudioDevice::new_output(
+                    Some(settings.audio.linux_backend),
+                    config.device.as_ref(),
+                ) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        warn!("New audio device failed: {e}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                        continue;
+                    }
+                };
+
+                #[cfg(windows)]
+                if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
+                    unsafe {
+                        crate::SetOpenvrProperty(
+                            *alvr_common::HEAD_ID,
+                            crate::openvr_props::to_ffi_openvr_prop(
+                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                alvr_session::OpenvrPropValue::String(id),
+                            ),
+                        )
+                    }
+                } else {
+                    continue;
+                };
+
+                if let Err(e) = alvr_audio::record_audio_blocking(
+                    Arc::clone(&CONNECTION_RUNTIME),
+                    game_audio_sender.clone(),
+                    &device,
+                    2,
+                    config.mute_when_streaming,
+                ) {
+                    error!("Audio record error: {e}");
+                }
+
+                #[cfg(windows)]
+                if let Ok(id) = AudioDevice::new_output(None, None)
+                    .and_then(|d| alvr_audio::get_windows_device_id(&d))
+                {
+                    unsafe {
+                        crate::SetOpenvrProperty(
+                            *alvr_common::HEAD_ID,
+                            crate::openvr_props::to_ffi_openvr_prop(
+                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                alvr_session::OpenvrPropValue::String(id),
+                            ),
+                        )
+                    }
+                }
+            }
+        })
+    } else {
+        thread::spawn(|| ())
+    };
 
     let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
         #[allow(unused_variables)]
@@ -1071,7 +1071,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
     thread::spawn(move || {
         let _connection_drop_guard = _connection_drop_guard;
 
-        let res = CONNECTION_RUNTIME
+        CONNECTION_RUNTIME
             .read()
             .as_ref()
             .unwrap()
@@ -1081,12 +1081,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                         if let Err(e) = res {
                             info!("Client disconnected. Cause: {e}" );
                         }
-
-                        Ok(())
                     },
-
-                    // Spawn new tasks and let the runtime manage threading
-                    res = spawn_cancelable(game_audio_loop) => res,
 
                     _ = RESTART_NOTIFIER.notified() => {
                         control_sender
@@ -1095,15 +1090,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
                             .send(&ServerControlPacket::Restarting)
                             .await
                             .ok();
-
-                        Ok(())
                     }
-                    _ = DISCONNECT_CLIENT_NOTIFIER.notified() => Ok(()),
+                    _ = DISCONNECT_CLIENT_NOTIFIER.notified() => (),
                 }
             });
-        if let Err(e) = res {
-            warn!("Connection interrupted: {e:?}");
-        }
 
         // This requests shutdown from threads
         *CONNECTION_RUNTIME.write() = None;
@@ -1132,6 +1122,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> IntResult {
 
         // ensure shutdown of threads
         video_send_thread.join().ok();
+        game_audio_thread.join().ok();
         microphone_thread.join().ok();
         tracking_receive_thread.join().ok();
         statistics_thread.join().ok();

@@ -26,11 +26,9 @@ use alvr_sockets::{
     spawn_cancelable, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender,
     StreamSocketBuilder,
 };
-use futures::future::BoxFuture;
 use serde_json as json;
 use std::{
     collections::HashMap,
-    future,
     sync::{mpsc, Arc},
     thread,
     time::{Duration, Instant},
@@ -65,7 +63,8 @@ const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
-pub static CONNECTION_RUNTIME: Lazy<RwLock<Option<Runtime>>> = Lazy::new(|| RwLock::new(None));
+pub static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
+    Lazy::new(|| Arc::new(RwLock::new(None)));
 pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
@@ -309,20 +308,6 @@ fn connection_pipeline(
         runtime.block_on(stream_socket.subscribe_to_stream::<Haptics>(HAPTICS));
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
-    let microphone_loop: BoxFuture<_> = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new_input(None).map_err(to_int_e!())?;
-
-        let microphone_sender = stream_socket.request_stream(AUDIO);
-        Box::pin(audio::record_audio_loop(
-            device,
-            1,
-            false,
-            microphone_sender,
-        ))
-    } else {
-        Box::pin(future::pending())
-    };
-
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
     // function MUST be infallible
     IS_STREAMING.set(true);
@@ -400,6 +385,31 @@ fn connection_pipeline(
                 config.buffering,
                 game_audio_receiver,
             ));
+        })
+    } else {
+        thread::spawn(|| ())
+    };
+
+    let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
+        let device = AudioDevice::new_input(None).map_err(to_int_e!())?;
+
+        let microphone_sender = stream_socket.request_stream(AUDIO);
+
+        thread::spawn(move || loop {
+            match audio::record_audio_blocking(
+                Arc::clone(&CONNECTION_RUNTIME),
+                microphone_sender.clone(),
+                &device,
+                1,
+                false,
+            ) {
+                Ok(()) => break,
+                Err(e) => {
+                    error!("Audio record error: {e}");
+
+                    continue;
+                }
+            }
         })
     } else {
         thread::spawn(|| ())
@@ -537,7 +547,7 @@ fn connection_pipeline(
         DISCONNECT_SERVER_NOTIFIER.notify_waiters();
     });
 
-    let res = CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
+    CONNECTION_RUNTIME.read().as_ref().unwrap().block_on(async {
         let receive_loop = async move { stream_socket.receive_loop().await };
         // Run many tasks concurrently. Threading is managed by the runtime, for best performance.
         tokio::select! {
@@ -548,12 +558,8 @@ fn connection_pipeline(
                 set_hud_message(
                     SERVER_DISCONNECTED_MESSAGE
                 );
-
-                Ok(())
             },
-            res = spawn_cancelable(microphone_loop) => res,
-
-            _ = DISCONNECT_SERVER_NOTIFIER.notified() => Ok(()),
+            _ = DISCONNECT_SERVER_NOTIFIER.notified() => (),
         }
     });
 
@@ -575,11 +581,12 @@ fn connection_pipeline(
 
     video_receive_thread.join().ok();
     game_audio_thread.join().ok();
+    microphone_thread.join().ok();
     haptics_receive_thread.join().ok();
     control_receive_thread.join().ok();
     control_send_thread.join().ok();
     keepalive_sender_thread.join().ok();
     lifecycle_check_thread.join().ok();
 
-    res.map_err(to_int_e!())
+    Ok(())
 }

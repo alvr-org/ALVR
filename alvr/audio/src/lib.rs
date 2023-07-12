@@ -20,11 +20,11 @@ use cpal::{
 use rodio::{OutputStream, Source};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{mpsc as smpsc, Arc},
+    sync::Arc,
     thread,
     time::Duration,
 };
-use tokio::{runtime::Runtime, sync::mpsc as tmpsc, time};
+use tokio::{runtime::Runtime, time};
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
@@ -212,12 +212,20 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
     }
 }
 
-#[cfg_attr(not(windows), allow(unused_variables))]
-pub async fn record_audio_loop(
-    device: AudioDevice,
+#[derive(Clone)]
+pub enum AudioRecordState {
+    Recording,
+    ShouldStop,
+    Err(String),
+}
+
+#[allow(unused_variables)]
+pub fn record_audio_blocking(
+    runtime: Arc<RwLock<Option<Runtime>>>,
+    mut sender: StreamSender<()>,
+    device: &AudioDevice,
     channels_count: u16,
     mute: bool,
-    mut sender: StreamSender<()>,
 ) -> StrResult {
     let config = device
         .inner
@@ -240,95 +248,81 @@ pub async fn record_audio_loop(
         buffer_size: BufferSize::Default,
     };
 
-    // data_sender/receiver is the bridge between tokio and std thread
-    let (data_sender, mut data_receiver) = tmpsc::unbounded_channel::<StrResult<Vec<_>>>();
-    let (_shutdown_notifier, shutdown_receiver) = smpsc::channel::<()>();
+    let state = Arc::new(Mutex::new(AudioRecordState::Recording));
 
-    let thread_callback = {
-        let data_sender = data_sender.clone();
-        move || {
-            #[cfg(windows)]
-            if mute && device.is_output {
-                crate::windows::set_mute_windows_device(&device, true).ok();
-            }
+    let stream = device
+        .inner
+        .build_input_stream_raw(
+            &stream_config,
+            config.sample_format(),
+            {
+                let state = Arc::clone(&state);
+                let runtime = Arc::clone(&runtime);
+                move |data, _| {
+                    let data = if config.sample_format() == SampleFormat::F32 {
+                        data.bytes()
+                            .chunks_exact(4)
+                            .flat_map(|b| {
+                                f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                    .to_sample::<i16>()
+                                    .to_ne_bytes()
+                                    .to_vec()
+                            })
+                            .collect()
+                    } else {
+                        data.bytes().to_vec()
+                    };
 
-            let stream = device
-                .inner
-                .build_input_stream_raw(
-                    &stream_config,
-                    config.sample_format(),
-                    {
-                        let data_sender = data_sender.clone();
-                        move |data, _| {
-                            let data = if config.sample_format() == SampleFormat::F32 {
-                                data.bytes()
-                                    .chunks_exact(4)
-                                    .flat_map(|b| {
-                                        f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                            .to_sample::<i16>()
-                                            .to_ne_bytes()
-                                            .to_vec()
-                                    })
-                                    .collect()
-                            } else {
-                                data.bytes().to_vec()
-                            };
+                    let data = if config.channels() == 1 && channels_count == 2 {
+                        data.chunks_exact(2)
+                            .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                            .collect()
+                    } else if config.channels() == 2 && channels_count == 1 {
+                        data.chunks_exact(4)
+                            .flat_map(|c| vec![c[0], c[1]])
+                            .collect()
+                    } else {
+                        data
+                    };
 
-                            let data = if config.channels() == 1 && channels_count == 2 {
-                                data.chunks_exact(2)
-                                    .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-                                    .collect()
-                            } else if config.channels() == 2 && channels_count == 1 {
-                                data.chunks_exact(4)
-                                    .flat_map(|c| vec![c[0], c[1]])
-                                    .collect()
-                            } else {
-                                data
-                            };
+                    if let Some(runtime) = &*runtime.read() {
+                        runtime.block_on(sender.send(&(), data)).ok();
+                    } else {
+                        *state.lock() = AudioRecordState::ShouldStop;
+                    }
+                }
+            },
+            {
+                let state = Arc::clone(&state);
+                move |e| *state.lock() = AudioRecordState::Err(e.to_string())
+            },
+            None,
+        )
+        .map_err(err!())?;
 
-                            data_sender.send(Ok(data)).ok();
-                        }
-                    },
-                    {
-                        let data_sender = data_sender.clone();
-                        move |e| {
-                            data_sender
-                                .send(fmt_e!("Error while recording audio: {e}"))
-                                .ok();
-                        }
-                    },
-                    None,
-                )
-                .map_err(err!())?;
-
-            stream.play().map_err(err!())?;
-
-            shutdown_receiver.recv().ok();
-
-            #[cfg(windows)]
-            if mute && device.is_output {
-                set_mute_windows_device(&device, false).ok();
-            }
-
-            Ok(vec![])
-        }
-    };
-
-    // use a std thread to store the stream object. The stream object must be destroyed on the same
-    // thread of creation.
-    thread::spawn(move || {
-        let res = thread_callback();
-        if res.is_err() {
-            data_sender.send(res).ok();
-        }
-    });
-
-    // todo: reuse buffers also in the audio callback
-    while let Some(maybe_data) = data_receiver.recv().await {
-        sender.send(&(), maybe_data?).await.ok();
+    #[cfg(windows)]
+    if mute && device.is_output {
+        crate::windows::set_mute_windows_device(&device, true).ok();
     }
 
-    Ok(())
+    let mut res = stream.play().map_err(err!());
+
+    if res.is_ok() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
+            thread::sleep(Duration::from_millis(500))
+        }
+
+        if let AudioRecordState::Err(e) = state.lock().clone() {
+            res = Err(e);
+        }
+    }
+
+    #[cfg(windows)]
+    if mute && device.is_output {
+        set_mute_windows_device(device, false).ok();
+    }
+
+    res
 }
 
 // Audio callback. This is designed to be as less complex as possible. Still, when needed, this

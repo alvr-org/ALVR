@@ -7,7 +7,7 @@
 mod tcp;
 mod udp;
 
-use alvr_common::prelude::*;
+use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_session::{SocketBufferSize, SocketProtocol};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
@@ -17,15 +17,15 @@ use std::{
     marker::PhantomData,
     net::IpAddr,
     ops::{Deref, DerefMut},
-    sync::Arc,
+    sync::{
+        mpsc::{self, RecvTimeoutError},
+        Arc,
+    },
     time::Duration,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
+use tokio::time;
 use tokio::{net, runtime::Runtime};
-use tokio::{
-    sync::{mpsc, Mutex},
-    time,
-};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
 pub fn set_socket_buffers(
@@ -128,20 +128,18 @@ pub struct StreamSender<T> {
 }
 
 impl<T: Serialize> StreamSender<T> {
-    async fn send_buffer(&self, buffer: BytesMut) -> StrResult {
+    fn send_buffer(&self, runtime: &Runtime, buffer: BytesMut) -> StrResult {
         match &self.socket {
-            StreamSendSocket::Udp(socket) => socket
-                .inner
-                .lock()
-                .await
-                .feed((buffer.freeze(), socket.peer_addr))
-                .await
+            StreamSendSocket::Udp(socket) => runtime
+                .block_on(
+                    socket
+                        .inner
+                        .lock()
+                        .feed((buffer.freeze(), socket.peer_addr)),
+                )
                 .map_err(err!()),
-            StreamSendSocket::Tcp(socket) => socket
-                .lock()
-                .await
-                .feed(buffer.freeze())
-                .await
+            StreamSendSocket::Tcp(socket) => runtime
+                .block_on(socket.lock().feed(buffer.freeze()))
                 .map_err(err!()),
         }
     }
@@ -177,17 +175,17 @@ impl<T: Serialize> StreamSender<T> {
             shards_buffer.put_u32(total_shards_count as _);
             shards_buffer.put_u32(shard_index as u32);
             shards_buffer.put_slice(shard);
-            runtime.block_on(self.send_buffer(shards_buffer.split()))?;
+            self.send_buffer(runtime, shards_buffer.split())?;
         }
 
         match &self.socket {
             StreamSendSocket::Udp(socket) => runtime
-                .block_on(async { socket.inner.lock().await.flush().await })
+                .block_on(socket.inner.lock().flush())
                 .map_err(err!())?,
 
-            StreamSendSocket::Tcp(socket) => runtime
-                .block_on(async { socket.lock().await.flush().await })
-                .map_err(err!())?,
+            StreamSendSocket::Tcp(socket) => {
+                runtime.block_on(socket.lock().flush()).map_err(err!())?
+            }
         }
 
         self.next_packet_index += 1;
@@ -227,7 +225,7 @@ impl<T: DeserializeOwned> ReceiverBuffer<T> {
 }
 
 pub struct StreamReceiver<T> {
-    receiver: mpsc::UnboundedReceiver<BytesMut>,
+    receiver: mpsc::Receiver<BytesMut>,
     last_reconstructed_packet_index: u32,
     packet_shards: BTreeMap<u32, HashMap<usize, BytesMut>>,
     empty_shard_maps: Vec<HashMap<usize, BytesMut>>,
@@ -239,17 +237,15 @@ pub struct StreamReceiver<T> {
 impl<T: DeserializeOwned> StreamReceiver<T> {
     pub fn recv_buffer(
         &mut self,
-        runtime: &Runtime,
         timeout: Duration,
         buffer: &mut ReceiverBuffer<T>,
     ) -> ConResult<bool> {
         // Get shard
-        let mut shard = runtime.block_on(async {
-            tokio::select! {
-                res = self.receiver.recv() => res.ok_or_else(enone!()).map_err(to_con_e!()),
-                _ = time::sleep(timeout) => alvr_common::timeout(),
-            }
-        })?;
+        let mut shard = match self.receiver.recv_timeout(timeout) {
+            Ok(shard) => Ok(shard),
+            Err(RecvTimeoutError::Timeout) => alvr_common::timeout(),
+            Err(RecvTimeoutError::Disconnected) => con_fmt_e!("Disconnected"),
+        }?;
         let shard_packet_index = shard.get_u32();
         let shards_count = shard.get_u32() as usize;
         let shard_index = shard.get_u32() as usize;
@@ -302,11 +298,11 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         }
     }
 
-    pub fn recv_header_only(&mut self, runtime: &Runtime, timeout: Duration) -> ConResult<T> {
+    pub fn recv_header_only(&mut self, timeout: Duration) -> ConResult<T> {
         let mut buffer = ReceiverBuffer::new();
 
         loop {
-            if self.recv_buffer(runtime, timeout, &mut buffer)? {
+            if self.recv_buffer(timeout, &mut buffer)? {
                 return Ok(buffer.get().map_err(to_con_e!())?.0);
             }
         }
@@ -436,7 +432,7 @@ pub struct StreamSocket {
     max_packet_size: usize,
     send_socket: StreamSendSocket,
     receive_socket: Arc<Mutex<Option<StreamReceiveSocket>>>,
-    packet_queues: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
+    packet_queues: Arc<Mutex<HashMap<u16, mpsc::Sender<BytesMut>>>>,
 }
 
 impl StreamSocket {
@@ -451,11 +447,10 @@ impl StreamSocket {
         }
     }
 
-    pub fn subscribe_to_stream<T>(&self, runtime: &Runtime, stream_id: u16) -> StreamReceiver<T> {
-        let (sender, receiver) = mpsc::unbounded_channel();
-        runtime
-            .block_on(self.packet_queues.lock())
-            .insert(stream_id, sender);
+    pub fn subscribe_to_stream<T>(&self, stream_id: u16) -> StreamReceiver<T> {
+        let (sender, receiver) = mpsc::channel();
+
+        self.packet_queues.lock().insert(stream_id, sender);
 
         StreamReceiver {
             receiver,
@@ -467,23 +462,13 @@ impl StreamSocket {
     }
 
     pub fn recv(&self, runtime: &Runtime, timeout: Duration) -> ConResult {
-        match runtime
-            .block_on(self.receive_socket.lock())
-            .as_mut()
-            .unwrap()
-        {
-            StreamReceiveSocket::Udp(socket) => runtime.block_on(async {
-                tokio::select! {
-                    res = udp::recv(socket, &self.packet_queues) => res.map_err(to_con_e!()),
-                    _ = time::sleep(timeout) => alvr_common::timeout(),
-                }
-            }),
-            StreamReceiveSocket::Tcp(socket) => runtime.block_on(async {
-                tokio::select! {
-                    res = tcp::recv(socket, Arc::clone(&self.packet_queues)) => res.map_err(to_con_e!()),
-                    _ = time::sleep(timeout) => alvr_common::timeout(),
-                }
-            }),
+        match self.receive_socket.lock().as_mut().unwrap() {
+            StreamReceiveSocket::Udp(socket) => {
+                udp::recv(runtime, timeout, socket, &self.packet_queues)
+            }
+            StreamReceiveSocket::Tcp(socket) => {
+                tcp::recv(runtime, timeout, socket, &self.packet_queues)
+            }
         }
     }
 }

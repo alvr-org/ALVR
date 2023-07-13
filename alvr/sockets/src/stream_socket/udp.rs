@@ -1,5 +1,5 @@
 use crate::{Ldc, LOCAL_IP};
-use alvr_common::prelude::*;
+use alvr_common::{parking_lot::Mutex, prelude::*};
 use alvr_session::SocketBufferSize;
 use bytes::{Buf, Bytes, BytesMut};
 use futures::{
@@ -9,12 +9,10 @@ use futures::{
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
-    sync::Arc,
+    sync::{mpsc, Arc},
+    time::Duration,
 };
-use tokio::{
-    net::UdpSocket,
-    sync::{mpsc, Mutex},
-};
+use tokio::{net::UdpSocket, runtime::Runtime, time};
 use tokio_util::udp::UdpFramed;
 
 #[allow(clippy::type_complexity)]
@@ -67,12 +65,19 @@ pub fn connect(
     ))
 }
 
-pub async fn recv(
+pub fn recv(
+    runtime: &Runtime,
+    timeout: Duration,
     socket: &mut UdpStreamReceiveSocket,
-    packet_enqueuers: &Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>,
-) -> StrResult {
-    if let Some(maybe_packet) = socket.inner.next().await {
-        let (mut packet_bytes, address) = maybe_packet.map_err(err!())?;
+    packet_enqueuers: &Mutex<HashMap<u16, mpsc::Sender<BytesMut>>>,
+) -> ConResult {
+    if let Some(maybe_packet) = runtime.block_on(async {
+        tokio::select! {
+            res = socket.inner.next() => res.map(|p| p.map_err(to_con_e!())),
+            _ = time::sleep(timeout) => Some(alvr_common::timeout()),
+        }
+    }) {
+        let (mut packet_bytes, address) = maybe_packet.map_err(to_con_e!())?;
 
         if address != socket.peer_addr {
             // Non fatal
@@ -80,12 +85,12 @@ pub async fn recv(
         }
 
         let stream_id = packet_bytes.get_u16();
-        if let Some(enqueuer) = packet_enqueuers.lock().await.get_mut(&stream_id) {
-            enqueuer.send(packet_bytes).map_err(err!())?;
+        if let Some(enqueuer) = packet_enqueuers.lock().get_mut(&stream_id) {
+            enqueuer.send(packet_bytes).map_err(to_con_e!())?;
         }
 
         Ok(())
     } else {
-        fmt_e!("Socket closed")
+        con_fmt_e!("Socket closed")
     }
 }

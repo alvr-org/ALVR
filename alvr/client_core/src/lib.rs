@@ -39,6 +39,7 @@ use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
+    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -51,7 +52,7 @@ static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
 
 static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
-static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
+static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
 static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 

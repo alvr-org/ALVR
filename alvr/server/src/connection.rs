@@ -48,6 +48,8 @@ const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
+pub static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> =
+    Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
@@ -549,16 +551,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);
-    let microphone_receiver = stream_socket.subscribe_to_stream(&runtime, AUDIO);
-    let mut tracking_receiver = stream_socket.subscribe_to_stream::<Tracking>(&runtime, TRACKING);
+    let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO);
+    let mut tracking_receiver = stream_socket.subscribe_to_stream::<Tracking>(TRACKING);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
-    let mut statics_receiver =
-        stream_socket.subscribe_to_stream::<ClientStatistics>(&runtime, STATISTICS);
+    let mut statics_receiver = stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS);
 
     // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
     // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
     // Failure to respect this might leave a lingering runtime.
     *CONNECTION_RUNTIME.write() = Some(runtime);
+    IS_STREAMING.set(true);
 
     let (video_channel_sender, video_channel_receiver) =
         std::sync::mpsc::sync_channel(settings.connection.max_queued_server_video_frames);
@@ -664,7 +666,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
         thread::spawn(move || {
             alvr_common::show_err(alvr_audio::play_audio_loop(
-                &CONNECTION_RUNTIME,
+                Arc::clone(&IS_STREAMING),
                 sink,
                 1,
                 streaming_caps.microphone_sample_rate,
@@ -695,15 +697,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 track_controllers = config.tracked.into();
             }
 
-            loop {
-                let tracking = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                    match tracking_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
-                        Ok(tracking) => tracking,
-                        Err(ConnectionError::Timeout) => continue,
-                        Err(ConnectionError::Other(_)) => return,
-                    }
-                } else {
-                    return;
+            while IS_STREAMING.value() {
+                let tracking = match tracking_receiver.recv_header_only(Duration::from_millis(500))
+                {
+                    Ok(tracking) => tracking,
+                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::Other(_)) => return,
                 };
 
                 let mut tracking_manager_lock = tracking_manager.lock();
@@ -807,28 +806,26 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         }
     });
 
-    let statistics_thread = thread::spawn(move || loop {
-        let client_stats = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            match statics_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
+    let statistics_thread = thread::spawn(move || {
+        while IS_STREAMING.value() {
+            let client_stats = match statics_receiver.recv_header_only(Duration::from_millis(500)) {
                 Ok(stats) => stats,
                 Err(ConnectionError::Timeout) => continue,
                 Err(ConnectionError::Other(_)) => return,
+            };
+
+            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                let timestamp = client_stats.target_timestamp;
+                let decoder_latency = client_stats.video_decode;
+                let network_latency = stats.report_statistics(client_stats);
+
+                BITRATE_MANAGER.lock().report_frame_latencies(
+                    &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
+                    timestamp,
+                    network_latency,
+                    decoder_latency,
+                );
             }
-        } else {
-            return;
-        };
-
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            let timestamp = client_stats.target_timestamp;
-            let decoder_latency = client_stats.video_decode;
-            let network_latency = stats.report_statistics(client_stats);
-
-            BITRATE_MANAGER.lock().report_frame_latencies(
-                &SERVER_DATA_MANAGER.read().settings().video.bitrate.mode,
-                timestamp,
-                network_latency,
-                decoder_latency,
-            );
         }
     });
 
@@ -1034,7 +1031,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     });
 
     let lifecycle_check_thread = thread::spawn(|| {
-        while SHOULD_CONNECT_TO_CLIENTS.value() && CONNECTION_RUNTIME.read().is_some() {
+        while IS_STREAMING.value()
+            && SHOULD_CONNECT_TO_CLIENTS.value()
+            && CONNECTION_RUNTIME.read().is_some()
+        {
             thread::sleep(Duration::from_millis(500));
         }
 
@@ -1082,6 +1082,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         }
 
         // This requests shutdown from threads
+        IS_STREAMING.set(false);
         *CONNECTION_RUNTIME.write() = None;
         *VIDEO_CHANNEL_SENDER.lock() = None;
         *HAPTICS_SENDER.lock() = None;

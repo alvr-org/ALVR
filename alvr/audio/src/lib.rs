@@ -8,6 +8,7 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     prelude::*,
+    RelaxedAtomic,
 };
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
@@ -360,7 +361,7 @@ pub fn get_next_frame_batch(
 // callback will gracefully handle an interruption, and the callback timing and sound wave
 // continuity will not be affected.
 pub fn receive_samples_loop(
-    runtime: &RwLock<Option<Runtime>>,
+    running: Arc<RelaxedAtomic>,
     mut receiver: StreamReceiver<()>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
     channels_count: usize,
@@ -369,16 +370,12 @@ pub fn receive_samples_loop(
 ) -> StrResult {
     let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
-    loop {
-        if let Some(runtime) = &*runtime.read() {
-            match receiver.recv_buffer(runtime, Duration::from_millis(500), &mut receiver_buffer) {
-                Ok(true) => (),
-                Ok(false) | Err(ConnectionError::Timeout) => continue,
-                Err(ConnectionError::Other(e)) => return fmt_e!("{e}"),
-            }
-        } else {
-            return Ok(());
-        }
+    while running.value() {
+        match receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
+            Ok(true) => (),
+            Ok(false) | Err(ConnectionError::Timeout) => continue,
+            Err(ConnectionError::Other(e)) => return fmt_e!("{e}"),
+        };
 
         let (_, packet) = receiver_buffer.get()?;
 
@@ -462,6 +459,8 @@ pub fn receive_samples_loop(
             }
         }
     }
+
+    Ok(())
 }
 
 struct StreamingSource {
@@ -514,7 +513,7 @@ impl Iterator for StreamingSource {
 }
 
 pub fn play_audio_loop(
-    runtime: &RwLock<Option<Runtime>>,
+    running: Arc<RelaxedAtomic>,
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
@@ -544,7 +543,7 @@ pub fn play_audio_loop(
         .map_err(err!())?;
 
     receive_samples_loop(
-        runtime,
+        running,
         receiver,
         sample_buffer,
         channels_count as _,

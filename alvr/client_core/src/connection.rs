@@ -283,11 +283,10 @@ fn connection_pipeline(
         config.options = settings.video.mediacodec_extra_options;
     }
 
-    let mut video_receiver =
-        stream_socket.subscribe_to_stream::<VideoPacketHeader>(&runtime, VIDEO);
-    let game_audio_receiver = stream_socket.subscribe_to_stream(&runtime, AUDIO);
+    let mut video_receiver = stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO);
+    let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO);
     let tracking_sender = stream_socket.request_stream(TRACKING);
-    let mut haptics_receiver = stream_socket.subscribe_to_stream::<Haptics>(&runtime, HAPTICS);
+    let mut haptics_receiver = stream_socket.subscribe_to_stream::<Haptics>(HAPTICS);
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
@@ -305,19 +304,11 @@ fn connection_pipeline(
     let video_receive_thread = thread::spawn(move || {
         let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
-        loop {
-            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                match video_receiver.recv_buffer(
-                    runtime,
-                    Duration::from_millis(500),
-                    &mut receiver_buffer,
-                ) {
-                    Ok(true) => (),
-                    Ok(false) | Err(ConnectionError::Timeout) => continue,
-                    Err(ConnectionError::Other(_)) => return,
-                }
-            } else {
-                return;
+        while IS_STREAMING.value() {
+            match video_receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
+                Ok(true) => (),
+                Ok(false) | Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::Other(_)) => return,
             }
 
             let Ok((header, nal)) = receiver_buffer.get() else {
@@ -357,7 +348,7 @@ fn connection_pipeline(
 
         thread::spawn(move || {
             alvr_common::show_err(audio::play_audio_loop(
-                &CONNECTION_RUNTIME,
+                Arc::clone(&IS_STREAMING),
                 device,
                 2,
                 game_audio_sample_rate,
@@ -374,19 +365,21 @@ fn connection_pipeline(
 
         let microphone_sender = stream_socket.request_stream(AUDIO);
 
-        thread::spawn(move || loop {
-            match audio::record_audio_blocking(
-                Arc::clone(&CONNECTION_RUNTIME),
-                microphone_sender.clone(),
-                &device,
-                1,
-                false,
-            ) {
-                Ok(()) => break,
-                Err(e) => {
-                    error!("Audio record error: {e}");
+        thread::spawn(move || {
+            while IS_STREAMING.value() {
+                match audio::record_audio_blocking(
+                    Arc::clone(&CONNECTION_RUNTIME),
+                    microphone_sender.clone(),
+                    &device,
+                    1,
+                    false,
+                ) {
+                    Ok(()) => break,
+                    Err(e) => {
+                        error!("Audio record error: {e}");
 
-                    continue;
+                        continue;
+                    }
                 }
             }
         })
@@ -394,23 +387,21 @@ fn connection_pipeline(
         thread::spawn(|| ())
     };
 
-    let haptics_receive_thread = thread::spawn(move || loop {
-        let haptics = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            match haptics_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
+    let haptics_receive_thread = thread::spawn(move || {
+        while IS_STREAMING.value() {
+            let haptics = match haptics_receiver.recv_header_only(Duration::from_millis(500)) {
                 Ok(packet) => packet,
                 Err(ConnectionError::Timeout) => continue,
                 Err(ConnectionError::Other(_)) => return,
-            }
-        } else {
-            return;
-        };
+            };
 
-        EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
-            device_id: haptics.device_id,
-            duration: haptics.duration,
-            frequency: haptics.frequency,
-            amplitude: haptics.amplitude,
-        });
+            EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
+                device_id: haptics.device_id,
+                duration: haptics.duration,
+                frequency: haptics.frequency,
+                amplitude: haptics.amplitude,
+            });
+        }
     });
 
     // Poll for events that need a constant thread (mainly for the JNI env)

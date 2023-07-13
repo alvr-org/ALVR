@@ -2,6 +2,7 @@ use alvr_audio::{AudioDevice, AudioRecordState};
 use alvr_common::{
     parking_lot::{Mutex, RwLock},
     prelude::*,
+    RelaxedAtomic,
 };
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
@@ -125,7 +126,7 @@ impl AudioOutputCallback for PlayerCallback {
 
 #[allow(unused_variables)]
 pub fn play_audio_loop(
-    runtime: &RwLock<Option<Runtime>>,
+    running: Arc<RelaxedAtomic>,
     device: AudioDevice,
     channels_count: u16,
     sample_rate: u32,
@@ -164,7 +165,7 @@ pub fn play_audio_loop(
     stream.start().map_err(err!())?;
 
     alvr_audio::receive_samples_loop(
-        runtime,
+        running,
         receiver,
         sample_buffer,
         2,

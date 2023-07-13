@@ -13,9 +13,8 @@ use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     marker::PhantomData,
-    mem,
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
@@ -229,86 +228,88 @@ impl<T: DeserializeOwned> ReceiverBuffer<T> {
 
 pub struct StreamReceiver<T> {
     receiver: mpsc::UnboundedReceiver<BytesMut>,
-    next_packet_shards: HashMap<usize, BytesMut>,
-    next_packet_shards_count: Option<usize>,
-    next_packet_index: u32,
+    last_reconstructed_packet_index: u32,
+    packet_shards: BTreeMap<u32, HashMap<usize, BytesMut>>,
+    empty_shard_maps: Vec<HashMap<usize, BytesMut>>,
     _phantom: PhantomData<T>,
 }
 
-/// Get next packet reconstructing from shards. It can store at max shards from two packets; if the
-/// reordering entropy is too high, packets will never be successfully reconstructed.
+/// Get next packet reconstructing from shards.
+/// Returns true if a packet has been recontructed and copied into the buffer.
 impl<T: DeserializeOwned> StreamReceiver<T> {
-    pub async fn recv_buffer(&mut self, buffer: &mut ReceiverBuffer<T>) -> StrResult {
-        buffer.had_packet_loss = false;
-
-        loop {
-            let current_packet_index = self.next_packet_index;
-            self.next_packet_index += 1;
-
-            let mut current_packet_shards =
-                HashMap::with_capacity(self.next_packet_shards.capacity());
-            mem::swap(&mut current_packet_shards, &mut self.next_packet_shards);
-
-            let mut current_packet_shards_count = self.next_packet_shards_count.take();
-
-            loop {
-                if let Some(shards_count) = current_packet_shards_count {
-                    if current_packet_shards.len() >= shards_count {
-                        buffer.inner.clear();
-
-                        for i in 0..shards_count {
-                            if let Some(shard) = current_packet_shards.get(&i) {
-                                buffer.inner.put_slice(shard);
-                            } else {
-                                error!("Cannot find shard with given index!");
-                                buffer.had_packet_loss = true;
-
-                                self.next_packet_shards.clear();
-
-                                break;
-                            }
-                        }
-
-                        return Ok(());
-                    }
-                }
-
-                let mut shard = self.receiver.recv().await.ok_or_else(enone!())?;
-
-                let shard_packet_index = shard.get_u32();
-                let shards_count = shard.get_u32() as usize;
-                let shard_index = shard.get_u32() as usize;
-
-                if shard_packet_index == current_packet_index {
-                    current_packet_shards.insert(shard_index, shard);
-                    current_packet_shards_count = Some(shards_count);
-                } else if shard_packet_index >= self.next_packet_index {
-                    if shard_packet_index > self.next_packet_index {
-                        self.next_packet_shards.clear();
-                    }
-
-                    self.next_packet_shards.insert(shard_index, shard);
-                    self.next_packet_shards_count = Some(shards_count);
-                    self.next_packet_index = shard_packet_index;
-
-                    if shard_packet_index > self.next_packet_index
-                        || self.next_packet_shards.len() == shards_count
-                    {
-                        debug!("Skipping to next packet. Signaling packet loss.");
-                        buffer.had_packet_loss = true;
-                        break;
-                    }
-                }
-                // else: ignore old shard
+    pub fn recv_buffer(
+        &mut self,
+        runtime: &Runtime,
+        timeout: Duration,
+        buffer: &mut ReceiverBuffer<T>,
+    ) -> ConResult<bool> {
+        // Get shard
+        let mut shard = runtime.block_on(async {
+            tokio::select! {
+                res = self.receiver.recv() => res.ok_or_else(enone!()).map_err(to_con_e!()),
+                _ = time::sleep(timeout) => alvr_common::timeout(),
             }
+        })?;
+        let shard_packet_index = shard.get_u32();
+        let shards_count = shard.get_u32() as usize;
+        let shard_index = shard.get_u32() as usize;
+
+        // Discard shard if too old
+        if shard_packet_index <= self.last_reconstructed_packet_index {
+            debug!("Received old shard!");
+            return Ok(false);
+        }
+
+        // Insert shards into map
+        let shard_map = self
+            .packet_shards
+            .entry(shard_packet_index)
+            .or_insert_with(|| self.empty_shard_maps.pop().unwrap_or_default());
+        shard_map.insert(shard_index, shard);
+
+        // If the shard map is (probably) complete:
+        if shard_map.len() == shards_count {
+            buffer.inner.clear();
+
+            // Copy shards into final buffer. Fail if there are missing shards. This is impossibly
+            // rare (if the shards_count value got corrupted) but should be handled.
+            for idx in 0..shards_count {
+                if let Some(shard) = shard_map.get(&idx) {
+                    buffer.inner.put_slice(shard);
+                } else {
+                    error!("Cannot find shard with given index!");
+                    return Ok(false);
+                }
+            }
+
+            // Check if current packet index is one up the last successful reconstucted packet.
+            buffer.had_packet_loss = shard_packet_index != self.last_reconstructed_packet_index + 1;
+            self.last_reconstructed_packet_index = shard_packet_index;
+
+            // Pop old shards and recycle containers
+            while let Some((packet_index, mut shards)) = self.packet_shards.pop_first() {
+                shards.clear();
+                self.empty_shard_maps.push(shards);
+
+                if packet_index == shard_packet_index {
+                    break;
+                }
+            }
+
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
-    pub async fn recv_header_only(&mut self) -> StrResult<T> {
+    pub fn recv_header_only(&mut self, runtime: &Runtime, timeout: Duration) -> ConResult<T> {
         let mut buffer = ReceiverBuffer::new();
-        self.recv_buffer(&mut buffer).await?;
 
-        Ok(buffer.get()?.0)
+        loop {
+            if self.recv_buffer(runtime, timeout, &mut buffer)? {
+                return Ok(buffer.get().map_err(to_con_e!())?.0);
+            }
+        }
     }
 }
 
@@ -458,9 +459,9 @@ impl StreamSocket {
 
         StreamReceiver {
             receiver,
-            next_packet_shards: HashMap::new(),
-            next_packet_shards_count: None,
-            next_packet_index: 0,
+            last_reconstructed_packet_index: 0,
+            packet_shards: BTreeMap::new(),
+            empty_shard_maps: vec![],
             _phantom: PhantomData,
         }
     }

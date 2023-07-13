@@ -42,7 +42,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::{runtime::Runtime, time};
+use tokio::runtime::Runtime;
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -697,16 +697,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
             loop {
                 let tracking = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                    let maybe_tracking = runtime.block_on(async {
-                        tokio::select! {
-                            res = tracking_receiver.recv_header_only() => Some(res),
-                            _ = time::sleep(Duration::from_millis(500)) => None,
-                        }
-                    });
-                    match maybe_tracking {
-                        Some(Ok(tracking)) => tracking,
-                        Some(Err(_)) => return,
-                        None => continue,
+                    match tracking_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
+                        Ok(tracking) => tracking,
+                        Err(ConnectionError::Timeout) => continue,
+                        Err(ConnectionError::Other(_)) => return,
                     }
                 } else {
                     return;
@@ -815,16 +809,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let statistics_thread = thread::spawn(move || loop {
         let client_stats = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            let maybe_client_stats = runtime.block_on(async {
-                tokio::select! {
-                    res = statics_receiver.recv_header_only() => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
-                }
-            });
-            match maybe_client_stats {
-                Some(Ok(stats)) => stats,
-                Some(Err(_)) => return,
-                None => continue,
+            match statics_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
+                Ok(stats) => stats,
+                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::Other(_)) => return,
             }
         } else {
             return;

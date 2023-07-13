@@ -24,7 +24,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::{runtime::Runtime, time};
+use tokio::runtime::Runtime;
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
@@ -302,7 +302,7 @@ pub fn record_audio_blocking(
 
     #[cfg(windows)]
     if mute && device.is_output {
-        crate::windows::set_mute_windows_device(&device, true).ok();
+        crate::windows::set_mute_windows_device(device, true).ok();
     }
 
     let mut res = stream.play().map_err(err!());
@@ -371,16 +371,10 @@ pub fn receive_samples_loop(
     let mut recovery_sample_buffer = vec![];
     loop {
         if let Some(runtime) = &*runtime.read() {
-            let res = runtime.block_on(async {
-                tokio::select! {
-                    res = receiver.recv_buffer(&mut receiver_buffer) => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
-                }
-            });
-            match res {
-                Some(Ok(())) => (),
-                Some(err_res) => return err_res.map_err(err!()),
-                None => continue,
+            match receiver.recv_buffer(runtime, Duration::from_millis(500), &mut receiver_buffer) {
+                Ok(true) => (),
+                Ok(false) | Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::Other(e)) => return fmt_e!("{e}"),
             }
         } else {
             return Ok(());

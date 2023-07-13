@@ -32,7 +32,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio::{runtime::Runtime, time};
+use tokio::runtime::Runtime;
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -307,17 +307,14 @@ fn connection_pipeline(
         let mut stream_corrupted = false;
         loop {
             if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = runtime.block_on(async {
-                    tokio::select! {
-                        res = video_receiver.recv_buffer(&mut receiver_buffer) => Some(res),
-                        _ = time::sleep(Duration::from_millis(500)) => None,
-                    }
-                });
-
-                match res {
-                    Some(Ok(())) => (),
-                    Some(Err(_)) => return,
-                    None => continue,
+                match video_receiver.recv_buffer(
+                    runtime,
+                    Duration::from_millis(500),
+                    &mut receiver_buffer,
+                ) {
+                    Ok(true) => (),
+                    Ok(false) | Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::Other(_)) => return,
                 }
             } else {
                 return;
@@ -399,17 +396,10 @@ fn connection_pipeline(
 
     let haptics_receive_thread = thread::spawn(move || loop {
         let haptics = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            let res = runtime.block_on(async {
-                tokio::select! {
-                    res = haptics_receiver.recv_header_only() => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
-                }
-            });
-
-            match res {
-                Some(Ok(packet)) => packet,
-                Some(Err(_)) => return,
-                None => continue,
+            match haptics_receiver.recv_header_only(runtime, Duration::from_millis(500)) {
+                Ok(packet) => packet,
+                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::Other(_)) => return,
             }
         } else {
             return;

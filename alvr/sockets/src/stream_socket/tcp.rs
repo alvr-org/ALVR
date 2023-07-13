@@ -22,12 +22,15 @@ use tokio_util::codec::Framed;
 pub type TcpStreamSendSocket = Arc<Mutex<SplitSink<Framed<TcpStream, Ldc>, Bytes>>>;
 pub type TcpStreamReceiveSocket = SplitStream<Framed<TcpStream, Ldc>>;
 
-pub async fn bind(
+pub fn bind(
+    runtime: &Runtime,
     port: u16,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
 ) -> StrResult<TcpListener> {
-    let socket = TcpListener::bind((LOCAL_IP, port)).await.map_err(err!())?;
+    let socket = runtime
+        .block_on(TcpListener::bind((LOCAL_IP, port)))
+        .map_err(err!())?;
     let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
@@ -35,38 +38,51 @@ pub async fn bind(
     TcpListener::from_std(socket.into()).map_err(err!())
 }
 
-pub async fn accept_from_server(
+pub fn accept_from_server(
+    runtime: &Runtime,
+    timeout: Duration,
     listener: TcpListener,
     server_ip: IpAddr,
-) -> StrResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
-    let (socket, server_address) = listener.accept().await.map_err(err!())?;
+) -> ConResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
+    let (socket, server_address) = runtime.block_on(async {
+        tokio::select! {
+            res = listener.accept() => res.map_err(to_con_e!()),
+            _ = time::sleep(timeout) => alvr_common::timeout(),
+        }
+    })?;
 
     if server_address.ip() != server_ip {
-        return fmt_e!("Connected to wrong client: {server_address} != {server_ip}");
+        return con_fmt_e!("Connected to wrong client: {server_address} != {server_ip}");
     }
 
-    socket.set_nodelay(true).map_err(err!())?;
+    socket.set_nodelay(true).map_err(to_con_e!())?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
     Ok((Arc::new(Mutex::new(send_socket)), receive_socket))
 }
 
-pub async fn connect_to_client(
+pub fn connect_to_client(
+    runtime: &Runtime,
+    timeout: Duration,
     client_ip: IpAddr,
     port: u16,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
-) -> StrResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
-    let socket = TcpStream::connect((client_ip, port))
-        .await
-        .map_err(err!())?;
-    let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
+) -> ConResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
+    let socket = runtime.block_on(async {
+        tokio::select! {
+            res = TcpStream::connect((client_ip, port)) => res.map_err(to_con_e!()),
+            _ = time::sleep(timeout) => alvr_common::timeout(),
+        }
+    })?;
+
+    let socket = socket2::Socket::from(socket.into_std().map_err(to_con_e!())?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
-    let socket = TcpStream::from_std(socket.into()).map_err(err!())?;
-    socket.set_nodelay(true).map_err(err!())?;
+    let socket = TcpStream::from_std(socket.into()).map_err(to_con_e!())?;
+    socket.set_nodelay(true).map_err(to_con_e!())?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 

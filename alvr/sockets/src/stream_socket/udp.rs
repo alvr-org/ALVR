@@ -31,12 +31,15 @@ pub struct UdpStreamReceiveSocket {
 
 // Create tokio socket, convert to socket2, apply settings, convert back to tokio. This is done to
 // let tokio set all the internal parameters it needs from the start.
-pub async fn bind(
+pub fn bind(
+    runtime: &Runtime,
     port: u16,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
 ) -> StrResult<UdpSocket> {
-    let socket = UdpSocket::bind((LOCAL_IP, port)).await.map_err(err!())?;
+    let socket = runtime
+        .block_on(UdpSocket::bind((LOCAL_IP, port)))
+        .map_err(err!())?;
     let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
@@ -48,12 +51,12 @@ pub fn connect(
     socket: UdpSocket,
     peer_ip: IpAddr,
     port: u16,
-) -> StrResult<(UdpStreamSendSocket, UdpStreamReceiveSocket)> {
+) -> (UdpStreamSendSocket, UdpStreamReceiveSocket) {
     let peer_addr = (peer_ip, port).into();
     let socket = UdpFramed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
-    Ok((
+    (
         UdpStreamSendSocket {
             peer_addr,
             inner: Arc::new(Mutex::new(send_socket)),
@@ -62,7 +65,7 @@ pub fn connect(
             peer_addr,
             inner: receive_socket,
         },
-    ))
+    )
 }
 
 pub fn recv(

@@ -24,7 +24,6 @@ use std::{
     time::Duration,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
-use tokio::time;
 use tokio::{net, runtime::Runtime};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
@@ -323,16 +322,18 @@ impl StreamSocketBuilder {
         recv_buffer_bytes: SocketBufferSize,
     ) -> StrResult<Self> {
         Ok(match stream_socket_config {
-            SocketProtocol::Udp => StreamSocketBuilder::Udp(runtime.block_on(udp::bind(
+            SocketProtocol::Udp => StreamSocketBuilder::Udp(udp::bind(
+                runtime,
                 port,
                 send_buffer_bytes,
                 recv_buffer_bytes,
-            ))?),
-            SocketProtocol::Tcp => StreamSocketBuilder::Tcp(runtime.block_on(tcp::bind(
+            )?),
+            SocketProtocol::Tcp => StreamSocketBuilder::Tcp(tcp::bind(
+                runtime,
                 port,
                 send_buffer_bytes,
                 recv_buffer_bytes,
-            ))?),
+            )?),
         })
     }
 
@@ -346,8 +347,7 @@ impl StreamSocketBuilder {
     ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match self {
             StreamSocketBuilder::Udp(socket) => {
-                let (send_socket, receive_socket) =
-                    udp::connect(socket, server_ip, port).map_err(to_con_e!())?;
+                let (send_socket, receive_socket) = udp::connect(socket, server_ip, port);
 
                 (
                     StreamSendSocket::Udp(send_socket),
@@ -355,14 +355,8 @@ impl StreamSocketBuilder {
                 )
             }
             StreamSocketBuilder::Tcp(listener) => {
-                let (send_socket, receive_socket) = runtime.block_on(async {
-                    tokio::select! {
-                        res = tcp::accept_from_server(listener, server_ip) => {
-                            res.map_err(to_con_e!())
-                        },
-                        _ = time::sleep(timeout) => alvr_common::timeout(),
-                    }
-                })?;
+                let (send_socket, receive_socket) =
+                    tcp::accept_from_server(runtime, timeout, listener, server_ip)?;
 
                 (
                     StreamSendSocket::Tcp(send_socket),
@@ -392,25 +386,24 @@ impl StreamSocketBuilder {
     ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
-                let socket = runtime
-                    .block_on(udp::bind(port, send_buffer_bytes, recv_buffer_bytes))
+                let socket = udp::bind(runtime, port, send_buffer_bytes, recv_buffer_bytes)
                     .map_err(to_con_e!())?;
-                let (send_socket, receive_socket) =
-                    udp::connect(socket, client_ip, port).map_err(to_con_e!())?;
+                let (send_socket, receive_socket) = udp::connect(socket, client_ip, port);
+
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
             SocketProtocol::Tcp => {
-                let (send_socket, receive_socket) = runtime.block_on(async {
-                    tokio::select! {
-                        res = tcp::connect_to_client(client_ip, port, send_buffer_bytes, recv_buffer_bytes) => {
-                            res.map_err(to_con_e!())
-                        },
-                        _ = time::sleep(timeout) => alvr_common::timeout(),
-                    }
-                })?;
+                let (send_socket, receive_socket) = tcp::connect_to_client(
+                    runtime,
+                    timeout,
+                    client_ip,
+                    port,
+                    send_buffer_bytes,
+                    recv_buffer_bytes,
+                )?;
 
                 (
                     StreamSendSocket::Tcp(send_socket),

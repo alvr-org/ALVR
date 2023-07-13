@@ -534,33 +534,26 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     *BITRATE_MANAGER.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
-    let stream_socket = runtime
-        .block_on(async {
-            tokio::select! {
-                res = StreamSocketBuilder::connect_to_client(
-                    client_ip,
-                    settings.connection.stream_port,
-                    settings.connection.stream_protocol,
-                    settings.connection.server_send_buffer_bytes,
-                    settings.connection.server_recv_buffer_bytes,
-                    settings.connection.packet_size as _,
-                ) => res,
-                _ = time::sleep(Duration::from_secs(1)) => {
-                    fmt_e!("Timeout while setting up streams")
-                }
-            }
-        })
-        .map_err(to_con_e!())?;
+    let stream_socket = StreamSocketBuilder::connect_to_client(
+        &runtime,
+        Duration::from_secs(1),
+        client_ip,
+        settings.connection.stream_port,
+        settings.connection.stream_protocol,
+        settings.connection.server_send_buffer_bytes,
+        settings.connection.server_recv_buffer_bytes,
+        settings.connection.packet_size as _,
+    )
+    .map_err(to_con_e!())?;
     let stream_socket = Arc::new(stream_socket);
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);
-    let microphone_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
-    let mut tracking_receiver =
-        runtime.block_on(stream_socket.subscribe_to_stream::<Tracking>(TRACKING));
+    let microphone_receiver = stream_socket.subscribe_to_stream(&runtime, AUDIO);
+    let mut tracking_receiver = stream_socket.subscribe_to_stream::<Tracking>(&runtime, TRACKING);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
     let mut statics_receiver =
-        runtime.block_on(stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS));
+        stream_socket.subscribe_to_stream::<ClientStatistics>(&runtime, STATISTICS);
 
     // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
     // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
@@ -584,7 +577,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             // IMPORTANT: The only error that can happen here is socket closed. For this reason it's
             // acceptable to call .ok() and ignore the error. The connection would already be
             // closing so no corruption handling is necessary
-            runtime.block_on(video_sender.send(&header, payload)).ok();
+            video_sender.send(runtime, &header, payload).ok();
         }
     });
 
@@ -1027,15 +1020,11 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let client_hostname = client_hostname.clone();
         move || {
             while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = runtime.block_on(async {
-                    tokio::select! {
-                        res = stream_socket.recv() => Some(res),
-                        _ = time::sleep(Duration::from_millis(500)) => None,
-                    }
-                });
+                let res = stream_socket.recv(runtime, Duration::from_millis(500));
                 match res {
-                    Some(Ok(())) => (),
-                    Some(Err(e)) => {
+                    Ok(()) => (),
+                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::Other(e)) => {
                         info!("Client disconnected. Cause: {e}");
 
                         SERVER_DATA_MANAGER.write().update_client_list(
@@ -1051,7 +1040,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                         return;
                     }
-                    None => continue,
                 }
             }
         }
@@ -1242,8 +1230,8 @@ pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, 
         &*CONNECTION_RUNTIME.read(),
         &mut *HAPTICS_SENDER.lock(),
     ) {
-        runtime
-            .block_on(sender.send(&haptics::map_haptics(&config, haptics), vec![]))
+        sender
+            .send(runtime, &haptics::map_haptics(&config, haptics), vec![])
             .ok();
     }
 }

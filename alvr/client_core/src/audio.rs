@@ -34,7 +34,7 @@ impl AudioInputCallback for RecorderCallback {
         }
 
         if let Some(runtime) = &*self.runtime.read() {
-            runtime.block_on(self.sender.send(&(), sample_buffer)).ok();
+            self.sender.send(runtime, &(), sample_buffer).ok();
 
             DataCallbackResult::Continue
         } else {

@@ -113,14 +113,15 @@ impl ProtoControlSocket {
         runtime: &Runtime,
         timeout: Duration,
     ) -> ConResult<R> {
-        let packet_bytes = runtime.block_on(async {
-            tokio::select! {
-                res = self.inner.next() => {
-                    res.map(|p| p.map_err(to_con_e!())).ok_or_else(enone!()).map_err(to_con_e!())
+        let packet_bytes = runtime
+            .block_on(async {
+                tokio::select! {
+                    res = self.inner.next() => res.map(|p| p.map_err(to_con_e!())),
+                    _ = time::sleep(timeout) => Some(alvr_common::timeout()),
                 }
-                _ = time::sleep(timeout) => Ok(alvr_common::timeout()),
-            }
-        })??;
+            })
+            .ok_or_else(enone!())
+            .map_err(to_con_e!())??;
 
         bincode::deserialize(&packet_bytes).map_err(to_con_e!())
     }

@@ -168,7 +168,7 @@ pub fn send_tracking(tracking: Tracking) {
     if let (Some(runtime), Some(sender)) =
         (&*CONNECTION_RUNTIME.read(), &mut *TRACKING_SENDER.lock())
     {
-        runtime.block_on(sender.send(&tracking, vec![])).ok();
+        sender.send(runtime, &tracking, vec![]).ok();
 
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
             stats.report_input_acquired(tracking.target_timestamp);
@@ -200,7 +200,7 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
             (&*CONNECTION_RUNTIME.read(), &mut *STATISTICS_SENDER.lock())
         {
             if let Some(stats) = stats.summary(target_timestamp) {
-                runtime.block_on(sender.send(&stats, vec![])).ok();
+                sender.send(runtime, &stats, vec![]).ok();
             } else {
                 error!("Statistics summary not ready!");
             }

@@ -19,10 +19,14 @@ use std::{
     net::IpAddr,
     ops::{Deref, DerefMut},
     sync::Arc,
+    time::Duration,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
-use tokio::net;
-use tokio::sync::{mpsc, Mutex};
+use tokio::{net, runtime::Runtime};
+use tokio::{
+    sync::{mpsc, Mutex},
+    time,
+};
 use udp::{UdpStreamReceiveSocket, UdpStreamSendSocket};
 
 pub fn set_socket_buffers(
@@ -125,7 +129,7 @@ pub struct StreamSender<T> {
 }
 
 impl<T: Serialize> StreamSender<T> {
-    async fn send_buffer(&self, buffer: BytesMut) {
+    async fn send_buffer(&self, buffer: BytesMut) -> StrResult {
         match &self.socket {
             StreamSendSocket::Udp(socket) => socket
                 .inner
@@ -133,19 +137,17 @@ impl<T: Serialize> StreamSender<T> {
                 .await
                 .feed((buffer.freeze(), socket.peer_addr))
                 .await
-                .map_err(err!())
-                .ok(),
+                .map_err(err!()),
             StreamSendSocket::Tcp(socket) => socket
                 .lock()
                 .await
                 .feed(buffer.freeze())
                 .await
-                .map_err(err!())
-                .ok(),
-        };
+                .map_err(err!()),
+        }
     }
 
-    pub async fn send(&mut self, header: &T, payload_buffer: Vec<u8>) -> StrResult {
+    pub fn send(&mut self, runtime: &Runtime, header: &T, payload_buffer: Vec<u8>) -> StrResult {
         // packet layout:
         // [ 2B (stream ID) | 4B (packet index) | 4B (packet shard count) | 4B (shard index)]
         // this escluses length delimited coding, which is handled by the TCP backend
@@ -176,14 +178,17 @@ impl<T: Serialize> StreamSender<T> {
             shards_buffer.put_u32(total_shards_count as _);
             shards_buffer.put_u32(shard_index as u32);
             shards_buffer.put_slice(shard);
-            self.send_buffer(shards_buffer.split()).await;
+            runtime.block_on(self.send_buffer(shards_buffer.split()))?;
         }
 
         match &self.socket {
-            StreamSendSocket::Udp(socket) => {
-                socket.inner.lock().await.flush().await.map_err(err!())?;
-            }
-            StreamSendSocket::Tcp(socket) => socket.lock().await.flush().await.map_err(err!())?,
+            StreamSendSocket::Udp(socket) => runtime
+                .block_on(async { socket.inner.lock().await.flush().await })
+                .map_err(err!())?,
+
+            StreamSendSocket::Tcp(socket) => runtime
+                .block_on(async { socket.lock().await.flush().await })
+                .map_err(err!())?,
         }
 
         self.next_packet_index += 1;
@@ -313,39 +318,55 @@ pub enum StreamSocketBuilder {
 }
 
 impl StreamSocketBuilder {
-    pub async fn listen_for_server(
+    pub fn listen_for_server(
+        runtime: &Runtime,
         port: u16,
         stream_socket_config: SocketProtocol,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
     ) -> StrResult<Self> {
         Ok(match stream_socket_config {
-            SocketProtocol::Udp => StreamSocketBuilder::Udp(
-                udp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?,
-            ),
-            SocketProtocol::Tcp => StreamSocketBuilder::Tcp(
-                tcp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?,
-            ),
+            SocketProtocol::Udp => StreamSocketBuilder::Udp(runtime.block_on(udp::bind(
+                port,
+                send_buffer_bytes,
+                recv_buffer_bytes,
+            ))?),
+            SocketProtocol::Tcp => StreamSocketBuilder::Tcp(runtime.block_on(tcp::bind(
+                port,
+                send_buffer_bytes,
+                recv_buffer_bytes,
+            ))?),
         })
     }
 
-    pub async fn accept_from_server(
+    pub fn accept_from_server(
         self,
+        runtime: &Runtime,
+        timeout: Duration,
         server_ip: IpAddr,
         port: u16,
         max_packet_size: usize,
-    ) -> StrResult<StreamSocket> {
+    ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match self {
             StreamSocketBuilder::Udp(socket) => {
-                let (send_socket, receive_socket) = udp::connect(socket, server_ip, port).await?;
+                let (send_socket, receive_socket) =
+                    udp::connect(socket, server_ip, port).map_err(to_con_e!())?;
+
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
             StreamSocketBuilder::Tcp(listener) => {
-                let (send_socket, receive_socket) =
-                    tcp::accept_from_server(listener, server_ip).await?;
+                let (send_socket, receive_socket) = runtime.block_on(async {
+                    tokio::select! {
+                        res = tcp::accept_from_server(listener, server_ip) => {
+                            res.map_err(to_con_e!())
+                        },
+                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                    }
+                })?;
+
                 (
                     StreamSendSocket::Tcp(send_socket),
                     StreamReceiveSocket::Tcp(receive_socket),
@@ -361,27 +382,39 @@ impl StreamSocketBuilder {
         })
     }
 
-    pub async fn connect_to_client(
+    #[allow(clippy::too_many_arguments)]
+    pub fn connect_to_client(
+        runtime: &Runtime,
+        timeout: Duration,
         client_ip: IpAddr,
         port: u16,
         protocol: SocketProtocol,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
         max_packet_size: usize,
-    ) -> StrResult<StreamSocket> {
+    ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
-                let socket = udp::bind(port, send_buffer_bytes, recv_buffer_bytes).await?;
-                let (send_socket, receive_socket) = udp::connect(socket, client_ip, port).await?;
+                let socket = runtime
+                    .block_on(udp::bind(port, send_buffer_bytes, recv_buffer_bytes))
+                    .map_err(to_con_e!())?;
+                let (send_socket, receive_socket) =
+                    udp::connect(socket, client_ip, port).map_err(to_con_e!())?;
                 (
                     StreamSendSocket::Udp(send_socket),
                     StreamReceiveSocket::Udp(receive_socket),
                 )
             }
             SocketProtocol::Tcp => {
-                let (send_socket, receive_socket) =
-                    tcp::connect_to_client(client_ip, port, send_buffer_bytes, recv_buffer_bytes)
-                        .await?;
+                let (send_socket, receive_socket) = runtime.block_on(async {
+                    tokio::select! {
+                        res = tcp::connect_to_client(client_ip, port, send_buffer_bytes, recv_buffer_bytes) => {
+                            res.map_err(to_con_e!())
+                        },
+                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                    }
+                })?;
+
                 (
                     StreamSendSocket::Tcp(send_socket),
                     StreamReceiveSocket::Tcp(receive_socket),
@@ -417,9 +450,11 @@ impl StreamSocket {
         }
     }
 
-    pub async fn subscribe_to_stream<T>(&self, stream_id: u16) -> StreamReceiver<T> {
+    pub fn subscribe_to_stream<T>(&self, runtime: &Runtime, stream_id: u16) -> StreamReceiver<T> {
         let (sender, receiver) = mpsc::unbounded_channel();
-        self.packet_queues.lock().await.insert(stream_id, sender);
+        runtime
+            .block_on(self.packet_queues.lock())
+            .insert(stream_id, sender);
 
         StreamReceiver {
             receiver,
@@ -430,14 +465,24 @@ impl StreamSocket {
         }
     }
 
-    pub async fn recv(&self) -> StrResult {
-        match self.receive_socket.lock().await.as_mut().unwrap() {
-            StreamReceiveSocket::Udp(socket) => {
-                udp::recv(socket, Arc::clone(&self.packet_queues)).await
-            }
-            StreamReceiveSocket::Tcp(socket) => {
-                tcp::recv(socket, Arc::clone(&self.packet_queues)).await
-            }
+    pub fn recv(&self, runtime: &Runtime, timeout: Duration) -> ConResult {
+        match runtime
+            .block_on(self.receive_socket.lock())
+            .as_mut()
+            .unwrap()
+        {
+            StreamReceiveSocket::Udp(socket) => runtime.block_on(async {
+                tokio::select! {
+                    res = udp::recv(socket, &self.packet_queues) => res.map_err(to_con_e!()),
+                    _ = time::sleep(timeout) => alvr_common::timeout(),
+                }
+            }),
+            StreamReceiveSocket::Tcp(socket) => runtime.block_on(async {
+                tokio::select! {
+                    res = tcp::recv(socket, Arc::clone(&self.packet_queues)) => res.map_err(to_con_e!()),
+                    _ = time::sleep(timeout) => alvr_common::timeout(),
+                }
+            }),
         }
     }
 }

@@ -286,7 +286,7 @@ pub fn record_audio_blocking(
                     };
 
                     if let Some(runtime) = &*runtime.read() {
-                        runtime.block_on(sender.send(&(), data)).ok();
+                        sender.send(runtime, &(), data).ok();
                     } else {
                         *state.lock() = AudioRecordState::ShouldStop;
                     }

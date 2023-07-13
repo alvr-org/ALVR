@@ -249,18 +249,14 @@ fn connection_pipeline(
         }
     }
 
-    let listen_for_server_future = StreamSocketBuilder::listen_for_server(
+    let stream_socket_builder = StreamSocketBuilder::listen_for_server(
+        &runtime,
         settings.connection.stream_port,
         settings.connection.stream_protocol,
         settings.connection.client_send_buffer_bytes,
         settings.connection.client_recv_buffer_bytes,
-    );
-    let stream_socket_builder = runtime.block_on(async {
-        tokio::select! {
-            res = listen_for_server_future => res.map_err(to_con_e!()),
-            _ = time::sleep(Duration::from_secs(1)) => con_fmt_e!("Timeout while binding stream socket"),
-        }
-    })?;
+    )
+    .map_err(to_con_e!())?;
 
     if let Err(e) = control_sender.send(&runtime, &ClientControlPacket::StreamReady) {
         info!("Server disconnected. Cause: {e}");
@@ -268,17 +264,13 @@ fn connection_pipeline(
         return Ok(());
     }
 
-    let accept_from_server_future = stream_socket_builder.accept_from_server(
+    let stream_socket = stream_socket_builder.accept_from_server(
+        &runtime,
+        Duration::from_secs(2),
         server_ip,
         settings.connection.stream_port,
         settings.connection.packet_size as _,
-    );
-    let stream_socket = runtime.block_on(async {
-        tokio::select! {
-            res = accept_from_server_future => res.map_err(to_con_e!()),
-            _ = time::sleep(Duration::from_secs(2)) => con_fmt_e!("Timeout while setting up streams")
-        }
-    })?;
+    )?;
     let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
@@ -292,11 +284,10 @@ fn connection_pipeline(
     }
 
     let mut video_receiver =
-        runtime.block_on(stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO));
-    let game_audio_receiver = runtime.block_on(stream_socket.subscribe_to_stream(AUDIO));
+        stream_socket.subscribe_to_stream::<VideoPacketHeader>(&runtime, VIDEO);
+    let game_audio_receiver = stream_socket.subscribe_to_stream(&runtime, AUDIO);
     let tracking_sender = stream_socket.request_stream(TRACKING);
-    let mut haptics_receiver =
-        runtime.block_on(stream_socket.subscribe_to_stream::<Haptics>(HAPTICS));
+    let mut haptics_receiver = stream_socket.subscribe_to_stream::<Haptics>(&runtime, HAPTICS);
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
@@ -533,15 +524,11 @@ fn connection_pipeline(
 
     let stream_receive_thread = thread::spawn(move || {
         while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            let res = runtime.block_on(async {
-                tokio::select! {
-                    res = stream_socket.recv() => Some(res),
-                    _ = time::sleep(Duration::from_millis(500)) => None,
-                }
-            });
+            let res = stream_socket.recv(runtime, Duration::from_millis(500));
             match res {
-                Some(Ok(())) => (),
-                Some(Err(e)) => {
+                Ok(()) => (),
+                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::Other(e)) => {
                     info!("Client disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
@@ -550,7 +537,6 @@ fn connection_pipeline(
 
                     return;
                 }
-                None => continue,
             }
         }
     });

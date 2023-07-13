@@ -46,7 +46,7 @@ pub async fn bind(
     UdpSocket::from_std(socket.into()).map_err(err!())
 }
 
-pub async fn connect(
+pub fn connect(
     socket: UdpSocket,
     peer_ip: IpAddr,
     port: u16,
@@ -69,7 +69,7 @@ pub async fn connect(
 
 pub async fn recv(
     socket: &mut UdpStreamReceiveSocket,
-    packet_enqueuers: Arc<Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>>,
+    packet_enqueuers: &Mutex<HashMap<u16, mpsc::UnboundedSender<BytesMut>>>,
 ) -> StrResult {
     if let Some(maybe_packet) = socket.inner.next().await {
         let (mut packet_bytes, address) = maybe_packet.map_err(err!())?;

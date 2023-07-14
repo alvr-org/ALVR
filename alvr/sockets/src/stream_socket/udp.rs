@@ -72,7 +72,7 @@ pub fn recv(
     runtime: &Runtime,
     timeout: Duration,
     socket: &mut UdpStreamReceiveSocket,
-    packet_enqueuers: &Mutex<HashMap<u16, mpsc::Sender<BytesMut>>>,
+    packet_enqueuers: &mut HashMap<u16, mpsc::Sender<BytesMut>>,
 ) -> ConResult {
     if let Some(maybe_packet) = runtime.block_on(async {
         tokio::select! {
@@ -88,7 +88,7 @@ pub fn recv(
         }
 
         let stream_id = packet_bytes.get_u16();
-        if let Some(enqueuer) = packet_enqueuers.lock().get_mut(&stream_id) {
+        if let Some(enqueuer) = packet_enqueuers.get_mut(&stream_id) {
             enqueuer.send(packet_bytes).map_err(to_con_e!())?;
         }
 

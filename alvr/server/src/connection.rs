@@ -536,7 +536,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     *BITRATE_MANAGER.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
-    let stream_socket = StreamSocketBuilder::connect_to_client(
+    let mut stream_socket = StreamSocketBuilder::connect_to_client(
         &runtime,
         Duration::from_secs(1),
         client_ip,
@@ -547,7 +547,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         settings.connection.packet_size as _,
     )
     .map_err(to_con_e!())?;
-    let stream_socket = Arc::new(stream_socket);
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);

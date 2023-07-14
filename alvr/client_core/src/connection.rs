@@ -264,14 +264,13 @@ fn connection_pipeline(
         return Ok(());
     }
 
-    let stream_socket = stream_socket_builder.accept_from_server(
+    let mut stream_socket = stream_socket_builder.accept_from_server(
         &runtime,
         Duration::from_secs(2),
         server_ip,
         settings.connection.stream_port,
         settings.connection.packet_size as _,
     )?;
-    let stream_socket = Arc::new(stream_socket);
 
     info!("Connected to server");
 

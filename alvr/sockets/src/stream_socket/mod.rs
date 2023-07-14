@@ -7,7 +7,7 @@
 mod tcp;
 mod udp;
 
-use alvr_common::{parking_lot::Mutex, prelude::*};
+use alvr_common::prelude::*;
 use alvr_session::{SocketBufferSize, SocketProtocol};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
@@ -17,10 +17,7 @@ use std::{
     marker::PhantomData,
     net::IpAddr,
     ops::{Deref, DerefMut},
-    sync::{
-        mpsc::{self, RecvTimeoutError},
-        Arc,
-    },
+    sync::mpsc::{self, RecvTimeoutError},
     time::Duration,
 };
 use tcp::{TcpStreamReceiveSocket, TcpStreamSendSocket};
@@ -368,8 +365,8 @@ impl StreamSocketBuilder {
         Ok(StreamSocket {
             max_packet_size,
             send_socket,
-            receive_socket: Arc::new(Mutex::new(Some(receive_socket))),
-            packet_queues: Arc::new(Mutex::new(HashMap::new())),
+            receive_socket,
+            packet_queues: HashMap::new(),
         })
     }
 
@@ -415,8 +412,8 @@ impl StreamSocketBuilder {
         Ok(StreamSocket {
             max_packet_size,
             send_socket,
-            receive_socket: Arc::new(Mutex::new(Some(receive_socket))),
-            packet_queues: Arc::new(Mutex::new(HashMap::new())),
+            receive_socket,
+            packet_queues: HashMap::new(),
         })
     }
 }
@@ -424,8 +421,8 @@ impl StreamSocketBuilder {
 pub struct StreamSocket {
     max_packet_size: usize,
     send_socket: StreamSendSocket,
-    receive_socket: Arc<Mutex<Option<StreamReceiveSocket>>>,
-    packet_queues: Arc<Mutex<HashMap<u16, mpsc::Sender<BytesMut>>>>,
+    receive_socket: StreamReceiveSocket,
+    packet_queues: HashMap<u16, mpsc::Sender<BytesMut>>,
 }
 
 impl StreamSocket {
@@ -440,10 +437,10 @@ impl StreamSocket {
         }
     }
 
-    pub fn subscribe_to_stream<T>(&self, stream_id: u16) -> StreamReceiver<T> {
+    pub fn subscribe_to_stream<T>(&mut self, stream_id: u16) -> StreamReceiver<T> {
         let (sender, receiver) = mpsc::channel();
 
-        self.packet_queues.lock().insert(stream_id, sender);
+        self.packet_queues.insert(stream_id, sender);
 
         StreamReceiver {
             receiver,
@@ -454,13 +451,13 @@ impl StreamSocket {
         }
     }
 
-    pub fn recv(&self, runtime: &Runtime, timeout: Duration) -> ConResult {
-        match self.receive_socket.lock().as_mut().unwrap() {
+    pub fn recv(&mut self, runtime: &Runtime, timeout: Duration) -> ConResult {
+        match &mut self.receive_socket {
             StreamReceiveSocket::Udp(socket) => {
-                udp::recv(runtime, timeout, socket, &self.packet_queues)
+                udp::recv(runtime, timeout, socket, &mut self.packet_queues)
             }
             StreamReceiveSocket::Tcp(socket) => {
-                tcp::recv(runtime, timeout, socket, &self.packet_queues)
+                tcp::recv(runtime, timeout, socket, &mut self.packet_queues)
             }
         }
     }

@@ -28,7 +28,6 @@ First, flatpak must be installed from your distro's repositories. Refer to [this
 
 Once Flatpak is installed, the flatpak dependencies must also be installed. They are:
 
-* Flatpak Builder
 * Rust
 * LLVM
 * Freedesktop SDK
@@ -37,8 +36,7 @@ Once Flatpak is installed, the flatpak dependencies must also be installed. They
 These can be installed like so:
 
 ```
-flatpak install flathub org.flatpak.Builder \
-    org.freedesktop.Sdk//22.08 \
+flatpak install flathub org.freedesktop.Sdk//22.08 \
     org.freedesktop.Sdk.Extension.llvm16//22.08 \
     org.freedesktop.Sdk.Extension.rust-stable//22.08 \
     com.valvesoftware.Steam
@@ -51,7 +49,23 @@ flatpak install flathub org.freedesktop.Platform.GL.default//22.08-extra \
    org.freedesktop.Platform.GL32.default//22.08-extra
 ```
 
+## Install
+
+Once the dependencies are fulfilled, download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from the latest release and install like so:
+
+```
+flatpak install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak
+```
+
 ## Build and Install
+
+Alternatively, if the file is not available or a newer version is needed, the flatpak can be built from source and installed.
+
+First, the dependencies from above must be fulfilled. Then, install `flatpak-builder` like so:
+
+```
+flatpak install flathub org.flatpak.Builder
+```
 
 Once the dependencies are fulfilled, clone and enter the repository.
 
@@ -63,13 +77,13 @@ cd ALVR
 Once inside the repository, simply run the following command to build and install the Flatpak.
 
 ```
-flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run org.flatpak.Builder --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 If ALVR is not cloned under the home directory, permission to access the directory may need to be given to the build command. An example of this is given below.
 
 ```
-flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run --filesystem="$(pwd)" org.flatpak.Builder --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Notes

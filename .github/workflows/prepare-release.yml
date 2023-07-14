@@ -172,8 +172,9 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           sudo apt-get update
-          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev
+          sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev flatpak flatpak-builder
           cp alvr/xtask/deb/cuda.pc /usr/share/pkgconfig
+          sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           cargo xtask prepare-deps --platform linux
           
       - name: Build and package ALVR (.tar.gz)
@@ -215,6 +216,22 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/ALVR-x86_64.AppImage.zsync
           asset_name: ALVR-x86_64.AppImage.zsync
+          asset_content_type: application/octet-stream
+
+      - name: Build and package ALVR flatpak (.flatpak)
+        id: build_flatpak
+        run: |
+          sudo flatpak-builder --repo=.flatpak-repo --install-deps-from=flathub --force-clean --default-branch=stable --arch=x86_64 .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+          flatpak build-bundle .flatpak-repo ./build/com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
+
+      - name: Upload flatpak streamer for Linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/com.valvesoftware.Steam.Utility.alvr.flatpak
+          asset_name: com.valvesoftware.Steam.Utility.alvr.flatpak
           asset_content_type: application/octet-stream
 
   build_linux_launcher:

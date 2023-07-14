@@ -1,4 +1,4 @@
-use alvr_common::{glam::EulerRot, prelude::*};
+use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::FaceData;
 use alvr_session::FaceTrackingSinkConfig;
 use bytes::{BufMut, BytesMut};
@@ -16,16 +16,14 @@ pub struct FaceTrackingSink {
 }
 
 impl FaceTrackingSink {
-    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> StrResult<Self> {
+    pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> Result<Self> {
         let port = match config {
             FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
             FaceTrackingSinkConfig::VrcFaceTracking => VRCFT_PORT,
         };
 
-        let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}")).map_err(err!())?;
-        socket
-            .connect(format!("127.0.0.1:{port}"))
-            .map_err(err!())?;
+        let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}"))?;
+        socket.connect(format!("127.0.0.1:{port}"))?;
 
         Ok(Self {
             config,

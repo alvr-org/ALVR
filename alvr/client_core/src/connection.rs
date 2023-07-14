@@ -10,11 +10,12 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
+    debug, error,
     glam::UVec2,
+    info,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    prelude::*,
-    ALVR_VERSION,
+    warn, AnyhowToCon, ConResult, ConnectionError, ToCon, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -119,12 +120,12 @@ fn connection_pipeline(
         .worker_threads(2)
         .enable_all()
         .build()
-        .map_err(to_con_e!())?;
+        .to_con()?;
 
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let announcer_socket = AnnouncerSocket::new(&config.hostname).map_err(to_con_e!())?;
-        let listener_socket = alvr_sockets::get_server_listener(&runtime).map_err(to_con_e!())?;
+        let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
+        let listener_socket = alvr_sockets::get_server_listener(&runtime).to_con()?;
 
         loop {
             if !IS_ALIVE.value() {
@@ -183,22 +184,20 @@ fn connection_pipeline(
                 }),
             },
         )
-        .map_err(to_con_e!())?;
-    let config_packet = proto_control_socket
-        .recv::<StreamConfigPacket>(&runtime, Duration::from_secs(1))
-        .map_err(to_con_e!())?;
+        .to_con()?;
+    let config_packet =
+        proto_control_socket.recv::<StreamConfigPacket>(&runtime, Duration::from_secs(1))?;
 
     let settings = {
         let mut session_desc = SessionConfig::default();
         session_desc
-            .merge_from_json(&json::from_str(&config_packet.session).map_err(to_con_e!())?)
-            .map_err(to_con_e!())?;
+            .merge_from_json(&json::from_str(&config_packet.session).to_con()?)
+            .to_con()?;
         session_desc.to_settings()
     };
 
     let negotiated_config =
-        json::from_str::<HashMap<String, json::Value>>(&config_packet.negotiated)
-            .map_err(to_con_e!())?;
+        json::from_str::<HashMap<String, json::Value>>(&config_packet.negotiated).to_con()?;
 
     let view_resolution = negotiated_config
         .get("view_resolution")
@@ -260,7 +259,7 @@ fn connection_pipeline(
         settings.connection.client_send_buffer_bytes,
         settings.connection.client_recv_buffer_bytes,
     )
-    .map_err(to_con_e!())?;
+    .to_con()?;
 
     if let Err(e) = control_sender.send(&runtime, &ClientControlPacket::StreamReady) {
         info!("Server disconnected. Cause: {e}");
@@ -347,7 +346,7 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None, None).map_err(to_con_e!())?;
+        let device = AudioDevice::new_output(None, None).to_con()?;
 
         thread::spawn(move || {
             alvr_common::show_err(audio::play_audio_loop(
@@ -364,7 +363,7 @@ fn connection_pipeline(
     };
 
     let microphone_thread = if matches!(settings.audio.microphone, Switch::Enabled(_)) {
-        let device = AudioDevice::new_input(None).map_err(to_con_e!())?;
+        let device = AudioDevice::new_input(None).to_con()?;
 
         let microphone_sender = stream_socket.request_stream(AUDIO);
 

@@ -6,7 +6,10 @@ pub use firewall::*;
 pub use openvr_drivers::*;
 pub use openvrpaths::*;
 
-use alvr_common::prelude::*;
+use alvr_common::{
+    anyhow::{bail, Result},
+    error, info,
+};
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, GpuVendor, PathSegment, PathValuePair};
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig, Settings};
@@ -20,8 +23,10 @@ use std::{
 };
 use wgpu::AdapterInfo;
 
-fn save_session(session: &SessionConfig, path: &Path) -> StrResult {
-    fs::write(path, json::to_string_pretty(session).map_err(err!())?).map_err(err!())
+fn save_session(session: &SessionConfig, path: &Path) -> Result<()> {
+    fs::write(path, json::to_string_pretty(session)?)?;
+
+    Ok(())
 }
 
 // SessionConfig wrapper that saves session.json on destruction.
@@ -155,7 +160,7 @@ impl ServerDataManager {
     }
 
     // Note: "value" can be any session subtree, in json format.
-    pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> StrResult {
+    pub fn set_values(&mut self, descs: Vec<PathValuePair>) -> Result<()> {
         let mut session_json = serde_json::to_value(self.session.clone()).unwrap();
 
         for desc in descs {
@@ -166,22 +171,14 @@ impl ServerDataManager {
                         if let Some(name) = session_ref.get_mut(name) {
                             name
                         } else {
-                            return fmt_e!(
-                                "From path {:?}: segment \"{}\" not found",
-                                desc.path,
-                                name
-                            );
+                            bail!("From path {:?}: segment \"{name}\" not found", desc.path);
                         }
                     }
                     PathSegment::Index(index) => {
                         if let Some(index) = session_ref.get_mut(index) {
                             index
                         } else {
-                            return fmt_e!(
-                                "From path {:?}: segment [{}] not found",
-                                desc.path,
-                                index
-                            );
+                            bail!("From path {:?}: segment [{index}] not found", desc.path);
                         }
                     }
                 };
@@ -190,7 +187,7 @@ impl ServerDataManager {
         }
 
         // session_json has been updated
-        self.session = serde_json::from_value(session_json).map_err(err!())?;
+        self.session = serde_json::from_value(session_json)?;
         self.settings = self.session.to_settings();
 
         save_session(&self.session, &self.session_path).unwrap();
@@ -327,24 +324,21 @@ impl ServerDataManager {
     }
 
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
-    pub fn get_audio_devices_list(&self) -> StrResult<AudioDevicesList> {
+    pub fn get_audio_devices_list(&self) -> Result<AudioDevicesList> {
         #[cfg(target_os = "linux")]
         let host = match self.session.to_settings().audio.linux_backend {
-            alvr_session::LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa),
-            alvr_session::LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack),
-        }
-        .map_err(err!())?;
+            alvr_session::LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa)?,
+            alvr_session::LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack)?,
+        };
         #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
         let output = host
-            .output_devices()
-            .map_err(err!())?
+            .output_devices()?
             .filter_map(|d| d.name().ok())
             .collect::<Vec<_>>();
         let input = host
-            .input_devices()
-            .map_err(err!())?
+            .input_devices()?
             .filter_map(|d| d.name().ok())
             .collect::<Vec<_>>();
 

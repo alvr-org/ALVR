@@ -1,9 +1,10 @@
 use crate::decoder::DecoderInitConfig;
 use alvr_common::{
+    anyhow::{bail, Result},
+    error, info,
     once_cell::sync::Lazy,
     parking_lot::{Condvar, Mutex},
-    prelude::*,
-    RelaxedAtomic,
+    warn, RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use jni::{
@@ -306,7 +307,7 @@ unsafe impl Send for VideoDecoderEnqueuer {}
 
 impl VideoDecoderEnqueuer {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
-    pub fn push_frame_nal(&self, timestamp: Duration, data: &[u8]) -> StrResult<bool> {
+    pub fn push_frame_nal(&self, timestamp: Duration, data: &[u8]) -> Result<bool> {
         let Some(decoder) = &*self.inner.lock() else {
             // This might happen only during destruction
             return Ok(false);
@@ -325,14 +326,12 @@ impl VideoDecoderEnqueuer {
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
                 // to other Durations
-                decoder
-                    .queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)
-                    .map_err(err!())?;
+                decoder.queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)?;
 
                 Ok(true)
             }
             Ok(DequeuedInputBufferResult::TryAgainLater) => Ok(false),
-            Err(e) => fmt_e!("{e}"),
+            Err(e) => bail!("{e}"),
         }
     }
 }
@@ -410,7 +409,7 @@ pub fn video_decoder_split(
     config: DecoderInitConfig,
     csd_0: Vec<u8>,
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
-) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
+) -> Result<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
     let running = Arc::new(RelaxedAtomic::new(true));
     let decoder_enqueuer = Arc::new(Mutex::new(None::<SharedMediaCodec>));
     let decoder_ready_notifier = Arc::new(Condvar::new());

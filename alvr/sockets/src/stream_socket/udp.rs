@@ -1,5 +1,5 @@
 use crate::{Ldc, LOCAL_IP};
-use alvr_common::{parking_lot::Mutex, prelude::*};
+use alvr_common::{anyhow::Result, con_bail, parking_lot::Mutex, ConResult, ToCon};
 use alvr_session::SocketBufferSize;
 use bytes::{Buf, Bytes, BytesMut};
 use futures::{
@@ -36,16 +36,16 @@ pub fn bind(
     port: u16,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
-) -> StrResult<UdpSocket> {
-    let socket = runtime
-        .block_on(UdpSocket::bind((LOCAL_IP, port)))
-        .map_err(err!())?;
-    let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
+) -> Result<UdpSocket> {
+    let socket = runtime.block_on(UdpSocket::bind((LOCAL_IP, port)))?;
+    let socket = socket2::Socket::from(socket.into_std()?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
     let _tokio_guard = runtime.enter();
-    UdpSocket::from_std(socket.into()).map_err(err!())
+    let socket = UdpSocket::from_std(socket.into())?;
+
+    Ok(socket)
 }
 
 pub fn connect(
@@ -77,11 +77,11 @@ pub fn recv(
 ) -> ConResult {
     if let Some(maybe_packet) = runtime.block_on(async {
         tokio::select! {
-            res = socket.inner.next() => res.map(|p| p.map_err(to_con_e!())),
+            res = socket.inner.next() => res.map(|p| p.to_con()),
             _ = time::sleep(timeout) => Some(alvr_common::timeout()),
         }
     }) {
-        let (mut packet_bytes, address) = maybe_packet.map_err(to_con_e!())?;
+        let (mut packet_bytes, address) = maybe_packet?;
 
         if address != socket.peer_addr {
             // Non fatal
@@ -90,11 +90,11 @@ pub fn recv(
 
         let stream_id = packet_bytes.get_u16();
         if let Some(enqueuer) = packet_enqueuers.get_mut(&stream_id) {
-            enqueuer.send(packet_bytes).map_err(to_con_e!())?;
+            enqueuer.send(packet_bytes).to_con()?;
         }
 
         Ok(())
     } else {
-        con_fmt_e!("Socket closed")
+        con_bail!("Socket closed")
     }
 }

@@ -1,5 +1,5 @@
 use super::{Ldc, CONTROL_PORT, LOCAL_IP};
-use alvr_common::prelude::*;
+use alvr_common::{anyhow::Result, ConResult, ToCon};
 use bytes::Bytes;
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -20,11 +20,11 @@ pub struct ControlSocketSender<T> {
 }
 
 impl<S: Serialize> ControlSocketSender<S> {
-    pub fn send(&mut self, runtime: &Runtime, packet: &S) -> StrResult {
-        let packet_bytes = bincode::serialize(packet).map_err(err!())?;
-        runtime
-            .block_on(self.inner.send(packet_bytes.into()))
-            .map_err(err!())
+    pub fn send(&mut self, runtime: &Runtime, packet: &S) -> Result<()> {
+        let packet_bytes = bincode::serialize(packet)?;
+        runtime.block_on(self.inner.send(packet_bytes.into()))?;
+
+        Ok(())
     }
 }
 
@@ -37,20 +37,18 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
     pub fn recv(&mut self, runtime: &Runtime, timeout: Duration) -> ConResult<R> {
         let packet_bytes = runtime.block_on(async {
             tokio::select! {
-                res = self.inner.next() => {
-                    res.map(|p| p.map_err(to_con_e!())).ok_or_else(enone!()).map_err(to_con_e!())
-                }
+                res = self.inner.next() => res.map(|p| p.to_con()).to_con(),
                 _ = time::sleep(timeout) => alvr_common::timeout(),
             }
         })??;
-        bincode::deserialize(&packet_bytes).map_err(to_con_e!())
+        bincode::deserialize(&packet_bytes).to_con()
     }
 }
 
-pub fn get_server_listener(runtime: &Runtime) -> StrResult<TcpListener> {
-    runtime
-        .block_on(TcpListener::bind((LOCAL_IP, CONTROL_PORT)))
-        .map_err(err!())
+pub fn get_server_listener(runtime: &Runtime) -> Result<TcpListener> {
+    let listener = runtime.block_on(TcpListener::bind((LOCAL_IP, CONTROL_PORT)))?;
+
+    Ok(listener)
 }
 
 // Proto-control-socket that can send and receive any packet. After the split, only the packets of
@@ -78,7 +76,7 @@ impl ProtoControlSocket {
                     .collect::<Vec<_>>();
                 runtime.block_on(async {
                     tokio::select! {
-                        res = TcpStream::connect(client_addresses.as_slice()) => res.map_err(to_con_e!()),
+                        res = TcpStream::connect(client_addresses.as_slice()) => res.to_con(),
                         _ = time::sleep(timeout) => alvr_common::timeout(),
                     }
                 })?
@@ -86,7 +84,7 @@ impl ProtoControlSocket {
             PeerType::Server(listener) => {
                 let (socket, _) = runtime.block_on(async {
                     tokio::select! {
-                        res = listener.accept() => res.map_err(to_con_e!()),
+                        res = listener.accept() => res.to_con(),
                         _ = time::sleep(timeout) => alvr_common::timeout(),
                     }
                 })?;
@@ -94,18 +92,17 @@ impl ProtoControlSocket {
             }
         };
 
-        socket.set_nodelay(true).map_err(to_con_e!())?;
-        let peer_ip = socket.peer_addr().map_err(to_con_e!())?.ip();
+        socket.set_nodelay(true).to_con()?;
+        let peer_ip = socket.peer_addr().to_con()?.ip();
         let socket = Framed::new(socket, Ldc::new());
 
         Ok((Self { inner: socket }, peer_ip))
     }
 
-    pub fn send<S: Serialize>(&mut self, runtime: &Runtime, packet: &S) -> StrResult {
-        let packet_bytes = bincode::serialize(packet).map_err(err!())?;
-        runtime
-            .block_on(self.inner.send(packet_bytes.into()))
-            .map_err(err!())
+    pub fn send<S: Serialize>(&mut self, runtime: &Runtime, packet: &S) -> Result<()> {
+        runtime.block_on(self.inner.send(bincode::serialize(packet)?.into()))?;
+
+        Ok(())
     }
 
     pub fn recv<R: DeserializeOwned>(
@@ -116,14 +113,13 @@ impl ProtoControlSocket {
         let packet_bytes = runtime
             .block_on(async {
                 tokio::select! {
-                    res = self.inner.next() => res.map(|p| p.map_err(to_con_e!())),
+                    res = self.inner.next() => res.map(|p| p.to_con()),
                     _ = time::sleep(timeout) => Some(alvr_common::timeout()),
                 }
             })
-            .ok_or_else(enone!())
-            .map_err(to_con_e!())??;
+            .to_con()??;
 
-        bincode::deserialize(&packet_bytes).map_err(to_con_e!())
+        bincode::deserialize(&packet_bytes).to_con()
     }
 
     pub fn split<S: Serialize, R: DeserializeOwned>(

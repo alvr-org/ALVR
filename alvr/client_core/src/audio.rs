@@ -1,8 +1,8 @@
 use alvr_audio::{AudioDevice, AudioRecordState};
 use alvr_common::{
+    anyhow::{bail, Result},
     parking_lot::{Mutex, RwLock},
-    prelude::*,
-    RelaxedAtomic,
+    RelaxedAtomic, ToAny,
 };
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
@@ -46,7 +46,7 @@ impl AudioInputCallback for RecorderCallback {
     }
 
     fn on_error_before_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
-        *self.state.lock() = AudioRecordState::Err(error.to_string());
+        *self.state.lock() = AudioRecordState::Err(Some(error.into()));
     }
 }
 
@@ -57,7 +57,7 @@ pub fn record_audio_blocking(
     device: &AudioDevice,
     channels_count: u16,
     mute: bool,
-) -> StrResult {
+) -> Result<()> {
     let sample_rate = device.input_sample_rate()?;
 
     let state = Arc::new(Mutex::new(AudioRecordState::Recording));
@@ -77,18 +77,17 @@ pub fn record_audio_blocking(
             sender,
             state: Arc::clone(&state),
         })
-        .open_stream()
-        .map_err(err!())?;
+        .open_stream()?;
 
-    let mut res = stream.start().map_err(err!());
+    let mut res = stream.start().to_any();
 
     if res.is_ok() {
         while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
             thread::sleep(Duration::from_millis(500))
         }
 
-        if let AudioRecordState::Err(e) = state.lock().clone() {
-            res = Err(e);
+        if let AudioRecordState::Err(e) = &mut *state.lock() {
+            res = Err(e.take().unwrap());
         }
     }
 
@@ -132,11 +131,11 @@ pub fn play_audio_loop(
     sample_rate: u32,
     config: AudioBufferingConfig,
     receiver: StreamReceiver<()>,
-) -> StrResult {
+) -> Result<()> {
     // the client sends invalid sample rates sometimes, and we crash if we try and use one
     // (batch_frames_count ends up zero and the audio callback gets confused)
     if sample_rate < 8000 {
-        return fmt_e!("Invalid audio sample rate");
+        bail!("Invalid audio sample rate");
     }
 
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
@@ -159,10 +158,9 @@ pub fn play_audio_loop(
             sample_buffer: Arc::clone(&sample_buffer),
             batch_frames_count,
         })
-        .open_stream()
-        .map_err(err!())?;
+        .open_stream()?;
 
-    stream.start().map_err(err!())?;
+    stream.start()?;
 
     alvr_audio::receive_samples_loop(
         running,

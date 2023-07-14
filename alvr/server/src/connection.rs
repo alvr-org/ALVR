@@ -11,12 +11,14 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
+    con_bail, debug, error,
     glam::{UVec2, Vec2},
+    info,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    prelude::*,
     settings_schema::Switch,
-    RelaxedAtomic, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    warn, AnyhowToCon, ConResult, ConnectionError, RelaxedAtomic, ToCon, DEVICE_ID_TO_PATH,
+    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
@@ -306,7 +308,7 @@ pub fn handshake_loop() {
 }
 
 fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
-    let runtime = Runtime::new().map_err(to_con_e!())?;
+    let runtime = Runtime::new().to_con()?;
 
     let (mut proto_socket, client_ip) = ProtoControlSocket::connect_to(
         &runtime,
@@ -366,9 +368,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         display_name,
         streaming_capabilities,
         ..
-    } = proto_socket
-        .recv(&runtime, Duration::from_secs(1))
-        .map_err(to_con_e!())?
+    } = proto_socket.recv(&runtime, Duration::from_secs(1))?
     {
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
@@ -394,7 +394,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
         streaming_caps
     } else {
-        return con_fmt_e!("Only streaming clients are supported for now");
+        con_bail!("Only streaming clients are supported for now");
     };
 
     let settings = SERVER_DATA_MANAGER.read().settings().clone();
@@ -447,38 +447,37 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         warn!("Chosen refresh rate not supported. Using {fps}Hz");
     }
 
-    let game_audio_sample_rate = if let Switch::Enabled(game_audio_config) =
-        &settings.audio.game_audio
-    {
-        let game_audio_device = AudioDevice::new_output(
-            Some(settings.audio.linux_backend),
-            game_audio_config.device.as_ref(),
-        )
-        .map_err(to_con_e!())?;
-
-        #[cfg(not(target_os = "linux"))]
-        if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
-            let (sink, source) = AudioDevice::new_virtual_microphone_pair(
+    let game_audio_sample_rate =
+        if let Switch::Enabled(game_audio_config) = &settings.audio.game_audio {
+            let game_audio_device = AudioDevice::new_output(
                 Some(settings.audio.linux_backend),
-                microphone_desc.devices.clone(),
+                game_audio_config.device.as_ref(),
             )
-            .map_err(to_con_e!())?;
-            if alvr_audio::is_same_device(&game_audio_device, &sink)
-                || alvr_audio::is_same_device(&game_audio_device, &source)
-            {
-                return con_fmt_e!("Game audio and microphone cannot point to the same device!");
-            }
-        }
+            .to_con()?;
 
-        game_audio_device.input_sample_rate().map_err(to_con_e!())?
-    } else {
-        0
-    };
+            #[cfg(not(target_os = "linux"))]
+            if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
+                let (sink, source) = AudioDevice::new_virtual_microphone_pair(
+                    Some(settings.audio.linux_backend),
+                    microphone_desc.devices.clone(),
+                )
+                .to_con()?;
+                if alvr_audio::is_same_device(&game_audio_device, &sink)
+                    || alvr_audio::is_same_device(&game_audio_device, &source)
+                {
+                    con_bail!("Game audio and microphone cannot point to the same device!");
+                }
+            }
+
+            game_audio_device.input_sample_rate().to_con()?
+        } else {
+            0
+        };
 
     let client_config = StreamConfigPacket {
         session: {
             let session = SERVER_DATA_MANAGER.read().session().clone();
-            serde_json::to_string(&session).map_err(to_con_e!())?
+            serde_json::to_string(&session).to_con()?
         },
         negotiated: serde_json::json!({
             "view_resolution": stream_view_resolution,
@@ -487,9 +486,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         })
         .to_string(),
     };
-    proto_socket
-        .send(&runtime, &client_config)
-        .map_err(to_con_e!())?;
+    proto_socket.send(&runtime, &client_config).to_con()?;
 
     let (mut control_sender, mut control_receiver) = proto_socket.split();
 
@@ -512,15 +509,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     control_sender
         .send(&runtime, &ServerControlPacket::StartStream)
-        .map_err(to_con_e!())?;
+        .to_con()?;
 
     match control_receiver.recv(&runtime, Duration::from_secs(1)) {
         Ok(ClientControlPacket::StreamReady) => (),
         Ok(_) => {
-            return con_fmt_e!("Got unexpected packet waiting for stream ack");
+            con_bail!("Got unexpected packet waiting for stream ack");
         }
         Err(e) => {
-            return con_fmt_e!("Error while waiting for stream ack: {e}");
+            con_bail!("Error while waiting for stream ack: {e}");
         }
     }
 
@@ -545,8 +542,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         settings.connection.server_send_buffer_bytes,
         settings.connection.server_recv_buffer_bytes,
         settings.connection.packet_size as _,
-    )
-    .map_err(to_con_e!())?;
+    )?;
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);
@@ -648,7 +644,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             Some(settings.audio.linux_backend),
             config.devices,
         )
-        .map_err(to_con_e!())?;
+        .to_con()?;
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {

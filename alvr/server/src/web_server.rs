@@ -2,7 +2,10 @@ use crate::{
     connection::ClientDisconnectRequest, DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER,
     FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
-use alvr_common::{log, prelude::*};
+use alvr_common::{
+    anyhow::{self, Result},
+    error, info, log, warn,
+};
 use alvr_events::{Event, EventType};
 use alvr_packets::{ClientListAction, ServerRequest};
 use alvr_session::ConnectionState;
@@ -22,28 +25,21 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
 
-fn reply(code: StatusCode) -> StrResult<Response<Body>> {
-    Response::builder()
-        .status(code)
-        .body(Body::empty())
-        .map_err(err!())
+fn reply(code: StatusCode) -> Result<Response<Body>> {
+    Ok(Response::builder().status(code).body(Body::empty())?)
 }
 
-async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> StrResult<T> {
-    json::from_reader(
-        hyper::body::aggregate(request)
-            .await
-            .map_err(err!())?
-            .reader(),
-    )
-    .map_err(err!())
+async fn from_request_body<T: DeserializeOwned>(request: Request<Body>) -> Result<T> {
+    Ok(json::from_reader(
+        hyper::body::aggregate(request).await?.reader(),
+    )?)
 }
 
 async fn websocket<T: Clone + Send + 'static>(
     request: Request<Body>,
     sender: broadcast::Sender<T>,
     message_builder: impl Fn(T) -> protocol::Message + Send + Sync + 'static,
-) -> StrResult<Response<Body>> {
+) -> Result<Response<Body>> {
     if let Some(key) = request.headers().typed_get::<headers::SecWebsocketKey>() {
         tokio::spawn(async move {
             match hyper::upgrade::on(request).await {
@@ -79,8 +75,7 @@ async fn websocket<T: Clone + Send + 'static>(
 
         let mut response = Response::builder()
             .status(StatusCode::SWITCHING_PROTOCOLS)
-            .body(Body::empty())
-            .map_err(err!())?;
+            .body(Body::empty())?;
 
         let h = response.headers_mut();
         h.typed_insert(headers::Upgrade::websocket());
@@ -96,7 +91,7 @@ async fn websocket<T: Clone + Send + 'static>(
 async fn http_api(
     request: Request<Body>,
     events_sender: broadcast::Sender<Event>,
-) -> StrResult<Response<Body>> {
+) -> Result<Response<Body>> {
     let mut response = match request.uri().path() {
         // New unified requests
         "/api/dashboard-request" => {
@@ -251,9 +246,7 @@ async fn http_api(
                         builder = builder.header(CONTENT_TYPE, "application/wasm");
                     }
 
-                    builder
-                        .body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))
-                        .map_err(err!())?
+                    builder.body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))?
                 } else {
                     reply(StatusCode::NOT_FOUND)?
                 }
@@ -263,7 +256,7 @@ async fn http_api(
 
     response.headers_mut().insert(
         CACHE_CONTROL,
-        HeaderValue::from_str("no-cache, no-store, must-revalidate").map_err(err!())?,
+        HeaderValue::from_str("no-cache, no-store, must-revalidate")?,
     );
     response
         .headers_mut()
@@ -272,7 +265,7 @@ async fn http_api(
     Ok(response)
 }
 
-pub async fn web_server(events_sender: broadcast::Sender<Event>) -> StrResult {
+pub async fn web_server(events_sender: broadcast::Sender<Event>) -> Result<()> {
     let web_server_port = SERVER_DATA_MANAGER
         .read()
         .settings()
@@ -282,7 +275,7 @@ pub async fn web_server(events_sender: broadcast::Sender<Event>) -> StrResult {
     let service = service::make_service_fn(|_| {
         let events_sender = events_sender.clone();
         async move {
-            StrResult::Ok(service::service_fn(move |request| {
+            Ok::<_, anyhow::Error>(service::service_fn(move |request| {
                 let events_sender = events_sender.clone();
                 async move {
                     let res = http_api(request, events_sender).await;
@@ -296,11 +289,10 @@ pub async fn web_server(events_sender: broadcast::Sender<Event>) -> StrResult {
         }
     });
 
-    hyper::Server::bind(&SocketAddr::new(
+    Ok(hyper::Server::bind(&SocketAddr::new(
         "0.0.0.0".parse().unwrap(),
         web_server_port,
     ))
     .serve(service)
-    .await
-    .map_err(err!())
+    .await?)
 }

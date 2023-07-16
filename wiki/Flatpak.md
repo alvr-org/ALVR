@@ -49,9 +49,19 @@ flatpak install flathub org.freedesktop.Platform.GL.default//22.08-extra \
    org.freedesktop.Platform.GL32.default//22.08-extra
 ```
 
+## Setup
+
+Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
+
+```
+sudo setcap CAP_SYS_NICE+ep ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
+```
+
+This command is normally run by SteamVR, but due to the lack of sudo access within the Flatpak sandbox, it must be run outside of the Flatpak sandbox. After running the command, run SteamVR once then close it.
+
 ## Install
 
-Once the dependencies are fulfilled, download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from the latest release and install like so:
+Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from the latest release and install like so:
 
 ```
 flatpak install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak

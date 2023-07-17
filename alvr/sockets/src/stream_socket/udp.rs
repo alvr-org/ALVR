@@ -44,6 +44,7 @@ pub fn bind(
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
+    let _tokio_guard = runtime.enter();
     UdpSocket::from_std(socket.into()).map_err(err!())
 }
 

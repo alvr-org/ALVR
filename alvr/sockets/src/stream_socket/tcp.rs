@@ -35,6 +35,7 @@ pub fn bind(
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
+    let _tokio_guard = runtime.enter();
     TcpListener::from_std(socket.into()).map_err(err!())
 }
 
@@ -81,7 +82,10 @@ pub fn connect_to_client(
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
-    let socket = TcpStream::from_std(socket.into()).map_err(to_con_e!())?;
+    let socket = {
+        let _tokio_guard = runtime.enter();
+        TcpStream::from_std(socket.into()).map_err(to_con_e!())?
+    };
     socket.set_nodelay(true).map_err(to_con_e!())?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();

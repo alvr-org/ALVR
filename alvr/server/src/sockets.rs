@@ -29,7 +29,7 @@ impl WelcomeSocket {
         let (size, address) = match self.socket.recv_from(&mut self.buffer) {
             Ok(pair) => pair,
             Err(e) => {
-                if e.kind() == ErrorKind::TimedOut {
+                if matches!(e.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) {
                     return timeout();
                 } else {
                     return con_fmt_e!("{e}");

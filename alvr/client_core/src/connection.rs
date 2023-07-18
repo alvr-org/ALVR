@@ -24,6 +24,7 @@ use alvr_packets::{
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender, StreamSocketBuilder,
+    KEEPALIVE_INTERVAL,
 };
 use serde_json as json;
 use std::{
@@ -57,7 +58,6 @@ const SERVER_DISCONNECTED_MESSAGE: &str = "The streamer has disconnected.";
 
 const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
-const NETWORK_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
@@ -407,68 +407,58 @@ fn connection_pipeline(
         }
     });
 
-    // Poll for events that need a constant thread (mainly for the JNI env)
-    #[cfg(target_os = "android")]
-    thread::spawn(|| {
-        const BATTERY_POLL_INTERVAL: Duration = Duration::from_secs(5);
-
-        let mut previous_hmd_battery_status = (0.0, false);
-        let mut battery_poll_deadline = Instant::now();
-
-        let battery_manager = platform::android::BatteryManager::new();
-
-        while IS_STREAMING.value() {
-            if battery_poll_deadline < Instant::now() {
-                let new_hmd_battery_status = battery_manager.status();
-
-                if new_hmd_battery_status != previous_hmd_battery_status {
-                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                        sender
-                            .send(ClientControlPacket::Battery(crate::BatteryPacket {
-                                device_id: *alvr_common::HEAD_ID,
-                                gauge_value: new_hmd_battery_status.0,
-                                is_plugged: new_hmd_battery_status.1,
-                            }))
-                            .ok();
-
-                        previous_hmd_battery_status = new_hmd_battery_status;
-                    }
-                }
-
-                battery_poll_deadline += BATTERY_POLL_INTERVAL;
-            }
-
-            thread::sleep(Duration::from_millis(500));
-        }
-    });
-
-    let keepalive_sender_thread = thread::spawn(move || {
-        let mut deadline = Instant::now();
-        while IS_STREAMING.value() {
-            if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                sender.send(ClientControlPacket::KeepAlive).ok();
-            }
-
-            deadline += NETWORK_KEEPALIVE_INTERVAL;
-            while Instant::now() < deadline && IS_STREAMING.value() {
-                thread::sleep(Duration::from_millis(500));
-            }
-        }
-    });
-
     let control_send_thread = thread::spawn(move || {
-        while let Ok(packet) = control_channel_receiver.recv() {
-            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                if let Err(e) = control_sender.send(runtime, &packet) {
-                    info!("Server disconnected. Cause: {e}");
-                    set_hud_message(SERVER_DISCONNECTED_MESSAGE);
-                    if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
-                        notifier.send(()).ok();
-                    }
+        let mut keepalive_deadline = Instant::now();
 
-                    return;
+        #[cfg(target_os = "android")]
+        let battery_manager = platform::android::BatteryManager::new();
+        #[cfg(target_os = "android")]
+        let mut battery_deadline = Instant::now();
+
+        while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
+            if let Ok(packet) = control_channel_receiver.recv_timeout(Duration::from_millis(500)) {
+                if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                    if let Err(e) = control_sender.send(runtime, &packet) {
+                        info!("Server disconnected. Cause: {e}");
+                        set_hud_message(SERVER_DISCONNECTED_MESSAGE);
+
+                        break;
+                    }
                 }
             }
+
+            if Instant::now() > keepalive_deadline {
+                if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                    control_sender
+                        .send(runtime, &ClientControlPacket::KeepAlive)
+                        .ok();
+
+                    keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
+                }
+            }
+
+            #[cfg(target_os = "android")]
+            if Instant::now() > battery_deadline {
+                if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                    let (gauge_value, is_plugged) = battery_manager.status();
+                    control_sender
+                        .send(
+                            runtime,
+                            &ClientControlPacket::Battery(crate::BatteryPacket {
+                                device_id: *alvr_common::HEAD_ID,
+                                gauge_value,
+                                is_plugged,
+                            }),
+                        )
+                        .ok();
+                }
+
+                battery_deadline = Instant::now() + Duration::from_secs(5);
+            }
+        }
+
+        if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+            notifier.send(()).ok();
         }
     });
 
@@ -525,16 +515,6 @@ fn connection_pipeline(
         }
     });
 
-    let lifecycle_check_thread = thread::spawn(|| {
-        while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
-            thread::sleep(Duration::from_millis(500));
-        }
-
-        if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
-            notifier.send(()).ok();
-        }
-    });
-
     // Block here
     disconnect_receiver.recv().ok();
 
@@ -561,8 +541,6 @@ fn connection_pipeline(
     control_send_thread.join().ok();
     control_receive_thread.join().ok();
     stream_receive_thread.join().ok();
-    keepalive_sender_thread.join().ok();
-    lifecycle_check_thread.join().ok();
 
     Ok(())
 }

@@ -115,7 +115,11 @@ fn connection_pipeline(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
 ) -> ConResult {
-    let runtime = Runtime::new().map_err(to_con_e!())?;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .map_err(to_con_e!())?;
 
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();

@@ -277,12 +277,12 @@ pub fn eye_face_tracking_schema() -> PresetSchemaNode {
                 content: None,
             },
             HigherOrderChoiceOption {
-                display_name: "VRCFaceTracking OSC".into(),
+                display_name: "VRCFaceTracking".into(),
                 modifiers: vec![
                     bool_modifier("session_settings.headset.face_tracking.enabled", true),
                     string_modifier(
                         "session_settings.headset.face_tracking.content.sink.variant",
-                        "VrcFaceTrackingOsc",
+                        "VrcFaceTracking",
                     ),
                 ],
                 content: None,

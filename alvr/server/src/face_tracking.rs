@@ -1,21 +1,25 @@
 use alvr_common::{glam::EulerRot, prelude::*};
 use alvr_packets::FaceData;
 use alvr_session::FaceTrackingSinkConfig;
+use bytes::{BufMut, BytesMut};
 use rosc::{OscMessage, OscPacket, OscType};
 use std::{f32::consts::PI, net::UdpSocket};
 
 const RAD_TO_DEG: f32 = 180.0 / PI;
 
+const VRCFT_PORT: u16 = 0xA1F7;
+
 pub struct FaceTrackingSink {
     config: FaceTrackingSinkConfig,
     socket: UdpSocket,
+    packet_buffer: BytesMut,
 }
 
 impl FaceTrackingSink {
     pub fn new(config: FaceTrackingSinkConfig, local_osc_port: u16) -> StrResult<Self> {
         let port = match config {
             FaceTrackingSinkConfig::VrchatEyeOsc { port } => port,
-            FaceTrackingSinkConfig::VrcFaceTrackingOsc { port } => port,
+            FaceTrackingSinkConfig::VrcFaceTracking => VRCFT_PORT,
         };
 
         let socket = UdpSocket::bind(format!("127.0.0.1:{local_osc_port}")).map_err(err!())?;
@@ -23,7 +27,11 @@ impl FaceTrackingSink {
             .connect(format!("127.0.0.1:{port}"))
             .map_err(err!())?;
 
-        Ok(Self { config, socket })
+        Ok(Self {
+            config,
+            socket,
+            packet_buffer: BytesMut::new(),
+        })
     }
 
     fn send_osc_message(&self, path: &str, args: Vec<OscType>) {
@@ -38,7 +46,15 @@ impl FaceTrackingSink {
             .ok();
     }
 
-    pub fn send_tracking(&self, face_data: FaceData) {
+    fn append_packet_vrcft(&mut self, prefix: &[u8; 8], data: &[f32]) {
+        self.packet_buffer.put(prefix.as_slice());
+
+        for val in data {
+            self.packet_buffer.put_f32_le(*val);
+        }
+    }
+
+    pub fn send_tracking(&mut self, face_data: FaceData) {
         match self.config {
             FaceTrackingSinkConfig::VrchatEyeOsc { .. } => {
                 if let [Some(left), Some(right)] = face_data.eye_gazes {
@@ -88,53 +104,22 @@ impl FaceTrackingSink {
                     );
                 }
             }
-            FaceTrackingSinkConfig::VrcFaceTrackingOsc { .. } => {
-                if let Some(pose) = face_data.eye_gazes[0] {
-                    self.send_osc_message(
-                        "/tracking/eye/left/Quat",
-                        vec![
-                            OscType::Float(pose.orientation.w),
-                            OscType::Float(pose.orientation.x),
-                            OscType::Float(pose.orientation.y),
-                            OscType::Float(pose.orientation.z),
-                        ],
-                    );
-                } else {
-                    self.send_osc_message("/tracking/eye/left/Active", vec![OscType::Bool(false)]);
-                }
-                if let Some(pose) = face_data.eye_gazes[1] {
-                    self.send_osc_message(
-                        "/tracking/eye/right/Quat",
-                        vec![
-                            OscType::Float(pose.orientation.w),
-                            OscType::Float(pose.orientation.x),
-                            OscType::Float(pose.orientation.y),
-                            OscType::Float(pose.orientation.z),
-                        ],
-                    );
-                } else {
-                    self.send_osc_message("/tracking/eye/right/Active", vec![OscType::Bool(false)]);
-                }
+            FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
+                self.packet_buffer.clear();
 
                 if let Some(arr) = face_data.fb_face_expression {
-                    self.send_osc_message(
-                        "/tracking/face_fb",
-                        arr.into_iter().map(OscType::Float).collect(),
-                    );
+                    self.append_packet_vrcft(b"FaceFb\0\0", &arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {
-                    self.send_osc_message(
-                        "/tracking/eye_htc",
-                        arr.into_iter().map(OscType::Float).collect(),
-                    );
+                    self.append_packet_vrcft(b"EyesHtc\0", &arr);
                 }
+
                 if let Some(arr) = face_data.htc_lip_expression {
-                    self.send_osc_message(
-                        "/tracking/lip_htc",
-                        arr.into_iter().map(OscType::Float).collect(),
-                    );
+                    self.append_packet_vrcft(b"LipHtc\0\0", &arr);
                 }
+
+                self.socket.send(&self.packet_buffer).ok();
             }
         }
     }

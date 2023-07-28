@@ -682,7 +682,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
         move || {
-            let face_tracking_sink =
+            let mut face_tracking_sink =
                 settings
                     .headset
                     .face_tracking
@@ -762,7 +762,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     }
                 }
 
-                if let Some(sink) = &face_tracking_sink {
+                if let Some(sink) = &mut face_tracking_sink {
                     let mut face_data = tracking.face_data;
                     face_data.eye_gazes = local_eye_gazes;
 

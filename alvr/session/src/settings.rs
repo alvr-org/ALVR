@@ -588,8 +588,8 @@ pub struct FaceTrackingSources {
 pub enum FaceTrackingSinkConfig {
     #[schema(strings(display_name = "VRChat Eye OSC"))]
     VrchatEyeOsc { port: u16 },
-    #[schema(strings(display_name = "VRCFaceTracking OSC"))]
-    VrcFaceTrackingOsc { port: u16 },
+    #[schema(strings(display_name = "VRCFaceTracking"))]
+    VrcFaceTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1162,9 +1162,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
-                        VrcFaceTrackingOsc: FaceTrackingSinkConfigVrcFaceTrackingOscDefault {
-                            port: 9620,
-                        },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
                     },
                 },

@@ -1,4 +1,5 @@
 use alvr_packets::{FirewallRulesAction, ServerRequest};
+use alvr_session::SessionConfig;
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
@@ -12,22 +13,24 @@ pub enum SetupWizardRequest {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Welcome = 0,
-    HardwareRequirements = 1,
-    SoftwareRequirements = 2,
-    Firewall = 3,
+    ResetSettings = 1,
+    HardwareRequirements = 2,
+    SoftwareRequirements = 3,
+    Firewall = 4,
     // PerformancePreset,
-    Recommendations = 4,
-    Finished = 5,
+    Recommendations = 5,
+    Finished = 6,
 }
 
 fn index_to_page(index: usize) -> Page {
     match index {
         0 => Page::Welcome,
-        1 => Page::HardwareRequirements,
-        2 => Page::SoftwareRequirements,
-        3 => Page::Firewall,
-        4 => Page::Recommendations,
-        5 => Page::Finished,
+        1 => Page::ResetSettings,
+        2 => Page::HardwareRequirements,
+        3 => Page::SoftwareRequirements,
+        4 => Page::Firewall,
+        5 => Page::Recommendations,
+        6 => Page::Finished,
         _ => unreachable!(),
     }
 }
@@ -88,6 +91,18 @@ impl SetupWizard {
                 "This setup wizard will help you setup ALVR.",
                 "",
                 |_| (),
+            ),
+            Page::ResetSettings => page_content(
+                ui,
+                "Reset Settings",
+                "It is recommended to reset your settings everytime you update ALVR.",
+                |ui| {
+                    if ui.button("Reset Settings").clicked() {
+                        request = Some(SetupWizardRequest::ServerRequest(
+                            ServerRequest::UpdateSession(Box::new(SessionConfig::default())),
+                        ));
+                    }
+                },
             ),
             Page::HardwareRequirements => page_content(
                 ui,

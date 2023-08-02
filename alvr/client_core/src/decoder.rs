@@ -4,9 +4,6 @@ use alvr_packets::DecoderInitializationConfig;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
-#[cfg(target_os = "android")]
-use alvr_common::prelude::*;
-
 #[derive(Clone)]
 pub struct DecoderInitConfig {
     pub codec: CodecType,
@@ -80,7 +77,10 @@ pub fn push_nal(timestamp: Duration, nal: &[u8]) -> bool {
     } else {
         #[cfg(target_os = "android")]
         if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            matches!(show_err(decoder.push_frame_nal(timestamp, nal)), Some(true))
+            matches!(
+                alvr_common::show_err(decoder.push_frame_nal(timestamp, nal)),
+                Some(true)
+            )
         } else {
             false
         }

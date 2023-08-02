@@ -7,7 +7,7 @@
 mod tcp;
 mod udp;
 
-use alvr_common::prelude::*;
+use alvr_common::{anyhow::Result, con_bail, debug, error, info, AnyhowToCon, ConResult};
 use alvr_session::{SocketBufferSize, SocketProtocol};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::SinkExt;
@@ -28,11 +28,11 @@ pub fn set_socket_buffers(
     socket: &socket2::Socket,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
-) -> StrResult {
+) -> Result<()> {
     info!(
         "Initial socket buffer size: send: {}B, recv: {}B",
-        socket.send_buffer_size().map_err(err!())?,
-        socket.recv_buffer_size().map_err(err!())?
+        socket.send_buffer_size()?,
+        socket.recv_buffer_size()?
     );
 
     {
@@ -48,7 +48,7 @@ pub fn set_socket_buffers(
             } else {
                 info!(
                     "Set socket send buffer succeeded: {}",
-                    socket.send_buffer_size().map_err(err!())?
+                    socket.send_buffer_size()?
                 );
             }
         }
@@ -67,7 +67,7 @@ pub fn set_socket_buffers(
             } else {
                 info!(
                     "Set socket recv buffer succeeded: {}",
-                    socket.recv_buffer_size().map_err(err!())?
+                    socket.recv_buffer_size()?
                 );
             }
         }
@@ -124,38 +124,34 @@ pub struct StreamSender<T> {
 }
 
 impl<T: Serialize> StreamSender<T> {
-    fn send_buffer(&self, runtime: &Runtime, buffer: BytesMut) -> StrResult {
+    fn send_buffer(&self, runtime: &Runtime, buffer: BytesMut) -> Result<()> {
         match &self.socket {
-            StreamSendSocket::Udp(socket) => runtime
-                .block_on(
-                    socket
-                        .inner
-                        .lock()
-                        .feed((buffer.freeze(), socket.peer_addr)),
-                )
-                .map_err(err!()),
-            StreamSendSocket::Tcp(socket) => runtime
-                .block_on(socket.lock().feed(buffer.freeze()))
-                .map_err(err!()),
+            StreamSendSocket::Udp(socket) => Ok(runtime.block_on(
+                socket
+                    .inner
+                    .lock()
+                    .feed((buffer.freeze(), socket.peer_addr)),
+            )?),
+            StreamSendSocket::Tcp(socket) => {
+                Ok(runtime.block_on(socket.lock().feed(buffer.freeze()))?)
+            }
         }
     }
 
-    pub fn send(&mut self, runtime: &Runtime, header: &T, payload_buffer: Vec<u8>) -> StrResult {
+    pub fn send(&mut self, runtime: &Runtime, header: &T, payload_buffer: Vec<u8>) -> Result<()> {
         // packet layout:
         // [ 2B (stream ID) | 4B (packet index) | 4B (packet shard count) | 4B (shard index)]
         // this escluses length delimited coding, which is handled by the TCP backend
         const OFFSET: usize = 2 + 4 + 4 + 4;
         let max_shard_data_size = self.max_packet_size - OFFSET;
 
-        let header_size = bincode::serialized_size(header).map_err(err!()).unwrap() as usize;
+        let header_size = bincode::serialized_size(header).unwrap() as usize;
         self.header_buffer.clear();
         if self.header_buffer.capacity() < header_size {
             // If the buffer is empty, with this call we request a capacity of "header_size".
             self.header_buffer.reserve(header_size);
         }
-        bincode::serialize_into(&mut self.header_buffer, header)
-            .map_err(err!())
-            .unwrap();
+        bincode::serialize_into(&mut self.header_buffer, header).unwrap();
         let header_shards = self.header_buffer.chunks(max_shard_data_size);
 
         let payload_shards = payload_buffer.chunks(max_shard_data_size);
@@ -175,13 +171,8 @@ impl<T: Serialize> StreamSender<T> {
         }
 
         match &self.socket {
-            StreamSendSocket::Udp(socket) => runtime
-                .block_on(socket.inner.lock().flush())
-                .map_err(err!())?,
-
-            StreamSendSocket::Tcp(socket) => {
-                runtime.block_on(socket.lock().flush()).map_err(err!())?
-            }
+            StreamSendSocket::Udp(socket) => runtime.block_on(socket.inner.lock().flush())?,
+            StreamSendSocket::Tcp(socket) => runtime.block_on(socket.lock().flush())?,
         }
 
         self.next_packet_index += 1;
@@ -212,9 +203,9 @@ impl<T> ReceiverBuffer<T> {
 }
 
 impl<T: DeserializeOwned> ReceiverBuffer<T> {
-    pub fn get(&self) -> StrResult<(T, &[u8])> {
+    pub fn get(&self) -> Result<(T, &[u8])> {
         let mut data: &[u8] = &self.inner;
-        let header = bincode::deserialize_from(&mut data).map_err(err!())?;
+        let header = bincode::deserialize_from(&mut data)?;
 
         Ok((header, data))
     }
@@ -240,7 +231,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         let mut shard = match self.receiver.recv_timeout(timeout) {
             Ok(shard) => Ok(shard),
             Err(RecvTimeoutError::Timeout) => alvr_common::timeout(),
-            Err(RecvTimeoutError::Disconnected) => con_fmt_e!("Disconnected"),
+            Err(RecvTimeoutError::Disconnected) => con_bail!("Disconnected"),
         }?;
         let shard_packet_index = shard.get_u32();
         let shards_count = shard.get_u32() as usize;
@@ -299,7 +290,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
 
         loop {
             if self.recv_buffer(timeout, &mut buffer)? {
-                return Ok(buffer.get().map_err(to_con_e!())?.0);
+                return Ok(buffer.get().to_con()?.0);
             }
         }
     }
@@ -317,7 +308,7 @@ impl StreamSocketBuilder {
         stream_socket_config: SocketProtocol,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
-    ) -> StrResult<Self> {
+    ) -> Result<Self> {
         Ok(match stream_socket_config {
             SocketProtocol::Udp => StreamSocketBuilder::Udp(udp::bind(
                 runtime,
@@ -383,8 +374,8 @@ impl StreamSocketBuilder {
     ) -> ConResult<StreamSocket> {
         let (send_socket, receive_socket) = match protocol {
             SocketProtocol::Udp => {
-                let socket = udp::bind(runtime, port, send_buffer_bytes, recv_buffer_bytes)
-                    .map_err(to_con_e!())?;
+                let socket =
+                    udp::bind(runtime, port, send_buffer_bytes, recv_buffer_bytes).to_con()?;
                 let (send_socket, receive_socket) = udp::connect(socket, client_ip, port);
 
                 (

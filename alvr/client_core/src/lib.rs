@@ -25,10 +25,10 @@ pub use logging_backend::init_logging;
 pub use platform::try_get_permission;
 
 use alvr_common::{
+    error,
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    prelude::*,
     Fov, RelaxedAtomic,
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};

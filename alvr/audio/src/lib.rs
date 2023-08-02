@@ -5,10 +5,11 @@ mod windows;
 pub use crate::windows::*;
 
 use alvr_common::{
+    anyhow::{self, anyhow, bail, Context, Result},
+    info,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    prelude::*,
-    RelaxedAtomic,
+    ConnectionError, RelaxedAtomic, ToAny,
 };
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
@@ -38,49 +39,41 @@ static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     .collect()
 });
 
-fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> StrResult<Device> {
+fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> Result<Device> {
     Ok(match config {
         CustomAudioDeviceConfig::NameSubstring(name_substring) => host
-            .devices()
-            .map_err(err!())?
+            .devices()?
             .find(|d| {
                 d.name()
                     .map(|name| name.to_lowercase().contains(&name_substring.to_lowercase()))
                     .unwrap_or(false)
             })
-            .ok_or_else(|| {
+            .with_context(|| {
                 format!("Cannot find audio device which name contains \"{name_substring}\"")
             })?,
         CustomAudioDeviceConfig::Index(index) => host
-            .devices()
-            .map_err(err!())?
+            .devices()?
             .nth(*index)
-            .ok_or_else(|| format!("Cannot find audio device at index {index}"))?,
+            .with_context(|| format!("Cannot find audio device at index {index}"))?,
     })
 }
 
-fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> StrResult<(Device, Device)> {
+fn microphone_pair_from_sink_name(host: &Host, sink_name: &str) -> Result<(Device, Device)> {
     let sink = host
-        .output_devices()
-        .map_err(err!())?
+        .output_devices()?
         .find(|d| d.name().unwrap_or_default().contains(sink_name))
-        .ok_or_else(|| {
-            "VB-CABLE or Voice Meeter not found. Please install or reinstall either one".to_owned()
-        })?;
+        .context("VB-CABLE or Voice Meeter not found. Please install or reinstall either one")?;
 
     if let Some(source_name) = VIRTUAL_MICROPHONE_PAIRS.get(sink_name) {
         Ok((
             sink,
-            host.input_devices()
-                .map_err(err!())?
+            host.input_devices()?
                 .find(|d| {
                     d.name()
                         .map(|name| name.contains(source_name))
                         .unwrap_or(false)
                 })
-                .ok_or_else(|| {
-                    "Matching output microphone not found. Did you rename it?".to_owned()
-                })?,
+                .context("Matching output microphone not found. Did you rename it?")?,
         ))
     } else {
         unreachable!("Invalid argument")
@@ -98,7 +91,7 @@ impl AudioDevice {
     pub fn new_output(
         linux_backend: Option<LinuxAudioBackend>,
         config: Option<&CustomAudioDeviceConfig>,
-    ) -> StrResult<Self> {
+    ) -> Result<Self> {
         #[cfg(target_os = "linux")]
         let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
@@ -111,7 +104,7 @@ impl AudioDevice {
         let device = match config {
             None => host
                 .default_output_device()
-                .ok_or_else(|| "No output audio device found".to_owned())?,
+                .context("No output audio device found")?,
             Some(config) => device_from_custom_config(&host, config)?,
         };
 
@@ -121,13 +114,13 @@ impl AudioDevice {
         })
     }
 
-    pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> StrResult<Self> {
+    pub fn new_input(config: Option<CustomAudioDeviceConfig>) -> Result<Self> {
         let host = cpal::default_host();
 
         let device = match config {
             None => host
                 .default_input_device()
-                .ok_or_else(|| "No input audio device found".to_owned())?,
+                .context("No input audio device found")?,
             Some(config) => device_from_custom_config(&host, &config)?,
         };
 
@@ -141,7 +134,7 @@ impl AudioDevice {
     pub fn new_virtual_microphone_pair(
         linux_backend: Option<LinuxAudioBackend>,
         config: MicrophoneDevicesConfig,
-    ) -> StrResult<(Self, Self)> {
+    ) -> Result<(Self, Self)> {
         #[cfg(target_os = "linux")]
         let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
@@ -153,7 +146,7 @@ impl AudioDevice {
 
         let (sink, source) = match config {
             MicrophoneDevicesConfig::Automatic => {
-                let mut pair = Err(String::new());
+                let mut pair = Err(anyhow!("No microphones found"));
                 for sink_name in VIRTUAL_MICROPHONE_PAIRS.keys() {
                     pair = microphone_pair_from_sink_name(&host, sink_name);
                     if pair.is_ok() {
@@ -193,13 +186,12 @@ impl AudioDevice {
         ))
     }
 
-    pub fn input_sample_rate(&self) -> StrResult<u32> {
+    pub fn input_sample_rate(&self) -> Result<u32> {
         let config = self
             .inner
             .default_input_config()
             // On Windows, loopback devices are not recognized as input devices. Use output config.
-            .or_else(|_| self.inner.default_output_config())
-            .map_err(err!())?;
+            .or_else(|_| self.inner.default_output_config())?;
 
         Ok(config.sample_rate().0)
     }
@@ -213,11 +205,10 @@ pub fn is_same_device(device1: &AudioDevice, device2: &AudioDevice) -> bool {
     }
 }
 
-#[derive(Clone)]
 pub enum AudioRecordState {
     Recording,
     ShouldStop,
-    Err(String),
+    Err(Option<anyhow::Error>),
 }
 
 #[allow(unused_variables)]
@@ -227,17 +218,16 @@ pub fn record_audio_blocking(
     device: &AudioDevice,
     channels_count: u16,
     mute: bool,
-) -> StrResult {
+) -> Result<()> {
     let config = device
         .inner
         .default_input_config()
         // On Windows, loopback devices are not recognized as input devices. Use output config.
-        .or_else(|_| device.inner.default_output_config())
-        .map_err(err!())?;
+        .or_else(|_| device.inner.default_output_config())?;
 
     if config.channels() > 2 {
         // todo: handle more than 2 channels
-        return fmt_e!(
+        bail!(
             "Audio devices with more than 2 channels are not supported. {}",
             "Please turn off surround audio."
         );
@@ -251,70 +241,67 @@ pub fn record_audio_blocking(
 
     let state = Arc::new(Mutex::new(AudioRecordState::Recording));
 
-    let stream = device
-        .inner
-        .build_input_stream_raw(
-            &stream_config,
-            config.sample_format(),
-            {
-                let state = Arc::clone(&state);
-                let runtime = Arc::clone(&runtime);
-                move |data, _| {
-                    let data = if config.sample_format() == SampleFormat::F32 {
-                        data.bytes()
-                            .chunks_exact(4)
-                            .flat_map(|b| {
-                                f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
-                                    .to_sample::<i16>()
-                                    .to_ne_bytes()
-                                    .to_vec()
-                            })
-                            .collect()
-                    } else {
-                        data.bytes().to_vec()
-                    };
+    let stream = device.inner.build_input_stream_raw(
+        &stream_config,
+        config.sample_format(),
+        {
+            let state = Arc::clone(&state);
+            let runtime = Arc::clone(&runtime);
+            move |data, _| {
+                let data = if config.sample_format() == SampleFormat::F32 {
+                    data.bytes()
+                        .chunks_exact(4)
+                        .flat_map(|b| {
+                            f32::from_ne_bytes([b[0], b[1], b[2], b[3]])
+                                .to_sample::<i16>()
+                                .to_ne_bytes()
+                                .to_vec()
+                        })
+                        .collect()
+                } else {
+                    data.bytes().to_vec()
+                };
 
-                    let data = if config.channels() == 1 && channels_count == 2 {
-                        data.chunks_exact(2)
-                            .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
-                            .collect()
-                    } else if config.channels() == 2 && channels_count == 1 {
-                        data.chunks_exact(4)
-                            .flat_map(|c| vec![c[0], c[1]])
-                            .collect()
-                    } else {
-                        data
-                    };
+                let data = if config.channels() == 1 && channels_count == 2 {
+                    data.chunks_exact(2)
+                        .flat_map(|c| vec![c[0], c[1], c[0], c[1]])
+                        .collect()
+                } else if config.channels() == 2 && channels_count == 1 {
+                    data.chunks_exact(4)
+                        .flat_map(|c| vec![c[0], c[1]])
+                        .collect()
+                } else {
+                    data
+                };
 
-                    if let Some(runtime) = &*runtime.read() {
-                        sender.send(runtime, &(), data).ok();
-                    } else {
-                        *state.lock() = AudioRecordState::ShouldStop;
-                    }
+                if let Some(runtime) = &*runtime.read() {
+                    sender.send(runtime, &(), data).ok();
+                } else {
+                    *state.lock() = AudioRecordState::ShouldStop;
                 }
-            },
-            {
-                let state = Arc::clone(&state);
-                move |e| *state.lock() = AudioRecordState::Err(e.to_string())
-            },
-            None,
-        )
-        .map_err(err!())?;
+            }
+        },
+        {
+            let state = Arc::clone(&state);
+            move |e| *state.lock() = AudioRecordState::Err(Some(e.into()))
+        },
+        None,
+    )?;
 
     #[cfg(windows)]
     if mute && device.is_output {
         crate::windows::set_mute_windows_device(device, true).ok();
     }
 
-    let mut res = stream.play().map_err(err!());
+    let mut res = stream.play().to_any();
 
     if res.is_ok() {
         while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
             thread::sleep(Duration::from_millis(500))
         }
 
-        if let AudioRecordState::Err(e) = state.lock().clone() {
-            res = Err(e);
+        if let AudioRecordState::Err(e) = &mut *state.lock() {
+            res = Err(e.take().unwrap());
         }
     }
 
@@ -367,14 +354,14 @@ pub fn receive_samples_loop(
     channels_count: usize,
     batch_frames_count: usize,
     average_buffer_frames_count: usize,
-) -> StrResult {
+) -> Result<()> {
     let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
     while running.value() {
         match receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
             Ok(true) => (),
             Ok(false) | Err(ConnectionError::Timeout) => continue,
-            Err(ConnectionError::Other(e)) => return fmt_e!("{e}"),
+            Err(ConnectionError::Other(e)) => return Err(e),
         };
 
         let (_, packet) = receiver_buffer.get()?;
@@ -519,7 +506,7 @@ pub fn play_audio_loop(
     sample_rate: u32,
     config: AudioBufferingConfig,
     receiver: StreamReceiver<()>,
-) -> StrResult {
+) -> Result<()> {
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
 
@@ -529,18 +516,16 @@ pub fn play_audio_loop(
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
 
-    let (_stream, handle) = OutputStream::try_from_device(&device.inner).map_err(err!())?;
+    let (_stream, handle) = OutputStream::try_from_device(&device.inner)?;
 
-    handle
-        .play_raw(StreamingSource {
-            sample_buffer: Arc::clone(&sample_buffer),
-            current_batch: vec![],
-            current_batch_cursor: 0,
-            channels_count: channels_count as _,
-            sample_rate,
-            batch_frames_count,
-        })
-        .map_err(err!())?;
+    handle.play_raw(StreamingSource {
+        sample_buffer: Arc::clone(&sample_buffer),
+        current_batch: vec![],
+        current_batch_cursor: 0,
+        channels_count: channels_count as _,
+        sample_rate,
+        batch_frames_count,
+    })?;
 
     receive_samples_loop(
         running,

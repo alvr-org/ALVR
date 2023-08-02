@@ -23,11 +23,11 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
+    error,
     glam::Quat,
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    prelude::*,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -51,7 +51,9 @@ use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{runtime::Runtime, sync::broadcast};
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
-    afs::filesystem_layout_from_openvr_driver_root_dir(&alvr_server_io::get_driver_dir().unwrap())
+    afs::filesystem_layout_from_openvr_driver_root_dir(
+        &alvr_server_io::get_driver_dir_from_registered().unwrap(),
+    )
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
@@ -226,9 +228,7 @@ fn init() {
     logging_backend::init_logging(events_sender.clone());
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        runtime.spawn(alvr_common::show_err_async(web_server::web_server(
-            events_sender,
-        )));
+        runtime.spawn(async { alvr_common::show_err(web_server::web_server(events_sender).await) });
     }
 
     SERVER_DATA_MANAGER.write().clean_client_list();

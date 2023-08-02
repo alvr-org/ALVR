@@ -1,5 +1,5 @@
 use crate::data_sources;
-use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, prelude::*};
+use alvr_common::{debug, once_cell::sync::Lazy, parking_lot::Mutex};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
@@ -32,7 +32,7 @@ pub fn is_steamvr_running() -> bool {
 }
 
 #[cfg(target_os = "linux")]
-pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
+pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     use std::fs;
 
     let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
@@ -42,17 +42,16 @@ pub fn maybe_wrap_vrcompositor_launcher() -> StrResult {
 
     // In case of SteamVR update, vrcompositor will be restored
     if fs::read_link(&launcher_path).is_ok() {
-        fs::remove_file(&launcher_path).map_err(err!())?; // recreate the link
+        fs::remove_file(&launcher_path)?; // recreate the link
     } else {
-        fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real")).map_err(err!())?;
+        fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real"))?;
     }
 
     std::os::unix::fs::symlink(
         afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
             .vrcompositor_wrapper(),
         &launcher_path,
-    )
-    .map_err(err!())?;
+    )?;
 
     Ok(())
 }
@@ -138,7 +137,7 @@ impl Launcher {
         }
 
         #[cfg(target_os = "linux")]
-        show_err(maybe_wrap_vrcompositor_launcher());
+        alvr_common::show_err(maybe_wrap_vrcompositor_launcher());
 
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");

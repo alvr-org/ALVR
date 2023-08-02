@@ -1,4 +1,4 @@
-use alvr_common::prelude::*;
+use alvr_common::{error, info};
 use app_dirs2::{AppDataType, AppInfo};
 use rand::Rng;
 use serde::{Deserialize, Serialize};

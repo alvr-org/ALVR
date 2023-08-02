@@ -2,10 +2,11 @@ mod interaction;
 
 use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
+    error,
     glam::{Quat, UVec2, Vec2, Vec3},
-    prelude::*,
+    info,
     settings_schema::Switch,
-    DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::ClientsideFoveationMode;

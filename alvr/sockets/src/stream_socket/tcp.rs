@@ -1,5 +1,5 @@
 use crate::{Ldc, LOCAL_IP};
-use alvr_common::{parking_lot::Mutex, prelude::*};
+use alvr_common::{anyhow::Result, con_bail, parking_lot::Mutex, ConResult, ToCon};
 use alvr_session::SocketBufferSize;
 use bytes::{Buf, Bytes, BytesMut};
 use futures::{
@@ -27,16 +27,16 @@ pub fn bind(
     port: u16,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
-) -> StrResult<TcpListener> {
-    let socket = runtime
-        .block_on(TcpListener::bind((LOCAL_IP, port)))
-        .map_err(err!())?;
-    let socket = socket2::Socket::from(socket.into_std().map_err(err!())?);
+) -> Result<TcpListener> {
+    let socket = runtime.block_on(TcpListener::bind((LOCAL_IP, port)))?;
+    let socket = socket2::Socket::from(socket.into_std()?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
     let _tokio_guard = runtime.enter();
-    TcpListener::from_std(socket.into()).map_err(err!())
+    let socket = TcpListener::from_std(socket.into())?;
+
+    Ok(socket)
 }
 
 pub fn accept_from_server(
@@ -47,16 +47,16 @@ pub fn accept_from_server(
 ) -> ConResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
     let (socket, server_address) = runtime.block_on(async {
         tokio::select! {
-            res = listener.accept() => res.map_err(to_con_e!()),
+            res = listener.accept() => res.to_con(),
             _ = time::sleep(timeout) => alvr_common::timeout(),
         }
     })?;
 
     if server_address.ip() != server_ip {
-        return con_fmt_e!("Connected to wrong client: {server_address} != {server_ip}");
+        con_bail!("Connected to wrong client: {server_address} != {server_ip}");
     }
 
-    socket.set_nodelay(true).map_err(to_con_e!())?;
+    socket.set_nodelay(true).to_con()?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
@@ -73,20 +73,20 @@ pub fn connect_to_client(
 ) -> ConResult<(TcpStreamSendSocket, TcpStreamReceiveSocket)> {
     let socket = runtime.block_on(async {
         tokio::select! {
-            res = TcpStream::connect((client_ip, port)) => res.map_err(to_con_e!()),
+            res = TcpStream::connect((client_ip, port)) => res.to_con(),
             _ = time::sleep(timeout) => alvr_common::timeout(),
         }
     })?;
 
-    let socket = socket2::Socket::from(socket.into_std().map_err(to_con_e!())?);
+    let socket = socket2::Socket::from(socket.into_std().to_con()?);
 
     super::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
 
     let socket = {
         let _tokio_guard = runtime.enter();
-        TcpStream::from_std(socket.into()).map_err(to_con_e!())?
+        TcpStream::from_std(socket.into()).to_con()?
     };
-    socket.set_nodelay(true).map_err(to_con_e!())?;
+    socket.set_nodelay(true).to_con()?;
     let socket = Framed::new(socket, Ldc::new());
     let (send_socket, receive_socket) = socket.split();
 
@@ -101,7 +101,7 @@ pub fn recv(
 ) -> ConResult {
     if let Some(maybe_packet) = runtime.block_on(async {
         tokio::select! {
-            res = socket.next() => res.map(|p| p.map_err(to_con_e!())),
+            res = socket.next() => res.map(|p| p.to_con()),
             _ = time::sleep(timeout) => Some(alvr_common::timeout()),
         }
     }) {
@@ -109,11 +109,11 @@ pub fn recv(
 
         let stream_id = packet.get_u16();
         if let Some(enqueuer) = packet_enqueuers.get_mut(&stream_id) {
-            enqueuer.send(packet).map_err(to_con_e!())?;
+            enqueuer.send(packet).to_con()?;
         }
 
         Ok(())
     } else {
-        con_fmt_e!("Socket closed")
+        con_bail!("Socket closed")
     }
 }

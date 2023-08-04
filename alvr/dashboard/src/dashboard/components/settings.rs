@@ -1,21 +1,27 @@
 use super::{
     notice,
     presets::{builtin_schema, PresetControl},
-    NestingInfo, SettingControl,
+    NestingInfo, SettingControl, INDENTATION_STEP,
 };
-use crate::dashboard::ServerRequest;
+use crate::dashboard::{DisplayString, ServerRequest};
 use alvr_packets::AudioDevicesList;
 use alvr_session::{SessionSettings, Settings};
-use eframe::egui::{Grid, ScrollArea, Ui};
+use eframe::egui::{Grid, Label, RichText, ScrollArea, Ui};
 use serde_json as json;
 
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
+use settings_schema::SchemaNode;
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
 const DATA_UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+
+struct TopLevelEntry {
+    id: DisplayString,
+    control: SettingControl,
+}
 
 pub struct SettingsTab {
     resolution_preset: PresetControl,
@@ -24,8 +30,8 @@ pub struct SettingsTab {
     game_audio_preset: Option<PresetControl>,
     microphone_preset: Option<PresetControl>,
     eye_face_tracking_preset: PresetControl,
+    top_level_entries: Vec<TopLevelEntry>,
     session_settings_json: Option<json::Value>,
-    root_control: SettingControl,
     last_update_instant: Instant,
 }
 
@@ -37,6 +43,29 @@ impl SettingsTab {
         };
         let schema = Settings::schema(alvr_session::session_settings_default());
 
+        // Top level node must be a section
+        let schema_entries = if let SchemaNode::Section(entries) = schema {
+            entries
+        } else {
+            unreachable!();
+        };
+
+        let top_level_entries = schema_entries
+            .into_iter()
+            .map(|entry| {
+                let id = entry.name;
+                let display = super::get_display_name(&id, &entry.strings);
+
+                let mut nesting_info = nesting_info.clone();
+                nesting_info.path.push(id.clone().into());
+
+                TopLevelEntry {
+                    id: DisplayString { id, display },
+                    control: SettingControl::new(nesting_info, entry.content),
+                }
+            })
+            .collect();
+
         Self {
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
@@ -44,8 +73,8 @@ impl SettingsTab {
             game_audio_preset: None,
             microphone_preset: None,
             eye_face_tracking_preset: PresetControl::new(builtin_schema::eye_face_tracking_schema()),
+            top_level_entries,
             session_settings_json: None,
-            root_control: SettingControl::new(nesting_info, schema),
             last_update_instant: Instant::now(),
         }
     }
@@ -106,7 +135,7 @@ impl SettingsTab {
         ScrollArea::new([false, true])
             .id_source("settings_tab_scroll")
             .show(ui, |ui| {
-                ui.heading("Presets");
+                ui.add(Label::new(RichText::new("Presets").size(20.0)));
                 ScrollArea::new([true, false])
                     .id_source("presets_scroll")
                     .show(ui, |ui| {
@@ -141,7 +170,9 @@ impl SettingsTab {
                 ui.add_space(15.0);
 
                 ui.horizontal(|ui| {
-                    ui.heading("All Settings (Advanced)");
+                    ui.add(Label::new(
+                        RichText::new("All Settings (Advanced)").size(20.0),
+                    ));
                     notice::notice(ui, "Changing some advanced settings may break ALVR");
                 });
                 ScrollArea::new([true, false])
@@ -151,13 +182,36 @@ impl SettingsTab {
                             .striped(true)
                             .num_columns(2)
                             .show(ui, |ui| {
-                                if let Some(json) = &mut self.session_settings_json {
-                                    if let Some(pair) = self.root_control.ui(ui, json, false) {
-                                        path_value_pairs.push(pair);
+                                if let Some(session_fragment) = &mut self.session_settings_json {
+                                    let session_fragments_mut =
+                                        session_fragment.as_object_mut().unwrap();
+
+                                    for entry in self.top_level_entries.iter_mut() {
+                                        ui.horizontal(|ui| {
+                                            ui.add_space(INDENTATION_STEP);
+                                            let label_res = ui.add(Label::new(
+                                                RichText::new(&entry.id.display)
+                                                    .size(18.0)
+                                                    .monospace(),
+                                            ));
+                                            if cfg!(debug_assertions) {
+                                                label_res.on_hover_text(&*entry.id);
+                                            }
+                                        });
+
+                                        let response = entry.control.ui(
+                                            ui,
+                                            &mut session_fragments_mut[&entry.id.id],
+                                            true,
+                                        );
+
+                                        if let Some(response) = response {
+                                            path_value_pairs.push(response);
+                                        }
+
+                                        ui.end_row();
                                     }
                                 }
-
-                                ui.end_row();
                             })
                     });
             });

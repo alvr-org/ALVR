@@ -1,5 +1,4 @@
 use alvr_packets::{FirewallRulesAction, ServerRequest};
-use alvr_session::SessionConfig;
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
@@ -99,7 +98,7 @@ impl SetupWizard {
                 |ui| {
                     if ui.button("Reset Settings").clicked() {
                         request = Some(SetupWizardRequest::ServerRequest(
-                            ServerRequest::UpdateSession(Box::new(SessionConfig::default())),
+                            ServerRequest::UpdateSession(Box::default()),
                         ));
                     }
                 },

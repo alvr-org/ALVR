@@ -8,17 +8,8 @@ use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
 use eframe::egui::{self, popup, Ui};
 use serde_json as json;
-use std::collections::HashMap;
 
 const POPUP_ID: &str = "setpopup";
-
-fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
-    strings.get("display_name").cloned().unwrap_or_else(|| {
-        let mut chars = id.chars();
-        chars.next().unwrap().to_uppercase().collect::<String>()
-            + chars.as_str().replace('_', " ").as_str()
-    })
-}
 
 struct Entry {
     id: DisplayString,
@@ -39,15 +30,13 @@ impl Control {
         mut nesting_info: NestingInfo,
         schema_entries: Vec<SchemaEntry<SchemaNode>>,
     ) -> Self {
-        if nesting_info.path.len() > 1 {
-            nesting_info.indentation_level += 1;
-        }
+        nesting_info.indentation_level += 1;
 
         let entries = schema_entries
             .into_iter()
             .map(|entry| {
                 let id = entry.name;
-                let display = get_display_name(&id, &entry.strings);
+                let display = super::get_display_name(&id, &entry.strings);
                 let help = entry.strings.get("help").cloned();
                 // let notice = entry.strings.get("notice").cloned();
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");

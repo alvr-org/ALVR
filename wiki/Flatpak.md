@@ -61,7 +61,7 @@ This command is normally run by SteamVR, but due to the lack of sudo access with
 
 ## Install
 
-Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from one of the latest [nightly](https://github.com/alvr-org/ALVR-nightly/releases) that has flatpak bundle () and install like so:
+Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from one of the latest [nightly](https://github.com/alvr-org/ALVR-nightly/releases) that contains flatpak bundle and install like so:
 
 ```
 flatpak --user install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak

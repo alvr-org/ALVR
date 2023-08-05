@@ -108,6 +108,12 @@ void Settings::Load() {
         m_overrideGripThreshold = config.get("override_grip_threshold").get<bool>();
         m_gripThreshold = config.get("grip_threshold").get<double>();
 
+        m_constantBitrate = v.get("session_settings")
+                             .get("video")
+                             .get("bitrate")
+                             .get("mode")
+                             .get("variant").get<std::string>() == "ConstantMbps";
+
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;

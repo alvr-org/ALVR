@@ -61,11 +61,13 @@ This command is normally run by SteamVR, but due to the lack of sudo access with
 
 ## Install
 
-Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from the latest release and install like so:
+Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from one of the latest [nightly](https://github.com/alvr-org/ALVR-nightly/releases) that has flatpak bundle () and install like so:
 
 ```
-flatpak install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak
+flatpak --user install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak
 ```
+
+Use apk for headset from the same nightly.
 
 ## Build and Install
 
@@ -87,13 +89,13 @@ cd ALVR
 Once inside the repository, simply run the following command to build and install the Flatpak.
 
 ```
-flatpak run org.flatpak.Builder --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 If ALVR is not cloned under the home directory, permission to access the directory may need to be given to the build command. An example of this is given below.
 
 ```
-flatpak run --filesystem="$(pwd)" org.flatpak.Builder --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 ## Notes

@@ -84,4 +84,6 @@ class Settings {
     float m_triggerThreshold;
     bool m_overrideGripThreshold;
     float m_gripThreshold;
+
+    bool m_constantBitrate;
 };

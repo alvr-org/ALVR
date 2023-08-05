@@ -183,6 +183,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       break;
   }
 
+  av_opt_set_int(encoder_ctx->priv_data, "filler_data", settings.m_fillerData, 0);
+
   encoder_ctx->width = width;
   encoder_ctx->height = height;
   encoder_ctx->time_base = {1, (int)1e9};

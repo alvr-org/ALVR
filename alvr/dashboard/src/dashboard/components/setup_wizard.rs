@@ -93,10 +93,10 @@ impl SetupWizard {
             ),
             Page::ResetSettings => page_content(
                 ui,
-                "Reset Settings",
+                "Reset settings",
                 "It is recommended to reset your settings everytime you update ALVR.",
                 |ui| {
-                    if ui.button("Reset Settings").clicked() {
+                    if ui.button("Reset settings").clicked() {
                         request = Some(SetupWizardRequest::ServerRequest(
                             ServerRequest::UpdateSession(Box::default()),
                         ));
@@ -113,9 +113,14 @@ Make sure you have at least one output audio device.",
             Page::SoftwareRequirements => page_content(
                 ui,
                 "Software requirements",
-                r"To stream the Quest microphone on Windows you need to install VB-Audio Virtual Cable.
+                r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
 On Linux some feaures are not working and should be disabled (foveated encoding and color correction) and some need a proper environment setup to have them working (game audio and microphone streaming).",
-                |_| (),
+                |ui| {
+                    if ui.button("Download VB-Cable").clicked() {
+                        ui.ctx()
+                            .output_mut(|output| output.open_url("https://vb-audio.com/Cable/"));
+                    }
+                },
             ),
             Page::Firewall => page_content(
                 ui,

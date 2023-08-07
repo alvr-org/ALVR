@@ -729,6 +729,7 @@ pub struct HeadsetConfig {
 Local floor: the origin is on the floor and resets when long pressing the oculus button.
 Local: the origin resets when long pressing the oculus button, and is calculated as an offset from the current head position."#
     ))]
+    #[schema(flag = "real-time")]
     pub position_recentering_mode: PositionRecenteringMode,
 
     #[schema(strings(
@@ -736,6 +737,7 @@ Local: the origin resets when long pressing the oculus button, and is calculated
 Yaw: the forward direction is reset when long pressing the oculus button.
 Tilted: the world gets tilted when long pressing the oculus button. This is useful for using VR while laying down."#
     ))]
+    #[schema(flag = "real-time")]
     pub rotation_recentering_mode: RotationRecenteringMode,
 }
 

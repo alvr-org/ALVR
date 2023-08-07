@@ -78,7 +78,7 @@ pub fn recv(
     if let Some(maybe_packet) = runtime.block_on(async {
         tokio::select! {
             res = socket.inner.next() => res.map(|p| p.to_con()),
-            _ = time::sleep(timeout) => Some(alvr_common::timeout()),
+            _ = time::sleep(timeout) => Some(alvr_common::try_again()),
         }
     }) {
         let (mut packet_bytes, address) = maybe_packet?;

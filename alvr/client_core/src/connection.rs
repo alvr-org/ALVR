@@ -309,7 +309,7 @@ fn connection_pipeline(
         while IS_STREAMING.value() {
             match video_receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
                 Ok(true) => (),
-                Ok(false) | Err(ConnectionError::Timeout) => continue,
+                Ok(false) | Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
             }
 
@@ -393,7 +393,7 @@ fn connection_pipeline(
         while IS_STREAMING.value() {
             let haptics = match haptics_receiver.recv_header_only(Duration::from_millis(500)) {
                 Ok(packet) => packet,
-                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
             };
 
@@ -482,7 +482,7 @@ fn connection_pipeline(
                 return;
             }
             Ok(_) => (),
-            Err(ConnectionError::Timeout) => (),
+            Err(ConnectionError::TryAgain) => (),
             Err(e) => {
                 info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                 set_hud_message(SERVER_DISCONNECTED_MESSAGE);
@@ -500,7 +500,7 @@ fn connection_pipeline(
             let res = stream_socket.recv(runtime, Duration::from_millis(500));
             match res {
                 Ok(()) => (),
-                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(e)) => {
                     info!("Client disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);

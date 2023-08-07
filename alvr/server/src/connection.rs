@@ -696,7 +696,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 let tracking = match tracking_receiver.recv_header_only(Duration::from_millis(500))
                 {
                     Ok(tracking) => tracking,
-                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::TryAgain) => continue,
                     Err(ConnectionError::Other(_)) => return,
                 };
 
@@ -805,7 +805,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         while IS_STREAMING.value() {
             let client_stats = match statics_receiver.recv_header_only(Duration::from_millis(500)) {
                 Ok(stats) => stats,
-                Err(ConnectionError::Timeout) => continue,
+                Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
             };
 
@@ -864,7 +864,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             let packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
                 match control_receiver.recv(runtime, Duration::from_millis(500)) {
                     Ok(packet) => packet,
-                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::TryAgain) => continue,
                     Err(ConnectionError::Other(e)) => {
                         info!("Client disconnected. Cause: {e}");
 
@@ -1003,7 +1003,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 let res = stream_socket.recv(runtime, Duration::from_millis(500));
                 match res {
                     Ok(()) => (),
-                    Err(ConnectionError::Timeout) => continue,
+                    Err(ConnectionError::TryAgain) => continue,
                     Err(ConnectionError::Other(e)) => {
                         info!("Client disconnected. Cause: {e}");
 

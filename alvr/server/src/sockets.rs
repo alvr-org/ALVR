@@ -28,7 +28,7 @@ impl WelcomeSocket {
             Ok(pair) => pair,
             Err(e) => {
                 if matches!(e.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) {
-                    return alvr_common::timeout();
+                    return alvr_common::try_again();
                 } else {
                     con_bail!("{e}");
                 }

@@ -48,7 +48,7 @@ pub fn accept_from_server(
     let (socket, server_address) = runtime.block_on(async {
         tokio::select! {
             res = listener.accept() => res.to_con(),
-            _ = time::sleep(timeout) => alvr_common::timeout(),
+            _ = time::sleep(timeout) => alvr_common::try_again(),
         }
     })?;
 
@@ -74,7 +74,7 @@ pub fn connect_to_client(
     let socket = runtime.block_on(async {
         tokio::select! {
             res = TcpStream::connect((client_ip, port)) => res.to_con(),
-            _ = time::sleep(timeout) => alvr_common::timeout(),
+            _ = time::sleep(timeout) => alvr_common::try_again(),
         }
     })?;
 
@@ -102,7 +102,7 @@ pub fn recv(
     if let Some(maybe_packet) = runtime.block_on(async {
         tokio::select! {
             res = socket.next() => res.map(|p| p.to_con()),
-            _ = time::sleep(timeout) => Some(alvr_common::timeout()),
+            _ = time::sleep(timeout) => Some(alvr_common::try_again()),
         }
     }) {
         let mut packet = maybe_packet?;

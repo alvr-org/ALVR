@@ -230,7 +230,7 @@ impl<T: DeserializeOwned> StreamReceiver<T> {
         // Get shard
         let mut shard = match self.receiver.recv_timeout(timeout) {
             Ok(shard) => Ok(shard),
-            Err(RecvTimeoutError::Timeout) => alvr_common::timeout(),
+            Err(RecvTimeoutError::Timeout) => alvr_common::try_again(),
             Err(RecvTimeoutError::Disconnected) => con_bail!("Disconnected"),
         }?;
         let shard_packet_index = shard.get_u32();

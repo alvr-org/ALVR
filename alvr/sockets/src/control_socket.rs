@@ -38,7 +38,7 @@ impl<R: DeserializeOwned> ControlSocketReceiver<R> {
         let packet_bytes = runtime.block_on(async {
             tokio::select! {
                 res = self.inner.next() => res.map(|p| p.to_con()).to_con(),
-                _ = time::sleep(timeout) => alvr_common::timeout(),
+                _ = time::sleep(timeout) => alvr_common::try_again(),
             }
         })??;
         bincode::deserialize(&packet_bytes).to_con()
@@ -77,7 +77,7 @@ impl ProtoControlSocket {
                 runtime.block_on(async {
                     tokio::select! {
                         res = TcpStream::connect(client_addresses.as_slice()) => res.to_con(),
-                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                        _ = time::sleep(timeout) => alvr_common::try_again(),
                     }
                 })?
             }
@@ -85,7 +85,7 @@ impl ProtoControlSocket {
                 let (socket, _) = runtime.block_on(async {
                     tokio::select! {
                         res = listener.accept() => res.to_con(),
-                        _ = time::sleep(timeout) => alvr_common::timeout(),
+                        _ = time::sleep(timeout) => alvr_common::try_again(),
                     }
                 })?;
                 socket
@@ -114,7 +114,7 @@ impl ProtoControlSocket {
             .block_on(async {
                 tokio::select! {
                     res = self.inner.next() => res.map(|p| p.to_con()),
-                    _ = time::sleep(timeout) => Some(alvr_common::timeout()),
+                    _ = time::sleep(timeout) => Some(alvr_common::try_again()),
                 }
             })
             .to_con()??;

@@ -2,14 +2,14 @@ use anyhow::Result;
 use std::{error::Error, fmt::Display};
 
 pub enum ConnectionError {
-    Timeout,
+    TryAgain,
     Other(anyhow::Error),
 }
 
 impl Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConnectionError::Timeout => write!(f, "Timeout"),
+            ConnectionError::TryAgain => write!(f, "Timeout"),
             ConnectionError::Other(s) => write!(f, "{}", s),
         }
     }
@@ -17,8 +17,8 @@ impl Display for ConnectionError {
 
 pub type ConResult<T = ()> = Result<T, ConnectionError>;
 
-pub fn timeout<T>() -> ConResult<T> {
-    Err(ConnectionError::Timeout)
+pub fn try_again<T>() -> ConResult<T> {
+    Err(ConnectionError::TryAgain)
 }
 
 #[macro_export]

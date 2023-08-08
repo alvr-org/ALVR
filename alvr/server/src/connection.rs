@@ -311,7 +311,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let runtime = Runtime::new().to_con()?;
 
     let (mut proto_socket, client_ip) = ProtoControlSocket::connect_to(
-        &runtime,
         Duration::from_secs(1),
         PeerType::AnyClient(client_ips.keys().cloned().collect()),
     )?;
@@ -368,7 +367,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         display_name,
         streaming_capabilities,
         ..
-    } = proto_socket.recv(&runtime, Duration::from_secs(1))?
+    } = proto_socket.recv()?
     {
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
@@ -486,9 +485,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         })
         .to_string(),
     };
-    proto_socket.send(&runtime, &client_config).to_con()?;
+    proto_socket.send(&client_config).to_con()?;
 
-    let (mut control_sender, mut control_receiver) = proto_socket.split();
+    let (mut control_sender, mut control_receiver) =
+        proto_socket.split(Duration::from_millis(500)).to_con()?;
 
     let mut new_openvr_config = contruct_openvr_config();
     new_openvr_config.eye_resolution_width = stream_view_resolution.x;
@@ -500,18 +500,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     if SERVER_DATA_MANAGER.read().session().openvr_config != new_openvr_config {
         SERVER_DATA_MANAGER.write().session_mut().openvr_config = new_openvr_config;
 
-        control_sender
-            .send(&runtime, &ServerControlPacket::Restarting)
-            .ok();
+        control_sender.send(&ServerControlPacket::Restarting).ok();
 
         crate::notify_restart_driver();
     }
 
     control_sender
-        .send(&runtime, &ServerControlPacket::StartStream)
+        .send(&ServerControlPacket::StartStream)
         .to_con()?;
 
-    match control_receiver.recv(&runtime, Duration::from_secs(1)) {
+    match control_receiver.recv() {
         Ok(ClientControlPacket::StreamReady) => (),
         Ok(_) => {
             con_bail!("Got unexpected packet waiting for stream ack");
@@ -562,19 +560,21 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     *VIDEO_CHANNEL_SENDER.lock() = Some(video_channel_sender);
     *HAPTICS_SENDER.lock() = Some(haptics_sender);
 
-    let video_send_thread = thread::spawn(move || loop {
-        let VideoPacket { header, payload } =
-            match video_channel_receiver.recv_timeout(Duration::from_millis(500)) {
-                Ok(packet) => packet,
-                Err(RecvTimeoutError::Timeout) => continue,
-                Err(RecvTimeoutError::Disconnected) => return,
-            };
+    let video_send_thread = thread::spawn(move || {
+        while IS_STREAMING.value() {
+            let VideoPacket { header, payload } =
+                match video_channel_receiver.recv_timeout(Duration::from_millis(500)) {
+                    Ok(packet) => packet,
+                    Err(RecvTimeoutError::Timeout) => continue,
+                    Err(RecvTimeoutError::Disconnected) => return,
+                };
 
-        if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            // IMPORTANT: The only error that can happen here is socket closed. For this reason it's
-            // acceptable to call .ok() and ignore the error. The connection would already be
-            // closing so no corruption handling is necessary
-            video_sender.send(runtime, &header, payload).ok();
+            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
+                // IMPORTANT: The only error that can happen here is socket closed. For this reason it's
+                // acceptable to call .ok() and ignore the error. The connection would already be
+                // closing so no corruption handling is necessary
+                video_sender.send(runtime, &header, payload).ok();
+            }
         }
     });
 
@@ -829,12 +829,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let keepalive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
-        move || loop {
-            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = control_sender
-                    .lock()
-                    .send(runtime, &ServerControlPacket::KeepAlive);
-                if let Err(e) = res {
+        move || {
+            while IS_STREAMING.value() {
+                if let Err(e) = control_sender.lock().send(&ServerControlPacket::KeepAlive) {
                     info!("Client disconnected. Cause: {e}");
 
                     SERVER_DATA_MANAGER.write().update_client_list(
@@ -849,20 +846,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                     return;
                 }
-            } else {
-                return;
-            }
 
-            thread::sleep(KEEPALIVE_INTERVAL);
+                thread::sleep(KEEPALIVE_INTERVAL);
+            }
         }
     });
 
     let control_receive_thread = thread::spawn({
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
-        move || loop {
-            let packet = if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                match control_receiver.recv(runtime, Duration::from_millis(500)) {
+        move || {
+            while IS_STREAMING.value() {
+                let packet = match control_receiver.recv() {
                     Ok(packet) => packet,
                     Err(ConnectionError::TryAgain) => continue,
                     Err(ConnectionError::Other(e)) => {
@@ -880,118 +875,113 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                         return;
                     }
-                }
-            } else {
-                return;
-            };
+                };
 
-            match packet {
-                ClientControlPacket::PlayspaceSync(packet) => {
-                    if !settings.headset.tracking_ref_only {
-                        let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
-                        unsafe { crate::SetChaperone(area.x, area.y) };
+                match packet {
+                    ClientControlPacket::PlayspaceSync(packet) => {
+                        if !settings.headset.tracking_ref_only {
+                            let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
+                            unsafe { crate::SetChaperone(area.x, area.y) };
 
-                        let data_manager_lock = SERVER_DATA_MANAGER.read();
-                        let config = &data_manager_lock.settings().headset;
-                        tracking_manager.lock().recenter(
-                            config.position_recentering_mode,
-                            config.rotation_recentering_mode,
-                        );
-                    }
-                }
-                ClientControlPacket::RequestIdr => {
-                    let maybe_config = DECODER_CONFIG.lock().clone();
-                    if let (Some(runtime), Some(config)) =
-                        (&*CONNECTION_RUNTIME.read(), maybe_config)
-                    {
-                        control_sender
-                            .lock()
-                            .send(runtime, &ServerControlPacket::InitializeDecoder(config))
-                            .ok();
-                    }
-                    unsafe { crate::RequestIDR() }
-                }
-                ClientControlPacket::VideoErrorReport => {
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_packet_loss();
-                    }
-                    unsafe { crate::VideoErrorReportReceive() };
-                }
-                ClientControlPacket::ViewsConfig(config) => unsafe {
-                    crate::SetViewsConfig(FfiViewsConfig {
-                        fov: [
-                            FfiFov {
-                                left: config.fov[0].left,
-                                right: config.fov[0].right,
-                                up: config.fov[0].up,
-                                down: config.fov[0].down,
-                            },
-                            FfiFov {
-                                left: config.fov[1].left,
-                                right: config.fov[1].right,
-                                up: config.fov[1].up,
-                                down: config.fov[1].down,
-                            },
-                        ],
-                        ipd_m: config.ipd_m,
-                    });
-                },
-                ClientControlPacket::Battery(packet) => unsafe {
-                    crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
-
-                    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                        stats.report_battery(
-                            packet.device_id,
-                            packet.gauge_value,
-                            packet.is_plugged,
-                        );
-                    }
-                },
-                ClientControlPacket::Buttons(entries) => {
-                    {
-                        let data_manager_lock = SERVER_DATA_MANAGER.read();
-                        if data_manager_lock.settings().logging.log_button_presses {
-                            alvr_events::send_event(EventType::Buttons(
-                                entries
-                                    .iter()
-                                    .map(|e| ButtonEvent {
-                                        path: BUTTON_PATH_FROM_ID
-                                            .get(&e.path_id)
-                                            .cloned()
-                                            .unwrap_or_else(|| {
-                                                format!("Unknown (ID: {:#16x})", e.path_id)
-                                            }),
-                                        value: e.value,
-                                    })
-                                    .collect(),
-                            ));
+                            let data_manager_lock = SERVER_DATA_MANAGER.read();
+                            let config = &data_manager_lock.settings().headset;
+                            tracking_manager.lock().recenter(
+                                config.position_recentering_mode,
+                                config.rotation_recentering_mode,
+                            );
                         }
                     }
-
-                    for entry in entries {
-                        let value = match entry.value {
-                            ButtonValue::Binary(value) => FfiButtonValue {
-                                type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                    binary: value.into(),
-                                },
-                            },
-
-                            ButtonValue::Scalar(value) => FfiButtonValue {
-                                type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                    scalar: value,
-                                },
-                            },
-                        };
-
-                        unsafe { crate::SetButton(entry.path_id, value) };
+                    ClientControlPacket::RequestIdr => {
+                        if let Some(config) = DECODER_CONFIG.lock().clone() {
+                            control_sender
+                                .lock()
+                                .send(&ServerControlPacket::InitializeDecoder(config))
+                                .ok();
+                        }
+                        unsafe { crate::RequestIDR() }
                     }
+                    ClientControlPacket::VideoErrorReport => {
+                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                            stats.report_packet_loss();
+                        }
+                        unsafe { crate::VideoErrorReportReceive() };
+                    }
+                    ClientControlPacket::ViewsConfig(config) => unsafe {
+                        crate::SetViewsConfig(FfiViewsConfig {
+                            fov: [
+                                FfiFov {
+                                    left: config.fov[0].left,
+                                    right: config.fov[0].right,
+                                    up: config.fov[0].up,
+                                    down: config.fov[0].down,
+                                },
+                                FfiFov {
+                                    left: config.fov[1].left,
+                                    right: config.fov[1].right,
+                                    up: config.fov[1].up,
+                                    down: config.fov[1].down,
+                                },
+                            ],
+                            ipd_m: config.ipd_m,
+                        });
+                    },
+                    ClientControlPacket::Battery(packet) => unsafe {
+                        crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
+
+                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                            stats.report_battery(
+                                packet.device_id,
+                                packet.gauge_value,
+                                packet.is_plugged,
+                            );
+                        }
+                    },
+                    ClientControlPacket::Buttons(entries) => {
+                        {
+                            let data_manager_lock = SERVER_DATA_MANAGER.read();
+                            if data_manager_lock.settings().logging.log_button_presses {
+                                alvr_events::send_event(EventType::Buttons(
+                                    entries
+                                        .iter()
+                                        .map(|e| ButtonEvent {
+                                            path: BUTTON_PATH_FROM_ID
+                                                .get(&e.path_id)
+                                                .cloned()
+                                                .unwrap_or_else(|| {
+                                                    format!("Unknown (ID: {:#16x})", e.path_id)
+                                                }),
+                                            value: e.value,
+                                        })
+                                        .collect(),
+                                ));
+                            }
+                        }
+
+                        for entry in entries {
+                            let value = match entry.value {
+                                ButtonValue::Binary(value) => FfiButtonValue {
+                                    type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                        binary: value.into(),
+                                    },
+                                },
+
+                                ButtonValue::Scalar(value) => FfiButtonValue {
+                                    type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                        scalar: value,
+                                    },
+                                },
+                            };
+
+                            unsafe { crate::SetButton(entry.path_id, value) };
+                        }
+                    }
+                    ClientControlPacket::Log { level, message } => {
+                        info!("Client {client_hostname}: [{level:?}] {message}")
+                    }
+                    _ => (),
                 }
-                ClientControlPacket::Log { level, message } => {
-                    info!("Client {client_hostname}: [{level:?}] {message}")
-                }
-                _ => (),
             }
         }
     });
@@ -1068,12 +1058,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
         let res = disconnect_receiver.recv();
         if matches!(res, Ok(ClientDisconnectRequest::ServerRestart)) {
-            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                control_sender
-                    .lock()
-                    .send(runtime, &ServerControlPacket::Restarting)
-                    .ok();
-            }
+            control_sender
+                .lock()
+                .send(&ServerControlPacket::Restarting)
+                .ok();
         }
 
         // This requests shutdown from threads

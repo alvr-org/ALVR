@@ -10,7 +10,7 @@ impl Display for ConnectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConnectionError::TryAgain => write!(f, "Timeout"),
-            ConnectionError::Other(s) => write!(f, "{}", s),
+            ConnectionError::Other(e) => write!(f, "{e}\n{}", e.backtrace()),
         }
     }
 }

@@ -39,6 +39,7 @@ use connection::{ClientDisconnectRequest, DISCONNECT_CLIENT_NOTIFIER, SHOULD_CON
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
+    env,
     ffi::{c_char, c_void, CStr, CString},
     fs::File,
     io::Write,
@@ -227,11 +228,20 @@ fn init() {
     let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
     logging_backend::init_logging(events_sender.clone());
 
-    if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        runtime.spawn(async { alvr_common::show_err(web_server::web_server(events_sender).await) });
+    if SERVER_DATA_MANAGER
+        .read()
+        .settings()
+        .logging
+        .prefer_backtrace
+    {
+        env::set_var("RUST_BACKTRACE", "1");
     }
 
     SERVER_DATA_MANAGER.write().clean_client_list();
+
+    if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
+        runtime.spawn(async { alvr_common::show_err(web_server::web_server(events_sender).await) });
+    }
 
     unsafe {
         g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())

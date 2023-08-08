@@ -841,6 +841,9 @@ pub struct LoggingConfig {
     pub notification_level: LogSeverity,
     #[schema(flag = "real-time")]
     pub show_raw_events: bool,
+    #[schema(strings(help = "This applies only to certain error or warning messages."))]
+    #[schema(flag = "steamvr-restart")]
+    pub prefer_backtrace: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1247,6 +1250,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             show_raw_events: false,
+            prefer_backtrace: false,
         },
         steamvr_launcher: SteamvrLauncherDefault {
             driver_launch_action: DriverLaunchActionDefault {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, io};
 
 pub enum ConnectionError {
     TryAgain,
@@ -29,6 +29,7 @@ macro_rules! con_bail {
 }
 
 pub trait ToCon<T> {
+    /// Convert result to ConResult. The error is always mapped to `Other()`
     fn to_con(self) -> ConResult<T>;
 }
 
@@ -59,6 +60,25 @@ impl<T> AnyhowToCon<T> for Result<T, anyhow::Error> {
         match self {
             Ok(value) => Ok(value),
             Err(e) => Err(ConnectionError::Other(e)),
+        }
+    }
+}
+
+pub trait IOToCon<T> {
+    fn io_to_con(self) -> ConResult<T>;
+}
+
+impl<T> IOToCon<T> for io::Result<T> {
+    fn io_to_con(self) -> ConResult<T> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock {
+                    Err(ConnectionError::TryAgain)
+                } else {
+                    Err(ConnectionError::Other(e.into()))
+                }
+            }
         }
     }
 }

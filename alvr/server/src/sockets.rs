@@ -1,7 +1,6 @@
-use alvr_common::{anyhow::Result, con_bail, ConResult, ToCon, ALVR_NAME};
+use alvr_common::{anyhow::Result, con_bail, ConResult, IOToCon, ToCon, ALVR_NAME};
 use alvr_sockets::{CONTROL_PORT, HANDSHAKE_PACKET_SIZE_BYTES, LOCAL_IP};
 use std::{
-    io::ErrorKind,
     net::{IpAddr, UdpSocket},
     time::Duration,
 };
@@ -24,16 +23,7 @@ impl WelcomeSocket {
 
     // Returns: client IP, client hostname
     pub fn recv(&mut self) -> ConResult<(String, IpAddr)> {
-        let (size, address) = match self.socket.recv_from(&mut self.buffer) {
-            Ok(pair) => pair,
-            Err(e) => {
-                if matches!(e.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) {
-                    return alvr_common::try_again();
-                } else {
-                    con_bail!("{e}");
-                }
-            }
-        };
+        let (size, address) = self.socket.recv_from(&mut self.buffer).io_to_con()?;
 
         if size == HANDSHAKE_PACKET_SIZE_BYTES
             && &self.buffer[..ALVR_NAME.len()] == ALVR_NAME.as_bytes()

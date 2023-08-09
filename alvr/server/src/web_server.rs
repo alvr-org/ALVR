@@ -1,13 +1,14 @@
 use crate::{
-    connection::ClientDisconnectRequest, DECODER_CONFIG, DISCONNECT_CLIENT_NOTIFIER,
-    FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    bindings::FfiButtonValue, connection::ClientDisconnectRequest, DECODER_CONFIG,
+    DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
+    VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
     anyhow::{self, Result},
     error, info, log, warn,
 };
-use alvr_events::{Event, EventType};
-use alvr_packets::{ClientListAction, ServerRequest};
+use alvr_events::{ButtonEvent, Event, EventType};
+use alvr_packets::{ButtonValue, ClientListAction, ServerRequest};
 use alvr_session::ConnectionState;
 use bytes::Buf;
 use futures::SinkExt;
@@ -219,6 +220,29 @@ async fn http_api(
             unsafe { crate::RequestIDR() };
 
             res
+        }
+        "/api/set-buttons" => {
+            let buttons = from_request_body::<Vec<ButtonEvent>>(request).await?;
+
+            for button in buttons {
+                let value = match button.value {
+                    ButtonValue::Binary(value) => FfiButtonValue {
+                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                            binary: value.into(),
+                        },
+                    },
+
+                    ButtonValue::Scalar(value) => FfiButtonValue {
+                        type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { scalar: value },
+                    },
+                };
+
+                unsafe { crate::SetButton(alvr_common::hash_string(&button.path), value) };
+            }
+
+            reply(StatusCode::OK)?
         }
         "/api/ping" => reply(StatusCode::OK)?,
         other_uri => {

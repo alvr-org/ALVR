@@ -1,7 +1,7 @@
 use crate::LOCAL_IP;
 
-use super::SocketReader;
-use alvr_common::{anyhow::Result, ConResult, IOToCon};
+use super::{SocketReader, SocketWriter};
+use alvr_common::{anyhow::Result, ConResult, HandleTryAgain};
 use alvr_session::SocketBufferSize;
 use std::net::{IpAddr, UdpSocket};
 
@@ -25,16 +25,20 @@ pub fn connect(socket: &UdpSocket, peer_ip: IpAddr, port: u16) -> Result<(UdpSoc
     Ok((socket.try_clone()?, socket.try_clone()?))
 }
 
+impl SocketWriter for UdpSocket {
+    fn send(&mut self, buffer: &[u8]) -> Result<()> {
+        UdpSocket::send(self, buffer)?;
+
+        Ok(())
+    }
+}
+
 impl SocketReader for UdpSocket {
     fn recv(&mut self, buffer: &mut [u8]) -> ConResult<usize> {
-        let bytes = UdpSocket::recv(self, buffer).io_to_con()?;
-
-        Ok(bytes)
+        UdpSocket::recv(self, buffer).handle_try_again()
     }
 
     fn peek(&self, buffer: &mut [u8]) -> ConResult<usize> {
-        let bytes = UdpSocket::peek(self, buffer).io_to_con()?;
-
-        Ok(bytes)
+        UdpSocket::peek(self, buffer).handle_try_again()
     }
 }

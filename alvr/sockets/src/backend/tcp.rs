@@ -1,7 +1,7 @@
 use crate::LOCAL_IP;
 
 use super::{SocketReader, SocketWriter};
-use alvr_common::{anyhow::Result, con_bail, ConResult, IOToCon, ToCon};
+use alvr_common::{anyhow::Result, con_bail, ConResult, HandleTryAgain, ToCon};
 use alvr_session::SocketBufferSize;
 use std::{
     io::Read,
@@ -29,7 +29,7 @@ pub fn accept_from_server(
     server_ip: Option<IpAddr>,
 ) -> ConResult<(TcpStream, TcpStream)> {
     // Uses timeout set during bind()
-    let (socket, server_address) = listener.accept().io_to_con()?;
+    let (socket, server_address) = listener.accept().handle_try_again()?;
 
     if let Some(ip) = server_ip {
         if server_address.ip() != ip {
@@ -56,7 +56,8 @@ pub fn connect_to_client(
 
     let mut res = alvr_common::try_again();
     for ip in client_ips {
-        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, port), split_timeout).io_to_con();
+        res = TcpStream::connect_timeout(&SocketAddr::new(*ip, port), split_timeout)
+            .handle_try_again();
 
         if res.is_ok() {
             break;
@@ -84,14 +85,10 @@ impl SocketWriter for TcpStream {
 
 impl SocketReader for TcpStream {
     fn recv(&mut self, buffer: &mut [u8]) -> ConResult<usize> {
-        let bytes = Read::read(self, buffer).io_to_con()?;
-
-        Ok(bytes)
+        Read::read(self, buffer).handle_try_again()
     }
 
     fn peek(&self, buffer: &mut [u8]) -> ConResult<usize> {
-        let bytes = TcpStream::peek(self, buffer).io_to_con()?;
-
-        Ok(bytes)
+        TcpStream::peek(self, buffer).handle_try_again()
     }
 }

@@ -1,5 +1,10 @@
-use anyhow::Result;
-use std::{error::Error, fmt::Display, io};
+use anyhow::{anyhow, Result};
+use std::{
+    error::Error,
+    fmt::Display,
+    io,
+    sync::mpsc::{RecvTimeoutError, TryRecvError},
+};
 
 pub enum ConnectionError {
     TryAgain,
@@ -35,19 +40,13 @@ pub trait ToCon<T> {
 
 impl<T> ToCon<T> for Option<T> {
     fn to_con(self) -> ConResult<T> {
-        match self {
-            Some(value) => Ok(value),
-            None => Err(ConnectionError::Other(anyhow::anyhow!("Unexpected None"))),
-        }
+        self.ok_or_else(|| ConnectionError::Other(anyhow::anyhow!("Unexpected None")))
     }
 }
 
 impl<T, E: Error + Send + Sync + 'static> ToCon<T> for Result<T, E> {
     fn to_con(self) -> ConResult<T> {
-        match self {
-            Ok(value) => Ok(value),
-            Err(e) => Err(ConnectionError::Other(e.into())),
-        }
+        self.map_err(|e| ConnectionError::Other(e.into()))
     }
 }
 
@@ -57,28 +56,42 @@ pub trait AnyhowToCon<T> {
 
 impl<T> AnyhowToCon<T> for Result<T, anyhow::Error> {
     fn to_con(self) -> ConResult<T> {
-        match self {
-            Ok(value) => Ok(value),
-            Err(e) => Err(ConnectionError::Other(e)),
-        }
+        self.map_err(ConnectionError::Other)
     }
 }
 
-pub trait IOToCon<T> {
-    fn io_to_con(self) -> ConResult<T>;
+pub trait HandleTryAgain<T> {
+    fn handle_try_again(self) -> ConResult<T>;
 }
 
-impl<T> IOToCon<T> for io::Result<T> {
-    fn io_to_con(self) -> ConResult<T> {
-        match self {
-            Ok(value) => Ok(value),
-            Err(e) => {
-                if e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock {
-                    Err(ConnectionError::TryAgain)
-                } else {
-                    Err(ConnectionError::Other(e.into()))
-                }
+impl<T> HandleTryAgain<T> for io::Result<T> {
+    fn handle_try_again(self) -> ConResult<T> {
+        self.map_err(|e| {
+            if e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock {
+                ConnectionError::TryAgain
+            } else {
+                ConnectionError::Other(e.into())
             }
-        }
+        })
+    }
+}
+
+impl<T> HandleTryAgain<T> for std::result::Result<T, RecvTimeoutError> {
+    fn handle_try_again(self) -> ConResult<T> {
+        self.map_err(|e| match e {
+            RecvTimeoutError::Timeout => ConnectionError::TryAgain,
+            RecvTimeoutError::Disconnected => {
+                ConnectionError::Other(anyhow!("Channel disconnected"))
+            }
+        })
+    }
+}
+
+impl<T> HandleTryAgain<T> for std::result::Result<T, TryRecvError> {
+    fn handle_try_again(self) -> ConResult<T> {
+        self.map_err(|e| match e {
+            TryRecvError::Empty => ConnectionError::TryAgain,
+            TryRecvError::Disconnected => ConnectionError::Other(anyhow!("Channel disconnected")),
+        })
     }
 }

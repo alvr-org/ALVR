@@ -1,7 +1,7 @@
 use crate::backend::{tcp, SocketReader, SocketWriter};
 
 use super::CONTROL_PORT;
-use alvr_common::{anyhow::Result, ConResult, IOToCon, ToCon};
+use alvr_common::{anyhow::Result, ConResult, HandleTryAgain, ToCon};
 use alvr_session::SocketBufferSize;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -48,7 +48,7 @@ fn framed_recv<R: DeserializeOwned>(
         state
     } else {
         let mut payload_length_bytes = [0; FRAMED_PREFIX_LENGTH];
-        let count = socket.peek(&mut payload_length_bytes).io_to_con()?;
+        let count = socket.peek(&mut payload_length_bytes).handle_try_again()?;
         if count != FRAMED_PREFIX_LENGTH {
             return alvr_common::try_again();
         }

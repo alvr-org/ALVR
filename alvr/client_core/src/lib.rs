@@ -212,7 +212,7 @@ pub unsafe extern "C" fn alvr_initialize(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_destroy() {
+pub unsafe extern "C" fn alvr_destroy() {
     IS_ALIVE.set(false);
 
     if let Some(thread) = CONNECTION_THREAD.lock().take() {
@@ -221,6 +221,9 @@ pub extern "C" fn alvr_destroy() {
 
     #[cfg(target_os = "android")]
     platform::release_wifi_lock();
+
+    #[cfg(target_os = "android")]
+    ndk_context::release_android_context();
 }
 
 #[no_mangle]

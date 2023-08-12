@@ -158,8 +158,11 @@ pub unsafe extern "C" fn alvr_initialize(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_destroy() {
+pub unsafe extern "C" fn alvr_destroy() {
     crate::destroy();
+
+    #[cfg(target_os = "android")]
+    ndk_context::release_android_context();
 }
 
 #[no_mangle]

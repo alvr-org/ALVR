@@ -47,6 +47,8 @@ use std::{
 use tokio::runtime::Runtime;
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
+const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
+const STREAMING_RECV_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
@@ -488,7 +490,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     proto_socket.send(&client_config).to_con()?;
 
     let (mut control_sender, mut control_receiver) =
-        proto_socket.split(Duration::from_millis(500)).to_con()?;
+        proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
     let mut new_openvr_config = contruct_openvr_config();
     new_openvr_config.eye_resolution_width = stream_view_resolution.x;
@@ -533,7 +535,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let mut stream_socket = StreamSocketBuilder::connect_to_client(
         &runtime,
-        Duration::from_secs(1),
+        HANDSHAKE_ACTION_TIMEOUT,
         client_ip,
         settings.connection.stream_port,
         settings.connection.stream_protocol,
@@ -563,7 +565,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let video_send_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
             let VideoPacket { header, payload } =
-                match video_channel_receiver.recv_timeout(Duration::from_millis(500)) {
+                match video_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
                     Ok(packet) => packet,
                     Err(RecvTimeoutError::Timeout) => continue,
                     Err(RecvTimeoutError::Disconnected) => return,
@@ -693,8 +695,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             }
 
             while IS_STREAMING.value() {
-                let tracking = match tracking_receiver.recv_header_only(Duration::from_millis(500))
-                {
+                let tracking = match tracking_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
                     Err(ConnectionError::TryAgain) => continue,
                     Err(ConnectionError::Other(_)) => return,
@@ -803,7 +804,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let statistics_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let client_stats = match statics_receiver.recv_header_only(Duration::from_millis(500)) {
+            let client_stats = match statics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                 Ok(stats) => stats,
                 Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
@@ -990,7 +991,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let client_hostname = client_hostname.clone();
         move || {
             while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = stream_socket.recv(runtime, Duration::from_millis(500));
+                let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
                 match res {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain) => continue,
@@ -1020,7 +1021,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             && SHOULD_CONNECT_TO_CLIENTS.value()
             && CONNECTION_RUNTIME.read().is_some()
         {
-            thread::sleep(Duration::from_millis(500));
+            thread::sleep(STREAMING_RECV_TIMEOUT);
         }
 
         if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {

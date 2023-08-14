@@ -61,6 +61,8 @@ const SERVER_DISCONNECTED_MESSAGE: &str = "The streamer has disconnected.";
 const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
+const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
+const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
     Lazy::new(|| Mutex::new(None));
@@ -123,7 +125,8 @@ fn connection_pipeline(
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
         let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
-        let listener_socket = alvr_sockets::get_server_listener(Duration::from_secs(1)).to_con()?;
+        let listener_socket =
+            alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT).to_con()?;
 
         loop {
             if !IS_ALIVE.value() {
@@ -222,7 +225,7 @@ fn connection_pipeline(
     ));
 
     let (mut control_sender, mut control_receiver) = proto_control_socket
-        .split(Duration::from_millis(500))
+        .split(STREAMING_RECV_TIMEOUT)
         .to_con()?;
 
     match control_receiver.recv() {
@@ -264,7 +267,7 @@ fn connection_pipeline(
 
     let mut stream_socket = stream_socket_builder.accept_from_server(
         &runtime,
-        Duration::from_secs(2),
+        HANDSHAKE_ACTION_TIMEOUT,
         server_ip,
         settings.connection.stream_port,
         settings.connection.packet_size as _,
@@ -308,7 +311,7 @@ fn connection_pipeline(
         let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
         while IS_STREAMING.value() {
-            match video_receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
+            match video_receiver.recv_buffer(STREAMING_RECV_TIMEOUT, &mut receiver_buffer) {
                 Ok(true) => (),
                 Ok(false) | Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
@@ -392,7 +395,7 @@ fn connection_pipeline(
 
     let haptics_receive_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let haptics = match haptics_receiver.recv_header_only(Duration::from_millis(500)) {
+            let haptics = match haptics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                 Ok(packet) => packet,
                 Err(ConnectionError::TryAgain) => continue,
                 Err(ConnectionError::Other(_)) => return,
@@ -417,7 +420,7 @@ fn connection_pipeline(
 
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
             if let (Ok(packet), Some(sender)) = (
-                log_channel_receiver.recv_timeout(Duration::from_millis(500)),
+                log_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT),
                 &mut *CONTROL_SENDER.lock(),
             ) {
                 if let Err(e) = sender.send(&packet) {
@@ -492,7 +495,7 @@ fn connection_pipeline(
 
     let stream_receive_thread = thread::spawn(move || {
         while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            let res = stream_socket.recv(runtime, Duration::from_millis(500));
+            let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
             match res {
                 Ok(()) => (),
                 Err(ConnectionError::TryAgain) => continue,

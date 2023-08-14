@@ -2,6 +2,7 @@
 
 use crate::{
     decoder::{self, DECODER_INIT_CONFIG},
+    logging_backend::{LogMirrorData, LOG_CHANNEL_SENDER},
     platform,
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
@@ -24,8 +25,8 @@ use alvr_packets::{
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender, StreamSocketBuilder,
-    KEEPALIVE_INTERVAL,
+    ControlSocketSender, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender,
+    StreamSocketBuilder, KEEPALIVE_INTERVAL,
 };
 use serde_json as json;
 use std::{
@@ -64,16 +65,13 @@ const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
     Lazy::new(|| Mutex::new(None));
 
+pub static CONTROL_SENDER: Lazy<Mutex<Option<ControlSocketSender<ClientControlPacket>>>> =
+    Lazy::new(|| Mutex::new(None));
 pub static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
-    Lazy::new(|| Mutex::new(None));
-
-// Note: the ControlSocketSender cannot be shared directly. this is because it is used inside the
-// logging callback and that could lead to double lock.
-pub static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::Sender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 
 fn set_hud_message(message: &str) {
@@ -291,12 +289,18 @@ fn connection_pipeline(
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
     // function MUST be infallible
     IS_STREAMING.set(true);
+    *CONTROL_SENDER.lock() = Some(control_sender);
     *CONNECTION_RUNTIME.write() = Some(runtime);
     *TRACKING_SENDER.lock() = Some(tracking_sender);
     *STATISTICS_SENDER.lock() = Some(statistics_sender);
 
-    let (control_channel_sender, control_channel_receiver) = mpsc::channel();
-    *CONTROL_CHANNEL_SENDER.lock() = Some(control_channel_sender);
+    let (log_channel_sender, log_channel_receiver) = mpsc::channel();
+    if let Switch::Enabled(filter_level) = settings.logging.client_log_report_level {
+        *LOG_CHANNEL_SENDER.lock() = Some(LogMirrorData {
+            sender: log_channel_sender,
+            filter_level,
+        });
+    }
 
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
@@ -322,8 +326,8 @@ fn connection_pipeline(
                 stream_corrupted = false;
             } else if receiver_buffer.had_packet_loss() {
                 stream_corrupted = true;
-                if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                    sender.send(ClientControlPacket::RequestIdr).ok();
+                if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+                    sender.send(&ClientControlPacket::RequestIdr).ok();
                 }
                 warn!("Network dropped video packet");
             }
@@ -331,8 +335,8 @@ fn connection_pipeline(
             if !stream_corrupted || !settings.connection.avoid_video_glitching {
                 if !decoder::push_nal(header.timestamp, nal) {
                     stream_corrupted = true;
-                    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-                        sender.send(ClientControlPacket::RequestIdr).ok();
+                    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+                        sender.send(&ClientControlPacket::RequestIdr).ok();
                     }
                     warn!("Dropped video packet. Reason: Decoder saturation")
                 }
@@ -412,8 +416,11 @@ fn connection_pipeline(
         let mut battery_deadline = Instant::now();
 
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
-            if let Ok(packet) = control_channel_receiver.recv_timeout(Duration::from_millis(500)) {
-                if let Err(e) = control_sender.send(&packet) {
+            if let (Ok(packet), Some(sender)) = (
+                log_channel_receiver.recv_timeout(Duration::from_millis(500)),
+                &mut *CONTROL_SENDER.lock(),
+            ) {
+                if let Err(e) = sender.send(&packet) {
                     info!("Server disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
 
@@ -422,21 +429,25 @@ fn connection_pipeline(
             }
 
             if Instant::now() > keepalive_deadline {
-                control_sender.send(&ClientControlPacket::KeepAlive).ok();
+                if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+                    sender.send(&ClientControlPacket::KeepAlive).ok();
 
-                keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
+                    keepalive_deadline = Instant::now() + KEEPALIVE_INTERVAL;
+                }
             }
 
             #[cfg(target_os = "android")]
             if Instant::now() > battery_deadline {
                 let (gauge_value, is_plugged) = battery_manager.status();
-                control_sender
-                    .send(&ClientControlPacket::Battery(crate::BatteryPacket {
-                        device_id: *alvr_common::HEAD_ID,
-                        gauge_value,
-                        is_plugged,
-                    }))
-                    .ok();
+                if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+                    sender
+                        .send(&ClientControlPacket::Battery(crate::BatteryPacket {
+                            device_id: *alvr_common::HEAD_ID,
+                            gauge_value,
+                            is_plugged,
+                        }))
+                        .ok();
+                }
 
                 battery_deadline = Instant::now() + Duration::from_secs(5);
             }
@@ -502,10 +513,11 @@ fn connection_pipeline(
     disconnect_receiver.recv().ok();
 
     IS_STREAMING.set(false);
+    *CONTROL_SENDER.lock() = None;
+    *LOG_CHANNEL_SENDER.lock() = None;
     *CONNECTION_RUNTIME.write() = None;
     *TRACKING_SENDER.lock() = None;
     *STATISTICS_SENDER.lock() = None;
-    *CONTROL_CHANNEL_SENDER.lock() = None;
 
     EVENT_QUEUE
         .lock()

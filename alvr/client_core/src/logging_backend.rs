@@ -1,4 +1,3 @@
-use crate::connection::CONTROL_CHANNEL_SENDER;
 use alvr_common::{
     log::{Level, Record},
     once_cell::sync::Lazy,
@@ -6,9 +5,19 @@ use alvr_common::{
     LogSeverity,
 };
 use alvr_packets::ClientControlPacket;
-use std::time::{Duration, Instant};
+use std::{
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 const LOG_REPEAT_TIMEOUT: Duration = Duration::from_secs(1);
+
+pub struct LogMirrorData {
+    pub sender: mpsc::Sender<ClientControlPacket>,
+    pub filter_level: LogSeverity,
+}
+
+pub static LOG_CHANNEL_SENDER: Lazy<Mutex<Option<LogMirrorData>>> = Lazy::new(|| Mutex::new(None));
 
 struct RepeatedLogEvent {
     message: String,
@@ -26,45 +35,50 @@ static LAST_LOG_EVENT: Lazy<Mutex<RepeatedLogEvent>> = Lazy::new(|| {
 
 pub fn init_logging() {
     fn send_log(record: &Record) {
-        if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-            let level = match record.level() {
-                Level::Error => LogSeverity::Error,
-                Level::Warn => LogSeverity::Warning,
-                Level::Info => LogSeverity::Info,
-                _ => LogSeverity::Debug,
-            };
+        let Some(data) = &*LOG_CHANNEL_SENDER.lock() else {
+            return;
+        };
 
-            let message = format!("{}", record.args());
+        let level = match record.level() {
+            Level::Error => LogSeverity::Error,
+            Level::Warn => LogSeverity::Warning,
+            Level::Info => LogSeverity::Info,
+            _ => LogSeverity::Debug,
+        };
+        if level < data.filter_level {
+            return;
+        }
 
-            let mut last_log_event_lock = LAST_LOG_EVENT.lock();
+        let message = format!("{}", record.args());
 
-            if last_log_event_lock.message == message
-                && last_log_event_lock.initial_timestamp + LOG_REPEAT_TIMEOUT > Instant::now()
-            {
-                last_log_event_lock.repetition_times += 1;
-            } else {
-                if last_log_event_lock.repetition_times > 1 {
-                    sender
-                        .send(ClientControlPacket::Log {
-                            level: LogSeverity::Info,
-                            message: format!(
-                                "Last log line repeated {} times",
-                                last_log_event_lock.repetition_times
-                            ),
-                        })
-                        .ok();
-                }
+        let mut last_log_event_lock = LAST_LOG_EVENT.lock();
 
-                *last_log_event_lock = RepeatedLogEvent {
-                    message: message.clone(),
-                    repetition_times: 1,
-                    initial_timestamp: Instant::now(),
-                };
-
-                sender
-                    .send(ClientControlPacket::Log { level, message })
+        if last_log_event_lock.message == message
+            && last_log_event_lock.initial_timestamp + LOG_REPEAT_TIMEOUT > Instant::now()
+        {
+            last_log_event_lock.repetition_times += 1;
+        } else {
+            if last_log_event_lock.repetition_times > 1 {
+                data.sender
+                    .send(ClientControlPacket::Log {
+                        level: LogSeverity::Info,
+                        message: format!(
+                            "Last log line repeated {} times",
+                            last_log_event_lock.repetition_times
+                        ),
+                    })
                     .ok();
             }
+
+            *last_log_event_lock = RepeatedLogEvent {
+                message: message.clone(),
+                repetition_times: 1,
+                initial_timestamp: Instant::now(),
+            };
+
+            data.sender
+                .send(ClientControlPacket::Log { level, message })
+                .ok();
         }
     }
 

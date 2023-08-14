@@ -57,9 +57,9 @@ pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
             *DECODER_ENQUEUER.lock() = Some(enqueuer);
             *DECODER_DEQUEUER.lock() = Some(dequeuer);
 
-            if let Some(sender) = &*crate::connection::CONTROL_CHANNEL_SENDER.lock() {
+            if let Some(sender) = &mut *crate::connection::CONTROL_SENDER.lock() {
                 sender
-                    .send(alvr_packets::ClientControlPacket::RequestIdr)
+                    .send(&alvr_packets::ClientControlPacket::RequestIdr)
                     .ok();
             }
         }

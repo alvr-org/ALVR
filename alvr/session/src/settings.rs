@@ -829,6 +829,7 @@ For now works only on Windows+Nvidia"#
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct LoggingConfig {
+    pub client_log_report_level: Switch<LogSeverity>,
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
     #[schema(flag = "real-time")]
@@ -1238,6 +1239,12 @@ pub fn session_settings_default() -> SettingsDefault {
             statistics_history_size: 256,
         },
         logging: LoggingConfigDefault {
+            client_log_report_level: SwitchDefault {
+                enabled: true,
+                content: LogSeverityDefault {
+                    variant: LogSeverityDefaultVariant::Error,
+                },
+            },
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
             log_tracking: false,

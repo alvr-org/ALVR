@@ -33,7 +33,7 @@ use alvr_common::{
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
-use connection::{CONNECTION_RUNTIME, CONTROL_CHANNEL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
+use connection::{CONNECTION_RUNTIME, CONTROL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
@@ -134,17 +134,20 @@ pub fn poll_event() -> Option<ClientCoreEvent> {
 }
 
 pub fn send_views_config(fov: [Fov; 2], ipd_m: f32) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender
-            .send(ClientControlPacket::ViewsConfig(ViewsConfig { fov, ipd_m }))
+            .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
+                fov,
+                ipd_m,
+            }))
             .ok();
     }
 }
 
 pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender
-            .send(ClientControlPacket::Battery(BatteryPacket {
+            .send(&ClientControlPacket::Battery(BatteryPacket {
                 device_id,
                 gauge_value,
                 is_plugged,
@@ -154,14 +157,14 @@ pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
 }
 
 pub fn send_playspace(area: Option<Vec2>) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::PlayspaceSync(area)).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::PlayspaceSync(area)).ok();
     }
 }
 
 pub fn send_buttons(entries: Vec<ButtonEntry>) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::Buttons(entries)).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::Buttons(entries)).ok();
     }
 }
 
@@ -211,8 +214,8 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
 
 /// Call only with external decoder
 pub fn request_idr() {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::RequestIdr).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::RequestIdr).ok();
     }
 }
 

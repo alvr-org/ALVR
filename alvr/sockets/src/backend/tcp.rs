@@ -27,6 +27,7 @@ pub fn bind(
 pub fn accept_from_server(
     listener: &TcpListener,
     server_ip: Option<IpAddr>,
+    timeout: Duration,
 ) -> ConResult<(TcpStream, TcpStream)> {
     // Uses timeout set during bind()
     let (socket, server_address) = listener.accept().handle_try_again()?;
@@ -40,6 +41,7 @@ pub fn accept_from_server(
         }
     }
 
+    socket.set_read_timeout(Some(timeout)).to_con()?;
     socket.set_nodelay(true).to_con()?;
 
     Ok((socket.try_clone().to_con()?, socket))

@@ -15,7 +15,7 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     info,
     once_cell::sync::Lazy,
-    parking_lot::{Mutex, RwLock},
+    parking_lot::Mutex,
     settings_schema::Switch,
     warn, AnyhowToCon, ConResult, ConnectionError, RelaxedAtomic, ToCon, DEVICE_ID_TO_PATH,
     HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
@@ -44,18 +44,17 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::runtime::Runtime;
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
+const MAX_UNREAD_PACKETS: usize = 5; // Applies per stream
+
 pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 pub static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
-    Lazy::new(|| Arc::new(RwLock::new(None)));
 static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
     Lazy::new(|| Mutex::new(None));
 static HAPTICS_SENDER: Lazy<Mutex<Option<StreamSender<Haptics>>>> = Lazy::new(|| Mutex::new(None));
@@ -310,8 +309,6 @@ pub fn handshake_loop() {
 }
 
 fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
-    let runtime = Runtime::new().to_con()?;
-
     let (mut proto_socket, client_ip) = ProtoControlSocket::connect_to(
         Duration::from_secs(1),
         PeerType::AnyClient(client_ips.keys().cloned().collect()),
@@ -529,7 +526,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     *BITRATE_MANAGER.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
     let mut stream_socket = StreamSocketBuilder::connect_to_client(
-        &runtime,
         HANDSHAKE_ACTION_TIMEOUT,
         client_ip,
         settings.connection.stream_port,
@@ -541,15 +537,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);
-    let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO);
-    let mut tracking_receiver = stream_socket.subscribe_to_stream::<Tracking>(TRACKING);
+    let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+    let mut tracking_receiver =
+        stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
-    let mut statics_receiver = stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS);
+    let mut statics_receiver =
+        stream_socket.subscribe_to_stream::<ClientStatistics>(STATISTICS, MAX_UNREAD_PACKETS);
 
-    // Note: here we create CONNECTION_RUNTIME. The rest of the function MUST be infallible, as
-    // CONNECTION_RUNTIME must be destroyed in the thread defined at the end of the function.
-    // Failure to respect this might leave a lingering runtime.
-    *CONNECTION_RUNTIME.write() = Some(runtime);
+    // Note: from here on, the function MUST be infallible. Failure to respect this might leave
+    // lingering objects that prevent reconnection.
     IS_STREAMING.set(true);
 
     let (video_channel_sender, video_channel_receiver) =
@@ -566,18 +562,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     Err(RecvTimeoutError::Disconnected) => return,
                 };
 
-            if let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                // IMPORTANT: The only error that can happen here is socket closed. For this reason it's
-                // acceptable to call .ok() and ignore the error. The connection would already be
-                // closing so no corruption handling is necessary
-                video_sender.send(runtime, &header, payload).ok();
-            }
+            let mut buffer = video_sender.get_buffer(&header).unwrap();
+            // todo: make encoder write to socket buffers directly to avoid copy
+            buffer
+                .get_range_mut(0, payload.len())
+                .copy_from_slice(&payload);
+            video_sender.send(buffer).ok();
         }
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
         thread::spawn(move || {
-            while CONNECTION_RUNTIME.read().is_some() {
+            while IS_STREAMING.value() {
                 let device = match AudioDevice::new_output(
                     Some(settings.audio.linux_backend),
                     config.device.as_ref(),
@@ -606,7 +602,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 };
 
                 if let Err(e) = alvr_audio::record_audio_blocking(
-                    Arc::clone(&CONNECTION_RUNTIME),
+                    Arc::clone(&IS_STREAMING),
                     game_audio_sender.clone(),
                     &device,
                     2,
@@ -690,7 +686,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             }
 
             while IS_STREAMING.value() {
-                let tracking = match tracking_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
+                let tracking = match tracking_receiver.recv_header(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
@@ -799,7 +795,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let statistics_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let client_stats = match statics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
+            let client_stats = match statics_receiver.recv_header(STREAMING_RECV_TIMEOUT) {
                 Ok(stats) => stats,
                 Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
@@ -985,9 +981,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let stream_receive_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
         move || {
-            while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-                let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
-                match res {
+            while IS_STREAMING.value() {
+                match stream_socket.recv() {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(e) => {
@@ -1012,10 +1007,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     });
 
     let lifecycle_check_thread = thread::spawn(|| {
-        while IS_STREAMING.value()
-            && SHOULD_CONNECT_TO_CLIENTS.value()
-            && CONNECTION_RUNTIME.read().is_some()
-        {
+        while IS_STREAMING.value() && SHOULD_CONNECT_TO_CLIENTS.value() {
             thread::sleep(STREAMING_RECV_TIMEOUT);
         }
 
@@ -1062,7 +1054,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
         // This requests shutdown from threads
         IS_STREAMING.set(false);
-        *CONNECTION_RUNTIME.write() = None;
         *VIDEO_CHANNEL_SENDER.lock() = None;
         *HAPTICS_SENDER.lock() = None;
 
@@ -1193,13 +1184,9 @@ pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, 
             .and_then(|c| c.haptics.as_option().cloned())
     };
 
-    if let (Some(config), Some(runtime), Some(sender)) = (
-        haptics_config,
-        &*CONNECTION_RUNTIME.read(),
-        &mut *HAPTICS_SENDER.lock(),
-    ) {
+    if let (Some(config), Some(sender)) = (haptics_config, &mut *HAPTICS_SENDER.lock()) {
         sender
-            .send(runtime, &haptics::map_haptics(&config, haptics), vec![])
+            .send_header(&haptics::map_haptics(&config, haptics))
             .ok();
     }
 }

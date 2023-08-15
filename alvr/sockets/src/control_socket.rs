@@ -14,9 +14,9 @@ use std::{
 // This corresponds to the length of the payload
 const FRAMED_PREFIX_LENGTH: usize = mem::size_of::<u32>();
 
-pub struct RecvState {
-    packet_cursor: usize, // counts also the length prefix bytes
+struct RecvState {
     packet_length: usize, // contains length prefix
+    packet_cursor: usize, // counts also the length prefix bytes
 }
 
 fn framed_send<S: Serialize>(
@@ -85,12 +85,12 @@ fn framed_recv<R: DeserializeOwned>(
         }
     }
 
-    let data = bincode::deserialize(&buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length])
+    let packet = bincode::deserialize(&buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length])
         .to_con()?;
 
     *maybe_recv_state = None;
 
-    Ok(data)
+    Ok(packet)
 }
 
 pub struct ControlSocketSender<T> {
@@ -158,7 +158,7 @@ impl ProtoControlSocket {
                 )?
                 .0
             }
-            PeerType::Server(listener) => tcp::accept_from_server(listener, None)?.0,
+            PeerType::Server(listener) => tcp::accept_from_server(listener, None, timeout)?.0,
         };
 
         let peer_ip = socket.peer_addr().to_con()?.ip();

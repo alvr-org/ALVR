@@ -1,7 +1,7 @@
 use alvr_audio::{AudioDevice, AudioRecordState};
 use alvr_common::{
     anyhow::{bail, Result},
-    parking_lot::{Mutex, RwLock},
+    parking_lot::Mutex,
     RelaxedAtomic, ToAny,
 };
 use alvr_session::AudioBufferingConfig;
@@ -12,10 +12,9 @@ use oboe::{
     SampleRateConversionQuality, Stereo, Usage,
 };
 use std::{collections::VecDeque, mem, sync::Arc, thread, time::Duration};
-use tokio::runtime::Runtime;
 
 struct RecorderCallback {
-    runtime: Arc<RwLock<Option<Runtime>>>,
+    running: Arc<RelaxedAtomic>,
     sender: StreamSender<()>,
     state: Arc<Mutex<AudioRecordState>>,
 }
@@ -28,14 +27,15 @@ impl AudioInputCallback for RecorderCallback {
         _: &mut dyn AudioInputStreamSafe,
         frames: &[i16],
     ) -> DataCallbackResult {
-        let mut sample_buffer = Vec::with_capacity(frames.len() * mem::size_of::<i16>());
+        let mut sample_buffer = Vec::<u8>::with_capacity(frames.len() * mem::size_of::<i16>());
 
         for frame in frames {
             sample_buffer.extend(&frame.to_ne_bytes());
         }
 
-        if let Some(runtime) = &*self.runtime.read() {
-            self.sender.send(runtime, &(), sample_buffer).ok();
+        if self.running.value() {
+            let buffer = self.sender.get_buffer(&()).unwrap();
+            self.sender.send(buffer).ok();
 
             DataCallbackResult::Continue
         } else {
@@ -52,7 +52,7 @@ impl AudioInputCallback for RecorderCallback {
 
 #[allow(unused_variables)]
 pub fn record_audio_blocking(
-    runtime: Arc<RwLock<Option<Runtime>>>,
+    running: Arc<RelaxedAtomic>,
     sender: StreamSender<()>,
     device: &AudioDevice,
     channels_count: u16,
@@ -73,7 +73,7 @@ pub fn record_audio_blocking(
         .set_usage(Usage::VoiceCommunication)
         .set_input_preset(InputPreset::VoiceCommunication)
         .set_callback(RecorderCallback {
-            runtime: Arc::clone(&runtime),
+            running: Arc::clone(&running),
             sender,
             state: Arc::clone(&state),
         })
@@ -82,7 +82,7 @@ pub fn record_audio_blocking(
     let mut res = stream.start().to_any();
 
     if res.is_ok() {
-        while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && running.value() {
             thread::sleep(Duration::from_millis(500))
         }
 
@@ -90,6 +90,8 @@ pub fn record_audio_blocking(
             res = Err(e.take().unwrap());
         }
     }
+
+    stream.stop_with_timeout(0).ok();
 
     res
 }

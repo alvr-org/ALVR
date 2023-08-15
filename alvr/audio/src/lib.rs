@@ -8,13 +8,13 @@ use alvr_common::{
     anyhow::{self, anyhow, bail, Context, Result},
     info,
     once_cell::sync::Lazy,
-    parking_lot::{Mutex, RwLock},
+    parking_lot::Mutex,
     ConnectionError, RelaxedAtomic, ToAny,
 };
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
 };
-use alvr_sockets::{ReceiverBuffer, StreamReceiver, StreamSender};
+use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
     BufferSize, Device, Host, Sample, SampleFormat, StreamConfig,
@@ -26,7 +26,6 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::runtime::Runtime;
 
 static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     [
@@ -213,7 +212,7 @@ pub enum AudioRecordState {
 
 #[allow(unused_variables)]
 pub fn record_audio_blocking(
-    runtime: Arc<RwLock<Option<Runtime>>>,
+    is_streaming: Arc<RelaxedAtomic>,
     mut sender: StreamSender<()>,
     device: &AudioDevice,
     channels_count: u16,
@@ -246,7 +245,7 @@ pub fn record_audio_blocking(
         config.sample_format(),
         {
             let state = Arc::clone(&state);
-            let runtime = Arc::clone(&runtime);
+            let is_streaming = Arc::clone(&is_streaming);
             move |data, _| {
                 let data = if config.sample_format() == SampleFormat::F32 {
                     data.bytes()
@@ -274,8 +273,9 @@ pub fn record_audio_blocking(
                     data
                 };
 
-                if let Some(runtime) = &*runtime.read() {
-                    sender.send(runtime, &(), data).ok();
+                if is_streaming.value() {
+                    let buffer = sender.get_buffer(&()).unwrap();
+                    sender.send(buffer).ok();
                 } else {
                     *state.lock() = AudioRecordState::ShouldStop;
                 }
@@ -296,7 +296,7 @@ pub fn record_audio_blocking(
     let mut res = stream.play().to_any();
 
     if res.is_ok() {
-        while matches!(*state.lock(), AudioRecordState::Recording) && runtime.read().is_some() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && is_streaming.value() {
             thread::sleep(Duration::from_millis(500))
         }
 
@@ -355,16 +355,15 @@ pub fn receive_samples_loop(
     batch_frames_count: usize,
     average_buffer_frames_count: usize,
 ) -> Result<()> {
-    let mut receiver_buffer = ReceiverBuffer::new();
     let mut recovery_sample_buffer = vec![];
     while running.value() {
-        match receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
-            Ok(true) => (),
-            Ok(false) | Err(ConnectionError::TryAgain(_)) => continue,
+        let data = match receiver.recv(Duration::from_millis(500)) {
+            Ok(data) => data,
+            Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(e)) => return Err(e),
         };
 
-        let (_, packet) = receiver_buffer.get()?;
+        let packet = data.buffer.get();
 
         let new_samples = packet
             .chunks_exact(2)
@@ -373,7 +372,7 @@ pub fn receive_samples_loop(
 
         let mut sample_buffer_ref = sample_buffer.lock();
 
-        if receiver_buffer.had_packet_loss() {
+        if data.had_packet_loss {
             info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
@@ -390,7 +389,7 @@ pub fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || receiver_buffer.had_packet_loss() {
+        if sample_buffer_ref.len() == 0 || data.had_packet_loss {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -404,7 +403,7 @@ pub fn receive_samples_loop(
                     }
                 }
 
-                if receiver_buffer.had_packet_loss()
+                if data.had_packet_loss
                     && sample_buffer_ref.len() / channels_count == batch_frames_count
                 {
                     // Add a fade-out to make a cross-fade.
@@ -445,6 +444,8 @@ pub fn receive_samples_loop(
                 }
             }
         }
+
+        receiver.return_buffer(data.buffer).ok();
     }
 
     Ok(())

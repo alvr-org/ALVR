@@ -371,7 +371,8 @@ struct InProgressPacket {
 }
 
 struct StreamRecvComponents {
-    used_buffer_queue: mpsc::Receiver<Vec<u8>>,
+    used_buffer_sender: mpsc::Sender<Vec<u8>>,
+    used_buffer_receiver: mpsc::Receiver<Vec<u8>>,
     packet_queue: mpsc::Sender<ReconstructedPacket>,
     in_progress_packets: HashMap<u32, InProgressPacket>,
 }
@@ -418,7 +419,8 @@ impl StreamSocket {
         self.stream_recv_components.insert(
             stream_id,
             StreamRecvComponents {
-                used_buffer_queue: used_buffer_receiver,
+                used_buffer_sender: used_buffer_sender.clone(),
+                used_buffer_receiver,
                 packet_queue: packet_sender,
                 in_progress_packets: HashMap::new(),
             },
@@ -474,7 +476,10 @@ impl StreamSocket {
         {
             packet
         } else {
-            let buffer = components.used_buffer_queue.try_recv().handle_try_again()?;
+            let buffer = components
+                .used_buffer_receiver
+                .try_recv()
+                .handle_try_again()?;
 
             // NB: Can't use entry pattern because we want to allow bailing out on the line above
             components.in_progress_packets.insert(
@@ -560,9 +565,15 @@ impl StreamSocket {
                 .ok();
 
             // Keep only shards with later packet index (using wrapping logic)
-            components.in_progress_packets.retain(|idx, _| {
-                wrapping_cmp(shard_recv_state_mut.packet_index, *idx) == Ordering::Greater
-            });
+            while let Some((idx, _)) = components.in_progress_packets.iter().find(|(idx, _)| {
+                wrapping_cmp(**idx, shard_recv_state_mut.packet_index) == Ordering::Less
+            }) {
+                let idx = *idx; // fix borrow rule
+                let packet = components.in_progress_packets.remove(&idx).unwrap();
+
+                // Recycle buffer
+                components.used_buffer_sender.send(packet.buffer).ok();
+            }
         }
 
         // Mark current shard as read and allow for a new shard to be read

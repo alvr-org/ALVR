@@ -101,8 +101,8 @@ pub fn connection_lifecycle_loop(
                 connection_pipeline(recommended_view_resolution, supported_refresh_rates.clone())
             {
                 let message = format!("Connection error:\n{e}\nCheck the PC for more details");
-                error!("Connection error: {message}");
                 set_hud_message(&message);
+                error!("Connection error: {e}");
             }
         } else {
             debug!("Skip try connection because the device is sleeping");
@@ -134,7 +134,7 @@ fn connection_pipeline(
             }
 
             if let Err(e) = announcer_socket.broadcast() {
-                warn!("Broadcast error: {e}");
+                warn!("Broadcast error: {e:?}");
 
                 set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
 
@@ -260,7 +260,7 @@ fn connection_pipeline(
     .to_con()?;
 
     if let Err(e) = control_sender.send(&ClientControlPacket::StreamReady) {
-        info!("Server disconnected. Cause: {e}");
+        info!("Server disconnected. Cause: {e:?}");
         set_hud_message(SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
@@ -313,7 +313,7 @@ fn connection_pipeline(
         while IS_STREAMING.value() {
             match video_receiver.recv_buffer(STREAMING_RECV_TIMEOUT, &mut receiver_buffer) {
                 Ok(true) => (),
-                Ok(false) | Err(ConnectionError::TryAgain) => continue,
+                Ok(false) | Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
             }
 
@@ -397,7 +397,7 @@ fn connection_pipeline(
         while IS_STREAMING.value() {
             let haptics = match haptics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                 Ok(packet) => packet,
-                Err(ConnectionError::TryAgain) => continue,
+                Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
             };
 
@@ -424,7 +424,7 @@ fn connection_pipeline(
                 &mut *CONTROL_SENDER.lock(),
             ) {
                 if let Err(e) = sender.send(&packet) {
-                    info!("Server disconnected. Cause: {e}");
+                    info!("Server disconnected. Cause: {e:?}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
 
                     break;
@@ -479,7 +479,7 @@ fn connection_pipeline(
                     return;
                 }
                 Ok(_) => (),
-                Err(ConnectionError::TryAgain) => (),
+                Err(ConnectionError::TryAgain(_)) => continue,
                 Err(e) => {
                     info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
@@ -498,8 +498,8 @@ fn connection_pipeline(
             let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
             match res {
                 Ok(()) => (),
-                Err(ConnectionError::TryAgain) => continue,
-                Err(ConnectionError::Other(e)) => {
+                Err(ConnectionError::TryAgain(_)) => continue,
+                Err(e) => {
                     info!("Client disconnected. Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
                     if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {

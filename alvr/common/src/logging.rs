@@ -156,7 +156,3 @@ impl<T, E: Error + Send + Sync + 'static> ToAny<T> for Result<T, E> {
         }
     }
 }
-
-pub fn with_backtrace(error: anyhow::Error) -> String {
-    format!("{error}\n{}", error.backtrace())
-}

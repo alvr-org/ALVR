@@ -218,7 +218,7 @@ pub fn handshake_loop() {
     let mut welcome_socket = match WelcomeSocket::new(RETRY_CONNECT_MIN_INTERVAL) {
         Ok(socket) => socket,
         Err(e) => {
-            error!("Failed to create discovery socket: {e}");
+            error!("Failed to create discovery socket: {e:?}");
             return;
         }
     };
@@ -257,7 +257,7 @@ pub fn handshake_loop() {
                 Ok(pair) => pair,
                 Err(e) => {
                     if let ConnectionError::Other(e) = e {
-                        warn!("UDP handshake listening error: {e}");
+                        warn!("UDP handshake listening error: {e:?}");
                     }
 
                     continue;
@@ -589,7 +589,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 ) {
                     Ok(data) => data,
                     Err(e) => {
-                        warn!("New audio device failed: {e}");
+                        warn!("New audio device failed: {e:?}");
                         thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
                     }
@@ -617,7 +617,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     2,
                     config.mute_when_streaming,
                 ) {
-                    error!("Audio record error: {e}");
+                    error!("Audio record error: {e:?}");
                 }
 
                 #[cfg(windows)]
@@ -697,7 +697,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             while IS_STREAMING.value() {
                 let tracking = match tracking_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
-                    Err(ConnectionError::TryAgain) => continue,
+                    Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
                 };
 
@@ -806,7 +806,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         while IS_STREAMING.value() {
             let client_stats = match statics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
                 Ok(stats) => stats,
-                Err(ConnectionError::TryAgain) => continue,
+                Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
             };
 
@@ -833,7 +833,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         move || {
             while IS_STREAMING.value() {
                 if let Err(e) = control_sender.lock().send(&ServerControlPacket::KeepAlive) {
-                    info!("Client disconnected. Cause: {e}");
+                    info!("Client disconnected. Cause: {e:?}");
 
                     SERVER_DATA_MANAGER.write().update_client_list(
                         client_hostname,
@@ -860,8 +860,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             while IS_STREAMING.value() {
                 let packet = match control_receiver.recv() {
                     Ok(packet) => packet,
-                    Err(ConnectionError::TryAgain) => continue,
-                    Err(ConnectionError::Other(e)) => {
+                    Err(ConnectionError::TryAgain(_)) => continue,
+                    Err(e) => {
                         info!("Client disconnected. Cause: {e}");
 
                         SERVER_DATA_MANAGER.write().update_client_list(
@@ -994,8 +994,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
                 match res {
                     Ok(()) => (),
-                    Err(ConnectionError::TryAgain) => continue,
-                    Err(ConnectionError::Other(e)) => {
+                    Err(ConnectionError::TryAgain(_)) => continue,
+                    Err(e) => {
                         info!("Client disconnected. Cause: {e}");
 
                         SERVER_DATA_MANAGER.write().update_client_list(

@@ -360,7 +360,7 @@ pub fn receive_samples_loop(
     while running.value() {
         match receiver.recv_buffer(Duration::from_millis(500), &mut receiver_buffer) {
             Ok(true) => (),
-            Ok(false) | Err(ConnectionError::TryAgain) => continue,
+            Ok(false) | Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(e)) => return Err(e),
         };
 

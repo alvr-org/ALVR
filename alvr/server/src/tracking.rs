@@ -2,6 +2,9 @@ use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID,
+    RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
+    A_CLICK_ID, B_CLICK_ID, X_CLICK_ID, Y_CLICK_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,

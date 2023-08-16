@@ -17,12 +17,9 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon, BUTTON_INFO, A_CLICK_ID, B_CLICK_ID,
+    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon, BUTTON_INFO,
     CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID,
-    QUEST_CONTROLLER_PROFILE_PATH, LEFT_SQUEEZE_CLICK_ID, LEFT_SQUEEZE_VALUE_ID,
-    LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_HAND_ID,
-    RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
-    X_CLICK_ID, Y_CLICK_ID,
+    QUEST_CONTROLLER_PROFILE_PATH, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
@@ -817,8 +814,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 .map(|s| tracking::hands_to_gestures(config, *RIGHT_HAND_ID, s)),
                         ];
 
-                        hand_gestures[0].map(press_gesture_buttons);
-                        hand_gestures[1].map(press_gesture_buttons);
+                        hand_gestures[0].map(|g| press_gesture_buttons(g));
+                        hand_gestures[1].map(|g| press_gesture_buttons(g));
                     }
 
                     let mut hand_skeletons_enabled = false;

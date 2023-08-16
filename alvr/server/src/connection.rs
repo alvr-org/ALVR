@@ -753,7 +753,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         let mut did_disable_skeleton = false;
                         let mut press_gesture_buttons =
                             |gestures: [HandGesture; 4]| {
-                                for (i, g) in gestures.iter().enumerate() {
+                                for g in gestures {
                                     if g.active {
                                         // Workaround for gestures not triggering button presses
                                         if !did_disable_skeleton {

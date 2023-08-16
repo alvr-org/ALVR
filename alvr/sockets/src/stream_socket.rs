@@ -117,6 +117,7 @@ impl<H> StreamSender<H> {
             );
 
             // todo: switch to little endian
+            // todo: do not remove sizeof<u32> for packet length
             sub_buffer[0..4]
                 .copy_from_slice(&((packet_length - mem::size_of::<u32>()) as u32).to_be_bytes());
             sub_buffer[4..6].copy_from_slice(&self.stream_id.to_be_bytes());
@@ -304,7 +305,9 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            max_packet_size,
+            // +4 is a workaround to retain compatibilty with old protocol
+            // todo: remove +4
+            max_packet_size: max_packet_size + 4,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -345,7 +348,9 @@ impl StreamSocketBuilder {
             };
 
         Ok(StreamSocket {
-            max_packet_size,
+            // +4 is a workaround to retain compatibilty with old protocol
+            // todo: remove +4
+            max_packet_size: max_packet_size + 4,
             send_socket: Arc::new(Mutex::new(send_socket)),
             receive_socket,
             shard_recv_state: None,
@@ -444,6 +449,8 @@ impl StreamSocket {
                 return alvr_common::try_again();
             }
 
+            // todo: switch to little endian
+            // todo: do not remove sizeof<u32> for packet length
             let shard_length = mem::size_of::<u32>()
                 + u32::from_be_bytes(bytes[0..4].try_into().unwrap()) as usize;
             let stream_id = u16::from_be_bytes(bytes[4..6].try_into().unwrap());

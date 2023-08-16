@@ -450,21 +450,29 @@ pub fn hands_to_gestures(
             active: false,
             touching: false,
             hover_dist: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
             hover_dist: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
             hover_dist: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
             hover_dist: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
         },
     ]
 }

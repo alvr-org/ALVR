@@ -325,6 +325,68 @@ pub fn to_openvr_hand_skeleton(
     ]
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct HandGesture {
+    pub active: bool,
+    pub touching: bool,
+    pub hover_dist: f32,
+}
+
+pub fn hands_to_gestures(
+    config: &HeadsetConfig,
+    hand_skeleton: [Pose; 26],
+) -> [HandGesture; 4] {
+    if let Switch::Enabled(controllers) = &config.controllers {
+        if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
+            if let Switch::Enabled(use_gestures) = &hand_tracking.use_gestures {
+                // global joints
+                let gj = hand_skeleton;
+
+                // if we model the tip of the finger as a spherical object, we should account for its radius
+                // these don't need to be configurable because they're accurate enough and the touch and trigger distances are already in settings
+                let thumb_rad: f32 = 0.01; // average thumb is ~20mm in diameter
+                let finger_rad: f32 = 0.0085; // average finger is ~17.5mm in diameter
+
+                // we add the radius of the finger and thumb because we're measuring the distance between the surface of them, not their centers
+                let pinch_min = use_gestures.pinch_touch_distance * 0.01 + thumb_rad + finger_rad;
+                let pinch_max = use_gestures.pinch_trigger_distance * 0.01 + thumb_rad + finger_rad;
+
+                let thumb_tip: Pose = gj[5];
+                let index_tip: Pose = gj[10];
+                let middle_tip: Pose = gj[15];
+                let ring_tip: Pose = gj[20];
+                let little_tip: Pose = gj[25];
+
+                let index_pinch = thumb_tip.position.distance(index_tip.position) < pinch_min;
+                let index_trigger = (1.0 - (thumb_tip.position.distance(index_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+
+                let middle_pinch = thumb_tip.position.distance(middle_tip.position) < pinch_min;
+                let middle_trigger = (1.0 - (thumb_tip.position.distance(middle_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+
+                let ring_pinch = thumb_tip.position.distance(ring_tip.position) < pinch_min;
+                let ring_trigger = (1.0 - (thumb_tip.position.distance(ring_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+
+                let little_pinch = thumb_tip.position.distance(little_tip.position) < pinch_min;
+                let little_trigger = (1.0 - (thumb_tip.position.distance(little_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+
+                return [
+                    HandGesture { active: index_trigger > 0.0, touching: index_pinch, hover_dist: index_trigger },
+                    HandGesture { active: middle_trigger > 0.0, touching: middle_pinch, hover_dist: middle_trigger },
+                    HandGesture { active: ring_trigger > 0.0, touching: ring_pinch, hover_dist: ring_trigger },
+                    HandGesture { active: little_trigger > 0.0, touching: little_pinch, hover_dist: little_trigger },
+                ];
+            }
+        }
+    }
+
+    [
+        HandGesture { active: false, touching: false, hover_dist: 0.0 },
+        HandGesture { active: false, touching: false, hover_dist: 0.0 },
+        HandGesture { active: false, touching: false, hover_dist: 0.0 },
+        HandGesture { active: false, touching: false, hover_dist: 0.0 },
+    ]
+}
+
 pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
     FfiDeviceMotion {
         deviceID: device_id,

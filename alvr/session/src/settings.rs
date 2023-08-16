@@ -659,6 +659,9 @@ pub struct ControllersConfig {
 
     pub button_mapping_config: AutomaticButtonMappingConfig,
 
+    #[schema(strings(help = "Turning this off will disable hand-tracking."))]
+    pub hand_tracking: Switch<HandTrackingConfig>,
+
     #[schema(strings(
         display_name = "Prediction",
         help = r"Higher values make the controllers track smoother.
@@ -698,6 +701,38 @@ Currently this cannot be reliably estimated automatically. The correct value sho
 
     #[schema(flag = "real-time")]
     pub haptics: Switch<HapticsConfig>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct HandTrackingConfig {
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this allows using hand gestures to emulate controller inputs."
+    ))]
+    pub use_gestures: Switch<HandGestureConfig>,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
+    ))]
+    pub enable_skeleton: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct HandGestureConfig {
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close the tips of your fingers need to be to register a pinch."
+    ))]
+    #[schema(gui(slider(min = 0.05, max = 5.0)), suffix = "cm")]
+    pub pinch_touch_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close the tips of your fingers need to be to start registering a trigger pull."
+    ))]
+    #[schema(gui(slider(min = 0.05, max = 5.0)), suffix = "cm")]
+    pub pinch_trigger_distance: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1231,6 +1266,21 @@ pub fn session_settings_default() -> SettingsDefault {
                             deviation: 0.05,
                         },
                         force_threshold: 0.8,
+                    },
+                    hand_tracking: SwitchDefault {
+                        enabled: true,
+                        content: HandTrackingConfigDefault {
+                            gui_collapsed: true,
+                            use_gestures: SwitchDefault {
+                                enabled: true,
+                                content: HandGestureConfigDefault {
+                                    gui_collapsed: true,
+                                    pinch_touch_distance: 0.1,
+                                    pinch_trigger_distance: 1.0,
+                                },
+                            },
+                            enable_skeleton: true,
+                        },
                     },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

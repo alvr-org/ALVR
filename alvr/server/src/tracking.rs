@@ -330,10 +330,13 @@ pub struct HandGesture {
     pub active: bool,
     pub touching: bool,
     pub hover_dist: f32,
+    pub touch_bind: u64,
+    pub hover_bind: u64,
 }
 
 pub fn hands_to_gestures(
     config: &HeadsetConfig,
+    device_id: u64,
     hand_skeleton: [Pose; 26],
 ) -> [HandGesture; 4] {
     if let Switch::Enabled(controllers) = &config.controllers {
@@ -360,33 +363,109 @@ pub fn hands_to_gestures(
                 let ring_tip: Pose = gj[20];
                 let little_tip: Pose = gj[25];
 
-                let index_pinch = thumb_tip.position.distance(index_tip.position) < pinch_min + thumb_rad + index_rad;
-                let index_trigger = (1.0 - (thumb_tip.position.distance(index_tip.position) - pinch_min - thumb_rad - ring_rad)/pinch_max + thumb_rad + index_rad).clamp(0.0, 1.0);
+                let index_pinch = thumb_tip.position.distance(index_tip.position)
+                    < pinch_min + thumb_rad + index_rad;
+                let index_trigger = (1.0
+                    - (thumb_tip.position.distance(index_tip.position)
+                        - pinch_min
+                        - thumb_rad
+                        - ring_rad)
+                        / pinch_max
+                    + thumb_rad
+                    + index_rad)
+                    .clamp(0.0, 1.0);
 
-                let middle_pinch = thumb_tip.position.distance(middle_tip.position) < pinch_min + thumb_rad + middle_rad;
-                let middle_trigger = (1.0 - (thumb_tip.position.distance(middle_tip.position) - pinch_min - thumb_rad - middle_rad)/pinch_max + thumb_rad + middle_rad).clamp(0.0, 1.0);
+                let middle_pinch = thumb_tip.position.distance(middle_tip.position)
+                    < pinch_min + thumb_rad + middle_rad;
+                let middle_trigger = (1.0
+                    - (thumb_tip.position.distance(middle_tip.position)
+                        - pinch_min
+                        - thumb_rad
+                        - middle_rad)
+                        / pinch_max
+                    + thumb_rad
+                    + middle_rad)
+                    .clamp(0.0, 1.0);
 
-                let ring_pinch = thumb_tip.position.distance(ring_tip.position) < pinch_min + thumb_rad + ring_rad;
-                let ring_trigger = (1.0 - (thumb_tip.position.distance(ring_tip.position) - pinch_min - thumb_rad - ring_rad)/pinch_max + thumb_rad + ring_rad).clamp(0.0, 1.0);
+                let ring_pinch = thumb_tip.position.distance(ring_tip.position)
+                    < pinch_min + thumb_rad + ring_rad;
+                let ring_trigger = (1.0
+                    - (thumb_tip.position.distance(ring_tip.position)
+                        - pinch_min
+                        - thumb_rad
+                        - ring_rad)
+                        / pinch_max
+                    + thumb_rad
+                    + ring_rad)
+                    .clamp(0.0, 1.0);
 
-                let little_pinch = thumb_tip.position.distance(little_tip.position) < pinch_min + thumb_rad + little_rad;
-                let little_trigger = (1.0 - (thumb_tip.position.distance(little_tip.position) - pinch_min - thumb_rad - little_rad)/pinch_max + thumb_rad + little_rad).clamp(0.0, 1.0);
+                let little_pinch = thumb_tip.position.distance(little_tip.position)
+                    < pinch_min + thumb_rad + little_rad;
+                let little_trigger = (1.0
+                    - (thumb_tip.position.distance(little_tip.position)
+                        - pinch_min
+                        - thumb_rad
+                        - little_rad)
+                        / pinch_max
+                    + thumb_rad
+                    + little_rad)
+                    .clamp(0.0, 1.0);
 
                 return [
-                    HandGesture { active: true, touching: index_pinch, hover_dist: index_trigger },
-                    HandGesture { active: true, touching: middle_pinch, hover_dist: middle_trigger },
-                    HandGesture { active: true, touching: ring_pinch, hover_dist: ring_trigger },
-                    HandGesture { active: true, touching: little_pinch, hover_dist: little_trigger },
+                    HandGesture {
+                        active: true,
+                        touching: index_pinch,
+                        hover_dist: index_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID { *LEFT_TRIGGER_CLICK_ID } else { *RIGHT_TRIGGER_CLICK_ID },
+                        hover_bind: if device_id == *LEFT_HAND_ID { *LEFT_TRIGGER_VALUE_ID } else { *RIGHT_TRIGGER_VALUE_ID },
+                    },
+                    HandGesture {
+                        active: true,
+                        touching: middle_pinch,
+                        hover_dist: middle_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID { *Y_CLICK_ID } else { 0 },
+                        hover_bind: if device_id == *LEFT_HAND_ID { *B_CLICK_ID } else { 0 },
+                    },
+                    HandGesture {
+                        active: true,
+                        touching: ring_pinch,
+                        hover_dist: ring_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID { *X_CLICK_ID } else { 0 },
+                        hover_bind: if device_id == *LEFT_HAND_ID { *A_CLICK_ID } else { 0 },
+                    },
+                    HandGesture {
+                        active: true,
+                        touching: little_pinch,
+                        hover_dist: little_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID { *MENU_CLICK_ID } else { 0 },
+                        hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
+                    },
                 ];
             }
         }
     }
 
     [
-        HandGesture { active: false, touching: false, hover_dist: 0.0 },
-        HandGesture { active: false, touching: false, hover_dist: 0.0 },
-        HandGesture { active: false, touching: false, hover_dist: 0.0 },
-        HandGesture { active: false, touching: false, hover_dist: 0.0 },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_dist: 0.0,
+        },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_dist: 0.0,
+        },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_dist: 0.0,
+        },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_dist: 0.0,
+        },
     ]
 }
 

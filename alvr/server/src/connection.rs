@@ -755,7 +755,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     {
                         let mut did_disable_skeleton = false;
                         let mut press_gesture_buttons =
-                            |gestures: [HandGesture; 4], binds: [[u64; 2]; 4]| {
+                            |gestures: [HandGesture; 4]| {
                                 for (i, g) in gestures.iter().enumerate() {
                                     if g.active {
                                         // Workaround for gestures not triggering button presses
@@ -775,10 +775,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                         }
 
                                         // Handle touch bind
-                                        if binds[i][0] != 0 {
+                                        if g.touch_bind != 0 {
                                             unsafe {
                                                 crate::SetButton(
-                                                    binds[i][0],
+                                                    g.touch_bind,
                                                     crate::FfiButtonValue {
                                                         type_:
                                                             crate::FfiButtonType_BUTTON_TYPE_BINARY,
@@ -791,10 +791,10 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                             }
                                         }
                                         // Handle hover bind
-                                        if binds[i][1] != 0 {
+                                        if g.hover_bind != 0 {
                                             unsafe {
                                                 crate::SetButton(
-                                                    binds[i][1],
+                                                    g.hover_bind,
                                                     crate::FfiButtonValue {
                                                         type_:
                                                             crate::FfiButtonType_BUTTON_TYPE_SCALAR,
@@ -812,34 +812,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                         let hand_gestures = [
                             tracking.hand_skeletons[0]
-                                .map(|s| tracking::hands_to_gestures(config, s)),
+                                .map(|s| tracking::hands_to_gestures(config, *LEFT_HAND_ID, s)),
                             tracking.hand_skeletons[1]
-                                .map(|s| tracking::hands_to_gestures(config, s)),
+                                .map(|s| tracking::hands_to_gestures(config, *RIGHT_HAND_ID, s)),
                         ];
 
-                        hand_gestures[0].map(|g| {
-                            press_gesture_buttons(
-                                g,
-                                [
-                                    [*LEFT_TRIGGER_CLICK_ID, *LEFT_TRIGGER_VALUE_ID],
-                                    [*Y_CLICK_ID, 0],
-                                    [*X_CLICK_ID, 0],
-                                    [*MENU_CLICK_ID, 0],
-                                ],
-                            )
-                        });
-
-                        hand_gestures[1].map(|g| {
-                            press_gesture_buttons(
-                                g,
-                                [
-                                    [*RIGHT_TRIGGER_CLICK_ID, *RIGHT_TRIGGER_VALUE_ID],
-                                    [*B_CLICK_ID, 0],
-                                    [*A_CLICK_ID, 0],
-                                    [0, 0],
-                                ],
-                            )
-                        });
+                        hand_gestures[0].map(press_gesture_buttons);
+                        hand_gestures[1].map(press_gesture_buttons);
                     }
 
                     let mut hand_skeletons_enabled = false;

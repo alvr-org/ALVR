@@ -5,7 +5,7 @@ use crate::{
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
-    tracking::{self, TrackingManager},
+    tracking::{self, HandGesture, TrackingManager},
     FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, SERVER_DATA_MANAGER,
     STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
@@ -17,9 +17,12 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon, BUTTON_INFO,
+    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon, BUTTON_INFO, A_CLICK_ID, B_CLICK_ID,
     CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID,
-    QUEST_CONTROLLER_PROFILE_PATH, RIGHT_HAND_ID,
+    QUEST_CONTROLLER_PROFILE_PATH, LEFT_SQUEEZE_CLICK_ID, LEFT_SQUEEZE_VALUE_ID,
+    LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_HAND_ID,
+    RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
+    X_CLICK_ID, Y_CLICK_ID,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
@@ -37,7 +40,7 @@ use std::{
     io::Write,
     net::IpAddr,
     process::Command,
-    ptr,
+    ptr::{self},
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, RecvTimeoutError, SyncSender, TrySendError},
@@ -671,14 +674,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     return;
                 };
 
+                let data_manager_lock = SERVER_DATA_MANAGER.read();
+                let config = &data_manager_lock.settings().headset;
+
                 let mut tracking_manager_lock = tracking_manager.lock();
 
                 let motions;
                 let left_hand_skeleton;
                 let right_hand_skeleton;
                 {
-                    let data_manager_lock = SERVER_DATA_MANAGER.read();
-                    let config = &data_manager_lock.settings().headset;
                     motions = tracking_manager_lock.transform_motions(
                         config,
                         &tracking.device_motions,
@@ -703,7 +707,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .unwrap_or_default();
 
                 {
-                    let data_manager_lock = SERVER_DATA_MANAGER.read();
                     if data_manager_lock.settings().logging.log_tracking {
                         alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
                             head_motion: motions
@@ -748,6 +751,104 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
+                    // Handle gesture buttons
+                    {
+                        let mut did_disable_skeleton = false;
+                        let mut press_gesture_buttons =
+                            |gestures: [HandGesture; 4], binds: [[u64; 2]; 4]| {
+                                for (i, g) in gestures.iter().enumerate() {
+                                    if g.active {
+                                        // Workaround for gestures not triggering button presses
+                                        if !did_disable_skeleton {
+                                            unsafe {
+                                                crate::SetTracking(
+                                                    tracking.target_timestamp.as_nanos() as _,
+                                                    stats.tracker_pose_time_offset().as_secs_f32(),
+                                                    ffi_motions.as_ptr(),
+                                                    ffi_motions.len() as _,
+                                                    ptr::null(),
+                                                    ptr::null(),
+                                                    track_controllers,
+                                                )
+                                            };
+                                            did_disable_skeleton = true;
+                                        }
+
+                                        // Handle touch bind
+                                        if binds[i][0] != 0 {
+                                            unsafe {
+                                                crate::SetButton(
+                                                    binds[i][0],
+                                                    crate::FfiButtonValue {
+                                                        type_:
+                                                            crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                                        __bindgen_anon_1:
+                                                            crate::FfiButtonValue__bindgen_ty_1 {
+                                                                binary: g.touching.into(),
+                                                            },
+                                                    },
+                                                )
+                                            }
+                                        }
+                                        // Handle hover bind
+                                        if binds[i][1] != 0 {
+                                            unsafe {
+                                                crate::SetButton(
+                                                    binds[i][1],
+                                                    crate::FfiButtonValue {
+                                                        type_:
+                                                            crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                                        __bindgen_anon_1:
+                                                            crate::FfiButtonValue__bindgen_ty_1 {
+                                                                scalar: g.hover_dist.into(),
+                                                            },
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+
+                        let hand_gestures = [
+                            tracking.hand_skeletons[0]
+                                .map(|s| tracking::hands_to_gestures(config, s)),
+                            tracking.hand_skeletons[1]
+                                .map(|s| tracking::hands_to_gestures(config, s)),
+                        ];
+
+                        hand_gestures[0].map(|g| {
+                            press_gesture_buttons(
+                                g,
+                                [
+                                    [*LEFT_TRIGGER_CLICK_ID, *LEFT_TRIGGER_VALUE_ID],
+                                    [*Y_CLICK_ID, 0],
+                                    [*X_CLICK_ID, 0],
+                                    [*MENU_CLICK_ID, 0],
+                                ],
+                            )
+                        });
+
+                        hand_gestures[1].map(|g| {
+                            press_gesture_buttons(
+                                g,
+                                [
+                                    [*RIGHT_TRIGGER_CLICK_ID, *RIGHT_TRIGGER_VALUE_ID],
+                                    [*B_CLICK_ID, 0],
+                                    [*A_CLICK_ID, 0],
+                                    [0, 0],
+                                ],
+                            )
+                        });
+                    }
+
+                    let mut hand_skeletons_enabled = false;
+                    if let Switch::Enabled(controllers) = &config.controllers {
+                        if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
+                            hand_skeletons_enabled = hand_tracking.enable_skeleton;
+                        }
+                    }
+
                     unsafe {
                         crate::SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
@@ -755,12 +856,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
-                                skeleton
+                                if hand_skeletons_enabled {
+                                    skeleton
+                                } else {
+                                    ptr::null()
+                                }
                             } else {
                                 ptr::null()
                             },
                             if let Some(skeleton) = &ffi_right_hand_skeleton {
-                                skeleton
+                                if hand_skeletons_enabled {
+                                    skeleton
+                                } else {
+                                    ptr::null()
+                                }
                             } else {
                                 ptr::null()
                             },

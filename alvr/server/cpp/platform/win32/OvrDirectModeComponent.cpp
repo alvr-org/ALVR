@@ -194,6 +194,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	if (!pSyncTexture)
 	{
 		Warn("[VDispDvr] SyncTexture is NULL!\n");
+		m_presentMutex.unlock();
 		return;
 	}
 
@@ -209,6 +210,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 			{
 				Debug("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls\n", hr, hr, GetErrorStr(hr).c_str());
 				pKeyedMutex->Release();
+				m_presentMutex.unlock();
 				return;
 			}
 		}

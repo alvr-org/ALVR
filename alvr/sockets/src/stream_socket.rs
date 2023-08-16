@@ -38,7 +38,7 @@ const SHARD_PREFIX_SIZE: usize = mem::size_of::<u32>() // packet length - field 
     + mem::size_of::<u32>() // shards count
     + mem::size_of::<u32>(); // shards index
 
-// Memory buffer that contains a hidden prefix
+/// Memory buffer that contains a hidden prefix
 #[derive(Default)]
 pub struct Buffer<H = ()> {
     inner: Vec<u8>,
@@ -48,7 +48,7 @@ pub struct Buffer<H = ()> {
 }
 
 impl<H> Buffer<H> {
-    // Length of payload (without prefix)
+    /// Length of payload (without prefix)
     #[must_use]
     pub fn len(&self) -> usize {
         self.length
@@ -59,13 +59,13 @@ impl<H> Buffer<H> {
         self.len() == 0
     }
 
-    // Get the whole payload of the buffer
+    /// Get the whole payload of the buffer
     pub fn get(&self) -> &[u8] {
         &self.inner[self.hidden_offset..][..self.length]
     }
 
-    // Note: If the range is outside the valid range, new space will be allocated
-    // NB: the offset parameter is applied on top of the internal offset of the buffer
+    /// If the range is outside the valid range, new space will be allocated
+    /// NB: the offset parameter is applied on top of the internal offset of the buffer
     pub fn get_range_mut(&mut self, offset: usize, size: usize) -> &mut [u8] {
         let required_size = self.hidden_offset + offset + size;
         if required_size > self.inner.len() {
@@ -77,7 +77,7 @@ impl<H> Buffer<H> {
         &mut self.inner[self.hidden_offset + offset..][..size]
     }
 
-    // if length > current length, allocate more space
+    /// If length > current length, allocate more space
     pub fn set_len(&mut self, length: usize) {
         self.inner.resize(self.hidden_offset + length, 0);
         self.length = length;
@@ -96,8 +96,8 @@ pub struct StreamSender<H> {
 }
 
 impl<H> StreamSender<H> {
-    // Shard and send a buffer with zero copies and zero allocations.
-    // The prefix of each shard is written over the previously sent shard to avoid reallocations.
+    /// Shard and send a buffer with zero copies and zero allocations.
+    /// The prefix of each shard is written over the previously sent shard to avoid reallocations.
     pub fn send(&mut self, mut buffer: Buffer<H>) -> Result<()> {
         let max_shard_data_size = self.max_packet_size - SHARD_PREFIX_SIZE;
         let actual_buffer_size = buffer.hidden_offset + buffer.length;

@@ -27,14 +27,17 @@ impl AudioInputCallback for RecorderCallback {
         _: &mut dyn AudioInputStreamSafe,
         frames: &[i16],
     ) -> DataCallbackResult {
-        let mut sample_buffer = Vec::<u8>::with_capacity(frames.len() * mem::size_of::<i16>());
+        let mut sample_buffer = Vec::with_capacity(frames.len() * mem::size_of::<i16>());
 
         for frame in frames {
             sample_buffer.extend(&frame.to_ne_bytes());
         }
 
         if self.running.value() {
-            let buffer = self.sender.get_buffer(&()).unwrap();
+            let mut buffer = self.sender.get_buffer(&()).unwrap();
+            buffer
+                .get_range_mut(0, sample_buffer.len())
+                .copy_from_slice(&sample_buffer);
             self.sender.send(buffer).ok();
 
             DataCallbackResult::Continue

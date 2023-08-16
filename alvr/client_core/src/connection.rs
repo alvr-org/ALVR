@@ -305,16 +305,17 @@ fn connection_pipeline(
                 Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
             };
-
-            let nal = data.buffer.get();
+            let Ok((header, nal)) = data.get() else {
+                return;
+            };
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                stats.report_video_packet_received(data.header.timestamp);
+                stats.report_video_packet_received(header.timestamp);
             }
 
-            if data.header.is_idr {
+            if header.is_idr {
                 stream_corrupted = false;
-            } else if data.had_packet_loss {
+            } else if data.had_packet_loss() {
                 stream_corrupted = true;
                 if let Some(sender) = &mut *CONTROL_SENDER.lock() {
                     sender.send(&ClientControlPacket::RequestIdr).ok();
@@ -323,7 +324,7 @@ fn connection_pipeline(
             }
 
             if !stream_corrupted || !settings.connection.avoid_video_glitching {
-                if !decoder::push_nal(data.header.timestamp, nal) {
+                if !decoder::push_nal(header.timestamp, nal) {
                     stream_corrupted = true;
                     if let Some(sender) = &mut *CONTROL_SENDER.lock() {
                         sender.send(&ClientControlPacket::RequestIdr).ok();
@@ -333,8 +334,6 @@ fn connection_pipeline(
             } else {
                 warn!("Dropped video packet. Reason: Waiting for IDR frame")
             }
-
-            video_receiver.return_buffer(data.buffer).ok();
         }
     });
 
@@ -384,10 +383,13 @@ fn connection_pipeline(
 
     let haptics_receive_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let haptics = match haptics_receiver.recv_header(STREAMING_RECV_TIMEOUT) {
+            let data = match haptics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                 Ok(packet) => packet,
                 Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
+            };
+            let Ok(haptics) = data.get_header() else {
+                return;
             };
 
             EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {

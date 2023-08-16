@@ -164,9 +164,38 @@ impl<H: Serialize> StreamSender<H> {
 }
 
 pub struct ReceiverData<H> {
-    pub header: H,
-    pub buffer: Buffer,
-    pub had_packet_loss: bool,
+    buffer: Option<Vec<u8>>,
+    size: usize, // counting the prefix
+    used_buffer_queue: mpsc::Sender<Vec<u8>>,
+    had_packet_loss: bool,
+    _phantom: PhantomData<H>,
+}
+
+impl<H> ReceiverData<H> {
+    pub fn had_packet_loss(&self) -> bool {
+        self.had_packet_loss
+    }
+}
+
+impl<H: DeserializeOwned> ReceiverData<H> {
+    pub fn get(&self) -> Result<(H, &[u8])> {
+        let mut data: &[u8] = &self.buffer.as_ref().unwrap()[SHARD_PREFIX_SIZE..self.size];
+        // This will partially consume the slice, leaving only the actual payload
+        let header = bincode::deserialize_from(&mut data)?;
+
+        Ok((header, data))
+    }
+    pub fn get_header(&self) -> Result<H> {
+        Ok(self.get()?.0)
+    }
+}
+
+impl<H> Drop for ReceiverData<H> {
+    fn drop(&mut self) {
+        self.used_buffer_queue
+            .send(self.buffer.take().unwrap())
+            .ok();
+    }
 }
 
 struct ReconstructedPacket {
@@ -180,14 +209,6 @@ pub struct StreamReceiver<H> {
     used_buffer_queue: mpsc::Sender<Vec<u8>>,
     last_packet_index: Option<u32>,
     _phantom: PhantomData<H>,
-}
-
-impl<H> StreamReceiver<H> {
-    pub fn return_buffer(&mut self, buffer: Buffer) -> Result<()> {
-        self.used_buffer_queue.send(buffer.inner)?;
-
-        Ok(())
-    }
 }
 
 fn wrapping_cmp(lhs: u32, rhs: u32) -> Ordering {
@@ -230,28 +251,13 @@ impl<H: DeserializeOwned + Serialize> StreamReceiver<H> {
         }
         self.last_packet_index = Some(packet.index);
 
-        let header = bincode::deserialize_from(&packet.buffer[SHARD_PREFIX_SIZE..]).to_con()?;
-
-        let hidden_offset =
-            SHARD_PREFIX_SIZE + bincode::serialized_size(&header).to_con()? as usize;
-
         Ok(ReceiverData {
-            header,
-            buffer: Buffer {
-                inner: packet.buffer,
-                hidden_offset,
-                length: packet.size - hidden_offset,
-                _phantom: PhantomData,
-            },
+            buffer: Some(packet.buffer),
+            size: packet.size,
+            used_buffer_queue: self.used_buffer_queue.clone(),
             had_packet_loss,
+            _phantom: PhantomData,
         })
-    }
-
-    pub fn recv_header(&mut self, timeout: Duration) -> ConResult<H> {
-        let receiver_buffer = self.recv(timeout)?;
-        self.return_buffer(receiver_buffer.buffer).to_con()?;
-
-        Ok(receiver_buffer.header)
     }
 }
 

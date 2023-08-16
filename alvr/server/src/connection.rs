@@ -686,10 +686,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             }
 
             while IS_STREAMING.value() {
-                let tracking = match tracking_receiver.recv_header(STREAMING_RECV_TIMEOUT) {
+                let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(ConnectionError::Other(_)) => return,
+                };
+                let Ok(tracking) = data.get_header() else {
+                    return;
                 };
 
                 let mut tracking_manager_lock = tracking_manager.lock();
@@ -795,10 +798,13 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let statistics_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let client_stats = match statics_receiver.recv_header(STREAMING_RECV_TIMEOUT) {
+            let data = match statics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                 Ok(stats) => stats,
                 Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
+            };
+            let Ok(client_stats) = data.get_header() else {
+                return;
             };
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {

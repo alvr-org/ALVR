@@ -363,8 +363,7 @@ pub fn receive_samples_loop(
             Err(ConnectionError::TryAgain(_)) => continue,
             Err(ConnectionError::Other(e)) => return Err(e),
         };
-
-        let packet = data.buffer.get();
+        let (_, packet) = data.get()?;
 
         let new_samples = packet
             .chunks_exact(2)
@@ -373,7 +372,7 @@ pub fn receive_samples_loop(
 
         let mut sample_buffer_ref = sample_buffer.lock();
 
-        if data.had_packet_loss {
+        if data.had_packet_loss() {
             info!("Audio packet loss!");
 
             if sample_buffer_ref.len() / channels_count < batch_frames_count {
@@ -390,7 +389,7 @@ pub fn receive_samples_loop(
             recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
         }
 
-        if sample_buffer_ref.len() == 0 || data.had_packet_loss {
+        if sample_buffer_ref.len() == 0 || data.had_packet_loss() {
             recovery_sample_buffer.extend(&new_samples);
 
             if recovery_sample_buffer.len() / channels_count
@@ -404,7 +403,7 @@ pub fn receive_samples_loop(
                     }
                 }
 
-                if data.had_packet_loss
+                if data.had_packet_loss()
                     && sample_buffer_ref.len() / channels_count == batch_frames_count
                 {
                     // Add a fade-out to make a cross-fade.
@@ -445,8 +444,6 @@ pub fn receive_samples_loop(
                 }
             }
         }
-
-        receiver.return_buffer(data.buffer).ok();
     }
 
     Ok(())

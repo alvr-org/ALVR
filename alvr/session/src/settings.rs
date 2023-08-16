@@ -724,14 +724,14 @@ pub struct HandGestureConfig {
     #[schema(strings(
         help = "How close the tips of your fingers need to be to register a pinch."
     ))]
-    #[schema(gui(slider(min = 0.05, max = 5.0)), suffix = "cm")]
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "cm")]
     pub pinch_touch_distance: f32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "How close the tips of your fingers need to be to start registering a trigger pull."
     ))]
-    #[schema(gui(slider(min = 0.05, max = 5.0)), suffix = "cm")]
+    #[schema(gui(slider(min = 0.00, max = 2.5, step = 0.025)), suffix = "cm")]
     pub pinch_trigger_distance: f32,
 }
 
@@ -1275,8 +1275,8 @@ pub fn session_settings_default() -> SettingsDefault {
                                 enabled: true,
                                 content: HandGestureConfigDefault {
                                     gui_collapsed: true,
-                                    pinch_touch_distance: 0.1,
-                                    pinch_trigger_distance: 1.0,
+                                    pinch_touch_distance: 0.0,
+                                    pinch_trigger_distance: 0.25,
                                 },
                             },
                             enable_skeleton: true,

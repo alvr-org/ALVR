@@ -343,13 +343,16 @@ pub fn hands_to_gestures(
                 let gj = hand_skeleton;
 
                 // if we model the tip of the finger as a spherical object, we should account for its radius
-                // these don't need to be configurable because they're accurate enough and the touch and trigger distances are already in settings
-                let thumb_rad: f32 = 0.01; // average thumb is ~20mm in diameter
-                let finger_rad: f32 = 0.0085; // average finger is ~17.5mm in diameter
+                // these are intentionally under the average by ~5mm since the touch and trigger distances are already configurable in settings
+                let thumb_rad: f32 = 0.0075; // average thumb is ~20mm in diameter
+                let index_rad: f32 = 0.006; // average index finger is ~17mm in diameter
+                let middle_rad: f32 = 0.006; // average middle finger is ~17mm in diameter
+                let ring_rad: f32 = 0.0055; // average ring finger is ~16mm in diameter
+                let little_rad: f32 = 0.0045; // average pinky finger is ~14mm in diameter
 
                 // we add the radius of the finger and thumb because we're measuring the distance between the surface of them, not their centers
-                let pinch_min = use_gestures.pinch_touch_distance * 0.01 + thumb_rad + finger_rad;
-                let pinch_max = use_gestures.pinch_trigger_distance * 0.01 + thumb_rad + finger_rad;
+                let pinch_min = use_gestures.pinch_touch_distance * 0.01;
+                let pinch_max = use_gestures.pinch_trigger_distance * 0.01;
 
                 let thumb_tip: Pose = gj[5];
                 let index_tip: Pose = gj[10];
@@ -357,23 +360,23 @@ pub fn hands_to_gestures(
                 let ring_tip: Pose = gj[20];
                 let little_tip: Pose = gj[25];
 
-                let index_pinch = thumb_tip.position.distance(index_tip.position) < pinch_min;
-                let index_trigger = (1.0 - (thumb_tip.position.distance(index_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+                let index_pinch = thumb_tip.position.distance(index_tip.position) < pinch_min + thumb_rad + index_rad;
+                let index_trigger = (1.0 - (thumb_tip.position.distance(index_tip.position) - pinch_min - thumb_rad - ring_rad)/pinch_max + thumb_rad + index_rad).clamp(0.0, 1.0);
 
-                let middle_pinch = thumb_tip.position.distance(middle_tip.position) < pinch_min;
-                let middle_trigger = (1.0 - (thumb_tip.position.distance(middle_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+                let middle_pinch = thumb_tip.position.distance(middle_tip.position) < pinch_min + thumb_rad + middle_rad;
+                let middle_trigger = (1.0 - (thumb_tip.position.distance(middle_tip.position) - pinch_min - thumb_rad - middle_rad)/pinch_max + thumb_rad + middle_rad).clamp(0.0, 1.0);
 
-                let ring_pinch = thumb_tip.position.distance(ring_tip.position) < pinch_min;
-                let ring_trigger = (1.0 - (thumb_tip.position.distance(ring_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+                let ring_pinch = thumb_tip.position.distance(ring_tip.position) < pinch_min + thumb_rad + ring_rad;
+                let ring_trigger = (1.0 - (thumb_tip.position.distance(ring_tip.position) - pinch_min - thumb_rad - ring_rad)/pinch_max + thumb_rad + ring_rad).clamp(0.0, 1.0);
 
-                let little_pinch = thumb_tip.position.distance(little_tip.position) < pinch_min;
-                let little_trigger = (1.0 - (thumb_tip.position.distance(little_tip.position) - pinch_min)/pinch_max).clamp(0.0, 1.0);
+                let little_pinch = thumb_tip.position.distance(little_tip.position) < pinch_min + thumb_rad + little_rad;
+                let little_trigger = (1.0 - (thumb_tip.position.distance(little_tip.position) - pinch_min - thumb_rad - little_rad)/pinch_max + thumb_rad + little_rad).clamp(0.0, 1.0);
 
                 return [
-                    HandGesture { active: index_trigger > 0.0, touching: index_pinch, hover_dist: index_trigger },
-                    HandGesture { active: middle_trigger > 0.0, touching: middle_pinch, hover_dist: middle_trigger },
-                    HandGesture { active: ring_trigger > 0.0, touching: ring_pinch, hover_dist: ring_trigger },
-                    HandGesture { active: little_trigger > 0.0, touching: little_pinch, hover_dist: little_trigger },
+                    HandGesture { active: true, touching: index_pinch, hover_dist: index_trigger },
+                    HandGesture { active: true, touching: middle_pinch, hover_dist: middle_trigger },
+                    HandGesture { active: true, touching: ring_pinch, hover_dist: ring_trigger },
+                    HandGesture { active: true, touching: little_pinch, hover_dist: little_trigger },
                 ];
             }
         }

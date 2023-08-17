@@ -7,7 +7,7 @@ fn get_windows_device(device: &AudioDevice) -> Result<windows::Win32::Media::Aud
     use windows::Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
         Media::Audio::{eAll, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE},
-        System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
+        System::Com::{self, StructuredStorage, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
     };
 
     let device_name = device.inner.name()?;
@@ -32,7 +32,7 @@ fn get_windows_device(device: &AudioDevice) -> Result<windows::Win32::Media::Aud
             let mut prop_variant = property_store.GetValue(&PKEY_Device_FriendlyName)?;
             let utf16_name =
                 U16CStr::from_ptr_str(prop_variant.Anonymous.Anonymous.Anonymous.pwszVal.0);
-            Com::StructuredStorage::PropVariantClear(&mut prop_variant)?;
+            StructuredStorage::PropVariantClear(&mut prop_variant)?;
 
             let imm_device_name = utf16_name.to_string()?;
             if imm_device_name == device_name {

@@ -220,7 +220,7 @@ impl DataSources {
                     ws.get_mut().set_nonblocking(true).ok();
 
                     while running.value() {
-                        match ws.read_message() {
+                        match ws.read() {
                             Ok(tungstenite::Message::Text(json_string)) => {
                                 if let Ok(event) = serde_json::from_str(&json_string) {
                                     debug!("Server event received: {event:?}");

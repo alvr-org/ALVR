@@ -493,10 +493,10 @@ pub fn hands_to_gestures(
                 let joystick_vertical = (thumb_tip.position - joystick_center
                     + joystick_vertical_vec / 2.0)
                     .dot(joystick_vertical_vec)
-                    / joystick_vertical_vec.length();
+                    / joystick_vertical_vec.length() + use_gestures.joystick_offset_vertical * 0.01;
                 let joystick_horizontal = (thumb_tip.position - joystick_center)
                     .dot(joystick_horizontal_vec)
-                    / joystick_horizontal_vec.length();
+                    / joystick_horizontal_vec.length() + use_gestures.joystick_offset_horizontal * 0.01;
 
                 let joystick_pos = Vec2 {
                     x: (joystick_horizontal / joystick_range).clamp(-1.0, 1.0),
@@ -516,7 +516,7 @@ pub fn hands_to_gestures(
                 );
                 warn!("joystick value: {}, {}", joystick_pos.x, joystick_pos.y);
 
-                let joystick_deadzone = 0.25;
+                let joystick_deadzone: f32 = use_gestures.joystick_deadzone * 0.01;
 
                 return [
                     HandGesture {

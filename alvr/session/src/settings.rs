@@ -747,6 +747,18 @@ pub struct HandGestureConfig {
     ))]
     #[schema(gui(slider(min = 0.0, max = 10.0)), suffix = "cm")]
     pub curl_trigger_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 100.0)), suffix = "%")]
+    pub joystick_deadzone: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -5.0, max = 5.0)), suffix = "cm")]
+    pub joystick_offset_horizontal: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -5.0, max = 5.0)), suffix = "cm")]
+    pub joystick_offset_vertical: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1293,6 +1305,9 @@ pub fn session_settings_default() -> SettingsDefault {
                                     pinch_trigger_distance: 0.25,
                                     curl_touch_distance: 2.0,
                                     curl_trigger_distance: 2.5,
+                                    joystick_deadzone: 25.0,
+                                    joystick_offset_horizontal: 0.0,
+                                    joystick_offset_vertical: 0.0,
                                 },
                             },
                             enable_skeleton: true,

@@ -5,7 +5,7 @@ use alvr_common::{
     LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID,
     MENU_CLICK_ID, RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
     RIGHT_THUMBSTICK_CLICK_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID,
-    Y_CLICK_ID,
+    Y_CLICK_ID, Y_TOUCH_ID, B_TOUCH_ID, X_TOUCH_ID, A_TOUCH_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -496,13 +496,9 @@ pub fn hands_to_gestures(
                         touch_bind: if device_id == *LEFT_HAND_ID {
                             *Y_CLICK_ID
                         } else {
-                            0
-                        },
-                        hover_bind: if device_id == *LEFT_HAND_ID {
                             *B_CLICK_ID
-                        } else {
-                            0
                         },
+                        hover_bind: 0,
                     },
                     HandGesture {
                         active: true,
@@ -511,13 +507,9 @@ pub fn hands_to_gestures(
                         touch_bind: if device_id == *LEFT_HAND_ID {
                             *X_CLICK_ID
                         } else {
-                            0
-                        },
-                        hover_bind: if device_id == *LEFT_HAND_ID {
                             *A_CLICK_ID
-                        } else {
-                            0
                         },
+                        hover_bind: 0,
                     },
                     HandGesture {
                         active: true,
@@ -528,7 +520,7 @@ pub fn hands_to_gestures(
                         } else {
                             0
                         },
-                        hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
+                        hover_bind: 0,
                     },
                     HandGesture {
                         active: true,

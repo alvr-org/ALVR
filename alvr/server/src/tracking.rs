@@ -374,6 +374,7 @@ pub fn hands_to_gestures(
                 let index_tip: Pose = gj[10];
                 let middle_metacarpal: Pose = gj[11];
                 let middle_proximal: Pose = gj[12];
+                let middle_intermediate: Pose = gj[13];
                 let middle_tip: Pose = gj[15];
                 let ring_metacarpal: Pose = gj[16];
                 let ring_proximal: Pose = gj[17];
@@ -479,20 +480,42 @@ pub fn hands_to_gestures(
                 let joystick_range = 0.005;
                 let joystick_center = index_intermediate.position.lerp(index_tip.position, 0.25);
 
+                let joystick_up = (joystick_center
+                    - middle_intermediate.position.lerp(middle_tip.position, 0.25))
+                .normalize()
+                    * joystick_range;
+
+                let joystick_vertical_vec =
+                    (joystick_center - thumb_proximal.position).normalize() * joystick_range;
+                let joystick_horizontal_vec =
+                    joystick_vertical_vec.cross(joystick_up).normalize() * joystick_range;
+
+                let joystick_vertical = (thumb_tip.position - joystick_center
+                    + joystick_vertical_vec / 2.0)
+                    .dot(joystick_vertical_vec)
+                    / joystick_vertical_vec.length();
+                let joystick_horizontal =
+                    (thumb_tip.position - joystick_center - joystick_horizontal_vec / 2.0)
+                        .dot(joystick_horizontal_vec)
+                        / joystick_horizontal_vec.length();
+
                 let joystick_pos = Vec2 {
-                    x: 0.0,
-                    y: ((thumb_tip.position.distance(thumb_proximal.position)
-                        - joystick_center.distance(thumb_proximal.position))
-                        / joystick_range)
-                        .clamp(-1.0, 1.0),
+                    x: (joystick_horizontal / joystick_range).clamp(-1.0, 1.0),
+                    y: (joystick_vertical / joystick_range).clamp(-1.0, 1.0),
                 };
                 let joystick_contact = index_curl >= 0.75
                     && grip_curl > 0.5
-                    && joystick_center.distance(thumb_tip.position)
-                        <= joystick_range * 5.0;
+                    && joystick_center.distance(thumb_tip.position) <= joystick_range * 5.0
+                    && (thumb_tip.position - joystick_center).dot(joystick_up)
+                        / joystick_up.length()
+                        <= joystick_range * 3.0;
 
                 warn!("joystick contact: {}", joystick_contact);
-                warn!("joystick position: {}, {}", joystick_pos.x, joystick_pos.y);
+                warn!(
+                    "joystick position: {}, {}",
+                    joystick_horizontal, joystick_vertical
+                );
+                warn!("joystick value: {}, {}", joystick_pos.x, joystick_pos.y);
 
                 return [
                     HandGesture {

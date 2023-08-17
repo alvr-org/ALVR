@@ -750,62 +750,42 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                     // Handle gesture buttons
                     {
-                        let mut did_disable_skeleton = false;
-                        let mut press_gesture_buttons =
-                            |gestures: [HandGesture; 6]| {
-                                for g in gestures {
-                                    if g.active {
-                                        // Workaround for gestures not triggering button presses
-                                        if !did_disable_skeleton {
-                                            unsafe {
-                                                crate::SetTracking(
-                                                    tracking.target_timestamp.as_nanos() as _,
-                                                    stats.tracker_pose_time_offset().as_secs_f32(),
-                                                    ffi_motions.as_ptr(),
-                                                    ffi_motions.len() as _,
-                                                    ptr::null(),
-                                                    ptr::null(),
-                                                    track_controllers,
-                                                )
-                                            };
-                                            did_disable_skeleton = true;
+                        let press_gesture_buttons = |gestures: [HandGesture; 6]| {
+                            for g in gestures {
+                                if g.active {
+                                    // Handle touch bind
+                                    if g.touch_bind != 0 {
+                                        unsafe {
+                                            crate::SetButton(
+                                                g.touch_bind,
+                                                crate::FfiButtonValue {
+                                                    type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                                    __bindgen_anon_1:
+                                                        crate::FfiButtonValue__bindgen_ty_1 {
+                                                            binary: g.touching.into(),
+                                                        },
+                                                },
+                                            )
                                         }
-
-                                        // Handle touch bind
-                                        if g.touch_bind != 0 {
-                                            unsafe {
-                                                crate::SetButton(
-                                                    g.touch_bind,
-                                                    crate::FfiButtonValue {
-                                                        type_:
-                                                            crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                                                        __bindgen_anon_1:
-                                                            crate::FfiButtonValue__bindgen_ty_1 {
-                                                                binary: g.touching.into(),
-                                                            },
-                                                    },
-                                                )
-                                            }
-                                        }
-                                        // Handle hover bind
-                                        if g.hover_bind != 0 {
-                                            unsafe {
-                                                crate::SetButton(
-                                                    g.hover_bind,
-                                                    crate::FfiButtonValue {
-                                                        type_:
-                                                            crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                                                        __bindgen_anon_1:
-                                                            crate::FfiButtonValue__bindgen_ty_1 {
-                                                                scalar: g.hover_val.into(),
-                                                            },
-                                                    },
-                                                )
-                                            }
+                                    }
+                                    // Handle hover bind
+                                    if g.hover_bind != 0 {
+                                        unsafe {
+                                            crate::SetButton(
+                                                g.hover_bind,
+                                                crate::FfiButtonValue {
+                                                    type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                                    __bindgen_anon_1:
+                                                        crate::FfiButtonValue__bindgen_ty_1 {
+                                                            scalar: g.hover_val.into(),
+                                                        },
+                                                },
+                                            )
                                         }
                                     }
                                 }
-                            };
+                            }
+                        };
 
                         let hand_gestures = [
                             tracking.hand_skeletons[0]

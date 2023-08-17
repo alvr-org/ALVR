@@ -722,28 +722,28 @@ pub struct HandTrackingConfig {
 pub struct HandGestureConfig {
     #[schema(flag = "real-time")]
     #[schema(strings(
-        help = "How close the tips of your fingers need to be to register a pinch."
+        help = "How close the tips of your fingers need to be to register a pinch click."
     ))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "cm")]
     pub pinch_touch_distance: f32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
-        help = "How close the tips of your fingers need to be to start registering a trigger pull."
+        help = "How close together the tips of your fingers need to be to start registering a pinch trigger pull."
     ))]
     #[schema(gui(slider(min = 0.0, max = 2.5, step = 0.025)), suffix = "cm")]
     pub pinch_trigger_distance: f32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
-        help = "How curled your fingers need to be to register a click."
+        help = "How close to your palm the tips of your fingers need to be to register a curl click."
     ))]
     #[schema(gui(slider(min = 0.0, max = 5.0)), suffix = "cm")]
     pub curl_touch_distance: f32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
-        help = "How curled your fingers need to be to start registering a trigger pull."
+        help = "How close to your palm the tips of your fingers need to be to start registering a trigger pull."
     ))]
     #[schema(gui(slider(min = 0.0, max = 10.0)), suffix = "cm")]
     pub curl_trigger_distance: f32,

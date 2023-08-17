@@ -731,7 +731,7 @@ pub struct HandGestureConfig {
     #[schema(strings(
         help = "How close the tips of your fingers need to be to start registering a trigger pull."
     ))]
-    #[schema(gui(slider(min = 0.00, max = 2.5, step = 0.025)), suffix = "cm")]
+    #[schema(gui(slider(min = 0.0, max = 2.5, step = 0.025)), suffix = "cm")]
     pub pinch_trigger_distance: f32,
 
     #[schema(flag = "real-time")]

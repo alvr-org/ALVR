@@ -2,9 +2,10 @@ use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     warn, DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
-    LEFT_SQUEEZE_VALUE_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID,
-    RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID, RIGHT_TRIGGER_CLICK_ID,
-    RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID, Y_CLICK_ID,
+    LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID,
+    MENU_CLICK_ID, RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
+    RIGHT_THUMBSTICK_CLICK_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID,
+    Y_CLICK_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -341,7 +342,7 @@ pub fn hands_to_gestures(
     config: &HeadsetConfig,
     device_id: u64,
     hand_skeleton: [Pose; 26],
-) -> [HandGesture; 5] {
+) -> [HandGesture; 6] {
     if let Switch::Enabled(controllers) = &config.controllers {
         if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
             if let Switch::Enabled(use_gestures) = &hand_tracking.use_gestures {
@@ -383,9 +384,7 @@ pub fn hands_to_gestures(
                         - curl_min
                         - palm_depth
                         - thumb_rad)
-                        / curl_max
-                    + palm_depth
-                    + thumb_rad)
+                        / (curl_max + palm_depth + thumb_rad))
                     .clamp(0.0, 1.0);
                 warn!("thumb_curl: {}", thumb_curl);
 
@@ -396,19 +395,18 @@ pub fn hands_to_gestures(
                         - pinch_min
                         - thumb_rad
                         - index_rad)
-                        / pinch_max
-                    + thumb_rad
-                    + index_rad)
+                        / (pinch_max + thumb_rad + index_rad))
                     .clamp(0.0, 1.0);
 
                 let index_curl = (1.0
-                    - (index_metacarpal.position.distance(index_tip.position).min(index_proximal.position.distance(index_tip.position))
+                    - (index_metacarpal
+                        .position
+                        .lerp(index_proximal.position, 0.5)
+                        .distance(index_tip.position)
                         - curl_min
                         - palm_depth
                         - index_rad)
-                        / curl_max
-                    + palm_depth
-                    + index_rad)
+                        / (curl_max + palm_depth + index_rad))
                     .clamp(0.0, 1.0);
                 warn!("index_curl: {}", index_curl);
 
@@ -419,19 +417,18 @@ pub fn hands_to_gestures(
                         - pinch_min
                         - thumb_rad
                         - middle_rad)
-                        / pinch_max
-                    + thumb_rad
-                    + middle_rad)
+                        / (pinch_max + thumb_rad + middle_rad))
                     .clamp(0.0, 1.0);
 
                 let middle_curl = (1.0
-                    - (middle_metacarpal.position.distance(middle_tip.position).min(middle_proximal.position.distance(middle_tip.position))
+                    - (middle_metacarpal
+                        .position
+                        .lerp(middle_proximal.position, 0.5)
+                        .distance(middle_tip.position)
                         - curl_min
                         - palm_depth
                         - middle_rad)
-                        / curl_max
-                    + palm_depth
-                    + middle_rad)
+                        / (curl_max + palm_depth + middle_rad))
                     .clamp(0.0, 1.0);
                 warn!("middle_curl: {}", middle_curl);
 
@@ -442,19 +439,18 @@ pub fn hands_to_gestures(
                         - pinch_min
                         - thumb_rad
                         - ring_rad)
-                        / pinch_max
-                    + thumb_rad
-                    + ring_rad)
+                        / (pinch_max + thumb_rad + ring_rad))
                     .clamp(0.0, 1.0);
 
                 let ring_curl = (1.0
-                    - (ring_metacarpal.position.distance(ring_tip.position).min(ring_proximal.position.distance(ring_tip.position))
+                    - (ring_metacarpal
+                        .position
+                        .lerp(ring_proximal.position, 0.5)
+                        .distance(ring_tip.position)
                         - curl_min
                         - palm_depth
                         - ring_rad)
-                        / curl_max
-                    + palm_depth
-                    + ring_rad)
+                        / (curl_max + palm_depth + ring_rad))
                     .clamp(0.0, 1.0);
                 warn!("ring_curl: {}", ring_curl);
 
@@ -465,19 +461,18 @@ pub fn hands_to_gestures(
                         - pinch_min
                         - thumb_rad
                         - little_rad)
-                        / pinch_max
-                    + thumb_rad
-                    + little_rad)
+                        / (pinch_max + thumb_rad + little_rad))
                     .clamp(0.0, 1.0);
 
                 let little_curl = (1.0
-                    - (little_metacarpal.position.distance(little_tip.position).min(little_proximal.position.distance(little_tip.position))
+                    - (little_metacarpal
+                        .position
+                        .lerp(little_proximal.position, 0.5)
+                        .distance(little_tip.position)
                         - curl_min
                         - palm_depth
                         - little_rad)
-                        / curl_max
-                    + palm_depth
-                    + little_rad)
+                        / (curl_max + palm_depth + little_rad))
                     .clamp(0.0, 1.0);
                 warn!("little_curl: {}", little_curl);
 
@@ -555,12 +550,30 @@ pub fn hands_to_gestures(
                             *RIGHT_SQUEEZE_VALUE_ID
                         },
                     },
+                    HandGesture {
+                        active: true,
+                        touching: thumb_curl == 1.0,
+                        hover_val: thumb_curl,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_THUMBSTICK_CLICK_ID
+                        } else {
+                            *RIGHT_THUMBSTICK_CLICK_ID
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
+                    },
                 ];
             }
         }
     }
 
     [
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_val: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
+        },
         HandGesture {
             active: false,
             touching: false,

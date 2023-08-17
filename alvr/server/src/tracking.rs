@@ -355,23 +355,34 @@ pub fn hands_to_gestures(
                 let middle_rad: f32 = 0.0065; // average middle finger is ~18mm in diameter
                 let ring_rad: f32 = 0.006; // average ring finger is ~17mm in diameter
                 let little_rad: f32 = 0.005; // average pinky finger is ~15mm in diameter
+                let palm_depth: f32 = 0.005; // average palm bones are ~10mm from the skin
 
                 // we add the radius of the finger and thumb because we're measuring the distance between the surface of them, not their centers
                 let pinch_min = use_gestures.pinch_touch_distance * 0.01;
                 let pinch_max = use_gestures.pinch_trigger_distance * 0.01;
+                let curl_min = use_gestures.curl_touch_distance * 0.01;
+                let curl_max = use_gestures.curl_trigger_distance * 0.01;
 
                 let palm: Pose = gj[0];
                 let thumb_tip: Pose = gj[5];
-                let index_metacarpal: Pose = gj[6];
+                let index_proximal: Pose = gj[7];
                 let index_tip: Pose = gj[10];
-                let middle_metacarpal: Pose = gj[11];
+                let middle_proximal: Pose = gj[12];
                 let middle_tip: Pose = gj[15];
-                let ring_metacarpal: Pose = gj[16];
+                let ring_proximal: Pose = gj[17];
                 let ring_tip: Pose = gj[20];
-                let little_metacarpal: Pose = gj[21];
+                let little_proximal: Pose = gj[22];
                 let little_tip: Pose = gj[25];
 
-                let thumb_curl = palm.position.distance(thumb_tip.position);
+                let thumb_curl = (1.0
+                    - (palm.position.distance(thumb_tip.position)
+                        - curl_min
+                        - palm_depth
+                        - thumb_rad)
+                        / curl_max
+                    + palm_depth
+                    + thumb_rad)
+                    .clamp(0.0, 1.0);
                 warn!("thumb_curl: {}", thumb_curl);
 
                 let index_pinch = thumb_tip.position.distance(index_tip.position)
@@ -380,13 +391,21 @@ pub fn hands_to_gestures(
                     - (thumb_tip.position.distance(index_tip.position)
                         - pinch_min
                         - thumb_rad
-                        - ring_rad)
+                        - index_rad)
                         / pinch_max
                     + thumb_rad
                     + index_rad)
                     .clamp(0.0, 1.0);
 
-                let index_curl = index_metacarpal.position.distance(index_tip.position);
+                let index_curl = (1.0
+                    - (index_proximal.position.distance(index_tip.position)
+                        - curl_min
+                        - palm_depth
+                        - index_rad)
+                        / curl_max
+                    + palm_depth
+                    + index_rad)
+                    .clamp(0.0, 1.0);
                 warn!("index_curl: {}", index_curl);
 
                 let middle_pinch = thumb_tip.position.distance(middle_tip.position)
@@ -401,7 +420,15 @@ pub fn hands_to_gestures(
                     + middle_rad)
                     .clamp(0.0, 1.0);
 
-                let middle_curl = middle_metacarpal.position.distance(middle_tip.position);
+                let middle_curl = (1.0
+                    - (middle_proximal.position.distance(middle_tip.position)
+                        - curl_min
+                        - palm_depth
+                        - middle_rad)
+                        / curl_max
+                    + palm_depth
+                    + middle_rad)
+                    .clamp(0.0, 1.0);
                 warn!("middle_curl: {}", middle_curl);
 
                 let ring_pinch = thumb_tip.position.distance(ring_tip.position)
@@ -416,7 +443,15 @@ pub fn hands_to_gestures(
                     + ring_rad)
                     .clamp(0.0, 1.0);
 
-                let ring_curl = ring_metacarpal.position.distance(ring_tip.position);
+                let ring_curl = (1.0
+                    - (ring_proximal.position.distance(ring_tip.position)
+                        - curl_min
+                        - palm_depth
+                        - ring_rad)
+                        / curl_max
+                    + palm_depth
+                    + ring_rad)
+                    .clamp(0.0, 1.0);
                 warn!("ring_curl: {}", ring_curl);
 
                 let little_pinch = thumb_tip.position.distance(little_tip.position)
@@ -431,12 +466,18 @@ pub fn hands_to_gestures(
                     + little_rad)
                     .clamp(0.0, 1.0);
 
-                let little_curl = little_metacarpal.position.distance(little_tip.position);
+                let little_curl = (1.0
+                    - (little_proximal.position.distance(little_tip.position)
+                        - curl_min
+                        - palm_depth
+                        - little_rad)
+                        / curl_max
+                    + palm_depth
+                    + little_rad)
+                    .clamp(0.0, 1.0);
                 warn!("little_curl: {}", little_curl);
 
-                let grip_curl = (1.0
-                    - ((middle_curl + ring_curl + little_curl) / 3.0 - 0.05) * 20.0)
-                    .clamp(0.0, 1.0);
+                let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
 
                 return [
                     HandGesture {

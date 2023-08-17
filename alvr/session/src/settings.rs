@@ -733,6 +733,20 @@ pub struct HandGestureConfig {
     ))]
     #[schema(gui(slider(min = 0.00, max = 2.5, step = 0.025)), suffix = "cm")]
     pub pinch_trigger_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How curled your fingers need to be to register a click."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 5.0)), suffix = "cm")]
+    pub curl_touch_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How curled your fingers need to be to start registering a trigger pull."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 10.0)), suffix = "cm")]
+    pub curl_trigger_distance: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1277,6 +1291,8 @@ pub fn session_settings_default() -> SettingsDefault {
                                     gui_collapsed: true,
                                     pinch_touch_distance: 0.0,
                                     pinch_trigger_distance: 0.25,
+                                    curl_touch_distance: 2.0,
+                                    curl_trigger_distance: 2.5,
                                 },
                             },
                             enable_skeleton: true,

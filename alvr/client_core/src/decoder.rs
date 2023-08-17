@@ -76,7 +76,7 @@ pub fn push_nal(timestamp: Duration, nal: &[u8]) -> bool {
         true
     } else {
         #[cfg(target_os = "android")]
-        if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
+        if let Some(decoder) = &mut *DECODER_ENQUEUER.lock() {
             matches!(
                 alvr_common::show_err(decoder.push_frame_nal(timestamp, nal)),
                 Some(true)

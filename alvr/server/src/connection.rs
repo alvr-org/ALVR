@@ -750,7 +750,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                     // Handle gesture buttons
                     {
-                        let press_gesture_buttons = |gestures: [HandGesture; 6]| {
+                        let press_gesture_buttons = |gestures: [HandGesture; 8]| {
                             for g in gestures {
                                 if g.active {
                                     // Handle touch bind

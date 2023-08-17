@@ -1,11 +1,12 @@
 use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
-    glam::{EulerRot, Quat, Vec3},
-    DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
-    LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID,
+    glam::{EulerRot, Quat, Vec2, Vec3},
+    warn, DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
+    LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_THUMBSTICK_TOUCH_ID,
+    LEFT_THUMBSTICK_X_ID, LEFT_THUMBSTICK_Y_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID,
     MENU_CLICK_ID, RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
-    RIGHT_THUMBSTICK_CLICK_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID,
-    Y_CLICK_ID, Y_TOUCH_ID, B_TOUCH_ID, X_TOUCH_ID, A_TOUCH_ID,
+    RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID, RIGHT_THUMBSTICK_X_ID,
+    RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID, Y_CLICK_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -342,7 +343,7 @@ pub fn hands_to_gestures(
     config: &HeadsetConfig,
     device_id: u64,
     hand_skeleton: [Pose; 26],
-) -> [HandGesture; 6] {
+) -> [HandGesture; 8] {
     if let Switch::Enabled(controllers) = &config.controllers {
         if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
             if let Switch::Enabled(use_gestures) = &hand_tracking.use_gestures {
@@ -365,9 +366,11 @@ pub fn hands_to_gestures(
                 let curl_max = use_gestures.curl_trigger_distance * 0.01;
 
                 let palm: Pose = gj[0];
+                let thumb_proximal: Pose = gj[3];
                 let thumb_tip: Pose = gj[5];
                 let index_metacarpal: Pose = gj[6];
                 let index_proximal: Pose = gj[7];
+                let index_intermediate: Pose = gj[8];
                 let index_tip: Pose = gj[10];
                 let middle_metacarpal: Pose = gj[11];
                 let middle_proximal: Pose = gj[12];
@@ -473,6 +476,24 @@ pub fn hands_to_gestures(
 
                 let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
 
+                let joystick_range = 0.005;
+                let joystick_center = index_intermediate.position.lerp(index_tip.position, 0.25);
+
+                let joystick_pos = Vec2 {
+                    x: 0.0,
+                    y: ((thumb_tip.position.distance(thumb_proximal.position)
+                        - joystick_center.distance(thumb_proximal.position))
+                        / joystick_range)
+                        .clamp(-1.0, 1.0),
+                };
+                let joystick_contact = index_curl >= 0.75
+                    && grip_curl > 0.5
+                    && joystick_center.distance(thumb_tip.position)
+                        <= joystick_range * 5.0;
+
+                warn!("joystick contact: {}", joystick_contact);
+                warn!("joystick position: {}, {}", joystick_pos.x, joystick_pos.y);
+
                 return [
                     HandGesture {
                         active: true,
@@ -548,12 +569,64 @@ pub fn hands_to_gestures(
                         },
                         hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
                     },
+                    HandGesture {
+                        active: true,
+                        touching: joystick_contact,
+                        hover_val: if joystick_contact {
+                            joystick_pos.x
+                        } else {
+                            0.0
+                        },
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_THUMBSTICK_TOUCH_ID
+                        } else {
+                            *RIGHT_THUMBSTICK_TOUCH_ID
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_THUMBSTICK_X_ID
+                        } else {
+                            *RIGHT_THUMBSTICK_X_ID
+                        },
+                    },
+                    HandGesture {
+                        active: true,
+                        touching: joystick_contact,
+                        hover_val: if joystick_contact {
+                            joystick_pos.y
+                        } else {
+                            0.0
+                        },
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_THUMBSTICK_TOUCH_ID
+                        } else {
+                            *RIGHT_THUMBSTICK_TOUCH_ID
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_THUMBSTICK_Y_ID
+                        } else {
+                            *RIGHT_THUMBSTICK_Y_ID
+                        },
+                    },
                 ];
             }
         }
     }
 
     [
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_val: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
+        },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_val: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
+        },
         HandGesture {
             active: false,
             touching: false,

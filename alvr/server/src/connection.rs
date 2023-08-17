@@ -777,7 +777,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                                     type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
                                                     __bindgen_anon_1:
                                                         crate::FfiButtonValue__bindgen_ty_1 {
-                                                            scalar: g.hover_val.into(),
+                                                            scalar: g.hover_val,
                                                         },
                                                 },
                                             )
@@ -794,8 +794,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 .map(|s| tracking::hands_to_gestures(config, *RIGHT_HAND_ID, s)),
                         ];
 
-                        hand_gestures[0].map(|g| press_gesture_buttons(g));
-                        hand_gestures[1].map(|g| press_gesture_buttons(g));
+                        hand_gestures[0].map(press_gesture_buttons);
+                        hand_gestures[1].map(press_gesture_buttons);
                     }
 
                     let mut hand_skeletons_enabled = false;

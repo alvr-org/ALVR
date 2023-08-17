@@ -591,7 +591,7 @@ pub fn hands_to_gestures(
                         } else {
                             *RIGHT_THUMBSTICK_CLICK_ID
                         },
-                        hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
+                        hover_bind: 0,
                     },
                     HandGesture {
                         active: true,

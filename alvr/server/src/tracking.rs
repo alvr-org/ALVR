@@ -1,10 +1,10 @@
 use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
-    LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID,
-    RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
-    A_CLICK_ID, B_CLICK_ID, X_CLICK_ID, Y_CLICK_ID,
+    warn, DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
+    LEFT_SQUEEZE_VALUE_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID,
+    RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID, RIGHT_TRIGGER_CLICK_ID,
+    RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID, Y_CLICK_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -332,7 +332,7 @@ pub fn to_openvr_hand_skeleton(
 pub struct HandGesture {
     pub active: bool,
     pub touching: bool,
-    pub hover_dist: f32,
+    pub hover_val: f32,
     pub touch_bind: u64,
     pub hover_bind: u64,
 }
@@ -341,7 +341,7 @@ pub fn hands_to_gestures(
     config: &HeadsetConfig,
     device_id: u64,
     hand_skeleton: [Pose; 26],
-) -> [HandGesture; 4] {
+) -> [HandGesture; 5] {
     if let Switch::Enabled(controllers) = &config.controllers {
         if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
             if let Switch::Enabled(use_gestures) = &hand_tracking.use_gestures {
@@ -360,11 +360,19 @@ pub fn hands_to_gestures(
                 let pinch_min = use_gestures.pinch_touch_distance * 0.01;
                 let pinch_max = use_gestures.pinch_trigger_distance * 0.01;
 
+                let palm: Pose = gj[0];
                 let thumb_tip: Pose = gj[5];
+                let index_metacarpal: Pose = gj[6];
                 let index_tip: Pose = gj[10];
+                let middle_metacarpal: Pose = gj[11];
                 let middle_tip: Pose = gj[15];
+                let ring_metacarpal: Pose = gj[16];
                 let ring_tip: Pose = gj[20];
+                let little_metacarpal: Pose = gj[21];
                 let little_tip: Pose = gj[25];
+
+                let thumb_curl = palm.position.distance(thumb_tip.position);
+                warn!("thumb_curl: {}", thumb_curl);
 
                 let index_pinch = thumb_tip.position.distance(index_tip.position)
                     < pinch_min + thumb_rad + index_rad;
@@ -378,6 +386,9 @@ pub fn hands_to_gestures(
                     + index_rad)
                     .clamp(0.0, 1.0);
 
+                let index_curl = index_metacarpal.position.distance(index_tip.position);
+                warn!("index_curl: {}", index_curl);
+
                 let middle_pinch = thumb_tip.position.distance(middle_tip.position)
                     < pinch_min + thumb_rad + middle_rad;
                 let middle_trigger = (1.0
@@ -389,6 +400,9 @@ pub fn hands_to_gestures(
                     + thumb_rad
                     + middle_rad)
                     .clamp(0.0, 1.0);
+
+                let middle_curl = middle_metacarpal.position.distance(middle_tip.position);
+                warn!("middle_curl: {}", middle_curl);
 
                 let ring_pinch = thumb_tip.position.distance(ring_tip.position)
                     < pinch_min + thumb_rad + ring_rad;
@@ -402,6 +416,9 @@ pub fn hands_to_gestures(
                     + ring_rad)
                     .clamp(0.0, 1.0);
 
+                let ring_curl = ring_metacarpal.position.distance(ring_tip.position);
+                warn!("ring_curl: {}", ring_curl);
+
                 let little_pinch = thumb_tip.position.distance(little_tip.position)
                     < pinch_min + thumb_rad + little_rad;
                 let little_trigger = (1.0
@@ -414,34 +431,84 @@ pub fn hands_to_gestures(
                     + little_rad)
                     .clamp(0.0, 1.0);
 
+                let little_curl = little_metacarpal.position.distance(little_tip.position);
+                warn!("little_curl: {}", little_curl);
+
+                let grip_curl = (1.0
+                    - ((middle_curl + ring_curl + little_curl) / 3.0 - 0.05) * 20.0)
+                    .clamp(0.0, 1.0);
+
                 return [
                     HandGesture {
                         active: true,
                         touching: index_pinch,
-                        hover_dist: index_trigger,
-                        touch_bind: if device_id == *LEFT_HAND_ID { *LEFT_TRIGGER_CLICK_ID } else { *RIGHT_TRIGGER_CLICK_ID },
-                        hover_bind: if device_id == *LEFT_HAND_ID { *LEFT_TRIGGER_VALUE_ID } else { *RIGHT_TRIGGER_VALUE_ID },
+                        hover_val: index_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_TRIGGER_CLICK_ID
+                        } else {
+                            *RIGHT_TRIGGER_CLICK_ID
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_TRIGGER_VALUE_ID
+                        } else {
+                            *RIGHT_TRIGGER_VALUE_ID
+                        },
                     },
                     HandGesture {
                         active: true,
                         touching: middle_pinch,
-                        hover_dist: middle_trigger,
-                        touch_bind: if device_id == *LEFT_HAND_ID { *Y_CLICK_ID } else { 0 },
-                        hover_bind: if device_id == *LEFT_HAND_ID { *B_CLICK_ID } else { 0 },
+                        hover_val: middle_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *Y_CLICK_ID
+                        } else {
+                            0
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *B_CLICK_ID
+                        } else {
+                            0
+                        },
                     },
                     HandGesture {
                         active: true,
                         touching: ring_pinch,
-                        hover_dist: ring_trigger,
-                        touch_bind: if device_id == *LEFT_HAND_ID { *X_CLICK_ID } else { 0 },
-                        hover_bind: if device_id == *LEFT_HAND_ID { *A_CLICK_ID } else { 0 },
+                        hover_val: ring_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *X_CLICK_ID
+                        } else {
+                            0
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *A_CLICK_ID
+                        } else {
+                            0
+                        },
                     },
                     HandGesture {
                         active: true,
                         touching: little_pinch,
-                        hover_dist: little_trigger,
-                        touch_bind: if device_id == *LEFT_HAND_ID { *MENU_CLICK_ID } else { 0 },
+                        hover_val: little_trigger,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *MENU_CLICK_ID
+                        } else {
+                            0
+                        },
                         hover_bind: if device_id == *LEFT_HAND_ID { 0 } else { 0 },
+                    },
+                    HandGesture {
+                        active: true,
+                        touching: grip_curl == 1.0,
+                        hover_val: grip_curl,
+                        touch_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_SQUEEZE_CLICK_ID
+                        } else {
+                            *RIGHT_SQUEEZE_CLICK_ID
+                        },
+                        hover_bind: if device_id == *LEFT_HAND_ID {
+                            *LEFT_SQUEEZE_VALUE_ID
+                        } else {
+                            *RIGHT_SQUEEZE_VALUE_ID
+                        },
                     },
                 ];
             }
@@ -452,28 +519,35 @@ pub fn hands_to_gestures(
         HandGesture {
             active: false,
             touching: false,
-            hover_dist: 0.0,
+            hover_val: 0.0,
             touch_bind: 0,
             hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
-            hover_dist: 0.0,
+            hover_val: 0.0,
             touch_bind: 0,
             hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
-            hover_dist: 0.0,
+            hover_val: 0.0,
             touch_bind: 0,
             hover_bind: 0,
         },
         HandGesture {
             active: false,
             touching: false,
-            hover_dist: 0.0,
+            hover_val: 0.0,
+            touch_bind: 0,
+            hover_bind: 0,
+        },
+        HandGesture {
+            active: false,
+            touching: false,
+            hover_val: 0.0,
             touch_bind: 0,
             hover_bind: 0,
         },

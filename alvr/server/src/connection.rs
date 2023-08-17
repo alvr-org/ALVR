@@ -752,7 +752,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     {
                         let mut did_disable_skeleton = false;
                         let mut press_gesture_buttons =
-                            |gestures: [HandGesture; 4]| {
+                            |gestures: [HandGesture; 5]| {
                                 for g in gestures {
                                     if g.active {
                                         // Workaround for gestures not triggering button presses
@@ -797,7 +797,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                                             crate::FfiButtonType_BUTTON_TYPE_SCALAR,
                                                         __bindgen_anon_1:
                                                             crate::FfiButtonValue__bindgen_ty_1 {
-                                                                scalar: g.hover_dist.into(),
+                                                                scalar: g.hover_val.into(),
                                                             },
                                                     },
                                                 )

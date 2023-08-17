@@ -365,12 +365,16 @@ pub fn hands_to_gestures(
 
                 let palm: Pose = gj[0];
                 let thumb_tip: Pose = gj[5];
+                let index_metacarpal: Pose = gj[6];
                 let index_proximal: Pose = gj[7];
                 let index_tip: Pose = gj[10];
+                let middle_metacarpal: Pose = gj[11];
                 let middle_proximal: Pose = gj[12];
                 let middle_tip: Pose = gj[15];
+                let ring_metacarpal: Pose = gj[16];
                 let ring_proximal: Pose = gj[17];
                 let ring_tip: Pose = gj[20];
+                let little_metacarpal: Pose = gj[21];
                 let little_proximal: Pose = gj[22];
                 let little_tip: Pose = gj[25];
 
@@ -398,7 +402,7 @@ pub fn hands_to_gestures(
                     .clamp(0.0, 1.0);
 
                 let index_curl = (1.0
-                    - (index_proximal.position.distance(index_tip.position)
+                    - (index_metacarpal.position.distance(index_tip.position).min(index_proximal.position.distance(index_tip.position))
                         - curl_min
                         - palm_depth
                         - index_rad)
@@ -421,7 +425,7 @@ pub fn hands_to_gestures(
                     .clamp(0.0, 1.0);
 
                 let middle_curl = (1.0
-                    - (middle_proximal.position.distance(middle_tip.position)
+                    - (middle_metacarpal.position.distance(middle_tip.position).min(middle_proximal.position.distance(middle_tip.position))
                         - curl_min
                         - palm_depth
                         - middle_rad)
@@ -444,7 +448,7 @@ pub fn hands_to_gestures(
                     .clamp(0.0, 1.0);
 
                 let ring_curl = (1.0
-                    - (ring_proximal.position.distance(ring_tip.position)
+                    - (ring_metacarpal.position.distance(ring_tip.position).min(ring_proximal.position.distance(ring_tip.position))
                         - curl_min
                         - palm_depth
                         - ring_rad)
@@ -467,7 +471,7 @@ pub fn hands_to_gestures(
                     .clamp(0.0, 1.0);
 
                 let little_curl = (1.0
-                    - (little_proximal.position.distance(little_tip.position)
+                    - (little_metacarpal.position.distance(little_tip.position).min(little_proximal.position.distance(little_tip.position))
                         - curl_min
                         - palm_depth
                         - little_rad)

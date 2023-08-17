@@ -1,7 +1,7 @@
 use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    warn, DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
+    DeviceMotion, Pose, A_CLICK_ID, B_CLICK_ID, HEAD_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
     LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID,
     MENU_CLICK_ID, RIGHT_HAND_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
     RIGHT_THUMBSTICK_CLICK_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID, X_CLICK_ID,
@@ -386,7 +386,6 @@ pub fn hands_to_gestures(
                         - thumb_rad)
                         / (curl_max + palm_depth + thumb_rad))
                     .clamp(0.0, 1.0);
-                warn!("thumb_curl: {}", thumb_curl);
 
                 let index_pinch = thumb_tip.position.distance(index_tip.position)
                     < pinch_min + thumb_rad + index_rad;
@@ -408,7 +407,6 @@ pub fn hands_to_gestures(
                         - index_rad)
                         / (curl_max + palm_depth + index_rad))
                     .clamp(0.0, 1.0);
-                warn!("index_curl: {}", index_curl);
 
                 let middle_pinch = thumb_tip.position.distance(middle_tip.position)
                     < pinch_min + thumb_rad + middle_rad;
@@ -430,7 +428,6 @@ pub fn hands_to_gestures(
                         - middle_rad)
                         / (curl_max + palm_depth + middle_rad))
                     .clamp(0.0, 1.0);
-                warn!("middle_curl: {}", middle_curl);
 
                 let ring_pinch = thumb_tip.position.distance(ring_tip.position)
                     < pinch_min + thumb_rad + ring_rad;
@@ -452,7 +449,6 @@ pub fn hands_to_gestures(
                         - ring_rad)
                         / (curl_max + palm_depth + ring_rad))
                     .clamp(0.0, 1.0);
-                warn!("ring_curl: {}", ring_curl);
 
                 let little_pinch = thumb_tip.position.distance(little_tip.position)
                     < pinch_min + thumb_rad + little_rad;
@@ -474,7 +470,6 @@ pub fn hands_to_gestures(
                         - little_rad)
                         / (curl_max + palm_depth + little_rad))
                     .clamp(0.0, 1.0);
-                warn!("little_curl: {}", little_curl);
 
                 let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
 

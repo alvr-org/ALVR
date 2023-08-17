@@ -33,7 +33,7 @@ use alvr_common::{
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
-use connection::{CONNECTION_RUNTIME, CONTROL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
+use connection::{CONTROL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
@@ -169,10 +169,8 @@ pub fn send_buttons(entries: Vec<ButtonEntry>) {
 }
 
 pub fn send_tracking(tracking: Tracking) {
-    if let (Some(runtime), Some(sender)) =
-        (&*CONNECTION_RUNTIME.read(), &mut *TRACKING_SENDER.lock())
-    {
-        sender.send(runtime, &tracking, vec![]).ok();
+    if let Some(sender) = &mut *TRACKING_SENDER.lock() {
+        sender.send_header(&tracking).ok();
 
         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
             stats.report_input_acquired(tracking.target_timestamp);
@@ -200,11 +198,9 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_submit(target_timestamp, vsync_queue);
 
-        if let (Some(runtime), Some(sender)) =
-            (&*CONNECTION_RUNTIME.read(), &mut *STATISTICS_SENDER.lock())
-        {
+        if let Some(sender) = &mut *STATISTICS_SENDER.lock() {
             if let Some(stats) = stats.summary(target_timestamp) {
-                sender.send(runtime, &stats, vec![]).ok();
+                sender.send_header(&stats).ok();
             } else {
                 error!("Statistics summary not ready!");
             }

@@ -11,12 +11,8 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    debug, error,
-    glam::UVec2,
-    info,
-    once_cell::sync::Lazy,
-    parking_lot::{Mutex, RwLock},
-    warn, AnyhowToCon, ConResult, ConnectionError, ToCon, ALVR_VERSION,
+    debug, error, glam::UVec2, info, once_cell::sync::Lazy, parking_lot::Mutex, warn, AnyhowToCon,
+    ConResult, ConnectionError, ToCon, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -25,8 +21,8 @@ use alvr_packets::{
 };
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
-    ControlSocketSender, PeerType, ProtoControlSocket, ReceiverBuffer, StreamSender,
-    StreamSocketBuilder, KEEPALIVE_INTERVAL,
+    ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
+    KEEPALIVE_INTERVAL,
 };
 use serde_json as json;
 use std::{
@@ -35,7 +31,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use tokio::runtime::Runtime;
 
 #[cfg(target_os = "android")]
 use crate::audio;
@@ -64,13 +59,13 @@ const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
+const MAX_UNREAD_PACKETS: usize = 5; // Applies per stream
+
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
     Lazy::new(|| Mutex::new(None));
 
 pub static CONTROL_SENDER: Lazy<Mutex<Option<ControlSocketSender<ClientControlPacket>>>> =
     Lazy::new(|| Mutex::new(None));
-pub static CONNECTION_RUNTIME: Lazy<Arc<RwLock<Option<Runtime>>>> =
-    Lazy::new(|| Arc::new(RwLock::new(None)));
 pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
     Lazy::new(|| Mutex::new(None));
 pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
@@ -116,12 +111,6 @@ fn connection_pipeline(
     recommended_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
 ) -> ConResult {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        .enable_all()
-        .build()
-        .to_con()?;
-
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
         let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
@@ -252,7 +241,7 @@ fn connection_pipeline(
     }
 
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
-        &runtime,
+        Duration::from_secs(1),
         settings.connection.stream_port,
         settings.connection.stream_protocol,
         settings.connection.client_send_buffer_bytes,
@@ -267,11 +256,10 @@ fn connection_pipeline(
     }
 
     let mut stream_socket = stream_socket_builder.accept_from_server(
-        &runtime,
-        HANDSHAKE_ACTION_TIMEOUT,
         server_ip,
         settings.connection.stream_port,
         settings.connection.packet_size as _,
+        HANDSHAKE_ACTION_TIMEOUT,
     )?;
 
     info!("Connected to server");
@@ -284,17 +272,18 @@ fn connection_pipeline(
         config.options = settings.video.mediacodec_extra_options;
     }
 
-    let mut video_receiver = stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO);
-    let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO);
+    let mut video_receiver =
+        stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO, MAX_UNREAD_PACKETS);
+    let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_sender = stream_socket.request_stream(TRACKING);
-    let mut haptics_receiver = stream_socket.subscribe_to_stream::<Haptics>(HAPTICS);
+    let mut haptics_receiver =
+        stream_socket.subscribe_to_stream::<Haptics>(HAPTICS, MAX_UNREAD_PACKETS);
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
     // Important: To make sure this is successfully unset when stopping streaming, the rest of the
     // function MUST be infallible
     IS_STREAMING.set(true);
     *CONTROL_SENDER.lock() = Some(control_sender);
-    *CONNECTION_RUNTIME.write() = Some(runtime);
     *TRACKING_SENDER.lock() = Some(tracking_sender);
     *STATISTICS_SENDER.lock() = Some(statistics_sender);
 
@@ -309,17 +298,15 @@ fn connection_pipeline(
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
     let video_receive_thread = thread::spawn(move || {
-        let mut receiver_buffer = ReceiverBuffer::new();
         let mut stream_corrupted = false;
         while IS_STREAMING.value() {
-            match video_receiver.recv_buffer(STREAMING_RECV_TIMEOUT, &mut receiver_buffer) {
-                Ok(true) => (),
-                Ok(false) | Err(ConnectionError::TryAgain(_)) => continue,
+            let data = match video_receiver.recv(STREAMING_RECV_TIMEOUT) {
+                Ok(data) => data,
+                Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
-            }
-
-            let Ok((header, nal)) = receiver_buffer.get() else {
-                return
+            };
+            let Ok((header, nal)) = data.get() else {
+                return;
             };
 
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
@@ -328,7 +315,7 @@ fn connection_pipeline(
 
             if header.is_idr {
                 stream_corrupted = false;
-            } else if receiver_buffer.had_packet_loss() {
+            } else if data.had_packet_loss() {
                 stream_corrupted = true;
                 if let Some(sender) = &mut *CONTROL_SENDER.lock() {
                     sender.send(&ClientControlPacket::RequestIdr).ok();
@@ -375,7 +362,7 @@ fn connection_pipeline(
         thread::spawn(move || {
             while IS_STREAMING.value() {
                 match audio::record_audio_blocking(
-                    Arc::clone(&CONNECTION_RUNTIME),
+                    Arc::clone(&IS_STREAMING),
                     microphone_sender.clone(),
                     &device,
                     1,
@@ -396,10 +383,13 @@ fn connection_pipeline(
 
     let haptics_receive_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let haptics = match haptics_receiver.recv_header_only(STREAMING_RECV_TIMEOUT) {
+            let data = match haptics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                 Ok(packet) => packet,
                 Err(ConnectionError::TryAgain(_)) => continue,
                 Err(ConnectionError::Other(_)) => return,
+            };
+            let Ok(haptics) = data.get_header() else {
+                return;
             };
 
             EVENT_QUEUE.lock().push_back(ClientCoreEvent::Haptics {
@@ -495,8 +485,8 @@ fn connection_pipeline(
     });
 
     let stream_receive_thread = thread::spawn(move || {
-        while let Some(runtime) = &*CONNECTION_RUNTIME.read() {
-            let res = stream_socket.recv(runtime, STREAMING_RECV_TIMEOUT);
+        while IS_STREAMING.value() {
+            let res = stream_socket.recv();
             match res {
                 Ok(()) => (),
                 Err(ConnectionError::TryAgain(_)) => continue,
@@ -519,7 +509,6 @@ fn connection_pipeline(
     IS_STREAMING.set(false);
     *CONTROL_SENDER.lock() = None;
     *LOG_CHANNEL_SENDER.lock() = None;
-    *CONNECTION_RUNTIME.write() = None;
     *TRACKING_SENDER.lock() = None;
     *STATISTICS_SENDER.lock() = None;
 

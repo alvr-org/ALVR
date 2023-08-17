@@ -3,7 +3,13 @@ use crate::LOCAL_IP;
 use super::{SocketReader, SocketWriter};
 use alvr_common::{anyhow::Result, ConResult, HandleTryAgain};
 use alvr_session::SocketBufferSize;
-use std::net::{IpAddr, UdpSocket};
+use socket2::{MaybeUninitSlice, Socket};
+use std::{
+    ffi::c_int,
+    mem,
+    net::{IpAddr, UdpSocket},
+    time::Duration,
+};
 
 // Create tokio socket, convert to socket2, apply settings, convert back to tokio. This is done to
 // let tokio set all the internal parameters it needs from the start.
@@ -19,10 +25,16 @@ pub fn bind(
     Ok(socket.into())
 }
 
-pub fn connect(socket: &UdpSocket, peer_ip: IpAddr, port: u16) -> Result<(UdpSocket, UdpSocket)> {
+pub fn connect(
+    socket: &UdpSocket,
+    peer_ip: IpAddr,
+    port: u16,
+    timeout: Duration,
+) -> Result<(UdpSocket, Socket)> {
     socket.connect((peer_ip, port))?;
+    socket.set_read_timeout(Some(timeout))?;
 
-    Ok((socket.try_clone()?, socket.try_clone()?))
+    Ok((socket.try_clone()?, socket.try_clone()?.into()))
 }
 
 impl SocketWriter for UdpSocket {
@@ -33,12 +45,21 @@ impl SocketWriter for UdpSocket {
     }
 }
 
-impl SocketReader for UdpSocket {
+impl SocketReader for Socket {
     fn recv(&mut self, buffer: &mut [u8]) -> ConResult<usize> {
-        UdpSocket::recv(self, buffer).handle_try_again()
+        Socket::recv(self, unsafe { mem::transmute(buffer) }).handle_try_again()
     }
 
     fn peek(&self, buffer: &mut [u8]) -> ConResult<usize> {
-        UdpSocket::peek(self, buffer).handle_try_again()
+        #[cfg(windows)]
+        const FLAGS: c_int = 0x02 | 0x8000; // MSG_PEEK | MSG_PARTIAL
+        #[cfg(not(windows))]
+        const FLAGS: c_int = 0x02 | 0x20; // MSG_PEEK | MSG_TRUNC
+
+        let buffer = MaybeUninitSlice::new(unsafe { mem::transmute(buffer) });
+        Ok(self
+            .recv_vectored_with_flags(&mut [buffer], FLAGS)
+            .handle_try_again()?
+            .0)
     }
 }

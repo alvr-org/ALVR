@@ -497,8 +497,8 @@ pub fn hands_to_gestures(
                 return [
                     HandGesture {
                         active: true,
-                        touching: index_pinch,
-                        hover_val: index_trigger,
+                        touching: index_pinch && !joystick_contact,
+                        hover_val: if joystick_contact { 0 } else { index_trigger },
                         touch_bind: if device_id == *LEFT_HAND_ID {
                             *LEFT_TRIGGER_CLICK_ID
                         } else {

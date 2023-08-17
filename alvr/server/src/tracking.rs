@@ -351,10 +351,10 @@ pub fn hands_to_gestures(
                 // if we model the tip of the finger as a spherical object, we should account for its radius
                 // these are intentionally under the average by ~5mm since the touch and trigger distances are already configurable in settings
                 let thumb_rad: f32 = 0.0075; // average thumb is ~20mm in diameter
-                let index_rad: f32 = 0.006; // average index finger is ~17mm in diameter
-                let middle_rad: f32 = 0.006; // average middle finger is ~17mm in diameter
-                let ring_rad: f32 = 0.0055; // average ring finger is ~16mm in diameter
-                let little_rad: f32 = 0.0045; // average pinky finger is ~14mm in diameter
+                let index_rad: f32 = 0.0065; // average index finger is ~18mm in diameter
+                let middle_rad: f32 = 0.0065; // average middle finger is ~18mm in diameter
+                let ring_rad: f32 = 0.006; // average ring finger is ~17mm in diameter
+                let little_rad: f32 = 0.005; // average pinky finger is ~15mm in diameter
 
                 // we add the radius of the finger and thumb because we're measuring the distance between the surface of them, not their centers
                 let pinch_min = use_gestures.pinch_touch_distance * 0.01;

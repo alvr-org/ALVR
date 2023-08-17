@@ -496,7 +496,13 @@ impl StreamSocket {
             .get_mut(&shard_recv_state_mut.packet_index)
         {
             packet
-        } else if let Ok(buffer) = components.used_buffer_receiver.try_recv() {
+        } else if let Some(buffer) = components.used_buffer_receiver.try_recv().ok().or_else(|| {
+            // By default, try to dequeue a used buffer. In case none were found, recycle one of the
+            // in progress packets, chances are these buffers are "dead" because one of their shards
+            // has been dropped by the network.
+            let idx = *components.in_progress_packets.iter().next()?.0;
+            Some(components.in_progress_packets.remove(&idx).unwrap().buffer)
+        }) {
             // NB: Can't use entry pattern because we want to allow bailing out on the line above
             components.in_progress_packets.insert(
                 shard_recv_state_mut.packet_index,
@@ -514,8 +520,7 @@ impl StreamSocket {
                 .get_mut(&shard_recv_state_mut.packet_index)
                 .unwrap()
         } else {
-            // In case a stream got stuck and is not returning back empty buffers, discard the
-            // current shard
+            // This branch may be hit in case the thread related to the stream hangs for some reason
             shard_recv_state_mut.should_discard = true;
             shard_recv_state_mut.packet_cursor = 0; // reset cursor from old shards
                                                     // always write at the start of the packet so the buffer doesn't grow much

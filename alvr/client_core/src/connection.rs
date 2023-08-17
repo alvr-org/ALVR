@@ -59,7 +59,7 @@ const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
-const MAX_UNREAD_PACKETS: usize = 5; // Applies per stream
+const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
 static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
     Lazy::new(|| Mutex::new(None));

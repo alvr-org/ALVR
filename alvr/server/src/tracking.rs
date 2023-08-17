@@ -477,7 +477,7 @@ pub fn hands_to_gestures(
 
                 let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
 
-                let joystick_range = 0.005;
+                let joystick_range = 0.01;
                 let joystick_center = index_intermediate.position.lerp(index_tip.position, 0.25);
 
                 let joystick_up = (joystick_center
@@ -494,10 +494,9 @@ pub fn hands_to_gestures(
                     + joystick_vertical_vec / 2.0)
                     .dot(joystick_vertical_vec)
                     / joystick_vertical_vec.length();
-                let joystick_horizontal =
-                    (thumb_tip.position - joystick_center - joystick_horizontal_vec / 2.0)
-                        .dot(joystick_horizontal_vec)
-                        / joystick_horizontal_vec.length();
+                let joystick_horizontal = (thumb_tip.position - joystick_center)
+                    .dot(joystick_horizontal_vec)
+                    / joystick_horizontal_vec.length();
 
                 let joystick_pos = Vec2 {
                     x: (joystick_horizontal / joystick_range).clamp(-1.0, 1.0),
@@ -516,6 +515,8 @@ pub fn hands_to_gestures(
                     joystick_horizontal, joystick_vertical
                 );
                 warn!("joystick value: {}, {}", joystick_pos.x, joystick_pos.y);
+
+                let joystick_deadzone = 0.25;
 
                 return [
                     HandGesture {
@@ -595,7 +596,7 @@ pub fn hands_to_gestures(
                     HandGesture {
                         active: true,
                         touching: joystick_contact,
-                        hover_val: if joystick_contact {
+                        hover_val: if joystick_contact && joystick_pos.x >= joystick_deadzone {
                             joystick_pos.x
                         } else {
                             0.0
@@ -614,7 +615,7 @@ pub fn hands_to_gestures(
                     HandGesture {
                         active: true,
                         touching: joystick_contact,
-                        hover_val: if joystick_contact {
+                        hover_val: if joystick_contact && joystick_pos.y >= joystick_deadzone {
                             joystick_pos.y
                         } else {
                             0.0

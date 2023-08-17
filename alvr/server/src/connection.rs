@@ -369,7 +369,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         display_name,
         streaming_capabilities,
         ..
-    } = proto_socket.recv()?
+    } = proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT)?
     {
         SERVER_DATA_MANAGER.write().update_client_list(
             client_hostname.clone(),
@@ -511,14 +511,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         .send(&ServerControlPacket::StartStream)
         .to_con()?;
 
-    match control_receiver.recv() {
-        Ok(ClientControlPacket::StreamReady) => (),
-        Ok(_) => {
-            con_bail!("Got unexpected packet waiting for stream ack");
-        }
-        Err(e) => {
-            con_bail!("Error while waiting for stream ack: {e}");
-        }
+    let signal = control_receiver.recv(HANDSHAKE_ACTION_TIMEOUT)?;
+    if !matches!(signal, ClientControlPacket::StreamReady) {
+        con_bail!("Got unexpected packet waiting for stream ack");
     }
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
@@ -858,7 +853,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let client_hostname = client_hostname.clone();
         move || {
             while IS_STREAMING.value() {
-                let packet = match control_receiver.recv() {
+                let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(packet) => packet,
                     Err(ConnectionError::TryAgain(_)) => continue,
                     Err(e) => {

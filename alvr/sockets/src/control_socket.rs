@@ -8,7 +8,7 @@ use std::{
     marker::PhantomData,
     mem,
     net::{IpAddr, TcpListener, TcpStream},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 // This corresponds to the length of the payload
@@ -43,15 +43,24 @@ fn framed_recv<R: DeserializeOwned>(
     socket: &mut TcpStream,
     buffer: &mut Vec<u8>,
     maybe_recv_state: &mut Option<RecvState>,
+    timeout: Duration,
 ) -> ConResult<R> {
+    let deadline = Instant::now() + timeout;
+
     let recv_state_mut = if let Some(state) = maybe_recv_state {
         state
     } else {
         let mut payload_length_bytes = [0; FRAMED_PREFIX_LENGTH];
-        let count = socket.peek(&mut payload_length_bytes).handle_try_again()?;
-        if count != FRAMED_PREFIX_LENGTH {
-            return alvr_common::try_again();
+
+        loop {
+            let count = socket.peek(&mut payload_length_bytes).handle_try_again()?;
+            if count == FRAMED_PREFIX_LENGTH {
+                break;
+            } else if Instant::now() > deadline {
+                return alvr_common::try_again();
+            }
         }
+
         let packet_length =
             FRAMED_PREFIX_LENGTH + u32::from_be_bytes(payload_length_bytes) as usize;
 
@@ -65,10 +74,15 @@ fn framed_recv<R: DeserializeOwned>(
         })
     };
 
-    recv_state_mut.packet_cursor +=
-        socket.recv(&mut buffer[recv_state_mut.packet_cursor..recv_state_mut.packet_length])?;
-    if recv_state_mut.packet_cursor != recv_state_mut.packet_length {
-        return alvr_common::try_again();
+    loop {
+        recv_state_mut.packet_cursor +=
+            socket.recv(&mut buffer[recv_state_mut.packet_cursor..recv_state_mut.packet_length])?;
+
+        if recv_state_mut.packet_cursor == recv_state_mut.packet_length {
+            break;
+        } else if Instant::now() > deadline {
+            return alvr_common::try_again();
+        }
     }
 
     let data = bincode::deserialize(&buffer[FRAMED_PREFIX_LENGTH..recv_state_mut.packet_length])
@@ -99,8 +113,13 @@ pub struct ControlSocketReceiver<T> {
 }
 
 impl<R: DeserializeOwned> ControlSocketReceiver<R> {
-    pub fn recv(&mut self) -> ConResult<R> {
-        framed_recv(&mut self.inner, &mut self.buffer, &mut self.recv_state)
+    pub fn recv(&mut self, timeout: Duration) -> ConResult<R> {
+        framed_recv(
+            &mut self.inner,
+            &mut self.buffer,
+            &mut self.recv_state,
+            timeout,
+        )
     }
 }
 
@@ -151,8 +170,8 @@ impl ProtoControlSocket {
         framed_send(&mut self.inner, &mut vec![], packet)
     }
 
-    pub fn recv<R: DeserializeOwned>(&mut self) -> ConResult<R> {
-        framed_recv(&mut self.inner, &mut vec![], &mut None)
+    pub fn recv<R: DeserializeOwned>(&mut self, timeout: Duration) -> ConResult<R> {
+        framed_recv(&mut self.inner, &mut vec![], &mut None, timeout)
     }
 
     pub fn split<S: Serialize, R: DeserializeOwned>(

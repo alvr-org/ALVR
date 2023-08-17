@@ -182,7 +182,8 @@ fn connection_pipeline(
             }),
         })
         .to_con()?;
-    let config_packet = proto_control_socket.recv::<StreamConfigPacket>()?;
+    let config_packet =
+        proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
 
     let settings = {
         let mut session_desc = SessionConfig::default();
@@ -228,7 +229,7 @@ fn connection_pipeline(
         .split(STREAMING_RECV_TIMEOUT)
         .to_con()?;
 
-    match control_receiver.recv() {
+    match control_receiver.recv(HANDSHAKE_ACTION_TIMEOUT) {
         Ok(ServerControlPacket::StartStream) => {
             info!("Stream starting");
             set_hud_message(STREAM_STARTING_MESSAGE);
@@ -463,7 +464,7 @@ fn connection_pipeline(
 
     let control_receive_thread = thread::spawn(move || {
         while IS_STREAMING.value() {
-            let maybe_packet = control_receiver.recv();
+            let maybe_packet = control_receiver.recv(STREAMING_RECV_TIMEOUT);
 
             match maybe_packet {
                 Ok(ServerControlPacket::InitializeDecoder(config)) => {

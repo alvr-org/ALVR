@@ -40,13 +40,13 @@ impl<T> Deref for FakeThreadSafe<T> {
 
 type SharedMediaCodec = Arc<FakeThreadSafe<MediaCodec>>;
 
-pub struct VideoDecoderEnqueuer {
+pub struct VideoDecoderSink {
     inner: Arc<Mutex<Option<SharedMediaCodec>>>,
 }
 
-unsafe impl Send for VideoDecoderEnqueuer {}
+unsafe impl Send for VideoDecoderSink {}
 
-impl VideoDecoderEnqueuer {
+impl VideoDecoderSink {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
     pub fn push_frame_nal(&mut self, timestamp: Duration, data: &[u8]) -> Result<bool> {
         let Some(decoder) = &*self.inner.lock() else {
@@ -85,7 +85,7 @@ struct QueuedImage {
 unsafe impl Send for QueuedImage {}
 
 // Access the image queue synchronously.
-pub struct VideoDecoderDequeuer {
+pub struct VideoDecoderSource {
     running: Arc<RelaxedAtomic>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
@@ -93,9 +93,9 @@ pub struct VideoDecoderDequeuer {
     buffering_running_average: f32,
 }
 
-unsafe impl Send for VideoDecoderDequeuer {}
+unsafe impl Send for VideoDecoderSource {}
 
-impl VideoDecoderDequeuer {
+impl VideoDecoderSource {
     // The application MUST finish using the returned buffer before calling this function again
     pub fn dequeue_frame(&mut self) -> Option<(Duration, *mut c_void)> {
         let mut image_queue_lock = self.image_queue.lock();
@@ -135,7 +135,7 @@ impl VideoDecoderDequeuer {
     }
 }
 
-impl Drop for VideoDecoderDequeuer {
+impl Drop for VideoDecoderSource {
     fn drop(&mut self) {
         self.running.set(false);
 
@@ -144,22 +144,21 @@ impl Drop for VideoDecoderDequeuer {
     }
 }
 
-// Create a enqueuer/dequeuer pair. To preserve the state of internal variables, use
-// `enqueuer.recreate_decoder()` instead of dropping the pair and calling this function again.
+// Create a sink/source pair
 pub fn video_decoder_split(
     config: DecoderInitConfig,
     csd_0: Vec<u8>,
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
-) -> Result<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
+) -> Result<(VideoDecoderSink, VideoDecoderSource)> {
     let running = Arc::new(RelaxedAtomic::new(true));
-    let decoder_enqueuer = Arc::new(Mutex::new(None::<SharedMediaCodec>));
+    let decoder_sink = Arc::new(Mutex::new(None::<SharedMediaCodec>));
     let decoder_ready_notifier = Arc::new(Condvar::new());
     let image_queue = Arc::new(Mutex::new(VecDeque::<QueuedImage>::new()));
 
     let dequeue_thread = thread::spawn({
         let config = config.clone();
         let running = Arc::clone(&running);
-        let decoder_enqueuer = Arc::clone(&decoder_enqueuer);
+        let decoder_sink = Arc::clone(&decoder_sink);
         let decoder_ready_notifier = Arc::clone(&decoder_ready_notifier);
         let image_queue = Arc::clone(&image_queue);
         move || {
@@ -258,7 +257,7 @@ pub fn video_decoder_split(
             decoder.start().unwrap();
 
             {
-                let mut decoder_lock = decoder_enqueuer.lock();
+                let mut decoder_lock = decoder_sink.lock();
 
                 *decoder_lock = Some(Arc::clone(&decoder));
 
@@ -289,7 +288,7 @@ pub fn video_decoder_split(
             }
 
             // Destroy all resources
-            decoder_enqueuer.lock().take(); // Make sure the shared ref is deleted first
+            decoder_sink.lock().take(); // Make sure the shared ref is deleted first
             decoder.stop().unwrap();
             drop(decoder);
 
@@ -302,7 +301,7 @@ pub fn video_decoder_split(
     // Make sure the decoder is ready: we don't want to try to enqueue frame and lose them, to avoid
     // image corruption.
     {
-        let mut decoder_lock = decoder_enqueuer.lock();
+        let mut decoder_lock = decoder_sink.lock();
 
         if decoder_lock.is_none() {
             // No spurious wakeups
@@ -310,10 +309,10 @@ pub fn video_decoder_split(
         }
     }
 
-    let enqueuer = VideoDecoderEnqueuer {
-        inner: decoder_enqueuer,
+    let sink = VideoDecoderSink {
+        inner: decoder_sink,
     };
-    let dequeuer = VideoDecoderDequeuer {
+    let source = VideoDecoderSource {
         running,
         dequeue_thread: Some(dequeue_thread),
         image_queue,
@@ -321,5 +320,5 @@ pub fn video_decoder_split(
         buffering_running_average: 0.0,
     };
 
-    Ok((enqueuer, dequeuer))
+    Ok((sink, source))
 }

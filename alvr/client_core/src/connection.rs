@@ -518,8 +518,8 @@ fn connection_pipeline(
 
     #[cfg(target_os = "android")]
     {
-        *crate::decoder::DECODER_ENQUEUER.lock() = None;
-        *crate::decoder::DECODER_DEQUEUER.lock() = None;
+        *crate::decoder::DECODER_SINK.lock() = None;
+        *crate::decoder::DECODER_SOURCE.lock() = None;
     }
 
     video_receive_thread.join().ok();

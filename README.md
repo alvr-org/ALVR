@@ -39,7 +39,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 -   SteamVR
 
 -   High-end gaming PC
-    -   See OS compatibility table above.
+    -   See Os  compatibility table above.
     -   NVIDIA GPU that supports NVENC (1000 GTX Series or higher) (or with an AMD GPU that supports AMF VCE) with the latest driver.
     -   Laptops with an onboard (Intel HD, AMD iGPU) and an additional dedicated GPU (NVidia GTX/RTX, AMD HD/R5/R7): you should assign the dedicated GPU or "high performance graphics adapter" to the applications ALVR, SteamVR for best performance and compatibility. (NVidia: Nvidia control panel->3d settings->application settings; AMD: similiar way)
 

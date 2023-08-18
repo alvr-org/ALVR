@@ -76,7 +76,8 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr
   }
 
   AVFrame * mapped_frame = av_frame_alloc();
-  av_hwframe_get_buffer(hw_frames_ref, mapped_frame, 0);
+  mapped_frame->format = AV_PIX_FMT_VAAPI;
+  mapped_frame->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
 
   AVBufferRef *drm_frames_ref = NULL;
   if (!(drm_frames_ref = av_hwframe_ctx_alloc(drm_device_ctx))) {

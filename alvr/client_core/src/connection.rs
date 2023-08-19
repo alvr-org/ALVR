@@ -332,6 +332,9 @@ fn connection_pipeline(
                     warn!("Dropped video packet. Reason: Decoder saturation")
                 }
             } else {
+                if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+                    sender.send(&ClientControlPacket::RequestIdr).ok();
+                }
                 warn!("Dropped video packet. Reason: Waiting for IDR frame")
             }
         }

@@ -53,5 +53,6 @@ fn main() {
         for path in cpp_paths {
             println!("cargo:rerun-if-changed={}", path.to_string_lossy());
         }
+        println!("cargo:rerun-if-changed={}", "cpp/bindings.h");
     }
 }

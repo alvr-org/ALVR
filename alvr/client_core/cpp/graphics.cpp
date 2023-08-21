@@ -747,10 +747,10 @@ void initGraphicsNative() {
 }
 
 void destroyGraphicsNative() {
-    LOGD("Resetting stream texture and hud texture %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
+    LOGV("Resetting stream texture and hud texture %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
     g_ctx.streamTexture.reset();
     g_ctx.hudTexture.reset();
-    LOGD("Resetted stream texture and hud texture to %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
+    LOGV("Resetted stream texture and hud texture to %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
 }
 
 // on resume

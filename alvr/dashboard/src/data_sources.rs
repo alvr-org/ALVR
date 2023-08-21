@@ -178,7 +178,7 @@ impl DataSources {
                                     warn!("Cannot perform action, streamer (SteamVR) is not connected.")
                                 }
                                 ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
-                                    warn!("SteamVR not launched")
+                                    warn!("Streamer not launched, can't signal SteamVR shutdown")
                                 }
                             }
                         } else {

@@ -17,6 +17,7 @@ Texture::Texture(bool external,
     mWidth = width;
     mHeight = height;
     mTarget = oes ? GL_TEXTURE_EXTERNAL_OES : GL_TEXTURE_2D;
+    mExternal = external;
 
     if (external) {
         mGLTexture = externalHandle;
@@ -43,11 +44,13 @@ Texture::Texture(bool external,
     GL(glTexParameteri(mTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     GL(glTexParameteri(mTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL(glTexParameteri(mTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    LOGV("New texture Created id#%d", mGLTexture);
 }
 
 Texture::~Texture() {
     if (!mExternal) {
         GL(glDeleteTextures(1, &mGLTexture));
+        LOGV("texture id#%d deleted", mGLTexture);
     }
 }
 } // namespace gl_render_utils

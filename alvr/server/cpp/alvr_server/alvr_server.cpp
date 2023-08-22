@@ -196,6 +196,8 @@ void (*SetOpenvrProps)(unsigned long long deviceID);
 void (*WaitForVSync)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
+    HookCrashHandler();
+
     // Initialize path constants
     init_paths();
 

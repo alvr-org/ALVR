@@ -482,36 +482,7 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
             0.0);
         vr_driver_input->UpdateScalarComponent(
             m_handles[ALVR_INPUT_TRIGGER_VALUE], m_triggerValue, 0.0);
-        {
-            float indexCurl = 0.0;
-            if (m_triggerValue > 0.0) {
-                indexCurl = 0.5 + m_triggerValue * 0.5;
-            } else if (m_lastIndexTouch == 0) {
-                indexCurl = m_indexTouchAnimationProgress * 0.5;
-            } else {
-                indexCurl = 0.5 - m_indexTouchAnimationProgress * 0.5;
-            }
-            vr_driver_input->UpdateScalarComponent(
-                m_handles[ALVR_INPUT_FINGER_INDEX], indexCurl, 0.0);
 
-            vr_driver_input->UpdateScalarComponent(
-                m_handles[ALVR_INPUT_FINGER_MIDDLE], m_gripValue, 0.0);
-
-            // Ring and pinky fingers are not tracked. Infer a more natural pose.
-            if ((m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0 ||
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0 ||
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0 ||
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH)) != 0 ||
-                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0) {
-                vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_RING], 1, 0.0);
-                vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_PINKY], 1, 0.0);
-            } else {
-                vr_driver_input->UpdateScalarComponent(
-                    m_handles[ALVR_INPUT_FINGER_RING], m_gripValue, 0.0);
-                vr_driver_input->UpdateScalarComponent(
-                    m_handles[ALVR_INPUT_FINGER_PINKY], m_gripValue, 0.0);
-            }
-        }
         break;
     case 5: // Vive wand
     case 9: // Vive Tracker
@@ -779,6 +750,38 @@ bool Controller::onPoseUpdate(float predictionS,
             }
         } else {
             m_indexTouchAnimationProgress = 0;
+        }
+
+        // Valve Index
+        if (Settings::Instance().m_controllerMode == 3) {
+            float indexCurl = 0.0;
+            if (m_triggerValue > 0.0) {
+                indexCurl = 0.5 + m_triggerValue * 0.5;
+            } else if (m_lastIndexTouch == 0) {
+                indexCurl = m_indexTouchAnimationProgress * 0.5;
+            } else {
+                indexCurl = 0.5 - m_indexTouchAnimationProgress * 0.5;
+            }
+            vr_driver_input->UpdateScalarComponent(
+                m_handles[ALVR_INPUT_FINGER_INDEX], indexCurl, 0.0);
+
+            vr_driver_input->UpdateScalarComponent(
+                m_handles[ALVR_INPUT_FINGER_MIDDLE], m_gripValue, 0.0);
+
+            // Ring and pinky fingers are not tracked. Infer a more natural pose.
+            if ((m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_X_TOUCH)) != 0 ||
+                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_Y_TOUCH)) != 0 ||
+                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_A_TOUCH)) != 0 ||
+                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_B_TOUCH)) != 0 ||
+                (m_buttons & ALVR_BUTTON_FLAG(ALVR_INPUT_JOYSTICK_TOUCH)) != 0) {
+                vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_RING], 1, 0.0);
+                vr_driver_input->UpdateScalarComponent(m_handles[ALVR_INPUT_FINGER_PINKY], 1, 0.0);
+            } else {
+                vr_driver_input->UpdateScalarComponent(
+                    m_handles[ALVR_INPUT_FINGER_RING], m_gripValue, 0.0);
+                vr_driver_input->UpdateScalarComponent(
+                    m_handles[ALVR_INPUT_FINGER_PINKY], m_gripValue, 0.0);
+            }
         }
 
         uint64_t lastPoseTouch = m_lastThumbTouch + m_lastIndexTouch;

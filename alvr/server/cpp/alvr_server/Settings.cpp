@@ -99,7 +99,7 @@ void Settings::Load() {
 
         m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
         m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
-        m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
+        m_enableLinuxAsyncReprojection = config.get("linux_async_reprojection").get<bool>();
 
         m_enableControllers = config.get("controllers_enabled").get<bool>();
         m_controllerMode = (int32_t)config.get("controllers_mode_idx").get<int64_t>();

@@ -114,10 +114,7 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 // Also Disable async reprojection on vulkan
 #ifndef _WIN32
     vr::VRSettings()->SetBool(
-        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, true);
-    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section,
-                              vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
-                              Settings::Instance().m_enableLinuxVulkanAsync);
+        vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool, !Settings::Instance().m_enableLinuxAsyncReprojection);
 #endif
 
     if (!m_baseComponentsInitialized) {

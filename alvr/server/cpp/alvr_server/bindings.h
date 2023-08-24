@@ -106,7 +106,7 @@ extern "C" void (*LogInfo)(const char *stringPtr);
 extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
-extern "C" void (*InitializeDecoder)(const unsigned char *configBuffer, int len, int codec);
+extern "C" void (*SetVideoConfigNals)(const unsigned char *configBuffer, int len, int codec);
 extern "C" void (*VideoSend)(unsigned long long targetTimestampNs,
                              unsigned char *buf,
                              int len,

@@ -1,6 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     buttons::BUTTON_PATH_FROM_ID,
+    create_recording_file,
     face_tracking::FaceTrackingSink,
     haptics,
     sockets::WelcomeSocket,
@@ -42,7 +43,7 @@ use std::{
         Arc,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
@@ -1036,7 +1037,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         }
     }
 
-    if settings.capture.save_video_stream {
+    if settings.capture.startup_video_recording {
         crate::create_recording_file();
     }
 
@@ -1101,12 +1102,29 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
     // start in the corrupts state, the client didn't receive the initial IDR yet.
     static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
+    static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 
     if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
         let buffer_size = len as usize;
 
         if is_idr {
             STREAM_CORRUPTED.store(false, Ordering::SeqCst);
+        }
+
+        if let Switch::Enabled(config) = &SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .capture
+            .rolling_video_files
+        {
+            if Instant::now() > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s) {
+                unsafe { crate::RequestIDR() };
+
+                if is_idr {
+                    create_recording_file();
+                    *LAST_IDR_INSTANT.lock() = Instant::now();
+                }
+            }
         }
 
         let timestamp = Duration::from_nanos(timestamp_ns);

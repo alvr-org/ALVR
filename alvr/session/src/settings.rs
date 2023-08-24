@@ -870,8 +870,18 @@ No action: All driver registration actions should be performed manually, ALVR in
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct RollingVideoFilesConfig {
+    #[schema(strings(display_name = "Duration"))]
+    #[schema(suffix = "s")]
+    pub duration_s: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct CaptureConfig {
-    pub save_video_stream: bool,
+    #[schema(strings(display_name = "Start video recording at client connection"))]
+    pub startup_video_recording: bool,
+
+    pub rolling_video_files: Switch<RollingVideoFilesConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub capture_frame_dir: String,
@@ -1266,7 +1276,11 @@ pub fn session_settings_default() -> SettingsDefault {
             open_close_steamvr_with_dashboard: false,
         },
         capture: CaptureConfigDefault {
-            save_video_stream: false,
+            startup_video_recording: false,
+            rolling_video_files: SwitchDefault {
+                enabled: false,
+                content: RollingVideoFilesConfigDefault { duration_s: 5 },
+            },
             capture_frame_dir: if !cfg!(target_os = "linux") {
                 "/tmp".into()
             } else {

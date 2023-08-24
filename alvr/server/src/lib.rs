@@ -117,7 +117,9 @@ pub fn create_recording_file() {
         "h265"
     };
 
-    let path = FILESYSTEM_LAYOUT.log_dir.join(format!("recording.{ext}"));
+    let path = FILESYSTEM_LAYOUT
+        .log_dir
+        .join(format!("recording.{}.{ext}", chrono::Local::now().format("%F.%H-%M-%S")));
 
     match File::create(path) {
         Ok(mut file) => {
@@ -326,7 +328,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
         }
     }
 
-    extern "C" fn initialize_decoder(buffer_ptr: *const u8, len: i32, codec: i32) {
+    extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
         let codec = if codec == 0 {
             CodecType::H264
         } else {
@@ -435,7 +437,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     LogDebug = Some(log_debug);
     LogPeriodically = Some(log_periodically);
     DriverReadyIdle = Some(driver_ready_idle);
-    InitializeDecoder = Some(initialize_decoder);
+    SetVideoConfigNals = Some(set_video_config_nals);
     VideoSend = Some(connection::send_video);
     HapticsSend = Some(connection::send_haptics);
     ShutdownRuntime = Some(shutdown_driver);

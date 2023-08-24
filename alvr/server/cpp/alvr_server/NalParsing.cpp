@@ -59,7 +59,7 @@ void sendHeaders(int codec, unsigned char *&buf, int &len, int nalNum) {
         return;
     }
 
-    InitializeDecoder((const unsigned char *)buf, headersLen, codec);
+    SetVideoConfigNals((const unsigned char *)buf, headersLen, codec);
 
     // move the cursor forward excluding config NALs
     buf = cursor;

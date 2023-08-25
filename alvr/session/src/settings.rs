@@ -600,14 +600,27 @@ pub struct FaceTrackingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum ControllersEmulationMode {
-    #[schema(strings(display_name = "Rift S Touch"))]
-    RiftSTouch,
+    #[schema(strings(display_name = "Quest 2 Touch"))]
+    Quest2Touch,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     ViveWand,
-    #[schema(strings(display_name = "Quest 2 Touch"))]
-    Quest2Touch,
     ViveTracker,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub struct HysteresisThreshold {
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub value: f32,
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub deviation: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct AutomaticButtonMappingConfig {
+    pub click_threshold: HysteresisThreshold,
+    pub touch_threshold: HysteresisThreshold,
+    pub force_threshold: f32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -638,6 +651,8 @@ pub struct ControllersConfig {
 
     #[schema(flag = "steamvr-restart")]
     pub extra_openvr_props: Vec<OpenvrPropEntry>,
+
+    pub button_mapping_config: AutomaticButtonMappingConfig,
 
     #[schema(strings(
         display_name = "Prediction",
@@ -675,14 +690,6 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(flag = "real-time")]
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_hand_tracking_rotation_offset: [f32; 3],
-
-    #[schema(flag = "steamvr-restart")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub trigger_threshold_override: Switch<f32>,
-
-    #[schema(flag = "steamvr-restart")]
-    #[schema(gui(slider(min = 0.01, max = 1.0, step = 0.01)))]
-    pub grip_threshold_override: Switch<f32>,
 
     #[schema(flag = "real-time")]
     pub haptics: Switch<HapticsConfig>,
@@ -1228,6 +1235,20 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     tracked: true,
                     extra_openvr_props: default_custom_openvr_props,
+                    button_mapping_config: AutomaticButtonMappingConfigDefault {
+                        gui_collapsed: true,
+                        click_threshold: HysteresisThresholdDefault {
+                            gui_collapsed: false,
+                            value: 0.5,
+                            deviation: 0.05,
+                        },
+                        touch_threshold: HysteresisThresholdDefault {
+                            gui_collapsed: false,
+                            value: 0.1,
+                            deviation: 0.05,
+                        },
+                        force_threshold: 0.2,
+                    },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,
                     angular_velocity_cutoff: 10.0,
@@ -1235,14 +1256,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     left_controller_rotation_offset: [-20.0, 0.0, 0.0],
                     left_hand_tracking_position_offset: [0.04, -0.02, -0.13],
                     left_hand_tracking_rotation_offset: [0.0, -45.0, -90.0],
-                    trigger_threshold_override: SwitchDefault {
-                        enabled: false,
-                        content: 0.1,
-                    },
-                    grip_threshold_override: SwitchDefault {
-                        enabled: false,
-                        content: 0.1,
-                    },
                     haptics: SwitchDefault {
                         enabled: true,
                         content: HapticsConfigDefault {

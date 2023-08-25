@@ -417,6 +417,7 @@ dependencies = [
 name = "alvr_vrcompositor_wrapper"
 version = "21.0.0-dev00"
 dependencies = [
+ "alvr_common",
  "alvr_filesystem",
  "exec",
  "xshell",
@@ -426,6 +427,7 @@ dependencies = [
 name = "alvr_vulkan_layer"
 version = "21.0.0-dev00"
 dependencies = [
+ "alvr_common",
  "alvr_filesystem",
  "bindgen 0.66.1",
  "cc",

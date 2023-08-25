@@ -16,6 +16,8 @@ use std::{
     f32::consts::{FRAC_PI_2, PI},
 };
 
+use crate::hand_gestures::HandGestureManager;
+
 const DEG_TO_RAD: f32 = PI / 180.0;
 
 fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {

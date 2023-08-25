@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+alvr_common.workspace = true
 alvr_gui_common.workspace = true
 
 anyhow = "1"

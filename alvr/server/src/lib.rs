@@ -117,9 +117,10 @@ pub fn create_recording_file() {
         "h265"
     };
 
-    let path = FILESYSTEM_LAYOUT
-        .log_dir
-        .join(format!("recording.{}.{ext}", chrono::Local::now().format("%F.%H-%M-%S")));
+    let path = FILESYSTEM_LAYOUT.log_dir.join(format!(
+        "recording.{}.{ext}",
+        chrono::Local::now().format("%F.%H-%M-%S")
+    ));
 
     match File::create(path) {
         Ok(mut file) => {

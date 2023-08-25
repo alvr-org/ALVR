@@ -28,6 +28,7 @@ impl Display for Profile {
 
 pub fn build_streamer(
     profile: Profile,
+    enable_messagebox: bool,
     gpl: bool,
     root: Option<String>,
     reproducible: bool,
@@ -45,6 +46,10 @@ pub fn build_streamer(
         }
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
+    }
+    if enable_messagebox {
+        common_flags.push("--features");
+        common_flags.push("alvr_common/enable-messagebox");
     }
     if reproducible {
         common_flags.push("--locked");
@@ -191,7 +196,7 @@ pub fn build_streamer(
     }
 }
 
-pub fn build_launcher(profile: Profile, reproducible: bool) {
+pub fn build_launcher(profile: Profile, enable_messagebox: bool, reproducible: bool) {
     let sh = Shell::new().unwrap();
 
     let mut common_flags = vec![];
@@ -202,6 +207,10 @@ pub fn build_launcher(profile: Profile, reproducible: bool) {
         }
         Profile::Release => common_flags.push("--release"),
         Profile::Debug => (),
+    }
+    if enable_messagebox {
+        common_flags.push("--features");
+        common_flags.push("alvr_common/enable-messagebox");
     }
     if reproducible {
         common_flags.push("--locked");

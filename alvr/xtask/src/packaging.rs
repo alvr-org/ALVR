@@ -148,7 +148,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
 pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_streamer(Profile::Distribution, gpl, root, true, false);
+    build::build_streamer(Profile::Distribution, !appimage, gpl, root, true, false);
 
     include_licenses(&afs::streamer_build_dir(), gpl);
 
@@ -166,10 +166,10 @@ pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: 
     }
 }
 
-pub fn package_launcher() {
+pub fn package_launcher(appimage: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_launcher(Profile::Distribution, true);
+    build::build_launcher(Profile::Distribution, !appimage, true);
 
     include_licenses(&afs::launcher_build_dir(), false);
 

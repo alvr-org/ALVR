@@ -186,24 +186,26 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-streamer" => build::build_streamer(profile, gpl, None, false, keep_config),
-                "build-launcher" => build::build_launcher(profile, false),
+                "build-streamer" => {
+                    build::build_streamer(profile, true, gpl, None, false, keep_config)
+                }
+                "build-launcher" => build::build_launcher(profile, true, false),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, false, keep_config);
+                        build::build_streamer(profile, true, gpl, None, false, keep_config);
                     }
                     run_streamer();
                 }
                 "run-launcher" => {
                     if !no_rebuild {
-                        build::build_launcher(profile, false);
+                        build::build_launcher(profile, true, false);
                     }
                     run_launcher();
                 }
                 "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
-                "package-launcher" => packaging::package_launcher(),
+                "package-launcher" => packaging::package_launcher(appimage),
                 "package-client" => build::build_android_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp),
                 "clean" => clean(),

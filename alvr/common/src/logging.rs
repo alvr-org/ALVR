@@ -49,7 +49,7 @@ pub fn set_panic_hook() {
 
         log::error!("{err_str}");
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(all(not(target_os = "android"), feature = "enable-messagebox"))]
         std::thread::spawn(move || {
             rfd::MessageDialog::new()
                 .set_title("ALVR panicked")
@@ -63,7 +63,7 @@ pub fn set_panic_hook() {
 pub fn show_w<W: Display + Send + 'static>(w: W) {
     log::warn!("{w}");
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(all(not(target_os = "android"), feature = "enable-messagebox"))]
     std::thread::spawn(move || {
         rfd::MessageDialog::new()
             .set_title("ALVR warning")
@@ -81,7 +81,7 @@ pub fn show_warn<T, E: Display + Send + 'static>(res: Result<T, E>) -> Option<T>
 fn show_e_block<E: Display>(e: E, blocking: bool) {
     log::error!("{e}");
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(all(not(target_os = "android"), feature = "enable-messagebox"))]
     {
         // Store the last error shown in a message box. Do not open a new message box if the content
         // of the error has not changed

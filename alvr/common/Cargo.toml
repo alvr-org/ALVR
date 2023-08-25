@@ -6,6 +6,9 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+enable-messagebox = ["rfd"]
+
 [dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 backtrace = "0.3"
@@ -19,4 +22,4 @@ settings-schema = { git = "https://github.com/zarik5/settings-schema-rs" }
 # settings-schema = { path = "../../../../settings-schema-rs/settings-schema" }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
-rfd = "0.11"
+rfd = {version = "0.11", optional = true }

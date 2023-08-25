@@ -245,14 +245,11 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
     let mut device_motions = Vec::with_capacity(3);
 
     'head_tracking: {
-        let Ok((view_flags, views)) = ctx
-            .xr_session
-            .locate_views(
-                xr::ViewConfigurationType::PRIMARY_STEREO,
-                to_xr_time(target_timestamp),
-                &ctx.reference_space,
-            )
-        else {
+        let Ok((view_flags, views)) = ctx.xr_session.locate_views(
+            xr::ViewConfigurationType::PRIMARY_STEREO,
+            to_xr_time(target_timestamp),
+            &ctx.reference_space,
+        ) else {
             error!("Cannot locate views");
             break 'head_tracking;
         };

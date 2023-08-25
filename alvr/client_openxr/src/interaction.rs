@@ -503,10 +503,7 @@ pub fn get_hand_motion(
         return (None, None);
     }
 
-    let Ok((location, velocity)) = hand_source
-        .grip_space
-        .relate(reference_space, time)
-    else {
+    let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, time) else {
         return (None, None);
     };
 
@@ -713,7 +710,7 @@ pub fn get_eye_gazes(
     time: xr::Time,
 ) -> [Option<Pose>; 2] {
     let Some(tracker) = &context.eye_tracker_fb else {
-        return [None, None]
+        return [None, None];
     };
 
     if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {

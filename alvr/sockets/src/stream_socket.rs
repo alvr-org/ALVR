@@ -481,7 +481,10 @@ impl StreamSocket {
             })
         };
 
-        let Some(components) = self.stream_recv_components.get_mut(&shard_recv_state_mut.stream_id) else {
+        let Some(components) = self
+            .stream_recv_components
+            .get_mut(&shard_recv_state_mut.stream_id)
+        else {
             debug!(
                 "Received packet from stream {} before subscribing!",
                 shard_recv_state_mut.stream_id

@@ -1,5 +1,26 @@
 # Changelog
 
+## v20.2.0
+
+* Add Flatpak build (by @CharlieQLe #1683 #1724 #1735 #1742, @Meister1593 #1769)
+* Finish VRCFaceTracking support (by @zarik5)
+  * You can download the ALVR Module from the VRCFaceTracking app itself.
+  * Only supports the Quest Pro at the moment.
+* New more performant sockets implementation (by @zarik5)
+  * Zero copy + zero allocations, and provides better packet prioritization.
+* Avoid controller freezing during high latency (by @zarik5)
+* Add message popups on Linux (disabled on the appimage build) (by @zarik5 #1711)
+* Show backtrace on unhandled exceptions (Windows only) (by @zarik5)
+  * Previously these would make SteamVR hard crash without any useful log
+* Optionally show full backtraces for logs (by @zarik5)
+* Add option to select client log level (by zarik5)
+* Make Log tab stick to bottom (by @zarik5)
+* Encoder fixes on Linux (by @nowrep #1751 #1753 #1767 #1768 #1796, @Vixea #1805)
+* Use Constant bitrate mode by default
+* Support rolling video recording (by @zarik5)
+* Fix OpenGL crash on the client (by @ShootingKing-AM #1801)
+* Fix white dashboard bug on Linux (by @zarik5)
+
 ## v20.1.0
 
 * Fix firewall rules on Windows (by @zarik5)

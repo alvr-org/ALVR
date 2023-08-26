@@ -16,6 +16,11 @@
 #define fourcc_mod_code(vendor, val) ((((uint64_t)vendor) << 56) | ((val) & 0x00ffffffffffffffULL))
 #define DRM_FORMAT_MOD_INVALID fourcc_mod_code(0, ((1ULL << 56) - 1))
 #define DRM_FORMAT_MOD_LINEAR fourcc_mod_code(0, 0)
+#define DRM_FORMAT_MOD_VENDOR_AMD 0x02
+#define AMD_FMT_MOD_DCC_SHIFT 13
+#define AMD_FMT_MOD_DCC_MASK 0x1
+#define IS_AMD_FMT_MOD(val) (((val) >> 56) == DRM_FORMAT_MOD_VENDOR_AMD)
+#define AMD_FMT_MOD_GET(field, value) (((value) >> AMD_FMT_MOD_##field##_SHIFT) & AMD_FMT_MOD_##field##_MASK)
 #endif
 
 struct Vertex {
@@ -33,6 +38,17 @@ static uint32_t to_drm_format(VkFormat format)
         std::cerr << "Unsupported format " << format << std::endl;
         return DRM_FORMAT_INVALID;
     }
+}
+
+static bool filter_modifier(uint64_t modifier)
+{
+    if (IS_AMD_FMT_MOD(modifier)) {
+        // DCC not supported as encode input
+        if (AMD_FMT_MOD_GET(DCC, modifier)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
@@ -286,6 +302,10 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height)
         std::cout << "Available modifiers:" << std::endl;
         for (const VkDrmFormatModifierPropertiesEXT &prop : modifierProps) {
             std::cout << "modifier: " << prop.drmFormatModifier << " planes: " << prop.drmFormatModifierPlaneCount << std::endl;
+            if (!filter_modifier(prop.drmFormatModifier)) {
+                std::cout << " filtered" << std::endl;
+                continue;
+            }
 
             VkPhysicalDeviceImageDrmFormatModifierInfoEXT modInfo = {};
             modInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT;

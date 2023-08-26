@@ -21,10 +21,13 @@ USAGE:
 SUBCOMMANDS:
     prepare-deps        Download and compile streamer and client external dependencies
     build-streamer      Build streamer, then copy binaries to build folder
+    build-launcher      Build launcher, then copy binaries to build folder
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header.
     run-streamer        Build streamer and then open the dashboard
-    package-streamer    Build streamer in release mode, make portable version and installer
+    run-launcher        Build launcher and then open it
+    package-streamer    Build streamer with distribution profile, make archive
+    package-launcher    Build launcher in release mode, make portable and installer versions
     package-client-lib  Build client library then zip it
     clean               Removes all build artifacts and dependencies.
     bump                Bump streamer and client package versions
@@ -55,8 +58,14 @@ pub fn run_streamer() {
     let sh = Shell::new().unwrap();
 
     let dashboard_exe = Layout::new(&afs::streamer_build_dir()).dashboard_exe();
-
     cmd!(sh, "{dashboard_exe}").run().unwrap();
+}
+
+pub fn run_launcher() {
+    let sh = Shell::new().unwrap();
+
+    let launcher_exe = afs::launcher_build_exe_path();
+    cmd!(sh, "{launcher_exe}").run().unwrap();
 }
 
 pub fn clean() {
@@ -177,16 +186,26 @@ fn main() {
                         dependencies::build_android_deps(for_ci);
                     }
                 }
-                "build-streamer" => build::build_streamer(profile, gpl, None, false, keep_config),
+                "build-streamer" => {
+                    build::build_streamer(profile, true, gpl, None, false, keep_config)
+                }
+                "build-launcher" => build::build_launcher(profile, true, false),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, gpl, None, false, keep_config);
+                        build::build_streamer(profile, true, gpl, None, false, keep_config);
                     }
                     run_streamer();
                 }
+                "run-launcher" => {
+                    if !no_rebuild {
+                        build::build_launcher(profile, true, false);
+                    }
+                    run_launcher();
+                }
                 "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
+                "package-launcher" => packaging::package_launcher(appimage),
                 "package-client" => build::build_android_client(Profile::Distribution),
                 "package-client-lib" => packaging::package_client_lib(link_stdcpp),
                 "clean" => clean(),

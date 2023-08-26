@@ -131,6 +131,8 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_
 * using CreateSwapTextureSet and should be alternated per frame.  Call Present once all layers have been submitted. */
 void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 {
+	m_presentMutex.lock();
+
 	auto pPose = &perEye[0].mHmdPose; // TODO: are both poses the same? Name HMD suggests yes.
 
 	if (m_submitLayer == 0) {
@@ -165,11 +167,15 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 	}
 
 	//CopyTexture();
+
+	m_presentMutex.unlock();
 }
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 {
+	m_presentMutex.lock();
+
 	ReportPresent(m_targetTimestampNs, 0);
 
 	bool useMutex = true;
@@ -188,6 +194,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	if (!pSyncTexture)
 	{
 		Warn("[VDispDvr] SyncTexture is NULL!\n");
+		m_presentMutex.unlock();
 		return;
 	}
 
@@ -203,6 +210,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 			{
 				Debug("[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls\n", hr, hr, GetErrorStr(hr).c_str());
 				pKeyedMutex->Release();
+				m_presentMutex.unlock();
 				return;
 			}
 		}
@@ -223,6 +231,8 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture)
 	if (m_pEncoder) {
 		m_pEncoder->NewFrameReady();
 	}
+
+	m_presentMutex.unlock();
 }
 
 void OvrDirectModeComponent::PostPresent() {

@@ -3,7 +3,7 @@
 // todo: add more emulation modes
 
 use crate::{FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER};
-use alvr_common::{prelude::*, settings_schema::Switch, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
+use alvr_common::{info, settings_schema::Switch, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue,
     OpenvrPropertyKey::{self, *},

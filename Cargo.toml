@@ -19,6 +19,7 @@ alvr_packets = { path = "alvr/packets" }
 alvr_server_io = { path = "alvr/server_io" }
 alvr_session = { path = "alvr/session" }
 alvr_sockets = { path = "alvr/sockets" }
+alvr_gui_common = { path = "alvr/gui_common" }
 
 [profile.distribution]
 inherits = "release"

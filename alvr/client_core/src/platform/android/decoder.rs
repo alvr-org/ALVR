@@ -1,16 +1,11 @@
 use crate::decoder::DecoderInitConfig;
 use alvr_common::{
-    once_cell::sync::Lazy,
+    anyhow::{bail, Result},
+    error, info,
     parking_lot::{Condvar, Mutex},
-    prelude::*,
-    RelaxedAtomic,
+    warn, RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
-use jni::{
-    objects::{GlobalRef, JObject},
-    sys::jobject,
-    JNIEnv, JavaVM,
-};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
@@ -24,17 +19,12 @@ use ndk::{
 use std::{
     collections::VecDeque,
     ffi::c_void,
-    net::{IpAddr, Ipv4Addr},
     ops::Deref,
     ptr,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
-
-pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
-
-static WIFI_LOCK: Lazy<Mutex<Option<GlobalRef>>> = Lazy::new(|| Mutex::new(None));
 
 struct FakeThreadSafe<T>(T);
 unsafe impl<T> Send for FakeThreadSafe<T> {}
@@ -50,263 +40,15 @@ impl<T> Deref for FakeThreadSafe<T> {
 
 type SharedMediaCodec = Arc<FakeThreadSafe<MediaCodec>>;
 
-pub fn vm() -> JavaVM {
-    unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
-}
-
-pub fn context() -> jobject {
-    ndk_context::android_context().context().cast()
-}
-
-fn get_api_level() -> i32 {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    env.get_static_field("android/os/Build$VERSION", "SDK_INT", "I")
-        .unwrap()
-        .i()
-        .unwrap()
-}
-
-pub fn try_get_permission(permission: &str) {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    let mic_perm_jstring = env.new_string(permission).unwrap();
-
-    let permission_status = env
-        .call_method(
-            unsafe { JObject::from_raw(context()) },
-            "checkSelfPermission",
-            "(Ljava/lang/String;)I",
-            &[(&mic_perm_jstring).into()],
-        )
-        .unwrap()
-        .i()
-        .unwrap();
-
-    if permission_status != 0 {
-        let string_class = env.find_class("java/lang/String").unwrap();
-        let perm_array = env
-            .new_object_array(1, string_class, mic_perm_jstring)
-            .unwrap();
-
-        env.call_method(
-            unsafe { JObject::from_raw(context()) },
-            "requestPermissions",
-            "([Ljava/lang/String;I)V",
-            &[(&perm_array).into(), 0.into()],
-        )
-        .unwrap();
-
-        // todo: handle case where permission is rejected
-    }
-}
-
-pub fn device_model() -> String {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    let jname = env
-        .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
-        .unwrap()
-        .l()
-        .unwrap();
-    let name_raw = env.get_string((&jname).into()).unwrap();
-
-    name_raw.to_string_lossy().as_ref().to_owned()
-}
-
-pub fn manufacturer_name() -> String {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    let jname = env
-        .get_static_field("android/os/Build", "MANUFACTURER", "Ljava/lang/String;")
-        .unwrap()
-        .l()
-        .unwrap();
-    let name_raw = env.get_string((&jname).into()).unwrap();
-
-    name_raw.to_string_lossy().as_ref().to_owned()
-}
-
-fn get_system_service<'a>(env: &mut JNIEnv<'a>, service_name: &str) -> JObject<'a> {
-    let service_str = env.new_string(service_name).unwrap();
-
-    env.call_method(
-        unsafe { JObject::from_raw(context()) },
-        "getSystemService",
-        "(Ljava/lang/String;)Ljava/lang/Object;",
-        &[(&service_str).into()],
-    )
-    .unwrap()
-    .l()
-    .unwrap()
-}
-
-// Note: tried and failed to use libc
-pub fn local_ip() -> IpAddr {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    let wifi_manager = get_system_service(&mut env, "wifi");
-    let wifi_info = env
-        .call_method(
-            wifi_manager,
-            "getConnectionInfo",
-            "()Landroid/net/wifi/WifiInfo;",
-            &[],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-    let ip_i32 = env
-        .call_method(wifi_info, "getIpAddress", "()I", &[])
-        .unwrap()
-        .i()
-        .unwrap();
-
-    let ip_arr = ip_i32.to_le_bytes();
-
-    IpAddr::V4(Ipv4Addr::new(ip_arr[0], ip_arr[1], ip_arr[2], ip_arr[3]))
-}
-
-// This is needed to avoid wifi scans that disrupt streaming.
-pub fn acquire_wifi_lock() {
-    let mut maybe_wifi_lock = WIFI_LOCK.lock();
-
-    if maybe_wifi_lock.is_none() {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let wifi_mode = if get_api_level() >= 29 {
-            // Recommended for virtual reality since it disables WIFI scans
-            4 // WIFI_MODE_FULL_LOW_LATENCY
-        } else {
-            3 // WIFI_MODE_FULL_HIGH_PERF
-        };
-
-        let wifi_manager = get_system_service(&mut env, "wifi");
-        let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
-        let wifi_lock = env
-            .call_method(
-                wifi_manager,
-                "createWifiLock",
-                "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[wifi_mode.into(), (&wifi_lock_jstring).into()],
-            )
-            .unwrap()
-            .l()
-            .unwrap();
-        env.call_method(&wifi_lock, "acquire", "()V", &[]).unwrap();
-
-        *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());
-    }
-}
-
-pub fn release_wifi_lock() {
-    if let Some(wifi_lock) = WIFI_LOCK.lock().take() {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
-
-        env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
-            .unwrap();
-        // TODO: all JVM.call_method sometimes result in JavaExceptions, unwrap will only report Error as 'JavaException', ideally before unwrapping
-        // need to call JVM.describe_error() which will actually check if there is an exception and print error to stderr/logcat. Then unwrap.
-
-        // wifi_lock is dropped here
-    }
-}
-
-pub struct BatteryManager {
-    intent: GlobalRef,
-}
-
-impl BatteryManager {
-    pub fn new() -> Self {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let intent_action_jstring = env
-            .new_string("android.intent.action.BATTERY_CHANGED")
-            .unwrap();
-        let intent_filter = env
-            .new_object(
-                "android/content/IntentFilter",
-                "(Ljava/lang/String;)V",
-                &[(&intent_action_jstring).into()],
-            )
-            .unwrap();
-        let intent = env
-        .call_method(
-            unsafe { JObject::from_raw(context()) },
-            "registerReceiver",
-            "(Landroid/content/BroadcastReceiver;Landroid/content/IntentFilter;)Landroid/content/Intent;",
-            &[(&JObject::null()).into(), (&intent_filter).into()],
-        )
-        .unwrap()
-        .l()
-        .unwrap();
-
-        Self {
-            intent: env.new_global_ref(intent).unwrap(),
-        }
-    }
-
-    // return (normalized gauge, is plugged)
-    pub fn status(&self) -> (f32, bool) {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let level_jstring = env.new_string("level").unwrap();
-        let level = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&level_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-        let scale_jstring = env.new_string("scale").unwrap();
-        let scale = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&scale_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-
-        let plugged_jstring = env.new_string("plugged").unwrap();
-        let plugged = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&plugged_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-
-        (level as f32 / scale as f32, plugged > 0)
-    }
-}
-
-pub struct VideoDecoderEnqueuer {
+pub struct VideoDecoderSink {
     inner: Arc<Mutex<Option<SharedMediaCodec>>>,
 }
 
-unsafe impl Send for VideoDecoderEnqueuer {}
+unsafe impl Send for VideoDecoderSink {}
 
-impl VideoDecoderEnqueuer {
+impl VideoDecoderSink {
     // Block until the buffer has been written or timeout is reached. Returns false if timeout.
-    pub fn push_frame_nal(&self, timestamp: Duration, data: &[u8]) -> StrResult<bool> {
+    pub fn push_frame_nal(&mut self, timestamp: Duration, data: &[u8]) -> Result<bool> {
         let Some(decoder) = &*self.inner.lock() else {
             // This might happen only during destruction
             return Ok(false);
@@ -325,14 +67,12 @@ impl VideoDecoderEnqueuer {
                 // NB: the function expects the timestamp in micros, but nanos is used to have
                 // complete precision, so when converted back to Duration it can compare correctly
                 // to other Durations
-                decoder
-                    .queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)
-                    .map_err(err!())?;
+                decoder.queue_input_buffer(buffer, 0, data.len(), timestamp.as_nanos() as _, 0)?;
 
                 Ok(true)
             }
             Ok(DequeuedInputBufferResult::TryAgainLater) => Ok(false),
-            Err(e) => fmt_e!("{e}"),
+            Err(e) => bail!("{e}"),
         }
     }
 }
@@ -345,7 +85,7 @@ struct QueuedImage {
 unsafe impl Send for QueuedImage {}
 
 // Access the image queue synchronously.
-pub struct VideoDecoderDequeuer {
+pub struct VideoDecoderSource {
     running: Arc<RelaxedAtomic>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
@@ -353,9 +93,9 @@ pub struct VideoDecoderDequeuer {
     buffering_running_average: f32,
 }
 
-unsafe impl Send for VideoDecoderDequeuer {}
+unsafe impl Send for VideoDecoderSource {}
 
-impl VideoDecoderDequeuer {
+impl VideoDecoderSource {
     // The application MUST finish using the returned buffer before calling this function again
     pub fn dequeue_frame(&mut self) -> Option<(Duration, *mut c_void)> {
         let mut image_queue_lock = self.image_queue.lock();
@@ -395,7 +135,7 @@ impl VideoDecoderDequeuer {
     }
 }
 
-impl Drop for VideoDecoderDequeuer {
+impl Drop for VideoDecoderSource {
     fn drop(&mut self) {
         self.running.set(false);
 
@@ -404,22 +144,21 @@ impl Drop for VideoDecoderDequeuer {
     }
 }
 
-// Create a enqueuer/dequeuer pair. To preserve the state of internal variables, use
-// `enqueuer.recreate_decoder()` instead of dropping the pair and calling this function again.
+// Create a sink/source pair
 pub fn video_decoder_split(
     config: DecoderInitConfig,
     csd_0: Vec<u8>,
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
-) -> StrResult<(VideoDecoderEnqueuer, VideoDecoderDequeuer)> {
+) -> Result<(VideoDecoderSink, VideoDecoderSource)> {
     let running = Arc::new(RelaxedAtomic::new(true));
-    let decoder_enqueuer = Arc::new(Mutex::new(None::<SharedMediaCodec>));
+    let decoder_sink = Arc::new(Mutex::new(None::<SharedMediaCodec>));
     let decoder_ready_notifier = Arc::new(Condvar::new());
     let image_queue = Arc::new(Mutex::new(VecDeque::<QueuedImage>::new()));
 
     let dequeue_thread = thread::spawn({
         let config = config.clone();
         let running = Arc::clone(&running);
-        let decoder_enqueuer = Arc::clone(&decoder_enqueuer);
+        let decoder_sink = Arc::clone(&decoder_sink);
         let decoder_ready_notifier = Arc::clone(&decoder_ready_notifier);
         let image_queue = Arc::clone(&image_queue);
         move || {
@@ -518,7 +257,7 @@ pub fn video_decoder_split(
             decoder.start().unwrap();
 
             {
-                let mut decoder_lock = decoder_enqueuer.lock();
+                let mut decoder_lock = decoder_sink.lock();
 
                 *decoder_lock = Some(Arc::clone(&decoder));
 
@@ -529,7 +268,7 @@ pub fn video_decoder_split(
                 match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
                     Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
                         // The buffer timestamp is actually nanoseconds
-                        let presentation_time_ns = buffer.presentation_time_us();
+                        let presentation_time_ns = buffer.info().presentation_time_us();
 
                         if let Err(e) =
                             decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
@@ -549,7 +288,7 @@ pub fn video_decoder_split(
             }
 
             // Destroy all resources
-            decoder_enqueuer.lock().take(); // Make sure the shared ref is deleted first
+            decoder_sink.lock().take(); // Make sure the shared ref is deleted first
             decoder.stop().unwrap();
             drop(decoder);
 
@@ -562,7 +301,7 @@ pub fn video_decoder_split(
     // Make sure the decoder is ready: we don't want to try to enqueue frame and lose them, to avoid
     // image corruption.
     {
-        let mut decoder_lock = decoder_enqueuer.lock();
+        let mut decoder_lock = decoder_sink.lock();
 
         if decoder_lock.is_none() {
             // No spurious wakeups
@@ -570,10 +309,10 @@ pub fn video_decoder_split(
         }
     }
 
-    let enqueuer = VideoDecoderEnqueuer {
-        inner: decoder_enqueuer,
+    let sink = VideoDecoderSink {
+        inner: decoder_sink,
     };
-    let dequeuer = VideoDecoderDequeuer {
+    let source = VideoDecoderSource {
         running,
         dequeue_thread: Some(dequeue_thread),
         image_queue,
@@ -581,5 +320,5 @@ pub fn video_decoder_split(
         buffering_running_average: 0.0,
     };
 
-    Ok((enqueuer, dequeuer))
+    Ok((sink, source))
 }

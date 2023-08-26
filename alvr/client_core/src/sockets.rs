@@ -1,4 +1,4 @@
-use alvr_common::{StrResult, *};
+use alvr_common::{anyhow::Result, ALVR_NAME};
 use alvr_sockets::{CONTROL_PORT, LOCAL_IP};
 use std::net::{Ipv4Addr, UdpSocket};
 
@@ -8,9 +8,9 @@ pub struct AnnouncerSocket {
 }
 
 impl AnnouncerSocket {
-    pub fn new(hostname: &str) -> StrResult<Self> {
-        let socket = UdpSocket::bind((LOCAL_IP, CONTROL_PORT)).map_err(err!())?;
-        socket.set_broadcast(true).map_err(err!())?;
+    pub fn new(hostname: &str) -> Result<Self> {
+        let socket = UdpSocket::bind((LOCAL_IP, CONTROL_PORT))?;
+        socket.set_broadcast(true)?;
 
         let mut packet = [0; 56];
         packet[0..ALVR_NAME.len()].copy_from_slice(ALVR_NAME.as_bytes());
@@ -20,10 +20,10 @@ impl AnnouncerSocket {
         Ok(Self { socket, packet })
     }
 
-    pub fn broadcast(&self) -> StrResult {
+    pub fn broadcast(&self) -> Result<()> {
         self.socket
-            .send_to(&self.packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))
-            .map_err(err!())?;
+            .send_to(&self.packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))?;
+
         Ok(())
     }
 }

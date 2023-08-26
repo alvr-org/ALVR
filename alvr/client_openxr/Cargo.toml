@@ -16,7 +16,7 @@ alvr_packets.workspace = true
 alvr_session.workspace = true
 
 glow = "0.12"
-khronos-egl = { version = "4", features = ["dynamic"] }
+khronos-egl = { version = "=4.1", features = ["dynamic"] }
 openxr = { git = "https://github.com/zarik5/openxrs" }
 # openxr = { path = "../../../../openxrs/openxr" }
 

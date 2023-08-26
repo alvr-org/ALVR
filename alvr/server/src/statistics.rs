@@ -239,8 +239,9 @@ impl StatisticsManager {
                     video_packets_per_sec: (self.video_packets_partial_sum as f32 / interval_secs)
                         as _,
                     video_mbytes_total: (self.video_bytes_total as f32 / 1e6) as usize,
-                    video_mbits_per_sec: self.video_bytes_partial_sum as f32 / interval_secs * 8.
-                        / 1e6,
+                    video_mbits_per_sec: self.video_bytes_partial_sum as f32 * 8.
+                        / 1e6
+                        / interval_secs,
                     total_latency_ms: client_stats.total_pipeline_latency.as_secs_f32() * 1000.,
                     network_latency_ms: network_latency.as_secs_f32() * 1000.,
                     encode_latency_ms: encoder_latency.as_secs_f32() * 1000.,

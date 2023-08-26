@@ -3,7 +3,11 @@ mod settings;
 pub use settings::*;
 pub use settings_schema;
 
-use alvr_common::{prelude::*, semver::Version, ALVR_VERSION};
+use alvr_common::{
+    anyhow::{bail, Result},
+    semver::Version,
+    ToAny, ALVR_VERSION,
+};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::{NumberType, SchemaNode};
@@ -99,8 +103,10 @@ pub struct OpenvrConfig {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ConnectionState {
     Disconnected,
+    Connecting,
     Connected,
     Streaming,
+    Disconnecting { should_be_removed: bool },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -157,7 +163,7 @@ impl SessionConfig {
     // deserialization will fail if the type of values does not match. Because of this,
     // `session_settings` must be handled separately to do a better job of retrieving data using the
     // settings schema.
-    pub fn merge_from_json(&mut self, json_value: &json::Value) -> StrResult {
+    pub fn merge_from_json(&mut self, json_value: &json::Value) -> Result<()> {
         const SESSION_SETTINGS_STR: &str = "session_settings";
 
         if let Ok(session_desc) = json::from_value(json_value.clone()) {
@@ -165,15 +171,16 @@ impl SessionConfig {
             return Ok(());
         }
 
-        let old_session_json = json::to_value(&self).map_err(err!())?;
-        let old_session_fields = old_session_json.as_object().ok_or_else(enone!())?;
+        // Note: unwrap is safe because current session is expected to serialize correctly
+        let old_session_json = json::to_value(&self).unwrap();
+        let old_session_fields = old_session_json.as_object().unwrap();
 
         let maybe_session_settings_json =
             json_value
                 .get(SESSION_SETTINGS_STR)
                 .map(|new_session_settings_json| {
                     extrapolate_session_settings_from_session_settings(
-                        &old_session_json[SESSION_SETTINGS_STR],
+                        &old_session_fields[SESSION_SETTINGS_STR],
                         new_session_settings_json,
                         &Settings::schema(settings::session_settings_default()),
                     )
@@ -194,7 +201,9 @@ impl SessionConfig {
         let mut session_desc_mut =
             json::from_value::<SessionConfig>(json::Value::Object(new_fields)).unwrap_or_default();
 
-        match json::from_value::<SessionSettings>(maybe_session_settings_json.ok_or_else(enone!())?)
+        match maybe_session_settings_json
+            .to_any()
+            .and_then(|s| serde_json::from_value::<SessionSettings>(s).map_err(|e| e.into()))
         {
             Ok(session_settings) => {
                 session_desc_mut.session_settings = session_settings;
@@ -204,7 +213,7 @@ impl SessionConfig {
             Err(e) => {
                 *self = session_desc_mut;
 
-                fmt_e!("Error while deserializing extrapolated session settings: {e}")
+                bail!("Error while deserializing extrapolated session settings: {e}")
             }
         }
     }

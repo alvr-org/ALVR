@@ -1,26 +1,15 @@
 use super::{NestingInfo, SettingControl, INDENTATION_STEP};
-use crate::{
-    dashboard::DisplayString,
-    theme::{
-        log_colors::{INFO_LIGHT, WARNING_LIGHT},
-        OK_GREEN,
-    },
+use crate::dashboard::DisplayString;
+use alvr_gui_common::theme::{
+    log_colors::{INFO_LIGHT, WARNING_LIGHT},
+    OK_GREEN,
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
 use eframe::egui::{self, popup, Ui};
 use serde_json as json;
-use std::collections::HashMap;
 
 const POPUP_ID: &str = "setpopup";
-
-fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
-    strings.get("display_name").cloned().unwrap_or_else(|| {
-        let mut chars = id.chars();
-        chars.next().unwrap().to_uppercase().collect::<String>()
-            + chars.as_str().replace('_', " ").as_str()
-    })
-}
 
 struct Entry {
     id: DisplayString,
@@ -41,15 +30,13 @@ impl Control {
         mut nesting_info: NestingInfo,
         schema_entries: Vec<SchemaEntry<SchemaNode>>,
     ) -> Self {
-        if nesting_info.path.len() > 1 {
-            nesting_info.indentation_level += 1;
-        }
+        nesting_info.indentation_level += 1;
 
         let entries = schema_entries
             .into_iter()
             .map(|entry| {
                 let id = entry.name;
-                let display = get_display_name(&id, &entry.strings);
+                let display = super::get_display_name(&id, &entry.strings);
                 let help = entry.strings.get("help").cloned();
                 // let notice = entry.strings.get("notice").cloned();
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");
@@ -91,7 +78,11 @@ impl Control {
         for (i, entry) in self.entries.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.add_space(INDENTATION_STEP * self.nesting_info.indentation_level as f32);
-                ui.label(&entry.id.display);
+                let label_res = ui.label(&entry.id.display);
+                if cfg!(debug_assertions) {
+                    label_res.on_hover_text(&*entry.id);
+                }
+
                 if let Some(string) = &entry.help {
                     if ui.colored_label(INFO_LIGHT, "❓").hovered() {
                         popup::show_tooltip_text(ui.ctx(), egui::Id::new(POPUP_ID), string);
@@ -101,12 +92,15 @@ impl Control {
                     popup::show_tooltip_text(
                         ui.ctx(),
                         egui::Id::new(POPUP_ID),
-                        "Changing this setting will make SteamVR restart!\nPlease save your in-game progress first",
+                        format!(
+                            "Changing this setting will make SteamVR restart!\n{}",
+                            "Please save your in-game progress first"
+                        ),
                     );
                 }
 
                 // The emoji is blue but it will be green in the UI
-                if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() { 
+                if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
                     popup::show_tooltip_text(
                         ui.ctx(),
                         egui::Id::new(POPUP_ID),

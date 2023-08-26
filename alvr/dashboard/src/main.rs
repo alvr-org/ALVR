@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod dashboard;
-mod theme;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod data_sources;
@@ -34,6 +33,9 @@ fn main() {
 
     {
         let mut data_manager = data_sources::get_local_data_source();
+
+        data_manager.clean_client_list();
+
         if data_manager
             .get_gpu_vendors()
             .iter()
@@ -50,6 +52,7 @@ fn main() {
             let mut session_ref = data_manager.session_mut();
             session_ref.server_version = ALVR_VERSION.clone();
             session_ref.client_connections.clear();
+            session_ref.session_settings.open_setup_wizard = true;
         }
 
         if data_manager

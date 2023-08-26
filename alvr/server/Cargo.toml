@@ -22,12 +22,10 @@ alvr_server_io.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-# Serialization
 bincode = "1"
-serde = "1"
-serde_json = "1"
-# Networking and async
 bytes = "1"
+chrono = "0.4"
+fern = "0.6"
 futures = "0.3"
 headers = "0.3"
 hyper = { version = "0.14", features = [
@@ -37,7 +35,7 @@ hyper = { version = "0.14", features = [
     "runtime",
     "tcp",
 ] }
-reqwest = "0.11"
+reqwest = "0.11" # not used but webserver does not work without it. todo: investigate
 rosc = "0.10"
 tokio = { version = "1", features = [
     "rt-multi-thread",
@@ -47,12 +45,10 @@ tokio = { version = "1", features = [
     "net",
     "fs",
 ] }
-tokio-tungstenite = "0.19"
+tokio-tungstenite = "0.20"
 tokio-util = { version = "0.7", features = ["codec"] }
-# Miscellaneous
-chrono = "0.4"
-fern = "0.6"
-spin_sleep = "1"
+serde = "1"
+serde_json = "1"
 sysinfo = { version = "0.29", default-features = false }
 
 [build-dependencies]

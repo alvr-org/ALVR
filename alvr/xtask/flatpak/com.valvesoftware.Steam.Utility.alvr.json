@@ -1,0 +1,63 @@
+{
+    "id": "com.valvesoftware.Steam.Utility.alvr",
+    "branch": "stable",
+    "sdk": "org.freedesktop.Sdk//22.08",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.llvm16",
+        "org.freedesktop.Sdk.Extension.rust-stable"
+    ],
+    "runtime": "com.valvesoftware.Steam",
+    "runtime-version": "stable",
+    "build-extension": true,
+    "appstream-compose": false,
+    "separate-locales": false,
+    "build-options": {
+        "prefix": "/app/utils/alvr",
+        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin",
+        "prepend-ld-library-path": "/app/utils/alvr/lib",
+        "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
+        "strip": true,
+        "env": {
+            "PREFIX": "/app/utils/alvr"
+        },
+        "build-args": [
+            "--share=network"
+        ]
+    },
+    "cleanup": [
+        "/lib/*.a",
+        "/lib/*.la",
+        "/share/doc",
+        "/share/man"
+    ],
+    "modules": [
+        {
+            "name": "alvr",
+            "buildsystem": "simple",
+            "build-options": {
+                "env": {
+                    "RUST_BACKTRACE": "full",
+                    "CURL_HOME": "/run/build/alvr",
+                    "CPATH": "/app/utils/alvr/include"
+                }
+            },
+            "build-commands": [
+                "echo 'insecure' >> .curlrc",
+                "cargo xtask prepare-deps --platform linux --no-nvidia",
+                "cargo xtask build-streamer --release",
+                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr"
+            ],
+            "modules": [
+                "modules/yasm/yasm.json",
+                "modules/vulkan-headers/vulkan-headers.json",
+                "modules/x264/x264.json"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "../../../"
+                }
+            ]
+        }
+    ]
+}

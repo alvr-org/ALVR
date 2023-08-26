@@ -462,62 +462,75 @@ pub fn get_hand_motion(
     hand_source: &HandSource,
     last_position: &mut Vec3,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
-    if hand_source
+    if let Some(tracker) = &hand_source.skeleton_tracker {
+        if let Some(joint_locations) = reference_space
+            .locate_hand_joints(tracker, time)
+            .ok()
+            .flatten()
+        {
+            if joint_locations[0]
+                .location_flags
+                .contains(xr::SpaceLocationFlags::POSITION_VALID)
+            {
+                *last_position = to_vec3(joint_locations[0].pose.position);
+            }
+
+            let root_motion = DeviceMotion {
+                pose: Pose {
+                    orientation: to_quat(joint_locations[0].pose.orientation),
+                    position: *last_position,
+                },
+                linear_velocity: Vec3::ZERO,
+                angular_velocity: Vec3::ZERO,
+            };
+
+            let joints = joint_locations
+                .iter()
+                .map(|j| to_pose(j.pose))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+
+            return (Some(root_motion), Some(joints));
+        }
+    }
+
+    if !hand_source
         .grip_action
         .is_active(session, xr::Path::NULL)
         .unwrap_or(false)
     {
-        let Ok((location, velocity)) = hand_source
-            .grip_space
-            .relate(reference_space, time)
-        else {
-            return (None, None);
-        };
-
-        if location
-            .location_flags
-            .contains(xr::SpaceLocationFlags::POSITION_TRACKED)
-        {
-            *last_position = to_vec3(location.pose.position);
-        }
-
-        let hand_motion = DeviceMotion {
-            pose: Pose {
-                orientation: to_quat(location.pose.orientation),
-                position: *last_position,
-            },
-            linear_velocity: to_vec3(velocity.linear_velocity),
-            angular_velocity: to_vec3(velocity.angular_velocity),
-        };
-
-        return (Some(hand_motion), None);
+        return (None, None);
     }
 
-    let Some(tracker) = &hand_source.skeleton_tracker else {
+    let Ok((location, velocity)) = hand_source.grip_space.relate(reference_space, time) else {
         return (None, None);
     };
 
-    let Some((joint_locations, jont_velocities)) = reference_space
-            .relate_hand_joints(tracker, time)
-            .ok().flatten()
-        else {
-            return (None, None);
-        };
+    if !location
+        .location_flags
+        .contains(xr::SpaceLocationFlags::ORIENTATION_VALID)
+    {
+        return (None, None);
+    }
 
-    let root_motion = DeviceMotion {
-        pose: to_pose(joint_locations[0].pose),
-        linear_velocity: to_vec3(jont_velocities[0].linear_velocity),
-        angular_velocity: to_vec3(jont_velocities[0].angular_velocity),
+    if location
+        .location_flags
+        .contains(xr::SpaceLocationFlags::POSITION_VALID)
+    {
+        *last_position = to_vec3(location.pose.position);
+    }
+
+    let hand_motion = DeviceMotion {
+        pose: Pose {
+            orientation: to_quat(location.pose.orientation),
+            position: *last_position,
+        },
+        linear_velocity: to_vec3(velocity.linear_velocity),
+        angular_velocity: to_vec3(velocity.angular_velocity),
     };
 
-    let joints = joint_locations
-        .iter()
-        .map(|j| to_pose(j.pose))
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-
-    (Some(root_motion), Some(joints))
+    (Some(hand_motion), None)
 }
 
 // todo: move emulation to server
@@ -697,7 +710,7 @@ pub fn get_eye_gazes(
     time: xr::Time,
 ) -> [Option<Pose>; 2] {
     let Some(tracker) = &context.eye_tracker_fb else {
-        return [None, None]
+        return [None, None];
     };
 
     if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {

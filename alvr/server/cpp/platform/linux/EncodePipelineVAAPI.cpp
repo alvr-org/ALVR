@@ -2,6 +2,7 @@
 #include "ALVR-common/packet_types.h"
 #include "ffmpeg_helper.h"
 #include "alvr_server/Settings.h"
+#include "alvr_server/Logger.h"
 #include <chrono>
 
 extern "C" {
@@ -75,7 +76,8 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr
   }
 
   AVFrame * mapped_frame = av_frame_alloc();
-  av_hwframe_get_buffer(hw_frames_ref, mapped_frame, 0);
+  mapped_frame->format = AV_PIX_FMT_VAAPI;
+  mapped_frame->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
 
   AVBufferRef *drm_frames_ref = NULL;
   if (!(drm_frames_ref = av_hwframe_ctx_alloc(drm_device_ctx))) {
@@ -179,9 +181,16 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       break;
     case ALVR_CBR:
     default:
-      av_opt_set(encoder_ctx->priv_data, "rc_mode", "CBR", 0);
+      if (settings.m_constantBitrate) {
+          av_opt_set(encoder_ctx->priv_data, "rc_mode", "CBR", 0);
+      } else {
+          Info("Forcing VBR rate control with adaptive bitrate");
+          av_opt_set(encoder_ctx->priv_data, "rc_mode", "VBR", 0);
+      }
       break;
   }
+
+  av_opt_set_int(encoder_ctx->priv_data, "filler_data", settings.m_fillerData, 0);
 
   encoder_ctx->width = width;
   encoder_ctx->height = height;
@@ -333,18 +342,20 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 
 void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)
 {
+  const auto& settings = Settings::Instance();
+
   if (!params.updated) {
     return;
   }
-  if (Settings::Instance().m_codec == ALVR_CODEC_H265) {
-    // hevc doesn't work well with adaptive bitrate/fps
-    params.framerate = Settings::Instance().m_refreshRate;
-  }
   encoder_ctx->bit_rate = params.bitrate_bps;
   encoder_ctx->framerate = AVRational{int(params.framerate * 1000), 1000};
-  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate * 1.1;
+  if (settings.m_constantBitrate) {
+    encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate;
+  } else {
+    encoder_ctx->rc_buffer_size = (encoder_ctx->bit_rate / params.framerate) * 5.0;
+  }
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
-  encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size / 4 * 3;
+  encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size;
 
   if (Settings::Instance().m_amdBitrateCorruptionFix) {
     RequestIDR();

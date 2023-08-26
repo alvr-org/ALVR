@@ -1,5 +1,20 @@
 # Changelog
 
+## v20.1.0
+
+* Fix firewall rules on Windows (by @zarik5)
+* Fix firewall rules on linux for the tar.gz (by @Vixea #1675)
+* Add bitrate graph (by @zarik5 #1689)
+* Add encoder latency limiter (by @zarik5 #1678)
+* Fix network latency limiter (by @zarik5)
+* Fix image corruption on AMD (by @zarik5 #1681)
+* Fix dashboard audio dropdowns on Linux (by @zarik5)
+* Add connection status for clients (by @zarik5 #1688)
+* Fix HMD plugged status (by @zarik5)
+* Fix crash on some Unreal Engine 5 games (by @deiteris #1685)
+* Add option to disable game render optimization (by @zarik5)
+* Add separate history size for bitrate (by @zarik5)
+
 ## v20.0.0
 
 * New OpenXR-based client, add support for Vive Focus 3/XR Elite, Pico 4/Neo 3 and YVR 1/2. Worked on by:

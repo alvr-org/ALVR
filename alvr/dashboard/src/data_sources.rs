@@ -1,4 +1,4 @@
-use alvr_common::{parking_lot::Mutex, prelude::*, RelaxedAtomic};
+use alvr_common::{debug, error, info, parking_lot::Mutex, warn, RelaxedAtomic};
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerDataManager;
@@ -178,7 +178,7 @@ impl DataSources {
                                     warn!("Cannot perform action, streamer (SteamVR) is not connected.")
                                 }
                                 ServerRequest::RestartSteamvr | ServerRequest::ShutdownSteamvr => {
-                                    warn!("SteamVR not launched")
+                                    warn!("Streamer not launched, can't signal SteamVR shutdown")
                                 }
                             }
                         } else {
@@ -220,7 +220,7 @@ impl DataSources {
                     ws.get_mut().set_nonblocking(true).ok();
 
                     while running.value() {
-                        match ws.read_message() {
+                        match ws.read() {
                             Ok(tungstenite::Message::Text(json_string)) => {
                                 if let Ok(event) = serde_json::from_str(&json_string) {
                                     debug!("Server event received: {event:?}");

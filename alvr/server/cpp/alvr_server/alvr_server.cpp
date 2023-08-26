@@ -183,7 +183,7 @@ void (*LogInfo)(const char *stringPtr);
 void (*LogDebug)(const char *stringPtr);
 void (*LogPeriodically)(const char *tag, const char *stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
-void (*InitializeDecoder)(const unsigned char *configBuffer, int len, int codec);
+void (*SetVideoConfigNals)(const unsigned char *configBuffer, int len, int codec);
 void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len, bool isIdr);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
@@ -196,6 +196,8 @@ void (*SetOpenvrProps)(unsigned long long deviceID);
 void (*WaitForVSync)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
+    HookCrashHandler();
+
     // Initialize path constants
     init_paths();
 

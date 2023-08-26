@@ -17,8 +17,9 @@ use alvr_packets::{PathSegment, PathValuePair};
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;
 use serde_json as json;
+use std::collections::HashMap;
 
-const INDENTATION_STEP: f32 = 20.0;
+pub const INDENTATION_STEP: f32 = 20.0;
 
 fn set_single_value(
     nesting_info: &NestingInfo,
@@ -45,6 +46,14 @@ fn grid_flow_block(ui: &mut Ui, allow_inline: bool) {
     if allow_inline {
         ui.end_row();
     }
+}
+
+pub fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
+    strings.get("display_name").cloned().unwrap_or_else(|| {
+        let mut chars = id.chars();
+        chars.next().unwrap().to_uppercase().collect::<String>()
+            + chars.as_str().replace('_', " ").as_str()
+    })
 }
 
 #[derive(Clone)]

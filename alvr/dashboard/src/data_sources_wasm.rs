@@ -34,8 +34,8 @@ impl DataSources {
         if self.ws_receiver.is_none() {
             let host = web_sys::window().unwrap().location().host().unwrap();
             let Ok((_, receiver)) = ewebsock::connect(format!("ws://{host}/api/events")) else {
-                    return None;
-                };
+                return None;
+            };
             self.ws_receiver = Some(receiver);
         }
 

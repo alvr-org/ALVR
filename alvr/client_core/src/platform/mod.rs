@@ -2,11 +2,7 @@
 pub mod android;
 
 #[cfg(target_os = "android")]
-pub use android::{
-    acquire_wifi_lock, context, device_model, local_ip, manufacturer_name, release_wifi_lock,
-    try_get_permission, video_decoder_split, vm, VideoDecoderDequeuer, VideoDecoderEnqueuer,
-    MICROPHONE_PERMISSION,
-};
+pub use android::*;
 
 #[cfg(not(target_os = "android"))]
 pub fn device_model() -> String {

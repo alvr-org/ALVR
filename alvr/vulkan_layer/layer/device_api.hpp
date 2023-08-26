@@ -18,6 +18,15 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkAcquireXlibDisplayEXT(VkPhysicalDevic
                                                                  Display *dpy,
                                                                  VkDisplayKHR display);
 
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDrmDisplayEXT(VkPhysicalDevice physicalDevice,
+                                                            int32_t drmFd,
+                                                            uint32_t connectorId,
+                                                            VkDisplayKHR *display);
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkAcquireDrmDisplayEXT(VkPhysicalDevice physicalDevice,
+                                                                int32_t drmFd,
+                                                                VkDisplayKHR display);
+
 VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDisplayPlaneSupportedDisplaysKHR(
     VkPhysicalDevice physicalDevice, uint32_t planeIndex, uint32_t *pDisplayCount,
     VkDisplayKHR *pDisplays);

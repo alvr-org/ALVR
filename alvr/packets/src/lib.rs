@@ -54,7 +54,7 @@ pub enum ServerControlPacket {
     InitializeDecoder(DecoderInitializationConfig),
     Restarting,
     KeepAlive,
-    ServerPredictionAverage(Duration),
+    ServerPredictionAverage(Duration), // todo: remove
     Reserved(String),
     ReservedBuffer(Vec<u8>),
 }
@@ -90,7 +90,7 @@ pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
     KeepAlive,
-    StreamReady,
+    StreamReady, // This flag notifies the server the client streaming socket is ready listening
     ViewsConfig(ViewsConfig),
     Battery(BatteryPacket),
     VideoErrorReport, // legacy

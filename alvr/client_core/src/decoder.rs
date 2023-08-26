@@ -4,9 +4,6 @@ use alvr_packets::DecoderInitializationConfig;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
-#[cfg(target_os = "android")]
-use alvr_common::prelude::*;
-
 #[derive(Clone)]
 pub struct DecoderInitConfig {
     pub codec: CodecType,
@@ -24,10 +21,10 @@ pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     })
 });
 #[cfg(target_os = "android")]
-pub static DECODER_ENQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderEnqueuer>>> =
+pub static DECODER_SINK: Lazy<Mutex<Option<crate::platform::VideoDecoderSink>>> =
     Lazy::new(|| Mutex::new(None));
 #[cfg(target_os = "android")]
-pub static DECODER_DEQUEUER: Lazy<Mutex<Option<crate::platform::VideoDecoderDequeuer>>> =
+pub static DECODER_SOURCE: Lazy<Mutex<Option<crate::platform::VideoDecoderSource>>> =
     Lazy::new(|| Mutex::new(None));
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
@@ -45,7 +42,7 @@ pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
             });
     } else {
         #[cfg(target_os = "android")]
-        if DECODER_ENQUEUER.lock().is_none() {
+        if DECODER_SINK.lock().is_none() {
             let (enqueuer, dequeuer) = crate::platform::video_decoder_split(
                 config.clone(),
                 lazy_config.config_buffer,
@@ -57,12 +54,12 @@ pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
             )
             .unwrap();
 
-            *DECODER_ENQUEUER.lock() = Some(enqueuer);
-            *DECODER_DEQUEUER.lock() = Some(dequeuer);
+            *DECODER_SINK.lock() = Some(enqueuer);
+            *DECODER_SOURCE.lock() = Some(dequeuer);
 
-            if let Some(sender) = &*crate::CONTROL_CHANNEL_SENDER.lock() {
+            if let Some(sender) = &mut *crate::connection::CONTROL_SENDER.lock() {
                 sender
-                    .send(alvr_packets::ClientControlPacket::RequestIdr)
+                    .send(&alvr_packets::ClientControlPacket::RequestIdr)
                     .ok();
             }
         }
@@ -79,8 +76,11 @@ pub fn push_nal(timestamp: Duration, nal: &[u8]) -> bool {
         true
     } else {
         #[cfg(target_os = "android")]
-        if let Some(decoder) = &*DECODER_ENQUEUER.lock() {
-            matches!(show_err(decoder.push_frame_nal(timestamp, nal)), Some(true))
+        if let Some(decoder) = &mut *DECODER_SINK.lock() {
+            matches!(
+                alvr_common::show_err(decoder.push_frame_nal(timestamp, nal)),
+                Some(true)
+            )
         } else {
             false
         }
@@ -93,7 +93,7 @@ pub fn push_nal(timestamp: Duration, nal: &[u8]) -> bool {
 /// If a frame is available, return the timestamp and the AHardwareBuffer.
 pub fn get_frame() -> Option<(Duration, *mut std::ffi::c_void)> {
     #[cfg(target_os = "android")]
-    if let Some(decoder) = &mut *DECODER_DEQUEUER.lock() {
+    if let Some(decoder) = &mut *DECODER_SOURCE.lock() {
         if let Some((timestamp, buffer_ptr)) = decoder.dequeue_frame() {
             if let Some(stats) = &mut *crate::STATISTICS_MANAGER.lock() {
                 stats.report_compositor_start(timestamp);

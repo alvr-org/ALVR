@@ -6,6 +6,8 @@
 
 #include "alvr_server/Settings.h"
 
+#include <mutex>
+
 
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 {
@@ -58,4 +60,6 @@ private:
 	vr::HmdQuaternion_t m_framePoseRotation;
 	uint64_t m_targetTimestampNs;
 	uint64_t m_prevTargetTimestampNs;
+
+	std::mutex m_presentMutex;
 };

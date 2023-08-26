@@ -99,7 +99,7 @@ void Settings::Load() {
 
         m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
         m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
-        m_enableLinuxVulkanAsync = config.get("linux_async_reprojection").get<bool>();
+        m_enableLinuxAsyncReprojection = config.get("linux_async_reprojection").get<bool>();
 
         m_enableControllers = config.get("controllers_enabled").get<bool>();
         m_controllerMode = (int32_t)config.get("controllers_mode_idx").get<int64_t>();
@@ -107,6 +107,12 @@ void Settings::Load() {
         m_triggerThreshold = config.get("trigger_threshold").get<double>();
         m_overrideGripThreshold = config.get("override_grip_threshold").get<bool>();
         m_gripThreshold = config.get("grip_threshold").get<double>();
+
+        m_constantBitrate = v.get("session_settings")
+                             .get("video")
+                             .get("bitrate")
+                             .get("mode")
+                             .get("variant").get<std::string>() == "ConstantMbps";
 
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);

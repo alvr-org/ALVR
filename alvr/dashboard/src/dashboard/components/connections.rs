@@ -1,7 +1,5 @@
-use crate::{
-    dashboard::ServerRequest,
-    theme::{self, log_colors},
-};
+use crate::dashboard::ServerRequest;
+use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
@@ -127,10 +125,22 @@ impl ConnectionsTab {
                                             .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
                                         data.display_name
                                     ));
-                                    if data.connection_state == ConnectionState::Disconnected {
-                                        ui.colored_label(Color32::GRAY, "Disconnected");
-                                    } else {
-                                        ui.colored_label(theme::OK_GREEN, "Streaming");
+                                    match data.connection_state {
+                                        ConnectionState::Disconnected => {
+                                            ui.colored_label(Color32::GRAY, "Disconnected")
+                                        }
+                                        ConnectionState::Connecting => ui
+                                            .colored_label(log_colors::WARNING_LIGHT, "Connecting"),
+                                        ConnectionState::Connected => {
+                                            ui.colored_label(theme::OK_GREEN, "Connected")
+                                        }
+                                        ConnectionState::Streaming => {
+                                            ui.colored_label(theme::OK_GREEN, "Streaming")
+                                        }
+                                        ConnectionState::Disconnecting { .. } => ui.colored_label(
+                                            log_colors::WARNING_LIGHT,
+                                            "Disconnecting",
+                                        ),
                                     }
                                 });
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -188,11 +198,11 @@ impl ConnectionsTab {
                         }
                     });
                     ui.columns(2, |ui| {
-                        if ui[1].button("Cancel").clicked() {
+                        if ui[0].button("Cancel").clicked() {
                             return;
                         }
 
-                        if ui[0].button("Ok").clicked() {
+                        if ui[1].button("Save").clicked() {
                             let manual_ips =
                                 state.ips.iter().filter_map(|s| s.parse().ok()).collect();
 

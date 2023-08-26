@@ -747,8 +747,10 @@ void initGraphicsNative() {
 }
 
 void destroyGraphicsNative() {
+    LOGV("Resetting stream texture and hud texture %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
     g_ctx.streamTexture.reset();
     g_ctx.hudTexture.reset();
+    LOGV("Resetted stream texture and hud texture to %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
 }
 
 // on resume
@@ -834,8 +836,8 @@ void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
         std::lock_guard<std::mutex> lock(g_ctx.hudTextureMutex);
 
         if (!g_ctx.hudTextureBitmap.empty()) {
-            glBindTexture(GL_TEXTURE_2D, g_ctx.hudTexture->GetGLTexture());
-            glTexSubImage2D(GL_TEXTURE_2D,
+            GL(glBindTexture(GL_TEXTURE_2D, g_ctx.hudTexture->GetGLTexture()));
+            GL(glTexSubImage2D(GL_TEXTURE_2D,
                             0,
                             0,
                             0,
@@ -843,7 +845,7 @@ void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
                             HUD_TEXTURE_HEIGHT,
                             GL_RGBA,
                             GL_UNSIGNED_BYTE,
-                            &g_ctx.hudTextureBitmap[0]);
+                            &g_ctx.hudTextureBitmap[0]));
         }
         g_ctx.hudTextureBitmap.clear();
     }

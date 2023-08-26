@@ -25,43 +25,34 @@ pub use logging_backend::init_logging;
 pub use platform::try_get_permission;
 
 use alvr_common::{
+    error,
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    prelude::*,
     Fov, RelaxedAtomic,
 };
-use alvr_packets::{
-    BatteryPacket, ButtonEntry, ClientControlPacket, ClientStatistics, Tracking, ViewsConfig,
-};
+use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
+use connection::{CONTROL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
+    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
 use storage::Config;
-use tokio::{sync::mpsc, sync::Notify};
 
 static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
-
-static TRACKING_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<Tracking>>>> =
-    Lazy::new(|| Mutex::new(None));
-static STATISTICS_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientStatistics>>>> =
-    Lazy::new(|| Mutex::new(None));
-static CONTROL_CHANNEL_SENDER: Lazy<Mutex<Option<mpsc::UnboundedSender<ClientControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-static DISCONNECT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
 static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
-static IS_STREAMING: RelaxedAtomic = RelaxedAtomic::new(false);
+static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
 static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 
@@ -116,7 +107,6 @@ pub fn initialize(
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
         connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
-            .ok();
     }));
 }
 
@@ -144,17 +134,20 @@ pub fn poll_event() -> Option<ClientCoreEvent> {
 }
 
 pub fn send_views_config(fov: [Fov; 2], ipd_m: f32) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender
-            .send(ClientControlPacket::ViewsConfig(ViewsConfig { fov, ipd_m }))
+            .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
+                fov,
+                ipd_m,
+            }))
             .ok();
     }
 }
 
 pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender
-            .send(ClientControlPacket::Battery(BatteryPacket {
+            .send(&ClientControlPacket::Battery(BatteryPacket {
                 device_id,
                 gauge_value,
                 is_plugged,
@@ -164,20 +157,24 @@ pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
 }
 
 pub fn send_playspace(area: Option<Vec2>) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::PlayspaceSync(area)).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::PlayspaceSync(area)).ok();
     }
 }
 
 pub fn send_buttons(entries: Vec<ButtonEntry>) {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::Buttons(entries)).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::Buttons(entries)).ok();
     }
 }
 
 pub fn send_tracking(tracking: Tracking) {
-    if let Some(sender) = &*TRACKING_SENDER.lock() {
-        sender.send(tracking).ok();
+    if let Some(sender) = &mut *TRACKING_SENDER.lock() {
+        sender.send_header(&tracking).ok();
+
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_input_acquired(tracking.target_timestamp);
+        }
     }
 }
 
@@ -201,9 +198,9 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_submit(target_timestamp, vsync_queue);
 
-        if let Some(sender) = &*STATISTICS_SENDER.lock() {
+        if let Some(sender) = &mut *STATISTICS_SENDER.lock() {
             if let Some(stats) = stats.summary(target_timestamp) {
-                sender.send(stats).ok();
+                sender.send_header(&stats).ok();
             } else {
                 error!("Statistics summary not ready!");
             }
@@ -213,8 +210,8 @@ pub fn report_submit(target_timestamp: Duration, vsync_queue: Duration) {
 
 /// Call only with external decoder
 pub fn request_idr() {
-    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
-        sender.send(ClientControlPacket::RequestIdr).ok();
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender.send(&ClientControlPacket::RequestIdr).ok();
     }
 }
 

@@ -2,10 +2,11 @@ mod interaction;
 
 use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
+    error,
     glam::{Quat, UVec2, Vec2, Vec3},
-    prelude::*,
+    info,
     settings_schema::Switch,
-    DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::ClientsideFoveationMode;
@@ -21,6 +22,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
+const MAX_PREDICTION: Duration = Duration::from_millis(80);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
@@ -233,19 +236,20 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         return;
     };
 
-    let target_timestamp = now + alvr_client_core::get_head_prediction_offset();
+    let target_timestamp = now
+        + Duration::min(
+            alvr_client_core::get_head_prediction_offset(),
+            MAX_PREDICTION,
+        );
 
     let mut device_motions = Vec::with_capacity(3);
 
     'head_tracking: {
-        let Ok((view_flags, views)) = ctx
-            .xr_session
-            .locate_views(
-                xr::ViewConfigurationType::PRIMARY_STEREO,
-                to_xr_time(target_timestamp),
-                &ctx.reference_space,
-            )
-        else {
+        let Ok((view_flags, views)) = ctx.xr_session.locate_views(
+            xr::ViewConfigurationType::PRIMARY_STEREO,
+            to_xr_time(target_timestamp),
+            &ctx.reference_space,
+        ) else {
             error!("Cannot locate views");
             break 'head_tracking;
         };
@@ -289,7 +293,12 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         ));
     }
 
-    let tracker_time = to_xr_time(now + alvr_client_core::get_tracker_prediction_offset());
+    let tracker_time = to_xr_time(
+        now + Duration::min(
+            alvr_client_core::get_tracker_prediction_offset(),
+            MAX_PREDICTION,
+        ),
+    );
 
     let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
         &ctx.xr_session,

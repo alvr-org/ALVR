@@ -267,7 +267,7 @@ pub enum BitrateMode {
 
         #[schema(strings(display_name = "Minimum bitrate"))]
         #[schema(flag = "real-time")]
-        #[schema(gui(slider(min = 1, max = 1000, logarithmic)), suffix = "Mbps")]
+        #[schema(gui(slider(min = 1, max = 100, logarithmic)), suffix = "Mbps")]
         min_bitrate_mbps: Switch<u64>,
 
         #[schema(strings(display_name = "Maximum network latency"))]
@@ -588,8 +588,8 @@ pub struct FaceTrackingSources {
 pub enum FaceTrackingSinkConfig {
     #[schema(strings(display_name = "VRChat Eye OSC"))]
     VrchatEyeOsc { port: u16 },
-    #[schema(strings(display_name = "VRCFaceTracking OSC"))]
-    VrcFaceTrackingOsc { port: u16 },
+    #[schema(strings(display_name = "VRCFaceTracking"))]
+    VrcFaceTracking,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -729,6 +729,7 @@ pub struct HeadsetConfig {
 Local floor: the origin is on the floor and resets when long pressing the oculus button.
 Local: the origin resets when long pressing the oculus button, and is calculated as an offset from the current head position."#
     ))]
+    #[schema(flag = "real-time")]
     pub position_recentering_mode: PositionRecenteringMode,
 
     #[schema(strings(
@@ -736,6 +737,7 @@ Local: the origin resets when long pressing the oculus button, and is calculated
 Yaw: the forward direction is reset when long pressing the oculus button.
 Tilted: the world gets tilted when long pressing the oculus button. This is useful for using VR while laying down."#
     ))]
+    #[schema(flag = "real-time")]
     pub rotation_recentering_mode: RotationRecenteringMode,
 }
 
@@ -827,6 +829,7 @@ For now works only on Windows+Nvidia"#
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct LoggingConfig {
+    pub client_log_report_level: Switch<LogSeverity>,
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
     #[schema(flag = "real-time")]
@@ -839,6 +842,9 @@ pub struct LoggingConfig {
     pub notification_level: LogSeverity,
     #[schema(flag = "real-time")]
     pub show_raw_events: bool,
+    #[schema(strings(help = "This applies only to certain error or warning messages."))]
+    #[schema(flag = "steamvr-restart")]
+    pub prefer_backtrace: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -864,8 +870,18 @@ No action: All driver registration actions should be performed manually, ALVR in
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct RollingVideoFilesConfig {
+    #[schema(strings(display_name = "Duration"))]
+    #[schema(suffix = "s")]
+    pub duration_s: u64,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct CaptureConfig {
-    pub save_video_stream: bool,
+    #[schema(strings(display_name = "Start video recording at client connection"))]
+    pub startup_video_recording: bool,
+
+    pub rolling_video_files: Switch<RollingVideoFilesConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub capture_frame_dir: String,
@@ -972,7 +988,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             },
                         },
                     },
-                    variant: BitrateModeDefaultVariant::Adaptive,
+                    variant: BitrateModeDefaultVariant::ConstantMbps,
                 },
                 adapt_to_framerate: SwitchDefault {
                     enabled: true,
@@ -1162,9 +1178,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
-                        VrcFaceTrackingOsc: FaceTrackingSinkConfigVrcFaceTrackingOscDefault {
-                            port: 9620,
-                        },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
                     },
                 },
@@ -1236,6 +1249,12 @@ pub fn session_settings_default() -> SettingsDefault {
             statistics_history_size: 256,
         },
         logging: LoggingConfigDefault {
+            client_log_report_level: SwitchDefault {
+                enabled: true,
+                content: LogSeverityDefault {
+                    variant: LogSeverityDefaultVariant::Error,
+                },
+            },
             log_to_disk: cfg!(debug_assertions),
             log_button_presses: false,
             log_tracking: false,
@@ -1248,6 +1267,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             show_raw_events: false,
+            prefer_backtrace: false,
         },
         steamvr_launcher: SteamvrLauncherDefault {
             driver_launch_action: DriverLaunchActionDefault {
@@ -1256,7 +1276,11 @@ pub fn session_settings_default() -> SettingsDefault {
             open_close_steamvr_with_dashboard: false,
         },
         capture: CaptureConfigDefault {
-            save_video_stream: false,
+            startup_video_recording: false,
+            rolling_video_files: SwitchDefault {
+                enabled: false,
+                content: RollingVideoFilesConfigDefault { duration_s: 5 },
+            },
             capture_frame_dir: if !cfg!(target_os = "linux") {
                 "/tmp".into()
             } else {

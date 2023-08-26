@@ -40,6 +40,7 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDisplayModePropertiesKHR(
     VkPhysicalDevice device, VkDisplayKHR display, uint32_t *pPropertyCount,
     VkDisplayModePropertiesKHR *pProperties) {
     if (display != alvr_display_handle) {
+        *pPropertyCount = 0;
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
     if (!pProperties) {
@@ -74,6 +75,23 @@ VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkAcquireXlibDisplayEXT(VkPhysicalDevic
                                                                  VkDisplayKHR display) {
     if (display != alvr_display_handle) {
         return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkGetDrmDisplayEXT(VkPhysicalDevice physicalDevice,
+                                                            int32_t drmFd,
+                                                            uint32_t connectorId,
+                                                            VkDisplayKHR *display) {
+    *display = alvr_display_handle;
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL wsi_layer_vkAcquireDrmDisplayEXT(VkPhysicalDevice physicalDevice,
+                                                                int32_t drmFd,
+                                                                VkDisplayKHR display) {
+    if (display != alvr_display_handle) {
+        return VK_ERROR_INITIALIZATION_FAILED;
     }
     return VK_SUCCESS;
 }

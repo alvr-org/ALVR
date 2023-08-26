@@ -1,4 +1,4 @@
-use crate::theme;
+use alvr_gui_common::theme;
 use alvr_packets::{FirewallRulesAction, ServerRequest};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, Ui},

@@ -57,6 +57,14 @@ pub fn streamer_build_dir() -> PathBuf {
     build_dir().join(format!("alvr_streamer_{OS}"))
 }
 
+pub fn launcher_build_dir() -> PathBuf {
+    build_dir().join(format!("alvr_launcher_{OS}"))
+}
+
+pub fn launcher_build_exe_path() -> PathBuf {
+    launcher_build_dir().join(exec_fname("ALVR Launcher"))
+}
+
 pub fn installer_path() -> PathBuf {
     env::temp_dir().join(exec_fname("alvr_installer"))
 }
@@ -74,7 +82,7 @@ pub fn dashboard_fname() -> &'static str {
 pub struct Layout {
     // directory containing the dashboard executable
     pub executables_dir: PathBuf,
-    // (linux only) directory where alvr_vulkan_layer.so is saved
+    // (linux only) directory where libalvr_vulkan_layer.so is saved
     pub libraries_dir: PathBuf,
     // parent directory of resources like the dashboard and presets folders
     pub static_resources_dir: PathBuf,
@@ -245,6 +253,10 @@ impl Layout {
 
     pub fn vrcompositor_wrapper(&self) -> PathBuf {
         self.vrcompositor_wrapper_dir.join("vrcompositor-wrapper")
+    }
+
+    pub fn drm_lease_shim(&self) -> PathBuf {
+        self.vrcompositor_wrapper_dir.join("alvr_drm_lease_shim.so")
     }
 
     pub fn vulkan_layer(&self) -> PathBuf {

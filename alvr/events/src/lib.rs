@@ -1,4 +1,4 @@
-use alvr_common::{prelude::*, DeviceMotion, Pose};
+use alvr_common::{info, DeviceMotion, LogEntry, Pose};
 use alvr_packets::{AudioDevicesList, ButtonValue};
 use alvr_session::SessionConfig;
 use serde::{Deserialize, Serialize};

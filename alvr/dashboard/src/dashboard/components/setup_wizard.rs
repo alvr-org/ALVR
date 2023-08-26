@@ -12,22 +12,24 @@ pub enum SetupWizardRequest {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Welcome = 0,
-    HardwareRequirements = 1,
-    SoftwareRequirements = 2,
-    Firewall = 3,
+    ResetSettings = 1,
+    HardwareRequirements = 2,
+    SoftwareRequirements = 3,
+    Firewall = 4,
     // PerformancePreset,
-    Recommendations = 4,
-    Finished = 5,
+    Recommendations = 5,
+    Finished = 6,
 }
 
 fn index_to_page(index: usize) -> Page {
     match index {
         0 => Page::Welcome,
-        1 => Page::HardwareRequirements,
-        2 => Page::SoftwareRequirements,
-        3 => Page::Firewall,
-        4 => Page::Recommendations,
-        5 => Page::Finished,
+        1 => Page::ResetSettings,
+        2 => Page::HardwareRequirements,
+        3 => Page::SoftwareRequirements,
+        4 => Page::Firewall,
+        5 => Page::Recommendations,
+        6 => Page::Finished,
         _ => unreachable!(),
     }
 }
@@ -89,6 +91,18 @@ impl SetupWizard {
                 "",
                 |_| (),
             ),
+            Page::ResetSettings => page_content(
+                ui,
+                "Reset settings",
+                "It is recommended to reset your settings everytime you update ALVR.",
+                |ui| {
+                    if ui.button("Reset settings").clicked() {
+                        request = Some(SetupWizardRequest::ServerRequest(
+                            ServerRequest::UpdateSession(Box::default()),
+                        ));
+                    }
+                },
+            ),
             Page::HardwareRequirements => page_content(
                 ui,
                 "Hardware requirements",
@@ -99,9 +113,14 @@ Make sure you have at least one output audio device.",
             Page::SoftwareRequirements => page_content(
                 ui,
                 "Software requirements",
-                r"To stream the Quest microphone on Windows you need to install VB-Audio Virtual Cable.
+                r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
 On Linux some feaures are not working and should be disabled (foveated encoding and color correction) and some need a proper environment setup to have them working (game audio and microphone streaming).",
-                |_| (),
+                |ui| {
+                    if ui.button("Download VB-Cable").clicked() {
+                        ui.ctx()
+                            .output_mut(|output| output.open_url("https://vb-audio.com/Cable/"));
+                    }
+                },
             ),
             Page::Firewall => page_content(
                 ui,

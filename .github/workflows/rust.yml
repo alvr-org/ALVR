@@ -24,10 +24,6 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v1
 
-      - uses: crazy-max/ghaction-chocolatey@v1
-        with:
-          args: install vulkan-sdk
-
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -49,7 +45,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev
           cargo xtask prepare-deps --platform linux --no-nvidia
 
       - uses: actions-rs/clippy-check@v1
@@ -99,7 +95,7 @@ jobs:
         with:
           command: install
           args: cargo-apk
-        
+
         # Create folder without content to make the build succeed
       - run: |
           mkdir -p deps/android_openxr/arm64-v8a
@@ -120,6 +116,8 @@ jobs:
           toolchain: stable
           override: true
       - uses: Swatinem/rust-cache@v1
+
+      - run: sudo apt update && sudo apt install libgtk-3-dev
 
       - name: Run tests
         uses: actions-rs/cargo@v1

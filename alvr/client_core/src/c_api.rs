@@ -3,11 +3,12 @@ use crate::{
     ClientCoreEvent,
 };
 use alvr_common::{
+    debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
+    info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    prelude::*,
-    DeviceMotion, Fov, Pose,
+    warn, DeviceMotion, Fov, Pose,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
 use alvr_session::{CodecType, FoveatedRenderingConfig};
@@ -157,8 +158,11 @@ pub unsafe extern "C" fn alvr_initialize(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_destroy() {
+pub unsafe extern "C" fn alvr_destroy() {
     crate::destroy();
+
+    #[cfg(target_os = "android")]
+    ndk_context::release_android_context();
 }
 
 #[no_mangle]

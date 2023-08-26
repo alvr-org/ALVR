@@ -11,6 +11,10 @@ std::string TrackedDevice::get_serial_number() {
 }
 
 void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
+    if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
+        return;
+    }
+
     auto key = (vr::ETrackedDeviceProperty)prop.key;
 
     auto props = vr::VRProperties();

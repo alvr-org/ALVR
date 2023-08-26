@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ALVR
+GenericName=Game
+Comment=ALVR is an open source remote VR display which allows playing SteamVR games on a standalone headset such as Gear VR or Oculus Go/Quest.
+Exec=/usr/bin/flatpak run --command=alvr_dashboard com.valvesoftware.Steam
+Icon=alvr
+Categories=Game;
+StartupNotify=true
+PrefersNonDefaultGPU=true
+X-KDE-RunOnDiscreteGpu=true
+StartupWMClass=ALVR

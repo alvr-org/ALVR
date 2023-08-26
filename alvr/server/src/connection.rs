@@ -5,7 +5,8 @@ use crate::{
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
-    tracking::{self, HandGesture, TrackingManager},
+    tracking::{self, TrackingManager},
+    hand_gestures::{HandGestureManager, trigger_hand_gesture_actions},
     FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, SERVER_DATA_MANAGER,
     STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
@@ -643,9 +644,11 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     };
 
     let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
+    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
+        let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
         move || {
             let mut face_tracking_sink =
                 settings
@@ -657,7 +660,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     });
 
             let mut track_controllers = 0u32;
-            if let Switch::Enabled(config) = settings.headset.controllers {
+            if let Switch::Enabled(config) = &settings.headset.controllers {
                 track_controllers = config.tracked.into();
             }
 
@@ -748,54 +751,24 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    // Handle gesture buttons
-                    {
-                        let press_gesture_buttons = |gestures: [HandGesture; 8]| {
-                            for g in gestures {
-                                if g.active {
-                                    // Handle touch bind
-                                    if g.touch_bind != 0 {
-                                        unsafe {
-                                            crate::SetButton(
-                                                g.touch_bind,
-                                                crate::FfiButtonValue {
-                                                    type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                                                    __bindgen_anon_1:
-                                                        crate::FfiButtonValue__bindgen_ty_1 {
-                                                            binary: g.touching.into(),
-                                                        },
-                                                },
-                                            )
-                                        }
-                                    }
-                                    // Handle hover bind
-                                    if g.hover_bind != 0 {
-                                        unsafe {
-                                            crate::SetButton(
-                                                g.hover_bind,
-                                                crate::FfiButtonValue {
-                                                    type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                                                    __bindgen_anon_1:
-                                                        crate::FfiButtonValue__bindgen_ty_1 {
-                                                            scalar: g.hover_val,
-                                                        },
-                                                },
-                                            )
-                                        }
-                                    }
-                                }
+                    // Handle hand gestures
+                    if let Switch::Enabled(controllers_config) = &settings.headset.controllers {
+                        if let Switch::Enabled(hand_tracking_config) = &controllers_config.hand_tracking {
+                            if let Switch::Enabled(gestures_config) = &hand_tracking_config.use_gestures {
+                                let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
+
+                                trigger_hand_gesture_actions(
+                                    *LEFT_HAND_ID,
+                                    hand_gesture_manager_lock.get_active_gestures(left_hand_skeleton.unwrap(), gestures_config.clone(), *LEFT_HAND_ID)
+                                );
+                                trigger_hand_gesture_actions(
+                                    *RIGHT_HAND_ID,
+                                    hand_gesture_manager_lock.get_active_gestures(right_hand_skeleton.unwrap(), gestures_config.clone(), *RIGHT_HAND_ID)
+                                );
+
+                                drop(hand_gesture_manager_lock);
                             }
-                        };
-
-                        let hand_gestures = [
-                            tracking.hand_skeletons[0]
-                                .map(|s| tracking::hands_to_gestures(config, *LEFT_HAND_ID, s)),
-                            tracking.hand_skeletons[1]
-                                .map(|s| tracking::hands_to_gestures(config, *RIGHT_HAND_ID, s)),
-                        ];
-
-                        hand_gestures[0].map(press_gesture_buttons);
-                        hand_gestures[1].map(press_gesture_buttons);
+                        }
                     }
 
                     let mut hand_skeletons_enabled = false;

@@ -28,6 +28,7 @@ use alvr_common::{
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
+    LazyMutOpt,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
@@ -58,10 +59,9 @@ static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
-static WEBSERVER_RUNTIME: Lazy<Mutex<Option<Runtime>>> =
-    Lazy::new(|| Mutex::new(Runtime::new().ok()));
+static WEBSERVER_RUNTIME: LazyMutOpt<Runtime> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
 
-static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
+static STATISTICS_MANAGER: LazyMutOpt<StatisticsManager> = alvr_common::lazy_mut_none();
 static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
     let data_lock = SERVER_DATA_MANAGER.read();
     let settings = data_lock.settings();
@@ -76,12 +76,8 @@ pub struct VideoPacket {
     pub payload: Vec<u8>,
 }
 
-static VIDEO_MIRROR_SENDER: Lazy<Mutex<Option<broadcast::Sender<Vec<u8>>>>> =
-    Lazy::new(|| Mutex::new(None));
-static VIDEO_RECORDING_FILE: Lazy<Mutex<Option<File>>> = Lazy::new(|| Mutex::new(None));
-
-// static DISCONNECT_CLIENT_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
-// static RESTART_NOTIFIER: Lazy<Notify> = Lazy::new(Notify::new);
+static VIDEO_MIRROR_SENDER: LazyMutOpt<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
+static VIDEO_RECORDING_FILE: LazyMutOpt<File> = alvr_common::lazy_mut_none();
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -97,8 +93,7 @@ static FFR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader
 static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
     include_bytes!("../cpp/platform/linux/shader/rgbtoyuv420.comp.spv");
 
-static DECODER_CONFIG: Lazy<Mutex<Option<DecoderInitializationConfig>>> =
-    Lazy::new(|| Mutex::new(None));
+static DECODER_CONFIG: LazyMutOpt<DecoderInitializationConfig> = alvr_common::lazy_mut_none();
 
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {

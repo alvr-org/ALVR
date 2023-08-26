@@ -29,7 +29,7 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    Fov, RelaxedAtomic,
+    Fov, LazyMutOpt, RelaxedAtomic,
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
@@ -45,7 +45,7 @@ use std::{
 };
 use storage::Config;
 
-static STATISTICS_MANAGER: Lazy<Mutex<Option<StatisticsManager>>> = Lazy::new(|| Mutex::new(None));
+static STATISTICS_MANAGER: LazyMutOpt<StatisticsManager> = alvr_common::lazy_mut_none();
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
@@ -54,7 +54,7 @@ static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
 static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
 static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 
-static CONNECTION_THREAD: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
+static CONNECTION_THREAD: LazyMutOpt<JoinHandle<()>> = alvr_common::lazy_mut_none();
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientCoreEvent {

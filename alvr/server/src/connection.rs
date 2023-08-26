@@ -18,8 +18,8 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, RelaxedAtomic, ToCon, DEVICE_ID_TO_PATH,
-    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon,
+    DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
@@ -56,9 +56,8 @@ pub static SHOULD_CONNECT_TO_CLIENTS: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
 pub static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> =
     Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-static VIDEO_CHANNEL_SENDER: Lazy<Mutex<Option<SyncSender<VideoPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-static HAPTICS_SENDER: Lazy<Mutex<Option<StreamSender<Haptics>>>> = Lazy::new(|| Mutex::new(None));
+static VIDEO_CHANNEL_SENDER: LazyMutOpt<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
+static HAPTICS_SENDER: LazyMutOpt<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 
 pub enum ClientDisconnectRequest {
     Disconnect,
@@ -66,8 +65,8 @@ pub enum ClientDisconnectRequest {
     ServerRestart,
 }
 
-pub static DISCONNECT_CLIENT_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<ClientDisconnectRequest>>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static DISCONNECT_CLIENT_NOTIFIER: LazyMutOpt<mpsc::Sender<ClientDisconnectRequest>> =
+    alvr_common::lazy_mut_none();
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32

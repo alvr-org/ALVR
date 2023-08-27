@@ -201,7 +201,7 @@ jobs:
         id: build_flatpak
         run: |
           sudo flatpak-builder --repo=.flatpak-repo --install-deps-from=flathub --force-clean --default-branch=stable --arch=x86_64 .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
-          flatpak build-bundle .flatpak-repo ./build/com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
+          flatpak build-bundle .flatpak-repo com.valvesoftware.Steam.Utility.alvr.flatpak com.valvesoftware.Steam.Utility.alvr stable --runtime
 
       - name: Upload flatpak streamer for Linux
         uses: actions/upload-release-asset@v1
@@ -209,7 +209,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/com.valvesoftware.Steam.Utility.alvr.flatpak
+          asset_path: com.valvesoftware.Steam.Utility.alvr.flatpak
           asset_name: com.valvesoftware.Steam.Utility.alvr.flatpak
           asset_content_type: application/octet-stream
 

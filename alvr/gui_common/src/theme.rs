@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, Context, Rounding, Stroke, Visuals};
+use egui::{self, Color32, Context, Rounding, Stroke, Visuals};
 
 pub const ACCENT: Color32 = Color32::from_rgb(134, 171, 241);
 pub const BG: Color32 = Color32::from_rgb(30, 30, 30);
@@ -14,7 +14,7 @@ pub const KO_RED: Color32 = Color32::RED;
 
 pub mod log_colors {
     use super::ACCENT;
-    use eframe::epaint::Color32;
+    use egui::epaint::Color32;
 
     pub const ERROR_LIGHT: Color32 = Color32::from_rgb(255, 50, 50);
     pub const WARNING_LIGHT: Color32 = Color32::from_rgb(205, 147, 9);
@@ -25,7 +25,7 @@ pub mod log_colors {
 
 // Graph colors
 pub mod graph_colors {
-    use eframe::egui::Color32;
+    use egui::Color32;
 
     pub const RENDER: Color32 = Color32::RED;
     pub const RENDER_VARIANT: Color32 = Color32::from_rgb(255, 50, 0);

@@ -5,6 +5,8 @@ mod paths;
 mod primitives;
 mod version;
 
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use anyhow;
@@ -23,6 +25,12 @@ pub use primitives::*;
 pub use version::*;
 
 pub const ALVR_NAME: &str = "ALVR";
+
+pub type LazyMutOpt<T> = Lazy<Mutex<Option<T>>>;
+
+pub const fn lazy_mut_none<T>() -> LazyMutOpt<T> {
+    Lazy::new(|| Mutex::new(None))
+}
 
 // Simple wrapper for AtomicBool when using Ordering::Relaxed. Deref cannot be implemented (cannot
 // return local reference)

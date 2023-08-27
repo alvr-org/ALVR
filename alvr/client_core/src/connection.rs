@@ -11,8 +11,8 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    debug, error, glam::UVec2, info, once_cell::sync::Lazy, parking_lot::Mutex, warn, AnyhowToCon,
-    ConResult, ConnectionError, ToCon, ALVR_VERSION,
+    debug, error, glam::UVec2, info, warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt,
+    ToCon, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
@@ -61,15 +61,13 @@ const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 
-static DISCONNECT_SERVER_NOTIFIER: Lazy<Mutex<Option<mpsc::Sender<()>>>> =
-    Lazy::new(|| Mutex::new(None));
+static DISCONNECT_SERVER_NOTIFIER: LazyMutOpt<mpsc::Sender<()>> = alvr_common::lazy_mut_none();
 
-pub static CONTROL_SENDER: Lazy<Mutex<Option<ControlSocketSender<ClientControlPacket>>>> =
-    Lazy::new(|| Mutex::new(None));
-pub static TRACKING_SENDER: Lazy<Mutex<Option<StreamSender<Tracking>>>> =
-    Lazy::new(|| Mutex::new(None));
-pub static STATISTICS_SENDER: Lazy<Mutex<Option<StreamSender<ClientStatistics>>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static CONTROL_SENDER: LazyMutOpt<ControlSocketSender<ClientControlPacket>> =
+    alvr_common::lazy_mut_none();
+pub static TRACKING_SENDER: LazyMutOpt<StreamSender<Tracking>> = alvr_common::lazy_mut_none();
+pub static STATISTICS_SENDER: LazyMutOpt<StreamSender<ClientStatistics>> =
+    alvr_common::lazy_mut_none();
 
 fn set_hud_message(message: &str) {
     let message = format!(

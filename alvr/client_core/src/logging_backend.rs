@@ -2,7 +2,7 @@ use alvr_common::{
     log::{Level, Record},
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    LogSeverity,
+    LazyMutOpt, LogSeverity,
 };
 use alvr_packets::ClientControlPacket;
 use std::{
@@ -17,7 +17,7 @@ pub struct LogMirrorData {
     pub filter_level: LogSeverity,
 }
 
-pub static LOG_CHANNEL_SENDER: Lazy<Mutex<Option<LogMirrorData>>> = Lazy::new(|| Mutex::new(None));
+pub static LOG_CHANNEL_SENDER: LazyMutOpt<LogMirrorData> = alvr_common::lazy_mut_none();
 
 struct RepeatedLogEvent {
     message: String,

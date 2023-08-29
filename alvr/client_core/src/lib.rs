@@ -103,6 +103,7 @@ pub fn initialize(
     #[cfg(target_os = "android")]
     platform::acquire_wifi_lock();
 
+    IS_ALIVE.set(true);
     EXTERNAL_DECODER.set(external_decoder);
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {

@@ -65,7 +65,6 @@ impl TrackingManager {
         TrackingManager {
             last_head_pose: Pose::default(),
             recentering_origin: Pose::default(),
-
         }
     }
 

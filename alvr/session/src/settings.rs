@@ -1331,7 +1331,7 @@ pub fn session_settings_default() -> SettingsDefault {
                                     joystick_offset_vertical: 0.0,
                                     repeat_delay: 100,
                                     activation_delay: 50,
-                                    deactivation_delay: 100
+                                    deactivation_delay: 100,
                                 },
                             },
                             enable_skeleton: true,

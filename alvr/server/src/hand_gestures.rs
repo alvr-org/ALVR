@@ -139,8 +139,8 @@ impl HandGestureManager {
                 index_rad,
                 pinch_max,
                 config.repeat_delay,
-                config.start_delay,
-                config.stop_delay,
+                config.activation_delay,
+                config.deactivation_delay,
                 device_id,
             ),
             clicked: self.test_gesture_dist(
@@ -173,8 +173,8 @@ impl HandGestureManager {
                 middle_rad,
                 pinch_max,
                 config.repeat_delay,
-                config.start_delay,
-                config.stop_delay,
+                config.activation_delay,
+                config.deactivation_delay,
                 device_id,
             ),
             clicked: self.test_gesture_dist(
@@ -207,8 +207,8 @@ impl HandGestureManager {
                 ring_rad,
                 pinch_max,
                 config.repeat_delay,
-                config.start_delay,
-                config.stop_delay,
+                config.activation_delay,
+                config.deactivation_delay,
                 device_id,
             ),
             clicked: self.test_gesture_dist(
@@ -241,8 +241,8 @@ impl HandGestureManager {
                 little_rad,
                 pinch_max,
                 config.repeat_delay,
-                config.start_delay,
-                config.stop_delay,
+                config.activation_delay,
+                config.deactivation_delay,
                 device_id,
             ),
             clicked: self.test_gesture_dist(

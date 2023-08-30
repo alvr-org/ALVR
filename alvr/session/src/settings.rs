@@ -765,14 +765,14 @@ pub struct HandGestureConfig {
         help = "How long the gesture must be continuously held before it is activated."
     ))]
     #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
-    pub start_delay: u32,
+    pub activation_delay: u32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "How long the gesture must be continuously released before it is deactivated."
     ))]
     #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
-    pub stop_delay: u32,
+    pub deactivation_delay: u32,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
@@ -1330,8 +1330,8 @@ pub fn session_settings_default() -> SettingsDefault {
                                     joystick_offset_horizontal: 0.0,
                                     joystick_offset_vertical: 0.0,
                                     repeat_delay: 100,
-                                    start_delay: 50,
-                                    stop_delay: 100
+                                    activation_delay: 50,
+                                    deactivation_delay: 100
                                 },
                             },
                             enable_skeleton: true,

@@ -5,7 +5,7 @@ use std::{
 };
 
 use alvr_common::{
-    glam::{Quat, Vec2, Vec3},
+    glam::{Vec2, Vec3},
     Pose, A_CLICK_ID, A_TOUCH_ID, B_CLICK_ID, B_TOUCH_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
     LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_THUMBSTICK_TOUCH_ID,
     LEFT_THUMBSTICK_X_ID, LEFT_THUMBSTICK_Y_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_TOUCH_ID,
@@ -19,17 +19,8 @@ use alvr_session::HandGestureConfig;
 
 fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
     Pose {
-        orientation: Quat::from_xyzw(
-            a.orientation.x * (1.0 - fac) + (b.position.x * fac),
-            a.orientation.y * (1.0 - fac) + (b.orientation.y * fac),
-            a.orientation.z * (1.0 - fac) + (b.orientation.z * fac),
-            a.orientation.w * (1.0 - fac) + (b.orientation.w * fac),
-        ),
-        position: Vec3 {
-            x: a.position.x * (1.0 - fac) + (b.position.x * fac),
-            y: a.position.y * (1.0 - fac) + (b.position.y * fac),
-            z: a.position.z * (1.0 - fac) + (b.position.z * fac),
-        },
+        orientation: a.orientation.lerp(b.orientation, fac),
+        position: a.position.lerp(b.position, fac),
     }
 }
 
@@ -110,15 +101,14 @@ impl HandGestureManager {
         let curl_max = config.curl_trigger_distance * 0.01;
 
         let palm: Pose = gj[0];
-        let thumb_proximal: Pose = gj[3];
         let thumb_tip: Pose = gj[5];
         let index_metacarpal: Pose = gj[6];
         let index_proximal: Pose = gj[7];
         let index_intermediate: Pose = gj[8];
+        let index_distal: Pose = gj[9];
         let index_tip: Pose = gj[10];
         let middle_metacarpal: Pose = gj[11];
         let middle_proximal: Pose = gj[12];
-        let middle_intermediate: Pose = gj[13];
         let middle_tip: Pose = gj[15];
         let ring_metacarpal: Pose = gj[16];
         let ring_proximal: Pose = gj[17];
@@ -257,7 +247,7 @@ impl HandGestureManager {
             curl_max,
         );
 
-        // Grip (NEEDS REFINING)
+        // Grip
         let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
         let grip_active = grip_curl > 0.0;
 
@@ -271,36 +261,39 @@ impl HandGestureManager {
 
         // Joystick (NEEDS REFINING)
         let joystick_range = 0.01;
-        let joystick_center = index_intermediate.position.lerp(index_tip.position, 0.25);
+        let joystick_center = lerp_pose(index_intermediate, index_distal, 0.5);
 
-        let joystick_up = (joystick_center
-            - middle_intermediate.position.lerp(middle_tip.position, 0.25))
-        .normalize()
-            * joystick_range;
-
-        let joystick_vertical_vec =
-            (joystick_center - thumb_proximal.position).normalize() * joystick_range;
+        let joystick_up = joystick_center
+            .orientation
+            .mul_vec3(if device_id == *LEFT_HAND_ID {
+                Vec3::X
+            } else {
+                Vec3::NEG_X
+            });
         let joystick_horizontal_vec =
-            joystick_vertical_vec.cross(joystick_up).normalize() * joystick_range;
+            index_intermediate
+                .orientation
+                .mul_vec3(if device_id == *LEFT_HAND_ID {
+                    Vec3::Y
+                } else {
+                    Vec3::NEG_Y
+                });
+        let joystick_vertical_vec = index_intermediate.orientation.mul_vec3(Vec3::Z);
 
-        let joystick_vertical = (thumb_tip.position - joystick_center
-            + joystick_vertical_vec / 2.0)
-            .dot(joystick_vertical_vec)
-            / joystick_vertical_vec.length()
-            + config.joystick_offset_vertical * 0.01;
-        let joystick_horizontal = (thumb_tip.position - joystick_center)
-            .dot(joystick_horizontal_vec)
-            / joystick_horizontal_vec.length()
-            + config.joystick_offset_horizontal * 0.01;
-
-        let joystick_pos = Vec2 {
-            x: (joystick_horizontal / joystick_range).clamp(-1.0, 1.0),
-            y: (joystick_vertical / joystick_range).clamp(-1.0, 1.0),
-        };
+        let joystick_pos = self.get_joystick_values(
+            joystick_center,
+            thumb_tip,
+            joystick_range,
+            joystick_horizontal_vec,
+            joystick_vertical_vec,
+            config.joystick_offset_horizontal * 0.01,
+            config.joystick_offset_vertical * 0.01,
+        );
         let joystick_contact = index_curl >= 0.75
             && grip_curl > 0.5
-            && joystick_center.distance(thumb_tip.position) <= joystick_range * 5.0
-            && (thumb_tip.position - joystick_center).dot(joystick_up) / joystick_up.length()
+            && joystick_center.position.distance(thumb_tip.position) <= joystick_range * 5.0
+            && (thumb_tip.position - joystick_center.position).dot(joystick_up)
+                / joystick_up.length()
                 <= joystick_range * 3.0;
 
         let joystick_deadzone: f32 = config.joystick_deadzone * 0.01;
@@ -317,7 +310,7 @@ impl HandGestureManager {
             active: joystick_contact,
             touching: joystick_contact,
             clicked: false,
-            hover: if joystick_contact && joystick_pos.y >= joystick_deadzone {
+            hover: if joystick_contact && joystick_pos.x.abs() >= joystick_deadzone {
                 joystick_pos.x
             } else {
                 0.0
@@ -328,7 +321,7 @@ impl HandGestureManager {
             active: joystick_contact,
             touching: joystick_contact,
             clicked: false,
-            hover: if joystick_contact && joystick_pos.y >= joystick_deadzone {
+            hover: if joystick_contact && joystick_pos.y.abs() >= joystick_deadzone {
                 joystick_pos.y
             } else {
                 0.0
@@ -428,7 +421,7 @@ impl HandGestureManager {
     }
 
     fn test_gesture_dist(
-        &mut self,
+        &self,
         first_anchor: Pose,
         first_radius: f32,
         second_anchor: Pose,
@@ -454,6 +447,26 @@ impl HandGestureManager {
             - second_radius)
             / (max_dist + first_radius + second_radius))
             .clamp(0.0, 1.0)
+    }
+
+    fn get_joystick_values(
+        &self,
+        center: Pose,
+        anchor: Pose,
+        joy_radius: f32,
+        hori_vec: Vec3,
+        vert_vec: Vec3,
+        offset_hori: f32,
+        offset_vert: f32,
+    ) -> Vec2 {
+        let x = (anchor.position - center.position).dot(hori_vec) / hori_vec.length() + offset_hori;
+
+        let y = (anchor.position - center.position).dot(vert_vec) / vert_vec.length() + offset_vert;
+
+        Vec2 {
+            x: (x / joy_radius).clamp(-1.0, 1.0),
+            y: (y / joy_radius).clamp(-1.0, 1.0),
+        }
     }
 }
 

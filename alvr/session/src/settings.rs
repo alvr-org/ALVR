@@ -659,8 +659,7 @@ pub struct ControllersConfig {
 
     pub button_mapping_config: AutomaticButtonMappingConfig,
 
-    #[schema(strings(help = "Turning this off will disable hand-tracking."))]
-    pub hand_tracking: Switch<HandTrackingConfig>,
+    pub hand_tracking: HandTrackingConfig,
 
     #[schema(strings(
         display_name = "Prediction",
@@ -1314,28 +1313,25 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                         force_threshold: 0.8,
                     },
-                    hand_tracking: SwitchDefault {
-                        enabled: true,
-                        content: HandTrackingConfigDefault {
-                            gui_collapsed: true,
-                            use_gestures: SwitchDefault {
-                                enabled: true,
-                                content: HandGestureConfigDefault {
-                                    gui_collapsed: true,
-                                    pinch_touch_distance: 0.0,
-                                    pinch_trigger_distance: 0.25,
-                                    curl_touch_distance: 2.0,
-                                    curl_trigger_distance: 2.5,
-                                    joystick_deadzone: 25.0,
-                                    joystick_offset_horizontal: 0.0,
-                                    joystick_offset_vertical: 0.0,
-                                    repeat_delay: 100,
-                                    activation_delay: 50,
-                                    deactivation_delay: 100,
-                                },
+                    hand_tracking: HandTrackingConfigDefault {
+                        gui_collapsed: true,
+                        use_gestures: SwitchDefault {
+                            enabled: true,
+                            content: HandGestureConfigDefault {
+                                gui_collapsed: true,
+                                pinch_touch_distance: 0.0,
+                                pinch_trigger_distance: 0.25,
+                                curl_touch_distance: 2.0,
+                                curl_trigger_distance: 2.5,
+                                joystick_deadzone: 25.0,
+                                joystick_offset_horizontal: 0.0,
+                                joystick_offset_vertical: 0.0,
+                                repeat_delay: 100,
+                                activation_delay: 50,
+                                deactivation_delay: 100,
                             },
-                            enable_skeleton: true,
                         },
+                        enable_skeleton: true,
                     },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

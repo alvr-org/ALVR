@@ -753,45 +753,39 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                     // Handle hand gestures
                     if let Switch::Enabled(controllers_config) = &settings.headset.controllers {
-                        if let Switch::Enabled(hand_tracking_config) =
-                            &controllers_config.hand_tracking
+                        if let Switch::Enabled(gestures_config) =
+                            &controllers_config.hand_tracking.use_gestures
                         {
-                            if let Switch::Enabled(gestures_config) =
-                                &hand_tracking_config.use_gestures
-                            {
-                                let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
+                            let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-                                if tracking.hand_skeletons[0].is_some() {
-                                    trigger_hand_gesture_actions(
+                            if tracking.hand_skeletons[0].is_some() {
+                                trigger_hand_gesture_actions(
+                                    *LEFT_HAND_ID,
+                                    &hand_gesture_manager_lock.get_active_gestures(
+                                        tracking.hand_skeletons[0].unwrap(),
+                                        gestures_config.clone(),
                                         *LEFT_HAND_ID,
-                                        &hand_gesture_manager_lock.get_active_gestures(
-                                            tracking.hand_skeletons[0].unwrap(),
-                                            gestures_config.clone(),
-                                            *LEFT_HAND_ID,
-                                        ),
-                                    );
-                                }
-                                if tracking.hand_skeletons[1].is_some() {
-                                    trigger_hand_gesture_actions(
-                                        *RIGHT_HAND_ID,
-                                        &hand_gesture_manager_lock.get_active_gestures(
-                                            tracking.hand_skeletons[1].unwrap(),
-                                            gestures_config.clone(),
-                                            *RIGHT_HAND_ID,
-                                        ),
-                                    );
-                                }
-
-                                drop(hand_gesture_manager_lock);
+                                    ),
+                                );
                             }
+                            if tracking.hand_skeletons[1].is_some() {
+                                trigger_hand_gesture_actions(
+                                    *RIGHT_HAND_ID,
+                                    &hand_gesture_manager_lock.get_active_gestures(
+                                        tracking.hand_skeletons[1].unwrap(),
+                                        gestures_config.clone(),
+                                        *RIGHT_HAND_ID,
+                                    ),
+                                );
+                            }
+
+                            drop(hand_gesture_manager_lock);
                         }
                     }
 
                     let mut hand_skeletons_enabled = false;
                     if let Switch::Enabled(controllers) = &config.controllers {
-                        if let Switch::Enabled(hand_tracking) = &controllers.hand_tracking {
-                            hand_skeletons_enabled = hand_tracking.enable_skeleton;
-                        }
+                        hand_skeletons_enabled = controllers.hand_tracking.enable_skeleton;
                     }
 
                     unsafe {

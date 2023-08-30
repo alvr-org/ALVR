@@ -1,12 +1,12 @@
 use crate::{
     bitrate::BitrateManager,
     face_tracking::FaceTrackingSink,
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    hand_gestures::{HandGestureManager, trigger_hand_gesture_actions},
     FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, SERVER_DATA_MANAGER,
     STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
@@ -753,18 +753,34 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                     // Handle hand gestures
                     if let Switch::Enabled(controllers_config) = &settings.headset.controllers {
-                        if let Switch::Enabled(hand_tracking_config) = &controllers_config.hand_tracking {
-                            if let Switch::Enabled(gestures_config) = &hand_tracking_config.use_gestures {
+                        if let Switch::Enabled(hand_tracking_config) =
+                            &controllers_config.hand_tracking
+                        {
+                            if let Switch::Enabled(gestures_config) =
+                                &hand_tracking_config.use_gestures
+                            {
                                 let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-                                trigger_hand_gesture_actions(
-                                    *LEFT_HAND_ID,
-                                    hand_gesture_manager_lock.get_active_gestures(left_hand_skeleton.unwrap(), gestures_config.clone(), *LEFT_HAND_ID)
-                                );
-                                trigger_hand_gesture_actions(
-                                    *RIGHT_HAND_ID,
-                                    hand_gesture_manager_lock.get_active_gestures(right_hand_skeleton.unwrap(), gestures_config.clone(), *RIGHT_HAND_ID)
-                                );
+                                if tracking.hand_skeletons[0].is_some() {
+                                    trigger_hand_gesture_actions(
+                                        *LEFT_HAND_ID,
+                                        &hand_gesture_manager_lock.get_active_gestures(
+                                            tracking.hand_skeletons[0].unwrap(),
+                                            gestures_config.clone(),
+                                            *LEFT_HAND_ID,
+                                        ),
+                                    );
+                                }
+                                if tracking.hand_skeletons[1].is_some() {
+                                    trigger_hand_gesture_actions(
+                                        *RIGHT_HAND_ID,
+                                        &hand_gesture_manager_lock.get_active_gestures(
+                                            tracking.hand_skeletons[1].unwrap(),
+                                            gestures_config.clone(),
+                                            *RIGHT_HAND_ID,
+                                        ),
+                                    );
+                                }
 
                                 drop(hand_gesture_manager_lock);
                             }

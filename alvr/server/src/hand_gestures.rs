@@ -11,7 +11,7 @@ use alvr_common::{
     LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID,
     RIGHT_SQUEEZE_VALUE_ID, RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID,
     RIGHT_THUMBSTICK_X_ID, RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
-    X_CLICK_ID, Y_CLICK_ID,
+    X_CLICK_ID, Y_CLICK_ID, warn,
 };
 
 use alvr_session::HandGestureConfig;
@@ -360,9 +360,6 @@ impl HandGestureManager {
             g.entering = false;
         }
 
-        // Default to maintaining state
-        let mut new_active_state = g.active;
-
         // Get current time, for comparison
         let time_millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -378,7 +375,7 @@ impl HandGestureManager {
                     if g.entering_since < time_millis - u128::from(in_delay) {
                         g.last_activated = time_millis;
                         g.entering = false;
-                        new_active_state = true;
+                        g.active = true;
                     }
                 } else {
                     // Begin tracking entering state
@@ -395,7 +392,7 @@ impl HandGestureManager {
                 if g.exiting_since < time_millis - u128::from(out_delay) {
                     g.last_deactivated = time_millis;
                     g.exiting = false;
-                    new_active_state = false;
+                    g.active = false;
                 }
             } else {
                 // Begin tracking exiting state
@@ -403,8 +400,6 @@ impl HandGestureManager {
                 g.exiting_since = time_millis;
             }
         }
-
-        g.active = new_active_state;
 
         g.active
     }
@@ -474,7 +469,7 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     }
 }
 
-pub fn trigger_hand_gesture_actions(device_id: u64, gestures: Vec<HandGesture>) {
+pub fn trigger_hand_gesture_actions(device_id: u64, gestures: &Vec<HandGesture>) {
     for gesture in gestures.iter() {
         // Active bind
         let active_bind = get_active_bind_for_gesture(device_id, gesture.id);
@@ -499,9 +494,9 @@ pub fn trigger_hand_gesture_actions(device_id: u64, gestures: Vec<HandGesture>) 
                 crate::SetButton(
                     hover_bind.unwrap(),
                     crate::FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                        type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
                         __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            scalar: gesture.hover.into(),
+                            scalar: if gesture.active { gesture.hover } else { 0.0 },
                         },
                     },
                 );

@@ -6,12 +6,13 @@ use std::{
 
 use alvr_common::{
     glam::{Quat, Vec2, Vec3},
-    Pose, A_CLICK_ID, B_CLICK_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID, LEFT_SQUEEZE_VALUE_ID,
-    LEFT_THUMBSTICK_CLICK_ID, LEFT_THUMBSTICK_TOUCH_ID, LEFT_THUMBSTICK_X_ID, LEFT_THUMBSTICK_Y_ID,
-    LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID,
-    RIGHT_SQUEEZE_VALUE_ID, RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID,
-    RIGHT_THUMBSTICK_X_ID, RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
-    X_CLICK_ID, Y_CLICK_ID, LEFT_TRIGGER_TOUCH_ID, Y_TOUCH_ID, X_TOUCH_ID, RIGHT_TRIGGER_TOUCH_ID, B_TOUCH_ID, A_TOUCH_ID,
+    Pose, A_CLICK_ID, A_TOUCH_ID, B_CLICK_ID, B_TOUCH_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
+    LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_THUMBSTICK_TOUCH_ID,
+    LEFT_THUMBSTICK_X_ID, LEFT_THUMBSTICK_Y_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_TOUCH_ID,
+    LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
+    RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID, RIGHT_THUMBSTICK_X_ID,
+    RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_TOUCH_ID, RIGHT_TRIGGER_VALUE_ID,
+    X_CLICK_ID, X_TOUCH_ID, Y_CLICK_ID, Y_TOUCH_ID,
 };
 
 use alvr_session::HandGestureConfig;
@@ -143,20 +144,8 @@ impl HandGestureManager {
                 config.deactivation_delay,
                 device_id,
             ),
-            clicked: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                index_tip,
-                index_rad,
-                pinch_min,
-            ),
-            touching: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                index_tip,
-                index_rad,
-                pinch_max,
-            ),
+            clicked: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_min),
+            touching: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_max),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, index_tip, index_rad, pinch_min, pinch_max,
             ),
@@ -177,20 +166,10 @@ impl HandGestureManager {
                 config.deactivation_delay,
                 device_id,
             ),
-            clicked: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                middle_tip,
-                middle_rad,
-                pinch_min,
-            ),
-            touching: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                middle_tip,
-                middle_rad,
-                pinch_max,
-            ),
+            clicked: self
+                .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min),
+            touching: self
+                .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_max),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min, pinch_max,
             ),
@@ -211,20 +190,8 @@ impl HandGestureManager {
                 config.deactivation_delay,
                 device_id,
             ),
-            clicked: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                ring_tip,
-                ring_rad,
-                pinch_min,
-            ),
-            touching: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                ring_tip,
-                ring_rad,
-                pinch_max,
-            ),
+            clicked: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min),
+            touching: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_max),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min, pinch_max,
             ),
@@ -245,20 +212,10 @@ impl HandGestureManager {
                 config.deactivation_delay,
                 device_id,
             ),
-            clicked: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                little_tip,
-                little_rad,
-                pinch_min,
-            ),
-            touching: self.test_gesture_dist(
-                thumb_tip,
-                thumb_rad,
-                little_tip,
-                little_rad,
-                pinch_max,
-            ),
+            clicked: self
+                .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_min),
+            touching: self
+                .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_max),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, little_tip, little_rad, pinch_min, pinch_max,
             ),
@@ -352,7 +309,7 @@ impl HandGestureManager {
             id: HandGestureId::ThumbCurl,
             active: thumb_curl >= 0.0,
             touching: thumb_curl >= 0.0,
-            clicked: thumb_curl == 0.0,
+            clicked: thumb_curl >= 0.5,
             hover: thumb_curl,
         });
         gestures.push(HandGesture {
@@ -567,7 +524,6 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
 
 pub fn trigger_hand_gesture_actions(device_id: u64, gestures: &Vec<HandGesture>) {
     for gesture in gestures.iter() {
-
         // Click bind
         let click_bind = get_click_bind_for_gesture(device_id, gesture.id);
         if click_bind.is_some() {

@@ -11,7 +11,7 @@ use alvr_common::{
     LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID,
     RIGHT_SQUEEZE_VALUE_ID, RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID,
     RIGHT_THUMBSTICK_X_ID, RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_VALUE_ID,
-    X_CLICK_ID, Y_CLICK_ID, warn,
+    X_CLICK_ID, Y_CLICK_ID, LEFT_TRIGGER_TOUCH_ID, Y_TOUCH_ID, X_TOUCH_ID, RIGHT_TRIGGER_TOUCH_ID, B_TOUCH_ID, A_TOUCH_ID,
 };
 
 use alvr_session::HandGestureConfig;
@@ -36,6 +36,8 @@ fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
 pub struct HandGesture {
     pub id: HandGestureId,
     pub active: bool,
+    pub clicked: bool,
+    pub touching: bool,
     pub hover: f32,
 }
 
@@ -141,6 +143,20 @@ impl HandGestureManager {
                 config.stop_delay,
                 device_id,
             ),
+            clicked: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                index_tip,
+                index_rad,
+                pinch_min,
+            ),
+            touching: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                index_tip,
+                index_rad,
+                pinch_max,
+            ),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, index_tip, index_rad, pinch_min, pinch_max,
             ),
@@ -160,6 +176,20 @@ impl HandGestureManager {
                 config.start_delay,
                 config.stop_delay,
                 device_id,
+            ),
+            clicked: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                middle_tip,
+                middle_rad,
+                pinch_min,
+            ),
+            touching: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                middle_tip,
+                middle_rad,
+                pinch_max,
             ),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min, pinch_max,
@@ -181,6 +211,20 @@ impl HandGestureManager {
                 config.stop_delay,
                 device_id,
             ),
+            clicked: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                ring_tip,
+                ring_rad,
+                pinch_min,
+            ),
+            touching: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                ring_tip,
+                ring_rad,
+                pinch_max,
+            ),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min, pinch_max,
             ),
@@ -200,6 +244,20 @@ impl HandGestureManager {
                 config.start_delay,
                 config.stop_delay,
                 device_id,
+            ),
+            clicked: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                little_tip,
+                little_rad,
+                pinch_min,
+            ),
+            touching: self.test_gesture_dist(
+                thumb_tip,
+                thumb_rad,
+                little_tip,
+                little_rad,
+                pinch_max,
             ),
             hover: self.get_gesture_hover(
                 thumb_tip, thumb_rad, little_tip, little_rad, pinch_min, pinch_max,
@@ -244,11 +302,13 @@ impl HandGestureManager {
 
         // Grip (NEEDS REFINING)
         let grip_curl = (middle_curl + ring_curl + little_curl) / 3.0;
-        let grip_active = grip_curl == 1.0;
+        let grip_active = grip_curl > 0.0;
 
         gestures.push(HandGesture {
             id: HandGestureId::GripCurl,
             active: grip_active,
+            clicked: grip_curl == 1.0,
+            touching: grip_curl > 0.0,
             hover: grip_curl,
         });
 
@@ -290,12 +350,16 @@ impl HandGestureManager {
 
         gestures.push(HandGesture {
             id: HandGestureId::ThumbCurl,
-            active: thumb_curl == 1.0,
+            active: thumb_curl >= 0.0,
+            touching: thumb_curl >= 0.0,
+            clicked: thumb_curl == 0.0,
             hover: thumb_curl,
         });
         gestures.push(HandGesture {
             id: HandGestureId::JoystickX,
             active: joystick_contact,
+            touching: joystick_contact,
+            clicked: false,
             hover: if joystick_contact && joystick_pos.y >= joystick_deadzone {
                 joystick_pos.x
             } else {
@@ -305,6 +369,8 @@ impl HandGestureManager {
         gestures.push(HandGesture {
             id: HandGestureId::JoystickY,
             active: joystick_contact,
+            touching: joystick_contact,
+            clicked: false,
             hover: if joystick_contact && joystick_pos.y >= joystick_deadzone {
                 joystick_pos.y
             } else {
@@ -404,6 +470,18 @@ impl HandGestureManager {
         g.active
     }
 
+    fn test_gesture_dist(
+        &mut self,
+        first_anchor: Pose,
+        first_radius: f32,
+        second_anchor: Pose,
+        second_radius: f32,
+        activation_dist: f32,
+    ) -> bool {
+        first_anchor.position.distance(second_anchor.position)
+            < (activation_dist + first_radius + second_radius)
+    }
+
     fn get_gesture_hover(
         &self,
         first_anchor: Pose,
@@ -422,7 +500,7 @@ impl HandGestureManager {
     }
 }
 
-fn get_active_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
+fn get_click_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
     if device_id == *LEFT_HAND_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_CLICK_ID),
@@ -431,8 +509,6 @@ fn get_active_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opt
             HandGestureId::ThumbLittlePinch => Some(*MENU_CLICK_ID),
             HandGestureId::GripCurl => Some(*LEFT_SQUEEZE_CLICK_ID),
             HandGestureId::ThumbCurl => Some(*LEFT_THUMBSTICK_CLICK_ID),
-            HandGestureId::JoystickX => Some(*LEFT_THUMBSTICK_TOUCH_ID),
-            HandGestureId::JoystickY => Some(*LEFT_THUMBSTICK_TOUCH_ID),
             _ => None,
         }
     } else {
@@ -442,6 +518,26 @@ fn get_active_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opt
             HandGestureId::ThumbRingPinch => Some(*A_CLICK_ID),
             HandGestureId::GripCurl => Some(*RIGHT_SQUEEZE_CLICK_ID),
             HandGestureId::ThumbCurl => Some(*RIGHT_THUMBSTICK_CLICK_ID),
+            _ => None,
+        }
+    }
+}
+
+fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
+    if device_id == *LEFT_HAND_ID {
+        match gesture_id {
+            HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_TOUCH_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*Y_TOUCH_ID),
+            HandGestureId::ThumbRingPinch => Some(*X_TOUCH_ID),
+            HandGestureId::JoystickX => Some(*LEFT_THUMBSTICK_TOUCH_ID),
+            HandGestureId::JoystickY => Some(*LEFT_THUMBSTICK_TOUCH_ID),
+            _ => None,
+        }
+    } else {
+        match gesture_id {
+            HandGestureId::ThumbIndexPinch => Some(*RIGHT_TRIGGER_TOUCH_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*B_TOUCH_ID),
+            HandGestureId::ThumbRingPinch => Some(*A_TOUCH_ID),
             HandGestureId::JoystickX => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
             HandGestureId::JoystickY => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
             _ => None,
@@ -471,16 +567,33 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
 
 pub fn trigger_hand_gesture_actions(device_id: u64, gestures: &Vec<HandGesture>) {
     for gesture in gestures.iter() {
-        // Active bind
-        let active_bind = get_active_bind_for_gesture(device_id, gesture.id);
-        if active_bind.is_some() {
+
+        // Click bind
+        let click_bind = get_click_bind_for_gesture(device_id, gesture.id);
+        if click_bind.is_some() {
             unsafe {
                 crate::SetButton(
-                    active_bind.unwrap(),
+                    click_bind.unwrap(),
                     crate::FfiButtonValue {
                         type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
                         __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            binary: gesture.active.into(),
+                            binary: (gesture.active && gesture.clicked).into(),
+                        },
+                    },
+                );
+            }
+        }
+
+        // Touch bind
+        let touch_bind = get_touch_bind_for_gesture(device_id, gesture.id);
+        if touch_bind.is_some() {
+            unsafe {
+                crate::SetButton(
+                    touch_bind.unwrap(),
+                    crate::FfiButtonValue {
+                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                            binary: (gesture.active && gesture.touching).into(),
                         },
                     },
                 );

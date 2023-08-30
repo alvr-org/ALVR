@@ -30,7 +30,7 @@ pub struct HandGesture {
     pub active: bool,
     pub clicked: bool,
     pub touching: bool,
-    pub hover: f32,
+    pub value: f32,
 }
 
 pub struct GestureAction {
@@ -136,7 +136,7 @@ impl HandGestureManager {
             ),
             clicked: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_min),
             touching: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_max),
-            hover: self.get_gesture_hover(
+            value: self.get_gesture_hover(
                 thumb_tip, thumb_rad, index_tip, index_rad, pinch_min, pinch_max,
             ),
         });
@@ -160,7 +160,7 @@ impl HandGestureManager {
                 .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min),
             touching: self
                 .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_max),
-            hover: self.get_gesture_hover(
+            value: self.get_gesture_hover(
                 thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min, pinch_max,
             ),
         });
@@ -182,7 +182,7 @@ impl HandGestureManager {
             ),
             clicked: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min),
             touching: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_max),
-            hover: self.get_gesture_hover(
+            value: self.get_gesture_hover(
                 thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min, pinch_max,
             ),
         });
@@ -206,7 +206,7 @@ impl HandGestureManager {
                 .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_min),
             touching: self
                 .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_max),
-            hover: self.get_gesture_hover(
+            value: self.get_gesture_hover(
                 thumb_tip, thumb_rad, little_tip, little_rad, pinch_min, pinch_max,
             ),
         });
@@ -256,10 +256,10 @@ impl HandGestureManager {
             active: grip_active,
             clicked: grip_curl == 1.0,
             touching: grip_curl > 0.0,
-            hover: grip_curl,
+            value: grip_curl,
         });
 
-        // Joystick (NEEDS REFINING)
+        // Joystick
         let joystick_range = 0.01;
         let joystick_center = lerp_pose(index_intermediate, index_distal, 0.5);
 
@@ -303,14 +303,14 @@ impl HandGestureManager {
             active: thumb_curl >= 0.0,
             touching: thumb_curl >= 0.0,
             clicked: thumb_curl >= 0.5,
-            hover: thumb_curl,
+            value: thumb_curl,
         });
         gestures.push(HandGesture {
             id: HandGestureId::JoystickX,
             active: joystick_contact,
             touching: joystick_contact,
             clicked: false,
-            hover: if joystick_contact && joystick_pos.x.abs() >= joystick_deadzone {
+            value: if joystick_contact && joystick_pos.x.abs() >= joystick_deadzone {
                 joystick_pos.x
             } else {
                 0.0
@@ -321,7 +321,7 @@ impl HandGestureManager {
             active: joystick_contact,
             touching: joystick_contact,
             clicked: false,
-            hover: if joystick_contact && joystick_pos.y.abs() >= joystick_deadzone {
+            value: if joystick_contact && joystick_pos.y.abs() >= joystick_deadzone {
                 joystick_pos.y
             } else {
                 0.0
@@ -578,7 +578,7 @@ pub fn trigger_hand_gesture_actions(device_id: u64, gestures: &Vec<HandGesture>)
                     crate::FfiButtonValue {
                         type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
                         __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            scalar: if gesture.active { gesture.hover } else { 0.0 },
+                            scalar: if gesture.active { gesture.value } else { 0.0 },
                         },
                     },
                 );

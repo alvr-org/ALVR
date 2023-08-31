@@ -13,7 +13,6 @@ const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
 
 pub struct BitrateManager {
     nominal_frame_interval: Duration,
-    max_history_size: usize,
     frame_interval_average: SlidingWindowAverage<Duration>,
     // note: why packet_sizes_bits_history is a queue and not a sliding average? Because some
     // network samples will be dropped but not any packet size sample
@@ -33,7 +32,6 @@ impl BitrateManager {
     pub fn new(max_history_size: usize, initial_framerate: f32) -> Self {
         Self {
             nominal_frame_interval: Duration::from_secs_f32(1. / initial_framerate),
-            max_history_size,
             frame_interval_average: SlidingWindowAverage::new(
                 Duration::from_millis(16),
                 max_history_size,
@@ -74,8 +72,8 @@ impl BitrateManager {
             if interval_ratio > config.framerate_reset_threshold_multiplier
                 || interval_ratio < 1.0 / config.framerate_reset_threshold_multiplier
             {
-                self.frame_interval_average =
-                    SlidingWindowAverage::new(interval, self.max_history_size);
+                // Clear most of the samples, keep some for stability
+                self.frame_interval_average.retain(5);
                 self.update_needed = true;
             }
         }

@@ -23,7 +23,7 @@ use std::{
 };
 
 // When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_PREDICTION: Duration = Duration::from_millis(80);
+const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 

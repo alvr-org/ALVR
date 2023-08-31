@@ -308,8 +308,9 @@ dependencies = [
 
 [[package]]
 name = "alvr_gui_common"
-version = "0.1.0"
+version = "21.0.0-dev00"
 dependencies = [
+ "alvr_common",
  "egui",
 ]
 

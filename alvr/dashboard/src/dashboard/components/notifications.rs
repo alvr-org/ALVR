@@ -71,7 +71,7 @@ impl NotificationBar {
                 .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
         );
         let alignment = if !self.expanded {
-            bottom_bar = bottom_bar.max_height(23.0);
+            bottom_bar = bottom_bar.max_height(26.0);
 
             Align::TOP
         } else {
@@ -88,7 +88,9 @@ impl NotificationBar {
                     self.expanded = false;
                 }
                 ui.with_layout(Layout::left_to_right(alignment), |ui| {
-                    ui.add(Label::new(RichText::new(&self.message).color(fg)).wrap(true));
+                    ui.add(
+                        Label::new(RichText::new(&self.message).color(fg).size(12.0)).wrap(true),
+                    );
                 })
             })
         });

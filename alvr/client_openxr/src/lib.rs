@@ -31,8 +31,9 @@ const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Platform {
     Quest,
-    Pico,
-    Vive,
+    PicoNeo3,
+    Pico4,
+    Focus3,
     Yvr,
     Other,
 }
@@ -353,11 +354,15 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = match alvr_client_core::manufacturer_name().as_str() {
-        "Oculus" => Platform::Quest,
-        "Pico" => Platform::Pico,
-        "HTC" => Platform::Vive,
-        "YVR" => Platform::Yvr,
+    let platform = match (
+        alvr_client_core::manufacturer_name().as_str(),
+        alvr_client_core::device_model().as_str(),
+    ) {
+        ("Oculus", _) => Platform::Quest,
+        ("Pico", "Pico Neo 3") => Platform::PicoNeo3,
+        ("Pico", _) => Platform::Pico4,
+        ("HTC", _) => Platform::Focus3,
+        ("YVR", _) => Platform::Yvr,
         _ => Platform::Other,
     };
 
@@ -365,7 +370,7 @@ pub fn entry_point() {
         Platform::Quest => unsafe {
             xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap()
         },
-        Platform::Pico => unsafe {
+        Platform::PicoNeo3 | Platform::Pico4 => unsafe {
             xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
         },
         Platform::Yvr => unsafe {

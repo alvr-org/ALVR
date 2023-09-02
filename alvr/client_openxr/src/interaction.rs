@@ -272,34 +272,36 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     );
 
     // Tweak bindings if other platforms
-    if platform == Platform::PicoNeo3 {
-        map.insert(
-            *MENU_CLICK_ID, // faked as oculus menu button
-            ButtonBindingInfo {
-                name: "back_click".into(),
-                binding_path: BACK_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        );
-        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-    }
-    if platform == Platform::Pico4 {
-        // todo
-    } else if platform == Platform::Focus3 {
-        map.remove(&*A_TOUCH_ID);
-        map.remove(&*B_TOUCH_ID);
-        map.remove(&*X_TOUCH_ID);
-        map.remove(&*Y_TOUCH_ID);
-        map.remove(&*LEFT_SQUEEZE_CLICK_ID);
-        map.remove(&*LEFT_TRIGGER_CLICK_ID);
-        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-        map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
-        map.remove(&*RIGHT_TRIGGER_CLICK_ID);
-        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-    } else if platform == Platform::Yvr {
-        map.remove(&*LEFT_SQUEEZE_VALUE_ID);
-        map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
+    match platform {
+        Platform::PicoNeo3 | Platform::Pico4 => {
+            map.insert(
+                *MENU_CLICK_ID, // faked as oculus menu button
+                ButtonBindingInfo {
+                    name: "back_click".into(),
+                    binding_path: BACK_CLICK_PATH.into(),
+                    binding_type: BindingType::Binary,
+                },
+            );
+            map.remove(&*LEFT_THUMBREST_TOUCH_ID);
+            map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
+        }
+        Platform::Focus3 => {
+            map.remove(&*A_TOUCH_ID);
+            map.remove(&*B_TOUCH_ID);
+            map.remove(&*X_TOUCH_ID);
+            map.remove(&*Y_TOUCH_ID);
+            map.remove(&*LEFT_SQUEEZE_CLICK_ID);
+            map.remove(&*LEFT_TRIGGER_CLICK_ID);
+            map.remove(&*LEFT_THUMBREST_TOUCH_ID);
+            map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
+            map.remove(&*RIGHT_TRIGGER_CLICK_ID);
+            map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
+        }
+        Platform::Yvr => {
+            map.remove(&*LEFT_SQUEEZE_VALUE_ID);
+            map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
+        }
+        _ => {}
     }
 
     map

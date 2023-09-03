@@ -242,8 +242,8 @@ fn extrapolate_session_settings_from_session_settings(
     schema: &SchemaNode,
 ) -> json::Value {
     match schema {
-        SchemaNode::Section(entries) => json::Value::Object(
-            entries
+        SchemaNode::Section(entries) => json::Value::Object({
+            let mut entries: json::Map<String, json::Value> = entries
                 .iter()
                 .map(|named_entry| {
                     let value_json =
@@ -258,8 +258,22 @@ fn extrapolate_session_settings_from_session_settings(
                         };
                     (named_entry.name.clone(), value_json)
                 })
-                .collect(),
-        ),
+                .collect();
+
+            let collapsed_state = new_session_settings
+                .get("gui_collapsed")
+                .and_then(|val| val.as_bool())
+                .unwrap_or_else(|| {
+                    old_session_settings
+                        .get("gui_collapsed")
+                        .unwrap()
+                        .as_bool()
+                        .unwrap()
+                });
+            entries.insert("gui_collapsed".into(), json::Value::Bool(collapsed_state));
+
+            entries
+        }),
 
         SchemaNode::Choice { variants, .. } => {
             let variant_json = new_session_settings
@@ -586,11 +600,13 @@ mod tests {
     fn test_session_extrapolation_diff() {
         let input_json_string = r#"{
             "session_settings": {
-              "fjdshfks":false,
+              "gui_collapsed": false,
+              "fjdshfks": false,
               "video": {
                 "preferred_fps": 60.0
               },
               "headset": {
+                "gui_collapsed": false,
                 "controllers": {
                   "enabled": false
                 }

@@ -52,10 +52,7 @@ impl Control {
 
         let session_switch_mut = session_fragment.as_object_mut().unwrap();
 
-        // todo: can this be written better?
-        let enabled_mut = if let json::Value::Bool(enabled) = &mut session_switch_mut["enabled"] {
-            enabled
-        } else {
+        let json::Value::Bool(enabled_mut) = &mut session_switch_mut["enabled"] else {
             unreachable!()
         };
 

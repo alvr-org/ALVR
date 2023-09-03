@@ -912,6 +912,7 @@ pub fn session_settings_default() -> SettingsDefault {
         variant: FrameSizeDefaultVariant::Absolute,
         Scale: 1.0,
         Absolute: FrameSizeAbsoluteDefault {
+            gui_collapsed: false,
             width: 2144,
             height: OptionalDefault {
                 set: false,
@@ -926,6 +927,7 @@ pub fn session_settings_default() -> SettingsDefault {
     };
     let default_custom_openvr_props = VectorDefault {
         element: OpenvrPropEntryDefault {
+            gui_collapsed: false,
             key: OpenvrPropertyKeyDefault {
                 variant: OpenvrPropertyKeyDefaultVariant::TrackingSystemName,
             },
@@ -948,7 +950,9 @@ pub fn session_settings_default() -> SettingsDefault {
     };
 
     SettingsDefault {
+        gui_collapsed: false,
         video: VideoConfigDefault {
+            gui_collapsed: false,
             adapter_index: 0,
             transcoding_view_resolution: view_resolution.clone(),
             emulated_headset_view_resolution: view_resolution,
@@ -957,9 +961,11 @@ pub fn session_settings_default() -> SettingsDefault {
             buffering_history_weight: 0.90,
             optimize_game_render_latency: true,
             bitrate: BitrateConfigDefault {
+                gui_collapsed: false,
                 mode: BitrateModeDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
+                        gui_collapsed: true,
                         saturation_multiplier: 1.0,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
@@ -976,12 +982,14 @@ pub fn session_settings_default() -> SettingsDefault {
                         encoder_latency_limiter: SwitchDefault {
                             enabled: true,
                             content: EncoderLatencyLimiterDefault {
+                                gui_collapsed: true,
                                 max_saturation_multiplier: 0.9,
                             },
                         },
                         decoder_latency_limiter: SwitchDefault {
                             enabled: true,
                             content: DecoderLatencyLimiterDefault {
+                                gui_collapsed: true,
                                 max_decoder_latency_ms: 30,
                                 latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
@@ -993,6 +1001,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 adapt_to_framerate: SwitchDefault {
                     enabled: true,
                     content: BitrateAdaptiveFramerateConfigDefault {
+                        gui_collapsed: true,
                         framerate_reset_threshold_multiplier: 2.0,
                     },
                 },
@@ -1003,6 +1012,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
             encoder_config: EncoderConfigDefault {
+                gui_collapsed: true,
                 rate_control_mode: RateControlModeDefault {
                     variant: RateControlModeDefaultVariant::Cbr,
                 },
@@ -1012,6 +1022,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 use_10bit: false,
                 nvenc: NvencConfigDefault {
+                    gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {
                         variant: EncoderQualityPresetNvidiaDefaultVariant::P1,
                     },
@@ -1040,6 +1051,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     enable_weighted_prediction: false,
                 },
                 amf: AmfConfigDefault {
+                    gui_collapsed: true,
                     quality_preset: EncoderQualityPresetAmdDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
@@ -1049,6 +1061,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     preproc_tor: 7,
                 },
                 software: SoftwareEncodingConfigDefault {
+                    gui_collapsed: true,
                     force_software_encoding: false,
                     thread_count: 0,
                 },
@@ -1082,6 +1095,7 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_rendering: SwitchDefault {
                 enabled: true,
                 content: FoveatedRenderingConfigDefault {
+                    gui_collapsed: true,
                     center_size_x: 0.45,
                     center_size_y: 0.4,
                     center_shift_x: 0.4,
@@ -1093,13 +1107,16 @@ pub fn session_settings_default() -> SettingsDefault {
             clientside_foveation: SwitchDefault {
                 enabled: true,
                 content: ClientsideFoveationDefault {
+                    gui_collapsed: true,
                     mode: ClientsideFoveationModeDefault {
                         Static: ClientsideFoveationModeStaticDefault {
+                            gui_collapsed: false,
                             level: ClientsideFoveationLevelDefault {
                                 variant: ClientsideFoveationLevelDefaultVariant::High,
                             },
                         },
                         Dynamic: ClientsideFoveationModeDynamicDefault {
+                            gui_collapsed: false,
                             max_level: ClientsideFoveationLevelDefault {
                                 variant: ClientsideFoveationLevelDefaultVariant::High,
                             },
@@ -1113,6 +1130,7 @@ pub fn session_settings_default() -> SettingsDefault {
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {
+                    gui_collapsed: false,
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.5,
@@ -1122,18 +1140,21 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         audio: AudioConfigDefault {
+            gui_collapsed: false,
             linux_backend: LinuxAudioBackendDefault {
                 variant: LinuxAudioBackendDefaultVariant::Alsa,
             },
             game_audio: SwitchDefault {
                 enabled: !cfg!(target_os = "linux"),
                 content: GameAudioConfigDefault {
+                    gui_collapsed: true,
                     device: OptionalDefault {
                         set: false,
                         content: default_custom_audio_device.clone(),
                     },
                     mute_when_streaming: true,
                     buffering: AudioBufferingConfigDefault {
+                        gui_collapsed: true,
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
@@ -1142,14 +1163,17 @@ pub fn session_settings_default() -> SettingsDefault {
             microphone: SwitchDefault {
                 enabled: false,
                 content: MicrophoneConfigDefault {
+                    gui_collapsed: true,
                     devices: MicrophoneDevicesConfigDefault {
                         Custom: MicrophoneDevicesConfigCustomDefault {
+                            gui_collapsed: false,
                             source: default_custom_audio_device.clone(),
                             sink: default_custom_audio_device,
                         },
                         variant: MicrophoneDevicesConfigDefaultVariant::Automatic,
                     },
                     buffering: AudioBufferingConfigDefault {
+                        gui_collapsed: true,
                         average_buffering_ms: 50,
                         batch_ms: 10,
                     },
@@ -1157,8 +1181,10 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         headset: HeadsetConfigDefault {
+            gui_collapsed: false,
             emulation_mode: HeadsetEmulationModeDefault {
                 Custom: HeadsetEmulationModeCustomDefault {
+                    gui_collapsed: false,
                     serial_number: "Unknown".into(),
                     props: default_custom_openvr_props.clone(),
                 },
@@ -1170,14 +1196,19 @@ pub fn session_settings_default() -> SettingsDefault {
             face_tracking: SwitchDefault {
                 enabled: false,
                 content: FaceTrackingConfigDefault {
+                    gui_collapsed: true,
                     sources: FaceTrackingSourcesDefault {
+                        gui_collapsed: true,
                         eye_tracking_fb: true,
                         face_tracking_fb: true,
                         eye_expressions_htc: true,
                         lip_expressions_htc: true,
                     },
                     sink: FaceTrackingSinkConfigDefault {
-                        VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
+                        VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault {
+                            gui_collapsed: false,
+                            port: 9000,
+                        },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
                     },
                 },
@@ -1185,6 +1216,7 @@ pub fn session_settings_default() -> SettingsDefault {
             controllers: SwitchDefault {
                 enabled: true,
                 content: ControllersConfigDefault {
+                    gui_collapsed: false,
                     emulation_mode: ControllersEmulationModeDefault {
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
@@ -1208,6 +1240,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     haptics: SwitchDefault {
                         enabled: true,
                         content: HapticsConfigDefault {
+                            gui_collapsed: true,
                             intensity_multiplier: 1.0,
                             amplitude_curve: 1.0,
                             min_duration_s: 0.01,
@@ -1216,7 +1249,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             position_recentering_mode: PositionRecenteringModeDefault {
-                Local: PositionRecenteringModeLocalDefault { view_height: 1.5 },
+                Local: PositionRecenteringModeLocalDefault {
+                    gui_collapsed: false,
+                    view_height: 1.5,
+                },
                 variant: PositionRecenteringModeDefaultVariant::LocalFloor,
             },
             rotation_recentering_mode: RotationRecenteringModeDefault {
@@ -1224,12 +1260,14 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         connection: ConnectionConfigDefault {
+            gui_collapsed: false,
             stream_protocol: SocketProtocolDefault {
                 variant: SocketProtocolDefaultVariant::Udp,
             },
             client_discovery: SwitchDefault {
                 enabled: true,
                 content: DiscoveryConfigDefault {
+                    gui_collapsed: true,
                     auto_trust_clients: cfg!(debug_assertions),
                 },
             },
@@ -1249,6 +1287,7 @@ pub fn session_settings_default() -> SettingsDefault {
             statistics_history_size: 256,
         },
         logging: LoggingConfigDefault {
+            gui_collapsed: false,
             client_log_report_level: SwitchDefault {
                 enabled: true,
                 content: LogSeverityDefault {
@@ -1270,16 +1309,21 @@ pub fn session_settings_default() -> SettingsDefault {
             prefer_backtrace: false,
         },
         steamvr_launcher: SteamvrLauncherDefault {
+            gui_collapsed: false,
             driver_launch_action: DriverLaunchActionDefault {
                 variant: DriverLaunchActionDefaultVariant::UnregisterOtherDriversAtStartup,
             },
             open_close_steamvr_with_dashboard: false,
         },
         capture: CaptureConfigDefault {
+            gui_collapsed: false,
             startup_video_recording: false,
             rolling_video_files: SwitchDefault {
                 enabled: false,
-                content: RollingVideoFilesConfigDefault { duration_s: 5 },
+                content: RollingVideoFilesConfigDefault {
+                    gui_collapsed: false,
+                    duration_s: 5,
+                },
             },
             capture_frame_dir: if !cfg!(target_os = "linux") {
                 "/tmp".into()
@@ -1288,6 +1332,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         patches: PatchesDefault {
+            gui_collapsed: false,
             linux_async_reprojection: false,
         },
         open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),

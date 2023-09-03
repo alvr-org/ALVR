@@ -47,10 +47,7 @@ impl Control {
 
         let session_switch_mut = session_fragment.as_object_mut().unwrap();
 
-        // todo: can this be written better?
-        let set_mut = if let json::Value::Bool(set) = &mut session_switch_mut["set"] {
-            set
-        } else {
+        let json::Value::Bool(set_mut) = &mut session_switch_mut["set"] else {
             unreachable!()
         };
 

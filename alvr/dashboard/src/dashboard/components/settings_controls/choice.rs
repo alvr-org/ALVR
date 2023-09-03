@@ -108,11 +108,7 @@ impl Control {
 
         let session_variants_mut = session_fragment.as_object_mut().unwrap();
 
-        // todo: can this be written better?
-        let variant_mut = if let json::Value::String(variant) = &mut session_variants_mut["variant"]
-        {
-            variant
-        } else {
+        let json::Value::String(variant_mut) = &mut session_variants_mut["variant"] else {
             unreachable!()
         };
 

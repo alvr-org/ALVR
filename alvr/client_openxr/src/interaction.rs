@@ -273,18 +273,6 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
 
     // Tweak bindings if other platforms
     match platform {
-        Platform::PicoNeo3 | Platform::Pico4 => {
-            map.insert(
-                *MENU_CLICK_ID, // faked as oculus menu button
-                ButtonBindingInfo {
-                    name: "back_click".into(),
-                    binding_path: BACK_CLICK_PATH.into(),
-                    binding_type: BindingType::Binary,
-                },
-            );
-            map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-            map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-        }
         Platform::Focus3 => {
             map.remove(&*A_TOUCH_ID);
             map.remove(&*B_TOUCH_ID);

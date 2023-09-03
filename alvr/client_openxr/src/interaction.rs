@@ -29,7 +29,8 @@ pub struct ButtonBindingInfo {
 }
 
 const QUEST_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
-const PICO_CONTROLLER_PROFILE: &str = "/interaction_profiles/pico/neo3_controller";
+const PICO_NEO3_CONTROLLER_PROFILE: &str = "/interaction_profiles/bytedance/pico_neo3_controller";
+const PICO4_CONTROLLER_PROFILE: &str = "/interaction_profiles/bytedance/pico4_controller";
 const FOCUS3_CONTROLLER_PROFILE: &str = "/interaction_profiles/htc/vive_focus3_controller";
 const YVR_CONTROLLER_PROFILE: &str = "/interaction_profiles/yvr/touch_controller";
 
@@ -271,31 +272,24 @@ fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
     );
 
     // Tweak bindings if other platforms
-    if platform == Platform::Pico {
-        map.insert(
-            *MENU_CLICK_ID, // faked as oculus menu button
-            ButtonBindingInfo {
-                name: "back_click".into(),
-                binding_path: BACK_CLICK_PATH.into(),
-                binding_type: BindingType::Binary,
-            },
-        );
-        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-    } else if platform == Platform::Vive {
-        map.remove(&*A_TOUCH_ID);
-        map.remove(&*B_TOUCH_ID);
-        map.remove(&*X_TOUCH_ID);
-        map.remove(&*Y_TOUCH_ID);
-        map.remove(&*LEFT_SQUEEZE_CLICK_ID);
-        map.remove(&*LEFT_TRIGGER_CLICK_ID);
-        map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-        map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
-        map.remove(&*RIGHT_TRIGGER_CLICK_ID);
-        map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-    } else if platform == Platform::Yvr {
-        map.remove(&*LEFT_SQUEEZE_VALUE_ID);
-        map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
+    match platform {
+        Platform::Focus3 => {
+            map.remove(&*A_TOUCH_ID);
+            map.remove(&*B_TOUCH_ID);
+            map.remove(&*X_TOUCH_ID);
+            map.remove(&*Y_TOUCH_ID);
+            map.remove(&*LEFT_SQUEEZE_CLICK_ID);
+            map.remove(&*LEFT_TRIGGER_CLICK_ID);
+            map.remove(&*LEFT_THUMBREST_TOUCH_ID);
+            map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
+            map.remove(&*RIGHT_TRIGGER_CLICK_ID);
+            map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
+        }
+        Platform::Yvr => {
+            map.remove(&*LEFT_SQUEEZE_VALUE_ID);
+            map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
+        }
+        _ => {}
     }
 
     map
@@ -400,8 +394,9 @@ pub fn initialize_hands_interaction(
 
     let controller_profile = match platform {
         Platform::Quest => QUEST_CONTROLLER_PROFILE,
-        Platform::Pico => PICO_CONTROLLER_PROFILE,
-        Platform::Vive => FOCUS3_CONTROLLER_PROFILE,
+        Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE,
+        Platform::Pico4 => PICO4_CONTROLLER_PROFILE,
+        Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE,
         Platform::Yvr => YVR_CONTROLLER_PROFILE,
         Platform::Other => QUEST_CONTROLLER_PROFILE,
     };
@@ -569,7 +564,7 @@ fn emulate_missing_button_click(
 ) -> Option<ButtonEntry> {
     let value = ButtonValue::Binary(state > 0.5);
 
-    if platform == Platform::Vive {
+    if platform == Platform::Focus3 {
         if value_action_id == *LEFT_SQUEEZE_VALUE_ID {
             Some(ButtonEntry {
                 path_id: *LEFT_SQUEEZE_CLICK_ID,

@@ -89,7 +89,8 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
 
     av_opt_set_int(encoder_ctx->priv_data, "tune", settings.m_nvencTuningPreset, 0);
     av_opt_set_int(encoder_ctx->priv_data, "zerolatency", 1, 0);
-    av_opt_set_int(encoder_ctx->priv_data, "delay", 0, 0);
+    // Delay isn't actually a delay instead its how many surfaces to encode at a time
+    av_opt_set_int(encoder_ctx->priv_data, "delay", 1, 0);
     av_opt_set_int(encoder_ctx->priv_data, "forced-idr", 1, 0);
 
     /**

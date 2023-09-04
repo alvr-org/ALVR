@@ -5,7 +5,7 @@ use alvr_events::{Event, EventType};
 use alvr_gui_common::theme::log_colors;
 use alvr_session::Settings;
 use eframe::{
-    egui::{Grid, ScrollArea, Ui},
+    egui::{Grid, RichText, ScrollArea, Ui},
     epaint::Color32,
 };
 
@@ -88,15 +88,22 @@ impl LogsTab {
             .stick_to_bottom(true)
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                Grid::new(0).num_columns(3).striped(true).show(ui, |ui| {
-                    for entry in &self.entries {
-                        ui.colored_label(entry.color, &entry.timestamp);
-                        ui.colored_label(entry.color, &entry.ty);
-                        ui.colored_label(entry.color, &entry.message);
+                Grid::new(0)
+                    .spacing((10.0, 2.0))
+                    .num_columns(3)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for entry in &self.entries {
+                            ui.colored_label(
+                                entry.color,
+                                RichText::new(&entry.timestamp).size(12.0),
+                            );
+                            ui.colored_label(entry.color, RichText::new(&entry.ty).size(12.0));
+                            ui.colored_label(entry.color, RichText::new(&entry.message).size(12.0));
 
-                        ui.end_row();
-                    }
-                });
+                            ui.end_row();
+                        }
+                    });
             });
     }
 }

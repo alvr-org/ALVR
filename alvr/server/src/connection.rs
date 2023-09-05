@@ -649,6 +649,25 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
         let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
+
+        let mut gestures_button_mapping_manager = if let Switch::Enabled(config) =
+            &SERVER_DATA_MANAGER.read().settings().headset.controllers
+        {
+            if let Switch::Enabled(_) = &config.hand_tracking.use_gestures {
+                Some(ButtonMappingManager::new_automatic(
+                    &CONTROLLER_PROFILE_INFO
+                        .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
+                        .unwrap()
+                        .button_set,
+                    &config.button_mapping_config,
+                ))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         move || {
             let mut face_tracking_sink =
                 settings
@@ -760,6 +779,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                             if tracking.hand_skeletons[0].is_some() {
                                 trigger_hand_gesture_actions(
+                                    gestures_button_mapping_manager.as_mut().unwrap(),
                                     *LEFT_HAND_ID,
                                     &hand_gesture_manager_lock.get_active_gestures(
                                         tracking.hand_skeletons[0].unwrap(),
@@ -770,6 +790,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             }
                             if tracking.hand_skeletons[1].is_some() {
                                 trigger_hand_gesture_actions(
+                                    gestures_button_mapping_manager.as_mut().unwrap(),
                                     *RIGHT_HAND_ID,
                                     &hand_gesture_manager_lock.get_active_gestures(
                                         tracking.hand_skeletons[1].unwrap(),

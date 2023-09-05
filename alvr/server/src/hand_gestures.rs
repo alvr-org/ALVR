@@ -15,7 +15,10 @@ use alvr_common::{
     RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_TOUCH_ID, RIGHT_TRIGGER_VALUE_ID,
 };
 
+use alvr_packets::ButtonValue;
 use alvr_session::HandGestureConfig;
+
+use crate::input_mapping::ButtonMappingManager;
 
 fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
     Pose {
@@ -535,54 +538,24 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     }
 }
 
-pub fn trigger_hand_gesture_actions(device_id: u64, gestures: &Vec<HandGesture>) {
+pub fn trigger_hand_gesture_actions(button_mapping_manager: &mut ButtonMappingManager, device_id: u64, gestures: &Vec<HandGesture>) {
     for gesture in gestures.iter() {
         // Click bind
         let click_bind = get_click_bind_for_gesture(device_id, gesture.id);
         if click_bind.is_some() {
-            unsafe {
-                crate::SetButton(
-                    click_bind.unwrap(),
-                    crate::FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            binary: (gesture.active && gesture.clicked).into(),
-                        },
-                    },
-                );
-            }
+            button_mapping_manager.report_button(click_bind.unwrap(), ButtonValue::Binary(gesture.active && gesture.clicked));
         }
 
         // Touch bind
         let touch_bind = get_touch_bind_for_gesture(device_id, gesture.id);
         if touch_bind.is_some() {
-            unsafe {
-                crate::SetButton(
-                    touch_bind.unwrap(),
-                    crate::FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            binary: (gesture.active && gesture.touching).into(),
-                        },
-                    },
-                );
-            }
+            button_mapping_manager.report_button(touch_bind.unwrap(), ButtonValue::Binary(gesture.active && gesture.touching));
         }
 
         // Hover bind
         let hover_bind = get_hover_bind_for_gesture(device_id, gesture.id);
         if hover_bind.is_some() {
-            unsafe {
-                crate::SetButton(
-                    hover_bind.unwrap(),
-                    crate::FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            scalar: if gesture.active { gesture.value } else { 0.0 },
-                        },
-                    },
-                );
-            }
+            button_mapping_manager.report_button(hover_bind.unwrap(), ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }));
         }
     }
 }

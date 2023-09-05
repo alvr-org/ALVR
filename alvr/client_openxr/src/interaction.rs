@@ -4,11 +4,6 @@ use alvr_packets::{ButtonEntry, ButtonValue};
 use openxr as xr;
 use std::collections::HashMap;
 
-enum BindingType {
-    Binary,
-    Scalar,
-}
-
 pub enum ButtonAction {
     Binary(xr::Action<bool>),
     Scalar(xr::Action<f32>),
@@ -21,281 +16,8 @@ pub struct HandSource {
     pub vibration_action: xr::Action<xr::Haptic>,
 }
 
-pub struct ButtonBindingInfo {
-    name: String,
-    //note: this might be different than the path that generated the id
-    binding_path: String,
-    binding_type: BindingType,
-}
-
-const QUEST_CONTROLLER_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
-const PICO_NEO3_CONTROLLER_PROFILE: &str = "/interaction_profiles/bytedance/pico_neo3_controller";
-const PICO4_CONTROLLER_PROFILE: &str = "/interaction_profiles/bytedance/pico4_controller";
-const FOCUS3_CONTROLLER_PROFILE: &str = "/interaction_profiles/htc/vive_focus3_controller";
-const YVR_CONTROLLER_PROFILE: &str = "/interaction_profiles/yvr/touch_controller";
-
-fn get_button_bindings(platform: Platform) -> HashMap<u64, ButtonBindingInfo> {
-    let mut map = HashMap::new();
-
-    // Baseline bindings for the Touch controller
-    map.insert(
-        *MENU_CLICK_ID,
-        ButtonBindingInfo {
-            name: "menu_click".into(),
-            binding_path: MENU_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *A_CLICK_ID,
-        ButtonBindingInfo {
-            name: "a_click".into(),
-            binding_path: A_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *A_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "a_touch".into(),
-            binding_path: A_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *B_CLICK_ID,
-        ButtonBindingInfo {
-            name: "b_click".into(),
-            binding_path: B_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *B_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "b_touch".into(),
-            binding_path: B_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *X_CLICK_ID,
-        ButtonBindingInfo {
-            name: "x_click".into(),
-            binding_path: X_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *X_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "x_touch".into(),
-            binding_path: X_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *Y_CLICK_ID,
-        ButtonBindingInfo {
-            name: "y_click".into(),
-            binding_path: Y_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *Y_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "y_touch".into(),
-            binding_path: Y_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_SQUEEZE_VALUE_ID,
-        ButtonBindingInfo {
-            name: "left_squeeze_value".into(),
-            binding_path: LEFT_SQUEEZE_VALUE_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *LEFT_SQUEEZE_CLICK_ID,
-        ButtonBindingInfo {
-            name: "left_squeeze_click".into(),
-            binding_path: "/user/hand/left/input/squeeze".into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_TRIGGER_VALUE_ID,
-        ButtonBindingInfo {
-            name: "left_trigger_value".into(),
-            binding_path: LEFT_TRIGGER_VALUE_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *LEFT_TRIGGER_CLICK_ID,
-        ButtonBindingInfo {
-            name: "left_trigger_click".into(),
-            binding_path: "/user/hand/left/input/trigger".into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_TRIGGER_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "left_trigger_touch".into(),
-            binding_path: LEFT_TRIGGER_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_THUMBSTICK_X_ID,
-        ButtonBindingInfo {
-            name: "left_thumbstick_x".into(),
-            binding_path: LEFT_THUMBSTICK_X_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *LEFT_THUMBSTICK_Y_ID,
-        ButtonBindingInfo {
-            name: "left_thumbstick_y".into(),
-            binding_path: LEFT_THUMBSTICK_Y_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *LEFT_THUMBSTICK_CLICK_ID,
-        ButtonBindingInfo {
-            name: "left_thumbstick_click".into(),
-            binding_path: LEFT_THUMBSTICK_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_THUMBSTICK_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "left_thumbstick_touch".into(),
-            binding_path: LEFT_THUMBSTICK_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *LEFT_THUMBREST_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "left_thumbrest_touch".into(),
-            binding_path: LEFT_THUMBREST_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_SQUEEZE_VALUE_ID,
-        ButtonBindingInfo {
-            name: "right_squeeze_value".into(),
-            binding_path: RIGHT_SQUEEZE_VALUE_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *RIGHT_SQUEEZE_CLICK_ID,
-        ButtonBindingInfo {
-            name: "right_squeeze_click".into(),
-            binding_path: "/user/hand/right/input/squeeze".into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_TRIGGER_VALUE_ID,
-        ButtonBindingInfo {
-            name: "right_trigger_value".into(),
-            binding_path: RIGHT_TRIGGER_VALUE_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *RIGHT_TRIGGER_CLICK_ID,
-        ButtonBindingInfo {
-            name: "right_trigger_click".into(),
-            binding_path: "/user/hand/right/input/trigger".into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_TRIGGER_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "right_trigger_touch".into(),
-            binding_path: RIGHT_TRIGGER_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_THUMBSTICK_X_ID,
-        ButtonBindingInfo {
-            name: "right_thumbstick_x".into(),
-            binding_path: RIGHT_THUMBSTICK_X_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *RIGHT_THUMBSTICK_Y_ID,
-        ButtonBindingInfo {
-            name: "right_thumbstick_y".into(),
-            binding_path: RIGHT_THUMBSTICK_Y_PATH.into(),
-            binding_type: BindingType::Scalar,
-        },
-    );
-    map.insert(
-        *RIGHT_THUMBSTICK_CLICK_ID,
-        ButtonBindingInfo {
-            name: "right_thumbstick_click".into(),
-            binding_path: RIGHT_THUMBSTICK_CLICK_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_THUMBSTICK_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "right_thumbstick_touch".into(),
-            binding_path: RIGHT_THUMBSTICK_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-    map.insert(
-        *RIGHT_THUMBREST_TOUCH_ID,
-        ButtonBindingInfo {
-            name: "right_thumbrest_touch".into(),
-            binding_path: RIGHT_THUMBREST_TOUCH_PATH.into(),
-            binding_type: BindingType::Binary,
-        },
-    );
-
-    // Tweak bindings if other platforms
-    match platform {
-        Platform::Focus3 => {
-            map.remove(&*A_TOUCH_ID);
-            map.remove(&*B_TOUCH_ID);
-            map.remove(&*X_TOUCH_ID);
-            map.remove(&*Y_TOUCH_ID);
-            map.remove(&*LEFT_SQUEEZE_CLICK_ID);
-            map.remove(&*LEFT_TRIGGER_CLICK_ID);
-            map.remove(&*LEFT_THUMBREST_TOUCH_ID);
-            map.remove(&*RIGHT_SQUEEZE_CLICK_ID);
-            map.remove(&*RIGHT_TRIGGER_CLICK_ID);
-            map.remove(&*RIGHT_THUMBREST_TOUCH_ID);
-        }
-        Platform::Yvr => {
-            map.remove(&*LEFT_SQUEEZE_VALUE_ID);
-            map.remove(&*RIGHT_SQUEEZE_VALUE_ID);
-        }
-        _ => {}
-    }
-
-    map
-}
-
 pub struct HandsInteractionContext {
+    pub interaction_profile_id: u64,
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hand_sources: [HandSource; 2],
@@ -317,31 +39,42 @@ pub fn initialize_hands_interaction(
         xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
     }
 
-    let bindings_info = get_button_bindings(platform);
+    let interaction_profile_path = match platform {
+        Platform::Quest => QUEST_CONTROLLER_PROFILE_PATH,
+        Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
+        Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
+        Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE_PATH,
+        Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
+        Platform::Other => QUEST_CONTROLLER_PROFILE_PATH,
+    };
+    let interaction_profile_id = alvr_common::hash_string(interaction_profile_path);
 
     // Create actions:
 
     let mut button_actions = HashMap::new();
-    for (id, info) in &bindings_info {
+    for button_id in &CONTROLLER_PROFILE_INFO
+        .get(&interaction_profile_id)
+        .unwrap()
+        .button_set
+    {
+        let info = BUTTON_INFO.get(button_id).unwrap();
+
+        let name = info.path[1..].replace('/', "_");
         let display_name = format!(
             "{}{}",
-            info.name[0..1].to_uppercase(),
-            info.name[1..].replace('_', " ")
+            name[0..1].to_uppercase(),
+            name[1..].replace('_', " ")
         );
 
-        let action = match info.binding_type {
-            BindingType::Binary => ButtonAction::Binary(
-                action_set
-                    .create_action(&info.name, &display_name, &[])
-                    .unwrap(),
-            ),
-            BindingType::Scalar => ButtonAction::Scalar(
-                action_set
-                    .create_action(&info.name, &display_name, &[])
-                    .unwrap(),
-            ),
+        let action = match info.button_type {
+            ButtonType::Binary => {
+                ButtonAction::Binary(action_set.create_action(&name, &display_name, &[]).unwrap())
+            }
+            ButtonType::Scalar => {
+                ButtonAction::Scalar(action_set.create_action(&name, &display_name, &[]).unwrap())
+            }
         };
-        button_actions.insert(*id, action);
+        button_actions.insert(*button_id, action);
     }
 
     let left_grip_action = action_set
@@ -361,7 +94,7 @@ pub fn initialize_hands_interaction(
     // Create action bindings:
 
     for (id, action) in &button_actions {
-        let path = &bindings_info.get(id).unwrap().binding_path;
+        let path = &BUTTON_INFO.get(id).unwrap().path;
         match action {
             ButtonAction::Binary(action) => {
                 bindings.push(binding(action, path));
@@ -391,19 +124,11 @@ pub fn initialize_hands_interaction(
     ));
 
     // Apply bindings:
-
-    let controller_profile = match platform {
-        Platform::Quest => QUEST_CONTROLLER_PROFILE,
-        Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE,
-        Platform::Pico4 => PICO4_CONTROLLER_PROFILE,
-        Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE,
-        Platform::Yvr => YVR_CONTROLLER_PROFILE,
-        Platform::Other => QUEST_CONTROLLER_PROFILE,
-    };
-
     xr_instance
         .suggest_interaction_profile_bindings(
-            xr_instance.string_to_path(controller_profile).unwrap(),
+            xr_instance
+                .string_to_path(interaction_profile_path)
+                .unwrap(),
             &bindings,
         )
         .unwrap();
@@ -444,6 +169,7 @@ pub fn initialize_hands_interaction(
     ];
 
     HandsInteractionContext {
+        interaction_profile_id,
         action_set,
         button_actions,
         hand_sources,
@@ -528,73 +254,7 @@ pub fn get_hand_motion(
     (Some(hand_motion), None)
 }
 
-// todo: move emulation to server
-fn emulate_missing_button_value(
-    platform: Platform,
-    click_action_id: u64,
-    state: bool,
-) -> Option<ButtonEntry> {
-    let value = ButtonValue::Scalar(if state { 1_f32 } else { 0_f32 });
-
-    if platform == Platform::Yvr {
-        if click_action_id == *LEFT_SQUEEZE_CLICK_ID {
-            Some(ButtonEntry {
-                path_id: *LEFT_SQUEEZE_VALUE_ID,
-                value,
-            })
-        } else if click_action_id == *RIGHT_SQUEEZE_CLICK_ID {
-            Some(ButtonEntry {
-                path_id: *RIGHT_SQUEEZE_VALUE_ID,
-                value,
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-// todo: use hysteresis
-// todo: move emulation to server
-fn emulate_missing_button_click(
-    platform: Platform,
-    value_action_id: u64,
-    state: f32,
-) -> Option<ButtonEntry> {
-    let value = ButtonValue::Binary(state > 0.5);
-
-    if platform == Platform::Focus3 {
-        if value_action_id == *LEFT_SQUEEZE_VALUE_ID {
-            Some(ButtonEntry {
-                path_id: *LEFT_SQUEEZE_CLICK_ID,
-                value,
-            })
-        } else if value_action_id == *LEFT_TRIGGER_VALUE_ID {
-            Some(ButtonEntry {
-                path_id: *LEFT_TRIGGER_CLICK_ID,
-                value,
-            })
-        } else if value_action_id == *RIGHT_SQUEEZE_VALUE_ID {
-            Some(ButtonEntry {
-                path_id: *RIGHT_SQUEEZE_CLICK_ID,
-                value,
-            })
-        } else if value_action_id == *RIGHT_TRIGGER_VALUE_ID {
-            Some(ButtonEntry {
-                path_id: *RIGHT_TRIGGER_CLICK_ID,
-                value,
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
 pub fn update_buttons(
-    platform: Platform,
     xr_session: &xr::Session<xr::AnyGraphics>,
     button_actions: &HashMap<u64, ButtonAction>,
 ) -> Vec<ButtonEntry> {
@@ -611,12 +271,6 @@ pub fn update_buttons(
                         path_id: *id,
                         value: ButtonValue::Binary(state.current_state),
                     });
-
-                    if let Some(entry) =
-                        emulate_missing_button_value(platform, *id, state.current_state)
-                    {
-                        button_entries.push(entry);
-                    }
                 }
             }
             ButtonAction::Scalar(action) => {
@@ -629,12 +283,6 @@ pub fn update_buttons(
                         path_id: *id,
                         value: ButtonValue::Scalar(state.current_state),
                     });
-
-                    if let Some(entry) =
-                        emulate_missing_button_click(platform, *id, state.current_state)
-                    {
-                        button_entries.push(entry);
-                    }
                 }
             }
         }

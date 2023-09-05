@@ -122,6 +122,7 @@ extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
 extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
+extern "C" void (*RegisterButtons)(unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
@@ -140,10 +141,11 @@ extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
+extern "C" void RegisterButton(unsigned long long buttonID);
 extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
-extern "C" void SetButton(unsigned long long path, FfiButtonValue value);
+extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
 
 extern "C" void CaptureFrame();
 

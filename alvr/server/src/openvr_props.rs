@@ -70,7 +70,6 @@ fn serial_number(device_id: u64) -> String {
     } else if device_id == *LEFT_HAND_ID || device_id == *RIGHT_HAND_ID {
         if let Switch::Enabled(controllers) = &settings.headset.controllers {
             let serial_number = match &controllers.emulation_mode {
-                ControllersEmulationMode::RiftSTouch => "1WMGH000XX0000_Controller",
                 ControllersEmulationMode::ValveIndex => "ALVR Remote Controller",
                 ControllersEmulationMode::ViveWand => "ALVR Remote Controller",
                 ControllersEmulationMode::Quest2Touch => "1WMHH000X00000_Controller",
@@ -231,22 +230,22 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
             };
 
             match config.emulation_mode {
-                ControllersEmulationMode::RiftSTouch => {
+                ControllersEmulationMode::Quest2Touch => {
                     set_string(TrackingSystemName, "oculus");
                     set_string(ManufacturerName, "Oculus");
                     if device_id == *LEFT_HAND_ID {
-                        set_string(ModelNumber, "Oculus Rift S (Left Controller)");
-                        set_string(RenderModelName, "oculus_rifts_controller_left");
+                        set_string(ModelNumber, "Miramar (Left Controller)");
+                        set_string(RenderModelName, "oculus_quest2_controller_left");
                         set_string(
                             RegisteredDeviceType,
-                            "oculus/1WMGH000XX0000_Controller_Left",
+                            "oculus/1WMHH000X00000_Controller_Left",
                         );
                     } else if device_id == *RIGHT_HAND_ID {
-                        set_string(ModelNumber, "Oculus Rift S (Right Controller)");
-                        set_string(RenderModelName, "oculus_rifts_controller_right");
+                        set_string(ModelNumber, "Miramar (Right Controller)");
+                        set_string(RenderModelName, "oculus_quest2_controller_right");
                         set_string(
                             RegisteredDeviceType,
-                            "oculus/1WMGH000XX0000_Controller_Right",
+                            "oculus/1WMHH000X00000_Controller_Right",
                         );
                     }
                     set_string(ControllerType, "oculus_touch");
@@ -347,79 +346,6 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                     set_string(ControllerType, "vive_controller");
                     set_string(InputProfilePath, "{oculus}/input/touch_profile.json");
-                }
-                ControllersEmulationMode::Quest2Touch => {
-                    set_string(TrackingSystemName, "oculus");
-                    set_string(ManufacturerName, "Oculus");
-                    if device_id == *LEFT_HAND_ID {
-                        set_string(ModelNumber, "Miramar (Left Controller)");
-                        set_string(RenderModelName, "oculus_quest2_controller_left");
-                        set_string(
-                            RegisteredDeviceType,
-                            "oculus/1WMHH000X00000_Controller_Left",
-                        );
-                    } else if device_id == *RIGHT_HAND_ID {
-                        set_string(ModelNumber, "Miramar (Right Controller)");
-                        set_string(RenderModelName, "oculus_quest2_controller_right");
-                        set_string(
-                            RegisteredDeviceType,
-                            "oculus/1WMHH000X00000_Controller_Right",
-                        );
-                    }
-                    set_string(ControllerType, "oculus_touch");
-                    set_string(InputProfilePath, "{oculus}/input/touch_profile.json");
-
-                    if device_id == *LEFT_HAND_ID {
-                        set_string(
-                            NamedIconPathDeviceOff,
-                            "{oculus}/icons/rifts_left_controller_off.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceSearching,
-                            "{oculus}/icons/rifts_left_controller_searching.gif",
-                        );
-                        set_string(
-                            NamedIconPathDeviceSearchingAlert,
-                            "{oculus}/icons/rifts_left_controller_searching_alert.gif",
-                        );
-                        set_string(
-                            NamedIconPathDeviceReady,
-                            "{oculus}/icons/rifts_left_controller_ready.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceReadyAlert,
-                            "{oculus}/icons/rifts_left_controller_ready_alert.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceAlertLow,
-                            "{oculus}/icons/rifts_left_controller_ready_low.png",
-                        );
-                    } else if device_id == *RIGHT_HAND_ID {
-                        set_string(
-                            NamedIconPathDeviceOff,
-                            "{oculus}/icons/rifts_right_controller_off.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceSearching,
-                            "{oculus}/icons/rifts_right_controller_searching.gif",
-                        );
-                        set_string(
-                            NamedIconPathDeviceSearchingAlert,
-                            "{oculus}/icons/rifts_right_controller_searching_alert.gif",
-                        );
-                        set_string(
-                            NamedIconPathDeviceReady,
-                            "{oculus}/icons/rifts_right_controller_ready.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceReadyAlert,
-                            "{oculus}/icons/rifts_right_controller_ready_alert.png",
-                        );
-                        set_string(
-                            NamedIconPathDeviceAlertLow,
-                            "{oculus}/icons/rifts_right_controller_ready_low.png",
-                        );
-                    }
                 }
                 ControllersEmulationMode::ViveTracker => {
                     set_string(TrackingSystemName, "lighthouse");

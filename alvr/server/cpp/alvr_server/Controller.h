@@ -33,6 +33,8 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 
     vr::VRInputComponentHandle_t getHapticComponent();
 
+    void RegisterButton(uint64_t id);
+
     void SetButton(uint64_t id, FfiButtonValue value);
 
     bool onPoseUpdate(float predictionS,
@@ -40,12 +42,7 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
                       const FfiHandSkeleton *hand,
                       unsigned int controllersTracked);
 
-    void GetBoneTransform(bool withController,
-                          bool isLeftHand,
-                          float thumbAnimationProgress,
-                          float indexAnimationProgress,
-                          uint64_t lastPoseTouch,
-                          vr::VRBoneTransform_t outBoneTransform[]);
+    void GetBoneTransform(bool withController, vr::VRBoneTransform_t outBoneTransform[]);
 
     vr::ETrackedDeviceClass getControllerDeviceClass();
 
@@ -53,20 +50,21 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
 
-    vr::VRInputComponentHandle_t m_handles[ALVR_INPUT_COUNT];
+    std::map<uint64_t, vr::VRInputComponentHandle_t> m_buttonHandles;
+
     vr::VRInputComponentHandle_t m_compHaptic;
     vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;
 
     vr::DriverPose_t m_pose;
 
+    // These variables are used for controller hand animation
+    // todo: move to rust
     float m_thumbTouchAnimationProgress = 0;
     float m_indexTouchAnimationProgress = 0;
-    uint64_t m_lastThumbTouch = 0;
-    uint64_t m_lastIndexTouch = 0;
-
-    uint64_t m_buttons = 0;
+    bool m_currentThumbTouch = false;
+    bool m_lastThumbTouch = false;
+    bool m_currentTriggerTouch = false;
+    bool m_lastTriggerTouch = false;
     float m_triggerValue = 0;
     float m_gripValue = 0;
-    float m_joystickX = 0;
-    float m_joystickY = 0;
 };

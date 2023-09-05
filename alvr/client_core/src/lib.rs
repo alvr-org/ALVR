@@ -167,6 +167,17 @@ pub fn send_playspace(area: Option<Vec2>) {
     }
 }
 
+pub fn send_active_interaction_profile(device_id: u64, profile_id: u64) {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender
+            .send(&ClientControlPacket::ActiveInteractionProfile {
+                device_id,
+                profile_id,
+            })
+            .ok();
+    }
+}
+
 pub fn send_buttons(entries: Vec<ButtonEntry>) {
     if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender.send(&ClientControlPacket::Buttons(entries)).ok();

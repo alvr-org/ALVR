@@ -6,13 +6,13 @@ use std::{
 
 use alvr_common::{
     glam::{Vec2, Vec3},
-    Pose, A_CLICK_ID, A_TOUCH_ID, B_CLICK_ID, B_TOUCH_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
+    Pose, RIGHT_A_CLICK_ID, RIGHT_A_TOUCH_ID, RIGHT_B_CLICK_ID, RIGHT_B_TOUCH_ID, LEFT_HAND_ID, LEFT_SQUEEZE_CLICK_ID,
     LEFT_SQUEEZE_VALUE_ID, LEFT_THUMBSTICK_CLICK_ID, LEFT_THUMBSTICK_TOUCH_ID,
     LEFT_THUMBSTICK_X_ID, LEFT_THUMBSTICK_Y_ID, LEFT_TRIGGER_CLICK_ID, LEFT_TRIGGER_TOUCH_ID,
-    LEFT_TRIGGER_VALUE_ID, MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
+    LEFT_TRIGGER_VALUE_ID, LEFT_MENU_CLICK_ID, RIGHT_SQUEEZE_CLICK_ID, RIGHT_SQUEEZE_VALUE_ID,
     RIGHT_THUMBSTICK_CLICK_ID, RIGHT_THUMBSTICK_TOUCH_ID, RIGHT_THUMBSTICK_X_ID,
     RIGHT_THUMBSTICK_Y_ID, RIGHT_TRIGGER_CLICK_ID, RIGHT_TRIGGER_TOUCH_ID, RIGHT_TRIGGER_VALUE_ID,
-    X_CLICK_ID, X_TOUCH_ID, Y_CLICK_ID, Y_TOUCH_ID,
+    LEFT_X_CLICK_ID, LEFT_X_TOUCH_ID, LEFT_Y_CLICK_ID, LEFT_Y_TOUCH_ID,
 };
 
 use alvr_session::HandGestureConfig;
@@ -474,9 +474,9 @@ fn get_click_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     if device_id == *LEFT_HAND_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_CLICK_ID),
-            HandGestureId::ThumbMiddlePinch => Some(*Y_CLICK_ID),
-            HandGestureId::ThumbRingPinch => Some(*X_CLICK_ID),
-            HandGestureId::ThumbLittlePinch => Some(*MENU_CLICK_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*LEFT_Y_CLICK_ID),
+            HandGestureId::ThumbRingPinch => Some(*LEFT_X_CLICK_ID),
+            HandGestureId::ThumbLittlePinch => Some(*LEFT_MENU_CLICK_ID),
             HandGestureId::GripCurl => Some(*LEFT_SQUEEZE_CLICK_ID),
             HandGestureId::ThumbCurl => Some(*LEFT_THUMBSTICK_CLICK_ID),
             _ => None,
@@ -484,8 +484,8 @@ fn get_click_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     } else {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*RIGHT_TRIGGER_CLICK_ID),
-            HandGestureId::ThumbMiddlePinch => Some(*B_CLICK_ID),
-            HandGestureId::ThumbRingPinch => Some(*A_CLICK_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*RIGHT_B_CLICK_ID),
+            HandGestureId::ThumbRingPinch => Some(*RIGHT_A_CLICK_ID),
             HandGestureId::GripCurl => Some(*RIGHT_SQUEEZE_CLICK_ID),
             HandGestureId::ThumbCurl => Some(*RIGHT_THUMBSTICK_CLICK_ID),
             _ => None,
@@ -497,8 +497,8 @@ fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     if device_id == *LEFT_HAND_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_TOUCH_ID),
-            HandGestureId::ThumbMiddlePinch => Some(*Y_TOUCH_ID),
-            HandGestureId::ThumbRingPinch => Some(*X_TOUCH_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*LEFT_Y_TOUCH_ID),
+            HandGestureId::ThumbRingPinch => Some(*LEFT_X_TOUCH_ID),
             HandGestureId::JoystickX => Some(*LEFT_THUMBSTICK_TOUCH_ID),
             HandGestureId::JoystickY => Some(*LEFT_THUMBSTICK_TOUCH_ID),
             _ => None,
@@ -506,8 +506,8 @@ fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     } else {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*RIGHT_TRIGGER_TOUCH_ID),
-            HandGestureId::ThumbMiddlePinch => Some(*B_TOUCH_ID),
-            HandGestureId::ThumbRingPinch => Some(*A_TOUCH_ID),
+            HandGestureId::ThumbMiddlePinch => Some(*RIGHT_B_TOUCH_ID),
+            HandGestureId::ThumbRingPinch => Some(*RIGHT_A_TOUCH_ID),
             HandGestureId::JoystickX => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
             HandGestureId::JoystickY => Some(*RIGHT_THUMBSTICK_TOUCH_ID),
             _ => None,

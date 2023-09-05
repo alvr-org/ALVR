@@ -30,6 +30,7 @@ use alvr_packets::{
 use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
+    KEEPALIVE_TIMEOUT,
 };
 use std::{
     collections::HashMap,
@@ -854,24 +855,21 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
+            let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while IS_STREAMING.value() {
                 let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(packet) => packet,
-                    Err(ConnectionError::TryAgain(_)) => continue,
+                    Err(ConnectionError::TryAgain(_)) => {
+                        if Instant::now() > disconnection_deadline {
+                            info!("Client disconnected. Timeout");
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
                     Err(e) => {
                         info!("Client disconnected. Cause: {e}");
-
-                        SERVER_DATA_MANAGER.write().update_client_list(
-                            client_hostname,
-                            ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
-                                should_be_removed: false,
-                            }),
-                        );
-                        if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
-                            notifier.send(ClientDisconnectRequest::Disconnect).ok();
-                        }
-
-                        return;
+                        break;
                     }
                 };
 
@@ -980,6 +978,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     }
                     _ => (),
                 }
+
+                disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
+            }
+
+            SERVER_DATA_MANAGER.write().update_client_list(
+                client_hostname,
+                ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
+                    should_be_removed: false,
+                }),
+            );
+            if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
+                notifier.send(ClientDisconnectRequest::Disconnect).ok();
             }
         }
     });

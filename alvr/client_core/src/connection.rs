@@ -22,7 +22,7 @@ use alvr_packets::{
 use alvr_session::{settings_schema::Switch, SessionConfig};
 use alvr_sockets::{
     ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
-    KEEPALIVE_INTERVAL,
+    KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
 use serde_json as json;
 use std::{
@@ -52,6 +52,7 @@ const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The streamer is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The streamer has disconnected.";
+const CONNECTION_TIMEOUT_MESSAGE: &str = "Connection timeout.";
 
 const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
 const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
@@ -454,6 +455,7 @@ fn connection_pipeline(
     });
 
     let control_receive_thread = thread::spawn(move || {
+        let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
         while IS_STREAMING.value() {
             let maybe_packet = control_receiver.recv(STREAMING_RECV_TIMEOUT);
 
@@ -471,7 +473,19 @@ fn connection_pipeline(
                     return;
                 }
                 Ok(_) => (),
-                Err(ConnectionError::TryAgain(_)) => continue,
+                Err(ConnectionError::TryAgain(_)) => {
+                    if Instant::now() > disconnection_deadline {
+                        info!("{CONNECTION_TIMEOUT_MESSAGE}");
+                        set_hud_message(CONNECTION_TIMEOUT_MESSAGE);
+                        if let Some(notifier) = &*DISCONNECT_SERVER_NOTIFIER.lock() {
+                            notifier.send(()).ok();
+                        }
+
+                        return;
+                    } else {
+                        continue;
+                    }
+                }
                 Err(e) => {
                     info!("{SERVER_DISCONNECTED_MESSAGE} Cause: {e}");
                     set_hud_message(SERVER_DISCONNECTED_MESSAGE);
@@ -482,6 +496,8 @@ fn connection_pipeline(
                     return;
                 }
             }
+
+            disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
         }
     });
 

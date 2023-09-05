@@ -16,6 +16,7 @@ pub const LOCAL_IP: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 pub const CONTROL_PORT: u16 = 9943;
 pub const HANDSHAKE_PACKET_SIZE_BYTES: usize = 56; // this may change in future protocols
 pub const KEEPALIVE_INTERVAL: Duration = Duration::from_millis(500);
+pub const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(2);
 
 fn set_socket_buffers(
     socket: &socket2::Socket,

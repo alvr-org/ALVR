@@ -828,6 +828,12 @@ For now works only on Windows+Nvidia"#
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct RawEventsConfig {
+    #[schema(flag = "real-time")]
+    pub hide_spammy_events: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct LoggingConfig {
     pub client_log_report_level: Switch<LogSeverity>,
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
@@ -841,7 +847,7 @@ pub struct LoggingConfig {
     #[schema(flag = "real-time")]
     pub notification_level: LogSeverity,
     #[schema(flag = "real-time")]
-    pub show_raw_events: bool,
+    pub show_raw_events: Switch<RawEventsConfig>,
     #[schema(strings(help = "This applies only to certain error or warning messages."))]
     #[schema(flag = "steamvr-restart")]
     pub prefer_backtrace: bool,
@@ -1305,7 +1311,13 @@ pub fn session_settings_default() -> SettingsDefault {
                     LogSeverityDefaultVariant::Warning
                 },
             },
-            show_raw_events: false,
+            show_raw_events: SwitchDefault {
+                enabled: false,
+                content: RawEventsConfigDefault {
+                    gui_collapsed: true,
+                    hide_spammy_events: false,
+                },
+            },
             prefer_backtrace: false,
         },
         steamvr_launcher: SteamvrLauncherDefault {

@@ -3,11 +3,12 @@ use std::collections::VecDeque;
 use alvr_common::LogSeverity;
 use alvr_events::{Event, EventType};
 use alvr_gui_common::theme::log_colors;
-use alvr_session::Settings;
+use alvr_session::{RawEventsConfig, Settings};
 use eframe::{
     egui::{Grid, RichText, ScrollArea, Ui},
     epaint::Color32,
 };
+use settings_schema::Switch;
 
 struct Entry {
     color: Color32,
@@ -17,7 +18,7 @@ struct Entry {
 }
 
 pub struct LogsTab {
-    show_raw_events: bool,
+    raw_events_config: Switch<RawEventsConfig>,
     entries: VecDeque<Entry>,
     log_limit: usize,
 }
@@ -25,14 +26,16 @@ pub struct LogsTab {
 impl LogsTab {
     pub fn new() -> Self {
         Self {
-            show_raw_events: true,
+            raw_events_config: Switch::Enabled(RawEventsConfig {
+                hide_spammy_events: false,
+            }),
             entries: VecDeque::new(),
             log_limit: 1000,
         }
     }
 
     pub fn update_settings(&mut self, settings: &Settings) {
-        self.show_raw_events = settings.logging.show_raw_events;
+        self.raw_events_config = settings.logging.show_raw_events.clone();
     }
 
     pub fn push_event(&mut self, event: Event) {
@@ -67,13 +70,22 @@ impl LogsTab {
                 });
             }
             event_type => {
-                if self.show_raw_events {
-                    self.entries.push_back(Entry {
-                        color: log_colors::EVENT_LIGHT,
-                        timestamp: event.timestamp,
-                        ty: "EVENT".into(),
-                        message: format!("{event_type:?}"),
-                    });
+                if let Switch::Enabled(config) = &self.raw_events_config {
+                    if !config.hide_spammy_events
+                        || !matches!(
+                            event_type,
+                            EventType::StatisticsSummary(_)
+                                | EventType::GraphStatistics(_)
+                                | EventType::Tracking(_)
+                        )
+                    {
+                        self.entries.push_back(Entry {
+                            color: log_colors::EVENT_LIGHT,
+                            timestamp: event.timestamp,
+                            ty: "EVENT".into(),
+                            message: format!("{event_type:?}"),
+                        });
+                    }
                 }
             }
         }

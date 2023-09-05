@@ -538,24 +538,37 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
     }
 }
 
-pub fn trigger_hand_gesture_actions(button_mapping_manager: &mut ButtonMappingManager, device_id: u64, gestures: &Vec<HandGesture>) {
+pub fn trigger_hand_gesture_actions(
+    button_mapping_manager: &mut ButtonMappingManager,
+    device_id: u64,
+    gestures: &Vec<HandGesture>,
+) {
     for gesture in gestures.iter() {
         // Click bind
         let click_bind = get_click_bind_for_gesture(device_id, gesture.id);
         if click_bind.is_some() {
-            button_mapping_manager.report_button(click_bind.unwrap(), ButtonValue::Binary(gesture.active && gesture.clicked));
+            button_mapping_manager.report_button(
+                click_bind.unwrap(),
+                ButtonValue::Binary(gesture.active && gesture.clicked),
+            );
         }
 
         // Touch bind
         let touch_bind = get_touch_bind_for_gesture(device_id, gesture.id);
         if touch_bind.is_some() {
-            button_mapping_manager.report_button(touch_bind.unwrap(), ButtonValue::Binary(gesture.active && gesture.touching));
+            button_mapping_manager.report_button(
+                touch_bind.unwrap(),
+                ButtonValue::Binary(gesture.active && gesture.touching),
+            );
         }
 
         // Hover bind
         let hover_bind = get_hover_bind_for_gesture(device_id, gesture.id);
         if hover_bind.is_some() {
-            button_mapping_manager.report_button(hover_bind.unwrap(), ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }));
+            button_mapping_manager.report_button(
+                hover_bind.unwrap(),
+                ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
+            );
         }
     }
 }

@@ -145,6 +145,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
     let _push_guard = sh.push_dir(final_path);
     let _env_vars = sh.push_env("LDSOFLAGS", config_vars);
 
+    // Patches ffmpeg for workarounds and patches that have yet to be unstreamed
+    let ffmpeg_command = "for p in ../../../alvr/xtask/prepatches/*; do patch -p1 < $p; done";
+    cmd!(sh, "bash -c {ffmpeg_command}").run().unwrap();
+
     if nvenc_flag {
         /*
            Describing Nvidia specific options --nvccflags:

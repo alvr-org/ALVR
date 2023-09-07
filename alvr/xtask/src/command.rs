@@ -21,19 +21,16 @@ pub fn download(sh: &Shell, url: &str, destination: &Path) -> Result<(), xshell:
     cmd!(sh, "curl -L -o {destination} --url {url}").run()
 }
 
-pub fn download_and_extract_zip(
-    sh: &Shell,
-    url: &str,
-    destination: &Path,
-) -> Result<(), xshell::Error> {
+pub fn download_and_extract_zip(url: &str, destination: &Path) -> Result<(), xshell::Error> {
+    let sh = Shell::new().unwrap();
     let temp_dir_guard = sh.create_temp_dir()?;
 
     let zip_file = temp_dir_guard.path().join("temp_download.zip");
-    download(sh, url, &zip_file)?;
+    download(&sh, url, &zip_file)?;
 
     sh.remove_path(destination).ok();
     sh.create_dir(destination)?;
-    unzip(sh, &zip_file, destination)
+    unzip(&sh, &zip_file, destination)
 }
 
 pub fn date_utc_yyyymmdd(sh: &Shell) -> Result<String, xshell::Error> {

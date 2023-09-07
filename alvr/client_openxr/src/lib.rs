@@ -35,6 +35,7 @@ pub enum Platform {
     Pico4,
     Focus3,
     Yvr,
+    Lynx,
     Other,
 }
 
@@ -350,29 +351,30 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = match (
-        alvr_client_core::manufacturer_name().as_str(),
-        alvr_client_core::device_model().as_str(),
-    ) {
+    let manufacturer_name = alvr_client_core::manufacturer_name();
+    let device_model = alvr_client_core::device_model();
+
+    info!("Manufacturer: {manufacturer_name}, device model: {device_model}");
+
+    let platform = match (manufacturer_name.as_str(), device_model.as_str()) {
         ("Oculus", _) => Platform::Quest,
         ("Pico", "Pico Neo 3") => Platform::PicoNeo3,
         ("Pico", _) => Platform::Pico4,
         ("HTC", _) => Platform::Focus3,
         ("YVR", _) => Platform::Yvr,
+        ("Lynx Mixed Reality", _) => Platform::Lynx,
         _ => Platform::Other,
     };
 
-    let xr_entry = match platform {
-        Platform::Quest => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap()
-        },
-        Platform::PicoNeo3 | Platform::Pico4 => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
-        },
-        Platform::Yvr => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_yvr.so")).unwrap()
-        },
-        _ => unsafe { xr::Entry::load().unwrap() },
+    let loader_suffix = match platform {
+        Platform::Quest => "quest",
+        Platform::PicoNeo3 | Platform::Pico4 => "pico",
+        Platform::Yvr => "yvr",
+        Platform::Lynx => "lynx",
+        _ => "generic",
+    };
+    let xr_entry = unsafe {
+        xr::Entry::load_from(Path::new(&format!("libopenxr_loader_{loader_suffix}.so"))).unwrap()
     };
 
     #[cfg(target_os = "android")]
@@ -784,6 +786,7 @@ pub fn entry_point() {
                                     .collect(),
                             ],
                             settings.video.foveated_rendering.into_option(),
+                            platform != Platform::Lynx,
                         );
 
                         alvr_client_core::send_playspace(

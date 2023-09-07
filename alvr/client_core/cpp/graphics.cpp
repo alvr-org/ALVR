@@ -62,7 +62,7 @@ typedef struct {
 enum ovrProgramType {
     STREAMER_PROG,
     LOBBY_PROG,
-    MAX_PROGS // Not to be used as a type, just a placeholder for len    
+    MAX_PROGS // Not to be used as a type, just a placeholder for len
 };
 
 typedef struct {
@@ -95,12 +95,11 @@ typedef struct {
 } ovrVertexAttribute;
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
-    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition",      {true,  true }},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor",            {true,  false}},
-    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv",                  {true,  true }},
-    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform",    {false, false}},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal",          {false, true }}
-};
+    {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition", {true, true}},
+    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor", {true, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv", {true, true}},
+    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform", {false, false}},
+    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal", {false, true}}};
 
 enum E1test {
     UNIFORM_VIEW_ID,
@@ -428,7 +427,10 @@ void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
 
 static const char *programVersion = "#version 300 es\n";
 
-bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char *fragmentSource, ovrProgramType progType) {
+bool ovrProgram_Create(ovrProgram *program,
+                       const char *vertexSource,
+                       const char *fragmentSource,
+                       ovrProgramType progType) {
     GLint r;
 
     LOGI("Compiling shaders.");
@@ -468,12 +470,16 @@ bool ovrProgram_Create(ovrProgram *program, const char *vertexSource, const char
     // Bind the vertex attribute locations.
     for (size_t i = 0; i < sizeof(ProgramVertexAttributes) / sizeof(ProgramVertexAttributes[0]);
          i++) {
-        // Only bind vertex attributes which are used/active in shader else causes uncessary bugs via compiler optimization/aliasing
+        // Only bind vertex attributes which are used/active in shader else causes uncessary bugs
+        // via compiler optimization/aliasing
         if (ProgramVertexAttributes[i].usedInProg[progType]) {
             GL(glBindAttribLocation(program->streamProgram,
-                                ProgramVertexAttributes[i].location,
-                                ProgramVertexAttributes[i].name));
-            LOGD("Binding ProgramVertexAttribute [id.%d] %s to location %d", i, ProgramVertexAttributes[i].name, ProgramVertexAttributes[i].location);
+                                    ProgramVertexAttributes[i].location,
+                                    ProgramVertexAttributes[i].name));
+            LOGD("Binding ProgramVertexAttribute [id.%d] %s to location %d",
+                 i,
+                 ProgramVertexAttributes[i].name,
+                 ProgramVertexAttributes[i].location);
         }
     }
 
@@ -551,19 +557,22 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         int hudTexture,
                         std::vector<GLuint> textures[2],
                         FFRData ffrData,
-                        bool isLobby) {
+                        bool isLobby,
+                        bool enableSrgbCorrection) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
         renderer->enableFFR = ffrData.enabled;
         if (renderer->enableFFR) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
-            renderer->srgbCorrectionPass->Initialize(fv.optimizedEyeWidth, fv.optimizedEyeHeight);
+            renderer->srgbCorrectionPass->Initialize(
+                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
             renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
-            renderer->srgbCorrectionPass->Initialize(width, height);
-            renderer->streamRenderTexture = renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
+            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection);
+            renderer->streamRenderTexture =
+                renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
     }
 
@@ -580,7 +589,8 @@ void ovrRenderer_Create(ovrRenderer *renderer,
 
     ovrProgram_Create(&renderer->streamProgram, VERTEX_SHADER, FRAGMENT_SHADER, STREAMER_PROG);
 
-    ovrProgram_Create(&renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
+    ovrProgram_Create(
+        &renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
 
     ovrGeometry_CreatePanel(&renderer->Panel);
     ovrGeometry_CreateVAO(&renderer->Panel);
@@ -734,7 +744,7 @@ void initGraphicsNative() {
     g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     g_ctx.hudTexture = std::make_unique<Texture>(
         false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
-    
+
     const GLubyte *sVendor, *sRenderer, *sVersion, *sExts;
 
     GL(sVendor = glGetString(GL_VENDOR));
@@ -747,10 +757,14 @@ void initGraphicsNative() {
 }
 
 void destroyGraphicsNative() {
-    LOGV("Resetting stream texture and hud texture %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
+    LOGV("Resetting stream texture and hud texture %p, %p",
+         g_ctx.streamTexture.get(),
+         g_ctx.hudTexture.get());
     g_ctx.streamTexture.reset();
     g_ctx.hudTexture.reset();
-    LOGV("Resetted stream texture and hud texture to %p, %p", g_ctx.streamTexture.get(), g_ctx.hudTexture.get());
+    LOGV("Resetted stream texture and hud texture to %p, %p",
+         g_ctx.streamTexture.get(),
+         g_ctx.hudTexture.get());
 }
 
 // on resume
@@ -774,7 +788,8 @@ void prepareLobbyRoom(int viewWidth,
                        g_ctx.hudTexture->GetGLTexture(),
                        g_ctx.lobbySwapchainTextures,
                        {false},
-                       true);
+                       true,
+                       false);
 }
 
 // on pause
@@ -819,7 +834,8 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationCenterShiftY,
                         config.foveationEdgeRatioX,
                         config.foveationEdgeRatioY},
-                       false);
+                       false,
+                       config.enableSrgbCorrection);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {
@@ -838,14 +854,14 @@ void renderLobbyNative(const FfiViewInput eyeInputs[2]) {
         if (!g_ctx.hudTextureBitmap.empty()) {
             GL(glBindTexture(GL_TEXTURE_2D, g_ctx.hudTexture->GetGLTexture()));
             GL(glTexSubImage2D(GL_TEXTURE_2D,
-                            0,
-                            0,
-                            0,
-                            HUD_TEXTURE_WIDTH,
-                            HUD_TEXTURE_HEIGHT,
-                            GL_RGBA,
-                            GL_UNSIGNED_BYTE,
-                            &g_ctx.hudTextureBitmap[0]));
+                               0,
+                               0,
+                               0,
+                               HUD_TEXTURE_WIDTH,
+                               HUD_TEXTURE_HEIGHT,
+                               GL_RGBA,
+                               GL_UNSIGNED_BYTE,
+                               &g_ctx.hudTextureBitmap[0]));
         }
         g_ctx.hudTextureBitmap.clear();
     }

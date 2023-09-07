@@ -15,6 +15,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 |     Pico 4/Neo 3      |                              :heavy_check_mark:                               |
 | Vive Focus 3/XR Elite |                              :heavy_check_mark:                               |
 |        YVR 1/2        |                              :heavy_check_mark:                               |
+|        Lynx R1        |                              :heavy_check_mark:                               |
 |   Google Cardboard    | :heavy_check_mark: ([PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR)) |
 |   Smartphone/Monado   |                               :construction: *                                |
 |        GearVR         |                           :construction: * (maybe)                            |

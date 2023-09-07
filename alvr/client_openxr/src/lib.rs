@@ -786,6 +786,7 @@ pub fn entry_point() {
                                     .collect(),
                             ],
                             settings.video.foveated_rendering.into_option(),
+                            platform != Platform::Lynx,
                         );
 
                         alvr_client_core::send_playspace(

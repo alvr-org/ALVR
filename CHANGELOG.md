@@ -1,5 +1,23 @@
 # Changelog
 
+## v20.3.0
+
+* Add Lynx R1 headset support (by @zarik5 #1823)
+  * Currently there is an issue with hand tracking which is being investigated
+* Make settings sections collapsible (by @zarik5)
+* Other UI tweaks (by @zarik5)
+* *Actually* fix controller freeze (by @zarik5)
+* Fix Pico controller buttons (by @zarik5 @galister @Meister1593 #1820)
+* Fix bitrate hikes when "Adapt to framerate" is enabled (by @zarik5)
+* Fix Nvenc encoder on Linux (by @Killrmemz #1824)
+* Timeout connection if lingering (by @zarik5)
+* Fix warmstart crash on client (by @ShootingKing-AM #1813)
+
+## v20.2.1
+
+* Fix VRCFaceTracking mode panicing.
+* (Potential) Fix for dashboard crash on Wayland.
+
 ## v20.2.0
 
 * Add Flatpak build (by @CharlieQLe #1683 #1724 #1735 #1742, @Meister1593 #1769)

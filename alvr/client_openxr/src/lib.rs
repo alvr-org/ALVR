@@ -386,7 +386,6 @@ pub fn entry_point() {
     assert!(available_extensions.khr_opengl_es_enable);
 
     let mut exts = xr::ExtensionSet::default();
-    exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;

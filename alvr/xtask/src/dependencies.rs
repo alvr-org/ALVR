@@ -20,6 +20,7 @@ pub fn prepare_x264_windows() {
     let deps_dir = afs::deps_dir();
 
     command::download_and_extract_zip(
+        &sh,
         &format!(
             "{}/{VERSION}.r{REVISION}/libx264_{VERSION}.r{REVISION}_msvc16.zip",
             "https://github.com/ShiftMediaProject/x264/releases/download",
@@ -55,8 +56,11 @@ Cflags: -I${{includedir}}
 }
 
 pub fn prepare_ffmpeg_windows() {
+    let sh = Shell::new().unwrap();
+
     let download_path = afs::deps_dir().join("windows");
     command::download_and_extract_zip(
+        &sh,
         &format!(
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
             "ffmpeg-n5.1-latest-win64-gpl-shared-5.1.zip"
@@ -99,6 +103,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
 
     let download_path = afs::deps_dir().join("linux");
     command::download_and_extract_zip(
+        &sh,
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
         &download_path,
     )
@@ -201,52 +206,72 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
 }
 
 fn get_android_openxr_loaders() {
-    fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
-        let temp_dir = afs::build_dir().join("temp_download");
-        let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
-        fs::create_dir_all(&destination_dir).unwrap();
+    let sh = Shell::new().unwrap();
 
-        command::download_and_extract_zip(url, &temp_dir).unwrap();
-        fs::copy(
-            temp_dir.join(source_dir).join("libopenxr_loader.so"),
-            destination_dir.join(format!("libopenxr_loader_{name}.so")),
-        )
-        .unwrap();
-        fs::remove_dir_all(&temp_dir).ok();
-    }
+    let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
+    fs::create_dir_all(&destination_dir).unwrap();
 
-    get_openxr_loader(
-        "generic",
+    let temp_dir = afs::build_dir().join("temp_download");
+
+    // Generic
+    command::download_and_extract_zip(
+        &sh,
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
             "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
         ),
-        "prefab/modules/openxr_loader/libs/android.arm64-v8a",
-    );
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("prefab/modules/openxr_loader/libs/android.arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
 
-    get_openxr_loader(
-        "quest",
+    // Quest
+    command::download_and_extract_zip(
+        &sh,
         "https://securecdn.oculus.com/binaries/download/?id=6316350341736833", // version 53
-        "OpenXR/Libs/Android/arm64-v8a/Release",
-    );
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("OpenXR/Libs/Android/arm64-v8a/Release/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_quest.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
 
-    get_openxr_loader(
-        "pico",
+    // Pico
+    command::download_and_extract_zip(
+        &sh,
         "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
-        "libs/android.arm64-v8a",
-    );
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir.join("libs/android.arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_pico.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(&temp_dir).ok();
 
-    get_openxr_loader(
-        "yvr",
+    // Yvr
+    command::download_and_extract_zip(
+        &sh,
         "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
-        "yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a",
-    );
-
-    get_openxr_loader(
-        "lynx",
-        "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
-        "jni/arm64-v8a",
-    );
+        &temp_dir,
+    )
+    .unwrap();
+    fs::copy(
+        temp_dir
+            .join("yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a/libopenxr_loader.so"),
+        destination_dir.join("libopenxr_loader_yvr.so"),
+    )
+    .unwrap();
+    fs::remove_dir_all(temp_dir).ok();
 }
 
 pub fn build_android_deps(skip_admin_priv: bool) {

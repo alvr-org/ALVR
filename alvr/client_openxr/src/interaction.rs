@@ -45,7 +45,7 @@ pub fn initialize_hands_interaction(
         Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
         Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE_PATH,
         Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
-        _ => QUEST_CONTROLLER_PROFILE_PATH,
+        Platform::Other => QUEST_CONTROLLER_PROFILE_PATH,
     };
     let interaction_profile_id = alvr_common::hash_string(interaction_profile_path);
 

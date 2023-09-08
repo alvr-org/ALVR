@@ -1,7 +1,7 @@
 mod average;
 mod connection_result;
-mod inputs;
 mod logging;
+mod paths;
 mod primitives;
 mod version;
 
@@ -18,9 +18,9 @@ pub use settings_schema;
 
 pub use average::*;
 pub use connection_result::*;
-pub use inputs::*;
 pub use log::{debug, error, info, warn};
 pub use logging::*;
+pub use paths::*;
 pub use primitives::*;
 pub use version::*;
 

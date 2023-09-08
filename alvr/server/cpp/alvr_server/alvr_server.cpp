@@ -193,7 +193,6 @@ void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offse
 FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
 void (*SetOpenvrProps)(unsigned long long deviceID);
-void (*RegisterButtons)(unsigned long long deviceID);
 void (*WaitForVSync)();
 
 void *CppEntryPoint(const char *interface_name, int *return_code) {
@@ -281,17 +280,6 @@ void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop) {
     }
 }
 
-void RegisterButton(unsigned long long buttonID) {
-    if (g_driver_provider.left_controller &&
-        LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->RegisterButton(buttonID);
-    } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->RegisterButton(buttonID);
-    }
-}
-
 void SetViewsConfig(FfiViewsConfig config) {
     if (g_driver_provider.hmd) {
         g_driver_provider.hmd->SetViewsConfig(config);
@@ -309,14 +297,16 @@ void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged)
     }
 }
 
-void SetButton(unsigned long long buttonID, FfiButtonValue value) {
+void SetButton(unsigned long long path, FfiButtonValue value) {
     if (g_driver_provider.left_controller &&
-        LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->SetButton(buttonID, value);
+        std::find(LEFT_CONTROLLER_BUTTON_IDS.begin(), LEFT_CONTROLLER_BUTTON_IDS.end(), path) !=
+            LEFT_CONTROLLER_BUTTON_IDS.end()) {
+        g_driver_provider.left_controller->SetButton(path, value);
     } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->SetButton(buttonID, value);
+               std::find(RIGHT_CONTROLLER_BUTTON_IDS.begin(),
+                         RIGHT_CONTROLLER_BUTTON_IDS.end(),
+                         path) != RIGHT_CONTROLLER_BUTTON_IDS.end()) {
+        g_driver_provider.right_controller->SetButton(path, value);
     }
 }
 

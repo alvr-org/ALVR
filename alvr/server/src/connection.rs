@@ -1,13 +1,14 @@
 use crate::{
     bitrate::BitrateManager,
+    buttons::BUTTON_PATH_FROM_ID,
+    create_recording_file,
     face_tracking::FaceTrackingSink,
     haptics,
-    input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    FfiButtonValue, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -17,14 +18,13 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::Mutex,
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon, BUTTON_INFO,
-    CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID,
-    QUEST_CONTROLLER_PROFILE_PATH, RIGHT_HAND_ID,
+    warn, AnyhowToCon, ConResult, ConnectionError, LazyMutOpt, RelaxedAtomic, ToCon,
+    DEVICE_ID_TO_PATH, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, Haptics,
-    ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
+    ButtonValue, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    Haptics, ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
@@ -78,11 +78,32 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
     let old_config = data_manager_lock.session().openvr_config.clone();
     let settings = data_manager_lock.settings().clone();
 
-    let mut controller_is_tracker = false;
+    let mut controllers_mode_idx = 0;
+    let mut override_trigger_threshold = false;
+    let mut trigger_threshold = 0.0;
+    let mut override_grip_threshold = false;
+    let mut grip_threshold = 0.0;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
-        controller_is_tracker =
-            matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
-
+        controllers_mode_idx = match config.emulation_mode {
+            ControllersEmulationMode::RiftSTouch => 1,
+            ControllersEmulationMode::ValveIndex => 3,
+            ControllersEmulationMode::ViveWand => 5,
+            ControllersEmulationMode::Quest2Touch => 7,
+            ControllersEmulationMode::ViveTracker => 9,
+        };
+        override_trigger_threshold =
+            if let Switch::Enabled(value) = config.trigger_threshold_override {
+                trigger_threshold = value;
+                true
+            } else {
+                false
+            };
+        override_grip_threshold = if let Switch::Enabled(value) = config.grip_threshold_override {
+            grip_threshold = value;
+            true
+        } else {
+            false
+        };
         true
     } else {
         false
@@ -150,7 +171,11 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
             .force_software_encoding,
         sw_thread_count: settings.video.encoder_config.software.thread_count,
         controllers_enabled,
-        controller_is_tracker,
+        controllers_mode_idx,
+        override_trigger_threshold,
+        trigger_threshold,
+        override_grip_threshold,
+        grip_threshold,
         enable_foveated_rendering,
         foveation_center_size_x,
         foveation_center_size_y,
@@ -827,21 +852,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     });
 
     let control_receive_thread = thread::spawn({
-        let mut controller_button_mapping_manager = if let Switch::Enabled(config) =
-            &SERVER_DATA_MANAGER.read().settings().headset.controllers
-        {
-            Some(ButtonMappingManager::new_automatic(
-                &CONTROLLER_PROFILE_INFO
-                    .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
-                    .unwrap()
-                    .button_set,
-                &config.button_mapping_config,
-            ))
-        } else {
-            None
-        };
-        // todo: gestures_button_mapping_manager...
-
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
@@ -887,7 +897,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         unsafe { crate::RequestIDR() }
                     }
                     ClientControlPacket::VideoErrorReport => {
-                        // legacy endpoint. todo: remove
                         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                             stats.report_packet_loss();
                         }
@@ -931,9 +940,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                     entries
                                         .iter()
                                         .map(|e| ButtonEvent {
-                                            path: BUTTON_INFO
+                                            path: BUTTON_PATH_FROM_ID
                                                 .get(&e.path_id)
-                                                .map(|info| info.path.to_owned())
+                                                .cloned()
                                                 .unwrap_or_else(|| {
                                                     format!("Unknown (ID: {:#16x})", e.path_id)
                                                 }),
@@ -944,28 +953,25 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             }
                         }
 
-                        if let Some(manager) = &mut controller_button_mapping_manager {
-                            for entry in entries {
-                                manager.report_button(entry.path_id, entry.value);
-                            }
-                        };
-                    }
-                    ClientControlPacket::ActiveInteractionProfile {
-                        device_id: _,
-                        profile_id,
-                    } => {
-                        controller_button_mapping_manager =
-                            if let (Switch::Enabled(config), Some(profile_info)) = (
-                                &SERVER_DATA_MANAGER.read().settings().headset.controllers,
-                                CONTROLLER_PROFILE_INFO.get(&profile_id),
-                            ) {
-                                Some(ButtonMappingManager::new_automatic(
-                                    &profile_info.button_set,
-                                    &config.button_mapping_config,
-                                ))
-                            } else {
-                                None
+                        for entry in entries {
+                            let value = match entry.value {
+                                ButtonValue::Binary(value) => FfiButtonValue {
+                                    type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                        binary: value.into(),
+                                    },
+                                },
+
+                                ButtonValue::Scalar(value) => FfiButtonValue {
+                                    type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                    __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                        scalar: value,
+                                    },
+                                },
                             };
+
+                            unsafe { crate::SetButton(entry.path_id, value) };
+                        }
                     }
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
@@ -1124,7 +1130,7 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
                 unsafe { crate::RequestIDR() };
 
                 if is_idr {
-                    crate::create_recording_file();
+                    create_recording_file();
                     *LAST_IDR_INSTANT.lock() = Instant::now();
                 }
             }

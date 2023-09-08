@@ -1,8 +1,8 @@
 mod bitrate;
+mod buttons;
 mod connection;
 mod face_tracking;
 mod haptics;
-mod input_mapping;
 mod logging_backend;
 mod openvr_props;
 mod sockets;
@@ -442,7 +442,6 @@ pub unsafe extern "C" fn HmdDriverFactory(
     ReportComposed = Some(report_composed);
     GetSerialNumber = Some(openvr_props::get_serial_number);
     SetOpenvrProps = Some(openvr_props::set_device_openvr_props);
-    RegisterButtons = Some(input_mapping::register_buttons);
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
     WaitForVSync = Some(wait_for_vsync);
 

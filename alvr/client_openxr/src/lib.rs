@@ -44,6 +44,7 @@ struct HistoryView {
 }
 
 struct StreamingInputContext {
+    platform: Platform,
     xr_instance: xr::Instance,
     xr_session: xr::Session<xr::AnyGraphics>,
     hands_context: Arc<HandsInteractionContext>,
@@ -340,8 +341,11 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         face_data,
     });
 
-    let button_entries =
-        interaction::update_buttons(&ctx.xr_session, &ctx.hands_context.button_actions);
+    let button_entries = interaction::update_buttons(
+        ctx.platform,
+        &ctx.xr_session,
+        &ctx.hands_context.button_actions,
+    );
     if !button_entries.is_empty() {
         alvr_client_core::send_buttons(button_entries);
     }
@@ -687,6 +691,7 @@ pub fn entry_point() {
                             };
 
                         let mut context = StreamingInputContext {
+                            platform,
                             xr_instance: xr_instance.clone(),
                             xr_session: xr_session.clone().into_any_graphics(),
                             hands_context: Arc::clone(&hands_context),
@@ -791,15 +796,6 @@ pub fn entry_point() {
                                 .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
                                 .unwrap()
                                 .map(|a| Vec2::new(a.width, a.height)),
-                        );
-
-                        alvr_client_core::send_active_interaction_profile(
-                            *LEFT_HAND_ID,
-                            hands_context.interaction_profile_id,
-                        );
-                        alvr_client_core::send_active_interaction_profile(
-                            *RIGHT_HAND_ID,
-                            hands_context.interaction_profile_id,
                         );
                     }
                     ClientCoreEvent::StreamingStopped => {

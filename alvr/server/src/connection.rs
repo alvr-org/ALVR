@@ -568,7 +568,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
                             crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                alvr_session::OpenvrPropValue::String(id),
                             ),
                         )
                     }
@@ -594,7 +595,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
                             crate::openvr_props::to_ffi_openvr_prop(
-                                alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                                alvr_session::OpenvrPropertyKey::AudioDefaultPlaybackDeviceId,
+                                alvr_session::OpenvrPropValue::String(id),
                             ),
                         )
                     }
@@ -619,7 +621,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 crate::SetOpenvrProperty(
                     *alvr_common::HEAD_ID,
                     crate::openvr_props::to_ffi_openvr_prop(
-                        alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
+                        alvr_session::OpenvrPropertyKey::AudioDefaultRecordingDeviceId,
+                        alvr_session::OpenvrPropValue::String(id),
                     ),
                 )
             }

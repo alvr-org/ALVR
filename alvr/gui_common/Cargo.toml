@@ -1,9 +1,12 @@
 [package]
 name = "alvr_gui_common"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [dependencies]
+alvr_common.workspace = true
+
 egui = "0.22"

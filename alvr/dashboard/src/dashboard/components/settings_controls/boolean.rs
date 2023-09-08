@@ -32,10 +32,7 @@ impl Control {
     ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
-        // todo: can this be written better?
-        let enabled_mut = if let json::Value::Bool(enabled) = session_fragment {
-            enabled
-        } else {
+        let json::Value::Bool(enabled_mut) = session_fragment else {
             unreachable!()
         };
 

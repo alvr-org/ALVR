@@ -20,6 +20,11 @@ impl<T> SlidingWindowAverage<T> {
 
         self.history_buffer.push_back(sample);
     }
+
+    pub fn retain(&mut self, count: usize) {
+        self.history_buffer
+            .drain(0..self.history_buffer.len().saturating_sub(count));
+    }
 }
 
 impl SlidingWindowAverage<f32> {

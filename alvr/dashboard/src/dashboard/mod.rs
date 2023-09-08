@@ -231,7 +231,7 @@ impl eframe::App for Dashboard {
                         .inner_margin(Margin::same(7.0))
                         .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                 )
-                .exact_width(145.0)
+                .exact_width(150.0)
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);
@@ -261,12 +261,20 @@ impl eframe::App for Dashboard {
 
                             ui.horizontal(|ui| {
                                 ui.add_space(5.0);
-                                ui.label("SteamVR:");
+                                ui.label(RichText::new("SteamVR:").size(13.0));
                                 ui.add_space(-10.0);
                                 if connected_to_server {
-                                    ui.label(RichText::new("Connected").color(theme::OK_GREEN));
+                                    ui.label(
+                                        RichText::new("Connected")
+                                            .color(theme::OK_GREEN)
+                                            .size(13.0),
+                                    );
                                 } else {
-                                    ui.label(RichText::new("Disconnected").color(theme::KO_RED));
+                                    ui.label(
+                                        RichText::new("Disconnected")
+                                            .color(theme::KO_RED)
+                                            .size(13.0),
+                                    );
                                 }
                             })
                         },

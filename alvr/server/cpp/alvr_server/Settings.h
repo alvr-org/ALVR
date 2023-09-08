@@ -79,11 +79,7 @@ class Settings {
     bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;
-    int m_controllerMode = 0;
-    bool m_overrideTriggerThreshold;
-    float m_triggerThreshold;
-    bool m_overrideGripThreshold;
-    float m_gripThreshold;
+    int m_controllerIsTracker = false;
 
     bool m_constantBitrate;
 };

@@ -23,7 +23,7 @@ use std::{
 };
 
 // When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_PREDICTION: Duration = Duration::from_millis(80);
+const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
@@ -31,9 +31,11 @@ const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Platform {
     Quest,
-    Pico,
-    Vive,
+    PicoNeo3,
+    Pico4,
+    Focus3,
     Yvr,
+    Lynx,
     Other,
 }
 
@@ -43,7 +45,6 @@ struct HistoryView {
 }
 
 struct StreamingInputContext {
-    platform: Platform,
     xr_instance: xr::Instance,
     xr_session: xr::Session<xr::AnyGraphics>,
     hands_context: Arc<HandsInteractionContext>,
@@ -340,11 +341,8 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         face_data,
     });
 
-    let button_entries = interaction::update_buttons(
-        ctx.platform,
-        &ctx.xr_session,
-        &ctx.hands_context.button_actions,
-    );
+    let button_entries =
+        interaction::update_buttons(&ctx.xr_session, &ctx.hands_context.button_actions);
     if !button_entries.is_empty() {
         alvr_client_core::send_buttons(button_entries);
     }
@@ -353,25 +351,30 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let platform = match alvr_client_core::manufacturer_name().as_str() {
-        "Oculus" => Platform::Quest,
-        "Pico" => Platform::Pico,
-        "HTC" => Platform::Vive,
-        "YVR" => Platform::Yvr,
+    let manufacturer_name = alvr_client_core::manufacturer_name();
+    let device_model = alvr_client_core::device_model();
+
+    info!("Manufacturer: {manufacturer_name}, device model: {device_model}");
+
+    let platform = match (manufacturer_name.as_str(), device_model.as_str()) {
+        ("Oculus", _) => Platform::Quest,
+        ("Pico", "Pico Neo 3") => Platform::PicoNeo3,
+        ("Pico", _) => Platform::Pico4,
+        ("HTC", _) => Platform::Focus3,
+        ("YVR", _) => Platform::Yvr,
+        ("Lynx Mixed Reality", _) => Platform::Lynx,
         _ => Platform::Other,
     };
 
-    let xr_entry = match platform {
-        Platform::Quest => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_quest.so")).unwrap()
-        },
-        Platform::Pico => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_pico.so")).unwrap()
-        },
-        Platform::Yvr => unsafe {
-            xr::Entry::load_from(Path::new("libopenxr_loader_yvr.so")).unwrap()
-        },
-        _ => unsafe { xr::Entry::load().unwrap() },
+    let loader_suffix = match platform {
+        Platform::Quest => "quest",
+        Platform::PicoNeo3 | Platform::Pico4 => "pico",
+        Platform::Yvr => "yvr",
+        Platform::Lynx => "lynx",
+        _ => "generic",
+    };
+    let xr_entry = unsafe {
+        xr::Entry::load_from(Path::new(&format!("libopenxr_loader_{loader_suffix}.so"))).unwrap()
     };
 
     #[cfg(target_os = "android")]
@@ -383,6 +386,7 @@ pub fn entry_point() {
     assert!(available_extensions.khr_opengl_es_enable);
 
     let mut exts = xr::ExtensionSet::default();
+    exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
@@ -686,7 +690,6 @@ pub fn entry_point() {
                             };
 
                         let mut context = StreamingInputContext {
-                            platform,
                             xr_instance: xr_instance.clone(),
                             xr_session: xr_session.clone().into_any_graphics(),
                             hands_context: Arc::clone(&hands_context),
@@ -784,6 +787,7 @@ pub fn entry_point() {
                                     .collect(),
                             ],
                             settings.video.foveated_rendering.into_option(),
+                            platform != Platform::Lynx,
                         );
 
                         alvr_client_core::send_playspace(
@@ -791,6 +795,15 @@ pub fn entry_point() {
                                 .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
                                 .unwrap()
                                 .map(|a| Vec2::new(a.width, a.height)),
+                        );
+
+                        alvr_client_core::send_active_interaction_profile(
+                            *LEFT_HAND_ID,
+                            hands_context.interaction_profile_id,
+                        );
+                        alvr_client_core::send_active_interaction_profile(
+                            *RIGHT_HAND_ID,
+                            hands_context.interaction_profile_id,
                         );
                     }
                     ClientCoreEvent::StreamingStopped => {

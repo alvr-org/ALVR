@@ -42,12 +42,6 @@ fn grid_flow_inline(ui: &mut Ui, allow_inline: bool) {
     }
 }
 
-fn grid_flow_block(ui: &mut Ui, allow_inline: bool) {
-    if allow_inline {
-        ui.end_row();
-    }
-}
-
 pub fn get_display_name(id: &str, strings: &HashMap<String, String>) -> String {
     strings.get("display_name").cloned().unwrap_or_else(|| {
         let mut chars = id.chars();

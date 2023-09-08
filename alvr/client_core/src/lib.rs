@@ -81,6 +81,10 @@ pub enum ClientCoreEvent {
     },
 }
 
+pub fn device_model() -> String {
+    platform::device_model()
+}
+
 pub fn manufacturer_name() -> String {
     platform::manufacturer_name()
 }
@@ -103,6 +107,7 @@ pub fn initialize(
     #[cfg(target_os = "android")]
     platform::acquire_wifi_lock();
 
+    IS_ALIVE.set(true);
     EXTERNAL_DECODER.set(external_decoder);
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
@@ -159,6 +164,17 @@ pub fn send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
 pub fn send_playspace(area: Option<Vec2>) {
     if let Some(sender) = &mut *CONTROL_SENDER.lock() {
         sender.send(&ClientControlPacket::PlayspaceSync(area)).ok();
+    }
+}
+
+pub fn send_active_interaction_profile(device_id: u64, profile_id: u64) {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender
+            .send(&ClientControlPacket::ActiveInteractionProfile {
+                device_id,
+                profile_id,
+            })
+            .ok();
     }
 }
 

@@ -287,7 +287,7 @@ fn extrapolate_session_settings_from_session_settings(
                                 .iter()
                                 .any(|named_entry| variant_str == named_entry.name)
                         })
-                        .is_some()
+                        .unwrap_or(false)
                 })
                 .unwrap_or_else(|| old_session_settings["variant"].clone());
 

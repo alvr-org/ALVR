@@ -94,6 +94,10 @@ pub struct OpenvrConfig {
     pub nvenc_enable_weighted_prediction: bool,
     pub capture_frame_dir: String,
     pub amd_bitrate_corruption_fix: bool,
+
+    // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
+    // restart
+    pub _controller_profile: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

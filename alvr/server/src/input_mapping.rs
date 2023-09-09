@@ -560,7 +560,7 @@ impl ButtonMappingManager {
         }
 
         if let Some(mappings) = self.mappings.get(&source_id) {
-            for mapping in mappings {
+            'mapping: for mapping in mappings {
                 let destination_value = match (&mapping.mapping_type, source_value) {
                     (MappingType::Passthrough, value) => value,
                     (MappingType::HysteresisThreshold(threshold), ButtonValue::Scalar(value)) => {
@@ -577,12 +577,13 @@ impl ButtonMappingManager {
                             *state = true;
                         } else {
                             // No change needed
-                            return;
+                            continue;
                         }
 
                         ButtonValue::Binary(*state)
                     }
                     (MappingType::BinaryToScalar(levels), ButtonValue::Binary(value)) => {
+                        error!("binary to scalar");
                         if value {
                             ButtonValue::Scalar(levels.on)
                         } else {
@@ -590,12 +591,13 @@ impl ButtonMappingManager {
                         }
                     }
                     (MappingType::Remap(range), ButtonValue::Scalar(value)) => {
+                        error!("remap");
                         let value = (value - range.start) / (range.end - range.start);
                         ButtonValue::Scalar(value.clamp(0.0, 1.0))
                     }
                     _ => {
                         error!("Failed to map button!");
-                        return;
+                        continue;
                     }
                 };
 
@@ -606,9 +608,15 @@ impl ButtonMappingManager {
                         .copied()
                         .unwrap_or(false)
                     {
-                        return;
+                        continue 'mapping;
                     }
                 }
+
+                let button_name = BUTTON_INFO
+                    .get(&mapping.destination)
+                    .map(|info| info.path)
+                    .unwrap_or("Unknown");
+                error!("setting {button_name}: {destination_value:?}");
 
                 let destination_value = match destination_value {
                     ButtonValue::Binary(value) => FfiButtonValue {

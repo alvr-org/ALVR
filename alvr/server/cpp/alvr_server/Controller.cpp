@@ -141,41 +141,48 @@ void Controller::RegisterButton(uint64_t id) {
     }
 
     if (buttonInfo.type == ButtonType::Binary) {
-        vr::VRDriverInput()->CreateBooleanComponent(
-            this->prop_container, buttonInfo.steamvr_path, &m_buttonHandles[id]);
+        for (auto path : buttonInfo.steamvr_paths) {
+            vr::VRDriverInput()->CreateBooleanComponent(
+                this->prop_container, path, &m_buttonHandles[PathStringToHash(path)]);
+        }
     } else {
         auto scalarType = buttonInfo.type == ButtonType::ScalarOneSided
                               ? vr::VRScalarUnits_NormalizedOneSided
                               : vr::VRScalarUnits_NormalizedTwoSided;
-        vr::VRDriverInput()->CreateScalarComponent(this->prop_container,
-                                                   buttonInfo.steamvr_path,
-                                                   &m_buttonHandles[id],
-                                                   vr::VRScalarType_Absolute,
-                                                   scalarType);
+
+        for (auto path : buttonInfo.steamvr_paths) {
+            vr::VRDriverInput()->CreateScalarComponent(this->prop_container,
+                                                       path,
+                                                       &m_buttonHandles[PathStringToHash(path)],
+                                                       vr::VRScalarType_Absolute,
+                                                       scalarType);
+        }
     }
 }
 
 void Controller::SetButton(uint64_t id, FfiButtonValue value) {
+    for (auto id : ALVR_TO_STEAMVR_PATH_IDS[id]) {
+        if (value.type == BUTTON_TYPE_BINARY) {
+            vr::VRDriverInput()->UpdateBooleanComponent(
+                m_buttonHandles[id], (bool)value.binary, 0.0);
+        } else {
+            vr::VRDriverInput()->UpdateScalarComponent(m_buttonHandles[id], value.scalar, 0.0);
+        }
 
-    if (value.type == BUTTON_TYPE_BINARY) {
-        vr::VRDriverInput()->UpdateBooleanComponent(m_buttonHandles[id], (bool)value.binary, 0.0);
-    } else {
-        vr::VRDriverInput()->UpdateScalarComponent(m_buttonHandles[id], value.scalar, 0.0);
-    }
-
-    // todo: remove when moving inferred controller hand skeleton to rust
-    if (id == LEFT_A_TOUCH_ID || id == LEFT_B_TOUCH_ID || id == LEFT_X_TOUCH_ID ||
-        id == LEFT_Y_TOUCH_ID || id == LEFT_TRACKPAD_TOUCH_ID || id == LEFT_THUMBSTICK_TOUCH_ID ||
-        id == LEFT_THUMBREST_TOUCH_ID || id == RIGHT_A_TOUCH_ID || id == RIGHT_B_TOUCH_ID ||
-        id == RIGHT_TRACKPAD_TOUCH_ID || id == RIGHT_THUMBSTICK_TOUCH_ID ||
-        id == RIGHT_THUMBREST_TOUCH_ID) {
-        m_currentThumbTouch = value.binary;
-    } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
-        m_currentTriggerTouch = value.binary;
-    } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
-        m_triggerValue = value.scalar;
-    } else if (id == LEFT_SQUEEZE_VALUE_ID || id == RIGHT_SQUEEZE_VALUE_ID) {
-        m_gripValue = value.scalar;
+        // todo: remove when moving inferred controller hand skeleton to rust
+        if (id == LEFT_A_TOUCH_ID || id == LEFT_B_TOUCH_ID || id == LEFT_X_TOUCH_ID ||
+            id == LEFT_Y_TOUCH_ID || id == LEFT_TRACKPAD_TOUCH_ID ||
+            id == LEFT_THUMBSTICK_TOUCH_ID || id == LEFT_THUMBREST_TOUCH_ID ||
+            id == RIGHT_A_TOUCH_ID || id == RIGHT_B_TOUCH_ID || id == RIGHT_TRACKPAD_TOUCH_ID ||
+            id == RIGHT_THUMBSTICK_TOUCH_ID || id == RIGHT_THUMBREST_TOUCH_ID) {
+            m_currentThumbTouch = value.binary;
+        } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
+            m_currentTriggerTouch = value.binary;
+        } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
+            m_triggerValue = value.scalar;
+        } else if (id == LEFT_SQUEEZE_VALUE_ID || id == RIGHT_SQUEEZE_VALUE_ID) {
+            m_gripValue = value.scalar;
+        }
     }
 }
 
@@ -257,16 +264,6 @@ bool Controller::onPoseUpdate(float predictionS,
         float rotPinky = (handSkeleton->jointRotations[22].z + handSkeleton->jointRotations[23].z +
                           handSkeleton->jointRotations[24].z) *
                          0.67f;
-
-        // switch (Settings::Instance().m_controllerMode) {
-        // case 1:
-        // case 3:
-        // case 7:
-        //     vr_driver_input->UpdateBooleanComponent(
-        //         m_buttonHandles[LEFT_THUMBSTICK_TOUCH_ID], rotThumb > 0.7f, 0.0);
-        //     vr_driver_input->UpdateBooleanComponent(
-        //         m_buttonHandles[ALVR_INPUT_TRIGGER_TOUCH], rotIndex > 0.7f, 0.0);
-        // }
 
         vr_driver_input->UpdateScalarComponent(
             m_buttonHandles[ALVR_INPUT_FINGER_INDEX], rotIndex, 0.0);

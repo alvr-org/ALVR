@@ -15,7 +15,9 @@ pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
     };
 
     let profile = match &controllers_config.emulation_mode {
-        ControllersEmulationMode::Quest2Touch => &QUEST_CONTROLLER_PROFILE_ID,
+        ControllersEmulationMode::RiftSTouch | ControllersEmulationMode::Quest2Touch => {
+            &QUEST_CONTROLLER_PROFILE_ID
+        }
         ControllersEmulationMode::ValveIndex => &INDEX_CONTROLLER_PROFILE_ID,
         ControllersEmulationMode::ViveWand => &VIVE_CONTROLLER_PROFILE_ID,
         ControllersEmulationMode::ViveTracker => return HashSet::new(),

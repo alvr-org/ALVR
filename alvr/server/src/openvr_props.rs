@@ -60,16 +60,17 @@ fn serial_number(device_id: u64) -> String {
     if device_id == *HEAD_ID {
         match &settings.headset.emulation_mode {
             HeadsetEmulationMode::RiftS => "1WMGH000XX0000".into(),
-            HeadsetEmulationMode::Vive => "HTCVive-001".into(),
             HeadsetEmulationMode::Quest2 => "1WMHH000X00000".into(),
+            HeadsetEmulationMode::Vive => "HTCVive-001".into(),
             HeadsetEmulationMode::Custom { serial_number, .. } => serial_number.clone(),
         }
     } else if device_id == *LEFT_HAND_ID || device_id == *RIGHT_HAND_ID {
         if let Switch::Enabled(controllers) = &settings.headset.controllers {
             let serial_number = match &controllers.emulation_mode {
+                ControllersEmulationMode::RiftSTouch => "ALVR Remote Controller",
+                ControllersEmulationMode::Quest2Touch => "1WMHH000X00000_Controller",
                 ControllersEmulationMode::ValveIndex => "ALVR Remote Controller",
                 ControllersEmulationMode::ViveWand => "ALVR Remote Controller",
-                ControllersEmulationMode::Quest2Touch => "1WMHH000X00000_Controller",
                 ControllersEmulationMode::ViveTracker => "ALVR Remote Controller",
             };
 
@@ -125,14 +126,6 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(RegisteredDeviceType("oculus/1WMGH000XX0000".into()));
                 set_prop(DriverVersion("1.42.0".into()));
             }
-            HeadsetEmulationMode::Vive => {
-                set_prop(TrackingSystemName("Vive Tracker".into()));
-                set_prop(ModelNumber("ALVR driver server".into()));
-                set_prop(ManufacturerName("HTC".into()));
-                set_prop(RenderModelName("generic_hmd".into()));
-                set_prop(RegisteredDeviceType("vive".into()));
-                set_prop(DriverVersion("".into()));
-            }
             HeadsetEmulationMode::Quest2 => {
                 set_prop(TrackingSystemName("oculus".into()));
                 set_prop(ModelNumber("Miramar".into()));
@@ -140,6 +133,14 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(RenderModelName("generic_hmd".into()));
                 set_prop(RegisteredDeviceType("oculus/1WMHH000X00000".into()));
                 set_prop(DriverVersion("1.55.0".into()));
+            }
+            HeadsetEmulationMode::Vive => {
+                set_prop(TrackingSystemName("Vive Tracker".into()));
+                set_prop(ModelNumber("ALVR driver server".into()));
+                set_prop(ManufacturerName("HTC".into()));
+                set_prop(RenderModelName("generic_hmd".into()));
+                set_prop(RegisteredDeviceType("vive".into()));
+                set_prop(DriverVersion("".into()));
             }
             HeadsetEmulationMode::Custom { props, .. } => {
                 for prop in props {
@@ -219,6 +220,65 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(RenderModelName("oculus_quest2_controller_right".into()));
                         set_prop(RegisteredDeviceType(
                             "oculus/1WMHH000X00000_Controller_Right".into(),
+                        ));
+                    }
+                    set_prop(ControllerType("oculus_touch".into()));
+                    set_prop(InputProfilePath("{oculus}/input/touch_profile.json".into()));
+
+                    if device_id == *LEFT_HAND_ID {
+                        set_prop(NamedIconPathDeviceOff(
+                            "{oculus}/icons/rifts_left_controller_off.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceSearching(
+                            "{oculus}/icons/rifts_left_controller_searching.gif".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceSearchingAlert(
+                            "{oculus}/icons/rifts_left_controller_searching_alert.gif".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceReady(
+                            "{oculus}/icons/rifts_left_controller_ready.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceReadyAlert(
+                            "{oculus}/icons/rifts_left_controller_ready_alert.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceAlertLow(
+                            "{oculus}/icons/rifts_left_controller_ready_low.png".into(),
+                        ));
+                    } else if device_id == *RIGHT_HAND_ID {
+                        set_prop(NamedIconPathDeviceOff(
+                            "{oculus}/icons/rifts_right_controller_off.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceSearching(
+                            "{oculus}/icons/rifts_right_controller_searching.gif".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceSearchingAlert(
+                            "{oculus}/icons/rifts_right_controller_searching_alert.gif".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceReady(
+                            "{oculus}/icons/rifts_right_controller_ready.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceReadyAlert(
+                            "{oculus}/icons/rifts_right_controller_ready_alert.png".into(),
+                        ));
+                        set_prop(NamedIconPathDeviceAlertLow(
+                            "{oculus}/icons/rifts_right_controller_ready_low.png".into(),
+                        ));
+                    }
+                }
+                ControllersEmulationMode::RiftSTouch => {
+                    set_prop(TrackingSystemName("oculus".into()));
+                    set_prop(ManufacturerName("Oculus".into()));
+                    if device_id == *LEFT_HAND_ID {
+                        set_prop(ModelNumber("Oculus Rift S (Left Controller)".into()));
+                        set_prop(RenderModelName("oculus_rifts_controller_left".into()));
+                        set_prop(RegisteredDeviceType(
+                            "oculus/1WMGH000XX0000_Controller_Left".into(),
+                        ));
+                    } else if device_id == *RIGHT_HAND_ID {
+                        set_prop(ModelNumber("Oculus Rift S (Right Controller)".into()));
+                        set_prop(RenderModelName("oculus_rifts_controller_right".into()));
+                        set_prop(RegisteredDeviceType(
+                            "oculus/1WMGH000XX0000_Controller_Right".into(),
                         ));
                     }
                     set_prop(ControllerType("oculus_touch".into()));

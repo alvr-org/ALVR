@@ -550,9 +550,9 @@ pub struct AudioConfig {
 pub enum HeadsetEmulationMode {
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
-    Vive,
     #[schema(strings(display_name = "Quest 2"))]
     Quest2,
+    Vive,
     Custom {
         serial_number: String,
         props: Vec<OpenvrProperty>,
@@ -583,6 +583,8 @@ pub struct FaceTrackingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersEmulationMode {
+    #[schema(strings(display_name = "Rift S Touch"))]
+    RiftSTouch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     #[schema(strings(display_name = "Valve Index"))]

@@ -7,7 +7,7 @@
 * Make settings sections collapsible (by @zarik5)
 * Other UI tweaks (by @zarik5)
 * *Actually* fix controller freeze (by @zarik5)
-* Fix Pico controller buttons (by @zarik5 @galister @Meister1593 #1820)
+* Fix Pico controller buttons (by @zarik5 @galister @maister1593 #1820)
 * Fix bitrate hikes when "Adapt to framerate" is enabled (by @zarik5)
 * Fix Nvenc encoder on Linux (by @Killrmemz #1824)
 * Timeout connection if lingering (by @zarik5)

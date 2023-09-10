@@ -290,7 +290,7 @@ impl HandGestureManager {
         });
 
         // Joystick
-        let joystick_range = 0.01;
+        let joystick_range = config.joystick_range * 0.01;
         let joystick_center = lerp_pose(index_intermediate, index_distal, 0.5);
 
         let joystick_up = joystick_center
@@ -321,10 +321,10 @@ impl HandGestureManager {
         );
         let joystick_contact = index_curl >= 0.75
             && grip_curl > 0.5
-            && joystick_center.position.distance(thumb_tip.position) <= joystick_range * 5.0
+            && joystick_center.position.distance(thumb_tip.position) <= joystick_range * 3.0
             && (thumb_tip.position - joystick_center.position).dot(joystick_up)
                 / joystick_up.length()
-                <= joystick_range * 3.0;
+                <= joystick_range * 2.0;
 
         let joystick_deadzone: f32 = config.joystick_deadzone * 0.01;
 

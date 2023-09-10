@@ -761,6 +761,13 @@ pub struct HandGestureConfig {
 
     #[schema(flag = "real-time")]
     #[schema(strings(
+        help = "The radius of motion of the joystick. The joystick can be controlled if the thumb is within 2x this range."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 5.0)), suffix = "cm")]
+    pub joystick_range: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
         help = "How long the gesture must be continuously held before it is activated."
     ))]
     #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
@@ -1323,9 +1330,10 @@ pub fn session_settings_default() -> SettingsDefault {
                                 pinch_trigger_distance: 0.25,
                                 curl_touch_distance: 2.0,
                                 curl_trigger_distance: 2.5,
-                                joystick_deadzone: 25.0,
+                                joystick_deadzone: 40.0,
                                 joystick_offset_horizontal: 0.0,
                                 joystick_offset_vertical: 0.0,
+                                joystick_range: 1.0,
                                 repeat_delay: 100,
                                 activation_delay: 50,
                                 deactivation_delay: 100,

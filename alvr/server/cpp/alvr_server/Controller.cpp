@@ -168,21 +168,21 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
         } else {
             vr::VRDriverInput()->UpdateScalarComponent(m_buttonHandles[id], value.scalar, 0.0);
         }
+    }
 
-        // todo: remove when moving inferred controller hand skeleton to rust
-        if (id == LEFT_A_TOUCH_ID || id == LEFT_B_TOUCH_ID || id == LEFT_X_TOUCH_ID ||
-            id == LEFT_Y_TOUCH_ID || id == LEFT_TRACKPAD_TOUCH_ID ||
-            id == LEFT_THUMBSTICK_TOUCH_ID || id == LEFT_THUMBREST_TOUCH_ID ||
-            id == RIGHT_A_TOUCH_ID || id == RIGHT_B_TOUCH_ID || id == RIGHT_TRACKPAD_TOUCH_ID ||
-            id == RIGHT_THUMBSTICK_TOUCH_ID || id == RIGHT_THUMBREST_TOUCH_ID) {
-            m_currentThumbTouch = value.binary;
-        } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
-            m_currentTriggerTouch = value.binary;
-        } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
-            m_triggerValue = value.scalar;
-        } else if (id == LEFT_SQUEEZE_VALUE_ID || id == RIGHT_SQUEEZE_VALUE_ID) {
-            m_gripValue = value.scalar;
-        }
+    // todo: remove when moving inferred controller hand skeleton to rust
+    if (id == LEFT_A_TOUCH_ID || id == LEFT_B_TOUCH_ID || id == LEFT_X_TOUCH_ID ||
+        id == LEFT_Y_TOUCH_ID || id == LEFT_TRACKPAD_TOUCH_ID || id == LEFT_THUMBSTICK_TOUCH_ID ||
+        id == LEFT_THUMBREST_TOUCH_ID || id == RIGHT_A_TOUCH_ID || id == RIGHT_B_TOUCH_ID ||
+        id == RIGHT_TRACKPAD_TOUCH_ID || id == RIGHT_THUMBSTICK_TOUCH_ID ||
+        id == RIGHT_THUMBREST_TOUCH_ID) {
+        m_currentThumbTouch = value.binary;
+    } else if (id == LEFT_TRIGGER_TOUCH_ID || id == RIGHT_TRIGGER_TOUCH_ID) {
+        m_currentTriggerTouch = value.binary;
+    } else if (id == LEFT_TRIGGER_VALUE_ID || id == RIGHT_TRIGGER_VALUE_ID) {
+        m_triggerValue = value.scalar;
+    } else if (id == LEFT_SQUEEZE_VALUE_ID || id == RIGHT_SQUEEZE_VALUE_ID) {
+        m_gripValue = value.scalar;
     }
 }
 

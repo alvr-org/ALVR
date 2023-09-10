@@ -585,7 +585,6 @@ impl ButtonMappingManager {
                         ButtonValue::Binary(*state)
                     }
                     (MappingType::BinaryToScalar(levels), ButtonValue::Binary(value)) => {
-                        error!("binary to scalar");
                         if value {
                             ButtonValue::Scalar(levels.on)
                         } else {
@@ -593,7 +592,6 @@ impl ButtonMappingManager {
                         }
                     }
                     (MappingType::Remap(range), ButtonValue::Scalar(value)) => {
-                        error!("remap");
                         let value = (value - range.start) / (range.end - range.start);
                         ButtonValue::Scalar(value.clamp(0.0, 1.0))
                     }
@@ -613,12 +611,6 @@ impl ButtonMappingManager {
                         continue 'mapping;
                     }
                 }
-
-                let button_name = BUTTON_INFO
-                    .get(&mapping.destination)
-                    .map(|info| info.path)
-                    .unwrap_or("Unknown");
-                error!("setting {button_name}: {destination_value:?}");
 
                 let destination_value = match destination_value {
                     ButtonValue::Binary(value) => FfiButtonValue {

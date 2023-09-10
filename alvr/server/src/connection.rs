@@ -1,7 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     face_tracking::FaceTrackingSink,
-    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager},
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_PROFILE_INFO},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
@@ -38,7 +38,7 @@ use std::{
     io::Write,
     net::IpAddr,
     process::Command,
-    ptr::{self},
+    ptr,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, RecvTimeoutError, SyncSender, TrySendError},
@@ -643,8 +643,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         thread::spawn(|| ())
     };
 
-    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
-    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
+    let tracking_manager: Arc<
+        alvr_common::parking_lot::lock_api::Mutex<
+            alvr_common::parking_lot::RawMutex,
+            TrackingManager,
+        >,
+    > = Arc::new(Mutex::new(TrackingManager::new()));
+    let hand_gesture_manager: Arc<
+        alvr_common::parking_lot::lock_api::Mutex<
+            alvr_common::parking_lot::RawMutex,
+            HandGestureManager,
+        >,
+    > = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
@@ -655,10 +665,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         {
             if let Switch::Enabled(_) = &config.hand_tracking.use_gestures {
                 Some(ButtonMappingManager::new_automatic(
-                    &CONTROLLER_PROFILE_INFO
-                        .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
-                        .unwrap()
-                        .button_set,
+                    &HAND_GESTURE_PROFILE_INFO.button_set,
                     &config.button_mapping_config,
                 ))
             } else {
@@ -693,15 +700,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     return;
                 };
 
-                let data_manager_lock = SERVER_DATA_MANAGER.read();
-                let config = &data_manager_lock.settings().headset;
-
                 let mut tracking_manager_lock = tracking_manager.lock();
 
                 let motions;
                 let left_hand_skeleton;
                 let right_hand_skeleton;
                 {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    let config = &data_manager_lock.settings().headset;
+
                     motions = tracking_manager_lock.transform_motions(
                         config,
                         &tracking.device_motions,
@@ -726,6 +733,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .unwrap_or_default();
 
                 {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
                     if data_manager_lock.settings().logging.log_tracking {
                         alvr_events::send_event(EventType::Tracking(Box::new(TrackingEvent {
                             head_motion: motions
@@ -799,15 +807,18 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                     ),
                                 );
                             }
-
-                            drop(hand_gesture_manager_lock);
                         }
                     }
 
-                    let mut hand_skeletons_enabled = false;
-                    if let Switch::Enabled(controllers) = &config.controllers {
-                        hand_skeletons_enabled = controllers.hand_tracking.enable_skeleton;
-                    }
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    let config = &data_manager_lock.settings().headset;
+
+                    let hand_skeletons_enabled =
+                        if let Switch::Enabled(controllers) = &config.controllers {
+                            controllers.hand_tracking.enable_skeleton
+                        } else {
+                            false
+                        };
 
                     unsafe {
                         crate::SetTracking(

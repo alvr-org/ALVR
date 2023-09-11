@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-// #include <vector>
+#include <vector>
 #include <map>
 
 #include "openvr_driver.h"
@@ -17,13 +17,14 @@ enum class ButtonType {
 };
 
 struct ButtonInfo {
-    const char *steamvr_path;
+    std::vector<const char *> steamvr_paths;
     ButtonType type;
 };
 
 // Map button ID to SteamVR button info
 extern std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 extern std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
+extern std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
 
 void init_paths();
 

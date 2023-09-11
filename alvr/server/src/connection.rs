@@ -79,9 +79,11 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
     let settings = data_manager_lock.settings().clone();
 
     let mut controller_is_tracker = false;
+    let mut _controller_profile = 0;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
+        _controller_profile = config.emulation_mode as i32;
 
         true
     } else {
@@ -184,6 +186,7 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
         nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
         capture_frame_dir: settings.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
+        _controller_profile,
         ..old_config
     }
 }

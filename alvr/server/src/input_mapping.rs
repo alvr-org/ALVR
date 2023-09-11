@@ -15,7 +15,9 @@ pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
     };
 
     let profile = match &controllers_config.emulation_mode {
-        ControllersEmulationMode::Quest2Touch => &QUEST_CONTROLLER_PROFILE_ID,
+        ControllersEmulationMode::RiftSTouch | ControllersEmulationMode::Quest2Touch => {
+            &QUEST_CONTROLLER_PROFILE_ID
+        }
         ControllersEmulationMode::ValveIndex => &INDEX_CONTROLLER_PROFILE_ID,
         ControllersEmulationMode::ViveWand => &VIVE_CONTROLLER_PROFILE_ID,
         ControllersEmulationMode::ViveTracker => return HashSet::new(),
@@ -560,7 +562,7 @@ impl ButtonMappingManager {
         }
 
         if let Some(mappings) = self.mappings.get(&source_id) {
-            for mapping in mappings {
+            'mapping: for mapping in mappings {
                 let destination_value = match (&mapping.mapping_type, source_value) {
                     (MappingType::Passthrough, value) => value,
                     (MappingType::HysteresisThreshold(threshold), ButtonValue::Scalar(value)) => {
@@ -577,7 +579,7 @@ impl ButtonMappingManager {
                             *state = true;
                         } else {
                             // No change needed
-                            return;
+                            continue;
                         }
 
                         ButtonValue::Binary(*state)
@@ -595,7 +597,7 @@ impl ButtonMappingManager {
                     }
                     _ => {
                         error!("Failed to map button!");
-                        return;
+                        continue;
                     }
                 };
 
@@ -606,7 +608,7 @@ impl ButtonMappingManager {
                         .copied()
                         .unwrap_or(false)
                     {
-                        return;
+                        continue 'mapping;
                     }
                 }
 

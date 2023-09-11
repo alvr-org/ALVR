@@ -550,9 +550,9 @@ pub struct AudioConfig {
 pub enum HeadsetEmulationMode {
     #[schema(strings(display_name = "Rift S"))]
     RiftS,
-    Vive,
     #[schema(strings(display_name = "Quest 2"))]
     Quest2,
+    Vive,
     Custom {
         serial_number: String,
         props: Vec<OpenvrProperty>,
@@ -581,8 +581,10 @@ pub struct FaceTrackingConfig {
     pub sink: FaceTrackingSinkConfig,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersEmulationMode {
+    #[schema(strings(display_name = "Rift S Touch"))]
+    RiftSTouch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
     #[schema(strings(display_name = "Valve Index"))]
@@ -1215,7 +1217,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             value: 0.1,
                             deviation: 0.05,
                         },
-                        force_threshold: 0.2,
+                        force_threshold: 0.8,
                     },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

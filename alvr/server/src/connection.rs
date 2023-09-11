@@ -758,7 +758,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
                 let mut ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
-                let mut ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_right_hand_skeleton =
+                    right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
                 drop(tracking_manager_lock);
 

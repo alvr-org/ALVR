@@ -650,17 +650,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let tracking_manager = Arc::clone(&tracking_manager);
         let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
 
-        let mut gestures_button_mapping_manager = Switch::as_option(
-            &SERVER_DATA_MANAGER.read().settings().headset.controllers,
-        )
-        .and_then(|config| {
-            Switch::as_option(&config.hand_tracking.use_gestures).and_then(|_| {
-                Some(ButtonMappingManager::new_automatic(
-                    &HAND_GESTURE_BUTTON_SET,
-                    &config.button_mapping_config,
-                ))
-            })
-        });
+        let mut gestures_button_mapping_manager = SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .headset
+            .controllers
+            .as_option()
+            .and_then(|config| {
+                config.hand_tracking.use_gestures.as_option().and_then(|_| {
+                    Some(ButtonMappingManager::new_automatic(
+                        &HAND_GESTURE_BUTTON_SET,
+                        &config.button_mapping_config,
+                    ))
+                })
+            });
 
         move || {
             let mut face_tracking_sink =

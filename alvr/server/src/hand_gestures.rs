@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     hash::Hash,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -22,37 +22,35 @@ fn lerp_pose(a: Pose, b: Pose, fac: f32) -> Pose {
     }
 }
 
-pub static HAND_GESTURE_PROFILE_INFO: Lazy<InteractionProfileInfo> =
-    Lazy::new(|| InteractionProfileInfo {
-        path: QUEST_CONTROLLER_PROFILE_PATH,
-        button_set: [
-            *LEFT_X_CLICK_ID,
-            *LEFT_X_TOUCH_ID,
-            *LEFT_Y_CLICK_ID,
-            *LEFT_Y_TOUCH_ID,
-            *LEFT_MENU_CLICK_ID,
-            *LEFT_SQUEEZE_VALUE_ID,
-            *LEFT_TRIGGER_VALUE_ID,
-            *LEFT_TRIGGER_TOUCH_ID,
-            *LEFT_THUMBSTICK_X_ID,
-            *LEFT_THUMBSTICK_Y_ID,
-            *LEFT_THUMBSTICK_CLICK_ID,
-            *LEFT_THUMBSTICK_TOUCH_ID,
-            *RIGHT_A_CLICK_ID,
-            *RIGHT_A_TOUCH_ID,
-            *RIGHT_B_CLICK_ID,
-            *RIGHT_B_TOUCH_ID,
-            *RIGHT_SQUEEZE_VALUE_ID,
-            *RIGHT_TRIGGER_VALUE_ID,
-            *RIGHT_TRIGGER_TOUCH_ID,
-            *RIGHT_THUMBSTICK_X_ID,
-            *RIGHT_THUMBSTICK_Y_ID,
-            *RIGHT_THUMBSTICK_CLICK_ID,
-            *RIGHT_THUMBSTICK_TOUCH_ID,
-        ]
-        .into_iter()
-        .collect(),
-    });
+pub static HAND_GESTURE_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
+    [
+        *LEFT_X_CLICK_ID,
+        *LEFT_X_TOUCH_ID,
+        *LEFT_Y_CLICK_ID,
+        *LEFT_Y_TOUCH_ID,
+        *LEFT_MENU_CLICK_ID,
+        *LEFT_SQUEEZE_VALUE_ID,
+        *LEFT_TRIGGER_VALUE_ID,
+        *LEFT_TRIGGER_TOUCH_ID,
+        *LEFT_THUMBSTICK_X_ID,
+        *LEFT_THUMBSTICK_Y_ID,
+        *LEFT_THUMBSTICK_CLICK_ID,
+        *LEFT_THUMBSTICK_TOUCH_ID,
+        *RIGHT_A_CLICK_ID,
+        *RIGHT_A_TOUCH_ID,
+        *RIGHT_B_CLICK_ID,
+        *RIGHT_B_TOUCH_ID,
+        *RIGHT_SQUEEZE_VALUE_ID,
+        *RIGHT_TRIGGER_VALUE_ID,
+        *RIGHT_TRIGGER_TOUCH_ID,
+        *RIGHT_THUMBSTICK_X_ID,
+        *RIGHT_THUMBSTICK_Y_ID,
+        *RIGHT_THUMBSTICK_CLICK_ID,
+        *RIGHT_THUMBSTICK_TOUCH_ID,
+    ]
+    .into_iter()
+    .collect()
+});
 
 #[derive(Debug, Clone)]
 pub struct HandGesture {

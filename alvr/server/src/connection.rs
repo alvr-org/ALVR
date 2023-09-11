@@ -1,7 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     face_tracking::FaceTrackingSink,
-    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_PROFILE_INFO},
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
@@ -643,37 +643,24 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         thread::spawn(|| ())
     };
 
-    let tracking_manager: Arc<
-        alvr_common::parking_lot::lock_api::Mutex<
-            alvr_common::parking_lot::RawMutex,
-            TrackingManager,
-        >,
-    > = Arc::new(Mutex::new(TrackingManager::new()));
-    let hand_gesture_manager: Arc<
-        alvr_common::parking_lot::lock_api::Mutex<
-            alvr_common::parking_lot::RawMutex,
-            HandGestureManager,
-        >,
-    > = Arc::new(Mutex::new(HandGestureManager::new()));
+    let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
+    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
         let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
 
-        let mut gestures_button_mapping_manager = if let Switch::Enabled(config) =
-            &SERVER_DATA_MANAGER.read().settings().headset.controllers
-        {
-            if let Switch::Enabled(_) = &config.hand_tracking.use_gestures {
+        let mut gestures_button_mapping_manager = Switch::as_option(
+            &SERVER_DATA_MANAGER.read().settings().headset.controllers,
+        )
+        .and_then(|config| {
+            Switch::as_option(&config.hand_tracking.use_gestures).and_then(|_| {
                 Some(ButtonMappingManager::new_automatic(
-                    &HAND_GESTURE_PROFILE_INFO.button_set,
+                    &HAND_GESTURE_BUTTON_SET,
                     &config.button_mapping_config,
                 ))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+            })
+        });
 
         move || {
             let mut face_tracking_sink =
@@ -770,8 +757,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
-                let ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
-                let ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
                 drop(tracking_manager_lock);
 
@@ -785,23 +772,23 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         {
                             let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
-                            if tracking.hand_skeletons[0].is_some() {
+                            if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
                                 trigger_hand_gesture_actions(
                                     gestures_button_mapping_manager.as_mut().unwrap(),
                                     *LEFT_HAND_ID,
                                     &hand_gesture_manager_lock.get_active_gestures(
-                                        tracking.hand_skeletons[0].unwrap(),
+                                        hand_skeleton,
                                         gestures_config.clone(),
                                         *LEFT_HAND_ID,
                                     ),
                                 );
                             }
-                            if tracking.hand_skeletons[1].is_some() {
+                            if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
                                 trigger_hand_gesture_actions(
                                     gestures_button_mapping_manager.as_mut().unwrap(),
                                     *RIGHT_HAND_ID,
                                     &hand_gesture_manager_lock.get_active_gestures(
-                                        tracking.hand_skeletons[1].unwrap(),
+                                        hand_skeleton,
                                         gestures_config.clone(),
                                         *RIGHT_HAND_ID,
                                     ),
@@ -813,12 +800,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     let data_manager_lock = SERVER_DATA_MANAGER.read();
                     let config = &data_manager_lock.settings().headset;
 
-                    let hand_skeletons_enabled =
-                        if let Switch::Enabled(controllers) = &config.controllers {
-                            controllers.hand_tracking.enable_skeleton
-                        } else {
-                            false
-                        };
+                    if let Switch::Enabled(controllers) = &config.controllers {
+                        if !controllers.hand_tracking.enable_skeleton {
+                            ffi_left_hand_skeleton = None;
+                            ffi_right_hand_skeleton = None;
+                        }
+                    }
 
                     unsafe {
                         crate::SetTracking(
@@ -827,20 +814,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
-                                if hand_skeletons_enabled {
-                                    skeleton
-                                } else {
-                                    ptr::null()
-                                }
+                                skeleton
                             } else {
                                 ptr::null()
                             },
                             if let Some(skeleton) = &ffi_right_hand_skeleton {
-                                if hand_skeletons_enabled {
-                                    skeleton
-                                } else {
-                                    ptr::null()
-                                }
+                                skeleton
                             } else {
                                 ptr::null()
                             },

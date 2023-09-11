@@ -703,6 +703,7 @@ Currently this cannot be reliably estimated automatically. The correct value sho
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
 pub struct HandTrackingConfig {
     #[schema(flag = "real-time")]
     #[schema(strings(
@@ -1325,7 +1326,6 @@ pub fn session_settings_default() -> SettingsDefault {
                         use_gestures: SwitchDefault {
                             enabled: true,
                             content: HandGestureConfigDefault {
-                                gui_collapsed: true,
                                 pinch_touch_distance: 0.0,
                                 pinch_trigger_distance: 0.25,
                                 curl_touch_distance: 2.0,

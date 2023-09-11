@@ -107,7 +107,13 @@ static OPENVR_PROPS_DEFAULT: alvr_common::once_cell::sync::Lazy<OpenvrPropertyDe
             "Uint64" => "0",
             "Float" => "0.0",
             "String" => "String::new()",
-            "Vector3" => "[0.0, 0.0, 0.0]",
+            "Vector3" => {
+                r"ArrayDefault {
+            gui_collapsed: false,
+            content: [0.0, 0.0, 0.0],
+        }"
+            }
+
             _ => "()",
         };
 

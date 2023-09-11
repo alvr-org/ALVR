@@ -71,9 +71,14 @@ pub enum SettingControl {
 impl SettingControl {
     pub fn new(nesting_info: NestingInfo, schema: SchemaNode) -> Self {
         match schema {
-            SchemaNode::Section(entries) => {
-                Self::Section(section::Control::new(nesting_info, entries))
-            }
+            SchemaNode::Section {
+                entries,
+                gui_collapsible,
+            } => Self::Section(section::Control::new(
+                nesting_info,
+                entries,
+                gui_collapsible,
+            )),
             SchemaNode::Choice {
                 default,
                 variants,

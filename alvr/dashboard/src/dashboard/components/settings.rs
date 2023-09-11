@@ -44,13 +44,11 @@ impl SettingsTab {
         let schema = Settings::schema(alvr_session::session_settings_default());
 
         // Top level node must be a section
-        let schema_entries = if let SchemaNode::Section(entries) = schema {
-            entries
-        } else {
+        let SchemaNode::Section { entries, .. } = schema else {
             unreachable!();
         };
 
-        let top_level_entries = schema_entries
+        let top_level_entries = entries
             .into_iter()
             .map(|entry| {
                 let id = entry.name;

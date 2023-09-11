@@ -23,12 +23,14 @@ struct Entry {
 pub struct Control {
     nesting_info: NestingInfo,
     entries: Vec<Entry>,
+    gui_collapsible: bool,
 }
 
 impl Control {
     pub fn new(
         mut nesting_info: NestingInfo,
         schema_entries: Vec<SchemaEntry<SchemaNode>>,
+        gui_collapsible: bool,
     ) -> Self {
         nesting_info.indentation_level += 1;
 
@@ -59,6 +61,7 @@ impl Control {
         Self {
             nesting_info,
             entries,
+            gui_collapsible,
         }
     }
 
@@ -68,35 +71,42 @@ impl Control {
         session_fragment: &mut json::Value,
         allow_inline: bool,
     ) -> Option<PathValuePair> {
-        super::grid_flow_inline(ui, allow_inline);
-
-        let session_fragments_mut = session_fragment.as_object_mut().unwrap();
-
-        let json::Value::Bool(state_mut) = &mut session_fragments_mut["gui_collapsed"] else {
-            unreachable!()
-        };
-
         let entries_count = self.entries.len();
 
-        fn get_request(nesting_info: &NestingInfo, collapsed: bool) -> Option<PathValuePair> {
-            super::set_single_value(
-                nesting_info,
-                "gui_collapsed".into(),
-                json::Value::Bool(collapsed),
-            )
-        }
+        let mut request = None;
 
-        let mut response = None;
-        if (*state_mut && ui.small_button("Expand").clicked())
-            || (!*state_mut && ui.small_button("Collapse").clicked())
-        {
-            *state_mut = !*state_mut;
-            response = get_request(&self.nesting_info, *state_mut);
-        }
+        let collapsed = if self.gui_collapsible {
+            super::grid_flow_inline(ui, allow_inline);
 
-        if !*state_mut {
-            ui.end_row();
+            let json::Value::Bool(state_mut) = &mut session_fragment["gui_collapsed"] else {
+                unreachable!()
+            };
 
+            if (*state_mut && ui.small_button("Expand").clicked())
+                || (!*state_mut && ui.small_button("Collapse").clicked())
+            {
+                *state_mut = !*state_mut;
+                request = super::set_single_value(
+                    &self.nesting_info,
+                    "gui_collapsed".into(),
+                    json::Value::Bool(*state_mut),
+                );
+            }
+
+            if !*state_mut {
+                ui.end_row();
+            }
+
+            *state_mut
+        } else {
+            if allow_inline {
+                ui.end_row();
+            }
+
+            false
+        };
+
+        if !collapsed {
             for (i, entry) in self.entries.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     ui.add_space(INDENTATION_STEP * self.nesting_info.indentation_level as f32);
@@ -131,10 +141,10 @@ impl Control {
                         );
                     }
                 });
-                response = entry
+                request = entry
                     .control
-                    .ui(ui, &mut session_fragments_mut[&entry.id.id], true)
-                    .or(response);
+                    .ui(ui, &mut session_fragment[&entry.id.id], true)
+                    .or(request);
 
                 if i != entries_count - 1 {
                     ui.end_row();
@@ -142,6 +152,6 @@ impl Control {
             }
         }
 
-        response
+        request
     }
 }

@@ -5,6 +5,7 @@ use eframe::egui::Ui;
 use serde_json as json;
 
 pub struct Control {
+    nesting_info: NestingInfo,
     controls: Vec<SettingControl>,
 }
 
@@ -15,13 +16,17 @@ impl Control {
             .enumerate()
             .map(|(idx, schema)| {
                 let mut nesting_info = nesting_info.clone();
+                nesting_info.path.push("content".into());
                 nesting_info.path.push(idx.into());
 
                 SettingControl::new(nesting_info, schema)
             })
             .collect();
 
-        Self { controls }
+        Self {
+            nesting_info,
+            controls,
+        }
     }
 
     pub fn ui(
@@ -32,19 +37,32 @@ impl Control {
     ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
-        let session_array_mut = session_fragment.as_array_mut().unwrap();
-
-        let count = self.controls.len();
+        let json::Value::Bool(collapsed_state_mut) = &mut session_fragment["gui_collapsed"] else {
+            unreachable!()
+        };
 
         let mut request = None;
-        for (idx, control) in self.controls.iter_mut().enumerate() {
-            let allow_inline = idx == 0;
-            request = control
-                .ui(ui, &mut session_array_mut[idx], allow_inline)
-                .or(request);
 
-            if idx != count - 1 {
+        if (*collapsed_state_mut && ui.small_button("Expand").clicked())
+            || (!*collapsed_state_mut && ui.small_button("Collapse").clicked())
+        {
+            *collapsed_state_mut = !*collapsed_state_mut;
+            request = super::set_single_value(
+                &self.nesting_info,
+                "gui_collapsed".into(),
+                json::Value::Bool(*collapsed_state_mut),
+            );
+        }
+
+        if !*collapsed_state_mut {
+            let session_array_mut = session_fragment["content"].as_array_mut().unwrap();
+
+            for (idx, control) in self.controls.iter_mut().enumerate() {
                 ui.end_row();
+
+                request = control
+                    .ui(ui, &mut session_array_mut[idx], false)
+                    .or(request);
             }
         }
 

@@ -59,7 +59,7 @@ impl Control {
         let mut request = None;
 
         fn get_request(nesting_info: &NestingInfo, enabled: bool) -> Option<PathValuePair> {
-            super::set_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
+            super::get_single_value(nesting_info, "enabled".into(), json::Value::Bool(enabled))
         }
 
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

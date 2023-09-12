@@ -1,6 +1,7 @@
 pub mod array;
 pub mod boolean;
 pub mod choice;
+pub mod collapsible;
 pub mod dictionary;
 pub mod help;
 pub mod notice;
@@ -21,7 +22,7 @@ use std::collections::HashMap;
 
 pub const INDENTATION_STEP: f32 = 20.0;
 
-fn set_single_value(
+fn get_single_value(
     nesting_info: &NestingInfo,
     leaf: PathSegment,
     new_value: json::Value,
@@ -65,6 +66,7 @@ pub enum SettingControl {
     Text(text::Control),
     Numeric(number::Control),
     Array(array::Control),
+    Vector(vector::Control),
     None,
 }
 
@@ -109,7 +111,14 @@ impl SettingControl {
             SchemaNode::Array(schema_array) => {
                 Self::Array(array::Control::new(nesting_info, schema_array))
             }
-            // SchemaNode::Vector { default_element, default } => todo!(),
+            SchemaNode::Vector {
+                default_element,
+                default,
+            } => Self::Vector(vector::Control::new(
+                nesting_info,
+                *default_element,
+                default,
+            )),
             // SchemaNode::Dictionary { default_key, default_value, default } => todo!(),
             _ => Self::None,
         }
@@ -131,6 +140,7 @@ impl SettingControl {
             Self::Text(control) => control.ui(ui, session_fragment, allow_inline),
             Self::Numeric(control) => control.ui(ui, session_fragment, allow_inline),
             Self::Array(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Vector(control) => control.ui(ui, session_fragment, allow_inline),
             Self::None => {
                 grid_flow_inline(ui, allow_inline);
                 ui.add_enabled_ui(false, |ui| ui.label("Unimplemented UI"));

@@ -1,4 +1,4 @@
-use super::{NestingInfo, SettingControl, INDENTATION_STEP};
+use super::{collapsible, NestingInfo, SettingControl, INDENTATION_STEP};
 use crate::dashboard::DisplayString;
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
@@ -78,26 +78,18 @@ impl Control {
         let collapsed = if self.gui_collapsible {
             super::grid_flow_inline(ui, allow_inline);
 
-            let json::Value::Bool(state_mut) = &mut session_fragment["gui_collapsed"] else {
-                unreachable!()
-            };
+            let collapsed = collapsible::collapsible_button(
+                ui,
+                &self.nesting_info,
+                session_fragment,
+                &mut request,
+            );
 
-            if (*state_mut && ui.small_button("Expand").clicked())
-                || (!*state_mut && ui.small_button("Collapse").clicked())
-            {
-                *state_mut = !*state_mut;
-                request = super::set_single_value(
-                    &self.nesting_info,
-                    "gui_collapsed".into(),
-                    json::Value::Bool(*state_mut),
-                );
-            }
-
-            if !*state_mut {
+            if !collapsed {
                 ui.end_row();
             }
 
-            *state_mut
+            collapsed
         } else {
             if allow_inline {
                 ui.end_row();

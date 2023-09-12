@@ -113,7 +113,7 @@ impl Control {
         };
 
         fn get_request(nesting_info: &NestingInfo, variant: &str) -> Option<PathValuePair> {
-            super::set_single_value(
+            super::get_single_value(
                 nesting_info,
                 "variant".into(),
                 json::Value::String(variant.to_owned()),

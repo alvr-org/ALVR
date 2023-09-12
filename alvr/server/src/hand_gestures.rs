@@ -107,7 +107,7 @@ impl HandGestureManager {
     pub fn get_active_gestures(
         &mut self,
         hand_skeleton: [Pose; 26],
-        config: HandGestureConfig,
+        config: &HandGestureConfig,
         device_id: u64,
     ) -> Vec<HandGesture> {
         // global joints
@@ -145,99 +145,102 @@ impl HandGestureManager {
         let little_proximal: Pose = gj[22];
         let little_tip: Pose = gj[25];
 
-        let mut gestures: Vec<HandGesture> = Vec::new();
-
-        // Thumb & index pinch
-        gestures.push(HandGesture {
-            id: HandGestureId::ThumbIndexPinch,
-            active: self.is_gesture_active(
-                HandGestureId::ThumbIndexPinch,
-                thumb_tip,
-                thumb_rad,
-                index_tip,
-                index_rad,
-                pinch_max,
-                config.repeat_delay,
-                config.activation_delay,
-                config.deactivation_delay,
-                device_id,
-            ),
-            clicked: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_min),
-            touching: self.test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_max),
-            value: self.get_gesture_hover(
-                thumb_tip, thumb_rad, index_tip, index_rad, pinch_min, pinch_max,
-            ),
-        });
-
-        // Thumb & middle pinch
-        gestures.push(HandGesture {
-            id: HandGestureId::ThumbMiddlePinch,
-            active: self.is_gesture_active(
-                HandGestureId::ThumbMiddlePinch,
-                thumb_tip,
-                thumb_rad,
-                middle_tip,
-                middle_rad,
-                pinch_max,
-                config.repeat_delay,
-                config.activation_delay,
-                config.deactivation_delay,
-                device_id,
-            ),
-            clicked: self
-                .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min),
-            touching: self
-                .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_max),
-            value: self.get_gesture_hover(
-                thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min, pinch_max,
-            ),
-        });
-
-        // Thumb & ring pinch
-        gestures.push(HandGesture {
-            id: HandGestureId::ThumbRingPinch,
-            active: self.is_gesture_active(
-                HandGestureId::ThumbRingPinch,
-                thumb_tip,
-                thumb_rad,
-                ring_tip,
-                ring_rad,
-                pinch_max,
-                config.repeat_delay,
-                config.activation_delay,
-                config.deactivation_delay,
-                device_id,
-            ),
-            clicked: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min),
-            touching: self.test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_max),
-            value: self.get_gesture_hover(
-                thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min, pinch_max,
-            ),
-        });
-
-        // Thumb & little pinch
-        gestures.push(HandGesture {
-            id: HandGestureId::ThumbLittlePinch,
-            active: self.is_gesture_active(
-                HandGestureId::ThumbLittlePinch,
-                thumb_tip,
-                thumb_rad,
-                little_tip,
-                little_rad,
-                pinch_max,
-                config.repeat_delay,
-                config.activation_delay,
-                config.deactivation_delay,
-                device_id,
-            ),
-            clicked: self
-                .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_min),
-            touching: self
-                .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_max),
-            value: self.get_gesture_hover(
-                thumb_tip, thumb_rad, little_tip, little_rad, pinch_min, pinch_max,
-            ),
-        });
+        let mut gestures = [
+            // Thumb & index pinch
+            HandGesture {
+                id: HandGestureId::ThumbIndexPinch,
+                active: self.is_gesture_active(
+                    HandGestureId::ThumbIndexPinch,
+                    thumb_tip,
+                    thumb_rad,
+                    index_tip,
+                    index_rad,
+                    pinch_max,
+                    config.repeat_delay,
+                    config.activation_delay,
+                    config.deactivation_delay,
+                    device_id,
+                ),
+                clicked: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_min),
+                touching: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, index_tip, index_rad, pinch_max),
+                value: self.get_gesture_hover(
+                    thumb_tip, thumb_rad, index_tip, index_rad, pinch_min, pinch_max,
+                ),
+            },
+            // Thumb & middle pinch
+            HandGesture {
+                id: HandGestureId::ThumbMiddlePinch,
+                active: self.is_gesture_active(
+                    HandGestureId::ThumbMiddlePinch,
+                    thumb_tip,
+                    thumb_rad,
+                    middle_tip,
+                    middle_rad,
+                    pinch_max,
+                    config.repeat_delay,
+                    config.activation_delay,
+                    config.deactivation_delay,
+                    device_id,
+                ),
+                clicked: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min),
+                touching: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_max),
+                value: self.get_gesture_hover(
+                    thumb_tip, thumb_rad, middle_tip, middle_rad, pinch_min, pinch_max,
+                ),
+            },
+            // Thumb & ring pinch
+            HandGesture {
+                id: HandGestureId::ThumbRingPinch,
+                active: self.is_gesture_active(
+                    HandGestureId::ThumbRingPinch,
+                    thumb_tip,
+                    thumb_rad,
+                    ring_tip,
+                    ring_rad,
+                    pinch_max,
+                    config.repeat_delay,
+                    config.activation_delay,
+                    config.deactivation_delay,
+                    device_id,
+                ),
+                clicked: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min),
+                touching: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_max),
+                value: self.get_gesture_hover(
+                    thumb_tip, thumb_rad, ring_tip, ring_rad, pinch_min, pinch_max,
+                ),
+            },
+            // Thumb & little pinch
+            HandGesture {
+                id: HandGestureId::ThumbLittlePinch,
+                active: self.is_gesture_active(
+                    HandGestureId::ThumbLittlePinch,
+                    thumb_tip,
+                    thumb_rad,
+                    little_tip,
+                    little_rad,
+                    pinch_max,
+                    config.repeat_delay,
+                    config.activation_delay,
+                    config.deactivation_delay,
+                    device_id,
+                ),
+                clicked: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_min),
+                touching: self
+                    .test_gesture_dist(thumb_tip, thumb_rad, little_tip, little_rad, pinch_max),
+                value: self.get_gesture_hover(
+                    thumb_tip, thumb_rad, little_tip, little_rad, pinch_min, pinch_max,
+                ),
+            },
+        ]
+        .into_iter()
+        .collect::<Vec<_>>();
 
         // Finger curls
         let thumb_curl =
@@ -359,6 +362,7 @@ impl HandGestureManager {
         gestures
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn is_gesture_active(
         &mut self,
         gesture_id: HandGestureId,
@@ -381,20 +385,15 @@ impl HandGestureManager {
             &mut self.gesture_data_right
         };
 
-        if !gesture_data.contains_key(&gesture_id) {
-            gesture_data.insert(
-                gesture_id,
-                GestureAction {
-                    last_activated: 0,
-                    last_deactivated: 0,
-                    entering: false,
-                    entering_since: 0,
-                    exiting: false,
-                    exiting_since: 0,
-                    active: false,
-                },
-            );
-        }
+        gesture_data.entry(gesture_id).or_insert(GestureAction {
+            last_activated: 0,
+            last_deactivated: 0,
+            entering: false,
+            entering_since: 0,
+            exiting: false,
+            exiting_since: 0,
+            active: false,
+        });
         let g: &mut GestureAction = gesture_data.get_mut(&gesture_id).unwrap();
 
         // Disable entering/exiting state if we leave/enter range
@@ -477,6 +476,7 @@ impl HandGestureManager {
             .clamp(0.0, 1.0)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn get_joystick_values(
         &self,
         center: Pose,
@@ -566,32 +566,29 @@ fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
 pub fn trigger_hand_gesture_actions(
     button_mapping_manager: &mut ButtonMappingManager,
     device_id: u64,
-    gestures: &Vec<HandGesture>,
+    gestures: &[HandGesture],
 ) {
     for gesture in gestures.iter() {
         // Click bind
-        let click_bind = get_click_bind_for_gesture(device_id, gesture.id);
-        if click_bind.is_some() {
+        if let Some(click_bind) = get_click_bind_for_gesture(device_id, gesture.id) {
             button_mapping_manager.report_button(
-                click_bind.unwrap(),
+                click_bind,
                 ButtonValue::Binary(gesture.active && gesture.clicked),
             );
         }
 
         // Touch bind
-        let touch_bind = get_touch_bind_for_gesture(device_id, gesture.id);
-        if touch_bind.is_some() {
+        if let Some(touch_bind) = get_touch_bind_for_gesture(device_id, gesture.id) {
             button_mapping_manager.report_button(
-                touch_bind.unwrap(),
+                touch_bind,
                 ButtonValue::Binary(gesture.active && gesture.touching),
             );
         }
 
         // Hover bind
-        let hover_bind = get_hover_bind_for_gesture(device_id, gesture.id);
-        if hover_bind.is_some() {
+        if let Some(hover_bind) = get_hover_bind_for_gesture(device_id, gesture.id) {
             button_mapping_manager.report_button(
-                hover_bind.unwrap(),
+                hover_bind,
                 ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
             );
         }

@@ -646,9 +646,8 @@ pub struct HapticsConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct ControllersConfig {
-    #[schema(strings(
-        help = "Turning this off will make the controllers appear powered off. Reconnect HMD to apply."
-    ))]
+    #[schema(strings(help = "Turning this off will make the controllers appear powered off."))]
+    #[schema(flag = "real-time")]
     pub tracked: bool,
 
     #[schema(flag = "steamvr-restart")]
@@ -709,7 +708,7 @@ pub struct HandTrackingConfig {
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
     ))]
-    pub use_gestures: Switch<HandGestureConfig>,
+    pub gestures: Switch<HandGestureConfig>,
 
     #[schema(flag = "real-time")]
     #[schema(strings(
@@ -1323,7 +1322,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     hand_tracking: HandTrackingConfigDefault {
                         gui_collapsed: true,
-                        use_gestures: SwitchDefault {
+                        gestures: SwitchDefault {
                             enabled: true,
                             content: HandGestureConfigDefault {
                                 pinch_touch_distance: 0.0,

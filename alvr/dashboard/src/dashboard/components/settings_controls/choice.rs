@@ -107,7 +107,6 @@ impl Control {
         super::grid_flow_inline(ui, allow_inline);
 
         let session_variants_mut = session_fragment.as_object_mut().unwrap();
-
         let json::Value::String(variant_mut) = &mut session_variants_mut["variant"] else {
             unreachable!()
         };

@@ -12,6 +12,7 @@ pub mod reset;
 pub mod section;
 pub mod switch;
 pub mod text;
+pub mod up_down;
 pub mod vector;
 
 use alvr_packets::{PathSegment, PathValuePair};
@@ -67,6 +68,7 @@ pub enum SettingControl {
     Numeric(number::Control),
     Array(array::Control),
     Vector(vector::Control),
+    Dictionary(dictionary::Control),
     None,
 }
 
@@ -119,7 +121,16 @@ impl SettingControl {
                 *default_element,
                 default,
             )),
-            // SchemaNode::Dictionary { default_key, default_value, default } => todo!(),
+            SchemaNode::Dictionary {
+                default_key,
+                default_value,
+                default,
+            } => Self::Dictionary(dictionary::Control::new(
+                nesting_info,
+                default_key,
+                *default_value,
+                default,
+            )),
             _ => Self::None,
         }
     }
@@ -141,6 +152,7 @@ impl SettingControl {
             Self::Numeric(control) => control.ui(ui, session_fragment, allow_inline),
             Self::Array(control) => control.ui(ui, session_fragment, allow_inline),
             Self::Vector(control) => control.ui(ui, session_fragment, allow_inline),
+            Self::Dictionary(control) => control.ui(ui, session_fragment, allow_inline),
             Self::None => {
                 grid_flow_inline(ui, allow_inline);
                 ui.add_enabled_ui(false, |ui| ui.label("Unimplemented UI"));

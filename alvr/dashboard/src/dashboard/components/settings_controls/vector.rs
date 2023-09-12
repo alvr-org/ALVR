@@ -1,10 +1,12 @@
-use crate::dashboard::components::collapsible;
-
 use super::{reset, NestingInfo, SettingControl, INDENTATION_STEP};
+use crate::dashboard::components::{
+    collapsible,
+    up_down::{self, UpDownResult},
+};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
-    egui::{self, Layout, Ui},
+    egui::{Layout, Ui},
     emath::Align,
 };
 use serde_json as json;
@@ -38,6 +40,13 @@ impl Control {
     ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
+        fn get_content_request(
+            nesting_info: &NestingInfo,
+            elements: Vec<json::Value>,
+        ) -> Option<PathValuePair> {
+            super::get_single_value(nesting_info, "content".into(), json::Value::Array(elements))
+        }
+
         let mut request = None;
         let collapsed = ui
             .with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -56,29 +65,20 @@ impl Control {
             })
             .inner;
 
-        {
-            let session_array_mut = session_fragment["content"].as_array().unwrap();
+        let session_content = session_fragment["content"].as_array_mut().unwrap();
 
-            while session_array_mut.len() > self.controls.len() {
-                let mut nesting_info = self.nesting_info.clone();
-                nesting_info.path.push("content".into());
-                nesting_info.path.push(self.controls.len().into());
+        while session_content.len() > self.controls.len() {
+            let mut nesting_info = self.nesting_info.clone();
+            nesting_info.path.push("content".into());
+            nesting_info.path.push(self.controls.len().into());
 
-                self.controls.push(SettingControl::new(
-                    nesting_info,
-                    self.default_element.clone(),
-                ))
-            }
-            while session_array_mut.len() < self.controls.len() {
-                self.controls.pop();
-            }
+            self.controls.push(SettingControl::new(
+                nesting_info,
+                self.default_element.clone(),
+            ))
         }
-
-        fn get_content_request(
-            nesting_info: &NestingInfo,
-            elements: Vec<json::Value>,
-        ) -> Option<PathValuePair> {
-            super::get_single_value(nesting_info, "content".into(), json::Value::Array(elements))
+        while session_content.len() < self.controls.len() {
+            self.controls.pop();
         }
 
         if !collapsed {
@@ -86,50 +86,37 @@ impl Control {
 
             let mut idx = 0;
             while idx < self.controls.len() {
-                let response = ui
+                let delete_element = ui
                     .horizontal(|ui| {
                         ui.add_space(INDENTATION_STEP * self.nesting_info.indentation_level as f32);
 
-                        let response = ui.button("❌");
+                        let delete_element = ui.button("❌").clicked();
 
-                        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                            let session_content =
-                                session_fragment["content"].as_array_mut().unwrap();
+                        let up_down_result = up_down::up_down_buttons(ui, idx, self.controls.len());
 
-                            ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
-
-                            let up_clicked = ui
-                                .add_visible_ui(idx > 0, |ui| ui.small_button("⬆"))
-                                .inner
-                                .clicked();
-                            let down_clicked = ui
-                                .add_visible_ui(idx < self.controls.len() - 1, |ui| {
-                                    ui.small_button("⬇")
-                                })
-                                .inner
-                                .clicked();
-
-                            if up_clicked || down_clicked {
-                                let mut session_content = session_content.clone();
-                                session_content
-                                    .swap(idx, if up_clicked { idx - 1 } else { idx + 1 });
-
-                                request = get_content_request(&self.nesting_info, session_content);
+                        if up_down_result != UpDownResult::None {
+                            if up_down_result == UpDownResult::Up {
+                                session_content.swap(idx, idx - 1);
+                            } else {
+                                session_content.swap(idx, idx + 1);
                             }
-                        });
 
-                        response
+                            request =
+                                get_content_request(&self.nesting_info, session_content.clone());
+                        }
+
+                        delete_element
                     })
                     .inner;
 
-                let session_array_mut = session_fragment["content"].as_array_mut().unwrap();
-
-                if response.clicked() {
-                    session_array_mut.remove(idx);
+                if delete_element {
+                    session_content.remove(idx);
                     self.controls.remove(idx);
+
+                    request = get_content_request(&self.nesting_info, session_content.clone());
                 } else {
                     request = self.controls[idx]
-                        .ui(ui, &mut session_array_mut[idx], true)
+                        .ui(ui, &mut session_content[idx], true)
                         .or(request);
                 }
 

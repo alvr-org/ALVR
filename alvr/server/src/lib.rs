@@ -1,6 +1,7 @@
 mod bitrate;
 mod connection;
 mod face_tracking;
+mod hand_gestures;
 mod haptics;
 mod input_mapping;
 mod logging_backend;

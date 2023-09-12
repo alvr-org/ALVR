@@ -1,6 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     face_tracking::FaceTrackingSink,
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
@@ -643,9 +644,27 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     };
 
     let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
+    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
+        let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
+
+        let mut gestures_button_mapping_manager = SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .headset
+            .controllers
+            .as_option()
+            .and_then(|config| {
+                config.hand_tracking.use_gestures.as_option().and_then(|_| {
+                    Some(ButtonMappingManager::new_automatic(
+                        &HAND_GESTURE_BUTTON_SET,
+                        &config.button_mapping_config,
+                    ))
+                })
+            });
+
         move || {
             let mut face_tracking_sink =
                 settings
@@ -657,7 +676,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     });
 
             let mut track_controllers = 0u32;
-            if let Switch::Enabled(config) = settings.headset.controllers {
+            if let Switch::Enabled(config) = &settings.headset.controllers {
                 track_controllers = config.tracked.into();
             }
 
@@ -679,6 +698,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 {
                     let data_manager_lock = SERVER_DATA_MANAGER.read();
                     let config = &data_manager_lock.settings().headset;
+
                     motions = tracking_manager_lock.transform_motions(
                         config,
                         &tracking.device_motions,
@@ -740,13 +760,56 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
-                let ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
-                let ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_right_hand_skeleton =
+                    right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
                 drop(tracking_manager_lock);
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
+
+                    // Handle hand gestures
+                    if let Switch::Enabled(controllers_config) = &settings.headset.controllers {
+                        if let Switch::Enabled(gestures_config) =
+                            &controllers_config.hand_tracking.use_gestures
+                        {
+                            let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
+
+                            if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
+                                trigger_hand_gesture_actions(
+                                    gestures_button_mapping_manager.as_mut().unwrap(),
+                                    *LEFT_HAND_ID,
+                                    &hand_gesture_manager_lock.get_active_gestures(
+                                        hand_skeleton,
+                                        gestures_config.clone(),
+                                        *LEFT_HAND_ID,
+                                    ),
+                                );
+                            }
+                            if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
+                                trigger_hand_gesture_actions(
+                                    gestures_button_mapping_manager.as_mut().unwrap(),
+                                    *RIGHT_HAND_ID,
+                                    &hand_gesture_manager_lock.get_active_gestures(
+                                        hand_skeleton,
+                                        gestures_config.clone(),
+                                        *RIGHT_HAND_ID,
+                                    ),
+                                );
+                            }
+                        }
+                    }
+
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    let config = &data_manager_lock.settings().headset;
+
+                    if let Switch::Enabled(controllers) = &config.controllers {
+                        if !controllers.hand_tracking.enable_skeleton {
+                            ffi_left_hand_skeleton = None;
+                            ffi_right_hand_skeleton = None;
+                        }
+                    }
 
                     unsafe {
                         crate::SetTracking(

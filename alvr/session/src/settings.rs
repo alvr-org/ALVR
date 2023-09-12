@@ -659,6 +659,8 @@ pub struct ControllersConfig {
 
     pub button_mapping_config: AutomaticButtonMappingConfig,
 
+    pub hand_tracking: HandTrackingConfig,
+
     #[schema(strings(
         display_name = "Prediction",
         help = r"Higher values make the controllers track smoother.
@@ -698,6 +700,93 @@ Currently this cannot be reliably estimated automatically. The correct value sho
 
     #[schema(flag = "real-time")]
     pub haptics: Switch<HapticsConfig>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct HandTrackingConfig {
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this allows using hand gestures to emulate controller inputs."
+    ))]
+    pub use_gestures: Switch<HandGestureConfig>,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
+    ))]
+    pub enable_skeleton: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct HandGestureConfig {
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close the tips of your fingers need to be to register a pinch click."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "cm")]
+    pub pinch_touch_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close together the tips of your fingers need to be to start registering a pinch trigger pull."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 2.5, step = 0.025)), suffix = "cm")]
+    pub pinch_trigger_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close to your palm the tips of your fingers need to be to register a curl click."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 5.0)), suffix = "cm")]
+    pub curl_touch_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How close to your palm the tips of your fingers need to be to start registering a trigger pull."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 10.0)), suffix = "cm")]
+    pub curl_trigger_distance: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 100.0)), suffix = "%")]
+    pub joystick_deadzone: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -5.0, max = 5.0)), suffix = "cm")]
+    pub joystick_offset_horizontal: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -5.0, max = 5.0)), suffix = "cm")]
+    pub joystick_offset_vertical: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "The radius of motion of the joystick. The joystick can be controlled if the thumb is within 2x this range."
+    ))]
+    #[schema(gui(slider(min = 0.0, max = 5.0)), suffix = "cm")]
+    pub joystick_range: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How long the gesture must be continuously held before it is activated."
+    ))]
+    #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
+    pub activation_delay: u32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How long the gesture must be continuously released before it is deactivated."
+    ))]
+    #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
+    pub deactivation_delay: u32,
+
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "How long the after the gesture has been deactivated before it can be activated again."
+    ))]
+    #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
+    pub repeat_delay: u32,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1231,6 +1320,26 @@ pub fn session_settings_default() -> SettingsDefault {
                             deviation: 0.05,
                         },
                         force_threshold: 0.8,
+                    },
+                    hand_tracking: HandTrackingConfigDefault {
+                        gui_collapsed: true,
+                        use_gestures: SwitchDefault {
+                            enabled: true,
+                            content: HandGestureConfigDefault {
+                                pinch_touch_distance: 0.0,
+                                pinch_trigger_distance: 0.25,
+                                curl_touch_distance: 2.0,
+                                curl_trigger_distance: 2.5,
+                                joystick_deadzone: 40.0,
+                                joystick_offset_horizontal: 0.0,
+                                joystick_offset_vertical: 0.0,
+                                joystick_range: 1.0,
+                                repeat_delay: 100,
+                                activation_delay: 50,
+                                deactivation_delay: 100,
+                            },
+                        },
+                        enable_skeleton: true,
                     },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

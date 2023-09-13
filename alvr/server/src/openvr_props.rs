@@ -72,6 +72,7 @@ fn serial_number(device_id: u64) -> String {
                 ControllersEmulationMode::ValveIndex => "ALVR Remote Controller",
                 ControllersEmulationMode::ViveWand => "ALVR Remote Controller",
                 ControllersEmulationMode::ViveTracker => "ALVR Remote Controller",
+                ControllersEmulationMode::Custom { serial_number, .. } => serial_number,
             };
 
             if device_id == *LEFT_HAND_ID {
@@ -142,11 +143,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 set_prop(RegisteredDeviceType("vive".into()));
                 set_prop(DriverVersion("".into()));
             }
-            HeadsetEmulationMode::Custom { props, .. } => {
-                for prop in props {
-                    set_prop(prop.clone());
-                }
-            }
+            HeadsetEmulationMode::Custom { .. } => (),
         }
 
         set_prop(UserIpdMeters(0.063));
@@ -454,6 +451,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         "{htc}/icons/tracker_status_ready_low.png".into(),
                     ));
                 }
+                ControllersEmulationMode::Custom { .. } => todo!(),
             }
 
             set_prop(SerialNumber(serial_number(device_id)));

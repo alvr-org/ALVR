@@ -571,7 +571,6 @@ pub enum HeadsetEmulationMode {
     Vive,
     Custom {
         serial_number: String,
-        props: Vec<OpenvrProperty>,
     },
 }
 
@@ -608,6 +607,10 @@ pub enum ControllersEmulationMode {
     ValveIndex,
     ViveWand,
     ViveTracker,
+    Custom {
+        serial_number: String,
+        button_set: Vec<String>,
+    },
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -618,87 +621,44 @@ pub struct HysteresisThreshold {
     pub deviation: f32,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub struct BinaryToScalarStates {
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub off: f32,
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub on: f32,
+}
+
+// Remaps 0..1 to custom range
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
+pub struct Range {
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub min: f32,
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub max: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum ButtonMappingType {
+    Passthrough,
+    HysteresisThreshold(HysteresisThreshold),
+    BinaryToScalar(BinaryToScalarStates),
+    Remap(Range),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct ButtonBindingTarget {
+    pub destination: String,
+    pub mapping_type: ButtonMappingType,
+    pub binary_conditions: Vec<String>,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct AutomaticButtonMappingConfig {
     pub click_threshold: HysteresisThreshold,
     pub touch_threshold: HysteresisThreshold,
     pub force_threshold: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
-pub struct HapticsConfig {
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
-    pub intensity_multiplier: f32,
-
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
-    pub amplitude_curve: f32,
-
-    #[schema(strings(display_name = "Minimum duration"))]
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = 0.0, max = 0.1, step = 0.001)), suffix = "s")]
-    pub min_duration_s: f32,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
-pub struct ControllersConfig {
-    #[schema(strings(help = "Turning this off will make the controllers appear powered off."))]
-    #[schema(flag = "real-time")]
-    pub tracked: bool,
-
-    #[schema(flag = "steamvr-restart")]
-    pub emulation_mode: ControllersEmulationMode,
-
-    #[schema(flag = "steamvr-restart")]
-    pub extra_openvr_props: Vec<OpenvrProperty>,
-
-    pub button_mapping_config: AutomaticButtonMappingConfig,
-
-    pub hand_tracking: HandTrackingConfig,
-
-    #[schema(strings(
-        display_name = "Prediction",
-        help = r"Higher values make the controllers track smoother.
-Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens.
-Currently this cannot be reliably estimated automatically. The correct value should be 2 but 3 is default for smoother tracking at the cost of slight lag."
-    ))]
-    #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
-    pub steamvr_pipeline_frames: f32,
-
-    #[schema(flag = "real-time")]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "m/s")]
-    pub linear_velocity_cutoff: f32,
-
-    #[schema(flag = "real-time")]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = 0.0, max = 100.0, step = 1.0)), suffix = "°/s")]
-    pub angular_velocity_cutoff: f32,
-
-    #[schema(flag = "real-time")]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
-    pub left_controller_position_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
-    pub left_controller_rotation_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    // note: logarithmic scale seems to be glitchy for this control
-    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
-    pub left_hand_tracking_position_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
-    pub left_hand_tracking_rotation_offset: [f32; 3],
-
-    #[schema(flag = "real-time")]
-    pub haptics: Switch<HapticsConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -786,6 +746,84 @@ pub struct HandGestureConfig {
     ))]
     #[schema(gui(slider(min = 0, max = 1000)), suffix = "ms")]
     pub repeat_delay: u32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct HapticsConfig {
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 5.0, step = 0.1)))]
+    pub intensity_multiplier: f32,
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
+    pub amplitude_curve: f32,
+
+    #[schema(strings(display_name = "Minimum duration"))]
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = 0.0, max = 0.1, step = 0.001)), suffix = "s")]
+    pub min_duration_s: f32,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct ControllersConfig {
+    #[schema(strings(help = "Turning this off will make the controllers appear powered off."))]
+    #[schema(flag = "real-time")]
+    pub tracked: bool,
+
+    #[schema(flag = "steamvr-restart")]
+    pub emulation_mode: ControllersEmulationMode,
+
+    #[schema(flag = "steamvr-restart")]
+    pub extra_openvr_props: Vec<OpenvrProperty>,
+
+    #[schema(strings(help = "List of OpenXR-syle paths"))]
+    pub button_mappings: Option<Vec<(String, Vec<ButtonBindingTarget>)>>,
+
+    pub button_mapping_config: AutomaticButtonMappingConfig,
+
+    pub hand_tracking: HandTrackingConfig,
+
+    #[schema(strings(
+        display_name = "Prediction",
+        help = r"Higher values make the controllers track smoother.
+Technically, this is the time (counted in frames) between pose submitted to SteamVR and the corresponding virtual vsync happens.
+Currently this cannot be reliably estimated automatically. The correct value should be 2 but 3 is default for smoother tracking at the cost of slight lag."
+    ))]
+    #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
+    pub steamvr_pipeline_frames: f32,
+
+    #[schema(flag = "real-time")]
+    // note: logarithmic scale seems to be glitchy for this control
+    #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)), suffix = "m/s")]
+    pub linear_velocity_cutoff: f32,
+
+    #[schema(flag = "real-time")]
+    // note: logarithmic scale seems to be glitchy for this control
+    #[schema(gui(slider(min = 0.0, max = 100.0, step = 1.0)), suffix = "°/s")]
+    pub angular_velocity_cutoff: f32,
+
+    #[schema(flag = "real-time")]
+    // note: logarithmic scale seems to be glitchy for this control
+    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
+    pub left_controller_position_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
+    pub left_controller_rotation_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    // note: logarithmic scale seems to be glitchy for this control
+    #[schema(gui(slider(min = -0.5, max = 0.5, step = 0.001)), suffix = "m")]
+    pub left_hand_tracking_position_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
+    pub left_hand_tracking_rotation_offset: [f32; 3],
+
+    #[schema(flag = "real-time")]
+    pub haptics: Switch<HapticsConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -1276,7 +1314,6 @@ pub fn session_settings_default() -> SettingsDefault {
             emulation_mode: HeadsetEmulationModeDefault {
                 Custom: HeadsetEmulationModeCustomDefault {
                     serial_number: "Unknown".into(),
-                    props: default_custom_openvr_props.clone(),
                 },
                 variant: HeadsetEmulationModeDefaultVariant::Quest2,
             },
@@ -1303,11 +1340,51 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: true,
                 content: ControllersConfigDefault {
                     gui_collapsed: false,
+                    tracked: true,
                     emulation_mode: ControllersEmulationModeDefault {
+                        Custom: ControllersEmulationModeCustomDefault {
+                            serial_number: "ALVR Controller".into(),
+                            button_set: VectorDefault {
+                                gui_collapsed: false,
+                                element: "/user/hand/left/input/a/click".into(),
+                                content: vec![],
+                            },
+                        },
                         variant: ControllersEmulationModeDefaultVariant::Quest2Touch,
                     },
-                    tracked: true,
                     extra_openvr_props: default_custom_openvr_props,
+                    button_mappings: OptionalDefault {
+                        set: false,
+                        content: DictionaryDefault {
+                            gui_collapsed: false,
+                            key: "/user/hand/left/input/a/click".into(),
+                            value: VectorDefault {
+                                gui_collapsed: false,
+                                element: ButtonBindingTargetDefault {
+                                    destination: "/user/hand/left/input/a/click".into(),
+                                    mapping_type: ButtonMappingTypeDefault {
+                                        HysteresisThreshold: HysteresisThresholdDefault {
+                                            value: 0.5,
+                                            deviation: 0.05,
+                                        },
+                                        BinaryToScalar: BinaryToScalarStatesDefault {
+                                            off: 0.0,
+                                            on: 1.0,
+                                        },
+                                        Remap: RangeDefault { min: 0.0, max: 1.0 },
+                                        variant: ButtonMappingTypeDefaultVariant::Passthrough,
+                                    },
+                                    binary_conditions: VectorDefault {
+                                        gui_collapsed: true,
+                                        element: "/user/hand/left/input/trigger/touch".into(),
+                                        content: vec![],
+                                    },
+                                },
+                                content: vec![],
+                            },
+                            content: vec![],
+                        },
+                    },
                     button_mapping_config: AutomaticButtonMappingConfigDefault {
                         gui_collapsed: true,
                         click_threshold: HysteresisThresholdDefault {

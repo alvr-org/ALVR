@@ -84,7 +84,14 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
-        _controller_profile = config.emulation_mode as i32;
+        _controller_profile = match config.emulation_mode {
+            ControllersEmulationMode::RiftSTouch => 0,
+            ControllersEmulationMode::Quest2Touch => 1,
+            ControllersEmulationMode::ValveIndex => 2,
+            ControllersEmulationMode::ViveWand => 3,
+            ControllersEmulationMode::ViveTracker => 4,
+            ControllersEmulationMode::Custom { .. } => 5,
+        };
 
         true
     } else {
@@ -892,20 +899,25 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     });
 
     let control_receive_thread = thread::spawn({
-        let mut controller_button_mapping_manager = if let Switch::Enabled(config) =
-            &SERVER_DATA_MANAGER.read().settings().headset.controllers
-        {
-            Some(ButtonMappingManager::new_automatic(
-                &CONTROLLER_PROFILE_INFO
-                    .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
-                    .unwrap()
-                    .button_set,
-                &config.button_mapping_config,
-            ))
-        } else {
-            None
-        };
-        // todo: gestures_button_mapping_manager...
+        let mut controller_button_mapping_manager = SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .headset
+            .controllers
+            .as_option()
+            .map(|config| {
+                if let Some(mappings) = &config.button_mappings {
+                    ButtonMappingManager::new_manual(mappings)
+                } else {
+                    ButtonMappingManager::new_automatic(
+                        &CONTROLLER_PROFILE_INFO
+                            .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
+                            .unwrap()
+                            .button_set,
+                        &config.button_mapping_config,
+                    )
+                }
+            });
 
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
@@ -1024,10 +1036,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 &SERVER_DATA_MANAGER.read().settings().headset.controllers,
                                 CONTROLLER_PROFILE_INFO.get(&profile_id),
                             ) {
-                                Some(ButtonMappingManager::new_automatic(
-                                    &profile_info.button_set,
-                                    &config.button_mapping_config,
-                                ))
+                                if let Some(mappings) = &config.button_mappings {
+                                    Some(ButtonMappingManager::new_manual(mappings))
+                                } else {
+                                    Some(ButtonMappingManager::new_automatic(
+                                        &profile_info.button_set,
+                                        &config.button_mapping_config,
+                                    ))
+                                }
                             } else {
                                 None
                             };

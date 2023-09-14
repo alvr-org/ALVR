@@ -303,6 +303,10 @@ impl StatisticsManager {
         }
     }
 
+    pub fn video_pipeline_latency_average(&self) -> Duration {
+        self.total_pipeline_latency_average.get_average()
+    }
+
     pub fn tracker_pose_time_offset(&self) -> Duration {
         // This is the opposite of the client's StatisticsManager::tracker_prediction_offset().
         self.steamvr_pipeline_latency

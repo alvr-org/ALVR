@@ -810,7 +810,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 }
 
                 if controllers_config
-                    .map(|c| c.hand_tracking.enable_skeleton)
+                    .map(|c| !c.hand_tracking.enable_skeleton)
                     .unwrap_or(false)
                 {
                     ffi_left_hand_skeleton = None;

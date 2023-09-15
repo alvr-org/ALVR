@@ -1001,7 +1001,9 @@ pub struct CaptureConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct Patches {
-    #[schema(strings(help = "AMD users should keep this on. Must be off for Nvidia GPUs!",))]
+    #[schema(strings(
+        help = "Async reprojection is currently broken in SteamVR, keep disabled. ONLY FOR TESTING.",
+    ))]
     #[schema(flag = "steamvr-restart")]
     pub linux_async_reprojection: bool,
 }

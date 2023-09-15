@@ -1,10 +1,11 @@
-use super::{NestingInfo, SettingControl};
+use super::{collapsible, NestingInfo, SettingControl};
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::egui::Ui;
 use serde_json as json;
 
 pub struct Control {
+    nesting_info: NestingInfo,
     controls: Vec<SettingControl>,
 }
 
@@ -15,13 +16,17 @@ impl Control {
             .enumerate()
             .map(|(idx, schema)| {
                 let mut nesting_info = nesting_info.clone();
+                nesting_info.path.push("content".into());
                 nesting_info.path.push(idx.into());
 
                 SettingControl::new(nesting_info, schema)
             })
             .collect();
 
-        Self { controls }
+        Self {
+            nesting_info,
+            controls,
+        }
     }
 
     pub fn ui(
@@ -32,19 +37,20 @@ impl Control {
     ) -> Option<PathValuePair> {
         super::grid_flow_inline(ui, allow_inline);
 
-        let session_array_mut = session_fragment.as_array_mut().unwrap();
-
-        let count = self.controls.len();
-
         let mut request = None;
-        for (idx, control) in self.controls.iter_mut().enumerate() {
-            let allow_inline = idx == 0;
-            request = control
-                .ui(ui, &mut session_array_mut[idx], allow_inline)
-                .or(request);
 
-            if idx != count - 1 {
+        let collapsed =
+            collapsible::collapsible_button(ui, &self.nesting_info, session_fragment, &mut request);
+
+        if !collapsed {
+            let session_array_mut = session_fragment["content"].as_array_mut().unwrap();
+
+            for (idx, control) in self.controls.iter_mut().enumerate() {
                 ui.end_row();
+
+                request = control
+                    .ui(ui, &mut session_array_mut[idx], false)
+                    .or(request);
             }
         }
 

@@ -1,6 +1,7 @@
 use crate::{
     bitrate::BitrateManager,
     face_tracking::FaceTrackingSink,
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
@@ -83,7 +84,14 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
-        _controller_profile = config.emulation_mode as i32;
+        _controller_profile = match config.emulation_mode {
+            ControllersEmulationMode::RiftSTouch => 0,
+            ControllersEmulationMode::Quest2Touch => 1,
+            ControllersEmulationMode::ValveIndex => 2,
+            ControllersEmulationMode::ViveWand => 3,
+            ControllersEmulationMode::ViveTracker => 4,
+            ControllersEmulationMode::Custom { .. } => 5,
+        };
 
         true
     } else {
@@ -261,8 +269,8 @@ pub fn handshake_loop() {
                 data_manager
                     .client_list()
                     .get(&client_hostname)
-                    .unwrap()
-                    .trusted
+                    .map(|c| c.trusted)
+                    .unwrap_or(false)
             };
 
             // do not attempt connection if the client is already connected
@@ -271,9 +279,8 @@ pub fn handshake_loop() {
                     .read()
                     .client_list()
                     .get(&client_hostname)
-                    .unwrap()
-                    .connection_state
-                    == ConnectionState::Disconnected
+                    .map(|c| c.connection_state == ConnectionState::Disconnected)
+                    .unwrap_or(false)
             {
                 if let Err(e) =
                     try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
@@ -296,8 +303,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     let (disconnect_sender, disconnect_receiver) = mpsc::channel();
     *DISCONNECT_CLIENT_NOTIFIER.lock() = Some(disconnect_sender);
 
-    // Safety: this never panics because client_ip is picked from client_ips keys
-    let client_hostname = client_ips.remove(&client_ip).unwrap();
+    let Some(client_hostname) = client_ips.remove(&client_ip) else {
+        con_bail!("unreachable");
+    };
 
     struct DropGuard {
         hostname: String,
@@ -643,9 +651,20 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     };
 
     let tracking_manager = Arc::new(Mutex::new(TrackingManager::new()));
+    let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
         let tracking_manager = Arc::clone(&tracking_manager);
+        let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
+
+        let mut gestures_button_mapping_manager =
+            settings.headset.controllers.as_option().map(|config| {
+                ButtonMappingManager::new_automatic(
+                    &HAND_GESTURE_BUTTON_SET,
+                    &config.button_mapping_config,
+                )
+            });
+
         move || {
             let mut face_tracking_sink =
                 settings
@@ -655,11 +674,6 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .and_then(|config| {
                         FaceTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
                     });
-
-            let mut track_controllers = 0u32;
-            if let Switch::Enabled(config) = settings.headset.controllers {
-                track_controllers = config.tracked.into();
-            }
 
             while IS_STREAMING.value() {
                 let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -671,6 +685,21 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     return;
                 };
 
+                let controllers_config = {
+                    let data_lock = SERVER_DATA_MANAGER.read();
+                    data_lock
+                        .settings()
+                        .headset
+                        .controllers
+                        .clone()
+                        .into_option()
+                };
+
+                let track_controllers = controllers_config
+                    .as_ref()
+                    .map(|c| c.tracked)
+                    .unwrap_or(false);
+
                 let mut tracking_manager_lock = tracking_manager.lock();
 
                 let motions;
@@ -679,6 +708,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 {
                     let data_manager_lock = SERVER_DATA_MANAGER.read();
                     let config = &data_manager_lock.settings().headset;
+
                     motions = tracking_manager_lock.transform_motions(
                         config,
                         &tracking.device_motions,
@@ -740,10 +770,52 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
-                let ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
-                let ffi_right_hand_skeleton = right_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
+                let mut ffi_right_hand_skeleton =
+                    right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
                 drop(tracking_manager_lock);
+
+                // Handle hand gestures
+                if let (Some(gestures_config), Some(gestures_button_mapping_manager)) = (
+                    controllers_config
+                        .as_ref()
+                        .and_then(|c| c.hand_tracking.gestures.as_option()),
+                    &mut gestures_button_mapping_manager,
+                ) {
+                    let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
+
+                    if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
+                        trigger_hand_gesture_actions(
+                            gestures_button_mapping_manager,
+                            *LEFT_HAND_ID,
+                            &hand_gesture_manager_lock.get_active_gestures(
+                                hand_skeleton,
+                                gestures_config,
+                                *LEFT_HAND_ID,
+                            ),
+                        );
+                    }
+                    if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
+                        trigger_hand_gesture_actions(
+                            gestures_button_mapping_manager,
+                            *RIGHT_HAND_ID,
+                            &hand_gesture_manager_lock.get_active_gestures(
+                                hand_skeleton,
+                                gestures_config,
+                                *RIGHT_HAND_ID,
+                            ),
+                        );
+                    }
+                }
+
+                if controllers_config
+                    .map(|c| c.hand_tracking.enable_skeleton)
+                    .unwrap_or(false)
+                {
+                    ffi_left_hand_skeleton = None;
+                    ffi_right_hand_skeleton = None;
+                }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
@@ -764,7 +836,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             } else {
                                 ptr::null()
                             },
-                            track_controllers,
+                            track_controllers.into(),
                         )
                     };
                 }
@@ -827,20 +899,25 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
     });
 
     let control_receive_thread = thread::spawn({
-        let mut controller_button_mapping_manager = if let Switch::Enabled(config) =
-            &SERVER_DATA_MANAGER.read().settings().headset.controllers
-        {
-            Some(ButtonMappingManager::new_automatic(
-                &CONTROLLER_PROFILE_INFO
-                    .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
-                    .unwrap()
-                    .button_set,
-                &config.button_mapping_config,
-            ))
-        } else {
-            None
-        };
-        // todo: gestures_button_mapping_manager...
+        let mut controller_button_mapping_manager = SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .headset
+            .controllers
+            .as_option()
+            .map(|config| {
+                if let Some(mappings) = &config.button_mappings {
+                    ButtonMappingManager::new_manual(mappings)
+                } else {
+                    ButtonMappingManager::new_automatic(
+                        &CONTROLLER_PROFILE_INFO
+                            .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
+                            .unwrap()
+                            .button_set,
+                        &config.button_mapping_config,
+                    )
+                }
+            });
 
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
@@ -959,10 +1036,14 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 &SERVER_DATA_MANAGER.read().settings().headset.controllers,
                                 CONTROLLER_PROFILE_INFO.get(&profile_id),
                             ) {
-                                Some(ButtonMappingManager::new_automatic(
-                                    &profile_info.button_set,
-                                    &config.button_mapping_config,
-                                ))
+                                if let Some(mappings) = &config.button_mappings {
+                                    Some(ButtonMappingManager::new_manual(mappings))
+                                } else {
+                                    Some(ButtonMappingManager::new_automatic(
+                                        &profile_info.button_set,
+                                        &config.button_mapping_config,
+                                    ))
+                                }
                             } else {
                                 None
                             };

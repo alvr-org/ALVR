@@ -1,7 +1,7 @@
 use crate::{
     bindings::FfiButtonValue, connection::ClientDisconnectRequest, DECODER_CONFIG,
-    DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, VIDEO_MIRROR_SENDER,
-    VIDEO_RECORDING_FILE,
+    DISCONNECT_CLIENT_NOTIFIER, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
+    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
     anyhow::{self, Result},
@@ -14,7 +14,7 @@ use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
 use hyper::{
-    header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
+    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
     service, Body, Request, Response, StatusCode,
 };
 use serde::de::DeserializeOwned;
@@ -243,6 +243,18 @@ async fn http_api(
             }
 
             reply(StatusCode::OK)?
+        }
+        // Latency in ms
+        "/api/average-video-latency" => {
+            let latency = if let Some(manager) = &*STATISTICS_MANAGER.lock() {
+                manager.video_pipeline_latency_average().as_millis()
+            } else {
+                0
+            };
+
+            Response::builder()
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(latency.to_string().into())?
         }
         "/api/ping" => reply(StatusCode::OK)?,
         other_uri => {

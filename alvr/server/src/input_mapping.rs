@@ -1,11 +1,11 @@
 use crate::{bindings::FfiButtonValue, SERVER_DATA_MANAGER};
 use alvr_common::{once_cell::sync::Lazy, settings_schema::Switch, *};
 use alvr_packets::ButtonValue;
-use alvr_session::{AutomaticButtonMappingConfig, ControllersEmulationMode, HysteresisThreshold};
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Range,
+use alvr_session::{
+    AutomaticButtonMappingConfig, BinaryToScalarStates, ButtonBindingTarget, ButtonMappingType,
+    ControllersEmulationMode, HysteresisThreshold, Range,
 };
+use std::collections::{HashMap, HashSet};
 
 pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
     let data_manager_lock = SERVER_DATA_MANAGER.read();
@@ -14,36 +14,35 @@ pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
         return HashSet::new();
     };
 
-    let profile = match &controllers_config.emulation_mode {
+    match &controllers_config.emulation_mode {
         ControllersEmulationMode::RiftSTouch | ControllersEmulationMode::Quest2Touch => {
-            &QUEST_CONTROLLER_PROFILE_ID
+            CONTROLLER_PROFILE_INFO
+                .get(&QUEST_CONTROLLER_PROFILE_ID)
+                .unwrap()
+                .button_set
+                .clone()
         }
-        ControllersEmulationMode::ValveIndex => &INDEX_CONTROLLER_PROFILE_ID,
-        ControllersEmulationMode::ViveWand => &VIVE_CONTROLLER_PROFILE_ID,
-        ControllersEmulationMode::ViveTracker => return HashSet::new(),
-    };
-    CONTROLLER_PROFILE_INFO
-        .get(profile)
-        .unwrap()
-        .button_set
-        .clone()
+        ControllersEmulationMode::ValveIndex => CONTROLLER_PROFILE_INFO
+            .get(&INDEX_CONTROLLER_PROFILE_ID)
+            .unwrap()
+            .button_set
+            .clone(),
+        ControllersEmulationMode::ViveWand => CONTROLLER_PROFILE_INFO
+            .get(&VIVE_CONTROLLER_PROFILE_ID)
+            .unwrap()
+            .button_set
+            .clone(),
+        ControllersEmulationMode::ViveTracker => HashSet::new(),
+        ControllersEmulationMode::Custom { button_set, .. } => button_set
+            .iter()
+            .map(|b| alvr_common::hash_string(b))
+            .collect(),
+    }
 });
-
-pub struct BinaryToScalarStates {
-    off: f32,
-    on: f32,
-}
-
-pub enum MappingType {
-    Passthrough,
-    HysteresisThreshold(HysteresisThreshold),
-    BinaryToScalar(BinaryToScalarStates),
-    Remap(Range<f32>), // remaps 0..1 to custom range
-}
 
 pub struct BindingTarget {
     destination: u64,
-    mapping_type: MappingType,
+    mapping_type: ButtonMappingType,
     binary_conditions: Vec<u64>,
 }
 
@@ -104,7 +103,7 @@ fn ctvf(set: &HashSet<u64>, click: u64, touch: u64, value: u64, force: u64) -> B
 fn passthrough(target: u64) -> BindingTarget {
     BindingTarget {
         destination: target,
-        mapping_type: MappingType::Passthrough,
+        mapping_type: ButtonMappingType::Passthrough,
         binary_conditions: vec![],
     }
 }
@@ -112,7 +111,7 @@ fn passthrough(target: u64) -> BindingTarget {
 fn binary_to_scalar(target: u64, map: BinaryToScalarStates) -> BindingTarget {
     BindingTarget {
         destination: target,
-        mapping_type: MappingType::BinaryToScalar(map),
+        mapping_type: ButtonMappingType::BinaryToScalar(map),
         binary_conditions: vec![],
     }
 }
@@ -120,15 +119,15 @@ fn binary_to_scalar(target: u64, map: BinaryToScalarStates) -> BindingTarget {
 fn hysteresis_threshold(target: u64, map: HysteresisThreshold) -> BindingTarget {
     BindingTarget {
         destination: target,
-        mapping_type: MappingType::HysteresisThreshold(map),
+        mapping_type: ButtonMappingType::HysteresisThreshold(map),
         binary_conditions: vec![],
     }
 }
 
-fn remap(target: u64, map: Range<f32>) -> BindingTarget {
+fn remap(target: u64, map: Range) -> BindingTarget {
     BindingTarget {
         destination: target,
-        mapping_type: MappingType::Remap(map),
+        mapping_type: ButtonMappingType::Remap(map),
         binary_conditions: vec![],
     }
 }
@@ -192,7 +191,13 @@ fn map_button_pair_automatic(
         }
         if source.force.is_none() {
             if let Some(destination_force) = destination.force {
-                targets.push(remap(destination_force, config.force_threshold..1.0));
+                targets.push(remap(
+                    destination_force,
+                    Range {
+                        min: config.force_threshold,
+                        max: 1.0,
+                    },
+                ));
                 remap_for_force = true;
             }
         }
@@ -210,7 +215,13 @@ fn map_button_pair_automatic(
                 } else {
                     1.0
                 };
-                targets.push(remap(destination_value, low..high));
+                targets.push(remap(
+                    destination_value,
+                    Range {
+                        min: low,
+                        max: high,
+                    },
+                ));
             }
         }
 
@@ -541,13 +552,34 @@ impl ButtonMappingManager {
         }
     }
 
-    // pub fn new_manual(mappings: HashMap<u64, Vec<BindingTarget>>) -> Self {
-    //     Self {
-    //         mappings,
-    //         binary_source_states: HashMap::new(),
-    //         hysteresis_states: HashMap::new(),
-    //     }
-    // }
+    pub fn new_manual(mappings: &[(String, Vec<ButtonBindingTarget>)]) -> Self {
+        let mappings = mappings
+            .iter()
+            .map(|(key, value)| {
+                (
+                    alvr_common::hash_string(key),
+                    value
+                        .iter()
+                        .map(|b| BindingTarget {
+                            destination: alvr_common::hash_string(&b.destination),
+                            mapping_type: b.mapping_type.clone(),
+                            binary_conditions: b
+                                .binary_conditions
+                                .iter()
+                                .map(|c| alvr_common::hash_string(c))
+                                .collect(),
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
+
+        Self {
+            mappings,
+            binary_source_states: HashMap::new(),
+            hysteresis_states: HashMap::new(),
+        }
+    }
 
     // Apply any button changes that are mapped to this specific button
     pub fn report_button(&mut self, source_id: u64, source_value: ButtonValue) {
@@ -564,8 +596,11 @@ impl ButtonMappingManager {
         if let Some(mappings) = self.mappings.get(&source_id) {
             'mapping: for mapping in mappings {
                 let destination_value = match (&mapping.mapping_type, source_value) {
-                    (MappingType::Passthrough, value) => value,
-                    (MappingType::HysteresisThreshold(threshold), ButtonValue::Scalar(value)) => {
+                    (ButtonMappingType::Passthrough, value) => value,
+                    (
+                        ButtonMappingType::HysteresisThreshold(threshold),
+                        ButtonValue::Scalar(value),
+                    ) => {
                         let state = self
                             .hysteresis_states
                             .entry(source_id)
@@ -584,15 +619,15 @@ impl ButtonMappingManager {
 
                         ButtonValue::Binary(*state)
                     }
-                    (MappingType::BinaryToScalar(levels), ButtonValue::Binary(value)) => {
+                    (ButtonMappingType::BinaryToScalar(levels), ButtonValue::Binary(value)) => {
                         if value {
                             ButtonValue::Scalar(levels.on)
                         } else {
                             ButtonValue::Scalar(levels.off)
                         }
                     }
-                    (MappingType::Remap(range), ButtonValue::Scalar(value)) => {
-                        let value = (value - range.start) / (range.end - range.start);
+                    (ButtonMappingType::Remap(range), ButtonValue::Scalar(value)) => {
+                        let value = (value - range.min) / (range.max - range.min);
                         ButtonValue::Scalar(value.clamp(0.0, 1.0))
                     }
                     _ => {

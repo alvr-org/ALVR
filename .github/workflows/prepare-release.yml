@@ -137,6 +137,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libfuse2 build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libffmpeg-nvenc-dev nvidia-cuda-toolkit libgtk-3-dev
+          git clone https://github.com/FFmpeg/nv-codec-headers.git
+          cd nv-codec-headers/
+          sudo make install
+          cd ..
           cp alvr/xtask/deb/cuda.pc /usr/share/pkgconfig
           cargo xtask prepare-deps --platform linux
           

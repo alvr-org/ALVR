@@ -18,7 +18,7 @@ once_cell = "1"
 parking_lot = "0.12"
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
-settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "b565cf6" }
+settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 # settings-schema = { path = "../../../../settings-schema-rs/settings-schema" }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]

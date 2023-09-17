@@ -700,17 +700,16 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .map(|c| c.tracked)
                     .unwrap_or(false);
 
-                let mut tracking_manager_lock = tracking_manager.lock();
-
                 let motions;
                 let left_hand_skeleton;
                 let right_hand_skeleton;
                 {
+                    let mut tracking_manager_lock = tracking_manager.lock();
                     let data_manager_lock = SERVER_DATA_MANAGER.read();
-                    let config = &data_manager_lock.settings().headset;
+                    let headset_config = &data_manager_lock.settings().headset;
 
                     motions = tracking_manager_lock.transform_motions(
-                        config,
+                        headset_config,
                         &tracking.device_motions,
                         [
                             tracking.hand_skeletons[0].is_some(),
@@ -718,10 +717,12 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                         ],
                     );
 
-                    left_hand_skeleton = tracking.hand_skeletons[0]
-                        .map(|s| tracking::to_openvr_hand_skeleton(config, *LEFT_HAND_ID, s));
-                    right_hand_skeleton = tracking.hand_skeletons[1]
-                        .map(|s| tracking::to_openvr_hand_skeleton(config, *RIGHT_HAND_ID, s));
+                    left_hand_skeleton = tracking.hand_skeletons[0].map(|s| {
+                        tracking::to_openvr_hand_skeleton(headset_config, *LEFT_HAND_ID, s)
+                    });
+                    right_hand_skeleton = tracking.hand_skeletons[1].map(|s| {
+                        tracking::to_openvr_hand_skeleton(headset_config, *RIGHT_HAND_ID, s)
+                    });
                 }
 
                 // Note: using the raw unrecentered head
@@ -770,17 +771,25 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
-                let mut ffi_left_hand_skeleton = left_hand_skeleton.map(tracking::to_ffi_skeleton);
-                let mut ffi_right_hand_skeleton =
-                    right_hand_skeleton.map(tracking::to_ffi_skeleton);
 
-                drop(tracking_manager_lock);
+                let enable_skeleton = controllers_config
+                    .as_ref()
+                    .map(|c| !c.enable_skeleton)
+                    .unwrap_or(false);
+                let ffi_left_hand_skeleton = enable_skeleton
+                    .then_some(left_hand_skeleton)
+                    .flatten()
+                    .map(tracking::to_ffi_skeleton);
+                let ffi_right_hand_skeleton = enable_skeleton
+                    .then_some(right_hand_skeleton)
+                    .flatten()
+                    .map(tracking::to_ffi_skeleton);
 
                 // Handle hand gestures
                 if let (Some(gestures_config), Some(gestures_button_mapping_manager)) = (
                     controllers_config
                         .as_ref()
-                        .and_then(|c| c.hand_tracking.gestures.as_option()),
+                        .and_then(|c| c.gestures.as_option()),
                     &mut gestures_button_mapping_manager,
                 ) {
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
@@ -794,6 +803,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 gestures_config,
                                 *LEFT_HAND_ID,
                             ),
+                            gestures_config.only_touch,
                         );
                     }
                     if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
@@ -805,16 +815,9 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                                 gestures_config,
                                 *RIGHT_HAND_ID,
                             ),
+                            gestures_config.only_touch,
                         );
                     }
-                }
-
-                if controllers_config
-                    .map(|c| !c.hand_tracking.enable_skeleton)
-                    .unwrap_or(false)
-                {
-                    ffi_left_hand_skeleton = None;
-                    ffi_right_hand_skeleton = None;
                 }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {

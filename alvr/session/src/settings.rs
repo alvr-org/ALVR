@@ -663,22 +663,10 @@ pub struct AutomaticButtonMappingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
-pub struct HandTrackingConfig {
-    #[schema(flag = "real-time")]
-    #[schema(strings(
-        help = "Enabling this allows using hand gestures to emulate controller inputs."
-    ))]
-    pub gestures: Switch<HandGestureConfig>,
-
-    #[schema(flag = "real-time")]
-    #[schema(strings(
-        help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
-    ))]
-    pub enable_skeleton: bool,
-}
-
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HandGestureConfig {
+    #[schema(flag = "real-time")]
+    pub only_touch: bool,
+
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "How close the tips of your fingers need to be to register a pinch click."
@@ -772,6 +760,12 @@ pub struct ControllersConfig {
     #[schema(flag = "real-time")]
     pub tracked: bool,
 
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
+    ))]
+    pub enable_skeleton: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: ControllersEmulationMode,
 
@@ -783,7 +777,11 @@ pub struct ControllersConfig {
 
     pub button_mapping_config: AutomaticButtonMappingConfig,
 
-    pub hand_tracking: HandTrackingConfig,
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this allows using hand gestures to emulate controller inputs."
+    ))]
+    pub gestures: Switch<HandGestureConfig>,
 
     #[schema(strings(
         display_name = "Prediction",
@@ -1039,7 +1037,9 @@ pub struct CaptureConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct Patches {
-    #[schema(strings(help = "AMD users should keep this on. Must be off for Nvidia GPUs!",))]
+    #[schema(strings(
+        help = "Async reprojection is currently broken in SteamVR, keep disabled. ONLY FOR TESTING.",
+    ))]
     #[schema(flag = "steamvr-restart")]
     pub linux_async_reprojection: bool,
 }
@@ -1341,6 +1341,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: ControllersConfigDefault {
                     gui_collapsed: false,
                     tracked: true,
+                    enable_skeleton: true,
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),
@@ -1397,25 +1398,23 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                         force_threshold: 0.8,
                     },
-                    hand_tracking: HandTrackingConfigDefault {
-                        gui_collapsed: true,
-                        gestures: SwitchDefault {
-                            enabled: true,
-                            content: HandGestureConfigDefault {
-                                pinch_touch_distance: 0.0,
-                                pinch_trigger_distance: 0.25,
-                                curl_touch_distance: 2.0,
-                                curl_trigger_distance: 2.5,
-                                joystick_deadzone: 40.0,
-                                joystick_offset_horizontal: 0.0,
-                                joystick_offset_vertical: 0.0,
-                                joystick_range: 1.0,
-                                repeat_delay: 100,
-                                activation_delay: 50,
-                                deactivation_delay: 100,
-                            },
+                    gestures: SwitchDefault {
+                        enabled: true,
+                        content: HandGestureConfigDefault {
+                            gui_collapsed: true,
+                            only_touch: false,
+                            pinch_touch_distance: 0.0,
+                            pinch_trigger_distance: 0.25,
+                            curl_touch_distance: 2.0,
+                            curl_trigger_distance: 2.5,
+                            joystick_deadzone: 40.0,
+                            joystick_offset_horizontal: 0.0,
+                            joystick_offset_vertical: 0.0,
+                            joystick_range: 1.0,
+                            repeat_delay: 100,
+                            activation_delay: 50,
+                            deactivation_delay: 100,
                         },
-                        enable_skeleton: true,
                     },
                     steamvr_pipeline_frames: 3.0,
                     linear_velocity_cutoff: 0.05,

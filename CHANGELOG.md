@@ -1,5 +1,23 @@
 # Changelog
 
+## v20.4.1
+
+* Fix inverted `Enable skeleton` switch
+* Add `Only touch` gestures option
+
+## v20.4.0
+
+* Full hand tracking gestures support, with joystick (by @barnabwhy #1794)
+* Fully remappable controller buttons (by @zarik5 #1817)
+* Custom controller profile (by @zarik5)
+* Fix Nvidia support on Linux (by @Killrmemz #1830)
+
+## v20.3.1
+
+* Fix some controller buttons not working
+* Fix changing controller emulation profile not triggering a SteamVR restart
+* Add back Rift S controller emulation profile
+
 ## v20.3.0
 
 * Add Lynx R1 headset support (by @zarik5 #1823)

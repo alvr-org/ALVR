@@ -774,7 +774,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                 let enable_skeleton = controllers_config
                     .as_ref()
-                    .map(|c| !c.enable_skeleton)
+                    .map(|c| c.enable_skeleton)
                     .unwrap_or(false);
                 let ffi_left_hand_skeleton = enable_skeleton
                     .then_some(left_hand_skeleton)

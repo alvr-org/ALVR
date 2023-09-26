@@ -39,5 +39,8 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 wasm-bindgen-futures = "0.4"
 wasm-logger = "0.2"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+wgpu = "0.16"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"

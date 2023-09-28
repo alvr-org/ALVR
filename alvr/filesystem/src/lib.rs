@@ -113,16 +113,14 @@ impl Layout {
             let static_resources_dir =
                 root.join(option_env!("static_resources_dir").unwrap_or("share/alvr"));
 
-            let config_dir = if !env!("config_dir").is_empty() {
-                PathBuf::from(env!("config_dir"))
-            } else {
-                dirs::config_dir().unwrap().join("alvr")
-            };
-            let log_dir = if !env!("log_dir").is_empty() {
-                PathBuf::from(env!("log_dir"))
-            } else {
-                dirs::home_dir().unwrap()
-            };
+            let config_dir = option_env!("config_dir")
+                .map(PathBuf::from)
+                .or(dirs::config_dir().map(|path| path.join("alvr")))
+                .unwrap();
+            let log_dir = option_env!("log_dir")
+                .map(PathBuf::from)
+                .or(dirs::home_dir())
+                .unwrap();
 
             let openvr_driver_root_dir =
                 root.join(option_env!("openvr_driver_root_dir").unwrap_or("lib64/alvr"));
@@ -256,17 +254,20 @@ impl Layout {
 }
 
 #[cfg(target_os = "linux")]
-pub fn pressure_vessel_path(path: &str) -> PathBuf {
-    let mut is_pressure_vessel = false;
+pub static IS_PRESSURE_VESSEL: Lazy<bool> = Lazy::new(|| {
     let container_manager = Path::new("/run/host/container-manager");
 
     if container_manager.exists() {
         if let Ok(container_manager) = std::fs::read_to_string(container_manager) {
-            is_pressure_vessel = container_manager.starts_with("pressure-vessel");
+            return container_manager.starts_with("pressure-vessel");
         }
     }
+    false
+});
 
-    if is_pressure_vessel {
+#[cfg(target_os = "linux")]
+pub fn pressure_vessel_path(path: &str) -> PathBuf {
+    if *IS_PRESSURE_VESSEL {
         PathBuf::from("/run/host").join(path)
     } else {
         PathBuf::from(path)

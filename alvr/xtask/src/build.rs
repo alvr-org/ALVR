@@ -185,6 +185,7 @@ pub fn build_streamer(
         sh.copy_file(ufw, build_layout.ufw_config()).unwrap();
 
         // setup library symlink, for steam container runtime
+        #[cfg(target_os = "linux")]
         if let Ok(lib) = std::fs::read_link("/usr/lib/libx264.so") {
             let _ = std::os::unix::fs::symlink(
                 PathBuf::from("/run/host/usr/lib").join(&lib),

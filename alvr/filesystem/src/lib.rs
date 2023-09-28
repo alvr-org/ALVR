@@ -108,21 +108,11 @@ impl Layout {
     pub fn new(root: &Path) -> Self {
         if cfg!(target_os = "linux") {
             // Get paths from environment or use FHS compliant paths
-            let executables_dir = if !env!("executables_dir").is_empty() {
-                PathBuf::from(env!("executables_dir"))
-            } else {
-                root.join("bin")
-            };
-            let libraries_dir = if !env!("libraries_dir").is_empty() {
-                PathBuf::from(env!("libraries_dir"))
-            } else {
-                root.join("lib64")
-            };
-            let static_resources_dir = if !env!("static_resources_dir").is_empty() {
-                PathBuf::from(env!("static_resources_dir"))
-            } else {
-                root.join("share/alvr")
-            };
+            let executables_dir = root.join(option_env!("executables_dir").unwrap_or("bin"));
+            let libraries_dir = root.join(option_env!("libraries_dir").unwrap_or("lib64"));
+            let static_resources_dir =
+                root.join(option_env!("static_resources_dir").unwrap_or("share/alvr"));
+
             let config_dir = if !env!("config_dir").is_empty() {
                 PathBuf::from(env!("config_dir"))
             } else {
@@ -133,36 +123,21 @@ impl Layout {
             } else {
                 dirs::home_dir().unwrap()
             };
-            let openvr_driver_root_dir = if !env!("openvr_driver_root_dir").is_empty() {
-                PathBuf::from(env!("openvr_driver_root_dir"))
-            } else {
-                root.join("lib64/alvr")
-            };
-            let vrcompositor_wrapper_dir = if !env!("vrcompositor_wrapper_dir").is_empty() {
-                PathBuf::from(env!("vrcompositor_wrapper_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let firewall_script_dir = if !env!("firewall_script_dir").is_empty() {
-                PathBuf::from(env!("firewall_script_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let firewalld_config_dir = if !env!("firewalld_config_dir").is_empty() {
-                PathBuf::from(env!("firewalld_config_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let ufw_config_dir = if !env!("ufw_config_dir").is_empty() {
-                PathBuf::from(env!("ufw_config_dir"))
-            } else {
-                root.join("libexec/alvr")
-            };
-            let vulkan_layer_manifest_dir = if !env!("vulkan_layer_manifest_dir").is_empty() {
-                PathBuf::from(env!("vulkan_layer_manifest_dir"))
-            } else {
-                root.join("share/vulkan/explicit_layer.d")
-            };
+            
+            let openvr_driver_root_dir =
+                root.join(option_env!("openvr_driver_root_dir").unwrap_or("lib64/alvr"));
+            let vrcompositor_wrapper_dir =
+                root.join(option_env!("vrcompositor_wrapper_dir").unwrap_or("libexec/alvr"));
+
+            let firewall_script_dir =
+                root.join(option_env!("firewall_script_dir").unwrap_or("libexec/alvr"));
+            let firewalld_config_dir =
+                root.join(option_env!("firewalld_config_dir").unwrap_or("libexec/alvr"));
+            let ufw_config_dir = root.join(option_env!("ufw_config_dir").unwrap_or("libexec/alvr"));
+
+            let vulkan_layer_manifest_dir = root.join(
+                option_env!("vulkan_layer_manifest_dir").unwrap_or("share/vulkan/explicit_layer.d"),
+            );
 
             Self {
                 executables_dir,

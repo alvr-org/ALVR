@@ -281,11 +281,11 @@ impl Layout {
 }
 
 #[cfg(target_os = "linux")]
-pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
+pub fn pressure_vessel_path(path: &str) -> PathBuf {
     let mut is_pressure_vessel = false;
     let container_manager = Path::new("/run/host/container-manager");
 
-    if path.exists() {
+    if container_manager.exists() {
         if let Ok(container_manager) = std::fs::read_to_string(container_manager) {
             is_pressure_vessel = container_manager.starts_with("pressure-vessel");
         }
@@ -294,7 +294,7 @@ pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
     if is_pressure_vessel {
         PathBuf::from("/run/host").join(path)
     } else {
-        path
+        PathBuf::from(path)
     }
 }
 #[cfg(not(target_os = "linux"))]
@@ -303,8 +303,7 @@ pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
 }
 
 static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
-    (!env!("root").is_empty())
-        .then(|| Layout::new(&pressure_vessel_path(PathBuf::from(env!("root")))))
+    (!env!("root").is_empty()).then(|| Layout::new(&pressure_vessel_path(env!("root"))))
 });
 
 // The path should include the executable file name

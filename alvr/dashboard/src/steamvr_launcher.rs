@@ -132,7 +132,8 @@ impl Launcher {
             if cfg!(target_os = "linux") && alvr_driver_dir.starts_with("/usr") {
                 alvr_server_io::driver_registration(
                     &[
-                        PathBuf::from("/run/host").join(&alvr_driver_dir),
+                        PathBuf::from("/run/host")
+                            .join(&alvr_driver_dir.strip_prefix("/").unwrap()),
                         alvr_driver_dir.clone(),
                     ],
                     true,

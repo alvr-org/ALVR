@@ -183,6 +183,14 @@ pub fn build_streamer(
         sh.copy_file(firewalld, build_layout.firewalld_config())
             .unwrap();
         sh.copy_file(ufw, build_layout.ufw_config()).unwrap();
+
+        // setup library symlink, for steam container runtime
+        if let Ok(lib) = std::fs::read_link("/usr/lib/libx264.so") {
+            let _ = std::os::unix::fs::symlink(
+                PathBuf::from("/run/host/usr/lib").join(&lib),
+                build_layout.openvr_driver_lib_dir().join(lib),
+            );
+        }
     }
 
     // copy static resources

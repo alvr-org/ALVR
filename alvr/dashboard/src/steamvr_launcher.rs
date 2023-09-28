@@ -5,6 +5,7 @@ use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
     env,
     marker::PhantomData,
+    path::PathBuf,
     process::Command,
     thread,
     time::{Duration, Instant},
@@ -128,7 +129,18 @@ impl Launcher {
                 afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                     .openvr_driver_root_dir;
 
-            alvr_server_io::driver_registration(&[alvr_driver_dir.clone()], true).ok();
+            if cfg!(target_os = "linux") && alvr_driver_dir.starts_with("/usr") {
+                alvr_server_io::driver_registration(
+                    &[
+                        PathBuf::from("/run/host").join(&alvr_driver_dir),
+                        alvr_driver_dir.clone(),
+                    ],
+                    true,
+                )
+                .ok();
+            } else {
+                alvr_server_io::driver_registration(&[alvr_driver_dir.clone()], true).ok();
+            }
 
             data_source.session_mut().drivers_backup = Some(DriversBackup {
                 alvr_path: alvr_driver_dir,

@@ -7,6 +7,7 @@ use std::{
     env,
     io::ErrorKind,
     net::{SocketAddr, TcpStream},
+    path::PathBuf,
     str::FromStr,
     sync::{mpsc, Arc},
     thread::{self, JoinHandle},
@@ -140,8 +141,24 @@ impl DataSources {
                                         )
                                         .openvr_driver_root_dir;
 
-                                    alvr_server_io::driver_registration(&[alvr_driver_dir], true)
+                                    if cfg!(target_os = "linux")
+                                        && alvr_driver_dir.starts_with("/usr")
+                                    {
+                                        alvr_server_io::driver_registration(
+                                            &[
+                                                PathBuf::from("/run/host").join(&alvr_driver_dir),
+                                                alvr_driver_dir,
+                                            ],
+                                            true,
+                                        )
                                         .ok();
+                                    } else {
+                                        alvr_server_io::driver_registration(
+                                            &[alvr_driver_dir],
+                                            true,
+                                        )
+                                        .ok();
+                                    }
 
                                     if let Ok(list) = alvr_server_io::get_registered_drivers() {
                                         report_event_local(

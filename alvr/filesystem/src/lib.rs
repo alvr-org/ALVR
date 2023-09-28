@@ -280,8 +280,35 @@ impl Layout {
     }
 }
 
-static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
-    Lazy::new(|| (!env!("root").is_empty()).then(|| Layout::new(Path::new(env!("root")))));
+#[cfg(target_os = "linux")]
+static IS_PRESSURE_VESSEL: Lazy<bool> = Lazy::new(|| {
+    let path = Path::new("/run/host/container-manager");
+
+    if path.exists() {
+        if let Ok(str) = std::fs::read_to_string(path) {
+            return str.starts_with("pressure-vessel");
+        }
+    }
+    false
+});
+
+#[cfg(target_os = "linux")]
+pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
+    if *IS_PRESSURE_VESSEL {
+        PathBuf::from("/run/host").join(path)
+    } else {
+        path
+    }
+}
+#[cfg(not(target_os = "linux"))]
+pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
+    path
+}
+
+static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
+    (!env!("root").is_empty())
+        .then(|| Layout::new(&pressure_vessel_path(PathBuf::from(env!("root")))))
+});
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable

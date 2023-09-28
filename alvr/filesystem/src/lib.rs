@@ -281,20 +281,17 @@ impl Layout {
 }
 
 #[cfg(target_os = "linux")]
-static IS_PRESSURE_VESSEL: Lazy<bool> = Lazy::new(|| {
-    let path = Path::new("/run/host/container-manager");
+pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
+    let mut is_pressure_vessel = false;
+    let container_manager = Path::new("/run/host/container-manager");
 
     if path.exists() {
-        if let Ok(str) = std::fs::read_to_string(path) {
-            return str.starts_with("pressure-vessel");
+        if let Ok(container_manager) = std::fs::read_to_string(container_manager) {
+            is_pressure_vessel = container_manager.starts_with("pressure-vessel");
         }
     }
-    false
-});
 
-#[cfg(target_os = "linux")]
-pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
-    if *IS_PRESSURE_VESSEL {
+    if is_pressure_vessel {
         PathBuf::from("/run/host").join(path)
     } else {
         path

@@ -123,7 +123,7 @@ impl Layout {
             } else {
                 dirs::home_dir().unwrap()
             };
-            
+
             let openvr_driver_root_dir =
                 root.join(option_env!("openvr_driver_root_dir").unwrap_or("lib64/alvr"));
             let vrcompositor_wrapper_dir =
@@ -273,13 +273,12 @@ pub fn pressure_vessel_path(path: &str) -> PathBuf {
     }
 }
 #[cfg(not(target_os = "linux"))]
-pub fn pressure_vessel_path(path: PathBuf) -> PathBuf {
-    path
+pub fn pressure_vessel_path(path: &str) -> PathBuf {
+    PathBuf::from(path)
 }
 
-static LAYOUT_FROM_ENV: Lazy<Option<Layout>> = Lazy::new(|| {
-    (!env!("root").is_empty()).then(|| Layout::new(&pressure_vessel_path(env!("root"))))
-});
+static LAYOUT_FROM_ENV: Lazy<Option<Layout>> =
+    Lazy::new(|| option_env!("root").map(|root| Layout::new(&pressure_vessel_path(root))));
 
 // The path should include the executable file name
 // The path argument is used only if ALVR is built as portable

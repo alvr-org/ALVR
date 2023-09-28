@@ -1,6 +1,7 @@
 use std::env;
 
 fn print_env(build_env: &str, compile_env: &str) {
+    println!("cargo:rerun-if-env-changed={}", build_env);
     if let Ok(var) = env::var(build_env) {
         println!("cargo:rustc-env={}={}", compile_env, var);
     }

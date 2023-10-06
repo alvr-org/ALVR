@@ -22,7 +22,6 @@ use dashboard::Dashboard;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     use alvr_common::ALVR_VERSION;
-    use alvr_packets::GpuVendor;
     use eframe::{egui, IconData, NativeOptions};
     use ico::IconDir;
     use std::{env, fs};
@@ -36,16 +35,22 @@ fn main() {
 
         data_manager.clean_client_list();
 
-        if data_manager
-            .get_gpu_vendors()
-            .iter()
-            .any(|vendor| matches!(vendor, GpuVendor::Nvidia))
+        #[cfg(target_os = "linux")]
         {
-            data_manager
-                .session_mut()
-                .session_settings
-                .patches
-                .linux_async_reprojection = false;
+            let has_nvidia = wgpu::Instance::new(wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::VULKAN,
+                dx12_shader_compiler: Default::default(),
+            })
+            .enumerate_adapters(wgpu::Backends::VULKAN)
+            .any(|adapter| adapter.get_info().vendor == 0x10de);
+
+            if has_nvidia {
+                data_manager
+                    .session_mut()
+                    .session_settings
+                    .patches
+                    .linux_async_reprojection = false;
+            }
         }
 
         if data_manager.session().server_version != *ALVR_VERSION {

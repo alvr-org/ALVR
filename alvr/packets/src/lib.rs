@@ -138,12 +138,6 @@ pub struct AudioDevicesList {
     pub input: Vec<String>,
 }
 
-pub enum GpuVendor {
-    Nvidia,
-    Amd,
-    Other,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub enum PathSegment {
     Name(String),

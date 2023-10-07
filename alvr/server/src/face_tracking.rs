@@ -114,6 +114,12 @@ impl FaceTrackingSink {
             FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
                 self.packet_cursor = 0;
 
+                if let [Some(left_quat), Some(right_quat)] = face_data.eye_gazes {
+                    let mut vec = left_quat.orientation.to_array().to_vec();
+                    vec.extend_from_slice(&right_quat.orientation.to_array());
+                    self.append_packet_vrcft(b"EyesQuat", &vec);
+                }
+
                 if let Some(arr) = face_data.fb_face_expression {
                     self.append_packet_vrcft(b"FaceFb\0\0", &arr);
                 }

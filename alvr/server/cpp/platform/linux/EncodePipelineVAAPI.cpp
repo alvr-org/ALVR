@@ -201,7 +201,6 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   SetParams(params);
 
   vlVaQualityBits quality = {};
-  quality.valid_setting = 1;
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
   switch (settings.m_amdEncoderQualityPreset)
   {

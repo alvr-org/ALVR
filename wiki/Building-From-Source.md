@@ -124,7 +124,7 @@ From the ALVR directory edit the ./alvr/xtask/src/dependencies.rs, and change tw
 * Line 159, change ```cuda``` -> ```cuda-12.2``` (or whatever version you have)
 * Line 179, replace that line with ```--nvccflags=\"-ccbin /home/linuxbrew/.linuxbrew/bin/g++-11 -gencode arch=compute_52,code=sm_52 -O2\"``` (Change homebrew path if needed, default is used)
 
-You should be good to go! Refer to [Streamer building](https://github.com/Hsky17/ALVR/edit/master/wiki/Building-From-Source.md#streamer-building) for the commands to build ALVR
+You should be good to go! Refer to [Streamer Building](https://github.com/Hsky17/ALVR/blob/fedora-cuda-guide-and-dependencies/wiki/Building-From-Source.md#streamer-building) for the commands to build ALVR
 
 # Client Building
 

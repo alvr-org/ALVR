@@ -46,7 +46,7 @@ If you are on Linux, install these additional packages:
   sudo dnf groupinstall 'Development Tools' | For c++ and build tools
   sudo dnf install yasm libdrm-devel vulkan-headers jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang
   ```
-  If you are using Nvidia, see [Feodra cuda installation](https://github.com/Hsky17/ALVR/edit/master/wiki/Building-From-Source.md#fedora-cuda-installation)
+  If you are using Nvidia, see [Fedora cuda installation](https://github.com/Hsky17/ALVR/blob/fedora-cuda-guide-and-dependencies/wiki/Building-From-Source.md#fedora-cuda-installation)
   
 Move to the root directory of the project, then run this command (paying attention to the bullet points below):
 
@@ -71,7 +71,7 @@ You can find the resulting package in `build/alvr_streamer_[your platform]`
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-streamer` command.
 
 ## Fedora CUDA installation
-If you are here for CUDA installation on Fedora you're at the right place! Else continue down to [Client Building](https://github.com/Hsky17/ALVR/edit/master/wiki/Building-From-Source.md#client-building)
+If you are here for CUDA installation on Fedora you're at the right place! Else continue down to [Client Building](https://github.com/Hsky17/ALVR/blob/fedora-cuda-guide-and-dependencies/wiki/Building-From-Source.md#client-building)
 ### 1. Install Nvidia drivers and Fedora CUDA driver
 ```bash
 sudo dnf update -y

@@ -1,4 +1,5 @@
 mod bitrate;
+mod c_api;
 mod connection;
 mod face_tracking;
 mod hand_gestures;

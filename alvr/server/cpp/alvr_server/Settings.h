@@ -80,6 +80,4 @@ class Settings {
 
     bool m_enableControllers;
     int m_controllerIsTracker = false;
-
-    bool m_constantBitrate;
 };

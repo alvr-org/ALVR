@@ -2,7 +2,6 @@
 #include "ALVR-common/packet_types.h"
 #include "ffmpeg_helper.h"
 #include "alvr_server/Settings.h"
-#include "alvr_server/Logger.h"
 #include <chrono>
 
 extern "C" {
@@ -181,12 +180,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       break;
     case ALVR_CBR:
     default:
-      if (settings.m_constantBitrate) {
-          av_opt_set(encoder_ctx->priv_data, "rc_mode", "CBR", 0);
-      } else {
-          Info("Forcing VBR rate control with adaptive bitrate");
-          av_opt_set(encoder_ctx->priv_data, "rc_mode", "VBR", 0);
-      }
+      av_opt_set(encoder_ctx->priv_data, "rc_mode", "CBR", 0);
       break;
   }
 
@@ -207,7 +201,6 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   SetParams(params);
 
   vlVaQualityBits quality = {};
-  quality.valid_setting = 1;
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
   switch (settings.m_amdEncoderQualityPreset)
   {
@@ -349,11 +342,7 @@ void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)
   }
   encoder_ctx->bit_rate = params.bitrate_bps;
   encoder_ctx->framerate = AVRational{int(params.framerate * 1000), 1000};
-  if (settings.m_constantBitrate) {
-    encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate;
-  } else {
-    encoder_ctx->rc_buffer_size = (encoder_ctx->bit_rate / params.framerate) * 5.0;
-  }
+  encoder_ctx->rc_buffer_size = encoder_ctx->bit_rate / params.framerate;
   encoder_ctx->rc_max_rate = encoder_ctx->bit_rate;
   encoder_ctx->rc_initial_buffer_occupancy = encoder_ctx->rc_buffer_size;
 

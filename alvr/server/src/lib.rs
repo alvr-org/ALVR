@@ -147,13 +147,13 @@ pub extern "C" fn shutdown_driver() {
         let hostnames = data_manager_lock
             .client_list()
             .iter()
-            .filter_map(|(hostname, info)| {
-                (!matches!(
+            .filter(|&(_, info)| {
+                !matches!(
                     info.connection_state,
                     ConnectionState::Disconnected | ConnectionState::Disconnecting { .. }
-                ))
-                .then(|| hostname.clone())
+                )
             })
+            .map(|(hostname, _)| hostname.clone())
             .collect::<Vec<_>>();
 
         for hostname in hostnames {

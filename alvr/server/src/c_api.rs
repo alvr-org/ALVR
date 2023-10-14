@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 use ash::vk;
 use std::{
     ffi::{c_char, CStr},

@@ -270,6 +270,7 @@ dependencies = [
  "gloo-net",
  "ico",
  "instant",
+ "rand",
  "serde",
  "serde_json",
  "settings-schema",

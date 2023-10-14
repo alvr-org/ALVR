@@ -137,11 +137,13 @@ fn main() {
         .write_to_file(out_dir.join("bindings.rs"))
         .unwrap();
 
-    println!(
-        "cargo:rustc-link-search=native={}",
-        cpp_dir.join("openvr/lib").to_string_lossy()
-    );
-    println!("cargo:rustc-link-lib=openvr_api");
+    if platform_name != "macos" {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            cpp_dir.join("openvr/lib").to_string_lossy()
+        );
+        println!("cargo:rustc-link-lib=openvr_api");
+    }
 
     #[cfg(target_os = "linux")]
     {

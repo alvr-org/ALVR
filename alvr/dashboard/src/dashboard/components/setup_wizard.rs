@@ -1,6 +1,6 @@
 use alvr_packets::{FirewallRulesAction, ServerRequest};
 use eframe::{
-    egui::{Button, Label, Layout, RichText, Ui},
+    egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
 };
 
@@ -118,7 +118,7 @@ On Linux some feaures are not working and should be disabled (foveated encoding 
                 |ui| {
                     if ui.button("Download VB-Cable").clicked() {
                         ui.ctx()
-                            .output_mut(|output| output.open_url("https://vb-audio.com/Cable/"));
+                            .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
                     }
                 },
             ),

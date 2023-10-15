@@ -146,7 +146,7 @@ impl StatisticsTab {
                                 min: to_screen_trans * pos2(i as f32, offset + value * 1000.0),
                                 max: to_screen_trans * pos2(i as f32 + 2.0, offset),
                             },
-                            Rounding::none(),
+                            Rounding::ZERO,
                             *color,
                         );
                         offset += value * 1000.0;

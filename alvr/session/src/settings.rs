@@ -1253,7 +1253,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     mode: ClientsideFoveationModeDefault {
                         Static: ClientsideFoveationModeStaticDefault {
                             level: ClientsideFoveationLevelDefault {
-                               variant: ClientsideFoveationLevelDefaultVariant::High,
+                                variant: ClientsideFoveationLevelDefaultVariant::High,
                             },
                         },
                         Dynamic: ClientsideFoveationModeDynamicDefault {

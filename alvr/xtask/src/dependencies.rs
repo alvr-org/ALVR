@@ -130,6 +130,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         "--enable-libdrm",
         "--enable-pic",
         "--enable-rpath",
+        "--fatal-warnings",
     ];
     let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());
     // The reason for 4x$ in LDSOFLAGS var refer to https://stackoverflow.com/a/71429999
@@ -156,6 +157,29 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         */
         #[cfg(target_os = "linux")]
         {
+            let codec_header_version = "12.1.14.0";
+            let temp_download_dir = download_path.join("dl_temp");
+            command::download_and_extract_zip(
+                &format!("https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n{codec_header_version}.zip"),
+                &temp_download_dir
+            )
+            .unwrap();
+
+            let header_dir = download_path.join("nv-codec-headers");
+            let header_build_dir = header_dir.join("build");
+            fs::rename(
+                temp_download_dir.join(format!("nv-codec-headers-n{codec_header_version}")),
+                &header_dir,
+            )
+            .unwrap();
+            fs::remove_dir_all(temp_download_dir).unwrap();
+            {
+                let make_header_cmd =
+                    format!("make install PREFIX='{}'", header_build_dir.display());
+                let _header_push_guard = sh.push_dir(&header_dir);
+                cmd!(sh, "bash -c {make_header_cmd}").run().unwrap();
+            }
+
             let cuda = pkg_config::Config::new().probe("cuda").unwrap();
             let include_flags = cuda
                 .include_paths
@@ -181,11 +205,16 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
                 &format!("--extra-ldflags=\"{link_flags}\""),
             ];
 
+            let env_vars = format!(
+                "PKG_CONFIG_PATH='{}'",
+                header_build_dir.join("lib/pkgconfig").display()
+            );
             let flags_combined = flags.join(" ");
             let nvenc_flags_combined = nvenc_flags.join(" ");
 
-            let command =
-                format!("./configure {install_prefix} {flags_combined} {nvenc_flags_combined}");
+            let command = format!(
+                "{env_vars} ./configure {install_prefix} {flags_combined} {nvenc_flags_combined}"
+            );
 
             cmd!(sh, "bash -c {command}").run().unwrap();
         }

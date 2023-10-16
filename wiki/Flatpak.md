@@ -118,9 +118,9 @@ Currently the game audio and microphone to and from the headset isn't routed aut
 
 2. In the same place under Microphone, click Expand and set Devices to custom. Enter `default` for the name for both Sink and Source.
 
-2. Download the [audio-flatpak-setup.sh](../alvr/xtask/flatpak/audio-flatpak-setup.sh) script and place it into the Flatpak app data directory located at `~/.var/app/com.valvesoftware.Steam/`. Make sure it has execute permissions (e.g. `chmod +x audio-flatpak-setup.sh`).
+3. Download the [audio-flatpak-setup.sh](../alvr/xtask/flatpak/audio-flatpak-setup.sh) script and place it into the Flatpak app data directory located at `~/.var/app/com.valvesoftware.Steam/`. Make sure it has execute permissions (e.g. `chmod +x audio-flatpak-setup.sh`).
 
-3. In the ALVR Dashboard, under All Settings (Advanced) > Connection, set the On connect script and On disconnect script to the absolute path of the script (relative to the Flatpak environment), e.g. `/var/home/$USERNAME/audio-flatpak-setup.sh`.
+4. In the ALVR Dashboard, under All Settings (Advanced) > Connection, set the On connect script and On disconnect script to the absolute path of the script (relative to the Flatpak environment), e.g. `/var/home/$USERNAME/audio-flatpak-setup.sh`.
 
 ### Other Applications
 

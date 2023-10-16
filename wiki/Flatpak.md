@@ -110,6 +110,18 @@ flatpak run --command=alvr_dashboard com.valvesoftware.Steam
 
 A desktop file named `com.valvesoftware.Steam.Utility.alvr.desktop` is supplied within the `alvr/xtask/flatpak` directory. Move this to where other desktop files are located on your system in order to run the dashboard without the terminal.
 
+### Automatic Audio & Microphone setup
+
+Currently the game audio and microphone to and from the headset isn't routed automatically. The setup of this script will therefore run every time the headset connects or disconnects to the ALVR dashboard. This is based on [the steps](Installation-guide.md#automatic-audio--microphone-setup) in the installation guide, modified for the Flatpak.
+
+1. In the ALVR Dashboard under All Settings (Advanced) > Audio, enable Game Audio and Microphone.
+
+2. In the same place under Microphone, click Expand and set Devices to custom. Enter `default` for the name for both Sink and Source.
+
+2. Download the [audio-flatpak-setup.sh](../alvr/xtask/flatpak/audio-flatpak-setup.sh) script and place it into the Flatpak app data directory located at `~/.var/app/com.valvesoftware.Steam/`. Make sure it has execute permissions (e.g. `chmod +x audio-flatpak-setup.sh`).
+
+3. In the ALVR Dashboard, under All Settings (Advanced) > Connection, set the On connect script and On disconnect script to the absolute path of the script (relative to the Flatpak environment), e.g. `/var/home/$USERNAME/audio-flatpak-setup.sh`.
+
 ### Other Applications
 
 The support for other applications that are not launched via Steam is non-existent due to the Flatpak sandbox.

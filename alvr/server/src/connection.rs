@@ -524,7 +524,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
     let game_audio_sender = stream_socket.request_stream(AUDIO);
-    let microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+    let mut microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let mut tracking_receiver =
         stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
@@ -639,11 +639,11 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         thread::spawn(move || {
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 Arc::clone(&IS_STREAMING),
-                sink,
+                &sink,
                 1,
                 streaming_caps.microphone_sample_rate,
                 config.buffering,
-                microphone_receiver,
+                &mut microphone_receiver,
             ));
         })
     } else {

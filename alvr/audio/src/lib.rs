@@ -350,7 +350,7 @@ pub fn get_next_frame_batch(
 // continuity will not be affected.
 pub fn receive_samples_loop(
     running: Arc<RelaxedAtomic>,
-    mut receiver: StreamReceiver<()>,
+    receiver: &mut StreamReceiver<()>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
     channels_count: usize,
     batch_frames_count: usize,
@@ -500,11 +500,11 @@ impl Iterator for StreamingSource {
 
 pub fn play_audio_loop(
     running: Arc<RelaxedAtomic>,
-    device: AudioDevice,
+    device: &AudioDevice,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
-    receiver: StreamReceiver<()>,
+    receiver: &mut StreamReceiver<()>,
 ) -> Result<()> {
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;

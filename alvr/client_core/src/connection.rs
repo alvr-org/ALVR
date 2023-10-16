@@ -273,7 +273,7 @@ fn connection_pipeline(
 
     let mut video_receiver =
         stream_socket.subscribe_to_stream::<VideoPacketHeader>(VIDEO, MAX_UNREAD_PACKETS);
-    let game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+    let mut game_audio_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let tracking_sender = stream_socket.request_stream(TRACKING);
     let mut haptics_receiver =
         stream_socket.subscribe_to_stream::<Haptics>(HAPTICS, MAX_UNREAD_PACKETS);
@@ -343,14 +343,16 @@ fn connection_pipeline(
         let device = AudioDevice::new_output(None, None).to_con()?;
 
         thread::spawn(move || {
-            alvr_common::show_err(audio::play_audio_loop(
-                Arc::clone(&IS_STREAMING),
-                device,
-                2,
-                game_audio_sample_rate,
-                config.buffering,
-                game_audio_receiver,
-            ));
+            while IS_STREAMING.value() {
+                alvr_common::show_err(audio::play_audio_loop(
+                    Arc::clone(&IS_STREAMING),
+                    &device,
+                    2,
+                    game_audio_sample_rate,
+                    config.buffering.clone(),
+                    &mut game_audio_receiver,
+                ));
+            }
         })
     } else {
         thread::spawn(|| ())

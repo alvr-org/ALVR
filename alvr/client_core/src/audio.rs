@@ -51,6 +51,10 @@ impl AudioInputCallback for RecorderCallback {
     fn on_error_before_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
         *self.state.lock() = AudioRecordState::Err(Some(error.into()));
     }
+
+    fn on_error_after_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
+        *self.state.lock() = AudioRecordState::Err(Some(error.into()));
+    }
 }
 
 #[allow(unused_variables)]
@@ -131,11 +135,11 @@ impl AudioOutputCallback for PlayerCallback {
 #[allow(unused_variables)]
 pub fn play_audio_loop(
     running: Arc<RelaxedAtomic>,
-    device: AudioDevice,
+    device: &AudioDevice,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
-    receiver: StreamReceiver<()>,
+    receiver: &mut StreamReceiver<()>,
 ) -> Result<()> {
     // the client sends invalid sample rates sometimes, and we crash if we try and use one
     // (batch_frames_count ends up zero and the audio callback gets confused)

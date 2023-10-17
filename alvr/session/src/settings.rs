@@ -975,21 +975,31 @@ pub struct RawEventsConfig {
 #[schema(collapsible)]
 pub struct LoggingConfig {
     pub client_log_report_level: Switch<LogSeverity>,
+
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
+
     #[schema(flag = "real-time")]
     pub log_tracking: bool,
+
     #[schema(flag = "real-time")]
     pub log_button_presses: bool,
+
     #[schema(flag = "real-time")]
     pub log_haptics: bool,
+
     #[schema(flag = "real-time")]
     pub notification_level: LogSeverity,
+
     #[schema(flag = "real-time")]
     pub show_raw_events: Switch<RawEventsConfig>,
+
     #[schema(strings(help = "This applies only to certain error or warning messages."))]
     #[schema(flag = "steamvr-restart")]
     pub prefer_backtrace: bool,
+
+    #[schema(strings(help = "Notification tips teach you how to use ALVR"))]
+    pub show_notification_tip: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1506,6 +1516,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             prefer_backtrace: false,
+            show_notification_tip: true,
         },
         steamvr_launcher: SteamvrLauncherDefault {
             gui_collapsed: false,

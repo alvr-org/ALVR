@@ -1,4 +1,5 @@
 use crate::data_sources;
+use afs::PRESSURE_VESSEL_HOST_PATH;
 use alvr_common::{debug, once_cell::sync::Lazy, parking_lot::Mutex};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
@@ -48,9 +49,15 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
         fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real"))?;
     }
 
+    let wrapper_path = afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
+        .vrcompositor_wrapper();
+
     std::os::unix::fs::symlink(
-        afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-            .vrcompositor_wrapper(),
+        if wrapper_path.starts_with("/usr") {
+            PathBuf::from(PRESSURE_VESSEL_HOST_PATH).join(wrapper_path)
+        } else {
+            wrapper_path
+        },
         &launcher_path,
     )?;
 
@@ -131,11 +138,8 @@ impl Launcher {
 
             if cfg!(target_os = "linux") && alvr_driver_dir.starts_with("/usr") {
                 alvr_server_io::driver_registration(
-                    &[
-                        PathBuf::from("/run/host")
-                            .join(&alvr_driver_dir.strip_prefix("/").unwrap()),
-                        alvr_driver_dir.clone(),
-                    ],
+                    &[PathBuf::from(PRESSURE_VESSEL_HOST_PATH)
+                        .join(alvr_driver_dir.strip_prefix("/").unwrap())],
                     true,
                 )
                 .ok();

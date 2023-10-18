@@ -1,5 +1,6 @@
 use alvr_common::{debug, error, info, parking_lot::Mutex, warn, RelaxedAtomic};
 use alvr_events::{Event, EventType};
+use alvr_filesystem::PRESSURE_VESSEL_HOST_PATH;
 use alvr_packets::ServerRequest;
 use alvr_server_io::ServerDataManager;
 use eframe::egui;
@@ -145,12 +146,8 @@ impl DataSources {
                                         && alvr_driver_dir.starts_with("/usr")
                                     {
                                         alvr_server_io::driver_registration(
-                                            &[
-                                                PathBuf::from("/run/host").join(
-                                                    &alvr_driver_dir.strip_prefix("/").unwrap(),
-                                                ),
-                                                alvr_driver_dir,
-                                            ],
+                                            &[PathBuf::from(PRESSURE_VESSEL_HOST_PATH)
+                                                .join(alvr_driver_dir.strip_prefix("/").unwrap())],
                                             true,
                                         )
                                         .ok();

@@ -253,6 +253,8 @@ impl Layout {
     }
 }
 
+pub const PRESSURE_VESSEL_HOST_PATH: &str = "/run/host";
+
 #[cfg(target_os = "linux")]
 pub static IS_PRESSURE_VESSEL: Lazy<bool> = Lazy::new(|| {
     let container_manager = Path::new("/run/host/container-manager");
@@ -268,7 +270,7 @@ pub static IS_PRESSURE_VESSEL: Lazy<bool> = Lazy::new(|| {
 #[cfg(target_os = "linux")]
 pub fn pressure_vessel_path(path: &str) -> PathBuf {
     if *IS_PRESSURE_VESSEL {
-        PathBuf::from("/run/host").join(path)
+        PathBuf::from(PRESSURE_VESSEL_HOST_PATH).join(path)
     } else {
         PathBuf::from(path)
     }

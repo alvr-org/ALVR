@@ -1,4 +1,5 @@
 use crate::command;
+use afs::PRESSURE_VESSEL_HOST_PATH;
 use alvr_filesystem::{self as afs, Layout};
 use std::{
     env,
@@ -188,7 +189,10 @@ pub fn build_streamer(
         #[cfg(target_os = "linux")]
         if let Ok(lib) = std::fs::read_link("/usr/lib/libx264.so") {
             let _ = std::os::unix::fs::symlink(
-                PathBuf::from("/run/host/usr/lib").join(&lib),
+                PathBuf::from(PRESSURE_VESSEL_HOST_PATH)
+                    .join("usr")
+                    .join("lib")
+                    .join(&lib),
                 build_layout.openvr_driver_lib_dir().join(lib),
             );
         }

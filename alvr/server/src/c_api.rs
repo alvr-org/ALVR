@@ -1,6 +1,5 @@
 #![allow(dead_code, unused_variables)]
 
-use ash::vk;
 use std::{
     ffi::{c_char, CStr},
     time::Instant,
@@ -239,27 +238,29 @@ pub unsafe extern "C" fn alvr_post_vulkan() {
 pub unsafe extern "C" fn alvr_create_vk_target_swapchain(
     width: u32,
     height: u32,
-    color_format: vk::Format,
-    color_space: vk::ColorSpaceKHR,
-    image_usage: vk::ImageUsageFlags,
-    present_mode: vk::PresentModeKHR,
+    vk_color_format: i32,
+    vk_color_space: i32,
+    vk_image_usage: u32,
+    vk_present_mode: i32,
     image_count: u64,
 ) {
     todo!()
 }
 
+// returns vkResult
 #[no_mangle]
-pub unsafe extern "C" fn alvr_acquire_image(out_swapchain_index: u64) -> vk::Result {
+pub unsafe extern "C" fn alvr_acquire_image(out_swapchain_index: u64) -> i32 {
     todo!()
 }
 
+// returns vkResult
 #[no_mangle]
 pub unsafe extern "C" fn alvr_present(
-    queue: vk::Queue,
+    vk_queue: u64,
     swapchain_index: u64,
     timeline_semaphore_value: u64,
     timestamp_ns: u64,
-) -> vk::Result {
+) -> i32 {
     todo!()
 }
 

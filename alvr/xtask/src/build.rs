@@ -26,6 +26,64 @@ impl Display for Profile {
     }
 }
 
+pub fn build_server_lib(
+    profile: Profile,
+    enable_messagebox: bool,
+    gpl: bool,
+    root: Option<String>,
+    reproducible: bool,
+) {
+    let sh = Shell::new().unwrap();
+
+    let mut flags = vec![];
+    match profile {
+        Profile::Distribution => {
+            flags.push("--profile");
+            flags.push("distribution");
+        }
+        Profile::Release => flags.push("--release"),
+        Profile::Debug => (),
+    }
+    if enable_messagebox {
+        flags.push("--features");
+        flags.push("alvr_common/enable-messagebox");
+    }
+    if gpl {
+        flags.push("--features");
+        flags.push("gpl");
+    }
+    if reproducible {
+        flags.push("--locked");
+    }
+    let flags_ref = &flags;
+
+    let artifacts_dir = afs::target_dir().join(profile.to_string());
+
+    let build_dir = afs::build_dir().join("alvr_server_core");
+    sh.create_dir(&build_dir).unwrap();
+
+    if let Some(root) = root {
+        sh.set_var("ALVR_ROOT_DIR", root);
+    }
+
+    let _push_guard = sh.push_dir(afs::crate_dir("server"));
+    cmd!(sh, "cargo build {flags_ref...}").run().unwrap();
+
+    sh.copy_file(
+        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+        &build_dir,
+    )
+    .unwrap();
+
+    if cfg!(windows) {
+        sh.copy_file(artifacts_dir.join("alvr_server_core.pdb"), &build_dir)
+            .unwrap();
+    }
+
+    let out = build_dir.join("alvr_server_core.h");
+    cmd!(sh, "cbindgen --output {out}").run().unwrap();
+}
+
 pub fn build_streamer(
     profile: Profile,
     enable_messagebox: bool,
@@ -64,9 +122,8 @@ pub fn build_streamer(
         None
     };
 
-    sh.remove_path(&afs::streamer_build_dir()).unwrap();
-    sh.create_dir(&build_layout.openvr_driver_lib_dir())
-        .unwrap();
+    sh.remove_path(afs::streamer_build_dir()).unwrap();
+    sh.create_dir(build_layout.openvr_driver_lib_dir()).unwrap();
     sh.create_dir(&build_layout.executables_dir).unwrap();
 
     if let Some(config) = maybe_config {
@@ -235,9 +292,6 @@ pub fn build_launcher(profile: Profile, enable_messagebox: bool, reproducible: b
 pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
     let sh = Shell::new().unwrap();
 
-    let build_dir = afs::build_dir().join("alvr_client_core");
-    sh.create_dir(&build_dir).unwrap();
-
     let strip_flag = matches!(profile, Profile::Debug).then_some("--no-strip");
 
     let mut flags = vec![];
@@ -253,6 +307,9 @@ pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
         flags.push("--no-default-features");
     }
     let flags_ref = &flags;
+
+    let build_dir = afs::build_dir().join("alvr_client_core");
+    sh.create_dir(&build_dir).unwrap();
 
     let _push_guard = sh.push_dir(afs::crate_dir("client_core"));
 

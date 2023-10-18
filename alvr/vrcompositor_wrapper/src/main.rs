@@ -1,5 +1,9 @@
 #[cfg(target_os = "linux")]
 fn main() {
+    use std::path::PathBuf;
+
+    use alvr_filesystem::PRESSURE_VESSEL_HOST_PATH;
+
     let argv0 = std::env::args().next().unwrap();
     // location of the ALVR vulkan layer manifest
     let layer_path = match std::fs::read_link(&argv0) {
@@ -9,7 +13,14 @@ fn main() {
             .join("../../share/vulkan/explicit_layer.d"),
         Err(err) => panic!("Failed to read vrcompositor symlink: {err}"),
     };
-    std::env::set_var("VK_LAYER_PATH", layer_path);
+    std::env::set_var(
+        "VK_LAYER_PATH",
+        if layer_path.starts_with("/usr") {
+            PathBuf::from(PRESSURE_VESSEL_HOST_PATH).join(layer_path)
+        } else {
+            layer_path
+        },
+    );
     // Vulkan < 1.3.234
     std::env::set_var("VK_INSTANCE_LAYERS", "VK_LAYER_ALVR_capture");
     std::env::set_var("DISABLE_VK_LAYER_VALVE_steam_fossilize_1", "1");
@@ -27,7 +38,14 @@ fn main() {
             Ok(path) => path.parent().unwrap().join("alvr_drm_lease_shim.so"),
             Err(err) => panic!("Failed to read vrcompositor symlink: {err}"),
         };
-        std::env::set_var("LD_PRELOAD", drm_lease_shim_path);
+        std::env::set_var(
+            "LD_PRELOAD",
+            if drm_lease_shim_path.starts_with("/usr") {
+                PathBuf::from(PRESSURE_VESSEL_HOST_PATH).join(drm_lease_shim_path)
+            } else {
+                drm_lease_shim_path
+            },
+        );
         std::env::set_var(
             "ALVR_SESSION_JSON",
             alvr_filesystem::filesystem_layout_invalid()

@@ -8,18 +8,6 @@ You need to install [rustup](https://www.rust-lang.org/tools/install).
 
 On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
-# Linux Users
-
-Before building the streamer, those on Linux would have to build and install [`FFmpeg/nv-codec-headers`](https://github.com/FFmpeg/nv-codec-headers). The nv-codec-headers for nvidia users requires at least driver version `520.56.06` to work properly, taken from nv-codec-header's README.
-
-Run the following commands as shown:
-
-```bash
-git clone https://github.com/FFmpeg/nv-codec-headers.git
-cd nv-codec-headers/
-sudo make install
-```
-
 # Streamer Building
 
 First you need to gather some additional resources in preparation for the build.  

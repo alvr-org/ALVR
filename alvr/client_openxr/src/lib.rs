@@ -387,6 +387,7 @@ fn stream_input_pipeline(
 
     let face_data = FaceData {
         eye_gazes: interaction::get_eye_gazes(
+            &xr_ctx.session,
             &interaction_ctx.face_sources,
             &stream_ctx.reference_space.read(),
             to_xr_time(now),

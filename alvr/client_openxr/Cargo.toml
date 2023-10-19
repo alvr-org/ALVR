@@ -147,9 +147,17 @@ name = "com.htc.vr.content.NumDoFHmd"
 value = "3,6DoF"
 
 # Pico entries
+[[package.metadata.android.uses_permission]]
+name = "com.picovr.permission.EYE_TRACKING"
 [[package.metadata.android.application.meta_data]]
 name = "pvr.app.type"
 value = "vr"
+[[package.metadata.android.application.meta_data]]
+name = "picovr.software.eye_tracking"
+value = "true"
+[[package.metadata.android.application.meta_data]]
+name = "eyetracking_calibration"
+value = "true"
 [[package.metadata.android.application.meta_data]]
 name = "handtracking"
 value = "1"

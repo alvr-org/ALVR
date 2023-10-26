@@ -61,6 +61,8 @@ name = "android.permission.ACCESS_WIFI_STATE"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.INTERNET"
 [[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
+[[package.metadata.android.uses_permission]]
 name = "android.permission.RECORD_AUDIO"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.WAKE_LOCK"

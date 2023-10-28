@@ -12,14 +12,17 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, PathSegment, PathValuePair};
-use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig, Settings, SocketProtocolDefaultVariant};
+use alvr_session::{
+    ClientConnectionConfig, ConnectionState, SessionConfig, Settings, SocketProtocolDefaultVariant,
+};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
     collections::{hash_map::Entry, HashMap},
     fs,
+    net::{IpAddr, Ipv4Addr},
     ops::{Deref, DerefMut},
-    path::{Path, PathBuf}, net::{Ipv4Addr, IpAddr},
+    path::{Path, PathBuf},
 };
 
 fn save_session(session: &SessionConfig, path: &Path) -> Result<()> {
@@ -259,15 +262,32 @@ impl ServerDataManager {
             ClientListAction::ToggleCabled => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().cabled = !entry.get().cabled;
-                    
+
                     if entry.get().cabled {
-                        entry.get_mut().manual_ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
-                        self.session.session_settings.connection.client_discovery.enabled = false;
-                        self.session.session_settings.connection.stream_protocol.variant =
-                            SocketProtocolDefaultVariant::Tcp;
+                        entry
+                            .get_mut()
+                            .manual_ips
+                            .insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
+                        self.session
+                            .session_settings
+                            .connection
+                            .client_discovery
+                            .enabled = false;
+                        self.session
+                            .session_settings
+                            .connection
+                            .stream_protocol
+                            .variant = SocketProtocolDefaultVariant::Tcp;
                     } else {
-                        entry.get_mut().manual_ips.remove(&IpAddr::V4(Ipv4Addr::LOCALHOST));
-                        self.session.session_settings.connection.client_discovery.enabled = true;
+                        entry
+                            .get_mut()
+                            .manual_ips
+                            .remove(&IpAddr::V4(Ipv4Addr::LOCALHOST));
+                        self.session
+                            .session_settings
+                            .connection
+                            .client_discovery
+                            .enabled = true;
                     }
 
                     updated = true;

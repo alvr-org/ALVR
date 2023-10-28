@@ -168,7 +168,7 @@ impl ConnectionsTab {
                                             action: ClientListAction::ToggleCabled,
                                         });
                                     }
-                                    ui.hyperlink_to("Cabled:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
+                                    ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
                                 });
                                 ui.end_row();
                             }

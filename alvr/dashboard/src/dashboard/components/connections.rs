@@ -1,13 +1,20 @@
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::theme::{self, log_colors};
-use alvr_packets::ClientListAction;
-use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
+use alvr_packets::{ClientListAction, PathValuePair};
+use alvr_session::{
+    ClientConnectionConfig, ConnectionState, SessionConfig, SocketProtocol, SocketProtocolDefault,
+};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    str::FromStr,
+};
+
+use super::settings;
 
 struct EditPopupState {
     new_client: bool,
@@ -161,6 +168,14 @@ impl ConnectionsTab {
                                                 .collect::<Vec<String>>(),
                                         });
                                     }
+                                    let mut cabled_toggle : bool = data.cabled; // todo: moves slider back-forth before setting, how to fix?
+                                    if crate::dashboard::basic_components::switch(ui, &mut cabled_toggle).changed() {
+                                        requests.push(ServerRequest::UpdateClientList {
+                                            hostname: hostname.clone(),
+                                            action: ClientListAction::ToggleCabled,
+                                        });
+                                    }
+                                    ui.hyperlink_to("Cabled:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)");
                                 });
                                 ui.end_row();
                             }

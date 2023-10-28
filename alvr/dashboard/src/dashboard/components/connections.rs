@@ -1,16 +1,13 @@
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
-use alvr_session::{
-    ClientConnectionConfig, ConnectionState, SessionConfig,
-};
+use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
 use std::net::{IpAddr, Ipv4Addr};
-
 
 struct EditPopupState {
     new_client: bool,

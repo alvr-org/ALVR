@@ -1,20 +1,16 @@
 use crate::dashboard::ServerRequest;
 use alvr_gui_common::theme::{self, log_colors};
-use alvr_packets::{ClientListAction, PathValuePair};
+use alvr_packets::ClientListAction;
 use alvr_session::{
-    ClientConnectionConfig, ConnectionState, SessionConfig, SocketProtocol, SocketProtocolDefault,
+    ClientConnectionConfig, ConnectionState, SessionConfig,
 };
 use eframe::{
     egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    str::FromStr,
-};
+use std::net::{IpAddr, Ipv4Addr};
 
-use super::settings;
 
 struct EditPopupState {
     new_client: bool,
@@ -175,7 +171,7 @@ impl ConnectionsTab {
                                             action: ClientListAction::ToggleCabled,
                                         });
                                     }
-                                    ui.hyperlink_to("Cabled:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)");
+                                    ui.hyperlink_to("Cabled:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
                                 });
                                 ui.end_row();
                             }

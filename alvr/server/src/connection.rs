@@ -28,15 +28,15 @@ use alvr_packets::{
     ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig, SocketProtocol, SocketProtocolDefault, SocketProtocolDefaultVariant};
+use alvr_session::{CodecType, ConnectionState, ControllersEmulationMode, FrameSize, OpenvrConfig};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
-    KEEPALIVE_TIMEOUT, LOCAL_IP,
+    KEEPALIVE_TIMEOUT,
 };
 use std::{
     collections::HashMap,
     io::Write,
-    net::{IpAddr, Ipv4Addr},
+    net::IpAddr,
     process::Command,
     ptr,
     sync::{

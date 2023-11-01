@@ -1,4 +1,4 @@
-use crate::dashboard::ServerRequest;
+use crate::dashboard::{ServerRequest, basic_components};
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
@@ -106,7 +106,7 @@ impl ConnectionsTab {
 
             ui.add_space(10.0);
 
-            if let Some(clients) = &self.trusted_clients {
+            if let Some(clients) = &mut self.trusted_clients {
                 Frame::group(ui.style())
                     .fill(theme::SECTION_BG)
                     .show(ui, |ui| {
@@ -117,7 +117,6 @@ impl ConnectionsTab {
 
                         ui.vertical(|ui| {
                             for (hostname,data) in clients {
-                                let copied_data = data.clone();
                                 Frame::group(ui.style())
                                 .fill(theme::DARKER_BG)
                                 .show(ui, |ui| {
@@ -151,7 +150,7 @@ impl ConnectionsTab {
                                     ui.horizontal(|ui| {
                                         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                                             ui.add_space(10.0);
-                                            if crate::dashboard::basic_components::switch(ui, &mut data.cabled).changed() { // issue is there, can't mutate state
+                                            if basic_components::switch(ui, &mut data.cabled).changed() {
                                                 requests.push(ServerRequest::UpdateClientList {
                                                     hostname: hostname.clone(),
                                                     action: ClientListAction::SetCabled(false),

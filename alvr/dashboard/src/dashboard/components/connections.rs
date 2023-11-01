@@ -3,7 +3,7 @@ use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
-    egui::{Frame, Grid, Layout, Margin, RichText, TextEdit, Ui, Window, Button, TextStyle},
+    egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };

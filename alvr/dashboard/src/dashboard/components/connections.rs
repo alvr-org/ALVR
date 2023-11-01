@@ -115,62 +115,71 @@ impl ConnectionsTab {
                             ui.heading("Trusted clients");
                         });
 
-                        Grid::new(2).num_columns(2).show(ui, |ui| {
-                            for (hostname, data) in clients {
-                                ui.horizontal(|ui| {
-                                    ui.add_space(10.0);
-                                    ui.label(format!(
-                                        "{hostname}: {} ({})",
-                                        data.current_ip
-                                            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-                                        data.display_name
-                                    ));
-                                    match data.connection_state {
-                                        ConnectionState::Disconnected => {
-                                            ui.colored_label(Color32::GRAY, "Disconnected")
-                                        }
-                                        ConnectionState::Connecting => ui
-                                            .colored_label(log_colors::WARNING_LIGHT, "Connecting"),
-                                        ConnectionState::Connected => {
-                                            ui.colored_label(theme::OK_GREEN, "Connected")
-                                        }
-                                        ConnectionState::Streaming => {
-                                            ui.colored_label(theme::OK_GREEN, "Streaming")
-                                        }
-                                        ConnectionState::Disconnecting { .. } => ui.colored_label(
-                                            log_colors::WARNING_LIGHT,
-                                            "Disconnecting",
-                                        ),
-                                    }
+                        ui.vertical(|ui| {
+                            for (hostname,data) in clients {
+                                let copied_data = data.clone();
+                                Frame::group(ui.style())
+                                .fill(theme::DARKER_BG)
+                                .show(ui, |ui| {
+                                    let current_ip = data.current_ip
+                                    .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+                                    let display_name = data.display_name.clone();
+                                    let manual_ips = data.manual_ips.clone();
+                                    ui.horizontal(|ui| {
+                                        ui.add_space(10.0);
+                                        ui.label(format!("{hostname}: {} ({})",current_ip,display_name));
+                                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                            match data.connection_state {
+                                                ConnectionState::Disconnected => {
+                                                    ui.colored_label(Color32::GRAY, "Disconnected")
+                                                }
+                                                ConnectionState::Connecting => ui
+                                                    .colored_label(log_colors::WARNING_LIGHT, "Connecting"),
+                                                ConnectionState::Connected => {
+                                                    ui.colored_label(theme::OK_GREEN, "Connected")
+                                                }
+                                                ConnectionState::Streaming => {
+                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
+                                                }
+                                                ConnectionState::Disconnecting { .. } => ui.colored_label(
+                                                    log_colors::WARNING_LIGHT,
+                                                    "Disconnecting",
+                                                ),
+                                            }
+                                        })
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                                            ui.add_space(10.0);
+                                            if crate::dashboard::basic_components::switch(ui, &mut data.cabled).changed() { // issue is there, can't mutate state
+                                                requests.push(ServerRequest::UpdateClientList {
+                                                    hostname: hostname.clone(),
+                                                    action: ClientListAction::SetCabled(false),
+                                                });
+                                            }
+                                            ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
+                                        });
+
+                                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                            if ui.button("Remove").clicked() {
+                                                requests.push(ServerRequest::UpdateClientList {
+                                                    hostname: hostname.clone(),
+                                                    action: ClientListAction::RemoveEntry,
+                                                });
+                                            }
+                                            if ui.button("Edit").clicked() {
+                                                self.edit_popup_state = Some(EditPopupState {
+                                                    new_client: false,
+                                                    hostname: hostname.to_owned(),
+                                                    ips: manual_ips
+                                                        .iter()
+                                                        .map(|addr| addr.to_string())
+                                                        .collect::<Vec<String>>(),
+                                                });
+                                            }
+                                        })
+                                    });
                                 });
-                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                    if ui.button("Remove").clicked() {
-                                        requests.push(ServerRequest::UpdateClientList {
-                                            hostname: hostname.clone(),
-                                            action: ClientListAction::RemoveEntry,
-                                        });
-                                    }
-                                    if ui.button("Edit").clicked() {
-                                        self.edit_popup_state = Some(EditPopupState {
-                                            new_client: false,
-                                            hostname: hostname.to_owned(),
-                                            ips: data
-                                                .manual_ips
-                                                .iter()
-                                                .map(|addr| addr.to_string())
-                                                .collect::<Vec<String>>(),
-                                        });
-                                    }
-                                    let mut cabled_toggle : bool = data.cabled; // todo: moves slider back-forth before setting, how to fix?
-                                    if crate::dashboard::basic_components::switch(ui, &mut cabled_toggle).changed() {
-                                        requests.push(ServerRequest::UpdateClientList {
-                                            hostname: hostname.clone(),
-                                            action: ClientListAction::ToggleCabled,
-                                        });
-                                    }
-                                    ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
-                                });
-                                ui.end_row();
                             }
                         });
 

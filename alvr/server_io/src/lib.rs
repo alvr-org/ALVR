@@ -259,9 +259,9 @@ impl ServerDataManager {
                     }
                 }
             }
-            ClientListAction::ToggleCabled => {
+            ClientListAction::SetCabled(state) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
-                    entry.get_mut().cabled = !entry.get().cabled;
+                    entry.get_mut().cabled = state;
 
                     if entry.get().cabled {
                         entry

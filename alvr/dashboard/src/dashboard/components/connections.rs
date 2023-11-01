@@ -1,9 +1,9 @@
-use crate::dashboard::{ServerRequest, basic_components};
+use crate::dashboard::{basic_components, ServerRequest};
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
-    egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
+    egui::{Frame, Grid, Layout, Margin, RichText, TextEdit, Ui, Window, Button, TextStyle},
     emath::{Align, Align2},
     epaint::Color32,
 };
@@ -120,14 +120,12 @@ impl ConnectionsTab {
                                 Frame::group(ui.style())
                                 .fill(theme::DARKER_BG)
                                 .show(ui, |ui| {
-                                    let current_ip = data.current_ip
-                                    .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
-                                    let display_name = data.display_name.clone();
-                                    let manual_ips = data.manual_ips.clone();
+                                    ui.add_space(10.0);
                                     ui.horizontal(|ui| {
                                         ui.add_space(10.0);
-                                        ui.label(format!("{hostname}: {} ({})",current_ip,display_name));
+                                        ui.label(format!("{hostname}: {} ({})", data.current_ip.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)), data.display_name));
                                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                            ui.add_space(10.0);
                                             match data.connection_state {
                                                 ConnectionState::Disconnected => {
                                                     ui.colored_label(Color32::GRAY, "Disconnected")
@@ -145,21 +143,21 @@ impl ConnectionsTab {
                                                     "Disconnecting",
                                                 ),
                                             }
-                                        })
+                                        });
                                     });
-                                    ui.horizontal(|ui| {
-                                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                                    Grid::new(&hostname).num_columns(2).show(ui, |ui| {
+                                        ui.horizontal(|ui| {
                                             ui.add_space(10.0);
+                                            ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
                                             if basic_components::switch(ui, &mut data.cabled).changed() {
                                                 requests.push(ServerRequest::UpdateClientList {
                                                     hostname: hostname.clone(),
-                                                    action: ClientListAction::SetCabled(false),
+                                                    action: ClientListAction::SetCabled(data.cabled),
                                                 });
                                             }
-                                            ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
                                         });
-
                                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                            ui.add_space(10.0);
                                             if ui.button("Remove").clicked() {
                                                 requests.push(ServerRequest::UpdateClientList {
                                                     hostname: hostname.clone(),
@@ -170,13 +168,13 @@ impl ConnectionsTab {
                                                 self.edit_popup_state = Some(EditPopupState {
                                                     new_client: false,
                                                     hostname: hostname.to_owned(),
-                                                    ips: manual_ips
+                                                    ips: data.manual_ips
                                                         .iter()
                                                         .map(|addr| addr.to_string())
                                                         .collect::<Vec<String>>(),
                                                 });
                                             }
-                                        })
+                                        });
                                     });
                                 });
                             }

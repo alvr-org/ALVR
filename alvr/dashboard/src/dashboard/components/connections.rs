@@ -83,24 +83,27 @@ impl ConnectionsTab {
                             ui.add_space(5.0);
                             ui.heading("New clients");
                         });
-
-                        Grid::new(1).num_columns(2).show(ui, |ui| {
-                            for (hostname, _) in clients {
-                                ui.horizontal(|ui| {
-                                    ui.add_space(10.0);
-                                    ui.label(hostname);
+                        for (hostname, _) in clients {
+                            Frame::group(ui.style())
+                            .fill(theme::DARKER_BG)
+                            .show(ui, |ui| {
+                                Grid::new(format!("{}-new-clients", hostname)).num_columns(2).show(ui, |ui| {
+                                    ui.horizontal(|ui| {
+                                        ui.add_space(10.0);
+                                        ui.label(hostname);
+                                    });
+                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                        if ui.button("Trust").clicked() {
+                                            requests.push(ServerRequest::UpdateClientList {
+                                                hostname: hostname.clone(),
+                                                action: ClientListAction::Trust,
+                                            });
+                                        };
+                                    });
+                                    ui.end_row();
                                 });
-                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                    if ui.button("Trust").clicked() {
-                                        requests.push(ServerRequest::UpdateClientList {
-                                            hostname: hostname.clone(),
-                                            action: ClientListAction::Trust,
-                                        });
-                                    };
-                                });
-                                ui.end_row();
-                            }
-                        })
+                            });
+                        }
                     });
             }
 
@@ -145,7 +148,7 @@ impl ConnectionsTab {
                                             }
                                         });
                                     });
-                                    Grid::new(&hostname).num_columns(2).show(ui, |ui| {
+                                    Grid::new(format!("{}-clients", hostname)).num_columns(2).show(ui, |ui| {
                                         ui.horizontal(|ui| {
                                             ui.add_space(10.0);
                                             ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");

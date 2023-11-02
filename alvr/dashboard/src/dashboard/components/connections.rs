@@ -3,7 +3,7 @@ use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
 use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
 use eframe::{
-    egui::{Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
+    egui::{self, Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},
     epaint::Color32,
 };
@@ -76,121 +76,19 @@ impl ConnectionsTab {
 
         ui.vertical_centered_justified(|ui| {
             if let Some(clients) = &self.new_clients {
-                Frame::group(ui.style())
-                    .fill(theme::SECTION_BG)
-                    .show(ui, |ui| {
-                        ui.vertical_centered_justified(|ui| {
-                            ui.add_space(5.0);
-                            ui.heading("New clients");
-                        });
-                        for (hostname, _) in clients {
-                            Frame::group(ui.style())
-                            .fill(theme::DARKER_BG)
-                            .show(ui, |ui| {
-                                Grid::new(format!("{}-new-clients", hostname)).num_columns(2).show(ui, |ui| {
-                                    ui.horizontal(|ui| {
-                                        ui.add_space(10.0);
-                                        ui.label(hostname);
-                                    });
-                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("Trust").clicked() {
-                                            requests.push(ServerRequest::UpdateClientList {
-                                                hostname: hostname.clone(),
-                                                action: ClientListAction::Trust,
-                                            });
-                                        };
-                                    });
-                                    ui.end_row();
-                                });
-                            });
-                        }
-                    });
+                if let Some(request) = new_clients_section(ui, clients) {
+                    requests.push(request);
+                }
             }
 
             ui.add_space(10.0);
 
             if let Some(clients) = &mut self.trusted_clients {
-                Frame::group(ui.style())
-                    .fill(theme::SECTION_BG)
-                    .show(ui, |ui| {
-                        ui.vertical_centered_justified(|ui| {
-                            ui.add_space(5.0);
-                            ui.heading("Trusted clients");
-                        });
-
-                        ui.vertical(|ui| {
-                            for (hostname,data) in clients {
-                                Frame::group(ui.style())
-                                .fill(theme::DARKER_BG)
-                                .show(ui, |ui| {
-                                    ui.add_space(10.0);
-                                    ui.horizontal(|ui| {
-                                        ui.add_space(10.0);
-                                        ui.label(format!("{hostname}: {} ({})", data.current_ip.unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)), data.display_name));
-                                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                            ui.add_space(10.0);
-                                            match data.connection_state {
-                                                ConnectionState::Disconnected => {
-                                                    ui.colored_label(Color32::GRAY, "Disconnected")
-                                                }
-                                                ConnectionState::Connecting => ui
-                                                    .colored_label(log_colors::WARNING_LIGHT, "Connecting"),
-                                                ConnectionState::Connected => {
-                                                    ui.colored_label(theme::OK_GREEN, "Connected")
-                                                }
-                                                ConnectionState::Streaming => {
-                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
-                                                }
-                                                ConnectionState::Disconnecting { .. } => ui.colored_label(
-                                                    log_colors::WARNING_LIGHT,
-                                                    "Disconnecting",
-                                                ),
-                                            }
-                                        });
-                                    });
-                                    Grid::new(format!("{}-clients", hostname)).num_columns(2).show(ui, |ui| {
-                                        ui.horizontal(|ui| {
-                                            ui.add_space(10.0);
-                                            ui.hyperlink_to("Use Cable:", "https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)#letting-your-pc-communicate-with-your-hmd");
-                                            if basic_components::switch(ui, &mut data.cabled).changed() {
-                                                requests.push(ServerRequest::UpdateClientList {
-                                                    hostname: hostname.clone(),
-                                                    action: ClientListAction::SetCabled(data.cabled),
-                                                });
-                                            }
-                                        });
-                                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                            ui.add_space(10.0);
-                                            if ui.button("Remove").clicked() {
-                                                requests.push(ServerRequest::UpdateClientList {
-                                                    hostname: hostname.clone(),
-                                                    action: ClientListAction::RemoveEntry,
-                                                });
-                                            }
-                                            if ui.button("Edit").clicked() {
-                                                self.edit_popup_state = Some(EditPopupState {
-                                                    new_client: false,
-                                                    hostname: hostname.to_owned(),
-                                                    ips: data.manual_ips
-                                                        .iter()
-                                                        .map(|addr| addr.to_string())
-                                                        .collect::<Vec<String>>(),
-                                                });
-                                            }
-                                        });
-                                    });
-                                });
-                            }
-                        });
-
-                        if ui.button("Add client manually").clicked() {
-                            self.edit_popup_state = Some(EditPopupState {
-                                hostname: "XXXX.client.alvr".into(),
-                                new_client: true,
-                                ips: Vec::new(),
-                            });
-                        }
-                    });
+                if let Some(request) =
+                    trusted_clients_section(ui, clients, &mut self.edit_popup_state)
+                {
+                    requests.push(request);
+                }
             }
         });
 
@@ -246,4 +144,158 @@ impl ConnectionsTab {
 
         requests
     }
+}
+
+fn new_clients_section(
+    ui: &mut Ui,
+    clients: &[(String, ClientConnectionConfig)],
+) -> Option<ServerRequest> {
+    let mut request = None;
+
+    Frame::group(ui.style())
+        .fill(theme::SECTION_BG)
+        .show(ui, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                ui.add_space(5.0);
+                ui.heading("New clients");
+            });
+            for (hostname, _) in clients {
+                Frame::group(ui.style())
+                    .fill(theme::DARKER_BG)
+                    .inner_margin(egui::vec2(15.0, 12.0))
+                    .show(ui, |ui| {
+                        Grid::new(format!("{}-new-clients", hostname))
+                            .num_columns(2)
+                            .spacing(egui::vec2(8.0, 8.0))
+                            .show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    ui.label(hostname);
+                                });
+                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                    if ui.button("Trust").clicked() {
+                                        request = Some(ServerRequest::UpdateClientList {
+                                            hostname: hostname.clone(),
+                                            action: ClientListAction::Trust,
+                                        });
+                                    };
+                                });
+                                ui.end_row();
+                            });
+                    });
+            }
+        });
+
+    request
+}
+
+fn trusted_clients_section(
+    ui: &mut Ui,
+    clients: &mut [(String, ClientConnectionConfig)],
+    edit_popup_state: &mut Option<EditPopupState>,
+) -> Option<ServerRequest> {
+    let mut request = None;
+
+    Frame::group(ui.style())
+        .fill(theme::SECTION_BG)
+        .show(ui, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                ui.add_space(5.0);
+                ui.heading("Trusted clients");
+            });
+
+            ui.vertical(|ui| {
+                for (hostname, data) in clients {
+                    Frame::group(ui.style())
+                        .fill(theme::DARKER_BG)
+                        .inner_margin(egui::vec2(15.0, 12.0))
+                        .show(ui, |ui| {
+                            Grid::new(format!("{}-clients", hostname))
+                                .num_columns(2)
+                                .spacing(egui::vec2(8.0, 8.0))
+                                .show(ui, |ui| {
+                                    ui.label(format!(
+                                        "{hostname}: {} ({})",
+                                        data.current_ip
+                                            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                                        data.display_name
+                                    ));
+                                    ui.horizontal(|ui| {
+                                        ui.with_layout(
+                                            Layout::right_to_left(Align::Center),
+                                            |ui| match data.connection_state {
+                                                ConnectionState::Disconnected => {
+                                                    ui.colored_label(Color32::GRAY, "Disconnected")
+                                                }
+                                                ConnectionState::Connecting => ui.colored_label(
+                                                    log_colors::WARNING_LIGHT,
+                                                    "Connecting",
+                                                ),
+                                                ConnectionState::Connected => {
+                                                    ui.colored_label(theme::OK_GREEN, "Connected")
+                                                }
+                                                ConnectionState::Streaming => {
+                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
+                                                }
+                                                ConnectionState::Disconnecting { .. } => ui
+                                                    .colored_label(
+                                                        log_colors::WARNING_LIGHT,
+                                                        "Disconnecting",
+                                                    ),
+                                            },
+                                        );
+                                    });
+
+                                    ui.end_row();
+
+                                    ui.horizontal(|ui| {
+                                        ui.hyperlink_to(
+                                            "Use Cable:",
+                                            format!(
+                                                "https://github.com/alvr-org/ALVR/wiki/{}#{}",
+                                                "ALVR-wired-setup-(ALVR-over-USB)",
+                                                "letting-your-pc-communicate-with-your-hmd"
+                                            ),
+                                        );
+                                        if basic_components::switch(ui, &mut data.cabled).changed()
+                                        {
+                                            request = Some(ServerRequest::UpdateClientList {
+                                                hostname: hostname.clone(),
+                                                action: ClientListAction::SetCabled(data.cabled),
+                                            });
+                                        }
+                                    });
+                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                        if ui.button("Remove").clicked() {
+                                            request = Some(ServerRequest::UpdateClientList {
+                                                hostname: hostname.clone(),
+                                                action: ClientListAction::RemoveEntry,
+                                            });
+                                        }
+                                        if ui.button("Edit").clicked() {
+                                            *edit_popup_state = Some(EditPopupState {
+                                                new_client: false,
+                                                hostname: hostname.to_owned(),
+                                                ips: data
+                                                    .manual_ips
+                                                    .iter()
+                                                    .map(|addr| addr.to_string())
+                                                    .collect::<Vec<String>>(),
+                                            });
+                                        }
+                                    });
+                                });
+                        });
+                }
+            });
+
+            if ui.button("Add client manually").clicked() {
+                *edit_popup_state = Some(EditPopupState {
+                    hostname: "XXXX.client.alvr".into(),
+                    new_client: true,
+                    ips: Vec::new(),
+                });
+            }
+        });
+
+    request
 }

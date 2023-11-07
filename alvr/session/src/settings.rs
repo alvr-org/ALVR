@@ -479,8 +479,6 @@ pub struct VideoConfig {
 
     pub clientside_foveation: Switch<ClientsideFoveation>,
 
-    pub dynamic_oculus_foveation: bool,
-
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
 }
@@ -1142,7 +1140,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: BitrateModeDefaultVariant::ConstantMbps,
                 },
                 adapt_to_framerate: SwitchDefault {
-                    enabled: true,
+                    enabled: false,
                     content: BitrateAdaptiveFramerateConfigDefault {
                         framerate_reset_threshold_multiplier: 2.0,
                     },
@@ -1266,7 +1264,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
-            dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {

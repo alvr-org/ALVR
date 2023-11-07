@@ -4,6 +4,7 @@ Current bindings for ALVR 20
 Gestures
 ---
 |Action|Handtracking pinch|
+|-|-|
 |Trigger|Pinch thumb and index|
 |Joystick click|Curl thumb to palm|
 |Grip|Curl middle, ring and little|

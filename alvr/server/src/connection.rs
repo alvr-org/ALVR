@@ -104,8 +104,8 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
     let mut foveation_center_shift_y = 0.0;
     let mut foveation_edge_ratio_x = 0.0;
     let mut foveation_edge_ratio_y = 0.0;
-    let enable_foveated_rendering =
-        if let Switch::Enabled(config) = settings.video.foveated_rendering {
+    let enable_foveated_encoding =
+        if let Switch::Enabled(config) = settings.video.foveated_encoding {
             foveation_center_size_x = config.center_size_x;
             foveation_center_size_y = config.center_size_y;
             foveation_center_shift_x = config.center_shift_x;
@@ -161,7 +161,7 @@ pub fn contruct_openvr_config() -> OpenvrConfig {
         sw_thread_count: settings.video.encoder_config.software.thread_count,
         controllers_enabled,
         controller_is_tracker,
-        enable_foveated_rendering,
+        enable_foveated_encoding,
         foveation_center_size_x,
         foveation_center_size_y,
         foveation_center_shift_x,

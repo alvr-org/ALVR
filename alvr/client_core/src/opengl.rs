@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 
 use alvr_common::{glam::UVec2, Fov, Pose};
-use alvr_session::FoveatedRenderingConfig;
+use alvr_session::FoveatedEncodingConfig;
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
@@ -70,7 +70,7 @@ pub fn pause() {
 pub fn start_stream(
     view_resolution: UVec2,
     swapchain_textures: [Vec<u32>; 2],
-    foveated_rendering: Option<FoveatedRenderingConfig>,
+    foveated_encoding: Option<FoveatedEncodingConfig>,
     enable_srgb_correction: bool,
 ) {
     #[cfg(target_os = "android")]
@@ -83,28 +83,28 @@ pub fn start_stream(
                 swapchain_textures[1].as_ptr(),
             ],
             swapchainLength: swapchain_textures[0].len() as _,
-            enableFoveation: foveated_rendering.is_some().into(),
-            foveationCenterSizeX: foveated_rendering
+            enableFoveation: foveated_encoding.is_some().into(),
+            foveationCenterSizeX: foveated_encoding
                 .as_ref()
                 .map(|f| f.center_size_x)
                 .unwrap_or_default(),
-            foveationCenterSizeY: foveated_rendering
+            foveationCenterSizeY: foveated_encoding
                 .as_ref()
                 .map(|f| f.center_size_y)
                 .unwrap_or_default(),
-            foveationCenterShiftX: foveated_rendering
+            foveationCenterShiftX: foveated_encoding
                 .as_ref()
                 .map(|f| f.center_shift_x)
                 .unwrap_or_default(),
-            foveationCenterShiftY: foveated_rendering
+            foveationCenterShiftY: foveated_encoding
                 .as_ref()
                 .map(|f| f.center_shift_y)
                 .unwrap_or_default(),
-            foveationEdgeRatioX: foveated_rendering
+            foveationEdgeRatioX: foveated_encoding
                 .as_ref()
                 .map(|f| f.edge_ratio_x)
                 .unwrap_or_default(),
-            foveationEdgeRatioY: foveated_rendering
+            foveationEdgeRatioY: foveated_encoding
                 .as_ref()
                 .map(|f| f.edge_ratio_y)
                 .unwrap_or_default(),

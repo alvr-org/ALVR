@@ -353,7 +353,7 @@ pub struct ClientsideFoveation {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
-pub struct FoveatedRenderingConfig {
+pub struct FoveatedEncodingConfig {
     #[schema(strings(display_name = "Center region width"))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -475,7 +475,7 @@ pub struct VideoConfig {
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
-    pub foveated_rendering: Switch<FoveatedRenderingConfig>,
+    pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
     pub clientside_foveation: Switch<ClientsideFoveation>,
 
@@ -1234,9 +1234,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     ],
                 }
             },
-            foveated_rendering: SwitchDefault {
+            foveated_encoding: SwitchDefault {
                 enabled: true,
-                content: FoveatedRenderingConfigDefault {
+                content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     center_size_x: 0.45,
                     center_size_y: 0.4,

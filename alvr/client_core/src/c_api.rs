@@ -11,7 +11,7 @@ use alvr_common::{
     warn, DeviceMotion, Fov, Pose,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
-use alvr_session::{CodecType, FoveatedRenderingConfig};
+use alvr_session::{CodecType, FoveatedEncodingConfig};
 use std::{
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
@@ -190,28 +190,28 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 refresh_rate_hint,
                 settings,
             } => {
-                let foveated_rendering = settings.video.foveated_rendering.as_option();
+                let foveated_encoding = settings.video.foveated_encoding.as_option();
                 AlvrEvent::StreamingStarted {
                     view_width: view_resolution.x,
                     view_height: view_resolution.y,
                     refresh_rate_hint,
-                    enable_foveation: foveated_rendering.is_some(),
-                    foveation_center_size_x: foveated_rendering
+                    enable_foveation: foveated_encoding.is_some(),
+                    foveation_center_size_x: foveated_encoding
                         .map(|f| f.center_size_x)
                         .unwrap_or_default(),
-                    foveation_center_size_y: foveated_rendering
+                    foveation_center_size_y: foveated_encoding
                         .map(|f| f.center_size_y)
                         .unwrap_or_default(),
-                    foveation_center_shift_x: foveated_rendering
+                    foveation_center_shift_x: foveated_encoding
                         .map(|f| f.center_shift_x)
                         .unwrap_or_default(),
-                    foveation_center_shift_y: foveated_rendering
+                    foveation_center_shift_y: foveated_encoding
                         .map(|f| f.center_shift_y)
                         .unwrap_or_default(),
-                    foveation_edge_ratio_x: foveated_rendering
+                    foveation_edge_ratio_x: foveated_encoding
                         .map(|f| f.edge_ratio_x)
                         .unwrap_or_default(),
-                    foveation_edge_ratio_y: foveated_rendering
+                    foveation_edge_ratio_y: foveated_encoding
                         .map(|f| f.edge_ratio_y)
                         .unwrap_or_default(),
                 }
@@ -526,7 +526,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
     let swapchain_textures =
         convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
-    let foveated_rendering = config.enable_foveation.then_some(FoveatedRenderingConfig {
+    let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
         center_size_x: config.foveation_center_size_x,
         center_size_y: config.foveation_center_size_y,
         center_shift_x: config.foveation_center_shift_x,
@@ -538,7 +538,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     opengl::start_stream(
         view_resolution,
         swapchain_textures,
-        foveated_rendering,
+        foveated_encoding,
         true,
     );
 }

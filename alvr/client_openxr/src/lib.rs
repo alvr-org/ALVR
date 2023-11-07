@@ -786,7 +786,7 @@ pub fn entry_point() {
                                     .map(|i| *i as _)
                                     .collect(),
                             ],
-                            settings.video.foveated_rendering.into_option(),
+                            settings.video.foveated_encoding.into_option(),
                             platform != Platform::Lynx,
                         );
 

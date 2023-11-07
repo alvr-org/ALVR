@@ -2,7 +2,6 @@ use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
-    epaint::Color32,
 };
 
 use crate::dashboard::basic_components;
@@ -20,7 +19,6 @@ enum Page {
     SoftwareRequirements = 3,
     HandGestures = 4,
     Firewall = 5,
-    // PerformancePreset,
     Recommendations = 6,
     Finished = 7,
 }
@@ -168,26 +166,6 @@ This requires administrator rights!",
                     }
                 },
             ),
-            //             Page::PerformancePreset => {
-            //                 ui.label(
-            //                     r#"Performance preset
-            // Please choose preset that fits your setup. This will adjust some settings for you.
-            // "#,
-            //                 );
-            //                 ui.horizontal(|ui| {
-            //                     // TODO correct preset strings
-            //                     if ui.button("Compatibility").clicked() {
-            //                         // request = Some(DashboardRequest::PresetInvocation(
-            //                         //     "compatibility".to_string(),
-            //                         // ));
-            //                     }
-            //                     if ui.button("Visual quality").clicked() {
-            //                         // request = Some(DashboardRequest::PresetInvocation(
-            //                         //     "visual_quality".to_string(),
-            //                         // ));
-            //                     }
-            //                 });
-            //             }
             Page::Recommendations => page_content(
                 ui,
                 "Recommendations",

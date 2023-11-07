@@ -1409,7 +1409,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: true,
                         content: HandGestureConfigDefault {
                             gui_collapsed: true,
-                            only_touch: false,
+                            only_touch: true,
                             pinch_touch_distance: 0.0,
                             pinch_trigger_distance: 0.25,
                             curl_touch_distance: 2.0,

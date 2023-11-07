@@ -1,10 +1,9 @@
+use crate::dashboard::basic_components;
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
 };
-
-use crate::dashboard::basic_components;
 
 pub enum SetupWizardRequest {
     ServerRequest(ServerRequest),
@@ -60,14 +59,14 @@ fn page_content(
 
 pub struct SetupWizard {
     page: Page,
-    gestures_toggle: bool,
+    only_touch: bool,
 }
 
 impl SetupWizard {
     pub fn new() -> Self {
         Self {
             page: Page::Welcome,
-            gestures_toggle: false,
+            only_touch: true,
         }
     }
 
@@ -138,16 +137,16 @@ On Linux, game audio and microphone might require pipewire and On connect/On dis
                 ui,
                 "Hand Gestures",
                 r"ALVR allows you to use Hand Tracking and emulate controller buttons using it.
-By default, controller button emulation is disabled to prevent accidental clicks. You can re-enable it bellow.",
+By default, controller button emulation is set to prevent accidental clicks. You can re-enable gestures by disabling slider bellow.",
                 |ui| {
                     ui.label("Only touch");
-                    if basic_components::switch(ui, &mut self.gestures_toggle).changed() {
+                    if basic_components::switch(ui, &mut self.only_touch).changed() {
                         request = Some(SetupWizardRequest::ServerRequest(
                             ServerRequest::SetValues(vec![PathValuePair {
                                 path: alvr_packets::parse_path(
                                     "session_settings.headset.controllers.content.gestures.content.only_touch",
                                 ),
-                                value: serde_json::Value::Bool(self.gestures_toggle),
+                                value: serde_json::Value::Bool(self.only_touch),
                             }]),
                         ));
                     }

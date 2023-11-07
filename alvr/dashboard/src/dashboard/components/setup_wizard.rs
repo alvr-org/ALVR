@@ -1,8 +1,11 @@
-use alvr_packets::{FirewallRulesAction, ServerRequest};
+use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
+    epaint::Color32,
 };
+
+use crate::dashboard::basic_components;
 
 pub enum SetupWizardRequest {
     ServerRequest(ServerRequest),
@@ -15,10 +18,11 @@ enum Page {
     ResetSettings = 1,
     HardwareRequirements = 2,
     SoftwareRequirements = 3,
-    Firewall = 4,
+    HandGestures = 4,
+    Firewall = 5,
     // PerformancePreset,
-    Recommendations = 5,
-    Finished = 6,
+    Recommendations = 6,
+    Finished = 7,
 }
 
 fn index_to_page(index: usize) -> Page {
@@ -27,9 +31,10 @@ fn index_to_page(index: usize) -> Page {
         1 => Page::ResetSettings,
         2 => Page::HardwareRequirements,
         3 => Page::SoftwareRequirements,
-        4 => Page::Firewall,
-        5 => Page::Recommendations,
-        6 => Page::Finished,
+        4 => Page::HandGestures,
+        5 => Page::Firewall,
+        6 => Page::Recommendations,
+        7 => Page::Finished,
         _ => unreachable!(),
     }
 }
@@ -57,12 +62,14 @@ fn page_content(
 
 pub struct SetupWizard {
     page: Page,
+    gestures_toggle: bool,
 }
 
 impl SetupWizard {
     pub fn new() -> Self {
         Self {
             page: Page::Welcome,
+            gestures_toggle: false,
         }
     }
 
@@ -114,11 +121,37 @@ Make sure you have at least one output audio device.",
                 ui,
                 "Software requirements",
                 r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
-On Linux some feaures are not working and should be disabled (foveated encoding and color correction) and some need a proper environment setup to have them working (game audio and microphone streaming).",
+On Linux, game audio and microphone might require pipewire and On connect/On disconnect script.",
                 |ui| {
                     if ui.button("Download VB-Cable").clicked() {
                         ui.ctx()
                             .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
+                    }
+                    if ui
+                        .button("'On connect/On disconnect' audio script")
+                        .clicked()
+                    {
+                        ui.ctx()
+                            .open_url(OpenUrl::same_tab("https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/audio-setup.sh"));
+                    }
+                },
+            ),
+            Page::HandGestures => page_content(
+                ui,
+                "Hand Gestures",
+                r"ALVR allows you to use Hand Tracking and emulate controller buttons using it.
+By default, controller button emulation is disabled to prevent accidental clicks. You can re-enable it bellow.",
+                |ui| {
+                    ui.label("Hand tracking controller gestures emulation");
+                    if basic_components::switch(ui, &mut self.gestures_toggle).changed() {
+                        request = Some(SetupWizardRequest::ServerRequest(
+                            ServerRequest::SetValues(vec![PathValuePair {
+                                path: alvr_packets::parse_path(
+                                    "session_settings.headset.controllers.content.gestures.content.only_touch",
+                                ),
+                                value: serde_json::Value::Bool(self.gestures_toggle),
+                            }]),
+                        ));
                     }
                 },
             ),
@@ -158,7 +191,7 @@ This requires administrator rights!",
             Page::Recommendations => page_content(
                 ui,
                 "Recommendations",
-                r"ALVR supports multiple types of PC hardware and headsets but not all work correctly with default settings. For example some AMD video cards work only with the HEVC codec and GearVR does not support foveated encoding. Please try tweaking different settings if your ALVR experience is broken or not optimal.",
+                r"ALVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like encoder, bitrate and others if your ALVR experience is great or not optimal.",
                 |_| (),
             ),
             Page::Finished => page_content(

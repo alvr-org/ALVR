@@ -17,5 +17,8 @@ This is a fork of ALVR that works with Meta Quest and other standalone headsets.
         "Latest release",
         "https://github.com/alvr-org/ALVR/releases/latest",
     );
-    ui.hyperlink_to("Donate to ALVR on Open Collective", "https://opencollective.com/alvr");
+    ui.hyperlink_to(
+        "Donate to ALVR on Open Collective",
+        "https://opencollective.com/alvr",
+    );
 }

@@ -140,7 +140,7 @@ On Linux, game audio and microphone might require pipewire and On connect/On dis
                 r"ALVR allows you to use Hand Tracking and emulate controller buttons using it.
 By default, controller button emulation is disabled to prevent accidental clicks. You can re-enable it bellow.",
                 |ui| {
-                    ui.label("Hand tracking controller gestures emulation");
+                    ui.label("Only touch");
                     if basic_components::switch(ui, &mut self.gestures_toggle).changed() {
                         request = Some(SetupWizardRequest::ServerRequest(
                             ServerRequest::SetValues(vec![PathValuePair {

@@ -107,9 +107,10 @@ impl StatisticsTab {
         if let Some(pos) = canvas_response.response.hover_pos() {
             let graph_pos =
                 RectTransform::from_to(canvas_response.response.rect, canvas_response.inner) * pos;
+            let history_index = (graph_pos.x as usize).clamp(0, GRAPH_HISTORY_SIZE - 1);
 
             popup::show_tooltip(ui.ctx(), Id::new("popup"), |ui| {
-                tooltip_content(ui, self.history.get(graph_pos.x as usize).unwrap())
+                tooltip_content(ui, self.history.get(history_index).unwrap())
             });
         }
     }

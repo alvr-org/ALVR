@@ -1272,7 +1272,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     contrast: 0.,
                     saturation: 0.5,
                     gamma: 1.,
-                    sharpening: 0.,
+                    sharpening: 0.5,
                 },
             },
         },

@@ -10,13 +10,7 @@
 
 4. Firewall configuration is skipped entirely and setup firewall configuration is broken, so it might not work in case you have strict firewall (alvr docs should have info about that) (Low priority TODO).
 
-5. Don't use SteamVR Beta (1.26+) version, it contains a lot of breaking changes that are yet to be tested to work with.
-
-6. Some nvidia users might experience 307 steamvr crash - seemingly related to 530 driver, update or downgrade, should resolve the issue.
-
-7. At the moment, most of the podman portability issues were fixed, but it's not done, so if you happen to have any kind of issues while running both this and other distroboxes from your system, please report them. I created some issues at podman side ([documentation issue](https://github.com/containers/podman/issues/18375), [storage configuration issue, which prevents complete isolation from runtime containers at the moment](https://github.com/containers/storage/issues/1587)) and [created PR](https://github.com/89luca89/distrobox/pull/718) for distrobox (WIP) to upstream the changes.
-
-8. This script unlikely to work on external disks.
+5. This script unlikely to work on external disks.
 
 ## Installing alvr distrobox
 
@@ -55,11 +49,11 @@ After installing ALVR you may want to configure it and steamvr to run at best qu
 
 2. **Preferred framerate:** If you know that you will have lower fps than usual (for instance, VRChat), run at lower fps. This is because when reprojection (this is what allows for smooth view despite being at low fps) goes lower than twice the amount of specified framerate - it fails to reproject and will look worse. So for example, you can run at 72hz if you know you're expecting low framerate, and 120hz if you are going to play something like Beat Saber, which is unlikely to run at low fps.
 
-3. **Encoder preset:** Quality
+3. **Encoder preset:** Balanced
 
 4. **Game Audio & Microphone:** Set to pipewire as has been said in installation. ALVR uses default audio sink for audio, and doesn't care about volume (it's controlled only onboard audio on headset), and automatic audio scripts mutes default audio by default to prevent mirroring. As for microphone, every time ALVR is connected on headset, on connect script creates audio source named **ALVR-MIC-Source**, which can be used in game as default microphone, if you set it at least once. No need to un-set it back to default. And when headset disconnects it automatically clears audio source and restores back to previous microphone.
 
-5. **Bitrate:** Adaptive, maximum bitrate: 150 mbps, minimum bitrate: 100 mbps.
+5. **Bitrate:** Constant, bitrate: 350-450 mbps for h264 wireless/700 mbit-1 gbit cabled, 100-150 mbps for HEVC.
 
 6. **Foveated rendering:** This highly depends on given headset, but generally default settings should be OK for Quest 2. For **pico neo 3** i would recommend setting center region width to 0.8 and height to 0.75, shifts to 0 and edge ratios can be set at 6-7, and for the same **pico neo 3** disable oculus foveation level and dynamic oculus foveation.
 
@@ -73,13 +67,13 @@ After installing ALVR you may want to configure it and steamvr to run at best qu
 
 ### AMD-specific configuration:
 
-1. Preferred codec: HEVC, h264 looked choppy and has visual "blocking".
+1. Preferred codec: HEVC, h264 works too.
 
-2. Reduce color banding: turn on, makes image smoother.
+2. Reduce color banding: turn on, might make image smoother.
 
 ### Nvidia-specific configuration (needs feedback):
 
-1. Preferred codec: h264
+1. Preferred codec: h264, HEVC works too
 
 After that, restart your headset using power button and it will automatically restart steamvr once, applying all changes.
 
@@ -93,9 +87,9 @@ Inside SteamVR you also may need to change settings to improve experience. Open 
 
 3. **Video tab: Fade To Grid** on app hang - this will lock your view to last frame when app hangs instead of dropping you into steamvr void, completely optional but you may prefer that.
 
-4. **Video tab: Disable Advanced Supersample Filtering** 
+4. **Video tab: Disable Advanced Supersample Filtering**
 
-5. **Video tab: Per-application video settings** - Use Legacy Reprojection Mode for specific game. This can drastically change experience from being very uncomfortable, rubber-banding, to straight up perfect. This essentially disables reprojection on SteamVR side and leaves it to the client. Make sure to enable it for each game you will play. If you don't see that button, it is possible that  you didn't apply patch from installation script, which means that opening each game video settings will take a while and may not even catch up at all after multiple minutes. If you want to apply that patch, get into the container (read bellow in the end how to do that) and run the `./patch_bindings_spam.sh` with absolute path to your steamvr inside container directory (relative to scripts folder, `installation/arch-alvr/.local/share/Steam/steamapps/SteamVR`).
+5. **Video tab: Per-application video settings** - Use Legacy Reprojection Mode for specific game. This can drastically change experience from being very uncomfortable, rubber-banding, to straight up perfect. This essentially disables reprojection on SteamVR side and leaves it to the client. Make sure to enable it for each game you will play.
 
 6. **Developer tab: Set steamvr as openxr runtime** - this ensures that games using openxr (such as Bonelab, or Beat Saber) will use SteamVR.
 

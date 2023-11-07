@@ -28,33 +28,32 @@ use alvr_common::{
     error,
     glam::{UVec2, Vec2},
     once_cell::sync::Lazy,
-    parking_lot::Mutex,
-    Fov, LazyMutOpt, RelaxedAtomic,
+    parking_lot::{Mutex, RwLock},
+    ConnectionState, Fov, LifecycleState, OptLazy,
 };
 use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
 use alvr_session::{CodecType, Settings};
-use connection::{CONTROL_SENDER, STATISTICS_SENDER, TRACKING_SENDER};
+use connection::{
+    CONNECTION_STATE, CONTROL_SENDER, DISCONNECTED_NOTIF, STATISTICS_SENDER, TRACKING_SENDER,
+};
 use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
-    sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
 use storage::Config;
 
-static STATISTICS_MANAGER: LazyMutOpt<StatisticsManager> = alvr_common::lazy_mut_none();
+static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
+
+static STATISTICS_MANAGER: OptLazy<StatisticsManager> = alvr_common::lazy_mut_none();
 
 static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
 
-static IS_ALIVE: RelaxedAtomic = RelaxedAtomic::new(true);
-static IS_RESUMED: RelaxedAtomic = RelaxedAtomic::new(false);
-static IS_STREAMING: Lazy<Arc<RelaxedAtomic>> = Lazy::new(|| Arc::new(RelaxedAtomic::new(false)));
-
-static CONNECTION_THREAD: LazyMutOpt<JoinHandle<()>> = alvr_common::lazy_mut_none();
+static CONNECTION_THREAD: OptLazy<JoinHandle<()>> = alvr_common::lazy_mut_none();
 
 #[derive(Serialize, Deserialize)]
 pub enum ClientCoreEvent {
@@ -107,8 +106,8 @@ pub fn initialize(
     #[cfg(target_os = "android")]
     platform::acquire_wifi_lock();
 
-    IS_ALIVE.set(true);
     EXTERNAL_DECODER.set(external_decoder);
+    *LIFECYCLE_STATE.write() = LifecycleState::Idle;
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
         connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
@@ -116,7 +115,7 @@ pub fn initialize(
 }
 
 pub fn destroy() {
-    IS_ALIVE.set(false);
+    *LIFECYCLE_STATE.write() = LifecycleState::ShuttingDown;
 
     if let Some(thread) = CONNECTION_THREAD.lock().take() {
         thread.join().ok();
@@ -127,11 +126,18 @@ pub fn destroy() {
 }
 
 pub fn resume() {
-    IS_RESUMED.set(true);
+    *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
 }
 
 pub fn pause() {
-    IS_RESUMED.set(false);
+    let mut connection_state_lock = CONNECTION_STATE.write();
+
+    *LIFECYCLE_STATE.write() = LifecycleState::Idle;
+
+    // We want to shutdown streaming when pausing.
+    if *connection_state_lock != ConnectionState::Disconnected {
+        alvr_common::wait_rwlock(&DISCONNECTED_NOTIF, &mut connection_state_lock);
+    }
 }
 
 pub fn poll_event() -> Option<ClientCoreEvent> {

@@ -6,7 +6,8 @@ mod primitives;
 mod version;
 
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use parking_lot::{Condvar, Mutex, RwLockWriteGuard};
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use anyhow;
@@ -26,9 +27,9 @@ pub use version::*;
 
 pub const ALVR_NAME: &str = "ALVR";
 
-pub type LazyMutOpt<T> = Lazy<Mutex<Option<T>>>;
+pub type OptLazy<T> = Lazy<Mutex<Option<T>>>;
 
-pub const fn lazy_mut_none<T>() -> LazyMutOpt<T> {
+pub const fn lazy_mut_none<T>() -> OptLazy<T> {
     Lazy::new(|| Mutex::new(None))
 }
 
@@ -48,4 +49,29 @@ impl RelaxedAtomic {
     pub fn set(&self, value: bool) {
         self.0.store(value, Ordering::Relaxed);
     }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum LifecycleState {
+    StartingUp,
+    Idle,
+    Resumed,
+    ShuttingDown,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum ConnectionState {
+    Disconnected,
+    Connecting,
+    Connected,
+    Streaming,
+    Disconnecting,
+}
+
+pub fn wait_rwlock<T>(condvar: &Condvar, guard: &mut RwLockWriteGuard<'_, T>) {
+    let staging_mutex = Mutex::<()>::new(());
+    let mut inner_guard = staging_mutex.lock();
+    RwLockWriteGuard::unlocked(guard, move || {
+        condvar.wait(&mut inner_guard);
+    });
 }

@@ -76,7 +76,7 @@ typedef struct {
     GltfModel *lobbyScene;
     std::unique_ptr<FFR> ffr;
     std::unique_ptr<SrgbCorrectionPass> srgbCorrectionPass;
-    bool enableFFR;
+    bool enableFFE;
     GLuint streamRenderTexture;
 } ovrRenderer;
 
@@ -561,8 +561,8 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         bool enableSrgbCorrection) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
-        renderer->enableFFR = ffrData.enabled;
-        if (renderer->enableFFR) {
+        renderer->enableFFE = ffrData.enabled;
+        if (renderer->enableFFE) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
             renderer->srgbCorrectionPass->Initialize(
                 fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection);
@@ -882,7 +882,7 @@ void renderStreamNative(void *streamHardwareBuffer, const unsigned int swapchain
         GL(glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, (GLeglImageOES)image));
 
         renderer->srgbCorrectionPass->Render();
-        if (renderer->enableFFR) {
+        if (renderer->enableFFE) {
             renderer->ffr->Render();
         }
 

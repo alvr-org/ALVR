@@ -89,7 +89,7 @@ private:
 	bool enableColorCorrection;
 
 	std::unique_ptr<FFR> m_ffr;
-	bool enableFFR;
+	bool enableFFE;
 
 	static bool SetGpuPriority(ID3D11Device* device)
 	{

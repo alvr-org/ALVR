@@ -304,8 +304,8 @@ bool FrameRender::Startup()
 		m_pStagingTexture = colorCorrectedTexture;
 	}
 
-	enableFFR = Settings::Instance().m_enableFoveatedRendering;
-	if (enableFFR) {
+	enableFFE = Settings::Instance().m_enableFoveatedEncoding;
+	if (enableFFE) {
 		m_ffr = std::make_unique<FFR>(m_pD3DRender->GetDevice());
 		m_ffr->Initialize(m_pStagingTexture.Get());
 
@@ -466,7 +466,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		m_colorCorrectionPipeline->Render();
 	}
 
-	if (enableFFR) {
+	if (enableFFE) {
 		m_ffr->Render();
 	}
 
@@ -481,7 +481,7 @@ ComPtr<ID3D11Texture2D> FrameRender::GetTexture()
 }
 
 void FrameRender::GetEncodingResolution(uint32_t *width, uint32_t *height) {
-	if (enableFFR) {
+	if (enableFFE) {
 		m_ffr->GetOptimizedResolution(width, height);
 	}
 	else {

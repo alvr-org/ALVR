@@ -44,7 +44,7 @@ void Settings::Load() {
         m_nAdapterIndex = (int32_t)config.get("adapter_index").get<int64_t>();
         m_captureFrameDir = config.get("capture_frame_dir").get<std::string>();
 
-        m_enableFoveatedRendering = config.get("enable_foveated_rendering").get<bool>();
+        m_enableFoveatedEncoding = config.get("enable_foveated_encoding").get<bool>();
         m_foveationCenterSizeX = (float)config.get("foveation_center_size_x").get<double>();
         m_foveationCenterSizeY = (float)config.get("foveation_center_size_y").get<double>();
         m_foveationCenterShiftX = (float)config.get("foveation_center_shift_x").get<double>();

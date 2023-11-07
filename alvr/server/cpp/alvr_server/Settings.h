@@ -24,7 +24,7 @@ class Settings {
     int32_t m_nAdapterIndex;
     std::string m_captureFrameDir;
 
-    bool m_enableFoveatedRendering;
+    bool m_enableFoveatedEncoding;
     float m_foveationCenterSizeX;
     float m_foveationCenterSizeY;
     float m_foveationCenterShiftX;

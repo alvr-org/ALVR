@@ -26,7 +26,7 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
         setupColorCorrection();
     }
 
-    if (Settings::Instance().m_enableFoveatedRendering) {
+    if (Settings::Instance().m_enableFoveatedEncoding) {
         setupFoveatedRendering();
     }
 

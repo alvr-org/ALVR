@@ -46,6 +46,6 @@ env_logger = "0.10"
 local-ip-address = "0.5"
 
 [build-dependencies]
-bindgen = "0.68"
+bindgen = "0.69"
 cc = { version = "1", features = ["parallel"] }
 walkdir = "2"

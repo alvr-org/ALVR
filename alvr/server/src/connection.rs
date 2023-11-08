@@ -925,6 +925,8 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
+            unsafe { crate::InitChaperoneClient() };
+
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while IS_STREAMING.value() {
                 let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -954,7 +956,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                             );
 
                             let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
-                            unsafe { crate::SetChaperone(area.x, area.y) };
+                            unsafe { crate::SetChaperoneArea(area.x, area.y) };
                         }
                     }
                     ClientControlPacket::RequestIdr => {
@@ -1059,6 +1061,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             }
+            unsafe { crate::ShutdownChaperoneClient() };
 
             SERVER_DATA_MANAGER.write().update_client_list(
                 client_hostname,

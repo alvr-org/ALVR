@@ -358,7 +358,11 @@ pub unsafe extern "C" fn HmdDriverFactory(
             if set_default_chap {
                 // call this when inside a new thread. Calling this on the parent thread will crash
                 // SteamVR
-                unsafe { SetChaperone(2.0, 2.0) };
+                unsafe {
+                    InitChaperoneClient();
+                    SetChaperoneArea(2.0, 2.0);
+                    ShutdownChaperoneClient();
+                }
             }
 
             connection::handshake_loop();

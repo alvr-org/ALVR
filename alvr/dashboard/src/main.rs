@@ -39,7 +39,9 @@ fn main() {
         {
             let has_nvidia = wgpu::Instance::new(wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::VULKAN,
+                flags: wgpu::InstanceFlags::empty(),
                 dx12_shader_compiler: Default::default(),
+                gles_minor_version: Default::default(),
             })
             .enumerate_adapters(wgpu::Backends::VULKAN)
             .any(|adapter| adapter.get_info().vendor == 0x10de);

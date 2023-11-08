@@ -409,8 +409,6 @@ fn connection_pipeline(
         let mut keepalive_deadline = Instant::now();
 
         #[cfg(target_os = "android")]
-        let battery_manager = platform::android::BatteryManager::new();
-        #[cfg(target_os = "android")]
         let mut battery_deadline = Instant::now();
 
         while IS_STREAMING.value() && IS_RESUMED.value() && IS_ALIVE.value() {
@@ -436,7 +434,7 @@ fn connection_pipeline(
 
             #[cfg(target_os = "android")]
             if Instant::now() > battery_deadline {
-                let (gauge_value, is_plugged) = battery_manager.status();
+                let (gauge_value, is_plugged) = platform::get_battery_status();
                 if let Some(sender) = &mut *CONTROL_SENDER.lock() {
                     sender
                         .send(&ClientControlPacket::Battery(crate::BatteryPacket {

@@ -946,15 +946,15 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
                 match packet {
                     ClientControlPacket::PlayspaceSync(packet) => {
                         if !settings.headset.tracking_ref_only {
-                            let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
-                            unsafe { crate::SetChaperone(area.x, area.y) };
-
                             let data_manager_lock = SERVER_DATA_MANAGER.read();
                             let config = &data_manager_lock.settings().headset;
                             tracking_manager.lock().recenter(
                                 config.position_recentering_mode,
                                 config.rotation_recentering_mode,
                             );
+
+                            let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
+                            unsafe { crate::SetChaperone(area.x, area.y) };
                         }
                     }
                     ClientControlPacket::RequestIdr => {

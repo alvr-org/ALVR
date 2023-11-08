@@ -13,7 +13,7 @@ using namespace alvr_chaperone;
 
 std::mutex chaperone_mutex;
 
-void InitChaperoneClient() {
+void InitOpenvrClient() {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -21,13 +21,13 @@ void InitChaperoneClient() {
     vr::VR_Init(&error, vr::VRApplication_Utility);
 
     if (error != vr::VRInitError_None) {
-        Warn("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
+        Warn("Failed to init OpenVR client! Error: %d", error);
         return;
     }
 #endif
 }
 
-void ShutdownChaperoneClient() {
+void ShutdownOpenvrClient() {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -35,7 +35,7 @@ void ShutdownChaperoneClient() {
 #endif
 }
 
-void SetChaperoneArea(float areaWidth, float areaHeight) {
+void _SetChaperoneArea(float areaWidth, float areaHeight) {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -69,16 +69,6 @@ void SetChaperoneArea(float areaWidth, float areaHeight) {
 
 #ifdef __linux__
 vr::HmdMatrix34_t GetRawZeroPose() {
-    vr::HmdMatrix34_t out = {};
-    std::unique_lock<std::mutex> lock(chaperone_mutex);
-    vr::EVRInitError error;
-    vr::VR_Init(&error, vr::VRApplication_Utility);
-    if (error != vr::VRInitError_None) {
-        Warn("Failed to init OpenVR client to get raw zero pose! Error: %d", error);
-        return out;
-    }
-    out = vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
-    vr::VR_Shutdown();
-    return out;
+    return vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
 }
 #endif

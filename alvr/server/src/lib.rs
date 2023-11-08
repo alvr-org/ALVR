@@ -359,9 +359,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
                 // call this when inside a new thread. Calling this on the parent thread will crash
                 // SteamVR
                 unsafe {
-                    InitChaperoneClient();
+                    InitOpenvrClient();
                     SetChaperoneArea(2.0, 2.0);
-                    ShutdownChaperoneClient();
+                    ShutdownOpenvrClient();
                 }
             }
 

@@ -6,7 +6,7 @@ pub use settings_schema;
 use alvr_common::{
     anyhow::{bail, Result},
     semver::Version,
-    ToAny, ALVR_VERSION,
+    ConnectionState, ToAny, ALVR_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use serde_json as json;
@@ -98,15 +98,6 @@ pub struct OpenvrConfig {
     // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
     // restart
     pub _controller_profile: i32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum ConnectionState {
-    Disconnected,
-    Connecting,
-    Connected,
-    Streaming,
-    Disconnecting { should_be_removed: bool },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

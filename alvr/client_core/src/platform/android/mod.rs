@@ -2,7 +2,7 @@ mod decoder;
 
 pub use decoder::*;
 
-use alvr_common::LazyMutOpt;
+use alvr_common::OptLazy;
 use jni::{
     objects::{GlobalRef, JObject},
     sys::jobject,
@@ -12,7 +12,7 @@ use std::net::{IpAddr, Ipv4Addr};
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 
-static WIFI_LOCK: LazyMutOpt<GlobalRef> = alvr_common::lazy_mut_none();
+static WIFI_LOCK: OptLazy<GlobalRef> = alvr_common::lazy_mut_none();
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }

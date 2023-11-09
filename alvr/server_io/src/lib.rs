@@ -8,13 +8,11 @@ pub use openvrpaths::*;
 
 use alvr_common::{
     anyhow::{bail, Result},
-    error, info,
+    error, info, ConnectionState,
 };
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, PathSegment, PathValuePair};
-use alvr_session::{
-    ClientConnectionConfig, ConnectionState, SessionConfig, Settings, SocketProtocolDefaultVariant,
-};
+use alvr_session::{ClientConnectionConfig, SessionConfig, Settings, SocketProtocolDefaultVariant};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{

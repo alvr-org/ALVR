@@ -1,7 +1,8 @@
 use crate::dashboard::{basic_components, ServerRequest};
+use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
-use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig};
+use alvr_session::{ClientConnectionConfig, SessionConfig};
 use eframe::{
     egui::{self, Frame, Grid, Layout, RichText, TextEdit, Ui, Window},
     emath::{Align, Align2},

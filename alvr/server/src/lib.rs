@@ -30,15 +30,14 @@ use alvr_common::{
     log,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    LazyMutOpt,
+    ConnectionState, LifecycleState, OptLazy, RelaxedAtomic,
 };
 use alvr_events::EventType;
 use alvr_filesystem::{self as afs, Layout};
 use alvr_packets::{ClientListAction, DecoderInitializationConfig, VideoPacketHeader};
 use alvr_server_io::ServerDataManager;
-use alvr_session::{CodecType, ConnectionState};
+use alvr_session::{CodecType, Settings};
 use bitrate::BitrateManager;
-use connection::{ClientDisconnectRequest, DISCONNECT_CLIENT_NOTIFIER, SHOULD_CONNECT_TO_CLIENTS};
 use statistics::StatisticsManager;
 use std::{
     collections::HashMap,
@@ -48,11 +47,15 @@ use std::{
     io::Write,
     ptr,
     sync::Once,
-    thread,
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
 use tokio::{runtime::Runtime, sync::broadcast};
+
+pub static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
+pub static IS_RESTARTING: RelaxedAtomic = RelaxedAtomic::new(false);
+static CONNECTION_THREAD: RwLock<Option<JoinHandle<()>>> = RwLock::new(None);
 
 static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
     afs::filesystem_layout_from_openvr_driver_root_dir(
@@ -61,25 +64,19 @@ static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
 });
 static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
     Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
-static WEBSERVER_RUNTIME: LazyMutOpt<Runtime> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
+static WEBSERVER_RUNTIME: OptLazy<Runtime> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
 
-static STATISTICS_MANAGER: LazyMutOpt<StatisticsManager> = alvr_common::lazy_mut_none();
-static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> = Lazy::new(|| {
-    let data_lock = SERVER_DATA_MANAGER.read();
-    let settings = data_lock.settings();
-    Mutex::new(BitrateManager::new(
-        settings.video.bitrate.history_size,
-        settings.video.preferred_fps,
-    ))
-});
+static STATISTICS_MANAGER: OptLazy<StatisticsManager> = alvr_common::lazy_mut_none();
+static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> =
+    Lazy::new(|| Mutex::new(BitrateManager::new(256, 60.0)));
 
 pub struct VideoPacket {
     pub header: VideoPacketHeader,
     pub payload: Vec<u8>,
 }
 
-static VIDEO_MIRROR_SENDER: LazyMutOpt<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
-static VIDEO_RECORDING_FILE: LazyMutOpt<File> = alvr_common::lazy_mut_none();
+static VIDEO_MIRROR_SENDER: OptLazy<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
+static VIDEO_RECORDING_FILE: OptLazy<File> = alvr_common::lazy_mut_none();
 
 static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
 static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
@@ -95,7 +92,7 @@ static FFR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader
 static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
     include_bytes!("../cpp/platform/linux/shader/rgbtoyuv420.comp.spv");
 
-static DECODER_CONFIG: LazyMutOpt<DecoderInitializationConfig> = alvr_common::lazy_mut_none();
+static DECODER_CONFIG: OptLazy<DecoderInitializationConfig> = alvr_common::lazy_mut_none();
 
 fn to_ffi_quat(quat: Quat) -> FfiQuat {
     FfiQuat {
@@ -106,8 +103,8 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
     }
 }
 
-pub fn create_recording_file() {
-    let codec = SERVER_DATA_MANAGER.read().settings().video.preferred_codec;
+pub fn create_recording_file(settings: &Settings) {
+    let codec = settings.video.preferred_codec;
     let ext = if matches!(codec, CodecType::H264) {
         "h264"
     } else {
@@ -138,8 +135,7 @@ pub fn create_recording_file() {
 // This call is blocking
 pub extern "C" fn shutdown_driver() {
     // Invoke connection runtimes shutdown
-    // todo: block until they shutdown
-    SHOULD_CONNECT_TO_CLIENTS.set(false);
+    *LIFECYCLE_STATE.write() = LifecycleState::ShuttingDown;
 
     {
         let mut data_manager_lock = SERVER_DATA_MANAGER.write();
@@ -159,19 +155,21 @@ pub extern "C" fn shutdown_driver() {
         for hostname in hostnames {
             data_manager_lock.update_client_list(
                 hostname,
-                ClientListAction::SetConnectionState(ConnectionState::Disconnecting {
-                    should_be_removed: false,
-                }),
+                ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
             );
         }
     }
 
-    if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
-        notifier.send(ClientDisconnectRequest::ServerShutdown).ok();
+    if let Some(thread) = CONNECTION_THREAD.write().take() {
+        thread.join().ok();
     }
 
     // apply openvr config for the next launch
-    SERVER_DATA_MANAGER.write().session_mut().openvr_config = connection::contruct_openvr_config();
+    {
+        let mut server_data_lock = SERVER_DATA_MANAGER.write();
+        server_data_lock.session_mut().openvr_config =
+            connection::contruct_openvr_config(server_data_lock.session());
+    }
 
     if let Some(backup) = SERVER_DATA_MANAGER
         .write()
@@ -216,10 +214,7 @@ pub fn notify_restart_driver() {
 
 // This call is blocking
 pub fn restart_driver() {
-    SHOULD_CONNECT_TO_CLIENTS.set(false);
-    if let Some(notifier) = &*DISCONNECT_CLIENT_NOTIFIER.lock() {
-        notifier.send(ClientDisconnectRequest::ServerRestart).ok();
-    }
+    IS_RESTARTING.set(true);
 
     shutdown_driver();
 }
@@ -352,7 +347,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-        SHOULD_CONNECT_TO_CLIENTS.set(true);
+        // Note: Idle state is not used on the server side
+        *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
 
         thread::spawn(move || {
             if set_default_chap {
@@ -381,14 +377,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
             );
         }
 
-        BITRATE_MANAGER.lock().report_frame_present(
-            &SERVER_DATA_MANAGER
-                .read()
-                .settings()
-                .video
-                .bitrate
-                .adapt_to_framerate,
-        );
+        let server_data_lock = SERVER_DATA_MANAGER.read();
+        BITRATE_MANAGER
+            .lock()
+            .report_frame_present(&server_data_lock.settings().video.bitrate.adapt_to_framerate);
     }
 
     extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
@@ -401,9 +393,12 @@ pub unsafe extern "C" fn HmdDriverFactory(
     }
 
     extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-        let (params, stats) = BITRATE_MANAGER
-            .lock()
-            .get_encoder_params(&SERVER_DATA_MANAGER.read().settings().video.bitrate);
+        let (params, stats) = {
+            let server_data_lock = SERVER_DATA_MANAGER.read();
+            BITRATE_MANAGER
+                .lock()
+                .get_encoder_params(&server_data_lock.settings().video.bitrate)
+        };
 
         if let Some(stats) = stats {
             if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {

@@ -328,22 +328,22 @@ This has an effect only on AMD GPUs."
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub enum ClientsideFoveationLevel {
     Low = 1,
     Medium = 2,
     High = 3,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ClientsideFoveationMode {
     Static { level: ClientsideFoveationLevel },
     Dynamic { max_level: ClientsideFoveationLevel },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct ClientsideFoveation {
+pub struct ClientsideFoveationConfig {
     pub mode: ClientsideFoveationMode,
 
     #[schema(strings(display_name = "Foveation offset"))]
@@ -351,7 +351,7 @@ pub struct ClientsideFoveation {
     pub vertical_offset_deg: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
 pub struct FoveatedEncodingConfig {
     #[schema(strings(display_name = "Center region width"))]
@@ -477,7 +477,7 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
-    pub clientside_foveation: Switch<ClientsideFoveation>,
+    pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
     pub dynamic_oculus_foveation: bool,
 
@@ -574,8 +574,9 @@ pub enum HeadsetEmulationMode {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct FaceTrackingSources {
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct FaceTrackingSourcesConfig {
+    pub combined_eye_gaze: bool,
     pub eye_tracking_fb: bool,
     pub face_tracking_fb: bool,
     pub eye_expressions_htc: bool,
@@ -593,7 +594,7 @@ pub enum FaceTrackingSinkConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct FaceTrackingConfig {
-    pub sources: FaceTrackingSources,
+    pub sources: FaceTrackingSourcesConfig,
     pub sink: FaceTrackingSinkConfig,
 }
 
@@ -1248,7 +1249,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             clientside_foveation: SwitchDefault {
                 enabled: true,
-                content: ClientsideFoveationDefault {
+                content: ClientsideFoveationConfigDefault {
                     gui_collapsed: true,
                     mode: ClientsideFoveationModeDefault {
                         Static: ClientsideFoveationModeStaticDefault {
@@ -1334,7 +1335,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: false,
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
-                    sources: FaceTrackingSourcesDefault {
+                    sources: FaceTrackingSourcesConfigDefault {
+                        combined_eye_gaze: true,
                         eye_tracking_fb: true,
                         face_tracking_fb: true,
                         eye_expressions_htc: true,

@@ -62,6 +62,7 @@ Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-thro
 ### Arch Linux (AUR)
 
 * Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
+* Install `cuda` and make sure that you are using a supported version of gcc. At the moment of writing this, CUDA doesn't compile with gcc 13.
 * Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
 * Install SteamVR, **launch it once** then close it.
 * Run `alvr_dashboard` or ALVR from your DE's application launcher.

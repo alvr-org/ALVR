@@ -1,5 +1,8 @@
 mod interaction;
-
+use core::ffi::c_void;
+use std::ops::Deref;
+use std::mem;
+use std::marker::PhantomData;
 use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
     error,
@@ -26,6 +29,58 @@ use std::{
 const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
+
+#[derive(Copy, Clone)]
+#[repr(transparent)]
+pub struct CompositionLayerPassthrough<'a, G: xr::Graphics> {
+    inner: xr::sys::CompositionLayerPassthroughFB,
+    _marker: PhantomData<&'a G>,
+}
+impl<'a, G: xr::Graphics> CompositionLayerPassthrough<'a, G> {
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            inner: xr::sys::CompositionLayerPassthroughFB {
+                ty: xr::sys::StructureType::COMPOSITION_LAYER_PASSTHROUGH_FB,
+                ..unsafe { mem::zeroed() }
+            },
+            _marker: PhantomData,
+        }
+    }
+    #[doc = r" Initialize with the supplied raw values"]
+    #[doc = r""]
+    #[doc = r" # Safety"]
+    #[doc = r""]
+    #[doc = r" The guarantees normally enforced by this builder (e.g. lifetimes) must be"]
+    #[doc = r" preserved."]
+    #[inline]
+    pub unsafe fn from_raw(inner: xr::sys::CompositionLayerPassthroughFB) -> Self {
+        Self {
+            inner,
+            _marker: PhantomData,
+        }
+    }
+    #[inline]
+    pub fn into_raw(self) -> xr::sys::CompositionLayerPassthroughFB {
+        self.inner
+    }
+    #[inline]
+    pub fn as_raw(&self) -> &xr::sys::CompositionLayerPassthroughFB {
+        &self.inner
+    }
+}
+impl<'a, G: xr::Graphics> Deref for CompositionLayerPassthrough<'a, G> {
+    type Target = xr::CompositionLayerBase<'a, G>;
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { mem::transmute(&self.inner) }
+    }
+}
+impl<'a, G: xr::Graphics> Default for CompositionLayerPassthrough<'a, G> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 // Platform of the device. It is used to match the VR runtime and enable features conditionally.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -384,6 +439,7 @@ pub fn entry_point() {
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
+    // assert!(available_extensions.fb_passthrough);
 
     let mut exts = xr::ExtensionSet::default();
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
@@ -398,6 +454,7 @@ pub fn entry_point() {
     exts.htc_facial_tracking = available_extensions.htc_facial_tracking;
     exts.htc_vive_focus3_controller_interaction =
         available_extensions.htc_vive_focus3_controller_interaction;
+    exts.fb_passthrough = available_extensions.fb_passthrough;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;
@@ -432,6 +489,16 @@ pub fn entry_point() {
 
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
             create_xr_session(&xr_instance, xr_system, &egl_context);
+
+        let passthrough = xr_session
+            .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
+            .unwrap();
+
+        let passthrough_layer = xr_session.create_passthrough_layer(
+            &passthrough, 
+            xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
+            xr::PassthroughLayerPurposeFB::RECONSTRUCTION
+        ).unwrap();
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(
@@ -972,31 +1039,51 @@ pub fn entry_point() {
                 },
             };
 
+            let projection_views_layers = [
+                xr::CompositionLayerProjectionView::new()
+                    .pose(views[0].pose)
+                    .fov(views[0].fov)
+                    .sub_image(
+                        xr::SwapchainSubImage::new()
+                            .swapchain(&swapchains[0])
+                            .image_array_index(0)
+                            .image_rect(rect),
+                    ),
+                xr::CompositionLayerProjectionView::new()
+                    .pose(views[1].pose)
+                    .fov(views[1].fov)
+                    .sub_image(
+                        xr::SwapchainSubImage::new()
+                            .swapchain(&swapchains[1])
+                            .image_array_index(0)
+                            .image_rect(rect),
+                    ),
+            ];
+            let mut layer2 = xr::CompositionLayerProjection::<xr::OpenGlEs>::new().space(&reference_space).views(&projection_views_layers);
+
+            let mut layer1 = CompositionLayerPassthrough::new();
+
+            unsafe { 
+                layer1 = CompositionLayerPassthrough::from_raw(xr::sys::CompositionLayerPassthroughFB {
+                    //next: &layer2.into_raw() as *const _ as *const _,
+                    next: ptr::null(),
+                    ty: xr::sys::CompositionLayerPassthroughFB::TYPE,
+                    space: xr::sys::Space::NULL,
+                    layer_handle: *passthrough_layer.inner(),
+                    flags: xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA
+                })
+            };    
+
+            let mut layer2_raw = layer2.into_raw();
+            layer2_raw.layer_flags = xr::CompositionLayerFlags::UNPREMULTIPLIED_ALPHA;
+            unsafe { layer2 = xr::CompositionLayerProjection::from_raw(layer2_raw) };
+
+            // if exts.fb_passthrough {
+
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,
-                &[&xr::CompositionLayerProjection::new()
-                    .space(&reference_space)
-                    .views(&[
-                        xr::CompositionLayerProjectionView::new()
-                            .pose(views[0].pose)
-                            .fov(views[0].fov)
-                            .sub_image(
-                                xr::SwapchainSubImage::new()
-                                    .swapchain(&swapchains[0])
-                                    .image_array_index(0)
-                                    .image_rect(rect),
-                            ),
-                        xr::CompositionLayerProjectionView::new()
-                            .pose(views[1].pose)
-                            .fov(views[1].fov)
-                            .sub_image(
-                                xr::SwapchainSubImage::new()
-                                    .swapchain(&swapchains[1])
-                                    .image_array_index(0)
-                                    .image_rect(rect),
-                            ),
-                    ])],
+                &[&layer1, &layer2],
             );
 
             if let Err(e) = res {

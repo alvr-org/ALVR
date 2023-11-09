@@ -659,7 +659,9 @@ void renderEye(
         GL(glBindVertexArray(0));
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     } else {
-        GL(glClear(GL_DEPTH_BUFFER_BIT));
+        GL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+        GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+        //GL(glClear(GL_DEPTH_BUFFER_BIT));
 
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 

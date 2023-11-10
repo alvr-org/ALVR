@@ -417,6 +417,12 @@ pub extern "C" fn alvr_request_idr() {
 
 /// Call only with external decoder
 #[no_mangle]
+pub extern "C" fn alvr_request_config_nal() {
+    crate::request_config_nal();
+}
+
+/// Call only with external decoder
+#[no_mangle]
 pub extern "C" fn alvr_report_frame_decoded(target_timestamp_ns: u64) {
     crate::report_frame_decoded(Duration::from_nanos(target_timestamp_ns as _));
 }

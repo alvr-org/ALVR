@@ -200,6 +200,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   params.framerate = settings.m_refreshRate;
   SetParams(params);
 
+  encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
   vlVaQualityBits quality = {};
   quality.vbaq_mode = Settings::Instance().m_enableVbaq;  //No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
   switch (settings.m_amdEncoderQualityPreset)
@@ -331,6 +333,10 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
     throw alvr::AvException("avcodec_send_frame failed: ", err);
   }
   av_frame_unref(encoder_frame);
+}
+
+void alvr::EncodePipelineVAAPI::GetConfigNAL() {
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size, GetCodec());
 }
 
 void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)

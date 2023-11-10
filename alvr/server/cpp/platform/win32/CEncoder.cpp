@@ -137,5 +137,9 @@
 			m_scheduler.InsertIDR();
 		}
 
+		void CEncoder::GetConfigNAL() {
+			m_videoEncoder->GetConfigNAL();
+		}
+
 		void CEncoder::CaptureFrame() {
 		}

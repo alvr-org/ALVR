@@ -44,7 +44,7 @@ void VideoEncoderSW::Initialize() {
 	// Query codec
 	AVCodecID codecId = ToFFMPEGCodec(m_codec);
 	if(!codecId) throw MakeException("Invalid requested codec %d", m_codec);
-	
+
 	const AVCodec *codec = avcodec_find_encoder(codecId);
 	if(codec == NULL) throw MakeException("Could not find codec id %d", codecId);
 
@@ -87,6 +87,7 @@ void VideoEncoderSW::Initialize() {
 			av_dict_set(&opt, "nal-hrd", "vbr", 0);
 			break;
 	}
+	m_codecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	m_codecContext->rc_max_rate = m_codecContext->bit_rate;
 	m_codecContext->thread_count = settings.m_swThreadCount;
 
@@ -243,6 +244,10 @@ AVCodecID VideoEncoderSW::ToFFMPEGCodec(ALVR_CODEC codec) {
 		default:
 			return AV_CODEC_ID_NONE;
 	}
+}
+
+void VideoEncoderSW::GetConfigNAL() {
+	InitializeDecoder(m_codecContext->extradata, m_codecContext->extradata_size, m_codec);
 }
 
 #endif // ALVR_GPL

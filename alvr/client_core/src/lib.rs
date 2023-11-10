@@ -238,6 +238,13 @@ pub fn request_idr() {
 }
 
 /// Call only with external decoder
+pub fn request_config_nal() {
+    if let Some(sender) = &*CONTROL_CHANNEL_SENDER.lock() {
+        sender.send(ClientControlPacket::RequestConfigNAL).ok();
+    }
+}
+
+/// Call only with external decoder
 pub fn report_frame_decoded(target_timestamp: Duration) {
     if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
         stats.report_frame_decoded(target_timestamp);

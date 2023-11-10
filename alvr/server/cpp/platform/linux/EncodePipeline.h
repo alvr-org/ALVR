@@ -35,6 +35,7 @@ public:
 
   virtual void PushFrame(uint64_t targetTimestampNs, bool idr) = 0;
   virtual bool GetEncoded(FramePacket &data);
+  virtual void GetConfigNAL() = 0;
   virtual Timestamp GetTimestamp() { return timestamp; }
   virtual int GetCodec();
 

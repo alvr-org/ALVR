@@ -240,6 +240,12 @@ void RequestIDR() {
     }
 }
 
+void RequestConfigNAL() {
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_encoder) {
+        g_driver_provider.hmd->m_encoder->GetConfigNAL();
+    }
+}
+
 void SetTracking(unsigned long long targetTimestampNs,
                  float controllerPoseTimeOffsetS,
                  const FfiDeviceMotion *deviceMotions,

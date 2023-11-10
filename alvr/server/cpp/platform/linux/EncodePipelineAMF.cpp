@@ -436,24 +436,29 @@ void EncodePipelineAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, 
     case ALVR_CODEC_H264:
         surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
         if (insertIDR) {
-            Debug("Inserting IDR frame for H.264.\n");
-            surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_SPS, true);
-            surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_PPS, true);
             surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
         }
         break;
     case ALVR_CODEC_H265:
         surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
         if (insertIDR) {
-            Debug("Inserting IDR frame for H.265.\n");
-            // Insert VPS,SPS,PPS
-            surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_HEADER, true);
             surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_IDR);
         }
         break;
     default:
         throw MakeException("Invalid video codec");
     }
+}
+
+void EncodePipelineAMF::GetConfigNAL() {
+	amf::AMFVariant var;
+	if (m_codec == ALVR_CODEC_H264) {
+		m_amfComponents.back()->GetProperty(AMF_VIDEO_ENCODER_EXTRADATA, &var);
+	} else {
+		m_amfComponents.back()->GetProperty(AMF_VIDEO_ENCODER_HEVC_EXTRADATA, &var);
+	}
+	amf::AMFBufferPtr buffer(var.pInterface);
+	InitializeDecoder(reinterpret_cast<unsigned char *>(buffer->GetNative()), buffer->GetSize(), GetCodec());
 }
 
 };

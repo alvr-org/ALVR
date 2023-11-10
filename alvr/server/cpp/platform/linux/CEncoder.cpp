@@ -218,7 +218,7 @@ void CEncoder::Run() {
 
       alvr::VkFrameCtx vk_frame_ctx(vk_ctx, output.imageInfo);
       alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory, output.drm);
-      auto encode_pipeline = alvr::EncodePipeline::Create(&render, vk_ctx, frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
+      m_encodePipeline = alvr::EncodePipeline::Create(&render, vk_ctx, frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
 
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
@@ -241,7 +241,7 @@ void CEncoder::Run() {
 
         render.Render(frame_info.image, frame_info.semaphore_value);
 
-        encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
+        m_encodePipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
 
@@ -252,7 +252,7 @@ void CEncoder::Run() {
         }
 
         auto render_timestamps = render.GetTimestamps();
-        auto encode_timestamp = encode_pipeline->GetTimestamp();
+        auto encode_timestamp = m_encodePipeline->GetTimestamp();
 
         uint64_t present_offset = render_timestamps.now - render_timestamps.renderBegin;
         uint64_t composed_offset = 0;
@@ -296,5 +296,7 @@ void CEncoder::Stop() {
 void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
 void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
+
+void CEncoder::GetConfigNAL() { m_encodePipeline->GetConfigNAL(); }
 
 void CEncoder::CaptureFrame() { m_captureFrame = true; }

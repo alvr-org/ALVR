@@ -64,7 +64,9 @@ public:
 
 	void Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR);
 	void Receive(AMFDataPtr data);
-private:	
+
+	void GetConfigNAL();
+private:
 	static const wchar_t *START_TIME_PROPERTY;
 	static const wchar_t *FRAME_INDEX_PROPERTY;
 

@@ -130,6 +130,7 @@ extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();
 extern "C" void RequestIDR();
+extern "C" void RequestConfigNAL();
 extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             float controllerPoseTimeOffsetS,
                             const FfiDeviceMotion *deviceMotions,

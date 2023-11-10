@@ -89,6 +89,7 @@ pub struct ButtonEntry {
 pub enum ClientControlPacket {
     PlayspaceSync(Option<Vec2>),
     RequestIdr,
+    RequestConfigNAL,
     KeepAlive,
     StreamReady, // This flag notifies the server the client streaming socket is ready listening
     ViewsConfig(ViewsConfig),

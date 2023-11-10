@@ -70,6 +70,7 @@ public:
     void PushFrame(uint64_t targetTimestampNs, bool idr) override;
     bool GetEncoded(FramePacket &packet) override;
     void SetParams(FfiDynamicEncoderParams params) override;
+    void GetConfigNAL() override;
 
 private:
     amf::AMFComponentPtr MakeConverter(amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, amf::AMF_SURFACE_FORMAT outputFormat);
@@ -93,7 +94,7 @@ private:
     int m_renderHeight;
 
     bool m_hasQueryTimeout = false;
-    
+
     amf::AMFBufferPtr m_frameBuffer;
     uint64_t m_targetTimestampNs;
 };

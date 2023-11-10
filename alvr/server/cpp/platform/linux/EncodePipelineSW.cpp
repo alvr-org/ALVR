@@ -97,6 +97,10 @@ void alvr::EncodePipelineSW::PushFrame(uint64_t targetTimestampNs, bool idr)
   }
 }
 
+void alvr::EncodePipelineSW::GetConfigNAL() {
+	InitializeDecoder(encoder_ctx->extradata, encoder_ctx->extradata_size, GetCodec());
+}
+
 bool alvr::EncodePipelineSW::GetEncoded(FramePacket &packet)
 {
   if (!nal) {

@@ -9,18 +9,18 @@ if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, L#expr);}}
 const wchar_t *VideoEncoderAMF::START_TIME_PROPERTY = L"StartTimeProperty";
 const wchar_t *VideoEncoderAMF::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 
-AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver) 
+AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver)
 	: m_amfComponentSrc(src)
-	, m_receiver(receiver) 
+	, m_receiver(receiver)
 {}
 
-AMFPipe::~AMFPipe() 
+AMFPipe::~AMFPipe()
 {
 	Debug("AMFPipe::~AMFPipe()  m_amfComponentSrc->Drain\n");
 	m_amfComponentSrc->Drain();
 }
 
-void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution) 
+void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution)
 {
 	amf::AMFDataPtr data = nullptr;
 	if (hasQueryTimeout) {
@@ -49,12 +49,12 @@ void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution)
 	}
 }
 
-AMFSolidPipe::AMFSolidPipe(amf::AMFComponentPtr src, amf::AMFComponentPtr dst) 
+AMFSolidPipe::AMFSolidPipe(amf::AMFComponentPtr src, amf::AMFComponentPtr dst)
 	: AMFPipe(src, std::bind(&AMFSolidPipe::Passthrough, this, std::placeholders::_1))
-	, m_amfComponentDst(dst) 
+	, m_amfComponentDst(dst)
 {}
 
-void AMFSolidPipe::Passthrough(AMFDataPtr data) 
+void AMFSolidPipe::Passthrough(AMFDataPtr data)
 {
 	auto res = m_amfComponentDst->SubmitInput(data);
 	switch (res) {
@@ -72,22 +72,22 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 	}
 }
 
-AMFPipeline::AMFPipeline() 
+AMFPipeline::AMFPipeline()
 	: m_pipes()
 {
 	TIMECAPS tc;
 	m_timerResolution = timeGetDevCaps(&tc, sizeof(tc)) == TIMERR_NOERROR ? tc.wPeriodMin : 1;
 }
 
-AMFPipeline::~AMFPipeline() 
+AMFPipeline::~AMFPipeline()
 {
-	for (auto &pipe : m_pipes) 
+	for (auto &pipe : m_pipes)
 	{
 		delete pipe;
 	}
 }
 
-void AMFPipeline::Connect(AMFPipePtr pipe) 
+void AMFPipeline::Connect(AMFPipePtr pipe)
 {
 	m_pipes.emplace_back(pipe);
 }
@@ -121,7 +121,7 @@ VideoEncoderAMF::~VideoEncoderAMF() {}
 
 amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
-) 
+)
 {
 	const wchar_t *pCodec;
 
@@ -161,7 +161,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
 				break;
 		}
-		
+
 		switch (Settings::Instance().m_entropyCoding) {
 			case ALVR_CABAC:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CABAC);
@@ -192,7 +192,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
-		
+
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_IDR_PERIOD, 0);
 
@@ -203,7 +203,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / frameRateIn * 1.1);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
-		
+
 		amf::AMFCapsPtr caps;
 		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
 			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
@@ -253,12 +253,12 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
-		
+
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NUM_GOPS_PER_IDR, 0);
 		//Set infinite GOP length
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_GOP_SIZE, 0);
-		
+
 		// Disable AUD to produce the same stream format as VideoEncoderNVENC.
 		// FIXME: This option doesn't work in 22.10.3, but works in versions prior 22.5.1
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
@@ -266,7 +266,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / frameRateIn * 1.1);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
-		
+
 		amf::AMFCapsPtr caps;
 		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
 			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
@@ -440,7 +440,7 @@ void VideoEncoderAMF::Receive(AMFDataPtr data)
 
 	uint64_t type;
 	bool isIdr;
-	if(m_codec == ALVR_CODEC_H264) 
+	if(m_codec == ALVR_CODEC_H264)
 	{
 		data->GetProperty(AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE, &type);
 		isIdr = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
@@ -460,9 +460,6 @@ void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// FIXME: This option doesn't work in drivers 22.3.1 - 22.5.1, but works in 22.10.3
 		surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_AUD, false);
 		if (insertIDR) {
-			Debug("Inserting IDR frame for H.264.\n");
-			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_SPS, true);
-			surface->SetProperty(AMF_VIDEO_ENCODER_INSERT_PPS, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
 		}
 		break;
@@ -470,11 +467,6 @@ void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		// FIXME: This option works with 22.10.3, but may not work with older drivers
 		surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
 		if (insertIDR) {
-			Debug("Inserting IDR frame for H.265.\n");
-			// Insert VPS,SPS,PPS
-			// These options don't work properly on older AMD driver (Radeon Software 17.7, AMF Runtime 1.4.4)
-			// Fixed in 18.9.2 & 1.4.9
-			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_HEADER, true);
 			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_IDR);
 		}
 		break;

@@ -54,6 +54,8 @@
 
 		void CaptureFrame();
 
+		void GetConfigNAL();
+
 	private:
 		CThreadEvent m_newFrameReady, m_encodeFinished;
 		std::shared_ptr<VideoEncoder> m_videoEncoder;

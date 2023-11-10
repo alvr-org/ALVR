@@ -429,26 +429,27 @@ fn initialize_stream(
             .request_display_refresh_rate(config.refresh_rate_hint)
             .unwrap();
     }
-
     // todo: check which permissions are needed for htc
     #[cfg(target_os = "android")]
     {
         if let Some(config) = &config.face_sources_config {
-            let manufacturer_name = alvr_client_core::manufacturer_name();
             if config.eye_tracking_fb {
-                match manufacturer_name.as_str() {
-                    "Oculus" => {
+                match platform {
+                    Platform::Quest => {
                         alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
                     }
-                    "Pico" => {
+                    Platform::Pico4 | Platform::PicoNeo3 => {
                         alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
                     }
-                    &_ => todo!(),
+                    _ => todo!(),
                 }
             }
             if config.face_tracking_fb {
-                if manufacturer_name.as_str() == "Oculus" {
-                    alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING");
+                match platform {
+                    Platform::Quest => {
+                        alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+                    }
+                    _ => todo!(),
                 }
             }
         }

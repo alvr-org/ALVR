@@ -434,11 +434,22 @@ fn initialize_stream(
     #[cfg(target_os = "android")]
     {
         if let Some(config) = &config.face_sources_config {
+            let manufacturer_name = alvr_client_core::manufacturer_name();
             if config.eye_tracking_fb {
-                alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING");
+                match manufacturer_name.as_str() {
+                    "Oculus" => {
+                        alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+                    }
+                    "Pico" => {
+                        alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
+                    }
+                    &_ => todo!(),
+                }
             }
             if config.face_tracking_fb {
-                alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING");
+                if manufacturer_name.as_str() == "Oculus" {
+                    alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING");
+                }
             }
         }
     }

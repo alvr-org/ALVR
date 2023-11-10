@@ -431,35 +431,17 @@ fn initialize_stream(
     }
     // todo: check which permissions are needed for htc
     #[cfg(target_os = "android")]
-    {
-        if let Some(config) = &config.face_sources_config {
-            if config.combined_eye_gaze {
-                match platform {
-                    Platform::Pico4 | Platform::PicoNeo3 => {
-                        alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
-                    }
-                    Platform::Quest => {
-                        alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
-                    }
-                    _ => (),
-                }
-            }
-            if config.eye_tracking_fb {
-                match platform {
-                    Platform::Quest => {
-                        alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
-                    }
-                    _ => (),
-                }
-            }
-            if config.face_tracking_fb {
-                match platform {
-                    Platform::Quest => {
-                        alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
-                    }
-                    _ => (),
-                }
-            }
+    if let Some(config) = &config.face_sources_config {
+        if (config.combined_eye_gaze || config.eye_tracking_fb)
+            && matches!(platform, Platform::Quest)
+        {
+            alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+        }
+        if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
+            alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
+        }
+        if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
     }
 

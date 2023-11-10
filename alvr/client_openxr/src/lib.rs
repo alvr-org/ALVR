@@ -387,6 +387,7 @@ fn stream_input_pipeline(
 
     let face_data = FaceData {
         eye_gazes: interaction::get_eye_gazes(
+            &xr_ctx.session,
             &interaction_ctx.face_sources,
             &stream_ctx.reference_space.read(),
             to_xr_time(now),
@@ -428,17 +429,19 @@ fn initialize_stream(
             .request_display_refresh_rate(config.refresh_rate_hint)
             .unwrap();
     }
-
     // todo: check which permissions are needed for htc
     #[cfg(target_os = "android")]
-    {
-        if let Some(config) = &config.face_sources_config {
-            if config.eye_tracking_fb {
-                alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING");
-            }
-            if config.face_tracking_fb {
-                alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING");
-            }
+    if let Some(config) = &config.face_sources_config {
+        if (config.combined_eye_gaze || config.eye_tracking_fb)
+            && matches!(platform, Platform::Quest)
+        {
+            alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+        }
+        if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
+            alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
+        }
+        if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
     }
 

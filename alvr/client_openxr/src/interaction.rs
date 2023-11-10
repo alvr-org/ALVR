@@ -21,6 +21,7 @@ pub struct HandInteraction {
 }
 
 pub struct FaceSources {
+    pub combined_eyes_source: Option<(xr::Action<xr::Posef>, xr::Space)>,
     pub eye_tracker_fb: Option<xr::EyeTrackerSocial>,
     pub face_tracker_fb: Option<xr::FaceTrackerFB>,
     pub eye_tracker_htc: Option<xr::FacialTrackerHTC>,
@@ -159,6 +160,40 @@ pub fn initialize_interaction(
         )
         .unwrap();
 
+    let combined_eyes_source = if face_tracking_sources
+        .as_ref()
+        .map(|s| s.combined_eye_gaze)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().ext_eye_gaze_interaction.is_some()
+        && xr_ctx
+            .instance
+            .supports_eye_gaze_interaction(xr_ctx.system)
+            .unwrap()
+    {
+        let action = action_set
+            .create_action("combined_eye_gaze", "Combined eye gaze", &[])
+            .unwrap();
+
+        xr_ctx
+            .instance
+            .suggest_interaction_profile_bindings(
+                xr_ctx
+                    .instance
+                    .string_to_path("/interaction_profiles/ext/eye_gaze_interaction")
+                    .unwrap(),
+                &[binding(&action, "/user/eyes_ext/input/gaze_ext/pose")],
+            )
+            .unwrap();
+
+        let space = action
+            .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+            .unwrap();
+
+        Some((action, space))
+    } else {
+        None
+    };
+
     xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
 
     let left_grip_space = left_grip_action
@@ -267,6 +302,7 @@ pub fn initialize_interaction(
             },
         ],
         face_sources: FaceSources {
+            combined_eyes_source,
             eye_tracker_fb,
             face_tracker_fb,
             eye_tracker_htc,
@@ -391,18 +427,41 @@ pub fn update_buttons(
 }
 
 pub fn get_eye_gazes(
+    xr_session: &xr::Session<xr::OpenGlEs>,
     sources: &FaceSources,
     reference_space: &xr::Space,
     time: xr::Time,
 ) -> [Option<Pose>; 2] {
-    let Some(tracker) = &sources.eye_tracker_fb else {
-        return [None, None];
+    'fb_eyes: {
+        let Some(tracker) = &sources.eye_tracker_fb else {
+            break 'fb_eyes;
+        };
+
+        if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
+            return [
+                gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
+                gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
+            ];
+        }
     };
 
-    if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
+    let Some((eyes_action, eyes_space)) = &sources.combined_eyes_source else {
+        return [None, None];
+    };
+    if !eyes_action
+        .is_active(xr_session, xr::Path::NULL)
+        .unwrap_or(false)
+    {
+        return [None, None];
+    }
+
+    if let Ok(location) = eyes_space.locate(reference_space, time) {
         [
-            gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
-            gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
+            location
+                .location_flags
+                .contains(xr::SpaceLocationFlags::ORIENTATION_TRACKED)
+                .then(|| to_pose(location.pose)),
+            None,
         ]
     } else {
         [None, None]

@@ -114,10 +114,20 @@ impl FaceTrackingSink {
             FaceTrackingSinkConfig::VrcFaceTracking { .. } => {
                 self.packet_cursor = 0;
 
-                if let [Some(left_quat), Some(right_quat)] = face_data.eye_gazes {
-                    let mut vec = left_quat.orientation.to_array().to_vec();
-                    vec.extend_from_slice(&right_quat.orientation.to_array());
-                    self.append_packet_vrcft(b"EyesQuat", &vec);
+                match face_data.eye_gazes {
+                    [Some(left_quat), Some(right_quat)] => {
+                        let mut vec = left_quat.orientation.to_array().to_vec();
+                        vec.extend_from_slice(&right_quat.orientation.to_array());
+                        self.append_packet_vrcft(b"EyesQuat", &vec);
+                    }
+                    // todo: use separate field for combined eye data
+                    [Some(combined_quat), None] => {
+                        self.append_packet_vrcft(
+                            b"CombQuat",
+                            &combined_quat.orientation.to_array(),
+                        );
+                    }
+                    _ => (),
                 }
 
                 if let Some(arr) = face_data.fb_face_expression {

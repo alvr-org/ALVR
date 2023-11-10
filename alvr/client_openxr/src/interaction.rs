@@ -1,6 +1,7 @@
-use crate::{to_pose, to_quat, to_vec3, Platform};
+use crate::{to_pose, to_quat, to_vec3, Platform, XrContext};
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
+use alvr_session::FaceTrackingSourcesConfig;
 use openxr as xr;
 use std::collections::HashMap;
 
@@ -9,28 +10,38 @@ pub enum ButtonAction {
     Scalar(xr::Action<f32>),
 }
 
-pub struct HandSource {
+pub struct HandInteraction {
+    pub controllers_profile_id: u64,
     pub grip_action: xr::Action<xr::Posef>,
     pub grip_space: xr::Space,
-    pub skeleton_tracker: Option<xr::HandTracker>,
+    pub aim_action: xr::Action<xr::Posef>,
+    pub aim_space: xr::Space,
     pub vibration_action: xr::Action<xr::Haptic>,
+    pub skeleton_tracker: Option<xr::HandTracker>,
 }
 
-pub struct HandsInteractionContext {
-    pub interaction_profile_id: u64,
+pub struct FaceSources {
+    pub eye_tracker_fb: Option<xr::EyeTrackerSocial>,
+    pub face_tracker_fb: Option<xr::FaceTrackerFB>,
+    pub eye_tracker_htc: Option<xr::FacialTrackerHTC>,
+    pub lip_tracker_htc: Option<xr::FacialTrackerHTC>,
+}
+
+pub struct InteractionContext {
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
-    pub hand_sources: [HandSource; 2],
+    pub hands_interaction: [HandInteraction; 2],
+    pub face_sources: FaceSources,
 }
 
-pub fn initialize_hands_interaction(
+pub fn initialize_interaction(
+    xr_ctx: &XrContext,
     platform: Platform,
-    xr_instance: &xr::Instance,
-    xr_system: xr::SystemId,
-    xr_session: &xr::Session<xr::AnyGraphics>,
-) -> HandsInteractionContext {
-    let action_set = xr_instance
-        .create_action_set("alvr_input", "ALVR input", 0)
+    face_tracking_sources: Option<FaceTrackingSourcesConfig>,
+) -> InteractionContext {
+    let action_set = xr_ctx
+        .instance
+        .create_action_set("alvr_interaction", "ALVR interaction", 0)
         .unwrap();
 
     let mut bindings = vec![];
@@ -39,7 +50,7 @@ pub fn initialize_hands_interaction(
         xr::Binding::new(action, action.instance().string_to_path(path).unwrap())
     }
 
-    let interaction_profile_path = match platform {
+    let controllers_profile_path = match platform {
         Platform::Quest => QUEST_CONTROLLER_PROFILE_PATH,
         Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
         Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
@@ -47,13 +58,13 @@ pub fn initialize_hands_interaction(
         Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
         _ => QUEST_CONTROLLER_PROFILE_PATH,
     };
-    let interaction_profile_id = alvr_common::hash_string(interaction_profile_path);
+    let controllers_profile_id = alvr_common::hash_string(controllers_profile_path);
 
     // Create actions:
 
     let mut button_actions = HashMap::new();
     for button_id in &CONTROLLER_PROFILE_INFO
-        .get(&interaction_profile_id)
+        .get(&controllers_profile_id)
         .unwrap()
         .button_set
     {
@@ -78,10 +89,17 @@ pub fn initialize_hands_interaction(
     }
 
     let left_grip_action = action_set
-        .create_action("left_hand_pose", "Left hand pose", &[])
+        .create_action("left_grip_pose", "Left grip pose", &[])
         .unwrap();
     let right_grip_action = action_set
-        .create_action("right_hand_pose", "Right hand pose", &[])
+        .create_action("right_grip_pose", "Right grip pose", &[])
+        .unwrap();
+
+    let left_aim_action = action_set
+        .create_action("left_aim_pose", "Left aim pose", &[])
+        .unwrap();
+    let right_aim_action = action_set
+        .create_action("right_aim_pose", "Right aim pose", &[])
         .unwrap();
 
     let left_vibration_action = action_set
@@ -114,6 +132,12 @@ pub fn initialize_hands_interaction(
         "/user/hand/right/input/grip/pose",
     ));
 
+    bindings.push(binding(&left_aim_action, "/user/hand/left/input/aim/pose"));
+    bindings.push(binding(
+        &right_aim_action,
+        "/user/hand/right/input/aim/pose",
+    ));
+
     bindings.push(binding(
         &left_vibration_action,
         "/user/hand/left/output/haptic",
@@ -124,63 +148,138 @@ pub fn initialize_hands_interaction(
     ));
 
     // Apply bindings:
-    xr_instance
+    xr_ctx
+        .instance
         .suggest_interaction_profile_bindings(
-            xr_instance
-                .string_to_path(interaction_profile_path)
+            xr_ctx
+                .instance
+                .string_to_path(controllers_profile_path)
                 .unwrap(),
             &bindings,
         )
         .unwrap();
 
-    xr_session.attach_action_sets(&[&action_set]).unwrap();
+    xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
 
     let left_grip_space = left_grip_action
-        .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
     let right_grip_space = right_grip_action
-        .create_space(xr_session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
         .unwrap();
 
-    let (left_hand_tracker, right_hand_tracker) = if xr_instance.exts().ext_hand_tracking.is_some()
-        && xr_instance.supports_hand_tracking(xr_system).unwrap()
-    {
-        (
-            Some(xr_session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
-            Some(xr_session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
-        )
-    } else {
-        (None, None)
-    };
+    let left_aim_space = left_aim_action
+        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .unwrap();
+    let right_aim_space = right_aim_action
+        .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
+        .unwrap();
 
-    let hand_sources = [
-        HandSource {
-            grip_action: left_grip_action,
-            grip_space: left_grip_space,
-            skeleton_tracker: left_hand_tracker,
-            vibration_action: left_vibration_action,
-        },
-        HandSource {
-            grip_action: right_grip_action,
-            grip_space: right_grip_space,
-            skeleton_tracker: right_hand_tracker,
-            vibration_action: right_vibration_action,
-        },
-    ];
+    let (left_hand_tracker, right_hand_tracker) =
+        if xr_ctx.instance.exts().ext_hand_tracking.is_some()
+            && xr_ctx
+                .instance
+                .supports_hand_tracking(xr_ctx.system)
+                .unwrap()
+        {
+            (
+                Some(xr_ctx.session.create_hand_tracker(xr::Hand::LEFT).unwrap()),
+                Some(xr_ctx.session.create_hand_tracker(xr::Hand::RIGHT).unwrap()),
+            )
+        } else {
+            (None, None)
+        };
 
-    HandsInteractionContext {
-        interaction_profile_id,
+    let eye_tracker_fb = (face_tracking_sources
+        .as_ref()
+        .map(|s| s.eye_tracking_fb)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().fb_eye_tracking_social.is_some()
+        && xr_ctx
+            .instance
+            .supports_social_eye_tracking(xr_ctx.system)
+            .unwrap())
+    .then(|| xr_ctx.session.create_eye_tracker_social().unwrap());
+
+    let face_tracker_fb = (face_tracking_sources
+        .as_ref()
+        .map(|s| s.face_tracking_fb)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().fb_face_tracking.is_some()
+        && xr_ctx
+            .instance
+            .supports_fb_face_tracking(xr_ctx.system)
+            .unwrap())
+    .then(|| xr_ctx.session.create_face_tracker_fb().unwrap());
+
+    let eye_tracker_htc = (face_tracking_sources
+        .as_ref()
+        .map(|s| s.eye_expressions_htc)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().htc_facial_tracking.is_some()
+        && xr_ctx
+            .instance
+            .supports_htc_eye_facial_tracking(xr_ctx.system)
+            .unwrap())
+    .then(|| {
+        xr_ctx
+            .session
+            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::EYE_DEFAULT)
+            .unwrap()
+    });
+
+    let lip_tracker_htc = (face_tracking_sources
+        .map(|s| s.lip_expressions_htc)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().htc_facial_tracking.is_some()
+        && xr_ctx
+            .instance
+            .supports_htc_lip_facial_tracking(xr_ctx.system)
+            .unwrap())
+    .then(|| {
+        xr_ctx
+            .session
+            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::LIP_DEFAULT)
+            .unwrap()
+    });
+
+    InteractionContext {
         action_set,
         button_actions,
-        hand_sources,
+        hands_interaction: [
+            HandInteraction {
+                controllers_profile_id,
+                grip_action: left_grip_action,
+                grip_space: left_grip_space,
+                aim_action: left_aim_action,
+                aim_space: left_aim_space,
+                vibration_action: left_vibration_action,
+                skeleton_tracker: left_hand_tracker,
+            },
+            HandInteraction {
+                controllers_profile_id,
+                grip_action: right_grip_action,
+                grip_space: right_grip_space,
+                aim_action: right_aim_action,
+                aim_space: right_aim_space,
+                vibration_action: right_vibration_action,
+                skeleton_tracker: right_hand_tracker,
+            },
+        ],
+        face_sources: FaceSources {
+            eye_tracker_fb,
+            face_tracker_fb,
+            eye_tracker_htc,
+            lip_tracker_htc,
+        },
     }
 }
 
 pub fn get_hand_motion(
-    session: &xr::Session<xr::AnyGraphics>,
+    xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,
     time: xr::Time,
-    hand_source: &HandSource,
+    hand_source: &HandInteraction,
     last_position: &mut Vec3,
 ) -> (Option<DeviceMotion>, Option<[Pose; 26]>) {
     if let Some(tracker) = &hand_source.skeleton_tracker {
@@ -218,7 +317,7 @@ pub fn get_hand_motion(
 
     if !hand_source
         .grip_action
-        .is_active(session, xr::Path::NULL)
+        .is_active(xr_session, xr::Path::NULL)
         .unwrap_or(false)
     {
         return (None, None);
@@ -255,7 +354,7 @@ pub fn get_hand_motion(
 }
 
 pub fn update_buttons(
-    xr_session: &xr::Session<xr::AnyGraphics>,
+    xr_session: &xr::Session<xr::OpenGlEs>,
     button_actions: &HashMap<u64, ButtonAction>,
 ) -> Vec<ButtonEntry> {
     let mut button_entries = Vec::with_capacity(2);
@@ -291,68 +390,12 @@ pub fn update_buttons(
     button_entries
 }
 
-pub struct FaceInputContext {
-    pub eye_tracker_fb: Option<xr::EyeTrackerSocial>,
-    pub face_tracker_fb: Option<xr::FaceTrackerFB>,
-    pub eye_tracker_htc: Option<xr::FacialTrackerHTC>,
-    pub lip_tracker_htc: Option<xr::FacialTrackerHTC>,
-}
-
-pub fn initialize_face_input<G>(
-    xr_instance: &xr::Instance,
-    xr_system: xr::SystemId,
-    xr_session: &xr::Session<G>,
-    eye_tracking_fb: bool,
-    face_tracking_fb: bool,
-    eye_expressions_htc: bool,
-    lip_expressions_htc: bool,
-) -> FaceInputContext {
-    let eye_tracker_fb = (eye_tracking_fb
-        && xr_instance.exts().fb_eye_tracking_social.is_some()
-        && xr_instance.supports_social_eye_tracking(xr_system).unwrap())
-    .then(|| xr_session.create_eye_tracker_social().unwrap());
-
-    let face_tracker_fb = (face_tracking_fb
-        && xr_instance.exts().fb_face_tracking.is_some()
-        && xr_instance.supports_fb_face_tracking(xr_system).unwrap())
-    .then(|| xr_session.create_face_tracker_fb().unwrap());
-
-    let eye_tracker_htc = (eye_expressions_htc
-        && xr_instance.exts().htc_facial_tracking.is_some()
-        && xr_instance
-            .supports_htc_eye_facial_tracking(xr_system)
-            .unwrap())
-    .then(|| {
-        xr_session
-            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::EYE_DEFAULT)
-            .unwrap()
-    });
-
-    let lip_tracker_htc = (lip_expressions_htc
-        && xr_instance.exts().htc_facial_tracking.is_some()
-        && xr_instance
-            .supports_htc_lip_facial_tracking(xr_system)
-            .unwrap())
-    .then(|| {
-        xr_session
-            .create_facial_tracker_htc(xr::FacialTrackingTypeHTC::LIP_DEFAULT)
-            .unwrap()
-    });
-
-    FaceInputContext {
-        eye_tracker_fb,
-        face_tracker_fb,
-        eye_tracker_htc,
-        lip_tracker_htc,
-    }
-}
-
 pub fn get_eye_gazes(
-    context: &FaceInputContext,
+    sources: &FaceSources,
     reference_space: &xr::Space,
     time: xr::Time,
 ) -> [Option<Pose>; 2] {
-    let Some(tracker) = &context.eye_tracker_fb else {
+    let Some(tracker) = &sources.eye_tracker_fb else {
         return [None, None];
     };
 
@@ -366,7 +409,7 @@ pub fn get_eye_gazes(
     }
 }
 
-pub fn get_fb_face_expression(context: &FaceInputContext, time: xr::Time) -> Option<Vec<f32>> {
+pub fn get_fb_face_expression(context: &FaceSources, time: xr::Time) -> Option<Vec<f32>> {
     context
         .face_tracker_fb
         .as_ref()
@@ -374,7 +417,7 @@ pub fn get_fb_face_expression(context: &FaceInputContext, time: xr::Time) -> Opt
         .map(|w| w.weights.into_iter().collect())
 }
 
-pub fn get_htc_eye_expression(context: &FaceInputContext) -> Option<Vec<f32>> {
+pub fn get_htc_eye_expression(context: &FaceSources) -> Option<Vec<f32>> {
     context
         .eye_tracker_htc
         .as_ref()
@@ -382,7 +425,7 @@ pub fn get_htc_eye_expression(context: &FaceInputContext) -> Option<Vec<f32>> {
         .map(|w| w.weights.into_iter().collect())
 }
 
-pub fn get_htc_lip_expression(context: &FaceInputContext) -> Option<Vec<f32>> {
+pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
     context
         .lip_tracker_htc
         .as_ref()

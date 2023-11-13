@@ -240,7 +240,7 @@ This requires administrator rights!",
 #[cfg(target_os = "linux")]
 fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
     let response = reqwest::blocking::get(
-        "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.s",
+        "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.sh",
     )?;
     if !response.status().is_success() {
         return Err(format!("Could not download script, status {}", response.status()).into());

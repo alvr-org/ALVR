@@ -5,7 +5,9 @@ use eframe::{
     egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
 };
-use std::{error::Error, f32::consts::E, os::unix::fs::PermissionsExt};
+use std::error::Error;
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
 use std::{
     fs::{self, File},
     io,
@@ -132,27 +134,30 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                             ui.ctx()
                                 .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
                         }
-                        let button = ui.button("'On connect/On disconnect' audio script");
-                        if button.clicked() {
+                        if ui
+                            .button("'On connect/On disconnect' audio script")
+                            .clicked()
+                        {
+                            #[cfg(target_os = "linux")]
                             match download_and_prepare_audio_script() {
                                 Ok(audio_script_path) => {
                                     request =
-                                    Some(SetupWizardRequest::ServerRequest(
-                                        ServerRequest::SetValues(vec![
-                                            PathValuePair {
-                                                path: alvr_packets::parse_path(
-                                                    "session_settings.connection.on_connect_script",
-                                                ),
-                                                value: serde_json::Value::String(audio_script_path.clone()),
-                                            },
-                                            PathValuePair {
-                                                path: alvr_packets::parse_path(
-                                                    "session_settings.connection.on_disconnect_script",
-                                                ),
-                                                value: serde_json::Value::String(audio_script_path.clone()),
-                                            },
-                                        ]),
-                                    ));
+                                        Some(SetupWizardRequest::ServerRequest(
+                                            ServerRequest::SetValues(vec![
+                                                PathValuePair {
+                                                    path: alvr_packets::parse_path(
+                                                        "session_settings.connection.on_connect_script",
+                                                    ),
+                                                    value: serde_json::Value::String(audio_script_path.clone()),
+                                                },
+                                                PathValuePair {
+                                                    path: alvr_packets::parse_path(
+                                                        "session_settings.connection.on_disconnect_script",
+                                                    ),
+                                                    value: serde_json::Value::String(audio_script_path.clone()),
+                                                },
+                                            ]),
+                                        ));
                                     warn!("Successfully downloaded and set On connect / On disconnect script")
                                 }
                                 Err(e) => error!("{e}"),
@@ -232,6 +237,7 @@ This requires administrator rights!",
     }
 }
 
+#[cfg(target_os = "linux")]
 fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
     let response = reqwest::blocking::get(
         "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.s",

@@ -1140,7 +1140,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: BitrateModeDefaultVariant::ConstantMbps,
                 },
                 adapt_to_framerate: SwitchDefault {
-                    enabled: false,
+                    enabled: true,
                     content: BitrateAdaptiveFramerateConfigDefault {
                         framerate_reset_threshold_multiplier: 2.0,
                     },

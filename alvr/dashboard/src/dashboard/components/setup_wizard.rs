@@ -1,8 +1,14 @@
 use crate::dashboard::basic_components;
+use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
     emath::Align,
+};
+use std::{error::Error, f32::consts::E, os::unix::fs::PermissionsExt};
+use std::{
+    fs::{self, File},
+    io,
 };
 
 pub enum SetupWizardRequest {
@@ -114,25 +120,47 @@ impl SetupWizard {
 Make sure you have at least one output audio device.",
                 |_| (),
             ),
-            Page::SoftwareRequirements => page_content(
-                ui,
-                "Software requirements",
-                r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
-On Linux, game audio and microphone might require pipewire and On connect/On disconnect script.",
-                |ui| {
-                    if ui.button("Download VB-Cable").clicked() {
-                        ui.ctx()
-                            .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
-                    }
-                    if ui
-                        .button("'On connect/On disconnect' audio script")
-                        .clicked()
-                    {
-                        ui.ctx()
-                            .open_url(OpenUrl::same_tab("https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/audio-setup.sh"));
-                    }
-                },
-            ),
+            Page::SoftwareRequirements => {
+                page_content(
+                    ui,
+                    "Software requirements",
+                    r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
+On Linux, game audio and microphone might require pipewire and On connect/On disconnect script.
+Script is not 100% stable and might cause some instability issues with pipewire, but it should work.",
+                    |ui| {
+                        if ui.button("Download VB-Cable").clicked() {
+                            ui.ctx()
+                                .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
+                        }
+                        let button = ui.button("'On connect/On disconnect' audio script");
+                        if button.clicked() {
+                            match download_and_prepare_audio_script() {
+                                Ok(audio_script_path) => {
+                                    request =
+                                    Some(SetupWizardRequest::ServerRequest(
+                                        ServerRequest::SetValues(vec![
+                                            PathValuePair {
+                                                path: alvr_packets::parse_path(
+                                                    "session_settings.connection.on_connect_script",
+                                                ),
+                                                value: serde_json::Value::String(audio_script_path.clone()),
+                                            },
+                                            PathValuePair {
+                                                path: alvr_packets::parse_path(
+                                                    "session_settings.connection.on_disconnect_script",
+                                                ),
+                                                value: serde_json::Value::String(audio_script_path.clone()),
+                                            },
+                                        ]),
+                                    ));
+                                    warn!("Successfully downloaded and set On connect / On disconnect script")
+                                }
+                                Err(e) => error!("{e}"),
+                            }
+                        }
+                    },
+                )
+            }
             Page::HandGestures => page_content(
                 ui,
                 "Hand Gestures",
@@ -202,4 +230,24 @@ This requires administrator rights!",
 
         request
     }
+}
+
+fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
+    let response = reqwest::blocking::get(
+        "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.s",
+    )?;
+    if !response.status().is_success() {
+        return Err(format!("Could not download script, status {}", response.status()).into());
+    }
+    let body = response.text()?;
+    let layout = alvr_filesystem::filesystem_layout_invalid();
+    let config_path = layout
+        .config_dir
+        .to_str()
+        .ok_or("Couldn't get config dir")?;
+    let audio_script_path = format!("{}/audio-setup.sh", config_path);
+    let mut out = File::create(audio_script_path.clone())?;
+    io::copy(&mut body.as_bytes(), &mut out)?;
+    fs::set_permissions(audio_script_path.clone(), fs::Permissions::from_mode(0o755))?;
+    Ok(audio_script_path)
 }

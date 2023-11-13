@@ -24,6 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 statrs = "0.16"
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "blocking", "json"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true

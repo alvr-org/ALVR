@@ -271,6 +271,7 @@ dependencies = [
  "ico",
  "instant",
  "rand",
+ "reqwest",
  "serde",
  "serde_json",
  "settings-schema",

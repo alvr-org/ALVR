@@ -1,16 +1,13 @@
 use crate::dashboard::basic_components;
 use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
-#[cfg(target_os = "win64")]
-use eframe::OpenUrl;
+
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
 };
 use std::error::Error;
 
-#[cfg(target_os = "linux")]
-use std::os::unix::fs::PermissionsExt;
 use std::{
     fs::{self, File},
     io,
@@ -129,7 +126,7 @@ Make sure you have at least one output audio device.",
                 page_content(
                     ui,
                     "Software requirements",
-                    if cfg!(target_os = "win64") {
+                    if cfg!(windows) {
                         r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
                     } else if cfg!(target_os = "linux") {
                         r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
@@ -138,10 +135,10 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                         r"N/A"
                     },
                     |ui| {
-                        #[cfg(target_os = "win64")]
+                        #[cfg(windows)]
                         if ui.button("Download VB-Cable").clicked() {
                             ui.ctx()
-                                .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
+                                .open_url(eframe::OpenUrl::same_tab("https://vb-audio.com/Cable/"));
                         }
                         #[cfg(target_os = "linux")]
                         if ui
@@ -248,6 +245,8 @@ This requires administrator rights!",
 
 #[cfg(target_os = "linux")]
 fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
     let response = ureq::get(
         "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.sh",
     )
@@ -264,5 +263,6 @@ fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
     let script_body = response.into_string()?;
     io::copy(&mut script_body.as_bytes(), &mut out)?;
     fs::set_permissions(audio_script_path.clone(), fs::Permissions::from_mode(0o755))?;
+
     Ok(audio_script_path)
 }

@@ -137,9 +137,11 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                     |ui| {
                         #[cfg(windows)]
                         if ui.button("Download VB-Cable").clicked() {
-                            ui.ctx()
-                                .open_url(eframe::OpenUrl::same_tab("https://vb-audio.com/Cable/"));
+                            ui.ctx().open_url(crate::dashboard::egui::OpenUrl::same_tab(
+                                "https://vb-audio.com/Cable/",
+                            ));
                         }
+
                         #[cfg(target_os = "linux")]
                         if ui
                             .button("Download and set 'On connect/On disconnect' script")

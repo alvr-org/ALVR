@@ -1,13 +1,11 @@
 use crate::dashboard::basic_components;
 use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
-
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
 };
 use std::error::Error;
-
 use std::{
     fs::{self, File},
     io,

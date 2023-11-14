@@ -2,7 +2,7 @@ use crate::dashboard::basic_components;
 use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
-    egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
+    egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
 };
 use std::error::Error;
@@ -126,19 +126,23 @@ Make sure you have at least one output audio device.",
                 page_content(
                     ui,
                     "Software requirements",
-                    r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
-On Linux, game audio and microphone might require pipewire and On connect/On disconnect script.
-Script is not 100% stable and might cause some instability issues with pipewire, but it should work.",
+                    if cfg!(not(target_os = "linux")) {
+                        r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
+                    } else {
+                        r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
+Script is not 100% stable and might cause some instability issues with pipewire, but it should work."
+                    },
                     |ui| {
+                        #[cfg(not(target_os = "linux"))]
                         if ui.button("Download VB-Cable").clicked() {
                             ui.ctx()
                                 .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
                         }
+                        #[cfg(target_os = "linux")]
                         if ui
-                            .button("'On connect/On disconnect' audio script")
+                            .button("Download and set 'On connect/On disconnect' script")
                             .clicked()
                         {
-                            #[cfg(target_os = "linux")]
                             match download_and_prepare_audio_script() {
                                 Ok(audio_script_path) => {
                                     request =
@@ -239,13 +243,11 @@ This requires administrator rights!",
 
 #[cfg(target_os = "linux")]
 fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
-    let response = reqwest::blocking::get(
+    let response = ureq::get(
         "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.sh",
-    )?;
-    if !response.status().is_success() {
-        return Err(format!("Could not download script, status {}", response.status()).into());
-    }
-    let body = response.text()?;
+    )
+    .call()?;
+
     let layout = alvr_filesystem::filesystem_layout_invalid();
     let config_path = layout
         .config_dir
@@ -253,7 +255,9 @@ fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
         .ok_or("Couldn't get config dir")?;
     let audio_script_path = format!("{}/audio-setup.sh", config_path);
     let mut out = File::create(audio_script_path.clone())?;
-    io::copy(&mut body.as_bytes(), &mut out)?;
+
+    let script_body = response.into_string()?;
+    io::copy(&mut script_body.as_bytes(), &mut out)?;
     fs::set_permissions(audio_script_path.clone(), fs::Permissions::from_mode(0o755))?;
     Ok(audio_script_path)
 }

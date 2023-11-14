@@ -479,8 +479,6 @@ pub struct VideoConfig {
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
-    pub dynamic_oculus_foveation: bool,
-
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
 }
@@ -1267,7 +1265,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
-            dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {
@@ -1276,7 +1273,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     contrast: 0.,
                     saturation: 0.5,
                     gamma: 1.,
-                    sharpening: 0.,
+                    sharpening: 0.5,
                 },
             },
         },
@@ -1414,7 +1411,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: true,
                         content: HandGestureConfigDefault {
                             gui_collapsed: true,
-                            only_touch: false,
+                            only_touch: true,
                             pinch_touch_distance: 0.0,
                             pinch_trigger_distance: 0.25,
                             curl_touch_distance: 2.0,

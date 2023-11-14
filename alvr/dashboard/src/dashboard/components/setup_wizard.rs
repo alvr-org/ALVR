@@ -1,7 +1,14 @@
-use alvr_packets::{FirewallRulesAction, ServerRequest};
+use crate::dashboard::basic_components;
+use alvr_common::{error, warn};
+use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
-    egui::{Button, Label, Layout, OpenUrl, RichText, Ui},
+    egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
+};
+use std::error::Error;
+use std::{
+    fs::{self, File},
+    io,
 };
 
 pub enum SetupWizardRequest {
@@ -15,10 +22,10 @@ enum Page {
     ResetSettings = 1,
     HardwareRequirements = 2,
     SoftwareRequirements = 3,
-    Firewall = 4,
-    // PerformancePreset,
-    Recommendations = 5,
-    Finished = 6,
+    HandGestures = 4,
+    Firewall = 5,
+    Recommendations = 6,
+    Finished = 7,
 }
 
 fn index_to_page(index: usize) -> Page {
@@ -27,9 +34,10 @@ fn index_to_page(index: usize) -> Page {
         1 => Page::ResetSettings,
         2 => Page::HardwareRequirements,
         3 => Page::SoftwareRequirements,
-        4 => Page::Firewall,
-        5 => Page::Recommendations,
-        6 => Page::Finished,
+        4 => Page::HandGestures,
+        5 => Page::Firewall,
+        6 => Page::Recommendations,
+        7 => Page::Finished,
         _ => unreachable!(),
     }
 }
@@ -57,12 +65,14 @@ fn page_content(
 
 pub struct SetupWizard {
     page: Page,
+    only_touch: bool,
 }
 
 impl SetupWizard {
     pub fn new() -> Self {
         Self {
             page: Page::Welcome,
+            only_touch: true,
         }
     }
 
@@ -110,15 +120,74 @@ impl SetupWizard {
 Make sure you have at least one output audio device.",
                 |_| (),
             ),
-            Page::SoftwareRequirements => page_content(
+            Page::SoftwareRequirements => {
+                page_content(
+                    ui,
+                    "Software requirements",
+                    if cfg!(windows) {
+                        r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
+                    } else if cfg!(target_os = "linux") {
+                        r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
+Script is not 100% stable and might cause some instability issues with pipewire, but it should work."
+                    } else {
+                        r"N/A"
+                    },
+                    |ui| {
+                        #[cfg(windows)]
+                        if ui.button("Download VB-Cable").clicked() {
+                            ui.ctx().open_url(crate::dashboard::egui::OpenUrl::same_tab(
+                                "https://vb-audio.com/Cable/",
+                            ));
+                        }
+
+                        #[cfg(target_os = "linux")]
+                        if ui
+                            .button("Download and set 'On connect/On disconnect' script")
+                            .clicked()
+                        {
+                            match download_and_prepare_audio_script() {
+                                Ok(audio_script_path) => {
+                                    request =
+                                        Some(SetupWizardRequest::ServerRequest(
+                                            ServerRequest::SetValues(vec![
+                                                PathValuePair {
+                                                    path: alvr_packets::parse_path(
+                                                        "session_settings.connection.on_connect_script",
+                                                    ),
+                                                    value: serde_json::Value::String(audio_script_path.clone()),
+                                                },
+                                                PathValuePair {
+                                                    path: alvr_packets::parse_path(
+                                                        "session_settings.connection.on_disconnect_script",
+                                                    ),
+                                                    value: serde_json::Value::String(audio_script_path.clone()),
+                                                },
+                                            ]),
+                                        ));
+                                    warn!("Successfully downloaded and set On connect / On disconnect script")
+                                }
+                                Err(e) => error!("{e}"),
+                            }
+                        }
+                    },
+                )
+            }
+            Page::HandGestures => page_content(
                 ui,
-                "Software requirements",
-                r"To stream the Quest microphone on Windows you need to install VB-Cable or Voicemeeter.
-On Linux some feaures are not working and should be disabled (foveated encoding and color correction) and some need a proper environment setup to have them working (game audio and microphone streaming).",
+                "Hand Gestures",
+                r"ALVR allows you to use Hand Tracking and emulate controller buttons using it.
+By default, controller button emulation is set to prevent accidental clicks. You can re-enable gestures by disabling slider bellow.",
                 |ui| {
-                    if ui.button("Download VB-Cable").clicked() {
-                        ui.ctx()
-                            .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));
+                    ui.label("Only touch");
+                    if basic_components::switch(ui, &mut self.only_touch).changed() {
+                        request = Some(SetupWizardRequest::ServerRequest(
+                            ServerRequest::SetValues(vec![PathValuePair {
+                                path: alvr_packets::parse_path(
+                                    "session_settings.headset.controllers.content.gestures.content.only_touch",
+                                ),
+                                value: serde_json::Value::Bool(self.only_touch),
+                            }]),
+                        ));
                     }
                 },
             ),
@@ -135,30 +204,10 @@ This requires administrator rights!",
                     }
                 },
             ),
-            //             Page::PerformancePreset => {
-            //                 ui.label(
-            //                     r#"Performance preset
-            // Please choose preset that fits your setup. This will adjust some settings for you.
-            // "#,
-            //                 );
-            //                 ui.horizontal(|ui| {
-            //                     // TODO correct preset strings
-            //                     if ui.button("Compatibility").clicked() {
-            //                         // request = Some(DashboardRequest::PresetInvocation(
-            //                         //     "compatibility".to_string(),
-            //                         // ));
-            //                     }
-            //                     if ui.button("Visual quality").clicked() {
-            //                         // request = Some(DashboardRequest::PresetInvocation(
-            //                         //     "visual_quality".to_string(),
-            //                         // ));
-            //                     }
-            //                 });
-            //             }
             Page::Recommendations => page_content(
                 ui,
                 "Recommendations",
-                r"ALVR supports multiple types of PC hardware and headsets but not all work correctly with default settings. For example some AMD video cards work only with the HEVC codec and GearVR does not support foveated encoding. Please try tweaking different settings if your ALVR experience is broken or not optimal.",
+                r"ALVR supports multiple types of PC hardware and headsets but not all might work correctly with default settings. Please try tweaking different settings like encoder, bitrate and others if your ALVR experience is great or not optimal.",
                 |_| (),
             ),
             Page::Finished => page_content(
@@ -192,4 +241,28 @@ This requires administrator rights!",
 
         request
     }
+}
+
+#[cfg(target_os = "linux")]
+fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let response = ureq::get(
+        "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.sh",
+    )
+    .call()?;
+
+    let layout = alvr_filesystem::filesystem_layout_invalid();
+    let config_path = layout
+        .config_dir
+        .to_str()
+        .ok_or("Couldn't get config dir")?;
+    let audio_script_path = format!("{}/audio-setup.sh", config_path);
+    let mut out = File::create(audio_script_path.clone())?;
+
+    let script_body = response.into_string()?;
+    io::copy(&mut script_body.as_bytes(), &mut out)?;
+    fs::set_permissions(audio_script_path.clone(), fs::Permissions::from_mode(0o755))?;
+
+    Ok(audio_script_path)
 }

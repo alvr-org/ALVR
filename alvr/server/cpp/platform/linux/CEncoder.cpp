@@ -24,7 +24,6 @@
 #include "ffmpeg_helper.h"
 #include "EncodePipeline.h"
 #include "FrameRender.h"
-#include "amf_helper.h"
 
 extern "C" {
 #include <libavutil/avutil.h>
@@ -204,14 +203,7 @@ void CEncoder::Run() {
 
       av_log_set_callback(av_logfn);
 
-      bool useAmf = alvr::AMFContext::get()->isValid();
-      std::vector<const char*> deviceExtensions;
-
-      if (useAmf) {
-          deviceExtensions = alvr::AMFContext::get()->requiredDeviceExtensions();
-      }
-
-      alvr::VkContext vk_ctx(init.device_uuid.data(), deviceExtensions);
+      alvr::VkContext vk_ctx(init.device_uuid.data(), {});
 
       FrameRender render(vk_ctx, init, m_fds);
       auto output = render.CreateOutput();

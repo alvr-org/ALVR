@@ -1,7 +1,7 @@
 use crate::dashboard::basic_components;
 use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "win64")]
 use eframe::OpenUrl;
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
@@ -129,14 +129,16 @@ Make sure you have at least one output audio device.",
                 page_content(
                     ui,
                     "Software requirements",
-                    if cfg!(not(target_os = "linux")) {
+                    if cfg!(target_os = "win64") {
                         r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
-                    } else {
+                    } else if cfg!(target_os = "linux") {
                         r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
 Script is not 100% stable and might cause some instability issues with pipewire, but it should work."
+                    } else {
+                        r"N/A"
                     },
                     |ui| {
-                        #[cfg(not(target_os = "linux"))]
+                        #[cfg(target_os = "win64")]
                         if ui.button("Download VB-Cable").clicked() {
                             ui.ctx()
                                 .open_url(OpenUrl::same_tab("https://vb-audio.com/Cable/"));

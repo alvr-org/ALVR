@@ -1,11 +1,14 @@
 use crate::dashboard::basic_components;
 use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
+#[cfg(not(target_os = "linux"))]
+use eframe::OpenUrl;
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
 };
 use std::error::Error;
+
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::PermissionsExt;
 use std::{

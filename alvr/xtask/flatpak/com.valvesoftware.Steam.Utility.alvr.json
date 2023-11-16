@@ -21,7 +21,8 @@
             "PREFIX": "/app/utils/alvr"
         },
         "build-args": [
-            "--share=network"
+            "--share=network",
+            "--filesystem=xdg-data"
         ]
     },
     "cleanup": [
@@ -45,7 +46,8 @@
                 "echo 'insecure' >> .curlrc",
                 "cargo xtask prepare-deps --platform linux --no-nvidia",
                 "cargo xtask build-streamer --release",
-                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr"
+                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
+                "cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
             ],
             "modules": [
                 "modules/yasm/yasm.json",

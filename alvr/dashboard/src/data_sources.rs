@@ -31,13 +31,16 @@ pub fn get_local_data_source() -> ServerDataManager {
 
 fn report_event_local(
     context: &egui::Context,
-    sender: &mpsc::Sender<Event>,
+    sender: &mpsc::Sender<PolledEvent>,
     event_type: EventType,
 ) {
     sender
-        .send(Event {
-            timestamp: "".into(),
-            event_type,
+        .send(PolledEvent {
+            inner: Event {
+                timestamp: "".into(),
+                event_type,
+            },
+            from_dashboard: false,
         })
         .ok();
     context.request_repaint();
@@ -45,7 +48,7 @@ fn report_event_local(
 
 fn report_session_local(
     context: &egui::Context,
-    sender: &mpsc::Sender<Event>,
+    sender: &mpsc::Sender<PolledEvent>,
     data_manager: &mut ServerDataManager,
 ) {
     report_event_local(
@@ -55,10 +58,15 @@ fn report_session_local(
     )
 }
 
+pub struct PolledEvent {
+    pub inner: Event,
+    pub from_dashboard: bool,
+}
+
 pub struct DataSources {
     running: Arc<RelaxedAtomic>,
     requests_sender: mpsc::Sender<ServerRequest>,
-    events_receiver: mpsc::Receiver<Event>,
+    events_receiver: mpsc::Receiver<PolledEvent>,
     server_connected: Arc<RelaxedAtomic>,
     requests_thread: Option<JoinHandle<()>>,
     events_thread: Option<JoinHandle<()>>,
@@ -68,8 +76,8 @@ pub struct DataSources {
 impl DataSources {
     pub fn new(
         context: egui::Context,
-        events_sender: mpsc::Sender<Event>,
-        events_receiver: mpsc::Receiver<Event>,
+        events_sender: mpsc::Sender<PolledEvent>,
+        events_receiver: mpsc::Receiver<PolledEvent>,
     ) -> Self {
         let running = Arc::new(RelaxedAtomic::new(true));
         let (requests_sender, requests_receiver) = mpsc::channel();
@@ -223,8 +231,13 @@ impl DataSources {
                         match ws.read() {
                             Ok(tungstenite::Message::Text(json_string)) => {
                                 if let Ok(event) = serde_json::from_str(&json_string) {
-                                    debug!("Server event received: {event:?}");
-                                    events_sender.send(event).ok();
+                                    debug!("Server event received: {:?}", event);
+                                    events_sender
+                                        .send(PolledEvent {
+                                            inner: event,
+                                            from_dashboard: false,
+                                        })
+                                        .ok();
                                     context.request_repaint();
                                 }
                             }
@@ -303,7 +316,7 @@ impl DataSources {
         self.requests_sender.send(request).ok();
     }
 
-    pub fn poll_event(&self) -> Option<Event> {
+    pub fn poll_event(&self) -> Option<PolledEvent> {
         self.events_receiver.try_recv().ok()
     }
 

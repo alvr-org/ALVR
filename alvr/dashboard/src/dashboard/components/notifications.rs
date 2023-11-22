@@ -87,9 +87,19 @@ impl NotificationBar {
         }
     }
 
-    pub fn push_notification(&mut self, event: LogEntry) {
+    pub fn push_notification(&mut self, event: LogEntry, from_dashboard: bool) {
         let now = Instant::now();
-        if event.severity >= self.min_notification_level
+        let min_severity = if from_dashboard {
+            if cfg!(debug_assertions) {
+                LogSeverity::Debug
+            } else {
+                LogSeverity::Info
+            }
+        } else {
+            self.min_notification_level
+        };
+
+        if event.severity >= min_severity
             && (now > self.receive_instant + TIMEOUT || event.severity >= self.current_level)
         {
             self.message = event.content;

@@ -1,14 +1,8 @@
 use crate::dashboard::basic_components;
-use alvr_common::{error, warn};
 use alvr_packets::{FirewallRulesAction, PathValuePair, ServerRequest};
 use eframe::{
     egui::{Button, Label, Layout, RichText, Ui},
     emath::Align,
-};
-use std::error::Error;
-use std::{
-    fs::{self, File},
-    io,
 };
 
 pub enum SetupWizardRequest {
@@ -120,58 +114,58 @@ impl SetupWizard {
 Make sure you have at least one output audio device.",
                 |_| (),
             ),
-            Page::SoftwareRequirements => {
-                page_content(
-                    ui,
-                    "Software requirements",
-                    if cfg!(windows) {
-                        r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
-                    } else if cfg!(target_os = "linux") {
-                        r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
+            Page::SoftwareRequirements => page_content(
+                ui,
+                "Software requirements",
+                if cfg!(windows) {
+                    r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
+                } else if cfg!(target_os = "linux") {
+                    r"To stream the headset microphone on Linux, you might be required to use pipewire and On connect/On disconnect script.
 Script is not 100% stable and might cause some instability issues with pipewire, but it should work."
-                    } else {
-                        r"N/A"
-                    },
-                    |ui| {
-                        #[cfg(windows)]
-                        if ui.button("Download VB-Cable").clicked() {
-                            ui.ctx().open_url(crate::dashboard::egui::OpenUrl::same_tab(
-                                "https://vb-audio.com/Cable/",
-                            ));
-                        }
+                } else {
+                    r"Unsupported OS"
+                },
+                |ui| {
+                    #[cfg(windows)]
+                    if ui.button("Download VB-Cable").clicked() {
+                        ui.ctx().open_url(crate::dashboard::egui::OpenUrl::same_tab(
+                            "https://vb-audio.com/Cable/",
+                        ));
+                    }
 
-                        #[cfg(target_os = "linux")]
-                        if ui
-                            .button("Download and set 'On connect/On disconnect' script")
-                            .clicked()
-                        {
-                            match download_and_prepare_audio_script() {
-                                Ok(audio_script_path) => {
-                                    request =
-                                        Some(SetupWizardRequest::ServerRequest(
-                                            ServerRequest::SetValues(vec![
-                                                PathValuePair {
-                                                    path: alvr_packets::parse_path(
-                                                        "session_settings.connection.on_connect_script",
-                                                    ),
-                                                    value: serde_json::Value::String(audio_script_path.clone()),
-                                                },
-                                                PathValuePair {
-                                                    path: alvr_packets::parse_path(
-                                                        "session_settings.connection.on_disconnect_script",
-                                                    ),
-                                                    value: serde_json::Value::String(audio_script_path.clone()),
-                                                },
-                                            ]),
-                                        ));
-                                    warn!("Successfully downloaded and set On connect / On disconnect script")
-                                }
-                                Err(e) => error!("{e}"),
+                    #[cfg(target_os = "linux")]
+                    if ui
+                        .button("Download and set 'On connect/On disconnect' script")
+                        .clicked()
+                    {
+                        match download_and_prepare_audio_script() {
+                            Ok(audio_script_path) => {
+                                let path_json = serde_json::Value::String(
+                                    audio_script_path.to_string_lossy().to_string(),
+                                );
+                                request = Some(SetupWizardRequest::ServerRequest(
+                                    ServerRequest::SetValues(vec![
+                                        PathValuePair {
+                                            path: alvr_packets::parse_path(
+                                                "session_settings.connection.on_connect_script",
+                                            ),
+                                            value: path_json.clone(),
+                                        },
+                                        PathValuePair {
+                                            path: alvr_packets::parse_path(
+                                                "session_settings.connection.on_disconnect_script",
+                                            ),
+                                            value: path_json,
+                                        },
+                                    ]),
+                                ));
+                                alvr_common::info!("Successfully downloaded and set On connect / On disconnect script")
                             }
+                            Err(e) => alvr_common::error!("{e}"),
                         }
-                    },
-                )
-            }
+                    }
+                },
+            ),
             Page::HandGestures => page_content(
                 ui,
                 "Hand Gestures",
@@ -244,25 +238,19 @@ This requires administrator rights!",
 }
 
 #[cfg(target_os = "linux")]
-fn download_and_prepare_audio_script() -> Result<String, Box<dyn Error>> {
-    use std::os::unix::fs::PermissionsExt;
+fn download_and_prepare_audio_script() -> alvr_common::anyhow::Result<std::path::PathBuf> {
+    use std::{fs, os::unix::fs::PermissionsExt};
 
+    let audio_script_path = alvr_filesystem::filesystem_layout_invalid()
+        .config_dir
+        .join("audio-setup.sh");
     let response = ureq::get(
         "https://raw.githubusercontent.com/alvr-org/ALVR-Distrobox-Linux-Guide/main/audio-setup.sh",
     )
     .call()?;
 
-    let layout = alvr_filesystem::filesystem_layout_invalid();
-    let config_path = layout
-        .config_dir
-        .to_str()
-        .ok_or("Couldn't get config dir")?;
-    let audio_script_path = format!("{}/audio-setup.sh", config_path);
-    let mut out = File::create(audio_script_path.clone())?;
-
-    let script_body = response.into_string()?;
-    io::copy(&mut script_body.as_bytes(), &mut out)?;
-    fs::set_permissions(audio_script_path.clone(), fs::Permissions::from_mode(0o755))?;
+    fs::write(&audio_script_path, response.into_string()?);
+    fs::set_permissions(&audio_script_path, fs::Permissions::from_mode(0o755))?;
 
     Ok(audio_script_path)
 }

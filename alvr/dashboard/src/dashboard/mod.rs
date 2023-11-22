@@ -149,11 +149,12 @@ impl eframe::App for Dashboard {
         let connected_to_server = self.data_sources.server_connected();
 
         while let Some(event) = self.data_sources.poll_event() {
-            self.logs_tab.push_event(event.clone());
+            self.logs_tab.push_event(event.inner.clone());
 
-            match event.event_type {
-                EventType::Log(event) => {
-                    self.notification_bar.push_notification(event);
+            match event.inner.event_type {
+                EventType::Log(log_event) => {
+                    self.notification_bar
+                        .push_notification(log_event, event.from_dashboard);
                 }
                 EventType::GraphStatistics(graph_statistics) => self
                     .statistics_tab

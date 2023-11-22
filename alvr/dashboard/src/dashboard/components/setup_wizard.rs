@@ -135,28 +135,82 @@ Script is not 100% stable and might cause some instability issues with pipewire,
 
                     #[cfg(target_os = "linux")]
                     if ui
-                        .button("Download and set 'On connect/On disconnect' script")
+                        .button(format!(
+                            "Download and set 'On connect/On disconnect' script, {}",
+                            "set Pipewire audio"
+                        ))
                         .clicked()
                     {
                         match download_and_prepare_audio_script() {
                             Ok(audio_script_path) => {
-                                let path_json = serde_json::Value::String(
-                                    audio_script_path.to_string_lossy().to_string(),
-                                );
+                                fn bool_path_value_pair(
+                                    session_path: &str,
+                                    value: bool,
+                                ) -> PathValuePair {
+                                    PathValuePair {
+                                        path: alvr_packets::parse_path(session_path),
+                                        value: serde_json::Value::Bool(value),
+                                    }
+                                }
+                                fn string_path_value_pair(
+                                    session_path: &str,
+                                    value: &str,
+                                ) -> PathValuePair {
+                                    PathValuePair {
+                                        path: alvr_packets::parse_path(session_path),
+                                        value: serde_json::Value::String(value.to_owned()),
+                                    }
+                                }
+
+                                const GAME_AUDIO_PREFIX: &str =
+                                    "session_settings.audio.game_audio.content.device";
+                                const MIC_PREFIX: &str =
+                                    "session_settings.audio.microphone.content.devices";
                                 request = Some(SetupWizardRequest::ServerRequest(
                                     ServerRequest::SetValues(vec![
-                                        PathValuePair {
-                                            path: alvr_packets::parse_path(
-                                                "session_settings.connection.on_connect_script",
-                                            ),
-                                            value: path_json.clone(),
-                                        },
-                                        PathValuePair {
-                                            path: alvr_packets::parse_path(
-                                                "session_settings.connection.on_disconnect_script",
-                                            ),
-                                            value: path_json,
-                                        },
+                                        // scripts
+                                        string_path_value_pair(
+                                            "session_settings.connection.on_connect_script",
+                                            &audio_script_path.to_string_lossy().to_string(),
+                                        ),
+                                        string_path_value_pair(
+                                            "session_settings.connection.on_disconnect_script",
+                                            &audio_script_path.to_string_lossy().to_string(),
+                                        ),
+                                        // game audio
+                                        bool_path_value_pair(
+                                            "session_settings.audio.game_audio.enabled",
+                                            true,
+                                        ),
+                                        bool_path_value_pair(
+                                            &format!("{GAME_AUDIO_PREFIX}.set"),
+                                            true,
+                                        ),
+                                        string_path_value_pair(
+                                            &format!("{GAME_AUDIO_PREFIX}.content.variant"),
+                                            "NameSubstring",
+                                        ),
+                                        string_path_value_pair(
+                                            &format!("{GAME_AUDIO_PREFIX}.content.NameSubstring"),
+                                            "pipewire",
+                                        ),
+                                        // microphone
+                                        bool_path_value_pair(
+                                            "session_settings.audio.microphone.enabled",
+                                            true,
+                                        ),
+                                        string_path_value_pair(
+                                            &format!("{MIC_PREFIX}.variant"),
+                                            "Custom",
+                                        ),
+                                        string_path_value_pair(
+                                            &format!("{MIC_PREFIX}.Custom.sink.variant"),
+                                            "NameSubstring",
+                                        ),
+                                        string_path_value_pair(
+                                            &format!("{MIC_PREFIX}.Custom.sink.NameSubstring"),
+                                            "pipewire",
+                                        ),
                                     ]),
                                 ));
                                 alvr_common::info!("Successfully downloaded and set On connect / On disconnect script")
@@ -166,6 +220,7 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                     }
                 },
             ),
+
             Page::HandGestures => page_content(
                 ui,
                 "Hand Gestures",
@@ -176,9 +231,10 @@ By default, controller button emulation is set to prevent accidental clicks. You
                     if basic_components::switch(ui, &mut self.only_touch).changed() {
                         request = Some(SetupWizardRequest::ServerRequest(
                             ServerRequest::SetValues(vec![PathValuePair {
-                                path: alvr_packets::parse_path(
-                                    "session_settings.headset.controllers.content.gestures.content.only_touch",
-                                ),
+                                path: alvr_packets::parse_path(&format!(
+                                    "session_settings.headset.controllers.content.{}",
+                                    "gestures.content.only_touch"
+                                )),
                                 value: serde_json::Value::Bool(self.only_touch),
                             }]),
                         ));

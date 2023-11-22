@@ -1,4 +1,4 @@
-use crate::dashboard::{basic_components, ServerRequest};
+use crate::dashboard::ServerRequest;
 use alvr_common::ConnectionState;
 use alvr_gui_common::theme::{self, log_colors};
 use alvr_packets::ClientListAction;
@@ -8,7 +8,6 @@ use eframe::{
     emath::{Align, Align2},
     epaint::Color32,
 };
-use std::net::{IpAddr, Ipv4Addr};
 
 struct EditPopupState {
     new_client: bool,
@@ -214,12 +213,7 @@ fn trusted_clients_section(
                                 .num_columns(2)
                                 .spacing(egui::vec2(8.0, 8.0))
                                 .show(ui, |ui| {
-                                    ui.label(format!(
-                                        "{hostname}: {} ({})",
-                                        data.current_ip
-                                            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
-                                        data.display_name
-                                    ));
+                                    ui.label(&data.display_name);
                                     ui.horizontal(|ui| {
                                         ui.with_layout(
                                             Layout::right_to_left(Align::Center),
@@ -248,23 +242,12 @@ fn trusted_clients_section(
 
                                     ui.end_row();
 
-                                    ui.horizontal(|ui| {
-                                        ui.hyperlink_to(
-                                            "Use Cable:",
-                                            format!(
-                                                "https://github.com/alvr-org/ALVR/wiki/{}#{}",
-                                                "ALVR-wired-setup-(ALVR-over-USB)",
-                                                "letting-your-pc-communicate-with-your-hmd"
-                                            ),
-                                        );
-                                        if basic_components::switch(ui, &mut data.cabled).changed()
-                                        {
-                                            request = Some(ServerRequest::UpdateClientList {
-                                                hostname: hostname.clone(),
-                                                action: ClientListAction::SetCabled(data.cabled),
-                                            });
-                                        }
-                                    });
+                                    ui.label(format!(
+                                        "{hostname}: {}",
+                                        data.current_ip
+                                            .map(|ip| ip.to_string())
+                                            .unwrap_or_else(|| "Unknown IP".into()),
+                                    ));
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                         if ui.button("Remove").clicked() {
                                             request = Some(ServerRequest::UpdateClientList {

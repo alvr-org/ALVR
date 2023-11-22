@@ -3,7 +3,6 @@ pub mod boolean;
 pub mod choice;
 pub mod collapsible;
 pub mod dictionary;
-pub mod help;
 pub mod notice;
 pub mod number;
 pub mod optional;

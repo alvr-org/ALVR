@@ -16,7 +16,7 @@ alvr_gui_common.workspace = true
 
 bincode = "1"
 chrono = "0.4"
-eframe = "0.23"
+eframe = "0.24"
 env_logger = "0.10"
 ico = "0.3"
 rand = "0.8"

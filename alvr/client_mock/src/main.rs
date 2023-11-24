@@ -7,7 +7,7 @@ use alvr_common::{
 use alvr_packets::Tracking;
 use alvr_session::CodecType;
 use eframe::{
-    egui::{self, CentralPanel, Context, RichText, Slider},
+    egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},
     Frame, NativeOptions,
 };
 use std::{
@@ -308,7 +308,7 @@ fn main() {
     eframe::run_native(
         "Mock client",
         NativeOptions {
-            initial_window_size: Some(egui::vec2(400.0, 400.0)),
+            viewport: ViewportBuilder::default().with_inner_size((400.0, 400.0)),
             ..Default::default()
         },
         Box::new(|_| Box::new(Window::new(input_sender, output_receiver))),

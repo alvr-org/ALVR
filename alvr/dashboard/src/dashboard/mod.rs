@@ -336,14 +336,17 @@ impl eframe::App for Dashboard {
         for request in requests {
             self.data_sources.request(request);
         }
-    }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn on_close_event(&mut self) -> bool {
-        if crate::data_sources::get_local_data_source()
-            .settings()
-            .steamvr_launcher
-            .open_close_steamvr_with_dashboard
+        if context.input(|state| state.viewport().close_requested())
+            && self
+                .session
+                .as_ref()
+                .map(|s| {
+                    s.to_settings()
+                        .steamvr_launcher
+                        .open_close_steamvr_with_dashboard
+                })
+                .unwrap_or(false)
         {
             self.data_sources.request(ServerRequest::ShutdownSteamvr);
 
@@ -351,7 +354,5 @@ impl eframe::App for Dashboard {
                 .lock()
                 .ensure_steamvr_shutdown()
         }
-
-        true
     }
 }

@@ -29,6 +29,12 @@ class RenderPipeline;
 class Renderer
 {
 public:
+    enum class ExternalHandle {
+        None,
+        DmaBuf,
+        OpaqueFd
+    };
+
     struct Output {
         VkImage image = VK_NULL_HANDLE;
         VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -57,7 +63,7 @@ public:
 
     void AddPipeline(RenderPipeline *pipeline);
 
-    void CreateOutput(uint32_t width, uint32_t height);
+    void CreateOutput(uint32_t width, uint32_t height, ExternalHandle handle);
 
     void Render(uint32_t index, uint64_t waitValue);
 

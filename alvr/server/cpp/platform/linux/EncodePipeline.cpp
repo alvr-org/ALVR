@@ -26,7 +26,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
   if(Settings::Instance().m_force_sw_encoding == false) {
     if (vk_ctx.nvidia) {
       try {
-        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, input_frame, vk_frame_ctx, width, height);
+        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, vk_ctx, input_frame, vk_frame_ctx, width, height);
         Info("using NvEnc encoder");
         return nvenc;
       } catch (std::exception &e)

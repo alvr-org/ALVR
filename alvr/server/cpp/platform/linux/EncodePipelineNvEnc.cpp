@@ -21,8 +21,44 @@ const char *encoder(ALVR_CODEC codec) {
     throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
 
+void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
+{
+  AVBufferRef *hw_frames_ref;
+  AVHWFramesContext *frames_ctx = NULL;
+  int err = 0;
+
+  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
+    throw std::runtime_error("Failed to create CUDA frame context.");
+  }
+  frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
+  frames_ctx->format = AV_PIX_FMT_CUDA;
+  /**
+   * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
+   * as SW format when we get it from HW.
+   * But NVEnc support only BGR0 format and we easy can just to force it
+   * Because:
+   * AV_PIX_FMT_BGRA - 28  ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
+   * AV_PIX_FMT_BGR0 - 123 ///< packed BGR 8:8:8,    32bpp, BGRXBGRX...   X=unused/undefined
+   *
+   * We just to ignore the alpha channel and it's done
+   */
+  frames_ctx->sw_format = AV_PIX_FMT_BGR0;
+  frames_ctx->width = ctx->width;
+  frames_ctx->height = ctx->height;
+  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+    av_buffer_unref(&hw_frames_ref);
+    throw alvr::AvException("Failed to initialize CUDA frame context:", err);
+  }
+  ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
+  if (!ctx->hw_frames_ctx)
+    err = AVERROR(ENOMEM);
+
+  av_buffer_unref(&hw_frames_ref);
+}
+
 } // namespace
 alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
+                                               VkContext &vk_ctx,
                                                VkFrame &input_frame,
                                                VkFrameCtx &vk_frame_ctx,
                                                uint32_t width,
@@ -33,6 +69,11 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
 
     int err;
     vk_frame = input_frame.make_av_frame(vk_frame_ctx);
+
+    err = av_hwdevice_ctx_create_derived(&hw_ctx, AV_HWDEVICE_TYPE_CUDA, vk_ctx.ctx, 0);
+    if (err < 0) {
+        throw alvr::AvException("Failed to create a CUDA device:", err);
+    }
 
     const auto &settings = Settings::Instance();
 
@@ -93,17 +134,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     av_opt_set_int(encoder_ctx->priv_data, "delay", 1, 0);
     av_opt_set_int(encoder_ctx->priv_data, "forced-idr", 1, 0);
 
-    /**
-     * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
-     * as SW format when we get it from HW.
-     * But NVEnc support only BGR0 format and we easy can just to force it
-     * Because:
-     * AV_PIX_FMT_BGRA - 28  ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
-     * AV_PIX_FMT_BGR0 - 123 ///< packed BGR 8:8:8,    32bpp, BGRXBGRX...   X=unused/undefined
-     *
-     * We just to ignore the alpha channel and it's done
-     */
-    encoder_ctx->pix_fmt = AV_PIX_FMT_BGR0;
+    encoder_ctx->pix_fmt = AV_PIX_FMT_CUDA;
     encoder_ctx->width = width;
     encoder_ctx->height = height;
     encoder_ctx->time_base = {1, (int)1e9};
@@ -116,6 +147,8 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     params.bitrate_bps = 30'000'000;
     params.framerate = 60.0;
     SetParams(params);
+
+    set_hwframe_ctx(encoder_ctx, hw_ctx);
 
     err = avcodec_open2(encoder_ctx, codec, NULL);
     if (err < 0) {
@@ -131,11 +164,33 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
 }
 
 void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {
-    r->Sync();
-    timestamp.cpu = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    int err = av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
-    if (err) {
-        throw alvr::AvException("av_hwframe_transfer_data", err);
+    AVVkFrame *vkf = reinterpret_cast<AVVkFrame*>(vk_frame->data[0]);
+    vkf->sem_value[0]++;
+
+    VkTimelineSemaphoreSubmitInfo timelineInfo = {};
+    timelineInfo.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    timelineInfo.signalSemaphoreValueCount = 1;
+    timelineInfo.pSignalSemaphoreValues = &vkf->sem_value[0];
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = &timelineInfo;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &r->GetOutput().semaphore;
+    submitInfo.pWaitDstStageMask = &waitStage;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &vkf->sem[0];
+    VK_CHECK(vkQueueSubmit(r->m_queue, 1, &submitInfo, nullptr));
+
+    int err = av_hwframe_get_buffer(encoder_ctx->hw_frames_ctx, hw_frame, 0);
+    if (err < 0) {
+        throw alvr::AvException("Failed to allocate CUDA frame", err);
+    }
+    err = av_hwframe_transfer_data(hw_frame, vk_frame.get(), 0);
+    if (err < 0) {
+        throw alvr::AvException("Failed to transfer Vulkan image to CUDA frame", err);
     }
 
     hw_frame->pict_type = idr ? AV_PICTURE_TYPE_I : AV_PICTURE_TYPE_NONE;
@@ -144,4 +199,6 @@ void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) 
     if ((err = avcodec_send_frame(encoder_ctx, hw_frame)) < 0) {
         throw alvr::AvException("avcodec_send_frame failed:", err);
     }
+
+    av_frame_unref(hw_frame);
 }

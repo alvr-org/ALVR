@@ -190,6 +190,7 @@ pub extern "C" fn shutdown_driver() {
         thread::sleep(Duration::from_millis(100));
     }
 
+    #[cfg(target_os = "windows")]
     WEBSERVER_RUNTIME.lock().take();
 
     unsafe { ShutdownSteamvr() };

@@ -67,6 +67,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
     // std::vector<ViveTrackerProxy> generic_trackers;
+    bool shutdown_called = false;
 
     std::map<uint64_t, TrackedDevice *> tracked_devices;
 
@@ -148,6 +149,10 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 }
             }
 #endif
+        }
+        if(vr::VRServerDriverHost()->IsExiting() && !shutdown_called) {
+            shutdown_called = true;
+            ShutdownRuntime();
         }
     }
     virtual bool ShouldBlockStandbyMode() override { return false; }

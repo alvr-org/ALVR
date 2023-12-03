@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-1. This is not a fully-featured version of ALVR! It lacks Nvidia support, a desktop file, and has bugs related to Flatpak sandboxing
+1. This is not a fully-featured version of ALVR! It lacks Nvidia support and has bugs related to Flatpak sandboxing
 
 2. Nvidia GPUs are currently not supported
 
@@ -54,7 +54,7 @@ flatpak install flathub org.freedesktop.Platform.GL.default//22.08-extra \
 Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
 
 ```
-sudo setcap CAP_SYS_NICE+ep ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
+sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
 ```
 
 This command is normally run by SteamVR, but due to the lack of sudo access within the Flatpak sandbox, it must be run outside of the Flatpak sandbox. After running the command, run SteamVR once then close it.

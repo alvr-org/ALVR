@@ -20,5 +20,8 @@ Create a universal bridge between XR devices.
 * Dashboard rewrite
     * **Purpose**: improved settings flexibility and better maintainability
     * **Status**: Done
+* Monado Driver
+    * **Purpose**: support other runtimes with the streamer
+    * **Status**: blocked on refactors
 
 Due to the low development capacity, no ETA can be provided. New releases will not have a regular cadence and they do not have scheduled features.

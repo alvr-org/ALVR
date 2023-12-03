@@ -8,7 +8,7 @@ Under the hood, basic settings work by modifying some advanced settings.
 
 In this document, settings in **Basic Settings** describe settings that are visible in basic mode, **Advanced Settings** describe settings that are visible only in advanced mode. Some basic settings are also visible in advanced mode.
 
-**Document updated for ALVR v15.1.0**
+**Document updated for ALVR v20.0.0**
 
 ------------------------------------------
 
@@ -16,9 +16,10 @@ In this document, settings in **Basic Settings** describe settings that are visi
 
 ### Video resolution 
 
-* Percentage of the native resolution of the headset to be used for encoding the video to be transmitted to the headset. 
-    * Setting anything higher than 100% can slightly improve visual quality but at the cost of severely worse network performance. 
-    * Setting anything lower the 100% can improve latency, stutters and remove encoder errors (especially with the Quest 2), at the cost of worse visual quality.
+* Preset range of the resolutions to be used for encoding the video to be transmitted to the headset. 
+    * Medium the default resolution targets the Quest 2's native resolution.
+    * Setting anything higher than Medium can slightly improve visual quality but at the cost of severely worse network performance. 
+    * Setting anything lower the Medium can improve latency, stutters and remove encoder errors (especially with the Quest 2), at the cost of worse visual quality.
 
 ### Refresh rate 
 

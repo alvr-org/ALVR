@@ -243,10 +243,14 @@ pub fn handshake_loop() {
                     warn!("UDP handshake listening error: {e:?}");
 
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-
                     continue;
                 }
             };
+
+            if clients.is_empty() {
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                continue;
+            }
 
             for (client_hostname, client_ip) in clients {
                 let trusted = {
@@ -290,6 +294,8 @@ pub fn handshake_loop() {
 
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             }
+        } else {
+            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
         }
     }
 

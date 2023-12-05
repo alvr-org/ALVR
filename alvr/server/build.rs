@@ -34,6 +34,7 @@ fn main() {
             entry.file_name() != "tools"
                 && entry.file_name() != "platform"
                 && (platform_name != "macos" || entry.file_name() != "amf")
+                && (platform_name != "linux" || entry.file_name() != "amf")
         });
 
     let platform_iter = walkdir::WalkDir::new(platform_subpath).into_iter();

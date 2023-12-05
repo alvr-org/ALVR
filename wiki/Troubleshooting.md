@@ -1,6 +1,6 @@
 # Troubleshooting
 
-For ALVR 14.0.0 and later
+For ALVR 20.0.0 and later
 ===
 
 First off, please make sure to carefully read the [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide) and [Usage](https://github.com/alvr-org/ALVR/wiki/Usage) pages.
@@ -23,24 +23,22 @@ If you need more help, come to our [Discord](https://discord.gg/KbKk3UM) and ask
 Trouble starting ALVR
 ===
 
-`ALVR Launcher.exe` needs Chrome, Chromium or Edge to be installed in order to work. Chrome is preferred because Edge can cause problems after updating ALVR. If you're using Windows 10, make sure your Windows is up to date. Windows 10 version 1803 should have Edge preinstalled. Otherwise you will need to install either Chrome or Chromium yourself.
-
-If you run Windows 7 you ned to use [this workaround](https://github.com/alvr-org/ALVR/issues/1090#issuecomment-1155288370).
+`ALVR Dashboard.exe` needs a working graphics driver to be installed in order to work. 
 
 ALVR starts launching, but gets stuck on "ALVR is not responding..."
 ===
 
-With ALVR versions >= 14.2, some antivirus software can prevent ALVR from launching SteamVR. Try disabling any antivirus other than Windows Defender (McAfee, Norton, etc.), reboot, then try again. If the issue persists, make sure you don't have an instance of ALVR or SteamVR running in the background (check in Task Manager). If you continue having issues, hop in the [ALVR Discord server](https://discord.gg/KbKk3UM), and we'll do our best to help you get it sorted out.
+With ALVR versions >= 20.0, some antivirus software can prevent ALVR from launching SteamVR. Try disabling any antivirus other than Windows Defender (McAfee, Norton, etc.), reboot, then try again. If the issue persists, make sure you don't have an instance of ALVR or SteamVR running in the background (check in Task Manager). If you continue having issues, hop in the [ALVR Discord server](https://discord.gg/KbKk3UM), and we'll do our best to help you get it sorted out.
 
 ALVR starts fine, but...
 ===
 
-This section has some advice for when ALVR shows an error (or sometimes warning) pop-up. This could be either a yellow pop-up in the setup window (`ALVR Launcher.exe`) or a separate pop-up when you connect with a headset.
+This section has some advice for when ALVR shows an error (or sometimes warning) pop-up. This could be either a yellow pop-up in the setup window (`ALVR Dashboard.exe`) or a separate pop-up when you connect with a headset.
 
 [WARN] clientFoundInvalid
 ---
 
-If you get a warning pop-up inside the `ALVR Launcher.exe` window saying `clientFoundInvalid`, make sure the version of ALVR you installed on your headset is compatible with the version you're trying to run on your PC.
+If you get a warning pop-up inside the `ALVR Dashboard.exe` window saying `clientFoundInvalid`, make sure the version of ALVR you installed on your headset is compatible with the version you're trying to run on your PC.
 
 The latest release can be found [here](https://github.com/alvr-org/ALVR/releases/latest) and contains both the `alvr_client.apk` file for your headset and the `alvr_streamer_windows.zip` archive with the application for your PC.
 
@@ -81,7 +79,7 @@ ALVR client list is empty
 
 ![Empty ALVR client list](images/ALVRexe-no-clients.png)
 
-Check that the PC app and the headset app run on the latest version of ALVR. At the time of writing, the latest version is v14.1.0. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is https://github.com/alvr-org/ALVR.
+Check that the PC app and the headset app run on the latest version of ALVR. At the time of writing, the latest version is v20.4.3. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is https://github.com/alvr-org/ALVR.
 
 Make sure ALVR is running both on the PC and on the headset. To be visible in the client list, ALVR on the headset sends broadcast packets which the PC application listens for. These can be blocked by your firewall or possibly your router, if both headset and PC are connected wirelessly, having AP isolation enabled on the router will cause this.
 

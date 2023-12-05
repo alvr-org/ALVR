@@ -48,7 +48,7 @@ We use SteamVR direct rendering mode on a fake screen, and capture the output of
 See [build from source](Build-from-source)
 
 ## Usage
-Run `build/alvr_streamer_linux/ALVR Launcher`
+Run `build/alvr_streamer_linux/ALVR Dashboard`
 
 On first setup, SteamVR will probably show the VR display on your screen, with the configuration window. If you have dual screen, you can move the configuration window to a visible area (with Alt + drag on most desktop environments).
 

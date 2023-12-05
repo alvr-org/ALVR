@@ -239,8 +239,6 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
                     string_modifier(&format!("{PREFIX}.variant"), "Custom"),
                     string_modifier(&format!("{PREFIX}.Custom.sink.variant"), "NameSubstring"),
                     string_modifier(&format!("{PREFIX}.Custom.sink.NameSubstring"), &name),
-                    // string_modifier(&format!("{PREFIX}.Custom.source.variant"), "NameSubstring"),
-                    // string_modifier(&format!("{PREFIX}.Custom.source.NameSubstring"), ""),
                 ],
                 content: None,
             })

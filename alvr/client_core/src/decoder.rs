@@ -21,10 +21,10 @@ pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     })
 });
 #[cfg(target_os = "android")]
-pub static DECODER_SINK: alvr_common::LazyMutOpt<crate::platform::VideoDecoderSink> =
+pub static DECODER_SINK: alvr_common::OptLazy<crate::platform::VideoDecoderSink> =
     alvr_common::lazy_mut_none();
 #[cfg(target_os = "android")]
-pub static DECODER_SOURCE: alvr_common::LazyMutOpt<crate::platform::VideoDecoderSource> =
+pub static DECODER_SOURCE: alvr_common::OptLazy<crate::platform::VideoDecoderSource> =
     alvr_common::lazy_mut_none();
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);

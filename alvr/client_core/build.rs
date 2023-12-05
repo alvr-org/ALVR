@@ -14,12 +14,12 @@ fn main() {
 
         let source_files_paths = cpp_paths
             .iter()
-            .filter_map(|path| {
+            .filter(|&path| {
                 path.extension()
                     .filter(|ext| ext.to_string_lossy() == "cpp")
                     .is_some()
-                    .then(|| path.clone())
             })
+            .cloned()
             .collect::<Vec<_>>();
 
         cc::Build::new()

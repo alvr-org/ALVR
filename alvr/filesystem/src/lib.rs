@@ -106,7 +106,8 @@ pub struct Layout {
 
 impl Layout {
     pub fn new(root: &Path) -> Self {
-        if cfg!(target_os = "linux") {
+        #[cfg(target_os = "linux")]
+        {
             // Get paths from environment or use FHS compliant paths
             let executables_dir = if !env!("executables_dir").is_empty() {
                 PathBuf::from(env!("executables_dir"))
@@ -177,20 +178,20 @@ impl Layout {
                 ufw_config_dir,
                 vulkan_layer_manifest_dir,
             }
-        } else {
-            Self {
-                executables_dir: root.to_owned(),
-                libraries_dir: root.to_owned(),
-                static_resources_dir: root.to_owned(),
-                config_dir: root.to_owned(),
-                log_dir: root.to_owned(),
-                openvr_driver_root_dir: root.to_owned(),
-                vrcompositor_wrapper_dir: root.to_owned(),
-                firewall_script_dir: root.to_owned(),
-                firewalld_config_dir: root.to_owned(),
-                ufw_config_dir: root.to_owned(),
-                vulkan_layer_manifest_dir: root.to_owned(),
-            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        Self {
+            executables_dir: root.to_owned(),
+            libraries_dir: root.to_owned(),
+            static_resources_dir: root.to_owned(),
+            config_dir: root.to_owned(),
+            log_dir: root.to_owned(),
+            openvr_driver_root_dir: root.to_owned(),
+            vrcompositor_wrapper_dir: root.to_owned(),
+            firewall_script_dir: root.to_owned(),
+            firewalld_config_dir: root.to_owned(),
+            ufw_config_dir: root.to_owned(),
+            vulkan_layer_manifest_dir: root.to_owned(),
         }
     }
 

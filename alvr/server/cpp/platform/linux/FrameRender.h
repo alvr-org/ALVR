@@ -42,6 +42,7 @@ private:
 
     uint32_t m_width;
     uint32_t m_height;
+    ExternalHandle m_handle = ExternalHandle::None;
     ColorCorrection m_colorCorrectionConstants;
     FoveationVars m_foveatedRenderingConstants;
     std::vector<RenderPipeline*> m_pipelines;

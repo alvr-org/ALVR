@@ -5,20 +5,23 @@ use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
-    settings_schema::Switch,
+    parking_lot::RwLock,
     warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_packets::{FaceData, Tracking};
-use alvr_session::ClientsideFoveationMode;
-use interaction::{FaceInputContext, HandsInteractionContext};
+use alvr_session::{
+    ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig,
+    FoveatedEncodingConfig,
+};
+use interaction::InteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 use std::{
     collections::VecDeque,
     path::Path,
     ptr,
-    sync::{mpsc, Arc},
-    thread,
+    sync::{mpsc, Arc, Once},
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
@@ -39,18 +42,54 @@ pub enum Platform {
     Other,
 }
 
-struct HistoryView {
+#[derive(Clone)]
+pub struct XrContext {
+    instance: xr::Instance,
+    system: xr::SystemId,
+    session: xr::Session<xr::OpenGlEs>,
+}
+
+pub struct SessionRunningContext {
+    lobby_swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
+    reference_space: Arc<RwLock<xr::Space>>,
+    views_history_sender: mpsc::Sender<ViewsHistorySample>,
+    views_history_receiver: mpsc::Receiver<ViewsHistorySample>,
+    stream_context: Option<StreamContext>,
+}
+
+#[derive(PartialEq)]
+struct StreamConfig {
+    view_resolution: UVec2,
+    refresh_rate_hint: f32,
+    foveated_encoding_config: Option<FoveatedEncodingConfig>,
+    clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    face_sources_config: Option<FaceTrackingSourcesConfig>,
+}
+
+struct StreamContext {
+    view_resolution: UVec2,
+    swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
+    views_history: VecDeque<ViewsHistorySample>,
+    last_good_views: Vec<xr::View>,
+    running: Arc<RelaxedAtomic>,
+    input_thread: Option<JoinHandle<()>>,
+}
+
+impl Drop for StreamContext {
+    fn drop(&mut self) {
+        self.running.set(false);
+        self.input_thread.take().unwrap().join().ok();
+    }
+}
+
+struct ViewsHistorySample {
     timestamp: Duration,
     views: Vec<xr::View>,
 }
 
-struct StreamingInputContext {
-    xr_instance: xr::Instance,
-    xr_session: xr::Session<xr::AnyGraphics>,
-    hands_context: Arc<HandsInteractionContext>,
-    face_context: Option<FaceInputContext>,
-    history_view_sender: mpsc::Sender<HistoryView>,
-    reference_space: Arc<xr::Space>,
+struct StreamInputContext {
+    views_history_sender: mpsc::Sender<ViewsHistorySample>,
+    reference_space: Arc<RwLock<xr::Space>>,
     last_ipd: f32,
     last_hand_positions: [Vec3; 2],
 }
@@ -85,6 +124,26 @@ fn to_fov(f: xr::Fovf) -> Fov {
         right: f.angle_right,
         up: f.angle_up,
         down: f.angle_down,
+    }
+}
+
+fn default_view() -> xr::View {
+    xr::View {
+        pose: xr::Posef {
+            orientation: xr::Quaternionf {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.0,
+            },
+            position: xr::Vector3f::default(),
+        },
+        fov: xr::Fovf {
+            angle_left: -1.0,
+            angle_right: 1.0,
+            angle_up: 1.0,
+            angle_down: -1.0,
+        },
     }
 }
 
@@ -219,20 +278,22 @@ pub fn create_swapchain(
     }
 }
 
-// This function is allowed to return errors. It can happen when the session is destroyed
-// asynchronously
-fn update_streaming_input(ctx: &mut StreamingInputContext) {
+fn stream_input_pipeline(
+    xr_ctx: &XrContext,
+    interaction_ctx: &InteractionContext,
+    stream_ctx: &mut StreamInputContext,
+) {
     // Streaming related inputs are updated here. Make sure every input poll is done in this
     // thread
-    if let Err(e) = ctx
-        .xr_session
-        .sync_actions(&[(&ctx.hands_context.action_set).into()])
+    if let Err(e) = xr_ctx
+        .session
+        .sync_actions(&[(&interaction_ctx.action_set).into()])
     {
         error!("{e}");
         return;
     }
 
-    let Some(now) = xr_runtime_now(&ctx.xr_instance) else {
+    let Some(now) = xr_runtime_now(&xr_ctx.instance) else {
         error!("Cannot poll tracking: invalid time");
         return;
     };
@@ -246,10 +307,10 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
     let mut device_motions = Vec::with_capacity(3);
 
     'head_tracking: {
-        let Ok((view_flags, views)) = ctx.xr_session.locate_views(
+        let Ok((view_flags, views)) = xr_ctx.session.locate_views(
             xr::ViewConfigurationType::PRIMARY_STEREO,
             to_xr_time(target_timestamp),
-            &ctx.reference_space,
+            &stream_ctx.reference_space.read(),
         ) else {
             error!("Cannot locate views");
             break 'head_tracking;
@@ -262,10 +323,10 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         }
 
         let ipd = (to_vec3(views[0].pose.position) - to_vec3(views[1].pose.position)).length();
-        if f32::abs(ctx.last_ipd - ipd) > IPD_CHANGE_EPS {
+        if f32::abs(stream_ctx.last_ipd - ipd) > IPD_CHANGE_EPS {
             alvr_client_core::send_views_config([to_fov(views[0].fov), to_fov(views[1].fov)], ipd);
 
-            ctx.last_ipd = ipd;
+            stream_ctx.last_ipd = ipd;
         }
 
         // Note: Here is assumed that views are on the same plane and orientation. The head position
@@ -274,8 +335,9 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
             (to_vec3(views[0].pose.position) + to_vec3(views[1].pose.position)) / 2.0;
         let head_orientation = to_quat(views[0].pose.orientation);
 
-        ctx.history_view_sender
-            .send(HistoryView {
+        stream_ctx
+            .views_history_sender
+            .send(ViewsHistorySample {
                 timestamp: target_timestamp,
                 views,
             })
@@ -302,18 +364,18 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
     );
 
     let (left_hand_motion, left_hand_skeleton) = interaction::get_hand_motion(
-        &ctx.xr_session,
-        &ctx.reference_space,
+        &xr_ctx.session,
+        &stream_ctx.reference_space.read(),
         tracker_time,
-        &ctx.hands_context.hand_sources[0],
-        &mut ctx.last_hand_positions[0],
+        &interaction_ctx.hands_interaction[0],
+        &mut stream_ctx.last_hand_positions[0],
     );
     let (right_hand_motion, right_hand_skeleton) = interaction::get_hand_motion(
-        &ctx.xr_session,
-        &ctx.reference_space,
+        &xr_ctx.session,
+        &stream_ctx.reference_space.read(),
         tracker_time,
-        &ctx.hands_context.hand_sources[1],
-        &mut ctx.last_hand_positions[1],
+        &interaction_ctx.hands_interaction[1],
+        &mut stream_ctx.last_hand_positions[1],
     );
 
     if let Some(motion) = left_hand_motion {
@@ -323,15 +385,19 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
         device_motions.push((*RIGHT_HAND_ID, motion));
     }
 
-    let face_data = if let Some(context) = &ctx.face_context {
-        FaceData {
-            eye_gazes: interaction::get_eye_gazes(context, &ctx.reference_space, to_xr_time(now)),
-            fb_face_expression: interaction::get_fb_face_expression(context, to_xr_time(now)),
-            htc_eye_expression: interaction::get_htc_eye_expression(context),
-            htc_lip_expression: interaction::get_htc_lip_expression(context),
-        }
-    } else {
-        Default::default()
+    let face_data = FaceData {
+        eye_gazes: interaction::get_eye_gazes(
+            &xr_ctx.session,
+            &interaction_ctx.face_sources,
+            &stream_ctx.reference_space.read(),
+            to_xr_time(now),
+        ),
+        fb_face_expression: interaction::get_fb_face_expression(
+            &interaction_ctx.face_sources,
+            to_xr_time(now),
+        ),
+        htc_eye_expression: interaction::get_htc_eye_expression(&interaction_ctx.face_sources),
+        htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
     alvr_client_core::send_tracking(Tracking {
@@ -342,9 +408,158 @@ fn update_streaming_input(ctx: &mut StreamingInputContext) {
     });
 
     let button_entries =
-        interaction::update_buttons(&ctx.xr_session, &ctx.hands_context.button_actions);
+        interaction::update_buttons(&xr_ctx.session, &interaction_ctx.button_actions);
     if !button_entries.is_empty() {
         alvr_client_core::send_buttons(button_entries);
+    }
+}
+
+fn initialize_stream(
+    xr_ctx: &XrContext,
+    interaction_ctx: Arc<InteractionContext>,
+    session_ctx: &SessionRunningContext,
+    platform: Platform,
+    config: &StreamConfig,
+) -> StreamContext {
+    let stream_view_resolution = config.view_resolution;
+
+    if xr_ctx.instance.exts().fb_display_refresh_rate.is_some() {
+        xr_ctx
+            .session
+            .request_display_refresh_rate(config.refresh_rate_hint)
+            .unwrap();
+    }
+    // todo: check which permissions are needed for htc
+    #[cfg(target_os = "android")]
+    if let Some(config) = &config.face_sources_config {
+        if (config.combined_eye_gaze || config.eye_tracking_fb)
+            && matches!(platform, Platform::Quest)
+        {
+            alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
+        }
+        if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
+            alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
+        }
+        if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
+        }
+    }
+
+    let foveation_profile = if let Some(config) = &config.clientside_foveation_config {
+        if xr_ctx.instance.exts().fb_swapchain_update_state.is_some()
+            && xr_ctx.instance.exts().fb_foveation.is_some()
+            && xr_ctx.instance.exts().fb_foveation_configuration.is_some()
+        {
+            let level;
+            let dynamic;
+            match config.mode {
+                ClientsideFoveationMode::Static { level: lvl } => {
+                    level = lvl;
+                    dynamic = false;
+                }
+                ClientsideFoveationMode::Dynamic { max_level } => {
+                    level = max_level;
+                    dynamic = true;
+                }
+            };
+
+            xr_ctx
+                .session
+                .create_foveation_profile(Some(xr::FoveationLevelProfile {
+                    level: xr::FoveationLevelFB::from_raw(level as i32),
+                    vertical_offset: config.vertical_offset_deg,
+                    dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
+                }))
+                .ok()
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let swapchains = [
+        create_swapchain(
+            &xr_ctx.session,
+            stream_view_resolution,
+            foveation_profile.as_ref(),
+        ),
+        create_swapchain(
+            &xr_ctx.session,
+            stream_view_resolution,
+            foveation_profile.as_ref(),
+        ),
+    ];
+
+    alvr_client_core::opengl::start_stream(
+        stream_view_resolution,
+        [
+            swapchains[0]
+                .enumerate_images()
+                .unwrap()
+                .iter()
+                .map(|i| *i as _)
+                .collect(),
+            swapchains[1]
+                .enumerate_images()
+                .unwrap()
+                .iter()
+                .map(|i| *i as _)
+                .collect(),
+        ],
+        config.foveated_encoding_config.clone(),
+        platform != Platform::Lynx,
+    );
+
+    alvr_client_core::send_playspace(
+        xr_ctx
+            .session
+            .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
+            .unwrap()
+            .map(|a| Vec2::new(a.width, a.height)),
+    );
+
+    alvr_client_core::send_active_interaction_profile(
+        *LEFT_HAND_ID,
+        interaction_ctx.hands_interaction[0].controllers_profile_id,
+    );
+    alvr_client_core::send_active_interaction_profile(
+        *RIGHT_HAND_ID,
+        interaction_ctx.hands_interaction[1].controllers_profile_id,
+    );
+
+    let running = Arc::new(RelaxedAtomic::new(true));
+
+    let mut input_context = StreamInputContext {
+        views_history_sender: session_ctx.views_history_sender.clone(),
+        reference_space: Arc::clone(&session_ctx.reference_space),
+        last_ipd: 0.0,
+        last_hand_positions: [Vec3::ZERO; 2],
+    };
+    let input_thread = thread::spawn({
+        let xr_ctx = xr_ctx.clone();
+        let running = Arc::clone(&running);
+        let interaction_ctx = Arc::clone(&interaction_ctx);
+        let input_rate = config.refresh_rate_hint;
+        move || {
+            let mut deadline = Instant::now();
+            let frame_interval = Duration::from_secs_f32(1.0 / input_rate);
+            while running.value() {
+                stream_input_pipeline(&xr_ctx, &interaction_ctx, &mut input_context);
+
+                deadline += frame_interval / 3;
+                thread::sleep(deadline.saturating_duration_since(Instant::now()));
+            }
+        }
+    });
+
+    StreamContext {
+        view_resolution: stream_view_resolution,
+        swapchains,
+        views_history: VecDeque::new(),
+        last_good_views: vec![default_view(), default_view()],
+        running,
+        input_thread: Some(input_thread),
     }
 }
 
@@ -387,6 +602,7 @@ pub fn entry_point() {
 
     let mut exts = xr::ExtensionSet::default();
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
+    exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
@@ -420,6 +636,9 @@ pub fn entry_point() {
 
     let egl_context = init_egl();
 
+    let mut last_lobby_message = String::new();
+    let mut stream_config = None::<StreamConfig>;
+
     'session_loop: loop {
         let xr_system = xr_instance
             .system(xr::FormFactor::HEAD_MOUNTED_DISPLAY)
@@ -432,6 +651,12 @@ pub fn entry_point() {
 
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) =
             create_xr_session(&xr_instance, xr_system, &egl_context);
+
+        let xr_ctx = XrContext {
+            instance: xr_instance.clone(),
+            system: xr_system,
+            session: xr_session.clone(),
+        };
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(
@@ -452,51 +677,28 @@ pub fn entry_point() {
             vec![90.0]
         };
 
-        alvr_client_core::initialize(recommended_view_resolution, supported_refresh_rates, false);
-        alvr_client_core::opengl::initialize();
+        // Todo: refactor the logic to call this before the session creation
+        static INIT_ONCE: Once = Once::new();
+        INIT_ONCE.call_once(|| {
+            alvr_client_core::initialize(
+                recommended_view_resolution,
+                supported_refresh_rates,
+                false,
+            );
+        });
 
-        let hands_context = Arc::new(interaction::initialize_hands_interaction(
+        alvr_client_core::opengl::initialize();
+        alvr_client_core::opengl::update_hud_message(&last_lobby_message);
+
+        let interaction_context = Arc::new(interaction::initialize_interaction(
+            &xr_ctx,
             platform,
-            &xr_instance,
-            xr_system,
-            &xr_session.clone().into_any_graphics(),
+            stream_config
+                .as_ref()
+                .and_then(|c| c.face_sources_config.clone()),
         ));
 
-        let is_streaming = Arc::new(RelaxedAtomic::new(false));
-
-        let mut reference_space = Arc::new(
-            xr_session
-                .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
-                .unwrap(),
-        );
-        let mut lobby_swapchains = None;
-        let mut stream_swapchains = None;
-        let mut stream_view_resolution = UVec2::ZERO;
-        let mut streaming_input_thread = None::<thread::JoinHandle<_>>;
-        let mut views_history = VecDeque::new();
-
-        let (history_view_sender, history_view_receiver) = mpsc::channel();
-        let mut reference_space_sender = None::<mpsc::Sender<_>>;
-
-        let default_view = xr::View {
-            pose: xr::Posef {
-                orientation: xr::Quaternionf {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                    w: 1.0,
-                },
-                position: xr::Vector3f::default(),
-            },
-            fov: xr::Fovf {
-                angle_left: -0.1,
-                angle_right: 0.1,
-                angle_up: 0.1,
-                angle_down: -0.1,
-            },
-        };
-
-        let mut last_good_views = vec![default_view, default_view];
+        let mut session_running_context = None;
 
         let mut event_storage = xr::EventDataBuffer::new();
         'render_loop: loop {
@@ -512,31 +714,21 @@ pub fn entry_point() {
                                 .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
                                 .unwrap();
 
-                            let swapchains = lobby_swapchains.get_or_insert_with(|| {
-                                [
-                                    create_swapchain(
-                                        &xr_session,
-                                        recommended_view_resolution,
-                                        None,
-                                    ),
-                                    create_swapchain(
-                                        &xr_session,
-                                        recommended_view_resolution,
-                                        None,
-                                    ),
-                                ]
-                            });
+                            let lobby_swapchains = [
+                                create_swapchain(&xr_session, recommended_view_resolution, None),
+                                create_swapchain(&xr_session, recommended_view_resolution, None),
+                            ];
 
                             alvr_client_core::opengl::resume(
                                 recommended_view_resolution,
                                 [
-                                    swapchains[0]
+                                    lobby_swapchains[0]
                                         .enumerate_images()
                                         .unwrap()
                                         .iter()
                                         .map(|i| *i as _)
                                         .collect(),
-                                    swapchains[1]
+                                    lobby_swapchains[1]
                                         .enumerate_images()
                                         .unwrap()
                                         .iter()
@@ -546,33 +738,37 @@ pub fn entry_point() {
                             );
 
                             alvr_client_core::resume();
+
+                            let (views_history_sender, views_history_receiver) = mpsc::channel();
+
+                            let reference_space = Arc::new(RwLock::new(
+                                xr_session
+                                    .create_reference_space(
+                                        xr::ReferenceSpaceType::STAGE,
+                                        xr::Posef::IDENTITY,
+                                    )
+                                    .unwrap(),
+                            ));
+
+                            session_running_context = Some(SessionRunningContext {
+                                lobby_swapchains,
+                                reference_space,
+                                views_history_sender,
+                                views_history_receiver,
+                                stream_context: None,
+                            });
                         }
                         xr::SessionState::STOPPING => {
-                            // Make sure streaming resources are destroyed before pausing
-                            {
-                                stream_swapchains.take();
-
-                                is_streaming.set(false);
-
-                                if let Some(thread) = streaming_input_thread.take() {
-                                    thread.join().unwrap();
-                                }
-                            }
-
                             alvr_client_core::pause();
-
                             alvr_client_core::opengl::pause();
 
-                            lobby_swapchains.take();
+                            // Delete all resources and stop thread
+                            session_running_context = None;
 
                             xr_session.end().unwrap();
                         }
-                        xr::SessionState::EXITING => {
-                            break 'session_loop;
-                        }
-                        xr::SessionState::LOSS_PENDING => {
-                            break 'render_loop;
-                        }
+                        xr::SessionState::EXITING => break 'render_loop,
+                        xr::SessionState::LOSS_PENDING => break 'render_loop,
                         _ => (),
                     },
                     xr::Event::ReferenceSpaceChangePending(event) => {
@@ -581,25 +777,21 @@ pub fn entry_point() {
                             event.reference_space_type()
                         );
 
-                        reference_space = Arc::new(
-                            xr_session
+                        if let Some(ctx) = &session_running_context {
+                            *ctx.reference_space.write() = xr_session
                                 .create_reference_space(
                                     xr::ReferenceSpaceType::STAGE,
                                     xr::Posef::IDENTITY,
                                 )
-                                .unwrap(),
-                        );
+                                .unwrap();
 
-                        if let Some(sender) = &reference_space_sender {
-                            sender.send(Arc::clone(&reference_space)).ok();
+                            alvr_client_core::send_playspace(
+                                xr_session
+                                    .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
+                                    .unwrap()
+                                    .map(|a| Vec2::new(a.width, a.height)),
+                            );
                         }
-
-                        alvr_client_core::send_playspace(
-                            xr_session
-                                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
-                                .unwrap()
-                                .map(|a| Vec2::new(a.width, a.height)),
-                        );
                     }
                     xr::Event::PerfSettingsEXT(event) => {
                         info!(
@@ -617,23 +809,11 @@ pub fn entry_point() {
                         // todo
                     }
                     _ => (),
-                    // not used:
-                    // VisibilityMaskChangedKHR
-                    // MainSessionVisibilityChangedEXTX
-                    // DisplayRefreshRateChangedFB
-                    // SpatialAnchorCreateCompleteFB
-                    // SpaceSetStatusCompleteFB
-                    // SpaceQueryResultsAvailableFB
-                    // SpaceQueryCompleteFB
-                    // SpaceSaveCompleteFB
-                    // SpaceEraseCompleteFB
-                    // ViveTrackerConnectedHTCX
-                    // MarkerTrackingUpdateVARJO
                 }
             }
 
-            let lobby_swapchains = if let Some(swapchains) = &mut lobby_swapchains {
-                swapchains
+            let session_context = if let Some(ctx) = &mut session_running_context {
+                ctx
             } else {
                 thread::sleep(Duration::from_millis(100));
                 continue;
@@ -642,6 +822,7 @@ pub fn entry_point() {
             while let Some(event) = alvr_client_core::poll_event() {
                 match event {
                     ClientCoreEvent::UpdateHudMessage(message) => {
+                        last_lobby_message = message.clone();
                         alvr_client_core::opengl::update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted {
@@ -649,171 +830,43 @@ pub fn entry_point() {
                         refresh_rate_hint,
                         settings,
                     } => {
-                        stream_view_resolution = view_resolution;
-
-                        if exts.fb_display_refresh_rate {
-                            xr_session
-                                .request_display_refresh_rate(refresh_rate_hint)
-                                .unwrap();
-                        }
-
-                        is_streaming.set(true);
-
-                        let face_context =
-                            if let Switch::Enabled(config) = settings.headset.face_tracking {
-                                // todo: check which permissions are needed for htc
-                                #[cfg(target_os = "android")]
-                                {
-                                    if config.sources.eye_tracking_fb {
-                                        alvr_client_core::try_get_permission(
-                                            "com.oculus.permission.EYE_TRACKING",
-                                        );
-                                    }
-                                    if config.sources.face_tracking_fb {
-                                        alvr_client_core::try_get_permission(
-                                            "com.oculus.permission.FACE_TRACKING",
-                                        );
-                                    }
-                                }
-
-                                Some(interaction::initialize_face_input(
-                                    &xr_instance,
-                                    xr_system,
-                                    &xr_session,
-                                    config.sources.eye_tracking_fb,
-                                    config.sources.face_tracking_fb,
-                                    config.sources.eye_expressions_htc,
-                                    config.sources.lip_expressions_htc,
-                                ))
-                            } else {
-                                None
-                            };
-
-                        let mut context = StreamingInputContext {
-                            xr_instance: xr_instance.clone(),
-                            xr_session: xr_session.clone().into_any_graphics(),
-                            hands_context: Arc::clone(&hands_context),
-                            face_context,
-                            history_view_sender: history_view_sender.clone(),
-                            reference_space: Arc::clone(&reference_space),
-                            last_ipd: 0.0,
-                            last_hand_positions: [Vec3::ZERO; 2],
-                        };
-
-                        let is_streaming = Arc::clone(&is_streaming);
-
-                        let (sender, reference_space_receiver) = mpsc::channel();
-                        reference_space_sender = Some(sender);
-
-                        streaming_input_thread = Some(thread::spawn(move || {
-                            let mut deadline = Instant::now();
-                            let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate_hint);
-
-                            while is_streaming.value() {
-                                update_streaming_input(&mut context);
-
-                                if let Ok(reference_space) = reference_space_receiver.try_recv() {
-                                    context.reference_space = reference_space;
-                                }
-
-                                deadline += frame_interval / 3;
-                                thread::sleep(deadline.saturating_duration_since(Instant::now()));
-                            }
-                        }));
-
-                        let foveation_profile = if let Some(config) =
-                            settings.video.clientside_foveation.into_option()
-                        {
-                            if exts.fb_swapchain_update_state
-                                && exts.fb_foveation
-                                && exts.fb_foveation_configuration
-                            {
-                                let level;
-                                let dynamic;
-                                match config.mode {
-                                    ClientsideFoveationMode::Static { level: lvl } => {
-                                        level = lvl;
-                                        dynamic = false;
-                                    }
-                                    ClientsideFoveationMode::Dynamic { max_level } => {
-                                        level = max_level;
-                                        dynamic = true;
-                                    }
-                                };
-
-                                xr_session
-                                    .create_foveation_profile(Some(xr::FoveationLevelProfile {
-                                        level: xr::FoveationLevelFB::from_raw(level as i32),
-                                        vertical_offset: config.vertical_offset_deg,
-                                        dynamic: xr::FoveationDynamicFB::from_raw(dynamic as i32),
-                                    }))
-                                    .ok()
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        };
-
-                        let swapchains = stream_swapchains.get_or_insert_with(|| {
-                            [
-                                create_swapchain(
-                                    &xr_session,
-                                    stream_view_resolution,
-                                    foveation_profile.as_ref(),
-                                ),
-                                create_swapchain(
-                                    &xr_session,
-                                    stream_view_resolution,
-                                    foveation_profile.as_ref(),
-                                ),
-                            ]
-                        });
-
-                        alvr_client_core::opengl::start_stream(
+                        let new_config = Some(StreamConfig {
                             view_resolution,
-                            [
-                                swapchains[0]
-                                    .enumerate_images()
-                                    .unwrap()
-                                    .iter()
-                                    .map(|i| *i as _)
-                                    .collect(),
-                                swapchains[1]
-                                    .enumerate_images()
-                                    .unwrap()
-                                    .iter()
-                                    .map(|i| *i as _)
-                                    .collect(),
-                            ],
-                            settings.video.foveated_rendering.into_option(),
-                            platform != Platform::Lynx,
-                        );
+                            refresh_rate_hint,
+                            foveated_encoding_config: settings
+                                .video
+                                .foveated_encoding
+                                .as_option()
+                                .cloned(),
+                            clientside_foveation_config: settings
+                                .video
+                                .clientside_foveation
+                                .as_option()
+                                .cloned(),
+                            face_sources_config: settings
+                                .headset
+                                .face_tracking
+                                .as_option()
+                                .map(|c| c.sources.clone()),
+                        });
+                        if stream_config != new_config {
+                            stream_config = new_config;
 
-                        alvr_client_core::send_playspace(
-                            xr_session
-                                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
-                                .unwrap()
-                                .map(|a| Vec2::new(a.width, a.height)),
-                        );
-
-                        alvr_client_core::send_active_interaction_profile(
-                            *LEFT_HAND_ID,
-                            hands_context.interaction_profile_id,
-                        );
-                        alvr_client_core::send_active_interaction_profile(
-                            *RIGHT_HAND_ID,
-                            hands_context.interaction_profile_id,
-                        );
+                            xr_session.request_exit().ok();
+                        } else {
+                            session_context.stream_context = stream_config.as_ref().map(|config| {
+                                initialize_stream(
+                                    &xr_ctx,
+                                    Arc::clone(&interaction_context),
+                                    session_context,
+                                    platform,
+                                    config,
+                                )
+                            });
+                        }
                     }
                     ClientCoreEvent::StreamingStopped => {
-                        stream_swapchains.take();
-
-                        is_streaming.set(false);
-
-                        if let Some(thread) = streaming_input_thread.take() {
-                            thread.join().unwrap();
-                        }
+                        session_context.stream_context = None;
                     }
                     ClientCoreEvent::Haptics {
                         device_id,
@@ -822,9 +875,9 @@ pub fn entry_point() {
                         amplitude,
                     } => {
                         let action = if device_id == *LEFT_HAND_ID {
-                            &hands_context.hand_sources[0].vibration_action
+                            &interaction_context.hands_interaction[0].vibration_action
                         } else {
-                            &hands_context.hand_sources[1].vibration_action
+                            &interaction_context.hands_interaction[1].vibration_action
                         };
 
                         action
@@ -868,23 +921,11 @@ pub fn entry_point() {
                 continue;
             }
 
-            let swapchains = if let Some(swapchains) = &mut stream_swapchains {
-                swapchains
-            } else {
-                lobby_swapchains
-            };
-
-            let left_swapchain_idx = swapchains[0].acquire_image().unwrap();
-            let right_swapchain_idx = swapchains[1].acquire_image().unwrap();
-
-            swapchains[0].wait_image(xr::Duration::INFINITE).unwrap();
-            swapchains[1].wait_image(xr::Duration::INFINITE).unwrap();
-
-            let mut views = last_good_views.clone();
-
+            let mut views;
             let display_time;
             let view_resolution;
-            if is_streaming.value() {
+            let swapchains;
+            if let Some(context) = &mut session_context.stream_context {
                 let frame_poll_deadline = Instant::now()
                     + Duration::from_secs_f32(
                         frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
@@ -902,24 +943,39 @@ pub fn entry_point() {
                     (vsync_time, ptr::null_mut())
                 };
 
-                while let Ok(views) = history_view_receiver.try_recv() {
-                    if views_history.len() > 360 {
-                        views_history.pop_front();
+                while let Ok(views) = session_context.views_history_receiver.try_recv() {
+                    if context.views_history.len() > 360 {
+                        context.views_history.pop_front();
                     }
 
-                    views_history.push_back(views);
+                    context.views_history.push_back(views);
                 }
 
-                for history_frame in &views_history {
+                views = context.last_good_views.clone();
+
+                for history_frame in &context.views_history {
                     if history_frame.timestamp == timestamp {
                         views = history_frame.views.clone();
                     }
                 }
 
+                let left_swapchain_idx = context.swapchains[0].acquire_image().unwrap();
+                let right_swapchain_idx = context.swapchains[1].acquire_image().unwrap();
+
+                context.swapchains[0]
+                    .wait_image(xr::Duration::INFINITE)
+                    .unwrap();
+                context.swapchains[1]
+                    .wait_image(xr::Duration::INFINITE)
+                    .unwrap();
+
                 alvr_client_core::opengl::render_stream(
                     hardware_buffer,
                     [left_swapchain_idx, right_swapchain_idx],
                 );
+
+                context.swapchains[0].release_image().unwrap();
+                context.swapchains[1].release_image().unwrap();
 
                 if !hardware_buffer.is_null() {
                     if let Some(now) = xr_runtime_now(&xr_instance) {
@@ -928,24 +984,34 @@ pub fn entry_point() {
                 }
 
                 display_time = timestamp;
-
-                view_resolution = stream_view_resolution;
+                view_resolution = context.view_resolution;
+                swapchains = &context.swapchains;
             } else {
-                display_time = vsync_time;
-
                 let (flags, maybe_views) = xr_session
                     .locate_views(
                         xr::ViewConfigurationType::PRIMARY_STEREO,
                         frame_state.predicted_display_time,
-                        &reference_space,
+                        &session_context.reference_space.read(),
                     )
                     .unwrap();
 
-                if flags.contains(xr::ViewStateFlags::ORIENTATION_VALID) {
-                    views = maybe_views;
-                }
+                views = if flags.contains(xr::ViewStateFlags::ORIENTATION_VALID) {
+                    maybe_views
+                } else {
+                    vec![default_view(), default_view()]
+                };
 
-                view_resolution = recommended_view_resolution;
+                let left_swapchain_idx =
+                    session_context.lobby_swapchains[0].acquire_image().unwrap();
+                let right_swapchain_idx =
+                    session_context.lobby_swapchains[1].acquire_image().unwrap();
+
+                session_context.lobby_swapchains[0]
+                    .wait_image(xr::Duration::INFINITE)
+                    .unwrap();
+                session_context.lobby_swapchains[1]
+                    .wait_image(xr::Duration::INFINITE)
+                    .unwrap();
 
                 alvr_client_core::opengl::render_lobby([
                     RenderViewInput {
@@ -959,10 +1025,14 @@ pub fn entry_point() {
                         swapchain_index: right_swapchain_idx,
                     },
                 ]);
-            }
 
-            swapchains[0].release_image().unwrap();
-            swapchains[1].release_image().unwrap();
+                session_context.lobby_swapchains[0].release_image().unwrap();
+                session_context.lobby_swapchains[1].release_image().unwrap();
+
+                display_time = vsync_time;
+                view_resolution = recommended_view_resolution;
+                swapchains = &session_context.lobby_swapchains;
+            }
 
             let rect = xr::Rect2Di {
                 offset: xr::Offset2Di { x: 0, y: 0 },
@@ -976,7 +1046,7 @@ pub fn entry_point() {
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,
                 &[&xr::CompositionLayerProjection::new()
-                    .space(&reference_space)
+                    .space(&session_context.reference_space.read())
                     .views(&[
                         xr::CompositionLayerProjectionView::new()
                             .pose(views[0].pose)
@@ -1012,11 +1082,13 @@ pub fn entry_point() {
                     .unwrap();
             }
 
-            last_good_views = views.clone();
+            if let Some(context) = &mut session_context.stream_context {
+                context.last_good_views = views.clone();
+            }
         }
-    }
 
-    alvr_client_core::opengl::destroy();
+        alvr_client_core::opengl::destroy();
+    }
 
     alvr_client_core::destroy();
 }

@@ -57,7 +57,7 @@ Some points came from [FingrMastr](https://github.com/FingrMastr)
 # Linux
 ## Encoder requirements
 
-ALVR uses FFmpeg for all encoders (except AMF), so you will need to make sure the encoder of your choice works with FFmpeg.
+ALVR uses FFmpeg for all encoders, so you will need to make sure the encoder of your choice works with FFmpeg.
 Always consult Log tab in dashboard, it will tell you the reason why an encoder failed to initialize.
 
 ### VAAPI (AMD/Intel GPUs)
@@ -99,19 +99,6 @@ ffmpeg -vaapi_device /dev/dri/renderD128 -f lavfi -i testsrc -t 30 -vf 'format=n
 # HEVC
 ffmpeg -vaapi_device /dev/dri/renderD128 -f lavfi -i testsrc -t 30 -vf 'format=nv12,hwupload' -c:v hevc_vaapi vaapi-hevc.mp4
 ```
-
-### AMF (AMD GPUs)
-
-AMF requires proprietary Vulkan driver amd-pro. Troubleshooting AMF installation on your system is out of scope here, but you
-can use [amf-test](https://github.com/nowrep/amf-test-linux). HEVC is only supported on RDNA and newer GPUs.
-
-Make sure amf-test succeeds before you try to get it working with ALVR.
-You will need to tell ALVR where to find amd-pro driver, edit your SteamVR launch command (change the path as appropriate
-for your system):
-
-    env ALVR_AMF_ICD=/path/to/amd_pro_icd64.json %command%
-
-ALVR should now be able to use AMF.
 
 ### NVENC (NVidia)
 

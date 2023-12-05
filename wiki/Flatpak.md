@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-1. This is not a fully-featured version of ALVR! It lacks Nvidia support, a desktop file, and has bugs related to Flatpak sandboxing
+1. This is not a fully-featured version of ALVR! It lacks Nvidia support and has bugs related to Flatpak sandboxing
 
 2. Nvidia GPUs are currently not supported
 
@@ -54,7 +54,7 @@ flatpak install flathub org.freedesktop.Platform.GL.default//22.08-extra \
 Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
 
 ```
-sudo setcap CAP_SYS_NICE+ep ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
+sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
 ```
 
 This command is normally run by SteamVR, but due to the lack of sudo access within the Flatpak sandbox, it must be run outside of the Flatpak sandbox. After running the command, run SteamVR once then close it.
@@ -109,6 +109,18 @@ flatpak run --command=alvr_dashboard com.valvesoftware.Steam
 ```
 
 A desktop file named `com.valvesoftware.Steam.Utility.alvr.desktop` is supplied within the `alvr/xtask/flatpak` directory. Move this to where other desktop files are located on your system in order to run the dashboard without the terminal.
+
+### Automatic Audio & Microphone setup
+
+Currently the game audio and microphone to and from the headset isn't routed automatically. The setup of this script will therefore run every time the headset connects or disconnects to the ALVR dashboard. This is based on [the steps](Installation-guide.md#automatic-audio--microphone-setup) in the installation guide, modified for the Flatpak.
+
+1. In the ALVR Dashboard under All Settings (Advanced) > Audio, enable Game Audio and Microphone.
+
+2. In the same place under Microphone, click Expand and set Devices to custom. Enter `default` for the name for both Sink and Source.
+
+3. Download the [audio-flatpak-setup.sh](../alvr/xtask/flatpak/audio-flatpak-setup.sh) script and place it into the Flatpak app data directory located at `~/.var/app/com.valvesoftware.Steam/`. Make sure it has execute permissions (e.g. `chmod +x audio-flatpak-setup.sh`).
+
+4. In the ALVR Dashboard, under All Settings (Advanced) > Connection, set the On connect script and On disconnect script to the absolute path of the script (relative to the Flatpak environment), e.g. `/var/home/$USERNAME/audio-flatpak-setup.sh`.
 
 ### Other Applications
 

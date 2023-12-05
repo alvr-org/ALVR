@@ -22,7 +22,10 @@ use dashboard::Dashboard;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     use alvr_common::ALVR_VERSION;
-    use eframe::{egui, IconData, NativeOptions};
+    use eframe::{
+        egui::{IconData, ViewportBuilder},
+        NativeOptions,
+    };
     use ico::IconDir;
     use std::{env, fs};
     use std::{io::Cursor, sync::mpsc};
@@ -39,7 +42,9 @@ fn main() {
         {
             let has_nvidia = wgpu::Instance::new(wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::VULKAN,
+                flags: wgpu::InstanceFlags::empty(),
                 dx12_shader_compiler: Default::default(),
+                gles_minor_version: Default::default(),
             })
             .enumerate_adapters(wgpu::Backends::VULKAN)
             .any(|adapter| adapter.get_info().vendor == 0x10de);
@@ -83,12 +88,13 @@ fn main() {
     eframe::run_native(
         &format!("ALVR Dashboard (streamer v{})", *ALVR_VERSION),
         NativeOptions {
-            icon_data: Some(IconData {
-                rgba: image.rgba_data().to_owned(),
-                width: image.width(),
-                height: image.height(),
-            }),
-            initial_window_size: Some(egui::vec2(870.0, 600.0)),
+            viewport: ViewportBuilder::default()
+                .with_inner_size((870.0, 600.0))
+                .with_icon(IconData {
+                    rgba: image.rgba_data().to_owned(),
+                    width: image.width(),
+                    height: image.height(),
+                }),
             centered: true,
             ..Default::default()
         },

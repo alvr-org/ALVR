@@ -5,7 +5,6 @@
 #include "EncodePipelineSW.h"
 #include "EncodePipelineVAAPI.h"
 #include "EncodePipelineNvEnc.h"
-#include "EncodePipelineAMF.h"
 #include "ffmpeg_helper.h"
 
 extern "C" {
@@ -27,7 +26,7 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
   if(Settings::Instance().m_force_sw_encoding == false) {
     if (vk_ctx.nvidia) {
       try {
-        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, input_frame, vk_frame_ctx, width, height);
+        auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, vk_ctx, input_frame, vk_frame_ctx, width, height);
         Info("using NvEnc encoder");
         return nvenc;
       } catch (std::exception &e)
@@ -35,16 +34,6 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
         Info("failed to create NvEnc encoder: %s", e.what());
       }
     } else {
-      if (vk_ctx.amd) {
-        try {
-          auto amf = std::make_unique<alvr::EncodePipelineAMF>(render, width, height);
-          Info("using AMF encoder");
-          return amf;
-        } catch (std::exception &e)
-        {
-          Info("failed to create AMF encoder: %s", e.what());
-        }
-      }
       try {
         auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(render, vk_ctx, input_frame, width, height);
         Info("using VAAPI encoder");

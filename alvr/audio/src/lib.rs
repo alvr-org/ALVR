@@ -9,7 +9,7 @@ use alvr_common::{
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    ConnectionError, RelaxedAtomic, ToAny,
+    ConnectionError, ToAny,
 };
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
@@ -212,7 +212,7 @@ pub enum AudioRecordState {
 
 #[allow(unused_variables)]
 pub fn record_audio_blocking(
-    is_streaming: Arc<RelaxedAtomic>,
+    is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     mut sender: StreamSender<()>,
     device: &AudioDevice,
     channels_count: u16,
@@ -245,7 +245,7 @@ pub fn record_audio_blocking(
         config.sample_format(),
         {
             let state = Arc::clone(&state);
-            let is_streaming = Arc::clone(&is_streaming);
+            let is_running = is_running.clone();
             move |data, _| {
                 let data = if config.sample_format() == SampleFormat::F32 {
                     data.bytes()
@@ -273,7 +273,7 @@ pub fn record_audio_blocking(
                     data
                 };
 
-                if is_streaming.value() {
+                if is_running() {
                     let mut buffer = sender.get_buffer(&()).unwrap();
                     buffer.get_range_mut(0, data.len()).copy_from_slice(&data);
                     sender.send(buffer).ok();
@@ -297,7 +297,7 @@ pub fn record_audio_blocking(
     let mut res = stream.play().to_any();
 
     if res.is_ok() {
-        while matches!(*state.lock(), AudioRecordState::Recording) && is_streaming.value() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && is_running() {
             thread::sleep(Duration::from_millis(500))
         }
 
@@ -349,15 +349,15 @@ pub fn get_next_frame_batch(
 // callback will gracefully handle an interruption, and the callback timing and sound wave
 // continuity will not be affected.
 pub fn receive_samples_loop(
-    running: Arc<RelaxedAtomic>,
-    mut receiver: StreamReceiver<()>,
+    is_running: impl Fn() -> bool,
+    receiver: &mut StreamReceiver<()>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
     channels_count: usize,
     batch_frames_count: usize,
     average_buffer_frames_count: usize,
 ) -> Result<()> {
     let mut recovery_sample_buffer = vec![];
-    while running.value() {
+    while is_running() {
         let data = match receiver.recv(Duration::from_millis(500)) {
             Ok(data) => data,
             Err(ConnectionError::TryAgain(_)) => continue,
@@ -499,12 +499,12 @@ impl Iterator for StreamingSource {
 }
 
 pub fn play_audio_loop(
-    running: Arc<RelaxedAtomic>,
-    device: AudioDevice,
+    is_running: impl Fn() -> bool,
+    device: &AudioDevice,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
-    receiver: StreamReceiver<()>,
+    receiver: &mut StreamReceiver<()>,
 ) -> Result<()> {
     // Size of a chunk of frames. It corresponds to the duration if a fade-in/out in frames.
     let batch_frames_count = sample_rate as usize * config.batch_ms as usize / 1000;
@@ -527,7 +527,7 @@ pub fn play_audio_loop(
     })?;
 
     receive_samples_loop(
-        running,
+        is_running,
         receiver,
         sample_buffer,
         channels_count as _,

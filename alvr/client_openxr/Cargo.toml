@@ -15,7 +15,7 @@ alvr_client_core.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 
-glow = "0.12"
+glow = "0.13"
 khronos-egl = { version = "=4.1", features = ["dynamic"] }
 openxr = { git = "https://github.com/zarik5/openxrs" }
 # openxr = { path = "../../../../openxrs/openxr" }
@@ -60,6 +60,8 @@ required = true
 name = "android.permission.ACCESS_WIFI_STATE"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.INTERNET"
+[[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.RECORD_AUDIO"
 [[package.metadata.android.uses_permission]]
@@ -145,9 +147,17 @@ name = "com.htc.vr.content.NumDoFHmd"
 value = "3,6DoF"
 
 # Pico entries
+[[package.metadata.android.uses_permission]]
+name = "com.picovr.permission.EYE_TRACKING"
 [[package.metadata.android.application.meta_data]]
 name = "pvr.app.type"
 value = "vr"
+[[package.metadata.android.application.meta_data]]
+name = "picovr.software.eye_tracking"
+value = "true"
+[[package.metadata.android.application.meta_data]]
+name = "eyetracking_calibration"
+value = "true"
 [[package.metadata.android.application.meta_data]]
 name = "handtracking"
 value = "1"

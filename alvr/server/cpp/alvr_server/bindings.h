@@ -142,10 +142,13 @@ extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
 extern "C" void RegisterButton(unsigned long long buttonID);
-extern "C" void SetChaperone(float areaWidth, float areaHeight);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
+
+extern "C" void InitOpenvrClient();
+extern "C" void ShutdownOpenvrClient();
+extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
 
 extern "C" void CaptureFrame();
 

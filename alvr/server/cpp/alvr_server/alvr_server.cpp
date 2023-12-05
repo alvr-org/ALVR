@@ -22,6 +22,7 @@
 #include <map>
 #include <optional>
 
+void _SetChaperoneArea(float areaWidth, float areaHeight);
 #ifdef __linux__
 vr::HmdMatrix34_t GetRawZeroPose();
 #endif
@@ -66,6 +67,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
     // std::vector<ViveTrackerProxy> generic_trackers;
+    bool shutdown_called = false;
 
     std::map<uint64_t, TrackedDevice *> tracked_devices;
 
@@ -140,11 +142,17 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 #ifdef __linux__
             else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged) {
                 if (hmd && hmd->m_poseHistory) {
+                    InitOpenvrClient();
                     hmd->m_poseHistory->SetTransformUpdating();
                     hmd->m_poseHistory->SetTransform(GetRawZeroPose());
+                    ShutdownOpenvrClient();
                 }
             }
 #endif
+        }
+        if(vr::VRServerDriverHost()->IsExiting() && !shutdown_called) {
+            shutdown_called = true;
+            ShutdownRuntime();
         }
     }
     virtual bool ShouldBlockStandbyMode() override { return false; }
@@ -318,6 +326,17 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
                    RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->SetButton(buttonID, value);
     }
+}
+
+void SetChaperoneArea(float areaWidth, float areaHeight) {
+    _SetChaperoneArea(areaWidth, areaHeight);
+
+#ifdef __linux__
+    if (g_driver_provider.hmd && g_driver_provider.hmd->m_poseHistory) {
+        g_driver_provider.hmd->m_poseHistory->SetTransformUpdating();
+        g_driver_provider.hmd->m_poseHistory->SetTransform(GetRawZeroPose());
+    }
+#endif
 }
 
 void CaptureFrame() {

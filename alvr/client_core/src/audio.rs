@@ -2,7 +2,7 @@ use alvr_audio::{AudioDevice, AudioRecordState};
 use alvr_common::{
     anyhow::{bail, Result},
     parking_lot::Mutex,
-    RelaxedAtomic, ToAny,
+    ToAny,
 };
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
@@ -14,7 +14,7 @@ use oboe::{
 use std::{collections::VecDeque, mem, sync::Arc, thread, time::Duration};
 
 struct RecorderCallback {
-    running: Arc<RelaxedAtomic>,
+    is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     sender: StreamSender<()>,
     state: Arc<Mutex<AudioRecordState>>,
 }
@@ -33,7 +33,7 @@ impl AudioInputCallback for RecorderCallback {
             sample_buffer.extend(&frame.to_ne_bytes());
         }
 
-        if self.running.value() {
+        if (self.is_running)() {
             let mut buffer = self.sender.get_buffer(&()).unwrap();
             buffer
                 .get_range_mut(0, sample_buffer.len())
@@ -51,11 +51,15 @@ impl AudioInputCallback for RecorderCallback {
     fn on_error_before_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
         *self.state.lock() = AudioRecordState::Err(Some(error.into()));
     }
+
+    fn on_error_after_close(&mut self, _: &mut dyn AudioInputStreamSafe, error: oboe::Error) {
+        *self.state.lock() = AudioRecordState::Err(Some(error.into()));
+    }
 }
 
 #[allow(unused_variables)]
 pub fn record_audio_blocking(
-    running: Arc<RelaxedAtomic>,
+    is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     sender: StreamSender<()>,
     device: &AudioDevice,
     channels_count: u16,
@@ -76,7 +80,7 @@ pub fn record_audio_blocking(
         .set_usage(Usage::VoiceCommunication)
         .set_input_preset(InputPreset::VoiceCommunication)
         .set_callback(RecorderCallback {
-            running: Arc::clone(&running),
+            is_running: Arc::clone(&is_running),
             sender,
             state: Arc::clone(&state),
         })
@@ -85,7 +89,7 @@ pub fn record_audio_blocking(
     let mut res = stream.start().to_any();
 
     if res.is_ok() {
-        while matches!(*state.lock(), AudioRecordState::Recording) && running.value() {
+        while matches!(*state.lock(), AudioRecordState::Recording) && is_running() {
             thread::sleep(Duration::from_millis(500))
         }
 
@@ -130,12 +134,12 @@ impl AudioOutputCallback for PlayerCallback {
 
 #[allow(unused_variables)]
 pub fn play_audio_loop(
-    running: Arc<RelaxedAtomic>,
-    device: AudioDevice,
+    is_running: impl Fn() -> bool,
+    device: &AudioDevice,
     channels_count: u16,
     sample_rate: u32,
     config: AudioBufferingConfig,
-    receiver: StreamReceiver<()>,
+    receiver: &mut StreamReceiver<()>,
 ) -> Result<()> {
     // the client sends invalid sample rates sometimes, and we crash if we try and use one
     // (batch_frames_count ends up zero and the audio callback gets confused)
@@ -168,7 +172,7 @@ pub fn play_audio_loop(
     stream.start()?;
 
     alvr_audio::receive_samples_loop(
-        running,
+        is_running,
         receiver,
         sample_buffer,
         2,

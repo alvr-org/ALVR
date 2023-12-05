@@ -1,3 +1,4 @@
+use crate::data_sources::PolledEvent;
 use alvr_common::{log::LevelFilter, parking_lot::Mutex, LogEntry, LogSeverity};
 use alvr_events::{Event, EventType};
 use std::{
@@ -5,7 +6,7 @@ use std::{
     sync::{mpsc, Arc},
 };
 
-pub fn init_logging(event_sender: mpsc::Sender<Event>) {
+pub fn init_logging(event_sender: mpsc::Sender<PolledEvent>) {
     let event_sender = Arc::new(Mutex::new(event_sender));
 
     env_logger::Builder::new()
@@ -24,12 +25,15 @@ pub fn init_logging(event_sender: mpsc::Sender<Event>) {
 
             event_sender
                 .lock()
-                .send(Event {
-                    timestamp: timestamp.clone(),
-                    event_type: EventType::Log(LogEntry {
-                        severity: LogSeverity::from_log_level(record.level()),
-                        content: format!("{}", record.args()),
-                    }),
+                .send(PolledEvent {
+                    inner: Event {
+                        timestamp: timestamp.clone(),
+                        event_type: EventType::Log(LogEntry {
+                            severity: LogSeverity::from_log_level(record.level()),
+                            content: format!("{}", record.args()),
+                        }),
+                    },
+                    from_dashboard: true,
                 })
                 .ok();
 

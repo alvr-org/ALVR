@@ -1,14 +1,13 @@
-use std::collections::VecDeque;
-
 use alvr_common::LogSeverity;
 use alvr_events::{Event, EventType};
 use alvr_gui_common::theme::log_colors;
 use alvr_session::{RawEventsConfig, Settings};
 use eframe::{
-    egui::{Grid, RichText, ScrollArea, Ui},
+    egui::{Grid, OpenUrl, RichText, ScrollArea, Ui},
     epaint::Color32,
 };
 use settings_schema::Switch;
+use std::{collections::VecDeque, env};
 
 struct Entry {
     color: Color32,
@@ -96,6 +95,31 @@ impl LogsTab {
     }
 
     pub fn ui(&self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            if ui.button("Copy all").clicked() {
+                ui.output_mut(|out| {
+                    out.copied_text = self.entries.iter().fold(String::new(), |acc, entry| {
+                        format!(
+                            "{}{} [{}] {}\n",
+                            acc, entry.timestamp, entry.ty, entry.message
+                        )
+                    })
+                })
+            }
+            if ui.button("Open logs directory").clicked() {
+                let log_dir = alvr_filesystem::filesystem_layout_from_dashboard_exe(
+                    &env::current_exe().unwrap(),
+                )
+                .log_dir;
+                ui.output_mut(|f| {
+                    f.open_url = Some(OpenUrl::same_tab(format!(
+                        "file://{}",
+                        log_dir.to_string_lossy()
+                    )))
+                });
+            }
+        });
+
         ScrollArea::both()
             .stick_to_bottom(true)
             .auto_shrink([false, false])

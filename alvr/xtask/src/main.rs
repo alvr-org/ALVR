@@ -22,14 +22,15 @@ SUBCOMMANDS:
     prepare-deps        Download and compile streamer and client external dependencies
     build-streamer      Build streamer, then copy binaries to build folder
     build-launcher      Build launcher, then copy binaries to build folder
+    build-server-lib    Build a C-ABI ALVR server library and header
     build-client        Build client, then copy binaries to build folder
-    build-client-lib    Build a C-ABI ALVR client library and header.
+    build-client-lib    Build a C-ABI ALVR client library and header
     run-streamer        Build streamer and then open the dashboard
     run-launcher        Build launcher and then open it
     package-streamer    Build streamer with distribution profile, make archive
     package-launcher    Build launcher in release mode, make portable and installer versions
     package-client-lib  Build client library then zip it
-    clean               Removes all build artifacts and dependencies.
+    clean               Removes all build artifacts and dependencies
     bump                Bump streamer and client package versions
     clippy              Show warnings for selected clippy lints
     kill-oculus         Kill all Oculus processes
@@ -190,6 +191,7 @@ fn main() {
                     build::build_streamer(profile, true, gpl, None, false, keep_config)
                 }
                 "build-launcher" => build::build_launcher(profile, true, false),
+                "build-server-lib" => build::build_server_lib(profile, true, gpl, None, false),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
                 "run-streamer" => {

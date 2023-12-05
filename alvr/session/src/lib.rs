@@ -6,7 +6,7 @@ pub use settings_schema;
 use alvr_common::{
     anyhow::{bail, Result},
     semver::Version,
-    ToAny, ALVR_VERSION,
+    ConnectionState, ToAny, ALVR_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use serde_json as json;
@@ -60,7 +60,7 @@ pub struct OpenvrConfig {
     pub sw_thread_count: u32,
     pub controller_is_tracker: bool,
     pub controllers_enabled: bool,
-    pub enable_foveated_rendering: bool,
+    pub enable_foveated_encoding: bool,
     pub foveation_center_size_x: f32,
     pub foveation_center_size_y: f32,
     pub foveation_center_shift_x: f32,
@@ -100,15 +100,6 @@ pub struct OpenvrConfig {
     pub _controller_profile: i32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub enum ConnectionState {
-    Disconnected,
-    Connecting,
-    Connected,
-    Streaming,
-    Disconnecting { should_be_removed: bool },
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ClientConnectionConfig {
     pub display_name: String,
@@ -116,6 +107,7 @@ pub struct ClientConnectionConfig {
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
     pub connection_state: ConnectionState,
+    pub cabled: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -143,7 +135,7 @@ impl Default for SessionConfig {
                 adapter_index: 0,
                 refresh_rate: 60,
                 controllers_enabled: false,
-                enable_foveated_rendering: false,
+                enable_foveated_encoding: false,
                 enable_color_correction: false,
                 linux_async_reprojection: false,
                 capture_frame_dir: "/tmp".into(),

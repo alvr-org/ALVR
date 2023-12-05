@@ -2,8 +2,6 @@
 
 * [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide)
 
-* [Settings guide](https://github.com/alvr-org/ALVR/wiki/Settings-guide)
-
 * [Hand tracking controller bindings](https://github.com/alvr-org/ALVR/wiki/Hand-tracking-controller-bindings)
 
 * [Other resources](https://github.com/alvr-org/ALVR/wiki/Other-resources)

@@ -2,7 +2,7 @@ mod decoder;
 
 pub use decoder::*;
 
-use alvr_common::LazyMutOpt;
+use alvr_common::OptLazy;
 use jni::{
     objects::{GlobalRef, JObject},
     sys::jobject,
@@ -12,7 +12,7 @@ use std::net::{IpAddr, Ipv4Addr};
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
 
-static WIFI_LOCK: LazyMutOpt<GlobalRef> = alvr_common::lazy_mut_none();
+static WIFI_LOCK: OptLazy<GlobalRef> = alvr_common::lazy_mut_none();
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
@@ -183,26 +183,21 @@ pub fn release_wifi_lock() {
     }
 }
 
-pub struct BatteryManager {
-    intent: GlobalRef,
-}
+pub fn get_battery_status() -> (f32, bool) {
+    let vm = vm();
+    let mut env = vm.attach_current_thread().unwrap();
 
-impl BatteryManager {
-    pub fn new() -> Self {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
-
-        let intent_action_jstring = env
-            .new_string("android.intent.action.BATTERY_CHANGED")
-            .unwrap();
-        let intent_filter = env
-            .new_object(
-                "android/content/IntentFilter",
-                "(Ljava/lang/String;)V",
-                &[(&intent_action_jstring).into()],
-            )
-            .unwrap();
-        let intent = env
+    let intent_action_jstring = env
+        .new_string("android.intent.action.BATTERY_CHANGED")
+        .unwrap();
+    let intent_filter = env
+        .new_object(
+            "android/content/IntentFilter",
+            "(Ljava/lang/String;)V",
+            &[(&intent_action_jstring).into()],
+        )
+        .unwrap();
+    let battery_intent = env
         .call_method(
             unsafe { JObject::from_raw(context()) },
             "registerReceiver",
@@ -213,51 +208,40 @@ impl BatteryManager {
         .l()
         .unwrap();
 
-        Self {
-            intent: env.new_global_ref(intent).unwrap(),
-        }
-    }
+    let level_jstring = env.new_string("level").unwrap();
+    let level = env
+        .call_method(
+            &battery_intent,
+            "getIntExtra",
+            "(Ljava/lang/String;I)I",
+            &[(&level_jstring).into(), (-1).into()],
+        )
+        .unwrap()
+        .i()
+        .unwrap();
+    let scale_jstring = env.new_string("scale").unwrap();
+    let scale = env
+        .call_method(
+            &battery_intent,
+            "getIntExtra",
+            "(Ljava/lang/String;I)I",
+            &[(&scale_jstring).into(), (-1).into()],
+        )
+        .unwrap()
+        .i()
+        .unwrap();
 
-    // return (normalized gauge, is plugged)
-    pub fn status(&self) -> (f32, bool) {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
+    let plugged_jstring = env.new_string("plugged").unwrap();
+    let plugged = env
+        .call_method(
+            &battery_intent,
+            "getIntExtra",
+            "(Ljava/lang/String;I)I",
+            &[(&plugged_jstring).into(), (-1).into()],
+        )
+        .unwrap()
+        .i()
+        .unwrap();
 
-        let level_jstring = env.new_string("level").unwrap();
-        let level = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&level_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-        let scale_jstring = env.new_string("scale").unwrap();
-        let scale = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&scale_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-
-        let plugged_jstring = env.new_string("plugged").unwrap();
-        let plugged = env
-            .call_method(
-                self.intent.as_obj(),
-                "getIntExtra",
-                "(Ljava/lang/String;I)I",
-                &[(&plugged_jstring).into(), (-1).into()],
-            )
-            .unwrap()
-            .i()
-            .unwrap();
-
-        (level as f32 / scale as f32, plugged > 0)
-    }
+    (level as f32 / scale as f32, plugged > 0)
 }

@@ -149,11 +149,12 @@ impl eframe::App for Dashboard {
         let connected_to_server = self.data_sources.server_connected();
 
         while let Some(event) = self.data_sources.poll_event() {
-            self.logs_tab.push_event(event.clone());
+            self.logs_tab.push_event(event.inner.clone());
 
-            match event.event_type {
-                EventType::Log(event) => {
-                    self.notification_bar.push_notification(event);
+            match event.inner.event_type {
+                EventType::Log(log_event) => {
+                    self.notification_bar
+                        .push_notification(log_event, event.from_dashboard);
                 }
                 EventType::GraphStatistics(graph_statistics) => self
                     .statistics_tab
@@ -335,14 +336,17 @@ impl eframe::App for Dashboard {
         for request in requests {
             self.data_sources.request(request);
         }
-    }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    fn on_close_event(&mut self) -> bool {
-        if crate::data_sources::get_local_data_source()
-            .settings()
-            .steamvr_launcher
-            .open_close_steamvr_with_dashboard
+        if context.input(|state| state.viewport().close_requested())
+            && self
+                .session
+                .as_ref()
+                .map(|s| {
+                    s.to_settings()
+                        .steamvr_launcher
+                        .open_close_steamvr_with_dashboard
+                })
+                .unwrap_or(false)
         {
             self.data_sources.request(ServerRequest::ShutdownSteamvr);
 
@@ -350,7 +354,5 @@ impl eframe::App for Dashboard {
                 .lock()
                 .ensure_steamvr_shutdown()
         }
-
-        true
     }
 }

@@ -1,1 +1,15 @@
 * text=auto eol=lf
+
+alvr/client_core/cpp/VrApi_* linguist-vendored
+alvr/client_core/cpp/glm/** linguist-vendored
+alvr/client_core/cpp/tinygltf/** linguist-vendored
+alvr/server/cpp/alvr_server/include/** linguist-vendored
+alvr/server/cpp/openvr/** linguist-vendored
+alvr/server/cpp/platform/win32/NvCodecUtils.h linguist-vendored
+alvr/server/cpp/platform/win32/NvEncoder.cpp linguist-vendored
+alvr/server/cpp/platform/win32/NvEncoder.h linguist-vendored
+alvr/server/cpp/shared/** linguist-vendored
+# note: some of these folders contain ALVR code, but only a minor amount
+alvr/vulkan_layer/layer/** linguist-vendored
+alvr/vulkan_layer/util/** linguist-vendored
+alvr/vulkan_layer/wsi/** linguist-vendored

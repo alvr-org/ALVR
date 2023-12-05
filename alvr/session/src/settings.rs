@@ -328,22 +328,22 @@ This has an effect only on AMD GPUs."
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Copy, Clone, PartialEq)]
 pub enum ClientsideFoveationLevel {
     Low = 1,
     Medium = 2,
     High = 3,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum ClientsideFoveationMode {
     Static { level: ClientsideFoveationLevel },
     Dynamic { max_level: ClientsideFoveationLevel },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct ClientsideFoveation {
+pub struct ClientsideFoveationConfig {
     pub mode: ClientsideFoveationMode,
 
     #[schema(strings(display_name = "Foveation offset"))]
@@ -351,9 +351,9 @@ pub struct ClientsideFoveation {
     pub vertical_offset_deg: f32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
-pub struct FoveatedRenderingConfig {
+pub struct FoveatedEncodingConfig {
     #[schema(strings(display_name = "Center region width"))]
     #[schema(gui(slider(min = 0.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -475,11 +475,9 @@ pub struct VideoConfig {
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
-    pub foveated_rendering: Switch<FoveatedRenderingConfig>,
+    pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
-    pub clientside_foveation: Switch<ClientsideFoveation>,
-
-    pub dynamic_oculus_foveation: bool,
+    pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
@@ -574,8 +572,9 @@ pub enum HeadsetEmulationMode {
     },
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct FaceTrackingSources {
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct FaceTrackingSourcesConfig {
+    pub combined_eye_gaze: bool,
     pub eye_tracking_fb: bool,
     pub face_tracking_fb: bool,
     pub eye_expressions_htc: bool,
@@ -593,7 +592,7 @@ pub enum FaceTrackingSinkConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct FaceTrackingConfig {
-    pub sources: FaceTrackingSources,
+    pub sources: FaceTrackingSourcesConfig,
     pub sink: FaceTrackingSinkConfig,
 }
 
@@ -975,21 +974,31 @@ pub struct RawEventsConfig {
 #[schema(collapsible)]
 pub struct LoggingConfig {
     pub client_log_report_level: Switch<LogSeverity>,
+
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
+
     #[schema(flag = "real-time")]
     pub log_tracking: bool,
+
     #[schema(flag = "real-time")]
     pub log_button_presses: bool,
+
     #[schema(flag = "real-time")]
     pub log_haptics: bool,
+
     #[schema(flag = "real-time")]
     pub notification_level: LogSeverity,
+
     #[schema(flag = "real-time")]
     pub show_raw_events: Switch<RawEventsConfig>,
+
     #[schema(strings(help = "This applies only to certain error or warning messages."))]
     #[schema(flag = "steamvr-restart")]
     pub prefer_backtrace: bool,
+
+    #[schema(strings(help = "Notification tips teach you how to use ALVR"))]
+    pub show_notification_tip: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1224,9 +1233,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     ],
                 }
             },
-            foveated_rendering: SwitchDefault {
+            foveated_encoding: SwitchDefault {
                 enabled: true,
-                content: FoveatedRenderingConfigDefault {
+                content: FoveatedEncodingConfigDefault {
                     gui_collapsed: true,
                     center_size_x: 0.45,
                     center_size_y: 0.4,
@@ -1238,7 +1247,7 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             clientside_foveation: SwitchDefault {
                 enabled: true,
-                content: ClientsideFoveationDefault {
+                content: ClientsideFoveationConfigDefault {
                     gui_collapsed: true,
                     mode: ClientsideFoveationModeDefault {
                         Static: ClientsideFoveationModeStaticDefault {
@@ -1256,7 +1265,6 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
-            dynamic_oculus_foveation: true,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {
@@ -1265,7 +1273,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     contrast: 0.,
                     saturation: 0.5,
                     gamma: 1.,
-                    sharpening: 0.,
+                    sharpening: 0.5,
                 },
             },
         },
@@ -1324,7 +1332,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 enabled: false,
                 content: FaceTrackingConfigDefault {
                     gui_collapsed: true,
-                    sources: FaceTrackingSourcesDefault {
+                    sources: FaceTrackingSourcesConfigDefault {
+                        combined_eye_gaze: true,
                         eye_tracking_fb: true,
                         face_tracking_fb: true,
                         eye_expressions_htc: true,
@@ -1402,7 +1411,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         enabled: true,
                         content: HandGestureConfigDefault {
                             gui_collapsed: true,
-                            only_touch: false,
+                            only_touch: true,
                             pinch_touch_distance: 0.0,
                             pinch_trigger_distance: 0.25,
                             curl_touch_distance: 2.0,
@@ -1506,6 +1515,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             prefer_backtrace: false,
+            show_notification_tip: true,
         },
         steamvr_launcher: SteamvrLauncherDefault {
             gui_collapsed: false,

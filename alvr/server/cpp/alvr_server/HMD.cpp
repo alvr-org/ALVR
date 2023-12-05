@@ -68,7 +68,7 @@ Hmd::Hmd()
 }
 
 Hmd::~Hmd() {
-    ShutdownRuntime();
+    //ShutdownRuntime();
 
     if (m_encoder) {
         Debug("Hmd::~Hmd(): Stopping encoder...\n");

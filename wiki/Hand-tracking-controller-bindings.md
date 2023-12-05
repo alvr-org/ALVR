@@ -1,38 +1,20 @@
-Current bindings for ALVR 14.0.0
+Current bindings for ALVR 20
 ===
 
-There's no trackpad/joystick position mapping.
+To control state of gestures, you can toggle `Headset -> Controllers -> Gestures -> Only touch`
+Enabled state means that gestures won't be triggered, disabled would mean all gestures are activated.
 
-Oculus Rift S
+Gestures
 ---
-|Action|w/ handtracking pinch|w/o pinch|
-|-|-|-|
-|Trigger|index + thumb pinch|index finger curl|
-|Joystick press|thumb press towards palm|thumb press towards palm|
-|Grip press|middle, ring, pinky fingers curl|middle, ring, pinky fingers curl|
-|A|right ring + thumb pinch| N/A |
-|B|right middle + thumb pinch| N/A |
-|X|left ring + thumb pinch| N/A |
-|Y|left middle + thumb pinch| N/A |
-|Menu button|left pinky + thumb pinch| N/A |
+|Action|Handtracking pinch|
+|-|-|
+|Trigger|Pinch thumb and index|
+|Joystick click|Curl thumb to palm|
+|Grip|Curl middle, ring and little|
+|Y/B|Pinch thumb and middle|
+|X/A|Pinch thumb and ring|
+|Menu button|Pinch thumb and little on left hand|
 
-Valve Index
+Joystick
 ---
-|Action|w/ handtracking pinch|w/o pinch|
-|-|-|-|
-|Trigger|index finger curl|index finger curl|
-|Grip press|middle, ring, pinky fingers curl|middle, ring, pinky fingers curl|
-|Trackpad press|thumb press towards palm|thumb press towards palm|
-|A|middle + thumb pinch| N/A |
-|B|index + thumb pinch| N/A |
-|System button|ring + thumb pinch| N/A |
-
-HTC Vive
----
-|Action|w/ handtracking pinch|w/o pinch|
-|-|-|-|
-|Trigger|index finger curl|index finger curl|
-|Grip press|middle, ring, pinky fingers curl|middle, ring, pinky fingers curl|
-|Trackpad press|thumb press towards palm|thumb press towards palm|
-|Menu button|middle + thumb pinch| N/A |
-|System button|ring + thumb pinch| N/A |
+Activation is done through curling all 4 fingers and touching top of hand with thumb

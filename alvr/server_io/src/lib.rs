@@ -8,11 +8,11 @@ pub use openvrpaths::*;
 
 use alvr_common::{
     anyhow::{bail, Result},
-    error, info,
+    error, info, ConnectionState,
 };
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, PathSegment, PathValuePair};
-use alvr_session::{ClientConnectionConfig, ConnectionState, SessionConfig, Settings};
+use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -203,6 +203,7 @@ impl ServerDataManager {
                         manual_ips: manual_ips.into_iter().collect(),
                         trusted,
                         connection_state: ConnectionState::Disconnected,
+                        cabled: false,
                     };
                     new_entry.insert(client_connection_desc);
 

@@ -122,7 +122,7 @@ impl VideoDecoderSource {
                 queued_image.timestamp,
                 queued_image
                     .image
-                    .get_hardware_buffer()
+                    .hardware_buffer()
                     .unwrap()
                     .as_ptr()
                     .cast(),
@@ -211,7 +211,7 @@ pub fn video_decoder_split(
                             Ok(image @ Some(_)) => {
                                 let image = image.take().unwrap();
                                 let timestamp =
-                                    Duration::from_nanos(image.get_timestamp().unwrap() as u64);
+                                    Duration::from_nanos(image.timestamp().unwrap() as u64);
 
                                 dequeued_frame_callback(timestamp);
 
@@ -250,7 +250,7 @@ pub fn video_decoder_split(
             decoder
                 .configure(
                     &format,
-                    Some(&image_reader.get_window().unwrap()),
+                    Some(&image_reader.window().unwrap()),
                     MediaCodecDirection::Decoder,
                 )
                 .unwrap();

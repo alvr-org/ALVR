@@ -11,26 +11,34 @@ namespace alvr_chaperone {
 using namespace alvr_chaperone;
 #endif
 
-static std::mutex chaperone_mutex;
+std::mutex chaperone_mutex;
 
-#ifdef __linux__
-vr::HmdMatrix34_t GetRawZeroPose() {
-    vr::HmdMatrix34_t out = {};
+void InitOpenvrClient() {
+#ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
+
     vr::EVRInitError error;
     vr::VR_Init(&error, vr::VRApplication_Utility);
-    if (error != vr::VRInitError_None) {
-        Warn("Failed to init OpenVR client to get raw zero pose! Error: %d", error);
-        return out;
-    }
-    out = vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
-    vr::VR_Shutdown();
-    return out;
-}
-#endif
 
-void SetChaperone(float areaWidth, float areaHeight) {
+    if (error != vr::VRInitError_None) {
+        Warn("Failed to init OpenVR client! Error: %d", error);
+        return;
+    }
+#endif
+}
+
+void ShutdownOpenvrClient() {
 #ifndef __APPLE__
+    std::unique_lock<std::mutex> lock(chaperone_mutex);
+
+    vr::VR_Shutdown();
+#endif
+}
+
+void _SetChaperoneArea(float areaWidth, float areaHeight) {
+#ifndef __APPLE__
+    std::unique_lock<std::mutex> lock(chaperone_mutex);
+
     const vr::HmdMatrix34_t MATRIX_IDENTITY = {
         {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
 
@@ -45,16 +53,6 @@ void SetChaperone(float areaWidth, float areaHeight) {
     perimeterPoints[3][0] = 1.0f * areaWidth;
     perimeterPoints[3][1] = -1.0f * areaHeight;
 
-    std::unique_lock<std::mutex> lock(chaperone_mutex);
-
-    vr::EVRInitError error;
-    vr::VR_Init(&error, vr::VRApplication_Utility);
-
-    if (error != vr::VRInitError_None) {
-        Warn("Failed to init OpenVR client to update Chaperone boundary! Error: %d", error);
-        return;
-    }
-
     vr::VRChaperoneSetup()->RoomSetupStarting();
     vr::VRChaperoneSetup()->SetWorkingPerimeter(
         reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
@@ -66,7 +64,11 @@ void SetChaperone(float areaWidth, float areaHeight) {
     // Hide SteamVR Chaperone
     vr::VRSettings()->SetFloat(
         vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
-
-    vr::VR_Shutdown();
 #endif
 }
+
+#ifdef __linux__
+vr::HmdMatrix34_t GetRawZeroPose() {
+    return vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
+}
+#endif

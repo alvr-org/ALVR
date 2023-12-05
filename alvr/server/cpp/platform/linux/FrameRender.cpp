@@ -20,13 +20,21 @@ FrameRender::FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[])
 
     Info("FrameRender: Input size %ux%u", m_width, m_height);
 
+    if (Settings::Instance().m_force_sw_encoding) {
+        m_handle = ExternalHandle::None;
+    } else if (ctx.amd || ctx.intel) {
+        m_handle = ExternalHandle::DmaBuf;
+    } else if (ctx.nvidia) {
+        m_handle = ExternalHandle::OpaqueFd;
+    }
+
     setupCustomShaders("pre");
 
     if (Settings::Instance().m_enableColorCorrection) {
         setupColorCorrection();
     }
 
-    if (Settings::Instance().m_enableFoveatedRendering) {
+    if (Settings::Instance().m_enableFoveatedEncoding) {
         setupFoveatedRendering();
     }
 
@@ -51,7 +59,7 @@ FrameRender::~FrameRender()
 
 FrameRender::Output FrameRender::CreateOutput()
 {
-    Renderer::CreateOutput(m_width, m_height);
+    Renderer::CreateOutput(m_width, m_height, m_handle);
     return GetOutput();
 }
 

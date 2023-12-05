@@ -310,8 +310,13 @@ alvr::VkFrame::VkFrame(
   av_vkframe->size[0] = size;
   av_vkframe->layout[0] = VK_IMAGE_LAYOUT_UNDEFINED;
 
+  VkExportSemaphoreCreateInfo exportInfo = {};
+  exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO;
+  exportInfo.handleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+
   VkSemaphoreTypeCreateInfo timelineInfo = {};
   timelineInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+  timelineInfo.pNext = &exportInfo;
   timelineInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 
   VkSemaphoreCreateInfo semInfo = {};

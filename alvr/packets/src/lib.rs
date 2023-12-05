@@ -1,8 +1,8 @@
 use alvr_common::{
     glam::{UVec2, Vec2},
-    DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
+    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
 };
-use alvr_session::{CodecType, ConnectionState, SessionConfig};
+use alvr_session::{CodecType, SessionConfig};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},

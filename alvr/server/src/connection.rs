@@ -172,6 +172,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         saturation,
         gamma,
         sharpening,
+        linux_async_compute: settings.patches.linux_async_compute,
         linux_async_reprojection: settings.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,

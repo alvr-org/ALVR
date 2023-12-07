@@ -1047,7 +1047,12 @@ pub struct CaptureConfig {
 #[schema(collapsible)]
 pub struct Patches {
     #[schema(strings(
-        help = "Async reprojection is currently broken in SteamVR, keep disabled. ONLY FOR TESTING.",
+        help = "Async Compute is currently broken in SteamVR, keep disabled. ONLY FOR TESTING."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub linux_async_compute: bool,
+    #[schema(strings(
+        help = "Async reprojection only works if you can always hit at least half of your refresh rate.",
     ))]
     #[schema(flag = "steamvr-restart")]
     pub linux_async_reprojection: bool,
@@ -1539,6 +1544,7 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         patches: PatchesDefault {
             gui_collapsed: false,
+            linux_async_compute: false,
             linux_async_reprojection: false,
         },
         open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),

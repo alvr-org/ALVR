@@ -76,6 +76,7 @@ class Settings {
 
     bool m_enableViveTrackerProxy = false;
     bool m_TrackingRefOnly = false;
+    bool m_enableLinuxVulkanAsyncCompute;
     bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;

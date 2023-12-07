@@ -22,7 +22,8 @@ If you are on Linux, install these additional packages:
 * **Gentoo**
   * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
   * `sys-libs/libunwind`
-  * `dev-lang/rust >= 1.51`
+  * `dev-lang/rust >= 1.72`
+  * `media-video/pipewire [jacksdk]`
 * **Nix(OS)**
   * Use the `shell.nix` in `packaging/nix`.
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**

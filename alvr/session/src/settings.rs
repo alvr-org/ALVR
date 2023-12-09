@@ -1235,6 +1235,7 @@ pub fn session_settings_default() -> SettingsDefault {
                             "vendor.qti-ext-dec-low-latency.enable".into(),
                             int32_default(1),
                         ),
+                        ("EnforceHRD".into(), int32_default(0)),
                     ],
                 }
             },

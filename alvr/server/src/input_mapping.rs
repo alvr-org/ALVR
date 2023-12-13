@@ -15,7 +15,7 @@ pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
     };
 
     match &controllers_config.emulation_mode {
-        ControllersEmulationMode::RiftSTouch | ControllersEmulationMode::Quest2Touch => {
+        ControllersEmulationMode::RiftSTouch | ControllersEmulationMode::Quest2Touch | ControllersEmulationMode::Quest3Plus => {
             CONTROLLER_PROFILE_INFO
                 .get(&QUEST_CONTROLLER_PROFILE_ID)
                 .unwrap()

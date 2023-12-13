@@ -85,10 +85,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         _controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
-            ControllersEmulationMode::ValveIndex => 2,
-            ControllersEmulationMode::ViveWand => 3,
-            ControllersEmulationMode::ViveTracker => 4,
-            ControllersEmulationMode::Custom { .. } => 5,
+            ControllersEmulationMode::Quest3Plus => 2,
+            ControllersEmulationMode::ValveIndex => 3,
+            ControllersEmulationMode::ViveWand => 4,
+            ControllersEmulationMode::ViveTracker => 5,
+            ControllersEmulationMode::Custom { .. } => 6,
         };
 
         true

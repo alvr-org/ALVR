@@ -602,6 +602,8 @@ pub enum ControllersEmulationMode {
     RiftSTouch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
+    #[schema(strings(display_name = "Quest 3 Touch Plus"))]
+    Quest3Plus,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     ViveWand,

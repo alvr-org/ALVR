@@ -144,7 +144,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ));
                 set_prop(NamedIconPathDeviceStandby(
                     "{oculus}/icons/rifts_headset_standby.png".into(),
-                )); 
+                ));
             }
             HeadsetEmulationMode::Quest2 => {
                 set_prop(TrackingSystemName("oculus".into()));
@@ -204,7 +204,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         set_prop(UserIpdMeters(0.063));
         set_prop(UserHeadToEyeDepthMeters(0.0));
         set_prop(SecondsFromVsyncToPhotons(0.0));
-        
+
         // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
         set_prop(CurrentUniverseId(2));
 

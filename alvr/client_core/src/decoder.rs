@@ -7,6 +7,9 @@ use std::time::Duration;
 #[derive(Clone)]
 pub struct DecoderInitConfig {
     pub codec: CodecType,
+    pub width: i32,
+    pub height: i32,
+    pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
     pub options: Vec<(String, MediacodecDataType)>,
@@ -15,6 +18,12 @@ pub struct DecoderInitConfig {
 pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     Mutex::new(DecoderInitConfig {
         codec: CodecType::H264,
+        // TODO: Actually get the real values for these and update accordingly.
+        // These are inherited from the previous code to avoid breaking anything.
+        // Would also be nice if force_software_decoder was configurable.
+        width: 512,
+        height: 1024,
+        force_software_decoder: false,
         max_buffering_frames: 1.0,
         buffering_history_weight: 0.9,
         options: vec![],

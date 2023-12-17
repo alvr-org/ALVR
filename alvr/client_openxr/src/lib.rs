@@ -155,7 +155,7 @@ fn to_xr_time(timestamp: Duration) -> xr::Time {
 fn init_egl() -> EglContext {
     let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
 
-    let display = instance.get_display(egl::DEFAULT_DISPLAY).unwrap();
+    let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
 
     let version = instance.initialize(display).unwrap();
 
@@ -1103,7 +1103,7 @@ fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<Duration> {
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: android_activity::AndroidApp) {
-    use android_activity::{InputStatus, MainEvent, PollEvent};
+    use android_activity::{MainEvent, PollEvent};
 
     let rendering_thread = thread::spawn(|| {
         // workaround for the Pico runtime
@@ -1121,7 +1121,7 @@ fn android_main(app: android_activity::AndroidApp) {
                 should_quit = true;
             }
             PollEvent::Main(MainEvent::InputAvailable) => {
-                app.input_events(|_| InputStatus::Unhandled);
+                app.input_events_iter().ok();
             }
             _ => (),
         });

@@ -30,7 +30,7 @@ void Settings::Load() {
         picojson::value v;
         std::string err = picojson::parse(v, json);
         if (!err.empty()) {
-            Error("Error on parsing json: %hs\n", err.c_str());
+            Error("Error on parsing session config (%s): %hs\n", g_sessionPath, err.c_str());
             return;
         }
 
@@ -105,10 +105,15 @@ void Settings::Load() {
         m_enableControllers = config.get("controllers_enabled").get<bool>();
         m_controllerIsTracker = config.get("controller_is_tracker").get<bool>();
 
+        auto sessionSettings = v.get("session_settings");
+        auto sessionVideo = sessionSettings.get("video");
+
+        m_h264UseBaselineProfile = sessionVideo.get("h264_use_baseline_profile").get<bool>();
+
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;
     } catch (std::exception &e) {
-        Error("Exception on parsing json: %hs\n", e.what());
+        Error("Exception on parsing session config (%s): %hs\n", g_sessionPath, e.what());
     }
 }

@@ -38,7 +38,7 @@ void Settings::Load()
 		std::string err = picojson::parse(v, json);
 		if (!err.empty())
 		{
-			Error("Error on parsing json: %hs\n", err.c_str());
+			Error("Error on parsing session config (%s): %hs\n", g_sessionPath, err.c_str());
 			return;
 		}
 
@@ -56,6 +56,6 @@ void Settings::Load()
 	}
 	catch (std::exception &e)
 	{
-		Error("Exception on parsing json: %hs\n", e.what());
+		Error("Exception on parsing session config (%s): %hs\n", g_sessionPath, e.what());
 	}
 }

@@ -469,6 +469,13 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub preferred_codec: CodecType,
 
+    #[schema(strings(
+        display_name = "Use h264 baseline profile",
+        help = "Whenever possible, attempts to force the 'baseline profile' or the 'constrained baseline profile' to increase compatibility with varying mobile devices. Only has an effect for h264 and may not have an effect for some configurations."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub h264_use_baseline_profile: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
@@ -1159,6 +1166,7 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
+            h264_use_baseline_profile: false,
             encoder_config: EncoderConfigDefault {
                 gui_collapsed: true,
                 rate_control_mode: RateControlModeDefault {

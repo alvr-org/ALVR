@@ -57,7 +57,7 @@ void VideoEncoderSW::Initialize() {
 	av_dict_set(&opt, "preset", "ultrafast", 0);
 	av_dict_set(&opt, "tune", "zerolatency", 0);
 
-	m_codecContext->profile = FF_PROFILE_H264_HIGH;
+	m_codecContext->profile = settings.m_h264UseBaselineProfile ? FF_PROFILE_H264_CONSTRAINED_BASELINE : FF_PROFILE_H264_HIGH;
 	switch (settings.m_entropyCoding) {
 		case ALVR_CABAC:
 			av_dict_set(&opt, "coder", "ac", 0);

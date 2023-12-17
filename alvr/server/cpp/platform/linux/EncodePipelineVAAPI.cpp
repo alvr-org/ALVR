@@ -156,7 +156,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   switch (codec_id)
   {
     case ALVR_CODEC_H264:
-      encoder_ctx->profile = FF_PROFILE_H264_MAIN;
+      encoder_ctx->profile = settings.m_h264UseBaselineProfile ? FF_PROFILE_H264_CONSTRAINED_BASELINE : FF_PROFILE_H264_MAIN;
 
       switch (settings.m_entropyCoding) {
       case ALVR_CABAC:

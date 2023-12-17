@@ -38,7 +38,7 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   const auto& settings = Settings::Instance();
 
   x264_param_default_preset(&param, "ultrafast", "zerolatency");
-  x264_param_apply_profile(&param, "high");
+  x264_param_apply_profile(&param, settings.m_h264UseBaselineProfile ? "baseline" : "high");
 
   param.pf_log = x264_log;
   param.i_log_level = X264_LOG_INFO;

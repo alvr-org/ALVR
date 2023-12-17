@@ -40,6 +40,7 @@ class Settings {
     float m_sharpening;
 
     int m_codec;
+    bool m_h264UseBaselineProfile;
     bool m_use10bitEncoder;
     bool m_enableVbaq;
     bool m_usePreproc;

@@ -113,6 +113,9 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
         break;
     }
 
+    if (settings.m_h264UseBaselineProfile)
+        av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
+
     char preset[] = "p0";
     // replace 0 with preset number
     preset[1] += settings.m_nvencQualityPreset;

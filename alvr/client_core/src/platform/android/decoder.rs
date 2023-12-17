@@ -1,6 +1,6 @@
 use crate::decoder::DecoderInitConfig;
 use alvr_common::{
-    anyhow::{bail, Result, anyhow},
+    anyhow::{anyhow, bail, Result},
     error, info,
     parking_lot::{Condvar, Mutex},
     warn, RelaxedAtomic,
@@ -145,26 +145,39 @@ impl Drop for VideoDecoderSource {
 }
 
 // Configure & start a MediaCodec.
-fn decoder_configure_and_start(decoder: MediaCodec, format: &MediaFormat, image_reader: &ImageReader) -> Result<MediaCodec> {
-    decoder
-        .configure(
-            &format,
-            Some(&image_reader.window().unwrap()),
-            MediaCodecDirection::Decoder,
-        )?;
+fn decoder_configure_and_start(
+    decoder: MediaCodec,
+    format: &MediaFormat,
+    image_reader: &ImageReader,
+) -> Result<MediaCodec> {
+    decoder.configure(
+        &format,
+        Some(&image_reader.window().unwrap()),
+        MediaCodecDirection::Decoder,
+    )?;
     decoder.start()?;
     Ok(decoder)
 }
 
 // Creates a hardware (or assumed hardware) MediaCodec and then configure and start it.
-fn decoder_try_hardware(mime: &str, format: &MediaFormat, image_reader: &ImageReader) -> Result<MediaCodec> {
-    let tmp = MediaCodec::from_decoder_type(&mime).ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?;
+fn decoder_try_hardware(
+    mime: &str,
+    format: &MediaFormat,
+    image_reader: &ImageReader,
+) -> Result<MediaCodec> {
+    let tmp = MediaCodec::from_decoder_type(&mime)
+        .ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?;
     decoder_configure_and_start(tmp, &format, &image_reader)
 }
 
 // Creates a software MediaCodec and then configure and start it.
-fn decoder_try_software(codec_name: &str, format: &MediaFormat, image_reader: &ImageReader) -> Result<MediaCodec> {
-    let tmp = MediaCodec::from_codec_name(&codec_name).ok_or(anyhow!("no such codec: {}", &codec_name))?;
+fn decoder_try_software(
+    codec_name: &str,
+    format: &MediaFormat,
+    image_reader: &ImageReader,
+) -> Result<MediaCodec> {
+    let tmp = MediaCodec::from_codec_name(&codec_name)
+        .ok_or(anyhow!("no such codec: {}", &codec_name))?;
     decoder_configure_and_start(tmp, &format, &image_reader)
 }
 
@@ -281,15 +294,16 @@ pub fn video_decoder_split(
                 match decoder_try_hardware(mime, &format, &image_reader) {
                     Ok(d) => d,
                     Err(e) => {
-                        error!("Attempting software fallback due to error in default decoder: {}", e);
+                        error!(
+                            "Attempting software fallback due to error in default decoder: {}",
+                            e
+                        );
                         decoder_try_software(sw_codec_name, &format, &image_reader).unwrap()
                     }
                 }
             };
 
-            let decoder = Arc::new(FakeThreadSafe(
-                preparing_decoder,
-            ));
+            let decoder = Arc::new(FakeThreadSafe(preparing_decoder));
 
             {
                 let mut decoder_lock = decoder_sink.lock();

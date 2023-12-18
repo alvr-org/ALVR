@@ -457,7 +457,7 @@ fn connection_pipeline(
 
                 match maybe_packet {
                     Ok(ServerControlPacket::InitializeDecoder(config)) => {
-                        decoder::create_decoder(config);
+                        decoder::create_decoder(config, settings.video.force_software_decoder);
                     }
                     Ok(ServerControlPacket::Restarting) => {
                         info!("{SERVER_RESTART_MESSAGE}");

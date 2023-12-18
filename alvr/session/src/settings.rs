@@ -479,6 +479,11 @@ pub struct VideoConfig {
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 
+    #[schema(strings(
+        help = "Attempts to use a software decoder on the device. Slow, but may work around broken codecs."
+    ))]
+    pub force_software_decoder: bool,
+
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,
 }
@@ -1272,6 +1277,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
+            force_software_decoder: false,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {

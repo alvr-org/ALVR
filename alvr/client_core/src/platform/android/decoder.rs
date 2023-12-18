@@ -144,41 +144,41 @@ impl Drop for VideoDecoderSource {
     }
 }
 
-// Configure & start a MediaCodec.
-fn decoder_configure_and_start(
-    decoder: MediaCodec,
+fn mime_for_codec(
+    codec: CodecType
+) -> &'static str {
+    match codec {
+        CodecType::H264 => "video/avc",
+        CodecType::Hevc => "video/hevc",
+    }
+}
+
+// Attempts to create a MediaCodec, and then configure and start it.
+fn decoder_attempt_setup(
+    codec_type: CodecType,
+    is_software: bool,
     format: &MediaFormat,
     image_reader: &ImageReader,
 ) -> Result<MediaCodec> {
+    let decoder = if is_software {
+        let sw_codec_name = match codec_type {
+            CodecType::H264 => "OMX.google.h264.decoder",
+            CodecType::Hevc => "OMX.google.hevc.decoder",
+        };
+        MediaCodec::from_codec_name(&sw_codec_name)
+            .ok_or(anyhow!("no such codec: {}", &sw_codec_name))?
+    } else {
+        let mime = mime_for_codec(codec_type);
+        MediaCodec::from_decoder_type(&mime)
+            .ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?
+    };
     decoder.configure(
         &format,
-        Some(&image_reader.window().unwrap()),
+        Some(&image_reader.window()?),
         MediaCodecDirection::Decoder,
     )?;
     decoder.start()?;
     Ok(decoder)
-}
-
-// Creates a hardware (or assumed hardware) MediaCodec and then configure and start it.
-fn decoder_try_hardware(
-    mime: &str,
-    format: &MediaFormat,
-    image_reader: &ImageReader,
-) -> Result<MediaCodec> {
-    let tmp = MediaCodec::from_decoder_type(&mime)
-        .ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?;
-    decoder_configure_and_start(tmp, &format, &image_reader)
-}
-
-// Creates a software MediaCodec and then configure and start it.
-fn decoder_try_software(
-    codec_name: &str,
-    format: &MediaFormat,
-    image_reader: &ImageReader,
-) -> Result<MediaCodec> {
-    let tmp = MediaCodec::from_codec_name(&codec_name)
-        .ok_or(anyhow!("no such codec: {}", &codec_name))?;
-    decoder_configure_and_start(tmp, &format, &image_reader)
 }
 
 // Create a sink/source pair
@@ -259,15 +259,7 @@ pub fn video_decoder_split(
                 .set_buffer_removed_listener(Box::new(|_, _| ()))
                 .unwrap();
 
-            let mime = match config.codec {
-                CodecType::H264 => "video/avc",
-                CodecType::Hevc => "video/hevc",
-            };
-
-            let sw_codec_name = match config.codec {
-                CodecType::H264 => "OMX.google.h264.decoder",
-                CodecType::Hevc => "OMX.google.hevc.decoder",
-            };
+            let mime = mime_for_codec(config.codec);
 
             let format = MediaFormat::new();
             format.set_str("mime", mime);
@@ -287,23 +279,23 @@ pub fn video_decoder_split(
             info!("Using AMediaCoded format:{} ", format);
 
             let preparing_decoder = if config.force_software_decoder {
-                decoder_try_software(sw_codec_name, &format, &image_reader).unwrap()
+                decoder_attempt_setup(config.codec, true, &format, &image_reader)
             } else {
                 // Hardware decoders sometimes fail at the CSD-0.
                 // May as well fall back if this occurs.
-                match decoder_try_hardware(mime, &format, &image_reader) {
-                    Ok(d) => d,
+                match decoder_attempt_setup(config.codec, false, &format, &image_reader) {
+                    Ok(d) => Ok(d),
                     Err(e) => {
                         error!(
                             "Attempting software fallback due to error in default decoder: {}",
                             e
                         );
-                        decoder_try_software(sw_codec_name, &format, &image_reader).unwrap()
+                        decoder_attempt_setup(config.codec, true, &format, &image_reader)
                     }
                 }
             };
 
-            let decoder = Arc::new(FakeThreadSafe(preparing_decoder));
+            let decoder = Arc::new(FakeThreadSafe(preparing_decoder.unwrap()));
 
             {
                 let mut decoder_lock = decoder_sink.lock();

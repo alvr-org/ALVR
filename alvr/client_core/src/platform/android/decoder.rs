@@ -144,9 +144,7 @@ impl Drop for VideoDecoderSource {
     }
 }
 
-fn mime_for_codec(
-    codec: CodecType
-) -> &'static str {
+fn mime_for_codec(codec: CodecType) -> &'static str {
     match codec {
         CodecType::H264 => "video/avc",
         CodecType::Hevc => "video/hevc",

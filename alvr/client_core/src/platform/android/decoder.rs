@@ -3,7 +3,7 @@ use alvr_common::{
     anyhow::{anyhow, bail, Context, Result},
     error, info,
     parking_lot::{Condvar, Mutex},
-    show_err, warn, RelaxedAtomic,
+    show_e, warn, RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
@@ -298,46 +298,51 @@ pub fn video_decoder_split(
                 }
             };
 
-            if let Ok(prepared_decoder) = preparing_decoder {
-                let decoder = Arc::new(FakeThreadSafe(prepared_decoder));
+            match preparing_decoder {
+                Ok(prepared_decoder) => {
+                    let decoder = Arc::new(FakeThreadSafe(prepared_decoder));
 
-                {
-                    let mut decoder_lock = decoder_sink.lock();
+                    {
+                        let mut decoder_lock = decoder_sink.lock();
 
-                    *decoder_lock = Some(Arc::clone(&decoder));
+                        *decoder_lock = Some(Arc::clone(&decoder));
 
-                    decoder_ready_notifier.notify_one();
-                }
+                        decoder_ready_notifier.notify_one();
+                    }
 
-                while running.value() {
-                    match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
-                        Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
-                            // The buffer timestamp is actually nanoseconds
-                            let presentation_time_ns = buffer.info().presentation_time_us();
+                    while running.value() {
+                        match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
+                            Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
+                                // The buffer timestamp is actually nanoseconds
+                                let presentation_time_ns = buffer.info().presentation_time_us();
 
-                            if let Err(e) =
-                                decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
-                            {
+                                if let Err(e) = decoder
+                                    .release_output_buffer_at_time(buffer, presentation_time_ns)
+                                {
+                                    error!("Decoder dequeue error: {e}");
+                                }
+                            }
+                            Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => {
+                                thread::yield_now()
+                            }
+                            Ok(i) => info!("Decoder dequeue event: {i:?}"),
+                            Err(e) => {
                                 error!("Decoder dequeue error: {e}");
+
+                                // lessen logcat flood (just in case)
+                                thread::sleep(Duration::from_millis(50));
                             }
                         }
-                        Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
-                        Ok(i) => info!("Decoder dequeue event: {i:?}"),
-                        Err(e) => {
-                            error!("Decoder dequeue error: {e}");
-
-                            // lessen logcat flood (just in case)
-                            thread::sleep(Duration::from_millis(50));
-                        }
                     }
-                }
 
-                // Destroy all resources
-                decoder_sink.lock().take(); // Make sure the shared ref is deleted first
-                decoder.stop().unwrap();
-                drop(decoder);
-            } else {
-                show_err(preparing_decoder);
+                    // Destroy all resources
+                    decoder_sink.lock().take(); // Make sure the shared ref is deleted first
+                    decoder.stop().unwrap();
+                    drop(decoder);
+                }
+                Err(e) => {
+                    show_e(e);
+                }
             }
 
             image_queue.lock().clear();

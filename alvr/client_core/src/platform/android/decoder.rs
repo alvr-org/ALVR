@@ -170,14 +170,14 @@ fn decoder_attempt_setup(
         MediaCodec::from_decoder_type(&mime)
             .ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?
     };
-    decoder
-        .configure(
-            &format,
-            Some(&image_reader.window()?),
-            MediaCodecDirection::Decoder,
-        )
-        .with_context(|| "failed to configure decoder")?;
-    decoder.start().with_context(|| "failed to start decoder")?;
+    let decoder_configure_err = decoder.configure(
+        &format,
+        Some(&image_reader.window()?),
+        MediaCodecDirection::Decoder,
+    );
+    decoder_configure_err.with_context(|| format!("failed to configure decoder"))?;
+    let decoder_start_err = decoder.start();
+    decoder_start_err.with_context(|| format!("failed to start decoder"))?;
     Ok(decoder)
 }
 

@@ -472,17 +472,17 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
+    #[schema(strings(
+        help = "Attempts to use a software decoder on the device. Slow, but may work around broken codecs."
+    ))]
+    pub force_software_decoder: bool,
+
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
     pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
-
-    #[schema(strings(
-        help = "Attempts to use a software decoder on the device. Slow, but may work around broken codecs."
-    ))]
-    pub force_software_decoder: bool,
 
     #[schema(flag = "steamvr-restart")]
     pub color_correction: Switch<ColorCorrectionConfig>,

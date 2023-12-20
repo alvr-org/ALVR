@@ -128,7 +128,8 @@ pub fn show_e_blocking<E: Display>(e: E) {
 }
 
 pub fn show_err<T, E: Display>(res: Result<T, E>) -> Option<T> {
-    res.map_err(|e| show_e_block(format!("{:#}", e), false)).ok()
+    res.map_err(|e| show_e_block(format!("{:#}", e), false))
+        .ok()
 }
 
 pub fn show_err_blocking<T, E: Display>(res: Result<T, E>) -> Option<T> {

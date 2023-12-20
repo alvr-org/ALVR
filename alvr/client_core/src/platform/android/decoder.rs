@@ -1,9 +1,9 @@
 use crate::decoder::DecoderInitConfig;
 use alvr_common::{
-    anyhow::{anyhow, bail, Result},
+    anyhow::{anyhow, bail, Context, Result},
     error, info,
     parking_lot::{Condvar, Mutex},
-    warn, RelaxedAtomic,
+    show_err, warn, RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
@@ -170,12 +170,14 @@ fn decoder_attempt_setup(
         MediaCodec::from_decoder_type(&mime)
             .ok_or(anyhow!("unable to find decoder for mime type: {}", &mime))?
     };
-    decoder.configure(
-        &format,
-        Some(&image_reader.window()?),
-        MediaCodecDirection::Decoder,
-    )?;
-    decoder.start()?;
+    decoder
+        .configure(
+            &format,
+            Some(&image_reader.window()?),
+            MediaCodecDirection::Decoder,
+        )
+        .with_context(|| "failed to configure decoder")?;
+    decoder.start().with_context(|| "failed to start decoder")?;
     Ok(decoder)
 }
 
@@ -261,8 +263,10 @@ pub fn video_decoder_split(
 
             let format = MediaFormat::new();
             format.set_str("mime", mime);
-            format.set_i32("width", config.width);
-            format.set_i32("height", config.height);
+            // Given https://github.com/alvr-org/ALVR/pull/1933#discussion_r1431902906 - change at own risk.
+            // It might be harmless, it might not be, but it's definitely a risk.
+            format.set_i32("width", 512);
+            format.set_i32("height", 1024);
             format.set_buffer("csd-0", &csd_0);
 
             for (key, value) in &config.options {
@@ -284,8 +288,9 @@ pub fn video_decoder_split(
                 match decoder_attempt_setup(config.codec, false, &format, &image_reader) {
                     Ok(d) => Ok(d),
                     Err(e) => {
+                        // would be "warn!" but this is a severe caveat and a pretty major error.
                         error!(
-                            "Attempting software fallback due to error in default decoder: {}",
+                            "Attempting software fallback due to error in default decoder: {:#}",
                             e
                         );
                         decoder_attempt_setup(config.codec, true, &format, &image_reader)
@@ -293,43 +298,47 @@ pub fn video_decoder_split(
                 }
             };
 
-            let decoder = Arc::new(FakeThreadSafe(preparing_decoder.unwrap()));
+            if let Ok(prepared_decoder) = preparing_decoder {
+                let decoder = Arc::new(FakeThreadSafe(prepared_decoder));
 
-            {
-                let mut decoder_lock = decoder_sink.lock();
+                {
+                    let mut decoder_lock = decoder_sink.lock();
 
-                *decoder_lock = Some(Arc::clone(&decoder));
+                    *decoder_lock = Some(Arc::clone(&decoder));
 
-                decoder_ready_notifier.notify_one();
-            }
+                    decoder_ready_notifier.notify_one();
+                }
 
-            while running.value() {
-                match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
-                    Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
-                        // The buffer timestamp is actually nanoseconds
-                        let presentation_time_ns = buffer.info().presentation_time_us();
+                while running.value() {
+                    match decoder.dequeue_output_buffer(Duration::from_millis(1)) {
+                        Ok(DequeuedOutputBufferInfoResult::Buffer(buffer)) => {
+                            // The buffer timestamp is actually nanoseconds
+                            let presentation_time_ns = buffer.info().presentation_time_us();
 
-                        if let Err(e) =
-                            decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
-                        {
+                            if let Err(e) =
+                                decoder.release_output_buffer_at_time(buffer, presentation_time_ns)
+                            {
+                                error!("Decoder dequeue error: {e}");
+                            }
+                        }
+                        Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
+                        Ok(i) => info!("Decoder dequeue event: {i:?}"),
+                        Err(e) => {
                             error!("Decoder dequeue error: {e}");
+
+                            // lessen logcat flood (just in case)
+                            thread::sleep(Duration::from_millis(50));
                         }
                     }
-                    Ok(DequeuedOutputBufferInfoResult::TryAgainLater) => thread::yield_now(),
-                    Ok(i) => info!("Decoder dequeue event: {i:?}"),
-                    Err(e) => {
-                        error!("Decoder dequeue error: {e}");
-
-                        // lessen logcat flood (just in case)
-                        thread::sleep(Duration::from_millis(50));
-                    }
                 }
-            }
 
-            // Destroy all resources
-            decoder_sink.lock().take(); // Make sure the shared ref is deleted first
-            decoder.stop().unwrap();
-            drop(decoder);
+                // Destroy all resources
+                decoder_sink.lock().take(); // Make sure the shared ref is deleted first
+                decoder.stop().unwrap();
+                drop(decoder);
+            } else {
+                show_err(preparing_decoder);
+            }
 
             image_queue.lock().clear();
             error!("FIXME: Leaking Imagereader!");

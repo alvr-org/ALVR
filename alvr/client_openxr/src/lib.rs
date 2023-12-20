@@ -607,7 +607,7 @@ pub fn entry_point() {
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
-    exts.fb_face_tracking = available_extensions.fb_face_tracking;
+    exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;

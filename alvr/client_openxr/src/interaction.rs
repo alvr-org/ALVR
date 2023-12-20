@@ -23,7 +23,7 @@ pub struct HandInteraction {
 pub struct FaceSources {
     pub combined_eyes_source: Option<(xr::Action<xr::Posef>, xr::Space)>,
     pub eye_tracker_fb: Option<xr::EyeTrackerSocial>,
-    pub face_tracker_fb: Option<xr::FaceTrackerFB>,
+    pub face_tracker_fb: Option<xr::FaceTracker2FB>,
     pub eye_tracker_htc: Option<xr::FacialTrackerHTC>,
     pub lip_tracker_htc: Option<xr::FacialTrackerHTC>,
 }
@@ -240,12 +240,12 @@ pub fn initialize_interaction(
         .as_ref()
         .map(|s| s.face_tracking_fb)
         .unwrap_or(false)
-        && xr_ctx.instance.exts().fb_face_tracking.is_some()
+        && xr_ctx.instance.exts().fb_face_tracking2.is_some()
         && xr_ctx
             .instance
-            .supports_fb_face_tracking(xr_ctx.system)
+            .supports_fb_visual_face_tracking(xr_ctx.system)
             .unwrap())
-    .then(|| xr_ctx.session.create_face_tracker_fb().unwrap());
+    .then(|| xr_ctx.session.create_face_tracker2_fb(true, false).unwrap());
 
     let eye_tracker_htc = (face_tracking_sources
         .as_ref()

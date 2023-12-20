@@ -17,7 +17,7 @@ alvr_session.workspace = true
 
 glow = "0.13"
 khronos-egl = { version = "6", features = ["dynamic"] }
-openxr = { git = "https://github.com/zarik5/openxrs" }
+openxr = { git = "https://github.com/alvr-org/openxrs" }
 # openxr = { path = "../../../../openxrs/openxr" }
 
 [target.'cfg(target_os = "android")'.dependencies]

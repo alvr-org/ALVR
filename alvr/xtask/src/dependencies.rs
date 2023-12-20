@@ -255,7 +255,7 @@ fn get_android_openxr_loaders() {
 
     get_openxr_loader(
         "quest",
-        "https://securecdn.oculus.com/binaries/download/?id=6316350341736833", // version 53
+        "https://securecdn.oculus.com/binaries/download/?id=7092833820755144", // version 60
         "OpenXR/Libs/Android/arm64-v8a/Release",
     );
 

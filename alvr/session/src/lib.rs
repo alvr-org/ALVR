@@ -46,6 +46,7 @@ pub struct OpenvrConfig {
     pub aggressive_keyframe_resend: bool,
     pub adapter_index: u32,
     pub codec: u32,
+    pub h264_profile: u32,
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,
     pub enable_vbaq: bool,

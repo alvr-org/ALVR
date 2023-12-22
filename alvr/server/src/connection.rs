@@ -142,6 +142,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.preferred_codec, CodecType::Hevc) as _,
+        h264_profile: settings.video.encoder_config.h264_profile as u32,
         rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
         filler_data: settings.video.encoder_config.filler_data,
         entropy_coding: settings.video.encoder_config.entropy_coding as u32,

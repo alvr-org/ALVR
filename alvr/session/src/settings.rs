@@ -184,6 +184,13 @@ VBR: Variable BitRate mode. Not commended because it may throw off the adaptive 
     #[schema(flag = "steamvr-restart")]
     pub filler_data: bool,
 
+    #[schema(strings(
+        display_name = "h264: Profile",
+        help = "Whenever possible, attempts to use this profile. May increase compatibility with varying mobile devices. Only has an effect for h264. Doesn't affect NVENC on Windows."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub h264_profile: H264Profile,
+
     #[schema(strings(help = r#"CAVLC algorithm is recommended.
 CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
     #[schema(flag = "steamvr-restart")]
@@ -420,6 +427,18 @@ pub enum CodecType {
     Hevc = 1,
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[schema(gui = "button_group")]
+pub enum H264Profile {
+    #[schema(strings(display_name = "High"))]
+    High = 0,
+    #[schema(strings(display_name = "Main"))]
+    Main = 1,
+    #[schema(strings(display_name = "Baseline"))]
+    Baseline = 2,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct VideoConfig {
@@ -468,13 +487,6 @@ pub struct VideoConfig {
     ))]
     #[schema(flag = "steamvr-restart")]
     pub preferred_codec: CodecType,
-
-    #[schema(strings(
-        display_name = "Use h264 baseline profile",
-        help = "Whenever possible, attempts to force the 'baseline profile' or the 'constrained baseline profile' to increase compatibility with varying mobile devices. Only has an effect for h264 and may not have an effect for some configurations."
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub h264_use_baseline_profile: bool,
 
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
@@ -1166,13 +1178,15 @@ pub fn session_settings_default() -> SettingsDefault {
             preferred_codec: CodecTypeDefault {
                 variant: CodecTypeDefaultVariant::H264,
             },
-            h264_use_baseline_profile: false,
             encoder_config: EncoderConfigDefault {
                 gui_collapsed: true,
                 rate_control_mode: RateControlModeDefault {
                     variant: RateControlModeDefaultVariant::Cbr,
                 },
                 filler_data: false,
+                h264_profile: H264ProfileDefault {
+                    variant: H264ProfileDefaultVariant::High,
+                },
                 entropy_coding: EntropyCodingDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },

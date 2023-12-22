@@ -149,12 +149,19 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	if (codec == ALVR_CODEC_H264)
 	{
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
-		if (Settings::Instance().m_h264UseBaselineProfile) {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_CONSTRAINED_BASELINE);
-		} else {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
-		}
+      	switch (Settings::Instance().m_h264Profile) {
+      	case ALVR_H264_PROFILE_BASELINE:
+        	amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_BASELINE);
+        	break;
+      	case ALVR_H264_PROFILE_MAIN:
+        	amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_MAIN);
+        	break;
+      	default:
+      	case ALVR_H264_PROFILE_HIGH:
+        	amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE, AMF_VIDEO_ENCODER_PROFILE_HIGH);
+        	break;
+      	}
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PROFILE_LEVEL, 42);
 		switch (Settings::Instance().m_rateControlMode) {
 			case ALVR_CBR:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_CBR);

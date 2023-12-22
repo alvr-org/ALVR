@@ -60,6 +60,7 @@ void Settings::Load() {
         m_sharpening = (float)config.get("sharpening").get<double>();
 
         m_codec = (int32_t)config.get("codec").get<int64_t>();
+        m_h264Profile = (int32_t)config.get("h264_profile").get<int64_t>();
         m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
         m_fillerData = config.get("filler_data").get<bool>();
         m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
@@ -104,11 +105,6 @@ void Settings::Load() {
 
         m_enableControllers = config.get("controllers_enabled").get<bool>();
         m_controllerIsTracker = config.get("controller_is_tracker").get<bool>();
-
-        auto sessionSettings = v.get("session_settings");
-        auto sessionVideo = sessionSettings.get("video");
-
-        m_h264UseBaselineProfile = sessionVideo.get("h264_use_baseline_profile").get<bool>();
 
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);

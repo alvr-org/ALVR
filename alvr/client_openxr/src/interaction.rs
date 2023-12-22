@@ -244,8 +244,12 @@ pub fn initialize_interaction(
         && xr_ctx
             .instance
             .supports_fb_visual_face_tracking(xr_ctx.system)
+            .unwrap()
+        && xr_ctx
+            .instance
+            .supports_fb_audio_face_tracking(xr_ctx.system)
             .unwrap())
-    .then(|| xr_ctx.session.create_face_tracker2_fb(true, false).unwrap());
+    .then(|| xr_ctx.session.create_face_tracker2_fb(true, true).unwrap());
 
     let eye_tracker_htc = (face_tracking_sources
         .as_ref()

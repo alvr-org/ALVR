@@ -441,6 +441,7 @@ fn initialize_stream(
             alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
         if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
     }

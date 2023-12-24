@@ -1104,7 +1104,7 @@ fn xr_runtime_now(xr_instance: &xr::Instance) -> Option<Duration> {
 #[cfg(target_os = "android")]
 #[no_mangle]
 fn android_main(app: android_activity::AndroidApp) {
-    use android_activity::{MainEvent, PollEvent};
+    use android_activity::{InputStatus, MainEvent, PollEvent};
 
     let rendering_thread = thread::spawn(|| {
         // workaround for the Pico runtime
@@ -1122,7 +1122,9 @@ fn android_main(app: android_activity::AndroidApp) {
                 should_quit = true;
             }
             PollEvent::Main(MainEvent::InputAvailable) => {
-                app.input_events_iter().ok();
+                if let Ok(mut iter) = app.input_events_iter() {
+                    while iter.next(|_| InputStatus::Unhandled) {}
+                }
             }
             _ => (),
         });

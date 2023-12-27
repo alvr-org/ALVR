@@ -47,6 +47,12 @@ target_sdk_version = 29
 name = "android.hardware.microphone"
 required = true
 [[package.metadata.android.uses_feature]]
+name = "android.hardware.usb.accessory"
+required = true
+[[package.metadata.android.uses_feature]]
+name = "android.hardware.usb.host"
+required = true
+[[package.metadata.android.uses_feature]]
 name = "android.hardware.vr.headtracking"
 required = true
 [[package.metadata.android.uses_feature]]
@@ -54,11 +60,13 @@ opengles_version = [3, 1]
 required = true
 
 [[package.metadata.android.uses_permission]]
+name = "android.permission.ACCESS_NETWORK_STATE"
+[[package.metadata.android.uses_permission]]
 name = "android.permission.ACCESS_WIFI_STATE"
 [[package.metadata.android.uses_permission]]
-name = "android.permission.INTERNET"
+name = "android.permission.HARDWARE_TEST"
 [[package.metadata.android.uses_permission]]
-name = "android.permission.ACCESS_NETWORK_STATE"
+name = "android.permission.INTERNET"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.RECORD_AUDIO"
 [[package.metadata.android.uses_permission]]
@@ -84,7 +92,12 @@ launch_mode = "singleTask"
 orientation = "landscape"
 
 [[package.metadata.android.application.activity.intent_filter]]
-actions = ["android.intent.action.MAIN"]
+actions = [
+    "android.intent.action.MAIN",
+    "android.hardware.usb.action.ACTION_USB_PERMISSION",
+    "android.hardware.usb.action.USB_DEVICE_ATTACHED",
+    "android.hardware.usb.action.USB_ACCESSORY_DETACHED",
+]
 categories = [
     "android.intent.category.LAUNCHER",
     "com.oculus.intent.category.VR",

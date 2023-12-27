@@ -127,6 +127,11 @@ pub fn destroy() {
 
 pub fn resume() {
     *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
+
+    #[cfg(target_os = "android")]
+    platform::get_usb_devices_fd();
+
+    // platform::android::try_get_permission("android.permission.HARDWARE_TEST");
 }
 
 pub fn pause() {

@@ -4,7 +4,7 @@ pub use decoder::*;
 
 use alvr_common::OptLazy;
 use jni::{
-    objects::{GlobalRef, JObject},
+    objects::{GlobalRef, JObject, JObjectArray, AsJArrayRaw},
     sys::jobject,
     JNIEnv, JavaVM,
 };
@@ -244,4 +244,80 @@ pub fn get_battery_status() -> (f32, bool) {
         .unwrap();
 
     (level as f32 / scale as f32, plugged > 0)
+}
+
+pub fn get_usb_devices_fd() {
+    let vm = vm();
+    let mut env = vm.attach_current_thread().unwrap();
+
+    alvr_common::error!("get package manager");
+
+    let package_manager = env
+        .call_method(
+            unsafe { JObject::from_raw(context()) },
+            "getPackageManager",
+            "()Landroid/content/pm/PackageManager;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+
+    alvr_common::error!("get feature");
+
+    let feat = env.new_string("android.hardware.usb.accessory").unwrap();
+
+    let supports_usb = env
+        .call_method(
+            package_manager,
+            "hasSystemFeature",
+            "(Ljava/lang/String;)Z",
+            &[(&feat).into()],
+        )
+        .unwrap()
+        .z()
+        .unwrap();
+
+    alvr_common::error!("supports usb accessory: {supports_usb}");
+
+    let usb_service = get_system_service(&mut env, "usb");
+
+    let accessories_list: JObjectArray = env
+        .call_method(
+            usb_service,
+            "getAccessoryList",
+            "()[Landroid/hardware/usb/UsbAccessory;",
+            &[],
+        )
+        .unwrap()
+        .l()
+        .unwrap()
+        .into();
+
+    alvr_common::error!("accessories_list: {:?}", accessories_list.as_jarray_raw());
+
+    // let devices_map = env
+    //     .call_method(usb_service, "getDeviceList", "()Ljava/util/HashMap;", &[])
+    //     .unwrap()
+    //     .l()
+    //     .unwrap();
+
+    // let is_empty = env
+    //     .call_method(devices_map, "isEmpty", "()Z", &[])
+    //     .unwrap()
+    //     .z()
+    //     .unwrap();
+
+    // alvr_common::error!("usb is empty: {is_empty}");
+
+    // let count = env.get_array_length(&accessories_list).unwrap();
+
+    // alvr_common::error!("usb count: {count}");
+
+    // let
+    // let mut iterator = accessory_list.iter();
+    // while let Some((key, _value)) = iterator.next(&mut env).unwrap() {
+    //     let str: String = env.get_string(&key.into()).unwrap().into();
+    //     warn!("device: {str}")
+    // }
 }

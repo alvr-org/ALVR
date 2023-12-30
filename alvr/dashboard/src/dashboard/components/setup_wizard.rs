@@ -305,7 +305,7 @@ fn download_and_prepare_audio_script() -> alvr_common::anyhow::Result<std::path:
     )
     .call()?;
 
-    fs::write(&audio_script_path, response.into_string()?);
+    fs::write(&audio_script_path, response.into_string()?).unwrap();
     fs::set_permissions(&audio_script_path, fs::Permissions::from_mode(0o755))?;
 
     Ok(audio_script_path)

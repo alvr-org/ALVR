@@ -339,10 +339,21 @@ fn connection_pipeline(
         client_hostname.clone(),
         ClientListAction::SetConnectionState(ConnectionState::Connecting),
     );
+
+    let handshake = proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT).or_else(|err| {
+        server_data_lock.update_client_list(
+            client_hostname.clone(),
+            ClientListAction::SetConnectionState(ConnectionState::Disconnected),
+        );
+
+        Err(err)
+    })?;
+
     server_data_lock.update_client_list(
         client_hostname.clone(),
         ClientListAction::UpdateCurrentIp(Some(client_ip)),
     );
+
     let disconnect_notif = Arc::new(Condvar::new());
 
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
@@ -350,7 +361,7 @@ fn connection_pipeline(
         display_name,
         streaming_capabilities,
         ..
-    } = proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT)?
+    } = handshake
     {
         server_data_lock.update_client_list(
             client_hostname.clone(),

@@ -321,6 +321,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         if let Err(e) = connection_pipeline(proto_socket, client_hostname.clone(), client_ip) {
             error!("Handshake error for {client_hostname}: {e}");
         }
+
+        let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
+
+        let action = if clients_to_be_removed.contains(&client_hostname) {
+            clients_to_be_removed.remove(&client_hostname);
+
+            ClientListAction::RemoveEntry
+        } else {
+            ClientListAction::SetConnectionState(ConnectionState::Disconnected)
+        };
+        SERVER_DATA_MANAGER
+            .write()
+            .update_client_list(client_hostname, action);
     }));
 
     Ok(())
@@ -339,16 +352,6 @@ fn connection_pipeline(
         client_hostname.clone(),
         ClientListAction::SetConnectionState(ConnectionState::Connecting),
     );
-
-    let handshake = proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT).or_else(|err| {
-        server_data_lock.update_client_list(
-            client_hostname.clone(),
-            ClientListAction::SetConnectionState(ConnectionState::Disconnected),
-        );
-
-        Err(err)
-    })?;
-
     server_data_lock.update_client_list(
         client_hostname.clone(),
         ClientListAction::UpdateCurrentIp(Some(client_ip)),
@@ -356,12 +359,22 @@ fn connection_pipeline(
 
     let disconnect_notif = Arc::new(Condvar::new());
 
+    let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
+        Ok(r) => r,
+        Err(ConnectionError::TryAgain(e)) => {
+            debug!("Failed to recive client connection packet. This is normal for USB connection.\n{e}");
+
+            return Ok(());
+        }
+        Err(e) => return Err(e),
+    };
+
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         client_protocol_id,
         display_name,
         streaming_capabilities,
         ..
-    } = handshake
+    } = connection_result
     {
         server_data_lock.update_client_list(
             client_hostname.clone(),
@@ -1186,19 +1199,6 @@ fn connection_pipeline(
     stream_receive_thread.join().ok();
     keepalive_thread.join().ok();
     lifecycle_check_thread.join().ok();
-
-    let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
-
-    let action = if clients_to_be_removed.contains(&client_hostname) {
-        clients_to_be_removed.remove(&client_hostname);
-
-        ClientListAction::RemoveEntry
-    } else {
-        ClientListAction::SetConnectionState(ConnectionState::Disconnected)
-    };
-    SERVER_DATA_MANAGER
-        .write()
-        .update_client_list(client_hostname, action);
 
     Ok(())
 }

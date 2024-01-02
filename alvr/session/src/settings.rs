@@ -447,7 +447,7 @@ pub struct VideoConfig {
     #[schema(
         strings(
             display_name = "Maximum buffering",
-            help = "Incresing this value will help reduce stutter but it will increase latency"
+            help = "Increasing this value will help reduce stutter but it will increase latency"
         ),
         gui(slider(min = 1.0, max = 10.0, step = 0.1, logarithmic)),
         suffix = " frames"

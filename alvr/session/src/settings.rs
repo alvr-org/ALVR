@@ -184,6 +184,13 @@ VBR: Variable BitRate mode. Not commended because it may throw off the adaptive 
     #[schema(flag = "steamvr-restart")]
     pub filler_data: bool,
 
+    #[schema(strings(
+        display_name = "h264: Profile",
+        help = "Whenever possible, attempts to use this profile. May increase compatibility with varying mobile devices. Only has an effect for h264. Doesn't affect NVENC on Windows."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub h264_profile: H264Profile,
+
     #[schema(strings(help = r#"CAVLC algorithm is recommended.
 CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
     #[schema(flag = "steamvr-restart")]
@@ -418,6 +425,18 @@ pub enum CodecType {
     H264 = 0,
     #[schema(strings(display_name = "HEVC"))]
     Hevc = 1,
+}
+
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[schema(gui = "button_group")]
+pub enum H264Profile {
+    #[schema(strings(display_name = "High"))]
+    High = 0,
+    #[schema(strings(display_name = "Main"))]
+    Main = 1,
+    #[schema(strings(display_name = "Baseline"))]
+    Baseline = 2,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1165,6 +1184,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: RateControlModeDefaultVariant::Cbr,
                 },
                 filler_data: false,
+                h264_profile: H264ProfileDefault {
+                    variant: H264ProfileDefaultVariant::High,
+                },
                 entropy_coding: EntropyCodingDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },

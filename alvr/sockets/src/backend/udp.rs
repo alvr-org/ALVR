@@ -21,6 +21,7 @@ pub fn bind(
     let socket = UdpSocket::bind((LOCAL_IP, port))?.into();
 
     crate::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
+    socket.set_tos(0b101110).ok();
 
     Ok(socket.into())
 }

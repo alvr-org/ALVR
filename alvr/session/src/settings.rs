@@ -491,6 +491,11 @@ pub struct VideoConfig {
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
+    #[schema(strings(
+        help = "Attempts to use a software decoder on the device. Slow, but may work around broken codecs."
+    ))]
+    pub force_software_decoder: bool,
+
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
     #[schema(flag = "steamvr-restart")]
@@ -1294,6 +1299,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
+            force_software_decoder: false,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {

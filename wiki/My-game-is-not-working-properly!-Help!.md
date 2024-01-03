@@ -13,8 +13,3 @@ In general, this is a rather bad practice as all relevant data can be accessed t
 Nonetheless, we want to play and support those games. 
 Problem is, that we don't own all games. This is a Open Source without any funding. We can not buy any games just to fix a bug. In the case of Vivecraft, one user (thanks @Avencore) was generous to gift us a copy and the bug could be fixed.
 There are no guaranties! Neither on the time it will take nor if the bug will ever be fixed! Please contact us before buying anything.
-
-
-
-
-

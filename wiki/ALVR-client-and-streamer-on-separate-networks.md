@@ -109,20 +109,6 @@ We're going to use n2n v3, and set the port of _supernode_ to `1234` as the exam
 - If the edge binary or hin2n says the IP has already been assigned and not released by supernode, you can set IP address to another one in the same subnet like `192.168.100.123` to reassign a new IP to the device.
 - If you're playing over WAN, you may see more glitches, higher stream latency, or lagger response with TCP. Use adaptive bitrate and UDP may improve your experience.
 
-# ALVR v11 and Below
-
-ALVR version Experimental v7 or newer is recommended for this configuration.
-
-This configuration is **NOT** supported in ALVR v12. The latest release to still support this is v11.
-
-To run ALVR client and ALVR streamer on separate networks (broadcast domains) the following things must be done: 
-
-1. UDP ports 9943 and 9944 of ALVR streamer must be accessible from Oculus Quest device (i.e. firewall openings must be made to allow Oculus Quest to connect to ALVR streamer UDP ports 9943 and 9944). 
-2. Oculus Quest must be connected to computer and command-line `adb shell am startservice -n "com.polygraphene.alvr/.ChangeSettings" --es "targetServers" "10.10.10.10"` must be run in Command Prompt to specify IP address of ALVR streamer (`10.10.10.10` must be substituted with IP address of ALVR streamer; the long line is a single command-line).
-3. Next time when ALVR client will be started it should try to connect to the specified ALVR streamer. ALVR streamer should display the client in _Server_ tab (the same way local-network clients are displayed).
-
-ALVR does **NOT** provide any kind of tunnel, NAT traversal etc. UDP ports 9943 and 9944 of ALVR streamer (VR gaming PC) must be accessible from ALVR client (Oculus Quest) otherwise this won't work. 
-
 **Important notes on security!**
 
 * ALVR protocol does not have any encryption or authentication (apart from ALVR client IP address shown in ALVR streamer and the requirement to click _Connect_ on ALVR streamer). 

@@ -20,7 +20,7 @@ use crate::backend::{tcp, udp, SocketReader, SocketWriter};
 use alvr_common::{
     anyhow::Result, debug, parking_lot::Mutex, AnyhowToCon, ConResult, HandleTryAgain, ToCon,
 };
-use alvr_session::{SocketBufferSize, SocketProtocol};
+use alvr_session::{DscpTos, SocketBufferSize, SocketProtocol};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     cmp::Ordering,
@@ -271,16 +271,21 @@ impl StreamSocketBuilder {
         timeout: Duration,
         port: u16,
         stream_socket_config: SocketProtocol,
+        stream_tos_config: Option<DscpTos>,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
     ) -> Result<Self> {
         Ok(match stream_socket_config {
-            SocketProtocol::Udp => {
-                StreamSocketBuilder::Udp(udp::bind(port, send_buffer_bytes, recv_buffer_bytes)?)
-            }
+            SocketProtocol::Udp => StreamSocketBuilder::Udp(udp::bind(
+                port,
+                stream_tos_config,
+                send_buffer_bytes,
+                recv_buffer_bytes,
+            )?),
             SocketProtocol::Tcp => StreamSocketBuilder::Tcp(tcp::bind(
                 timeout,
                 port,
+                stream_tos_config,
                 send_buffer_bytes,
                 recv_buffer_bytes,
             )?),
@@ -327,6 +332,7 @@ impl StreamSocketBuilder {
         client_ip: IpAddr,
         port: u16,
         protocol: SocketProtocol,
+        dscp: Option<DscpTos>,
         send_buffer_bytes: SocketBufferSize,
         recv_buffer_bytes: SocketBufferSize,
         max_packet_size: usize,
@@ -334,7 +340,8 @@ impl StreamSocketBuilder {
         let (send_socket, receive_socket): (Box<dyn SocketWriter>, Box<dyn SocketReader>) =
             match protocol {
                 SocketProtocol::Udp => {
-                    let socket = udp::bind(port, send_buffer_bytes, recv_buffer_bytes).to_con()?;
+                    let socket =
+                        udp::bind(port, dscp, send_buffer_bytes, recv_buffer_bytes).to_con()?;
                     let (send_socket, receive_socket) =
                         udp::connect(&socket, client_ip, port, timeout).to_con()?;
 

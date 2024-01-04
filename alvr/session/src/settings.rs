@@ -942,6 +942,8 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub web_server_port: u16,
     pub osc_local_port: u16,
 
+    pub dscp: Option<DscpTos>,
+
     #[schema(strings(display_name = "Streamer send buffer size"))]
     pub server_send_buffer_bytes: SocketBufferSize,
 
@@ -988,6 +990,30 @@ For now works only on Windows+Nvidia"#
 
     #[schema(suffix = " frames")]
     pub statistics_history_size: usize,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[repr(u8)]
+#[schema(gui = "button_group")]
+pub enum DropProbability {
+    Low = 0x01,
+    Medium = 0x10,
+    High = 0x11,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum DscpTos {
+    BestEffort,
+
+    ClassSelector(#[schema(gui(slider(min = 1, max = 7)))] u8),
+
+    AssuredForwarding {
+        #[schema(gui(slider(min = 1, max = 4)))]
+        class: u8,
+        drop_probability: DropProbability,
+    },
+
+    ExpeditedForwarding,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1140,7 +1166,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
                         gui_collapsed: true,
-                        saturation_multiplier: 1.0,
+                        saturation_multiplier: 0.95,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,
@@ -1512,6 +1538,19 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_port: 9944,
             osc_local_port: 9942,
+            dscp: OptionalDefault {
+                set: false,
+                content: DscpTosDefault {
+                    ClassSelector: 7,
+                    AssuredForwarding: DscpTosAssuredForwardingDefault {
+                        class: 4,
+                        drop_probability: DropProbabilityDefault {
+                            variant: DropProbabilityDefaultVariant::Low,
+                        },
+                    },
+                    variant: DscpTosDefaultVariant::ExpeditedForwarding,
+                },
+            },
             server_send_buffer_bytes: socket_buffer.clone(),
             server_recv_buffer_bytes: socket_buffer.clone(),
             client_send_buffer_bytes: socket_buffer.clone(),

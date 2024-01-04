@@ -538,6 +538,7 @@ fn connection_pipeline(
         client_ip,
         settings.connection.stream_port,
         settings.connection.stream_protocol,
+        settings.connection.dscp,
         settings.connection.server_send_buffer_bytes,
         settings.connection.server_recv_buffer_bytes,
         settings.connection.packet_size as _,

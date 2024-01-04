@@ -16,15 +16,12 @@ alvr_packets.workspace = true
 alvr_session.workspace = true
 
 glow = "0.13"
-khronos-egl = { version = "=4.1", features = ["dynamic"] }
-openxr = { git = "https://github.com/zarik5/openxrs" }
+khronos-egl = { version = "6", features = ["dynamic"] }
+openxr = { git = "https://github.com/alvr-org/openxrs" }
 # openxr = { path = "../../../../openxrs/openxr" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-# note: git version fixes spammy log. upgrade to registry when a new version comes out
-android-activity = { git = "https://github.com/zarik5/android-activity", features = [
-    "native-activity",
-] }
+android-activity = { version = "0.5", features = ["native-activity"] }
 jni = "0.21"
 libc = "0.2"
 ndk-context = "0.1"

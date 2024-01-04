@@ -131,7 +131,7 @@ impl FaceTrackingSink {
                 }
 
                 if let Some(arr) = face_data.fb_face_expression {
-                    self.append_packet_vrcft(b"FaceFb\0\0", &arr);
+                    self.append_packet_vrcft(b"Face2Fb\0", &arr);
                 }
 
                 if let Some(arr) = face_data.htc_eye_expression {

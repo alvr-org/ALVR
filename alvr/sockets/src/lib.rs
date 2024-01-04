@@ -3,7 +3,8 @@ mod control_socket;
 mod stream_socket;
 
 use alvr_common::{anyhow::Result, info};
-use alvr_session::SocketBufferSize;
+use alvr_session::{DscpTos, SocketBufferSize};
+use socket2::Socket;
 use std::{
     net::{IpAddr, Ipv4Addr},
     time::Duration,
@@ -68,4 +69,21 @@ fn set_socket_buffers(
     }
 
     Ok(())
+}
+
+fn set_dscp(socket: &Socket, dscp: Option<DscpTos>) {
+    // https://en.wikipedia.org/wiki/Differentiated_services
+    if let Some(dscp) = dscp {
+        let tos = match dscp {
+            DscpTos::BestEffort => 0,
+            DscpTos::ClassSelector(precedence) => precedence << 3,
+            DscpTos::AssuredForwarding {
+                class,
+                drop_probability,
+            } => (class << 3) | drop_probability as u8,
+            DscpTos::ExpeditedForwarding => 0b101110,
+        };
+
+        socket.set_tos((tos << 2) as u32).ok();
+    }
 }

@@ -2,7 +2,7 @@ use crate::LOCAL_IP;
 
 use super::{SocketReader, SocketWriter};
 use alvr_common::{anyhow::Result, ConResult, HandleTryAgain};
-use alvr_session::SocketBufferSize;
+use alvr_session::{DscpTos, SocketBufferSize};
 use socket2::{MaybeUninitSlice, Socket};
 use std::{
     ffi::c_int,
@@ -15,12 +15,15 @@ use std::{
 // let tokio set all the internal parameters it needs from the start.
 pub fn bind(
     port: u16,
+    dscp: Option<DscpTos>,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
 ) -> Result<UdpSocket> {
     let socket = UdpSocket::bind((LOCAL_IP, port))?.into();
 
     crate::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
+
+    crate::set_dscp(&socket, dscp);
 
     Ok(socket.into())
 }

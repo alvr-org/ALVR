@@ -7,6 +7,7 @@ use std::time::Duration;
 #[derive(Clone)]
 pub struct DecoderInitConfig {
     pub codec: CodecType,
+    pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
     pub buffering_history_weight: f32,
     pub options: Vec<(String, MediacodecDataType)>,
@@ -15,6 +16,7 @@ pub struct DecoderInitConfig {
 pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
     Mutex::new(DecoderInitConfig {
         codec: CodecType::H264,
+        force_software_decoder: false,
         max_buffering_frames: 1.0,
         buffering_history_weight: 0.9,
         options: vec![],
@@ -29,9 +31,10 @@ pub static DECODER_SOURCE: alvr_common::OptLazy<crate::platform::VideoDecoderSou
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
 
-pub fn create_decoder(lazy_config: DecoderInitializationConfig) {
+pub fn create_decoder(lazy_config: DecoderInitializationConfig, force_software_decoder: bool) {
     let mut config = DECODER_INIT_CONFIG.lock();
     config.codec = lazy_config.codec;
+    config.force_software_decoder = force_software_decoder;
 
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE

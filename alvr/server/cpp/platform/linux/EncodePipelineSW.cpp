@@ -38,7 +38,6 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   const auto& settings = Settings::Instance();
 
   x264_param_default_preset(&param, "ultrafast", "zerolatency");
-  x264_param_apply_profile(&param, "high");
 
   param.pf_log = x264_log;
   param.i_log_level = X264_LOG_INFO;
@@ -50,6 +49,19 @@ alvr::EncodePipelineSW::EncodePipelineSW(Renderer *render, uint32_t width, uint3
   param.i_width = width;
   param.i_height = height;
   param.rc.i_rc_method = X264_RC_ABR;
+
+  switch (settings.m_h264Profile) {
+  case ALVR_H264_PROFILE_BASELINE:
+    x264_param_apply_profile(&param, "baseline");
+    break;
+  case ALVR_H264_PROFILE_MAIN:
+    x264_param_apply_profile(&param, "main");
+    break;
+  default:
+  case ALVR_H264_PROFILE_HIGH:
+    x264_param_apply_profile(&param, "high");
+    break;
+  }
 
   auto params = FfiDynamicEncoderParams {};
   params.updated = true;

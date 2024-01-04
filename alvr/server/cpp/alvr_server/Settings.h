@@ -40,6 +40,7 @@ class Settings {
     float m_sharpening;
 
     int m_codec;
+    int m_h264Profile;
     bool m_use10bitEncoder;
     bool m_enableVbaq;
     bool m_usePreproc;
@@ -76,6 +77,7 @@ class Settings {
 
     bool m_enableViveTrackerProxy = false;
     bool m_TrackingRefOnly = false;
+    bool m_enableLinuxVulkanAsyncCompute;
     bool m_enableLinuxAsyncReprojection;
 
     bool m_enableControllers;

@@ -85,10 +85,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         _controller_profile = match config.emulation_mode {
             ControllersEmulationMode::RiftSTouch => 0,
             ControllersEmulationMode::Quest2Touch => 1,
-            ControllersEmulationMode::ValveIndex => 2,
-            ControllersEmulationMode::ViveWand => 3,
-            ControllersEmulationMode::ViveTracker => 4,
-            ControllersEmulationMode::Custom { .. } => 5,
+            ControllersEmulationMode::Quest3Plus => 2,
+            ControllersEmulationMode::ValveIndex => 3,
+            ControllersEmulationMode::ViveWand => 4,
+            ControllersEmulationMode::ViveTracker => 5,
+            ControllersEmulationMode::Custom { .. } => 6,
         };
 
         true
@@ -141,6 +142,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         aggressive_keyframe_resend: settings.connection.aggressive_keyframe_resend,
         adapter_index: settings.video.adapter_index,
         codec: matches!(settings.video.preferred_codec, CodecType::Hevc) as _,
+        h264_profile: settings.video.encoder_config.h264_profile as u32,
         rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
         filler_data: settings.video.encoder_config.filler_data,
         entropy_coding: settings.video.encoder_config.entropy_coding as u32,
@@ -172,6 +174,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         saturation,
         gamma,
         sharpening,
+        linux_async_compute: settings.patches.linux_async_compute,
         linux_async_reprojection: settings.patches.linux_async_reprojection,
         nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
         nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
@@ -319,6 +322,19 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         if let Err(e) = connection_pipeline(proto_socket, client_hostname.clone(), client_ip) {
             error!("Handshake error for {client_hostname}: {e}");
         }
+
+        let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
+
+        let action = if clients_to_be_removed.contains(&client_hostname) {
+            clients_to_be_removed.remove(&client_hostname);
+
+            ClientListAction::RemoveEntry
+        } else {
+            ClientListAction::SetConnectionState(ConnectionState::Disconnected)
+        };
+        SERVER_DATA_MANAGER
+            .write()
+            .update_client_list(client_hostname, action);
     }));
 
     Ok(())
@@ -341,14 +357,25 @@ fn connection_pipeline(
         client_hostname.clone(),
         ClientListAction::UpdateCurrentIp(Some(client_ip)),
     );
+
     let disconnect_notif = Arc::new(Condvar::new());
+
+    let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
+        Ok(r) => r,
+        Err(ConnectionError::TryAgain(e)) => {
+            debug!("Failed to recive client connection packet. This is normal for USB connection.\n{e}");
+
+            return Ok(());
+        }
+        Err(e) => return Err(e),
+    };
 
     let maybe_streaming_caps = if let ClientConnectionResult::ConnectionAccepted {
         client_protocol_id,
         display_name,
         streaming_capabilities,
         ..
-    } = proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT)?
+    } = connection_result
     {
         server_data_lock.update_client_list(
             client_hostname.clone(),
@@ -511,6 +538,7 @@ fn connection_pipeline(
         client_ip,
         settings.connection.stream_port,
         settings.connection.stream_protocol,
+        settings.connection.dscp,
         settings.connection.server_send_buffer_bytes,
         settings.connection.server_recv_buffer_bytes,
         settings.connection.packet_size as _,
@@ -1173,19 +1201,6 @@ fn connection_pipeline(
     stream_receive_thread.join().ok();
     keepalive_thread.join().ok();
     lifecycle_check_thread.join().ok();
-
-    let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
-
-    let action = if clients_to_be_removed.contains(&client_hostname) {
-        clients_to_be_removed.remove(&client_hostname);
-
-        ClientListAction::RemoveEntry
-    } else {
-        ClientListAction::SetConnectionState(ConnectionState::Disconnected)
-    };
-    SERVER_DATA_MANAGER
-        .write()
-        .update_client_list(client_hostname, action);
 
     Ok(())
 }

@@ -251,6 +251,7 @@ fn connection_pipeline(
         Duration::from_secs(1),
         settings.connection.stream_port,
         settings.connection.stream_protocol,
+        settings.connection.dscp,
         settings.connection.client_send_buffer_bytes,
         settings.connection.client_recv_buffer_bytes,
     )
@@ -457,7 +458,7 @@ fn connection_pipeline(
 
                 match maybe_packet {
                     Ok(ServerControlPacket::InitializeDecoder(config)) => {
-                        decoder::create_decoder(config);
+                        decoder::create_decoder(config, settings.video.force_software_decoder);
                     }
                     Ok(ServerControlPacket::Restarting) => {
                         info!("{SERVER_RESTART_MESSAGE}");

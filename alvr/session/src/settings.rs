@@ -184,6 +184,13 @@ VBR: Variable BitRate mode. Not commended because it may throw off the adaptive 
     #[schema(flag = "steamvr-restart")]
     pub filler_data: bool,
 
+    #[schema(strings(
+        display_name = "h264: Profile",
+        help = "Whenever possible, attempts to use this profile. May increase compatibility with varying mobile devices. Only has an effect for h264. Doesn't affect NVENC on Windows."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub h264_profile: H264Profile,
+
     #[schema(strings(help = r#"CAVLC algorithm is recommended.
 CABAC produces better compression but it's significantly slower and may lead to runaway latency"#))]
     #[schema(flag = "steamvr-restart")]
@@ -420,6 +427,18 @@ pub enum CodecType {
     Hevc = 1,
 }
 
+#[repr(u8)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[schema(gui = "button_group")]
+pub enum H264Profile {
+    #[schema(strings(display_name = "High"))]
+    High = 0,
+    #[schema(strings(display_name = "Main"))]
+    Main = 1,
+    #[schema(strings(display_name = "Baseline"))]
+    Baseline = 2,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct VideoConfig {
@@ -447,7 +466,7 @@ pub struct VideoConfig {
     #[schema(
         strings(
             display_name = "Maximum buffering",
-            help = "Incresing this value will help reduce stutter but it will increase latency"
+            help = "Increasing this value will help reduce stutter but it will increase latency"
         ),
         gui(slider(min = 1.0, max = 10.0, step = 0.1, logarithmic)),
         suffix = " frames"
@@ -471,6 +490,11 @@ pub struct VideoConfig {
 
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
+
+    #[schema(strings(
+        help = "Attempts to use a software decoder on the device. Slow, but may work around broken codecs."
+    ))]
+    pub force_software_decoder: bool,
 
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
@@ -602,6 +626,8 @@ pub enum ControllersEmulationMode {
     RiftSTouch,
     #[schema(strings(display_name = "Quest 2 Touch"))]
     Quest2Touch,
+    #[schema(strings(display_name = "Quest 3 Touch Plus"))]
+    Quest3Plus,
     #[schema(strings(display_name = "Valve Index"))]
     ValveIndex,
     ViveWand,
@@ -916,6 +942,8 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
     pub web_server_port: u16,
     pub osc_local_port: u16,
 
+    pub dscp: Option<DscpTos>,
+
     #[schema(strings(display_name = "Streamer send buffer size"))]
     pub server_send_buffer_bytes: SocketBufferSize,
 
@@ -962,6 +990,30 @@ For now works only on Windows+Nvidia"#
 
     #[schema(suffix = " frames")]
     pub statistics_history_size: usize,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[repr(u8)]
+#[schema(gui = "button_group")]
+pub enum DropProbability {
+    Low = 0x01,
+    Medium = 0x10,
+    High = 0x11,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum DscpTos {
+    BestEffort,
+
+    ClassSelector(#[schema(gui(slider(min = 1, max = 7)))] u8),
+
+    AssuredForwarding {
+        #[schema(gui(slider(min = 1, max = 4)))]
+        class: u8,
+        drop_probability: DropProbability,
+    },
+
+    ExpeditedForwarding,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1047,7 +1099,12 @@ pub struct CaptureConfig {
 #[schema(collapsible)]
 pub struct Patches {
     #[schema(strings(
-        help = "Async reprojection is currently broken in SteamVR, keep disabled. ONLY FOR TESTING.",
+        help = "Async Compute is currently broken in SteamVR, keep disabled. ONLY FOR TESTING."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub linux_async_compute: bool,
+    #[schema(strings(
+        help = "Async reprojection only works if you can always hit at least half of your refresh rate.",
     ))]
     #[schema(flag = "steamvr-restart")]
     pub linux_async_reprojection: bool,
@@ -1109,7 +1166,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     ConstantMbps: 30,
                     Adaptive: BitrateModeAdaptiveDefault {
                         gui_collapsed: true,
-                        saturation_multiplier: 1.0,
+                        saturation_multiplier: 0.95,
                         max_bitrate_mbps: SwitchDefault {
                             enabled: false,
                             content: 100,
@@ -1158,6 +1215,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: RateControlModeDefaultVariant::Cbr,
                 },
                 filler_data: false,
+                h264_profile: H264ProfileDefault {
+                    variant: H264ProfileDefaultVariant::High,
+                },
                 entropy_coding: EntropyCodingDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },
@@ -1265,6 +1325,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     vertical_offset_deg: 0.0,
                 },
             },
+            force_software_decoder: false,
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {
@@ -1477,6 +1538,19 @@ pub fn session_settings_default() -> SettingsDefault {
             web_server_port: 8082,
             stream_port: 9944,
             osc_local_port: 9942,
+            dscp: OptionalDefault {
+                set: false,
+                content: DscpTosDefault {
+                    ClassSelector: 7,
+                    AssuredForwarding: DscpTosAssuredForwardingDefault {
+                        class: 4,
+                        drop_probability: DropProbabilityDefault {
+                            variant: DropProbabilityDefaultVariant::Low,
+                        },
+                    },
+                    variant: DscpTosDefaultVariant::ExpeditedForwarding,
+                },
+            },
             server_send_buffer_bytes: socket_buffer.clone(),
             server_recv_buffer_bytes: socket_buffer.clone(),
             client_send_buffer_bytes: socket_buffer.clone(),
@@ -1539,6 +1613,7 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         patches: PatchesDefault {
             gui_collapsed: false,
+            linux_async_compute: false,
             linux_async_reprojection: false,
         },
         open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),

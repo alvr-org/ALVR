@@ -30,7 +30,7 @@ void Settings::Load() {
         picojson::value v;
         std::string err = picojson::parse(v, json);
         if (!err.empty()) {
-            Error("Error on parsing json: %hs\n", err.c_str());
+            Error("Error on parsing session config (%s): %hs\n", g_sessionPath, err.c_str());
             return;
         }
 
@@ -60,6 +60,7 @@ void Settings::Load() {
         m_sharpening = (float)config.get("sharpening").get<double>();
 
         m_codec = (int32_t)config.get("codec").get<int64_t>();
+        m_h264Profile = (int32_t)config.get("h264_profile").get<int64_t>();
         m_rateControlMode = (uint32_t)config.get("rate_control_mode").get<int64_t>();
         m_fillerData = config.get("filler_data").get<bool>();
         m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
@@ -99,6 +100,7 @@ void Settings::Load() {
 
         m_enableViveTrackerProxy = config.get("enable_vive_tracker_proxy").get<bool>();
         m_TrackingRefOnly = config.get("tracking_ref_only").get<bool>();
+        m_enableLinuxVulkanAsyncCompute = config.get("linux_async_compute").get<bool>();
         m_enableLinuxAsyncReprojection = config.get("linux_async_reprojection").get<bool>();
 
         m_enableControllers = config.get("controllers_enabled").get<bool>();
@@ -108,6 +110,6 @@ void Settings::Load() {
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;
     } catch (std::exception &e) {
-        Error("Exception on parsing json: %hs\n", e.what());
+        Error("Exception on parsing session config (%s): %hs\n", g_sessionPath, e.what());
     }
 }

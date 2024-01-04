@@ -50,16 +50,8 @@ VKAPI_ATTR VkResult wsi_layer_vkCreateSwapchainKHR(
         if (!device_data.can_icds_create_swapchain(surface)) {
             return VK_ERROR_INITIALIZATION_FAILED;
         }
-        VkResult res = device_data.disp.CreateSwapchainKHR(device_data.device, pSwapchainCreateInfo,
-                                                           pAllocator, pSwapchain);
-
-        // Workaround vrcompositor requesting incompatible image format for mirror swapchain
-        if (res != VK_SUCCESS) {
-            VkSwapchainCreateInfoKHR modified_info = *pSwapchainCreateInfo;
-            modified_info.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
-            return device_data.disp.CreateSwapchainKHR(device_data.device, &modified_info,
-                                                       pAllocator, pSwapchain);
-        }
+        return device_data.disp.CreateSwapchainKHR(device_data.device, pSwapchainCreateInfo,
+                                                   pAllocator, pSwapchain);
     }
 
     wsi::swapchain_base *sc = wsi::allocate_surface_swapchain(surface, device_data, pAllocator);

@@ -2,7 +2,7 @@ use crate::LOCAL_IP;
 
 use super::{SocketReader, SocketWriter};
 use alvr_common::{anyhow::Result, con_bail, ConResult, HandleTryAgain, ToCon};
-use alvr_session::SocketBufferSize;
+use alvr_session::{DscpTos, SocketBufferSize};
 use std::{
     io::Read,
     io::Write,
@@ -13,12 +13,16 @@ use std::{
 pub fn bind(
     timeout: Duration,
     port: u16,
+    dscp: Option<DscpTos>,
     send_buffer_bytes: SocketBufferSize,
     recv_buffer_bytes: SocketBufferSize,
 ) -> Result<TcpListener> {
     let socket = TcpListener::bind((LOCAL_IP, port))?.into();
 
     crate::set_socket_buffers(&socket, send_buffer_bytes, recv_buffer_bytes).ok();
+
+    crate::set_dscp(&socket, dscp);
+
     socket.set_read_timeout(Some(timeout))?;
 
     Ok(socket.into())

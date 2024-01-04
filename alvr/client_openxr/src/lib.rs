@@ -155,7 +155,7 @@ fn to_xr_time(timestamp: Duration) -> xr::Time {
 fn init_egl() -> EglContext {
     let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
 
-    let display = instance.get_display(egl::DEFAULT_DISPLAY).unwrap();
+    let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
 
     let version = instance.initialize(display).unwrap();
 
@@ -441,6 +441,7 @@ fn initialize_stream(
             alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
         if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
     }
@@ -607,7 +608,7 @@ pub fn entry_point() {
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
-    exts.fb_face_tracking = available_extensions.fb_face_tracking;
+    exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
@@ -1121,7 +1122,9 @@ fn android_main(app: android_activity::AndroidApp) {
                 should_quit = true;
             }
             PollEvent::Main(MainEvent::InputAvailable) => {
-                app.input_events(|_| InputStatus::Unhandled);
+                if let Ok(mut iter) = app.input_events_iter() {
+                    while iter.next(|_| InputStatus::Unhandled) {}
+                }
             }
             _ => (),
         });

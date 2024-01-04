@@ -1,6 +1,31 @@
 # Changelog
 
-## v20.4.1
+## v20.5.0
+
+* Fix Vulkan layer GPU loading (by @nairaner #1847)
+* Fix dynamic bitrate for VAAPI (by @nowrep #1863)
+* Add notification tips (by @zarik5 #1865)
+* Fix hand tracking for Lynx R1 (by @technobaboo #1874)
+* Various wiki updates
+* Fix battery update during streming (by @zarik5)
+* Fix playspace recentering delay (by @zarik5)
+* Support eye tracking for Pico 4 Pro (by @zarik5 @Meister1593 #1897)
+* Add desktop file for Flatpak (by @Vixea #1906)
+* Install audio dependencies from the setup wizard (by @Meister1593 #1893, @zarik5)
+* Significantly reduce latency with NVENC on Linux (by @nowrep @Xaphiosis #1911)
+* Fix SteamVR hanging when restarting on Linux (by @Vixea @zarik5)
+* Other dashboard updates
+
+### v20.4.3
+
+* Fix dashboard crash on Windows
+* Fix settings reset bug when upgrading (session extrapolation failed)
+
+### v20.4.2
+
+* Fix YVR crash because of invalid controller bindings
+
+### v20.4.1
 
 * Fix inverted `Enable skeleton` switch
 * Add `Only touch` gestures option
@@ -12,7 +37,7 @@
 * Custom controller profile (by @zarik5)
 * Fix Nvidia support on Linux (by @Killrmemz #1830)
 
-## v20.3.1
+### v20.3.1
 
 * Fix some controller buttons not working
 * Fix changing controller emulation profile not triggering a SteamVR restart
@@ -31,7 +56,7 @@
 * Timeout connection if lingering (by @zarik5)
 * Fix warmstart crash on client (by @ShootingKing-AM #1813)
 
-## v20.2.1
+### v20.2.1
 
 * Fix VRCFaceTracking mode panicing.
 * (Potential) Fix for dashboard crash on Wayland.
@@ -72,7 +97,7 @@
 * Add option to disable game render optimization (by @zarik5)
 * Add separate history size for bitrate (by @zarik5)
 
-## v20.0.0
+# v20.0.0
 
 * New OpenXR-based client, add support for Vive Focus 3/XR Elite, Pico 4/Neo 3 and YVR 1/2. Worked on by:
   * @zarik5 #1321
@@ -98,7 +123,7 @@
 * Some tweaks for alvr_client_core compatibility (by @ShootingKing-AM #1580 #1578 #1586 #1624 #1621)
 * Fix server build with clang (by @nowrep)
 
-## v19.1.1
+### v19.1.1
 
 * Relax discovery protocol for future ALVR versions
 

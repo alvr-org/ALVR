@@ -127,6 +127,7 @@ pub fn get_server_listener(timeout: Duration) -> Result<TcpListener> {
     let listener = tcp::bind(
         timeout,
         CONTROL_PORT,
+        None,
         SocketBufferSize::Default,
         SocketBufferSize::Default,
     )?;

@@ -14,6 +14,3 @@ You can change the 10ms offset for SteamVR in the "Other" tab of ALVR (Controlle
 The parameter defines how old the data that is fed into SteamVR is and controls the SteamVR pose prediction. Set it to 0 to disable all predictions
 
 The default is 0.01=10ms. Its the amount of time I needed to be able swing my sword in Skyrim without feeling weird. Its very possible that this value depends on the game/user, that's why it's exposed in the control panel, and you can change it on the fly
-
-
-

@@ -1,5 +1,17 @@
 # Changelog
 
+## v20.6.0
+
+* Add tongue tracking for Quest Pro (by @zarik5)
+  * This is a breaking change in the protocol, but only affects Quest Pro users.
+  * Only VRCFT ALVR module v1.2.0 and up is supported
+* Add Quest 3 emulation mode + icons for SteamVR HUD (by @Goodguy140 #1926)
+* Add Type of Service (ToS) socket settings, tested only on Linux (by @Vixea #1946)
+* Add software decoding option and fallback (by @20kdc #1933)
+* Add Baseline encoding option for h264 (by @20kdc #1932)
+* Fix ADB connection (by @The-personified-devil #1942)
+* Fix rare bug preventing reconnections on wifi (by @zarik5)
+
 ## v20.5.0
 
 * Fix Vulkan layer GPU loading (by @nairaner #1847)

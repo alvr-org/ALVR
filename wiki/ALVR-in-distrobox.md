@@ -21,7 +21,6 @@ For installing you only really need couple of dependencies on host:
 3. `sed` (for removing color in logs)
 4. `pipewire` for fully automatic microphone, `pulseaudio` for basic audio support (automatic microphone is unsupported with it)
 5. For nvidia - `CUDA` (distrobox passes through it and driver as well into the container and CUDA contains NVENC encoder for streaming)
-6. If you don't have `newgidmap` command available, you need to install `shadow-utils`. (packages ubuntu-like: `newuidmap`, arch-like: `shadow`, mint: `uidmap`)
 
 After you have installed required dependencies for your installation from above, open terminal in this repository folder and do:
 
@@ -31,13 +30,9 @@ After you have installed required dependencies for your installation from above,
    
    In case if have errors during installation, please report the full log as-is (remove private info if you happen to have some) as an Issue.
    
-   But if you are just reinstalling it, please run `./uninstall.sh` first before trying to install again.
-   
    After full installation, you can use `./start-alvr.sh` to launch alvr automatically.
    
    Script also downloads related apk file to install to headset into `installation` folder for you. Use Sidequest or ADB to install it.
-   
-   **Experimental:** Prefixed installation is now available, which allows you to specify where to install relative to this folder. Use --prefix and --container-name to specify folder name and container name (you should specify both for this to work)
 
 ## Post-install ALVR & SteamVR Configuration
 
@@ -49,21 +44,17 @@ After installing ALVR you may want to configure it and steamvr to run at best qu
 
 2. **Preferred framerate:** If you know that you will have lower fps than usual (for instance, VRChat), run at lower fps. This is because when reprojection (this is what allows for smooth view despite being at low fps) goes lower than twice the amount of specified framerate - it fails to reproject and will look worse. So for example, you can run at 72hz if you know you're expecting low framerate, and 120hz if you are going to play something like Beat Saber, which is unlikely to run at low fps.
 
-3. **Encoder preset:** Balanced
+3. **Encoder preset:** Speed
 
-4. **Game Audio & Microphone:** Set to pipewire as has been said in installation. ALVR uses default audio sink for audio, and doesn't care about volume (it's controlled only onboard audio on headset), and automatic audio scripts mutes default audio by default to prevent mirroring. As for microphone, every time ALVR is connected on headset, on connect script creates audio source named **ALVR-MIC-Source**, which can be used in game as default microphone, if you set it at least once. No need to un-set it back to default. And when headset disconnects it automatically clears audio source and restores back to previous microphone.
+4. **Bitrate:** Constant, bitrate: 350-450 mbps for h264 wireless/700 mbit-1 gbit cabled, 100-150 mbps for HEVC (tested on Pico 4 ).
 
-5. **Bitrate:** Constant, bitrate: 350-450 mbps for h264 wireless/700 mbit-1 gbit cabled, 100-150 mbps for HEVC.
+5. **Foveated rendering:** This highly depends on given headset, but generally default settings should be OK for Quest 2. For **pico neo 3** i would recommend setting center region width to 0.8 and height to 0.75, shifts to 0 and edge ratios can be set at 6-7, and for the same **pico neo 3** disable oculus foveation level and dynamic oculus foveation.
 
-6. **Foveated rendering:** This highly depends on given headset, but generally default settings should be OK for Quest 2. For **pico neo 3** i would recommend setting center region width to 0.8 and height to 0.75, shifts to 0 and edge ratios can be set at 6-7, and for the same **pico neo 3** disable oculus foveation level and dynamic oculus foveation.
+6. **Color correction:** Set sharpening to 1and if you like oversaturated image, bump saturation to 0.6.
 
-7. **Color correction:** Set sharpening to 1and if you like oversaturated image, bump saturation to 0.6.
+7. For **pico neo 3** left controller offsets (from top to bottom): Position -0.06, -0.03, -0.1; Rotation: 0, 3, 17.
 
-8. For **pico neo 3** left controller offsets (from top to bottom): Position -0.06, -0.03, -0.1; Rotation: 0, 3, 17.
-
-9. **Connection -> Stream Protocol:** TCP. This ensures that there would be no heavy artifacts if packet loss happens (until it's too severe), only slowdowns.
-
-10. **Linux async reprojection:** keep it off, it's not needed anymore and client does reprojection better
+8. **Connection -> Stream Protocol:** TCP. This ensures that there would be no heavy artifacts if packet loss happens (until it's too severe), only slowdowns.
 
 ### AMD-specific configuration:
 
@@ -95,12 +86,7 @@ Inside SteamVR you also may need to change settings to improve experience. Open 
 
 ### Distrobox note:
 
-* To enter container (for updating archlinux, installing additional software, and other reasons) you need to do the following:
-1. `source ./setup-env.sh`
-
-2. `distrobox-enter arch-alvr`
-
-        This enters the container. Do note that `sudo` inside container doesn't have privliges to do anything as `root`, but that container has almost exactly the same rights as regular user, so deleting user files from that container **is** possible.
+* Do note that `sudo` inside container doesn't have privliges to do anything as `root`, but that container has almost exactly the same rights as regular user, so deleting user files from that container **is** possible.
 
 * You can add your steam library from outside the container after alvr installation as for container, `/home/user` folder is the same as on your host, so you can add it from inside distrobox steam.
 

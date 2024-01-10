@@ -74,12 +74,12 @@ Notes:
 
 * Guide also contains fixes, tweaks, additional software like desktop overlay to help you run with steamvr better and workaround it's issues.
 
-* It didn't have a *huge* feedback history yet, so if you happen to have issues, please report them into the said repository.
+* It didn't have a *huge* feedback history yet, so if you happen to have issues, please report them into [the said](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide) repository.
 
 Installation:
 
 1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git` or download zip from https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide, unpack it
-somewhere in your home directory (steam doesn't like long paths)
+   somewhere in your home directory (steam doesn't like long paths)
 
 1.1. If you want to use nightly (potentially unstable, but fresh) builds use [nightly](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/tree/nightly) branch.
 
@@ -92,9 +92,11 @@ somewhere in your home directory (steam doesn't like long paths)
 ### Other
 
 #### AppImage
+
 You can get appimage for latest stable version from [here](https://github.com/alvr-org/ALVR/releases/latest).
 
 #### Flatpak
+
 For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Flatpak)
 
 #### Portable tar.gz
@@ -106,19 +108,10 @@ For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/
 
 ### Automatic Audio & Microphone Setup
 
-* Must be on v20+
+* Must be on v20.5.0+
 
-* Enable Game Audio and Microphone in ALVR dashboard.
+* Pipewire required
 
-* Select `pipewire` as the device 
+* Open installation -> Run setup wizard, skip to part with automatic audio setup
 
-* Connect with headset and wait until streaming starts.
-
-* Download [audio-setup.sh](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/audio-setup.sh) 
-  script and place it in some safe place.
-  
-* Make it executable (`chmod +x audio-setup.sh` or via your file manager through file properties) then put the
-  absolute path to the script in "On connect script" and "On disconnect script" settings, apply paths with enter
-  (Setting -> Scroll all the way to the bottom).
-
-* Put headset to sleep and turn it back on, it should automatically create microphone and audio in your system and switch to them.
+* Press the button to automatically download and set it

@@ -15,29 +15,39 @@ First you need to gather some additional resources in preparation for the build.
 If you are on Linux, install these additional packages:
 
 * **Arch**
+  
   ```bash
   sudo pacman -S clang curl nasm pkgconf yasm vulkan-headers libva-mesa-driver unzip ffmpeg
   ```
-    * The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.
+  
+  * The [`alvr-git`](https://aur.archlinux.org/packages/alvr-git) [AUR package](https://wiki.archlinux.org/title/Arch_User_Repository) may also be used to do this automatically.
+
 * **Gentoo**
+  
   * `media-video/ffmpeg >= 4.4 [encode libdrm vulkan vaapi]`
   * `sys-libs/libunwind`
   * `dev-lang/rust >= 1.72`
   * `media-video/pipewire [jacksdk]`
+
 * **Nix(OS)**
+  
   * Use the `shell.nix` in `packaging/nix`.
+
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**
+  
   ```bash
   sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers
   ```
+
 * **Fedora**
+  
   ```bash
   sudo dnf groupinstall 'Development Tools' | For c++ and build tools
   sudo dnf install yasm libdrm-devel vulkan-headers pipewire-jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang openssl-devel alsa-lib-devel libva-devel
-
   ```
-  If you are using Nvidia, see [Fedora cuda installation](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#fedora-cuda-installation)
   
+  If you are using Nvidia, see [Fedora cuda installation](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#fedora-cuda-installation)
+
 Move to the root directory of the project, then run this command (paying attention to the bullet points below):
 
 ```bash
@@ -61,56 +71,77 @@ You can find the resulting package in `build/alvr_streamer_[your platform]`
 If you want to edit and rebuild the code, you can skip the `prepare-deps` command and run only the `build-streamer` command.
 
 ## Fedora CUDA installation
+
 If you are here for CUDA installation on Fedora you're at the right place! Else continue down to [Client Building](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#client-building)
+
 ### 1. Install Nvidia drivers and Fedora CUDA driver
+
 ```bash
 sudo dnf update -y
 ```
+
 (Reboot if you have a new kernel)
+
 ```bash
 sudo dnf install akmod-nvidia
 sudo dnf install xorg-x11-drv-nvidia-cuda
 ```
+
 Wait until ```modinfo -F version nvidia``` doesn't report ```"ERROR: Module nvidia not found"``` anymore
 
 ### 2. Install Nvidia's CUDA
+
 In the previous step, we installed Fedora's CUDA that doesn't work with ALVR, installing Nvidia's CUDA works and creates directories instead
+
 ```bash
 sudo dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/fedora37/x86_64/cuda-fedora37.repo
 ```
+
 Change the Fedora version if you are on a different version. You should check if your version is supported by inspecting the repo
+
 ```bash
 sudo dnf clean all
 sudo dnf module disable nvidia-driver
 sudo dnf -y install cuda
 export PATH=/usr/local/cuda-12.3/bin${PATH:+:${PATH}}
 ```
+
 If your cuda version is different, change it to the version that is installed. You can check installed versions by doing ```ls /usr/local/ | grep "cuda"``` in your terminal
 
 **Comments**
+
 * Disabling the nvidia-driver doesn't disable Nvidia drivers but prevents nvidia dkms from installing over the akmod driver
 
 ### 3. Install gcc11 install with homebrew
+
 Becuase cuda cannot be ran without a gcc version lower than or equal to gcc12, you will need to install a gcc version on homebrew. The fedora gcc11 package got removed so this is the only way sadly
 To install homebrew, run this command:
+
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
+
 Then install gcc11
+
 ```bash
 brew install gcc@11
 ```
+
 **Comments**
+
 * If brew is not found in your path, run the following separately to add brew to your path:
-```bash
-test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)" 
-test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
-```
+  
+  ```bash
+  test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)" 
+  test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
+  ```
 
 ### 4. Modify dependencies.rs to use correct cuda path and gcc version
+
 Because CURA installs as a symlink by default, we need to change the dependencies.rs to use the directory
 From the ALVR directory edit the ./alvr/xtask/src/dependencies.rs, and change two lines:
+
 * Line 159, change ```cuda``` -> ```cuda-12.3``` (or whatever version you have)
 * Line 179, replace that line with ```--nvccflags=\"-ccbin /home/linuxbrew/.linuxbrew/bin/g++-11 -gencode arch=compute_52,code=sm_52 -O2\"``` (Change homebrew path if needed, default is used)
 
@@ -121,6 +152,7 @@ You should be good to go! Refer to [Streamer Building](https://github.com/alvr-o
 ## 1. Installing necessary packages
 
 For the client you need install:
+
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
 * Android SDK Platform-Tools 29 (Android 10)
 * Latest Android NDK (currently v25.1.8937393)
@@ -150,10 +182,12 @@ The three mentioned developer applications can be installed from upstream; altho
 For Debian, it requires to have the `non-free` repository to be enabled:
 
 * **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10**
+  
   ```bash
-  sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
+  sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r26b-installer
   ```
-## 2. Setting environment variables
+  
+  ## 2. Setting environment variables
 
 For Windows, set the environment variables:
 
@@ -195,11 +229,13 @@ cargo xtask prepare-deps --platform android
 Before building the client, Android has to have us to agree to the licenses otherwise building the client will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
 
 * Windows:
+  
   ```shell
   cd "%ANDROID_SDK_ROOT%\tools\bin"
   sdkmanager.bat --licenses
   ```
 * Linux:
+  
   ```bash
   cd ~/AndroidSDK
   sdkmanager --licenses
@@ -214,6 +250,7 @@ cargo xtask build-client --release
 The built APK will be in `build/alvr_client_quest`. You can then use adb or SideQuest to install it to your headset.
 
 To build and run:
+
 ```bash
 cd alvr/client_openxr
 cargo apk run

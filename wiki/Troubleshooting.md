@@ -5,7 +5,7 @@ For ALVR 20.0.0 and later
 
 First off, please make sure to carefully read the [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide) and [Usage](https://github.com/alvr-org/ALVR/wiki/Usage) pages.
 
-The first thing to try is to delete the file `settings.json` located in the ALVR installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
+The first thing to try is to delete the file `session.json` located in the ALVR installation folder on the PC. This resets everything to default. If it doesn't work, try reinstalling ALVR.
 
 Keep in mind that sometimes a restart of ALVR/SteamVR/PC/Headset will be enough to solve some problems.
 
@@ -23,7 +23,9 @@ If you need more help, come to our [Discord](https://discord.gg/KbKk3UM) and ask
 Trouble starting ALVR
 ===
 
-`ALVR Dashboard.exe` needs a working graphics driver to be installed in order to work. 
+ALVR needs a working graphics driver to be installed in order to work.
+
+**On linux**, you also need to make sure you have `x264` for base software encoding to work and either `vaapi` on AMD or `cuda` on NVIDIA for hardware encoders to work.
 
 ALVR starts launching, but gets stuck on "ALVR is not responding..."
 ===
@@ -48,9 +50,11 @@ Failed to initialize CEncoder.
 ---
 
 ALVR currently needs a recent AMD or Nvidia GPU to run, since it utilizes hardware video encoding (see [requirements](https://github.com/alvr-org/ALVR#requirements)). If you get an error saying something like
+
 ```
 Failed to initialize CEncoder. All VideoEncoder are not available. VCE: AMF Error 1. g_AMFFactory.Init(), NVENC: NvEnc NvEncoderD3D11 failed. Code=1 NvEncoder::LoadNvEncApi : NVENC library file is not found. Please ensure NV driver is installed at c:\src\alvr\alvr_server\nvencoder.cpp:70
 ```
+
 and you have up-to-date GPU drivers, then your graphics card isn't supported. If you're using a laptop with a powerful enough discrete GPU, you _might_ be able to get ALVR to work by forcing SteamVR to use it in either Windows settings, or the Nvidia control panel.
 
 If you have a compatible GPU, you're most likely seeing a different error after either `VCE:` or `NVENC:` than above. In that case, try using a different video codec in ALVR settings. You can also try lowering your video resolution setting.
@@ -97,7 +101,11 @@ SteamVR says "headset not detected"
 
 ![SteamVR headset not detected](images/SteamVR-headset-not-detected.png)
 
-This message means that the ALVR SteamVR driver isn't loading properly when SteamVR starts. Check that SteamVR isn't blocking ALVR (see SteamVR settings, enable advanced settings and check `Startup / Shutdown -> Manage Add-ons`).
+This message means that the ALVR SteamVR driver isn't loading properly when SteamVR starts.
+
+On linux double-check if you have software and hardware encoders installed, without them driver won't load.
+
+Check that SteamVR isn't blocking ALVR (see SteamVR settings, enable advanced settings and check `Startup / Shutdown -> Manage Add-ons`).
 
 ![SteamVR add-ons](images/SteamVR-add-ons.png)
 

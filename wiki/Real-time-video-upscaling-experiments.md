@@ -16,7 +16,7 @@ This traditional upscaling method seems like a good step up from basic bilinear 
 
 A GPL 2 implementation of a Lanczos shader can be found here: https://github.com/obsproject/obs-studio/blob/6943d9a973aa3dc935b39f99d06f4540ea79da61/libobs/data/lanczos_scale.effect
 
-# Neural net image super resolution 
+# Neural net image super resolution
 
 I did some basic investigations on the feasibility of using AI upscalers to get even better results than traditional signal processing methods.
 

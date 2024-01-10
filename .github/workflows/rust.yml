@@ -85,10 +85,17 @@ jobs:
           target: aarch64-linux-android
           override: true
       - uses: Swatinem/rust-cache@v1
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-29'
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r25c
+          ndk-version: r26b
 
       - name: Install deps
         uses: actions-rs/cargo@v1

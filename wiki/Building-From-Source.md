@@ -184,7 +184,7 @@ For Debian, it requires to have the `non-free` repository to be enabled:
 * **Debian 12 / Ubuntu 22.10 / Pop!\_OS 22.10**
   
   ```bash
-  sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r25b-installer
+  sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r26b-installer
   ```
   
   ## 2. Setting environment variables

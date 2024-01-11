@@ -2,6 +2,7 @@
 #include "ALVR-common/packet_types.h"
 #include "ffmpeg_helper.h"
 #include "alvr_server/Settings.h"
+#include "alvr_server/Logger.h"
 #include <chrono>
 
 extern "C" {
@@ -25,8 +26,7 @@ const char * encoder(ALVR_CODEC codec)
     case ALVR_CODEC_HEVC:
       return "hevc_vaapi";
     case ALVR_CODEC_AV1:
-      Warn("AV1 is not supported by VAAPI. Using HEVC instead.")
-      return "hevc_vaapi";
+      return "av1_vaapi";
   }
   throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
@@ -186,6 +186,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
       break;
     case ALVR_CODEC_AV1:
+      encoder_ctx->profile = FF_PROFILE_AV1_MAIN;
       break;
   }
 

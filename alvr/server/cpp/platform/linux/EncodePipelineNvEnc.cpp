@@ -1,6 +1,7 @@
 #include "EncodePipelineNvEnc.h"
 #include "ALVR-common/packet_types.h"
 #include "alvr_server/Settings.h"
+#include "alvr_server/Logger.h"
 #include "ffmpeg_helper.h"
 #include <chrono>
 
@@ -18,7 +19,7 @@ const char *encoder(ALVR_CODEC codec) {
     case ALVR_CODEC_HEVC:
         return "hevc_nvenc";
     case ALVR_CODEC_AV1:
-        Warn("AV1 is not supported by NvEnc. Using HEVC instead.")
+        Warn("AV1 is not supported by NvEnc. Using HEVC instead.");
         return "hevc_nvenc";
     }
     throw std::runtime_error("invalid codec " + std::to_string(codec));

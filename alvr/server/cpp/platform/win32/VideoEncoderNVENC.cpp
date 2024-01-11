@@ -125,7 +125,20 @@ void VideoEncoderNVENC::Transmit(ID3D11Texture2D *pTexture, uint64_t presentatio
 void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializeParams, int refreshRate, int renderWidth, int renderHeight, uint64_t bitrate_bps)
 {
 	auto &encodeConfig = *initializeParams.encodeConfig;
-	GUID encoderGUID = m_codec == ALVR_CODEC_H264 ? NV_ENC_CODEC_H264_GUID : NV_ENC_CODEC_HEVC_GUID;
+
+	GUID encoderGUID;
+	switch m_codec {
+		case ALVR_CODEC_H264:
+			encoderGUID = NV_ENC_CODEC_H264_GUID;
+			break;
+		case ALVR_CODEC_HEVC:
+			encoderGUID = NV_ENC_CODEC_HEVC_GUID;
+			break;
+		case ALVR_CODEC_AV1:
+			Warn("AV1 is not supported yet. Using HEVC instead.");
+			encoderGUID = NV_ENC_CODEC_HEVC_GUID;
+			break;
+	}
 
 	GUID qualityPreset;
 	// See recommended NVENC settings for low-latency encoding.
@@ -182,7 +195,9 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		gopLength = Settings::Instance().m_nvencGopLength;
 	}
 
-	if (m_codec == ALVR_CODEC_H264) {
+	switch m_codec {
+	case ALVR_CODEC_H264:
+	{
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;
 		config.repeatSPSPPS = 1;
 		config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
@@ -209,8 +224,9 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
-	} 
-	else {
+	}
+	case ALVR_CODEC_HEVC:
+	{
 		auto &config = encodeConfig.encodeCodecConfig.hevcConfig;
 		config.repeatSPSPPS = 1;
 		config.enableIntraRefresh = Settings::Instance().m_nvencEnableIntraRefresh;
@@ -232,6 +248,11 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
+	}
+	case ALVR_CODEC_AV1:
+	{
+		// todo
+	}
 	}
 
 	// Disable automatic IDR insertion by NVENC. We need to manually insert IDR when packet is dropped

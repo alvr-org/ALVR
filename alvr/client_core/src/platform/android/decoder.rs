@@ -148,6 +148,7 @@ fn mime_for_codec(codec: CodecType) -> &'static str {
     match codec {
         CodecType::H264 => "video/avc",
         CodecType::Hevc => "video/hevc",
+        CodecType::AV1 => "video/av01",
     }
 }
 
@@ -162,6 +163,7 @@ fn decoder_attempt_setup(
         let sw_codec_name = match codec_type {
             CodecType::H264 => "OMX.google.h264.decoder",
             CodecType::Hevc => "OMX.google.hevc.decoder",
+            CodecType::AV1 => bail!("AV1 is not supported for software decoding"),
         };
         MediaCodec::from_codec_name(&sw_codec_name)
             .ok_or(anyhow!("no such codec: {}", &sw_codec_name))?

@@ -22,7 +22,10 @@ const char * encoder(ALVR_CODEC codec)
   {
     case ALVR_CODEC_H264:
       return "h264_vaapi";
-    case ALVR_CODEC_H265:
+    case ALVR_CODEC_HEVC:
+      return "hevc_vaapi";
+    case ALVR_CODEC_AV1:
+      Warn("AV1 is not supported by VAAPI. Using HEVC instead.")
       return "hevc_vaapi";
   }
   throw std::runtime_error("invalid codec " + std::to_string(codec));
@@ -39,7 +42,7 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
   }
   frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
   frames_ctx->format = AV_PIX_FMT_VAAPI;
-  frames_ctx->sw_format = Settings::Instance().m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_P010 : AV_PIX_FMT_NV12;
+  frames_ctx->sw_format = Settings::Instance().m_codec == ALVR_CODEC_HEVC && Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_P010 : AV_PIX_FMT_NV12;
   frames_ctx->width = ctx->width;
   frames_ctx->height = ctx->height;
   frames_ctx->initial_pool_size = 3;
@@ -179,8 +182,10 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       }
 
       break;
-    case ALVR_CODEC_H265:
+    case ALVR_CODEC_HEVC:
       encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10 : FF_PROFILE_HEVC_MAIN;
+      break;
+    case ALVR_CODEC_AV1:
       break;
   }
 
@@ -285,7 +290,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   inputs->next = NULL;
 
   std::string filters = "scale_vaapi=format=";
-  if (Settings::Instance().m_codec == ALVR_CODEC_H265 && Settings::Instance().m_use10bitEncoder) {
+  if (Settings::Instance().m_codec == ALVR_CODEC_HEVC && Settings::Instance().m_use10bitEncoder) {
     filters += "p010";
   } else {
     filters += "nv12";

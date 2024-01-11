@@ -9,10 +9,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
-
-#[cfg(windows)]
-use sysinfo::PidExt;
+use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(10);
 

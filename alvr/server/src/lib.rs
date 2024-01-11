@@ -50,7 +50,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
+use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
 pub static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);

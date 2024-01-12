@@ -325,8 +325,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
         let codec = if codec == 0 {
             CodecType::H264
-        } else {
+        } else if codec == 1 {
             CodecType::Hevc
+        } else {
+            CodecType::AV1
         };
 
         let mut config_buffer = vec![0; len as usize];

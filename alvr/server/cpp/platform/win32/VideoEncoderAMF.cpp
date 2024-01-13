@@ -150,7 +150,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	// Create encoder component.
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(m_amfContext, pCodec, &amfEncoder));
 
-	switch codec {
+	switch (codec) {
 	case ALVR_CODEC_H264:
 	{
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);

@@ -127,7 +127,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 	auto &encodeConfig = *initializeParams.encodeConfig;
 
 	GUID encoderGUID;
-	switch m_codec {
+	switch (m_codec) {
 		case ALVR_CODEC_H264:
 			encoderGUID = NV_ENC_CODEC_H264_GUID;
 			break;

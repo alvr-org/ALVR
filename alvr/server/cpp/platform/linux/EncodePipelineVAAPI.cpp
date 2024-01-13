@@ -203,7 +203,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
   encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
   encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
   encoder_ctx->max_b_frames = 0;
-  encoder_ctx->gop_size = INT16_MAX;
+  encoder_ctx->gop_size = INT_MAX;
 
   auto params = FfiDynamicEncoderParams {};
   params.updated = true;
@@ -236,7 +236,6 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
     break;
   }
 
-  av_opt_set_int(encoder_ctx->priv_data, "idr_interval", INT_MAX, 0);
   av_opt_set_int(encoder_ctx->priv_data, "async_depth", 1, 0);
 
   set_hwframe_ctx(encoder_ctx, hw_ctx);

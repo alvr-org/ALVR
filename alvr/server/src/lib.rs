@@ -105,7 +105,7 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
 
 pub fn create_recording_file(settings: &Settings) {
     let codec = settings.video.preferred_codec;
-    let ext =  match codec {
+    let ext = match codec {
         CodecType::H264 => "h264",
         CodecType::Hevc => "h265",
         CodecType::AV1 => "av1",

@@ -195,7 +195,7 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		gopLength = Settings::Instance().m_nvencGopLength;
 	}
 
-	switch m_codec {
+	switch (m_codec) {
 	case ALVR_CODEC_H264:
 	{
 		auto &config = encodeConfig.encodeCodecConfig.h264Config;

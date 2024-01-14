@@ -425,7 +425,7 @@ pub enum CodecType {
     H264 = 0,
     #[schema(strings(display_name = "HEVC"))]
     Hevc = 1,
-
+    #[schema(strings(display_name = "AV1 (VAAPI only)"))]
     AV1 = 2,
 }
 

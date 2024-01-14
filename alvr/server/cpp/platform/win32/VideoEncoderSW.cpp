@@ -249,7 +249,10 @@ AVCodecID VideoEncoderSW::ToFFMPEGCodec(ALVR_CODEC codec) {
 	switch (codec) {
 		case ALVR_CODEC_H264:
 			return AV_CODEC_ID_H264;
-		case ALVR_CODEC_H265:
+		case ALVR_CODEC_HEVC:
+			return AV_CODEC_ID_HEVC;
+		case ALVR_CODEC_AV1:
+			Warn("AV1 is not supported. Using HEVC instead.");
 			return AV_CODEC_ID_HEVC;
 		default:
 			return AV_CODEC_ID_NONE;

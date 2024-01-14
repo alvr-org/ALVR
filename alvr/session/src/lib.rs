@@ -45,7 +45,7 @@ pub struct OpenvrConfig {
     pub enable_vive_tracker_proxy: bool,
     pub aggressive_keyframe_resend: bool,
     pub adapter_index: u32,
-    pub codec: u32,
+    pub codec: u8,
     pub h264_profile: u32,
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,

@@ -1284,7 +1284,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     value: int32_default(0),
                     content: vec![
                         ("operating-rate".into(), int32_default(i32::MAX)),
-                        ("priority".into(), int32_default(0)),
+                        ("priority".into(), int32_default(1)),
                         // low-latency: only applicable on API level 30. Quest 1 and 2 might not be
                         // cabable, since they are on level 29.
                         // ("low-latency".into(), int32_default(1)), // Android smartphones crashes enabling this feature (https://github.com/PhoneVR-Developers/alvr-cardboard/issues/5)

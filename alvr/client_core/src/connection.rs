@@ -30,6 +30,7 @@ use alvr_sockets::{
     KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
 use serde_json as json;
+use std::net::Ipv4Addr;
 use std::{
     collections::HashMap,
     sync::{mpsc, Arc},
@@ -47,7 +48,9 @@ const INITIAL_MESSAGE: &str = concat!(
     "Open ALVR on your PC then click \"Trust\"\n",
     "next to the client entry",
 );
-const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
+const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the streamer.\nNetwork error.";
+const SUCCESS_CONNECT_MESSAGE: &str = "Successful connection!\nPlease wait...";
+const LOCAL_TRY_MESSAGE: &str = "Trying to connect to local...";
 // const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 //     "Streamer and client have\n",
 //     "incompatible types.\n",
@@ -135,22 +138,29 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            if let Err(e) = announcer_socket.broadcast() {
-                warn!("Broadcast error: {e:?}");
+            if let Err(e) = announcer_socket.announce_to(Ipv4Addr::BROADCAST) {
+                warn!("Global broadcast error. Is network available? {e:?}");
 
-                set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
+                set_hud_message(LOCAL_TRY_MESSAGE);
 
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
 
-                set_hud_message(INITIAL_MESSAGE);
+                if let Err(e) = announcer_socket.announce_to(Ipv4Addr::LOCALHOST) {
+                    warn!("Couldn't announce to neither network or localhost. {e:?}");
+                    set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
 
-                return Ok(());
+                    thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+
+                    set_hud_message(INITIAL_MESSAGE);
+                    return Ok(());
+                }
             }
 
             if let Ok(pair) = ProtoControlSocket::connect_to(
                 DISCOVERY_RETRY_PAUSE,
                 PeerType::Server(&listener_socket),
             ) {
+                set_hud_message(SUCCESS_CONNECT_MESSAGE);
                 break pair;
             }
         }

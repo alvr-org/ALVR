@@ -138,14 +138,14 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            if let Err(e) = announcer_socket.announce_to(Ipv4Addr::BROADCAST) {
+            if let Err(e) = announcer_socket.announce_broadcast() {
                 warn!("Global broadcast error. Is network available? {e:?}");
 
                 set_hud_message(LOCAL_TRY_MESSAGE);
 
                 thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
 
-                if let Err(e) = announcer_socket.announce_to(Ipv4Addr::LOCALHOST) {
+                if let Err(e) = announcer_socket.announce_local() {
                     warn!("Couldn't announce to neither network or localhost. {e:?}");
                     set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
 

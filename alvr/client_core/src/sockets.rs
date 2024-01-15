@@ -20,8 +20,16 @@ impl AnnouncerSocket {
         Ok(Self { socket, packet })
     }
 
-    pub fn announce_to(&self, addr: Ipv4Addr) -> Result<()> {
-        self.socket.send_to(&self.packet, (addr, CONTROL_PORT))?;
+    pub fn announce_local(&self) -> Result<()> {
+        self.socket
+            .send_to(&self.packet, (Ipv4Addr::LOCALHOST, CONTROL_PORT))?;
+
+        Ok(())
+    }
+
+    pub fn announce_broadcast(&self) -> Result<()> {
+        self.socket
+            .send_to(&self.packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))?;
 
         Ok(())
     }

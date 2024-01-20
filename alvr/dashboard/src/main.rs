@@ -47,6 +47,7 @@ fn main() {
                 gles_minor_version: Default::default(),
             })
             .enumerate_adapters(wgpu::Backends::VULKAN)
+            .iter()
             .any(|adapter| adapter.get_info().vendor == 0x10de);
 
             if has_nvidia {

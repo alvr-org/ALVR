@@ -40,6 +40,7 @@ FLAGS:
     --keep-config       Preserve the configuration file between rebuilds (session.json)
     --no-nvidia         Disables nVidia support on Linux. For prepare-deps subcommand
     --release           Optimized build with less debug checks. For build subcommands
+    --profiling         Enable Profiling
     --gpl               Bundle GPL libraries (FFmpeg). Only for Windows
     --appimage          Package as AppImage. For package-streamer subcommand
     --zsync             For --appimage, create .zsync update file and build AppImage with embedded update information. For package-streamer subcommand
@@ -154,6 +155,7 @@ fn main() {
         } else {
             Profile::Debug
         };
+        let profiling = args.contains("--profiling");
         let gpl = args.contains("--gpl");
         let is_nightly = args.contains("--nightly");
         let no_rebuild = args.contains("--no-rebuild");
@@ -188,7 +190,7 @@ fn main() {
                     }
                 }
                 "build-streamer" => {
-                    build::build_streamer(profile, true, gpl, None, false, keep_config)
+                    build::build_streamer(profile, true, gpl, None, false, profiling, keep_config)
                 }
                 "build-launcher" => build::build_launcher(profile, true, false),
                 "build-server-lib" => build::build_server_lib(profile, true, gpl, None, false),
@@ -196,7 +198,15 @@ fn main() {
                 "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
                 "run-streamer" => {
                     if !no_rebuild {
-                        build::build_streamer(profile, true, gpl, None, false, keep_config);
+                        build::build_streamer(
+                            profile,
+                            true,
+                            gpl,
+                            None,
+                            false,
+                            profiling,
+                            keep_config,
+                        );
                     }
                     run_streamer();
                 }

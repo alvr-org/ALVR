@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 
 [features]
 gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
+trace-performance = ["profiling/profile-with-tracy"]
 
 [dependencies]
 alvr_audio.workspace = true
@@ -36,6 +37,7 @@ hyper = { version = "0.14", features = [
     "runtime",
     "tcp",
 ] }
+profiling = { version = "1", optional = true }
 reqwest = "0.11" # not used but webserver does not work without it. todo: investigate
 rosc = "0.10"
 tokio = { version = "1", features = [

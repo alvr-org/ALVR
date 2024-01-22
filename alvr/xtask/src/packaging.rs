@@ -148,7 +148,15 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
 pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_streamer(Profile::Distribution, !appimage, gpl, root, true, false);
+    build::build_streamer(
+        Profile::Distribution,
+        !appimage,
+        gpl,
+        root,
+        true,
+        false,
+        false,
+    );
 
     include_licenses(&afs::streamer_build_dir(), gpl);
 

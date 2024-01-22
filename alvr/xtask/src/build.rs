@@ -5,6 +5,7 @@ use std::{
     fmt::{self, Display, Formatter},
     fs,
     path::PathBuf,
+    vec,
 };
 use xshell::{cmd, Shell};
 
@@ -90,6 +91,7 @@ pub fn build_streamer(
     gpl: bool,
     root: Option<String>,
     reproducible: bool,
+    profiling: bool,
     keep_config: bool,
 ) {
     let sh = Shell::new().unwrap();
@@ -137,11 +139,17 @@ pub fn build_streamer(
     // build server
     {
         let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
+        let profiling_flag = profiling
+            .then(|| vec!["--features", "trace-performance"])
+            .unwrap_or_default();
 
         let _push_guard = sh.push_dir(afs::crate_dir("server"));
-        cmd!(sh, "cargo build {common_flags_ref...} {gpl_flag...}")
-            .run()
-            .unwrap();
+        cmd!(
+            sh,
+            "cargo build {common_flags_ref...} {gpl_flag...} {profiling_flag...}"
+        )
+        .run()
+        .unwrap();
 
         sh.copy_file(
             artifacts_dir.join(afs::dynlib_fname("alvr_server")),

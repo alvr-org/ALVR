@@ -70,7 +70,7 @@ pub enum ClientCoreEvent {
         frequency: f32,
         amplitude: f32,
     },
-    CreateDecoder {
+    MaybeCreateDecoder {
         codec: CodecType,
         config_nal: Vec<u8>,
     },

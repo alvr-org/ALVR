@@ -143,7 +143,7 @@ jobs:
           cd ..
           cp alvr/xtask/deb/cuda.pc /usr/share/pkgconfig
           cargo xtask prepare-deps --platform linux
-          
+
       - name: Build and package ALVR (.tar.gz)
         id: build
         env:
@@ -231,11 +231,11 @@ jobs:
           override: true
       - uses: actions/setup-java@v2
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
       - uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-29'
+          packages: "platforms;android-29"
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
@@ -251,14 +251,15 @@ jobs:
           cargo xtask package-client
 
       - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
+        uses: ilharp/sign-android-release@v1
         id: sign_apk
         with:
-          releaseDirectory: build/alvr_client_android
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
+          releaseDir: build/alvr_client_android
+          signingKey: ${{ secrets.SIGNING_KEY }}
+          keyAlias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
+          buildToolsVersion: 34.0.0
 
       - name: Upload APK
         uses: actions/upload-release-asset@v1
@@ -266,6 +267,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ${{steps.sign_apk.outputs.signedReleaseFile}}
+          asset_path: ${{ steps.sign_apk.outputs.signedFile }}
           asset_name: alvr_client_android.apk
           asset_content_type: application/vnd.android.package-archive

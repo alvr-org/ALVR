@@ -50,7 +50,7 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use sysinfo::{ProcessRefreshKind, RefreshKind, SystemExt};
+use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
 pub static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
@@ -105,10 +105,10 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
 
 pub fn create_recording_file(settings: &Settings) {
     let codec = settings.video.preferred_codec;
-    let ext = if matches!(codec, CodecType::H264) {
-        "h264"
-    } else {
-        "h265"
+    let ext = match codec {
+        CodecType::H264 => "h264",
+        CodecType::Hevc => "h265",
+        CodecType::AV1 => "av1",
     };
 
     let path = FILESYSTEM_LAYOUT.log_dir.join(format!(
@@ -325,8 +325,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
         let codec = if codec == 0 {
             CodecType::H264
-        } else {
+        } else if codec == 1 {
             CodecType::Hevc
+        } else {
+            CodecType::AV1
         };
 
         let mut config_buffer = vec![0; len as usize];

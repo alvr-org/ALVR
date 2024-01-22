@@ -135,7 +135,11 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		}
 		pCodec = AMFVideoEncoderVCE_AVC;
 		break;
-	case ALVR_CODEC_H265:
+	case ALVR_CODEC_HEVC:
+		pCodec = AMFVideoEncoder_HEVC;
+		break;
+	case ALVR_CODEC_AV1:
+		Warn("AV1 encoding is not supported. Using HEVC instead.");
 		pCodec = AMFVideoEncoder_HEVC;
 		break;
 	default:
@@ -146,7 +150,8 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	// Create encoder component.
 	AMF_THROW_IF(g_AMFFactory.GetFactory()->CreateComponent(m_amfContext, pCodec, &amfEncoder));
 
-	if (codec == ALVR_CODEC_H264)
+	switch (codec) {
+	case ALVR_CODEC_H264:
 	{
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_USAGE, AMF_VIDEO_ENCODER_USAGE_ULTRA_LOW_LATENCY);
       	switch (Settings::Instance().m_h264Profile) {
@@ -223,7 +228,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
 	}
-	else
+	case ALVR_CODEC_HEVC:
 	{
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_USAGE, AMF_VIDEO_ENCODER_HEVC_USAGE_ULTRA_LOW_LATENCY);
 		switch (Settings::Instance().m_rateControlMode) {
@@ -285,6 +290,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		if (m_hasQueryTimeout) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
+	}
 	}
 
 	Debug("Configured %s.\n", pCodec);
@@ -477,7 +483,7 @@ void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 			surface->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
 		}
 		break;
-	case ALVR_CODEC_H265:
+	case ALVR_CODEC_HEVC:
 		// FIXME: This option works with 22.10.3, but may not work with older drivers
 		surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
 		if (insertIDR) {
@@ -489,6 +495,8 @@ void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 			surface->SetProperty(AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_IDR);
 		}
 		break;
+	case ALVR_CODEC_AV1:
+		throw MakeException("AV1 encoding is not supported");
 	default:
 		throw MakeException("Invalid video codec");
 	}

@@ -32,7 +32,8 @@ static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 #[repr(u8)]
 pub enum AlvrCodec {
     H264 = 0,
-    H265 = 1,
+    Hevc = 1,
+    AV1 = 2,
 }
 
 #[repr(u8)]
@@ -228,17 +229,17 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 frequency,
                 amplitude,
             },
-            ClientCoreEvent::CreateDecoder { codec, config_nal } => {
+            ClientCoreEvent::MaybeCreateDecoder { codec, config_nal } => {
                 NAL_QUEUE.lock().push_back(ReconstructedNal {
                     timestamp_ns: 0,
                     data: config_nal,
                 });
 
                 AlvrEvent::CreateDecoder {
-                    codec: if matches!(codec, CodecType::H264) {
-                        AlvrCodec::H264
-                    } else {
-                        AlvrCodec::H265
+                    codec: match codec {
+                        CodecType::H264 => AlvrCodec::H264,
+                        CodecType::Hevc => AlvrCodec::Hevc,
+                        CodecType::AV1 => AlvrCodec::AV1,
                     },
                 }
             }

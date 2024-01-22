@@ -229,7 +229,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 frequency,
                 amplitude,
             },
-            ClientCoreEvent::CreateDecoder { codec, config_nal } => {
+            ClientCoreEvent::MaybeCreateDecoder { codec, config_nal } => {
                 NAL_QUEUE.lock().push_back(ReconstructedNal {
                     timestamp_ns: 0,
                     data: config_nal,

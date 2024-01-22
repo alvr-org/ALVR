@@ -31,7 +31,10 @@ pub static DECODER_SOURCE: alvr_common::OptLazy<crate::platform::VideoDecoderSou
 
 pub static EXTERNAL_DECODER: RelaxedAtomic = RelaxedAtomic::new(false);
 
-pub fn create_decoder(lazy_config: DecoderInitializationConfig, force_software_decoder: bool) {
+pub fn maybe_create_decoder(
+    lazy_config: DecoderInitializationConfig,
+    force_software_decoder: bool,
+) {
     let mut config = DECODER_INIT_CONFIG.lock();
     config.codec = lazy_config.codec;
     config.force_software_decoder = force_software_decoder;
@@ -39,7 +42,7 @@ pub fn create_decoder(lazy_config: DecoderInitializationConfig, force_software_d
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE
             .lock()
-            .push_back(ClientCoreEvent::CreateDecoder {
+            .push_back(ClientCoreEvent::MaybeCreateDecoder {
                 codec: config.codec,
                 config_nal: lazy_config.config_buffer,
             });

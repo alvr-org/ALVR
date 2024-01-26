@@ -431,7 +431,7 @@ pub enum CodecType {
     H264 = 0,
     #[schema(strings(display_name = "HEVC"))]
     Hevc = 1,
-    #[schema(strings(display_name = "AV1"))]
+    #[schema(strings(display_name = "AV1 (AMD only)"))]
     AV1 = 2,
 }
 

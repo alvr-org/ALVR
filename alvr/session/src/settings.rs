@@ -144,10 +144,13 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 pub struct AmfConfig {
     #[schema(flag = "steamvr-restart")]
     pub quality_preset: EncoderQualityPresetAmd,
-    #[schema(strings(
-        display_name = "Enable VBAQ/AQ",
-        help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Adaptive Quality on AV1"
-    ), flag = "steamvr-restart")]
+    #[schema(
+        strings(
+            display_name = "Enable VBAQ/AQ",
+            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Adaptive Quality on AV1"
+        ),
+        flag = "steamvr-restart"
+    )]
     pub enable_vbaq: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,

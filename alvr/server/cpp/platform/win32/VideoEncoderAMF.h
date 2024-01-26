@@ -4,6 +4,7 @@
 #include "../../shared/amf/public/common/AMFFactory.h"
 #include "../../shared/amf/public/include/components/VideoEncoderVCE.h"
 #include "../../shared/amf/public/include/components/VideoEncoderHEVC.h"
+#include "../../shared/amf/public/include/components/VideoEncoderAV1.h"
 #include "../../shared/amf/public/include/components/VideoConverter.h"
 #include "../../shared/amf/public/include/components/PreProcessing.h"
 #include "../../shared/amf/public/common/AMFSTL.h"

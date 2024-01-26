@@ -40,7 +40,7 @@
 #include "../include/core/Debug.h"
 #include "../include/core/Trace.h"
 #include "../include/core/Result.h"
-#include "../common/AMFFactory.h"
+#include "public/common/AMFFactory.h"
 #include "AMFSTL.h"
 
 #ifndef WIN32
@@ -64,8 +64,10 @@
 #endif
 //-----------------------------------
 
-
-
+#if defined(_DEBUG) && defined(__linux)
+#include <sys/ptrace.h>
+#include <signal.h>
+#endif
 
 namespace amf
 {
@@ -297,7 +299,7 @@ static const wchar_t* AMF_FACILITY = NULL;
 }                                                                                //{  }
 #elif defined(__linux)
 //    #define AMFDebugBreak ((void)0)
-#define AMFDebugBreak  {if(amf::AMFAssertsEnabled()) {assert(0);} \
+#define AMFDebugBreak  {if(amf::AMFAssertsEnabled() && ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {raise(SIGTRAP);} \
 }//{  }
 #elif defined(__APPLE__)
 #define AMFDebugBreak  {if(amf::AMFAssertsEnabled()) {assert(0);} \
@@ -502,6 +504,26 @@ inline amf_wstring AMFFormatHResult(HRESULT result)  { return amf::amf_string_fo
 
 /**
 *******************************************************************************
+*   AMFVkResultSucceeded
+*
+*   @brief
+*       Checks if VkResult succeeded
+*******************************************************************************
+*/
+inline bool AMFVkResultSucceeded(int result) { return result == 0; }
+
+/**
+*******************************************************************************
+*   AMFFormatVkResult
+*
+*   @brief
+*       Formats VkResult into descriptive string
+*******************************************************************************
+*/
+inline amf_wstring AMFFormatVkResult(int result) { return amf::amf_string_format(L"Vulkan failed, VkResult = %d:", result); }
+
+/**
+*******************************************************************************
 *   AMF_CALL
 *
 *   @brief
@@ -583,6 +605,18 @@ inline amf_wstring AMFFormatHResult(HRESULT result)  { return amf::amf_string_fo
 *******************************************************************************
 */
 #define ASSERT_RETURN_IF_HR_FAILED(exp, reterr, /*optional format, args,*/...) AMF_BASE_RETURN(exp, HRESULT, amf::AMFHResultSucceded, amf::AMFFormatHResult, AMF_TRACE_ERROR, AMF_FACILITY, reterr, L###exp, ##__VA_ARGS__)
+
+/**
+*******************************************************************************
+*   ASSERT_RETURN_IF_VK_FAILED
+*
+*   @brief
+*       Checks VkResult if succeeded, otherwise trace error, debug break and return specified error to upper level
+* 
+*       Could be used: A) with just expression B) with optinal descriptive message C) message + args for printf
+*******************************************************************************
+*/
+#define ASSERT_RETURN_IF_VK_FAILED(exp, reterr, /*optional format, args,*/...) AMF_BASE_RETURN(exp, int, amf::AMFVkResultSucceeded, amf::AMFFormatVkResult, AMF_TRACE_ERROR, AMF_FACILITY, reterr, L###exp, ##__VA_ARGS__)
 
 
 /**

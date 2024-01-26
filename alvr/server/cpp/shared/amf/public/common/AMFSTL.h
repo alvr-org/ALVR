@@ -33,6 +33,7 @@
 
 #ifndef AMF_AMFSTL_h
 #define AMF_AMFSTL_h
+
 #pragma once
 
 #if defined(__GNUC__)
@@ -41,6 +42,7 @@
     #pragma GCC diagnostic ignored "-Weffc++"
     #include <memory>  //default stl allocator
 #else
+
     #include <xmemory>  //default stl allocator
 #endif
 
@@ -62,12 +64,17 @@ extern "C"
     // allocator
     void* AMF_STD_CALL amf_alloc(amf_size count);
     void AMF_STD_CALL amf_free(void* ptr);
+    void* AMF_STD_CALL amf_aligned_alloc(size_t count, size_t alignment);
+    void AMF_STD_CALL amf_aligned_free(void* ptr);
 #if defined(__cplusplus)
 }
 #endif
 
 namespace amf
 {
+#pragma warning(push)
+
+#pragma warning(disable: 4996)    // was declared deprecated
     //-------------------------------------------------------------------------------------------------
     // STL allocator redefined - will allocate all memory in "C" runtime of Common.DLL
     //-------------------------------------------------------------------------------------------------
@@ -85,13 +92,14 @@ namespace amf
         {
             typedef amf_allocator<_Other> other;
         };
-        void deallocate(typename std::allocator<_Ty>::pointer _Ptr, typename std::allocator<_Ty>::size_type)
+        void deallocate(_Ty* const _Ptr, const size_t _Count)
         {
+            _Count;
             amf_free((void*)_Ptr);
         }
-        typename std::allocator<_Ty>::pointer allocate(typename std::allocator<_Ty>::size_type _Count)
+        _Ty* allocate(const size_t _Count, const void* = static_cast<const void*>(0))
         { // allocate array of _Count el ements
-            return static_cast<typename std::allocator<_Ty>::pointer>((amf_alloc(_Count * sizeof(_Ty))));
+            return static_cast<_Ty*>(amf_alloc(_Count * sizeof(_Ty)));
         }
     };
 
@@ -198,7 +206,7 @@ namespace amf
     protected:
         size_t _size_limit;
     };
-
+#pragma warning(pop)
     //---------------------------------------------------------------
 #if defined(__GNUC__)
     //disable gcc warinings on STL code
@@ -261,6 +269,46 @@ namespace amf
 
 typedef std::basic_string<char, std::char_traits<char>, amf::amf_allocator<char> > amf_string;
 typedef std::basic_string<wchar_t, std::char_traits<wchar_t>, amf::amf_allocator<wchar_t> > amf_wstring;
+
+template <class TAmfString>
+std::size_t amf_string_hash(TAmfString const& s) noexcept
+{
+#if defined(_WIN64) || defined(__x86_64__)
+    constexpr size_t fnvOffsetBasis = 14695981039346656037ULL;
+    constexpr size_t fnvPrime = 1099511628211ULL;
+#else // defined(_WIN64) || defined(__x86_64__)
+    constexpr size_t fnvOffsetBasis = 2166136261U;
+    constexpr size_t fnvPrime = 16777619U;
+#endif // defined(_WIN64) || defined(__x86_64__)
+
+    const unsigned char* const pStr = reinterpret_cast<const unsigned char*>(s.c_str());
+    const size_t count = s.size() * sizeof(typename TAmfString::value_type);
+    size_t value = fnvOffsetBasis;
+    for (size_t i = 0; i < count; ++i)
+    {
+        value ^= static_cast<size_t>(pStr[i]);
+        value *= fnvPrime;
+    }
+    return value;
+}
+
+template<>
+struct std::hash<amf_wstring>
+{
+    std::size_t operator()(amf_wstring const& s) const noexcept
+    {
+        return amf_string_hash<amf_wstring>(s);
+    }
+};
+
+template<>
+struct std::hash<amf_string>
+{
+    std::size_t operator()(amf_string const& s) const noexcept
+    {
+        return amf_string_hash<amf_string>(s);
+    }
+};
 
 namespace amf
 {

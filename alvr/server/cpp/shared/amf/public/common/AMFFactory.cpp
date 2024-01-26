@@ -70,6 +70,8 @@ AMFFactoryHelper::~AMFFactoryHelper()
 //-------------------------------------------------------------------------------------------------
 AMF_RESULT AMFFactoryHelper::Init(const wchar_t* dllName)
 {
+    dllName;
+
 #ifndef AMF_CORE_STATIC
     if (m_hDLLHandle != NULL)
     {

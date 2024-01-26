@@ -9,7 +9,7 @@
 // 
 // MIT license 
 // 
-// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,30 +30,19 @@
 // THE SOFTWARE.
 //
 
-/**
-***************************************************************************************************
-* @file  Version.h
-* @brief Version declaration
-***************************************************************************************************
-*/
-#ifndef AMF_Version_h
-#define AMF_Version_h
+#ifndef AMFVQEnhancer_h
+#define AMFVQEnhancer_h
+
 #pragma once
 
-#include "Platform.h"
+#define VE_FCR_DEFAULT_ATTENUATION 0.1
 
-#define AMF_MAKE_FULL_VERSION(VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_BUILD_NUM)    ( ((amf_uint64)(VERSION_MAJOR) << 48ull) | ((amf_uint64)(VERSION_MINOR) << 32ull) | ((amf_uint64)(VERSION_RELEASE) << 16ull)  | (amf_uint64)(VERSION_BUILD_NUM))
+#define AMFVQEnhancer L"AMFVQEnhancer"
 
-#define AMF_GET_MAJOR_VERSION(x)      ((x >> 48ull) & 0xFFFF)
-#define AMF_GET_MINOR_VERSION(x)      ((x >> 32ull) & 0xFFFF)
-#define AMF_GET_SUBMINOR_VERSION(x)   ((x >> 16ull) & 0xFFFF)
-#define AMF_GET_BUILD_VERSION(x)      ((x >>  0ull) & 0xFFFF)
+#define AMF_VIDEO_ENHANCER_ENGINE_TYPE       L"AMF_VIDEI_ENHANCER_ENGINE_TYPE"        // AMF_MEMORY_TYPE (DX11, DX12, OPENCL, VULKAN default : DX11)"                    - determines how the object is initialized and what kernels to use
+#define AMF_VIDEO_ENHANCER_OUTPUT_SIZE       L"AMF_VIDEO_ENHANCER_OUTPUT_SIZE"        // AMFSize                       
+#define AMF_VE_FCR_ATTENUATION               L"AMF_VE_FCR_ATTENUATION"                // Float in the range of [0.02, 0.4], default : 0.1
+#define AMF_VE_FCR_RADIUS                    L"AMF_VE_FCR_RADIUS"                     // int  in the range of [1, 4]
+#define AMF_VE_FCR_SPLIT_VIEW                L"AMF_VE_FCR_SPLIT_VIEW"                 // FCR View split window
 
-#define AMF_VERSION_MAJOR       1
-#define AMF_VERSION_MINOR       4
-#define AMF_VERSION_RELEASE     33
-#define AMF_VERSION_BUILD_NUM   0
-
-#define AMF_FULL_VERSION AMF_MAKE_FULL_VERSION(AMF_VERSION_MAJOR, AMF_VERSION_MINOR, AMF_VERSION_RELEASE, AMF_VERSION_BUILD_NUM)
-
-#endif //#ifndef AMF_Version_h
+#endif //#ifndef AMFVQEnhancer_h

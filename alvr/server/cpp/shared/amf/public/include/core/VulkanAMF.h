@@ -55,7 +55,7 @@ namespace amf
         amf_size            cbSizeof;           // sizeof(AMFVulkanSync)
         void*               pNext;              // reserved for extensions
         VkSemaphore         hSemaphore;         // VkSemaphore; can be nullptr
-        bool                bSubmitted;         // if true - wait for hSemaphore. re-submit hSemaphore if not synced by other ways and set to true
+        amf_bool            bSubmitted;         // if true - wait for hSemaphore. re-submit hSemaphore if not synced by other ways and set to true
         VkFence             hFence;             // To sync on CPU; can be nullptr. Submitted in vkQueueSubmit. If waited for hFence, null it, do not delete or reset.
     } AMFVulkanSync;
 
@@ -90,6 +90,14 @@ namespace amf
         AMFVulkanSync       Sync;               // To sync on GPU
     } AMFVulkanSurface;
 
+    typedef struct AMFVulkanSurface1
+    {
+        amf_size            cbSizeof;           // sizeof(AMFVulkanSurface)
+        void*               pNext;              // reserved for extensions
+        // surface properties
+        amf_uint32          eTiling;            // VkImageTiling
+    } AMFVulkanSurface1;
+
     typedef struct AMFVulkanView
     {
         amf_size            cbSizeof;           // sizeof(AMFVulkanView)
@@ -102,6 +110,9 @@ namespace amf
         amf_int32           iPlaneWidthPitch;
         amf_int32           iPlaneHeightPitch;
     } AMFVulkanView;
+
+#define AMF_CONTEXT_VULKAN_COMPUTE_QUEUE  L"VulkanComputeQueue" // amf_int64; default=0; Compute queue index in range [0, (VkQueueFamilyProperties.queueCount-1)] of the compute queue family.
+
 #if defined(__cplusplus)
 } // namespace amf
 #endif

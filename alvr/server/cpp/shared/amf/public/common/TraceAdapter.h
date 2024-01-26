@@ -40,7 +40,7 @@
 #include "../include/core/Debug.h"
 #include "../include/core/Trace.h"
 #include "../include/core/Result.h"
-#include "../common/AMFFactory.h"
+#include "public/common/AMFFactory.h"
 #include "AMFSTL.h"
 
 #ifndef WIN32
@@ -612,7 +612,7 @@ inline amf_wstring AMFFormatVkResult(int result) { return amf::amf_string_format
 *
 *   @brief
 *       Checks VkResult if succeeded, otherwise trace error, debug break and return specified error to upper level
-*
+* 
 *       Could be used: A) with just expression B) with optinal descriptive message C) message + args for printf
 *******************************************************************************
 */

@@ -1,5 +1,10 @@
 # Changelog
 
+### v20.6.1
+
+* Add AV1 support, only for Linux/VAAPI, with 10bits support (by @wsippel #1955 #1964)
+* Fix image corruption on h264/VAAPI (by @galister / @nowrep #1956)
+
 ## v20.6.0
 
 * Add tongue tracking for Quest Pro (by @zarik5)

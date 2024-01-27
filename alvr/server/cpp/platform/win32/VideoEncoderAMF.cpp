@@ -330,7 +330,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PROFILE, AMF_VIDEO_ENCODER_AV1_PROFILE_MAIN);
 		}
 
-		// There is no VBAQ option for AV1. Instead it has AQ (Adaptive Quality)
+		// There is no VBAQ option for AV1. Instead it has CAQ (Content adaptive quantization)
 		if (Settings::Instance().m_enableVbaq) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_CAQ);
 		} else {

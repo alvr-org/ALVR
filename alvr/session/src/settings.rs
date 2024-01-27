@@ -146,8 +146,8 @@ pub struct AmfConfig {
     pub quality_preset: EncoderQualityPresetAmd,
     #[schema(
         strings(
-            display_name = "Enable VBAQ/AQ",
-            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Adaptive Quality on AV1"
+            display_name = "Enable VBAQ/CAQ",
+            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
         ),
         flag = "steamvr-restart"
     )]

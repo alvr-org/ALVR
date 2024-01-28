@@ -50,6 +50,7 @@ pub struct OpenvrConfig {
     pub refresh_rate: u32,
     pub use_10bit_encoder: bool,
     pub enable_vbaq: bool,
+    pub enable_hmqb: bool,
     pub use_preproc: bool,
     pub preproc_sigma: u32,
     pub preproc_tor: u32,

@@ -66,6 +66,7 @@ void Settings::Load() {
         m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
         m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
         m_enableVbaq = config.get("enable_vbaq").get<bool>();
+        m_enableHmqb = config.get("enable_hmqb").get<bool>();
         m_usePreproc = config.get("use_preproc").get<bool>();
         m_preProcSigma = (uint32_t)config.get("preproc_sigma").get<int64_t>();
         m_preProcTor = (uint32_t)config.get("preproc_tor").get<int64_t>();

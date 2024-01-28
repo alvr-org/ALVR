@@ -152,6 +152,15 @@ pub struct AmfConfig {
         flag = "steamvr-restart"
     )]
     pub enable_vbaq: bool,
+    #[schema(
+        strings(
+            display_name = "Enable High-Motion Quality Boost",
+            help = r#"Enables high motion quality boost mode.
+Allows the encoder to perform pre-analysis the motion of the video and use the information for better encoding"#
+        ),
+        flag = "steamvr-restart"
+    )]
+    pub enable_hmqb: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,
     #[schema(gui(slider(min = 0, max = 10)))]
@@ -1265,6 +1274,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
                     enable_vbaq: false,
+                    enable_hmqb: false,
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,

@@ -43,6 +43,7 @@ class Settings {
     int m_h264Profile;
     bool m_use10bitEncoder;
     bool m_enableVbaq;
+    bool m_enableHmqb;
     bool m_usePreproc;
     uint32_t m_preProcSigma;
     uint32_t m_preProcTor;

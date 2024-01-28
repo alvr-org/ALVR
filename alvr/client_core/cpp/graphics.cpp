@@ -265,8 +265,10 @@ void main()
         lowp float lineBloom = 10.0;
 
         lowp float distance = length(position.xz);
+
         // Pick a coordinate to visualize in a grid
         lowp vec2 coord = position.xz / 2.0;
+
         // Compute anti-aliased world-space grid lines
         lowp vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
 
@@ -274,12 +276,16 @@ void main()
         lowp float line = clamp(1.0 - min(grid.x, grid.y), 0.0, 1.0);
         line *= clamp((lineFadeStart - distance) / lineFadeDist, 0.0, 1.0);
 
+        // Fill in normal ground colour
         outColor.rgb = groundCenter * (1.0 - line);
 
+        // Add cheap and simple "bloom" to the grid lines
         line *= 1.0 + lineBloom;
 
+        // Fill in grid line colour
         outColor.rgb += line * mix(gridFar, gridClose, clamp((lineFadeEnd - distance) / lineFadeEnd, 0.0, 1.0));
 
+        // Fade to the horizon colo(u)r over distance
         if(distance > 10.0){
             lowp float coef = 1.0 - 10.0 / distance;
             outColor.rgb = (1.0 - coef) * outColor.rgb + coef * groundHorizon;

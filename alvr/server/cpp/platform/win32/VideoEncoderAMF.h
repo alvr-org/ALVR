@@ -96,6 +96,7 @@ private:
 	int m_bitrateInMBits;
 
 	bool m_hasQueryTimeout;
+	bool m_hasPreAnalysis;
 
 	void ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bool insertIDR);
 };

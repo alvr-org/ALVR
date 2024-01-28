@@ -205,6 +205,17 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				break;
 		}
 
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasPreAnalysis) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+		} else {
+			Warn("Pre-analysis could not be enabled because your GPU does not support it for h264 encoding.");
+		}
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
@@ -222,10 +233,6 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
 
-		amf::AMFCapsPtr caps;
-		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-		}
 		if (m_hasQueryTimeout) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
@@ -269,6 +276,17 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE, AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN);
 		}
 
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+		if (m_hasPreAnalysis) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+		} else {
+			Warn("Pre-analysis could not be enabled because your GPU does not support it for HEVC encoding.");
+		}
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
@@ -288,10 +306,6 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
 
-		amf::AMFCapsPtr caps;
-		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-		}
 		if (m_hasQueryTimeout) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
@@ -341,6 +355,17 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_CAQ);
 		} else {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_NONE);
+		}
+
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+		}
+		if (m_hasPreAnalysis) {
+			Warn("Enabling AV1 pre-analysis.");
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+		} else {
+			Warn("Pre-analysis could not be enabled because your GPU does not support it for AV1 encoding.");
 		}
 
 		// May impact performance but improves quality in high-motion areas

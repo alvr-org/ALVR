@@ -169,6 +169,15 @@ Allows the encoder to perform pre-analysis the motion of the video and use the i
     #[schema(gui(slider(min = 0, max = 10)))]
     #[schema(flag = "steamvr-restart")]
     pub preproc_tor: u32,
+//     #[schema(
+//         strings(
+//             display_name = "Enable Pre-analysis",
+//             help = r#"Enables pre-analysis during encoding. This will likely result in reduced performance, but may increase quality.
+// Does not work with the \"Reduce color banding\" option, requires enabling \"Use preproc\""#
+//         ),
+//         flag = "steamvr-restart"
+//     )]
+//     pub enable_pre_analysis: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1273,6 +1282,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     quality_preset: EncoderQualityPresetAmdDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
+                    // enable_pre_analysis: false,
                     enable_vbaq: false,
                     enable_hmqb: false,
                     use_preproc: false,

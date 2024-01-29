@@ -285,7 +285,7 @@ void main()
         // Fill in grid line colour
         outColor.rgb += line * mix(gridFar, gridClose, clamp((lineFadeEnd - distance) / lineFadeEnd, 0.0, 1.0));
 
-        // Fade to the horizon colo(u)r over distance
+        // Fade to the horizon colour over distance
         if(distance > 10.0){
             lowp float coef = 1.0 - 10.0 / distance;
             outColor.rgb = (1.0 - coef) * outColor.rgb + coef * groundHorizon;

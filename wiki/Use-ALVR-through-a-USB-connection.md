@@ -10,7 +10,6 @@
 
 * If your headset is detected, click "Trust." Click "Edit", "Add new" and change the IP address to `127.0.0.1`.
 * If your headset is not detected, click "Add client manually" and use the IP address `127.0.0.1`. Use the hostname displayed on your headset screen.
-* Turn off client discovery in Settings > Connection.
 * Switch the connection streaming protocol to TCP in Settings > Connection.
 
 ## Letting your PC communicate with your HMD

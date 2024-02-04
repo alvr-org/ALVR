@@ -47,7 +47,9 @@ const INITIAL_MESSAGE: &str = concat!(
     "Open ALVR on your PC then click \"Trust\"\n",
     "next to the client entry",
 );
-const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the internet";
+const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the streamer.\nNetwork error.";
+const SUCCESS_CONNECT_MESSAGE: &str = "Successful connection!\nPlease wait...";
+const LOCAL_TRY_MESSAGE: &str = "Trying to connect to localhost...";
 // const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
 //     "Streamer and client have\n",
 //     "incompatible types.\n",
@@ -135,23 +137,31 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            if let Err(e) = announcer_socket.broadcast() {
-                warn!("Broadcast error: {e:?}");
+            let mut is_broadcast_ok = false;
+            if let Err(e) = announcer_socket.announce_broadcast() {
+                debug!("Couldn't announce to localhost, retrying on local... {e:}");
 
-                set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
-
-                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-
-                set_hud_message(INITIAL_MESSAGE);
-
-                return Ok(());
+                set_hud_message(LOCAL_TRY_MESSAGE);
+            } else {
+                is_broadcast_ok = true;
             }
 
             if let Ok(pair) = ProtoControlSocket::connect_to(
                 DISCOVERY_RETRY_PAUSE,
                 PeerType::Server(&listener_socket),
             ) {
+                set_hud_message(SUCCESS_CONNECT_MESSAGE);
                 break pair;
+            }
+
+            if !is_broadcast_ok {
+                warn!("Couldn't announce to network or connect to localhost.");
+                set_hud_message(NETWORK_UNREACHABLE_MESSAGE);
+
+                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+
+                set_hud_message(INITIAL_MESSAGE);
+                return Ok(());
             }
         }
     };

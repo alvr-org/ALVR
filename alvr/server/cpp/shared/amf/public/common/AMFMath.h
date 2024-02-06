@@ -893,13 +893,13 @@ namespace amf
         }
         inline bool DecomposeMatrix(amf::Quaternion &q, amf::Vector &p, amf::Vector &s)
         {
-            static amf::Vector g_XMIdentityR0( 1.0f, 0.0f, 0.0f, 0.0f );
-            static amf::Vector g_XMIdentityR1( 0.0f, 1.0f, 0.0f, 0.0f );
-            static amf::Vector g_XMIdentityR2( 0.0f, 0.0f, 1.0f, 0.0f );
+            static amf::Vector amfXMIdentityR0( 1.0f, 0.0f, 0.0f, 0.0f );
+            static amf::Vector amfXMIdentityR1( 0.0f, 1.0f, 0.0f, 0.0f );
+            static amf::Vector amfXMIdentityR2( 0.0f, 0.0f, 1.0f, 0.0f );
             static const amf::VectorPOD *pvCanonicalBasis[3] = {
-                    &g_XMIdentityR0,
-                    &g_XMIdentityR1,
-                    &g_XMIdentityR2
+                    &amfXMIdentityR0,
+                    &amfXMIdentityR1,
+                    &amfXMIdentityR2
             };
 
 //    p.Assign(-m.m[0][3], -m.m[1][3], -m.m[2][3], 0);

@@ -37,6 +37,8 @@
 #define AMF_ColorSpace_h
 #pragma once
 
+#include "../core/Platform.h"
+
 // YUV <--> RGB conversion matrix with range
 typedef enum AMF_VIDEO_CONVERTER_COLOR_PROFILE_ENUM
 {

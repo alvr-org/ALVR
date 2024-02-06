@@ -38,6 +38,7 @@
 #pragma once
 #include "../include/core/Platform.h"
 #define    INIT_ARRAY_SIZE 1024
+#define    ARRAY_MAX_SIZE (1LL << 60LL) // extremely large maximum size
 //------------------------------------------------------------------------
 class AMFByteArray
 {
@@ -76,7 +77,16 @@ public:
         }
         else if (num > m_iMaxSize)
         {
-            m_iMaxSize = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
+            // This is done to prevent the following error from surfacing
+            // for the pNewData allocation on some compilers:
+            //     -Werror=alloc-size-larger-than=
+            amf_size newSize = (num / INIT_ARRAY_SIZE) * INIT_ARRAY_SIZE + INIT_ARRAY_SIZE;
+            if (newSize > ARRAY_MAX_SIZE)
+            {
+                return;
+            }
+            m_iMaxSize = newSize;
+
             amf_uint8 *pNewData = new amf_uint8[m_iMaxSize];
             memset(pNewData, 0, m_iMaxSize);
             if (m_pData != NULL)

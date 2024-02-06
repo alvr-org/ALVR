@@ -60,6 +60,11 @@ namespace amf
         }
         virtual void AMF_STD_CALL AddObserver(Observer* pObserver)
         {
+            if (pObserver == nullptr)
+            {
+                return;
+            }
+
             amf_bool found = false;
             AMFLock lock(&m_sc);
             

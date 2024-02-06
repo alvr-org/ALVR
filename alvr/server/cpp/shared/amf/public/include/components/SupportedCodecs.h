@@ -30,30 +30,32 @@
 // THE SOFTWARE.
 //
 
-/**
-***************************************************************************************************
-* @file  Version.h
-* @brief Version declaration
-***************************************************************************************************
-*/
-#ifndef AMF_Version_h
-#define AMF_Version_h
+//-------------------------------------------------------------------------------------------------
+// An interface available on some components to provide information on supported input and output codecs 
+//-------------------------------------------------------------------------------------------------
+#ifndef AMF_SupportedCodecs_h
+#define AMF_SupportedCodecs_h
+
 #pragma once
 
-#include "Platform.h"
+#include "public/include/core/Interface.h"
 
-#define AMF_MAKE_FULL_VERSION(VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE, VERSION_BUILD_NUM)    ( ((amf_uint64)(VERSION_MAJOR) << 48ull) | ((amf_uint64)(VERSION_MINOR) << 32ull) | ((amf_uint64)(VERSION_RELEASE) << 16ull)  | (amf_uint64)(VERSION_BUILD_NUM))
+//properties on the returned AMFPropertyStorage
+#define SUPPORTEDCODEC_ID L"CodecId" //amf_int64
+#define SUPPORTEDCODEC_SAMPLERATE L"SampleRate" //amf_int32
 
-#define AMF_GET_MAJOR_VERSION(x)      ((x >> 48ull) & 0xFFFF)
-#define AMF_GET_MINOR_VERSION(x)      ((x >> 32ull) & 0xFFFF)
-#define AMF_GET_SUBMINOR_VERSION(x)   ((x >> 16ull) & 0xFFFF)
-#define AMF_GET_BUILD_VERSION(x)      ((x >>  0ull) & 0xFFFF)
+namespace amf
+{
+    class AMFSupportedCodecs : public AMFInterface
+    {
+    public:
+        AMF_DECLARE_IID(0xc1003a83, 0x7934, 0x408a, 0x95, 0x5b, 0xc4, 0xdd, 0x85, 0x9d, 0xf5, 0x61)
 
-#define AMF_VERSION_MAJOR       1
-#define AMF_VERSION_MINOR       4
-#define AMF_VERSION_RELEASE     33
-#define AMF_VERSION_BUILD_NUM   0
+        //call with increasing values until it returns AMF_OUT_OF_RANGE
+        virtual AMF_RESULT     AMF_STD_CALL GetInputCodecAt(amf_size index, AMFPropertyStorage** codec) const = 0;
+        virtual AMF_RESULT     AMF_STD_CALL GetOutputCodecAt(amf_size index, AMFPropertyStorage** codec) const = 0;
+    };
+    typedef AMFInterfacePtr_T<AMFSupportedCodecs> AMFSupportedCodecsPtr;
+}
 
-#define AMF_FULL_VERSION AMF_MAKE_FULL_VERSION(AMF_VERSION_MAJOR, AMF_VERSION_MINOR, AMF_VERSION_RELEASE, AMF_VERSION_BUILD_NUM)
-
-#endif //#ifndef AMF_Version_h
+#endif

@@ -66,6 +66,29 @@ enum AMF_VIDEO_ENCODER_PROFILE_ENUM
     AMF_VIDEO_ENCODER_PROFILE_CONSTRAINED_HIGH = 257
 };
 
+enum AMF_VIDEO_ENCODER_H264_LEVEL_ENUM
+{
+    AMF_H264_LEVEL__1   = 10,
+    AMF_H264_LEVEL__1_1 = 11,
+    AMF_H264_LEVEL__1_2 = 12,
+    AMF_H264_LEVEL__1_3 = 13,
+    AMF_H264_LEVEL__2   = 20,
+    AMF_H264_LEVEL__2_1 = 21,
+    AMF_H264_LEVEL__2_2 = 22,
+    AMF_H264_LEVEL__3   = 30,
+    AMF_H264_LEVEL__3_1 = 31,
+    AMF_H264_LEVEL__3_2 = 32,
+    AMF_H264_LEVEL__4   = 40,
+    AMF_H264_LEVEL__4_1 = 41,
+    AMF_H264_LEVEL__4_2 = 42,
+    AMF_H264_LEVEL__5   = 50,
+    AMF_H264_LEVEL__5_1 = 51,
+    AMF_H264_LEVEL__5_2 = 52,
+    AMF_H264_LEVEL__6   = 60,
+    AMF_H264_LEVEL__6_1 = 61,
+    AMF_H264_LEVEL__6_2 = 62
+};
+
 enum AMF_VIDEO_ENCODER_SCANTYPE_ENUM
 {
     AMF_VIDEO_ENCODER_SCANTYPE_PROGRESSIVE = 0,
@@ -143,6 +166,18 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
     AMF_VIDEO_ENCODER_LTR_MODE_KEEP_UNUSED
 };
 
+enum AMF_VIDEO_ENCODER_OUTPUT_MODE_ENUM
+{
+    AMF_VIDEO_ENCODER_OUTPUT_MODE_FRAME = 0,
+    AMF_VIDEO_ENCODER_OUTPUT_MODE_SLICE = 1
+};
+
+enum AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE_ENUM
+{
+    AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE_FRAME      = 0,
+    AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE_SLICE      = 1,
+    AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE_SLICE_LAST = 2
+};
 
 // Static properties - can be set before Init()
 #define AMF_VIDEO_ENCODER_INSTANCE_INDEX                        L"EncoderInstance"          // amf_int64; selected HW instance idx
@@ -151,7 +186,7 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_EXTRADATA                             L"ExtraData"                // AMFInterface* - > AMFBuffer*; SPS/PPS buffer in Annex B format - read-only
 #define AMF_VIDEO_ENCODER_USAGE                                 L"Usage"                    // amf_int64(AMF_VIDEO_ENCODER_USAGE_ENUM); default = N/A; Encoder usage type. fully configures parameter set.
 #define AMF_VIDEO_ENCODER_PROFILE                               L"Profile"                  // amf_int64(AMF_VIDEO_ENCODER_PROFILE_ENUM) ; default = AMF_VIDEO_ENCODER_PROFILE_MAIN;  H264 profile
-#define AMF_VIDEO_ENCODER_PROFILE_LEVEL                         L"ProfileLevel"             // amf_int64; default = 42; H264 profile level
+#define AMF_VIDEO_ENCODER_PROFILE_LEVEL                         L"ProfileLevel"             // amf_int64(AMF_VIDEO_ENCODER_H264_LEVEL_ENUM); default = AMF_H264_LEVEL__4_2; H264 level
 #define AMF_VIDEO_ENCODER_MAX_LTR_FRAMES                        L"MaxOfLTRFrames"           // amf_int64; default = 0; Max number of LTR frames
 #define AMF_VIDEO_ENCODER_LTR_MODE                              L"LTRMode"                  // amf_int64(AMF_VIDEO_ENCODER_LTR_MODE_ENUM); default = AMF_VIDEO_ENCODER_LTR_MODE_RESET_UNUSED; remove/keep unused LTRs (not specified in property AMF_VIDEO_ENCODER_FORCE_LTR_REFERENCE_BITFIELD)
 #define AMF_VIDEO_ENCODER_SCANTYPE                              L"ScanType"                 // amf_int64(AMF_VIDEO_ENCODER_SCANTYPE_ENUM); default = AMF_VIDEO_ENCODER_SCANTYPE_PROGRESSIVE; indicates input stream type
@@ -188,6 +223,9 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_OUTPUT_COLOR_PRIMARIES                L"OutColorPrimaries"        // amf_int64(AMF_COLOR_PRIMARIES_ENUM); default = AMF_COLOR_PRIMARIES_UNDEFINED, ISO/IEC 23001-8_2013 Section 7.1 See ColorSpace.h for enum
 #define AMF_VIDEO_ENCODER_OUTPUT_HDR_METADATA                   L"OutHDRMetadata"           // AMFBuffer containing AMFHDRMetadata; default NULL
 
+// Slice output
+#define AMF_VIDEO_ENCODER_OUTPUT_MODE                           L"OutputMode"               // amf_int64(AMF_VIDEO_ENCODER_OUTPUT_MODE_ENUM); default = AMF_VIDEO_ENCODER_OUTPUT_MODE_FRAME - defines encoder output mode
+
 
 // Dynamic properties - can be set at any time
    // Rate control properties
@@ -217,10 +255,11 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 
     // Picture control properties
 #define AMF_VIDEO_ENCODER_HEADER_INSERTION_SPACING              L"HeaderInsertionSpacing"   // amf_int64; default = depends on USAGE; Header Insertion Spacing; range 0-1000
-#define AMF_VIDEO_ENCODER_B_PIC_PATTERN                         L"BPicturesPattern"         // amf_int64; default = 3; B-picture Pattern (number of B-Frames)
+#define AMF_VIDEO_ENCODER_B_PIC_PATTERN                         L"BPicturesPattern"         // amf_int64; default = 0; B-picture Pattern (number of B-Frames)
 #define AMF_VIDEO_ENCODER_DE_BLOCKING_FILTER                    L"DeBlockingFilter"         // bool; default = depends on USAGE; De-blocking Filter
 #define AMF_VIDEO_ENCODER_B_REFERENCE_ENABLE                    L"BReferenceEnable"         // bool; default = true; Enable Refrence to B-frames
 #define AMF_VIDEO_ENCODER_IDR_PERIOD                            L"IDRPeriod"                // amf_int64; default = depends on USAGE; IDR Period in frames
+#define AMF_VIDEO_ENCODER_INTRA_PERIOD                          L"IntraPeriod"              // amf_int64; default = 0; Intra period in frames
 #define AMF_VIDEO_ENCODER_INTRA_REFRESH_NUM_MBS_PER_SLOT        L"IntraRefreshMBsNumberPerSlot" // amf_int64; default = depends on USAGE; Intra Refresh MBs Number Per Slot in Macroblocks
 #define AMF_VIDEO_ENCODER_SLICES_PER_FRAME                      L"SlicesPerFrame"           // amf_int64; default = 1; Number of slices Per Frame
 #define AMF_VIDEO_ENCODER_CABAC_ENABLE                          L"CABACEnable"              // amf_int64(AMF_VIDEO_ENCODER_CODING_ENUM) default = AMF_VIDEO_ENCODER_UNDEFINED
@@ -237,8 +276,11 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE                 L"PicTransferMode"               // amf_int64(AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE_ENUM); default = AMF_VIDEO_ENCODER_PICTURE_TRANSFER_MODE_OFF - whether to exchange reference/reconstructed pic between encoder and application
     // misc
 #define AMF_VIDEO_ENCODER_QUERY_TIMEOUT                         L"QueryTimeout"             // amf_int64; default = 0 (no wait); timeout for QueryOutput call in ms.
+#define AMF_VIDEO_ENCODER_MEMORY_TYPE                           L"EncoderMemoryType"        // amf_int64(AMF_MEMORY_TYPE) , default is AMF_MEMORY_UNKNOWN, Values : AMF_MEMORY_DX11, AMF_MEMORY_DX9, AMF_MEMORY_VULKAN or AMF_MEMORY_UNKNOWN (auto)
+#define AMF_VIDEO_ENCODER_ENABLE_SMART_ACCESS_VIDEO             L"EnableEncoderSmartAccessVideo"         // amf_bool; default = false; true = enables smart access video feature
+#define  AMF_VIDEO_ENCODER_INPUT_QUEUE_SIZE                     L"InputQueueSize"           // amf_int64; default 16; Set amf input queue size
 
-// Per-submittion properties - can be set on input surface interface
+// Per-submission properties - can be set on input surface interface
 #define AMF_VIDEO_ENCODER_END_OF_SEQUENCE                       L"EndOfSequence"            // bool; default = false; generate end of sequence
 #define AMF_VIDEO_ENCODER_END_OF_STREAM                         L"EndOfStream"              // bool; default = false; generate end of stream
 #define AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE                    L"ForcePictureType"         // amf_int64(AMF_VIDEO_ENCODER_PICTURE_TYPE_ENUM); default = AMF_VIDEO_ENCODER_PICTURE_TYPE_NONE; generate particular picture type
@@ -261,6 +303,7 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_OUTPUT_MARKED_LTR_INDEX               L"MarkedLTRIndex"           //amf_int64; default = -1; Marked LTR index
 #define AMF_VIDEO_ENCODER_OUTPUT_REFERENCED_LTR_INDEX_BITFIELD  L"ReferencedLTRIndexBitfield" // amf_int64; default = 0; referenced LTR bit-field
 #define AMF_VIDEO_ENCODER_OUTPUT_TEMPORAL_LAYER                 L"OutputTemporalLayer"      // amf_int64; Temporal layer
+#define AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE                    L"OutputBufferType"         // amf_int64(AMF_VIDEO_ENCODER_OUTPUT_BUFFER_TYPE_ENUM); encoder output buffer type
 #define AMF_VIDEO_ENCODER_PRESENTATION_TIME_STAMP               L"PresentationTimeStamp"    // amf_int64; Presentation time stamp (PTS)
 #define AMF_VIDEO_ENCODER_RECONSTRUCTED_PICTURE                 L"ReconstructedPicture"     // AMFInterface(AMFSurface); returns reconstructed picture as an AMFSurface attached to the output buffer as property AMF_VIDEO_ENCODER_RECONSTRUCTED_PICTURE of AMFInterface type
 #define AMF_VIDEO_ENCODER_STATISTIC_PSNR_Y                      L"PSNRY"                    // double; PSNR Y
@@ -293,6 +336,7 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_STATISTIC_SATD_FINAL                  L"StatisticsFeedbackSatdFinal"              // amf_int64; Frame level final SATD for full encoding
 #define AMF_VIDEO_ENCODER_STATISTIC_SATD_INTRA                  L"StatisticsFeedbackSatdIntra"              // amf_int64; Frame level intra SATD for full encoding
 #define AMF_VIDEO_ENCODER_STATISTIC_SATD_INTER                  L"StatisticsFeedbackSatdInter"              // amf_int64; Frame level inter SATD for full encoding
+#define AMF_VIDEO_ENCODER_STATISTIC_VARIANCE                    L"StatisticsFeedbackVariance"               // amf_int64; Frame level variance for full encoding
 
     // Encoder block level feedback
 #define AMF_VIDEO_ENCODER_BLOCK_QP_MAP                          L"BlockQpMap"                               // AMFInterface(AMFSurface); AMFSurface of format AMF_SURFACE_GRAY32 containing block level QP values
@@ -321,9 +365,11 @@ enum AMF_VIDEO_ENCODER_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_CAP_ROI                               L"ROIMap"                   // amf_bool - ROI map support is available for H264 UVE encoder, n/a for the other encoders
 #define AMF_VIDEO_ENCODER_CAP_MAX_THROUGHPUT                    L"MaxThroughput"            // amf_int64 - MAX throughput for H264 encoder in MB (16 x 16 pixel)
 #define AMF_VIDEO_ENCODER_CAP_REQUESTED_THROUGHPUT              L"RequestedThroughput"      // amf_int64 - Currently total requested throughput for H264 encoder in MB (16 x 16 pixel)
-#define AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT            L"QueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call
+#define AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT            L"QueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call (Deprecated, please use AMF_VIDEO_ENCODER_CAP_QUERY_TIMEOUT_SUPPORT )
+#define AMF_VIDEO_ENCODER_CAP_QUERY_TIMEOUT_SUPPORT             L"QueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call
 
-// properties set on AMFComponent to control component creation
-#define AMF_VIDEO_ENCODER_MEMORY_TYPE                           L"EncoderMemoryType"        // amf_int64(AMF_MEMORY_TYPE) , default is AMF_MEMORY_UNKNOWN, Values : AMF_MEMORY_DX11, AMF_MEMORY_DX9, AMF_MEMORY_VULKAN or AMF_MEMORY_UNKNOWN (auto)
+#define AMF_VIDEO_ENCODER_CAP_SUPPORT_SLICE_OUTPUT              L"SupportSliceOutput"       // amf_bool - if slice output is supported
+
+#define AMF_VIDEO_ENCODER_CAP_SUPPORT_SMART_ACCESS_VIDEO        L"EncoderSupportSmartAccessVideo"        // amf_bool; returns true if system supports SmartAccess Video
 
 #endif //#ifndef AMF_VideoEncoderVCE_h

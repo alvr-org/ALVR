@@ -38,6 +38,7 @@ namespace amf
 	class AMF_NO_VTABLE AMFCurrentTime : public AMFInterface
 	{
 	public:
+
 		virtual amf_pts AMF_STD_CALL Get() = 0;
 
 		virtual void AMF_STD_CALL Reset() = 0;

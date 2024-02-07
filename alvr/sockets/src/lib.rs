@@ -19,6 +19,9 @@ pub const HANDSHAKE_PACKET_SIZE_BYTES: usize = 56; // this may change in future 
 pub const KEEPALIVE_INTERVAL: Duration = Duration::from_millis(500);
 pub const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(2);
 
+pub const MDNS_SERVICE_TYPE: &str = "_alvr._tcp.local.";
+pub const MDNS_PROTOCOL_KEY: &str = "protocol";
+
 fn set_socket_buffers(
     socket: &socket2::Socket,
     send_buffer_bytes: SocketBufferSize,

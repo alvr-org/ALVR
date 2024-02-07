@@ -1,6 +1,6 @@
 use crate::{
     opengl::{self, RenderViewInput},
-    ClientCoreEvent,
+    storage, ClientCoreEvent,
 };
 use alvr_common::{
     debug, error,
@@ -140,6 +140,23 @@ fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
     }
 
     cstring.as_bytes_with_nul().len() as u64
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_mdns_service(service_buffer: *mut c_char) -> u64 {
+    string_to_c_str(service_buffer, alvr_sockets::MDNS_SERVICE_TYPE)
+}
+
+// To make sure the value is correct, call after alvr_initialize()
+#[no_mangle]
+pub extern "C" fn alvr_hostname(hostname_buffer: *mut c_char) -> u64 {
+    string_to_c_str(hostname_buffer, &storage::Config::load().hostname)
+}
+
+// To make sure the value is correct, call after alvr_initialize()
+#[no_mangle]
+pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
+    string_to_c_str(protocol_buffer, &storage::Config::load().protocol_id)
 }
 
 /// On non-Android platforms, java_vm and constext should be null.

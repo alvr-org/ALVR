@@ -105,7 +105,7 @@ pub fn initialize(
     #[cfg(target_os = "android")]
     platform::try_get_permission(platform::MICROPHONE_PERMISSION);
     #[cfg(target_os = "android")]
-    platform::acquire_wifi_lock();
+    platform::set_wifi_lock(true);
 
     EXTERNAL_DECODER.set(external_decoder);
     *LIFECYCLE_STATE.write() = LifecycleState::Idle;
@@ -123,7 +123,7 @@ pub fn destroy() {
     }
 
     #[cfg(target_os = "android")]
-    platform::release_wifi_lock();
+    platform::set_wifi_lock(false);
 }
 
 pub fn resume() {

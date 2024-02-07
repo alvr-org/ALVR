@@ -28,6 +28,7 @@ bincode = "1"
 bytes = "1"
 chrono = "0.4"
 fern = "0.6"
+flume = "0.11"
 futures = "0.3"
 headers = "0.3"
 hyper = { version = "0.14", features = [
@@ -37,6 +38,7 @@ hyper = { version = "0.14", features = [
     "runtime",
     "tcp",
 ] }
+mdns-sd = "0.10"
 profiling = { version = "1", optional = true }
 reqwest = "0.11" # not used but webserver does not work without it. todo: investigate
 rosc = "0.10"

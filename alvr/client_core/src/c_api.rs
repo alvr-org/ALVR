@@ -58,7 +58,8 @@ pub enum AlvrEvent {
         frequency: f32,
         amplitude: f32,
     },
-    CreateDecoder {
+    // Note: All subsequent DecoderConfig events should be ignored until reconnection
+    DecoderConfig {
         codec: AlvrCodec,
     },
     FrameReady,
@@ -229,13 +230,13 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 frequency,
                 amplitude,
             },
-            ClientCoreEvent::MaybeCreateDecoder { codec, config_nal } => {
+            ClientCoreEvent::DecoderConfig { codec, config_nal } => {
                 NAL_QUEUE.lock().push_back(ReconstructedNal {
                     timestamp_ns: 0,
                     data: config_nal,
                 });
 
-                AlvrEvent::CreateDecoder {
+                AlvrEvent::DecoderConfig {
                     codec: match codec {
                         CodecType::H264 => AlvrCodec::H264,
                         CodecType::Hevc => AlvrCodec::Hevc,

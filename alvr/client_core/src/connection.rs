@@ -467,7 +467,7 @@ fn connection_pipeline(
                 let maybe_packet = control_receiver.recv(STREAMING_RECV_TIMEOUT);
 
                 match maybe_packet {
-                    Ok(ServerControlPacket::InitializeDecoder(config)) => {
+                    Ok(ServerControlPacket::DecoderConfig(config)) => {
                         decoder::maybe_create_decoder(
                             config,
                             settings.video.force_software_decoder,

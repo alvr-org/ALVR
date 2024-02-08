@@ -51,7 +51,7 @@ pub struct DecoderInitializationConfig {
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
     StartStream,
-    InitializeDecoder(DecoderInitializationConfig),
+    DecoderConfig(DecoderInitializationConfig),
     Restarting,
     KeepAlive,
     ServerPredictionAverage(Duration), // todo: remove

@@ -70,7 +70,8 @@ pub enum ClientCoreEvent {
         frequency: f32,
         amplitude: f32,
     },
-    MaybeCreateDecoder {
+    // Note: All subsequent DecoderConfig events should be ignored until reconnection
+    DecoderConfig {
         codec: CodecType,
         config_nal: Vec<u8>,
     },

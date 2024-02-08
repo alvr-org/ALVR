@@ -42,7 +42,7 @@ pub fn maybe_create_decoder(
     if EXTERNAL_DECODER.value() {
         EVENT_QUEUE
             .lock()
-            .push_back(ClientCoreEvent::MaybeCreateDecoder {
+            .push_back(ClientCoreEvent::DecoderConfig {
                 codec: config.codec,
                 config_nal: lazy_config.config_buffer,
             });

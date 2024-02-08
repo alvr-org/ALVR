@@ -249,7 +249,7 @@ fn client_thread(
                     }
                 }
                 ClientCoreEvent::Haptics { .. } => (),
-                ClientCoreEvent::MaybeCreateDecoder { codec, .. } => {
+                ClientCoreEvent::DecoderConfig { codec, .. } => {
                     window_output.decoder_codec = Some(codec)
                 }
                 ClientCoreEvent::FrameReady { timestamp, .. } => {

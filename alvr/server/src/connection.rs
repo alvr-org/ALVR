@@ -990,7 +990,7 @@ fn connection_pipeline(
                         if let Some(config) = DECODER_CONFIG.lock().clone() {
                             control_sender
                                 .lock()
-                                .send(&ServerControlPacket::InitializeDecoder(config))
+                                .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
                         unsafe { crate::RequestIDR() }

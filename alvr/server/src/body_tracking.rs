@@ -1,6 +1,7 @@
 use alvr_common::{
     anyhow::Result, once_cell::sync::Lazy, DeviceMotion, BODY_CHEST_ID, BODY_HIPS_ID,
-    BODY_LEFT_ELBOW_ID, BODY_RIGHT_ELBOW_ID, HEAD_ID,
+    BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID, BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID,
+    BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HEAD_ID,
 };
 use alvr_session::BodyTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
@@ -15,6 +16,10 @@ const BODY_TRACKER_OSC_PATH_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(||
         (*BODY_HIPS_ID, "/tracking/trackers/2/"),
         (*BODY_LEFT_ELBOW_ID, "/tracking/trackers/3/"),
         (*BODY_RIGHT_ELBOW_ID, "/tracking/trackers/4/"),
+        (*BODY_LEFT_KNEE_ID, "/tracking/trackers/5/"),
+        (*BODY_LEFT_FOOT_ID, "/tracking/trackers/6/"),
+        (*BODY_RIGHT_KNEE_ID, "/tracking/trackers/7/"),
+        (*BODY_RIGHT_FOOT_ID, "/tracking/trackers/8/"),
     ])
 });
 

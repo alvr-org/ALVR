@@ -1,6 +1,4 @@
-use crate::{
-    to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton,
-};
+use crate::{to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,

@@ -1,6 +1,6 @@
 use crate::{
     bitrate::BitrateManager,
-    body_tracking::{self, BodyTrackingSink},
+    body_tracking::BodyTrackingSink,
     face_tracking::FaceTrackingSink,
     hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,

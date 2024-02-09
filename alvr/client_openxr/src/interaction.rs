@@ -525,7 +525,8 @@ pub fn get_fb_body_tracking_points(
         .ok()
         .flatten()
     {
-        let valid_flags: SpaceLocationFlags = SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
+        let valid_flags: SpaceLocationFlags =
+            SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
 
         let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(4);
 
@@ -537,7 +538,7 @@ pub fn get_fb_body_tracking_points(
                         pose: to_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
-                    }
+                    },
                 ))
             }
         }
@@ -550,7 +551,7 @@ pub fn get_fb_body_tracking_points(
                         pose: to_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
-                    }
+                    },
                 ))
             }
         }
@@ -563,7 +564,7 @@ pub fn get_fb_body_tracking_points(
                         pose: to_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
-                    }
+                    },
                 ))
             }
         }
@@ -576,7 +577,7 @@ pub fn get_fb_body_tracking_points(
                         pose: to_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
-                    }
+                    },
                 ))
             }
         }

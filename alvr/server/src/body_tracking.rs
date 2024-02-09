@@ -2,7 +2,7 @@ use alvr_common::{anyhow::Result, glam::EulerRot};
 use alvr_packets::BodyData;
 use alvr_session::BodyTrackingSinkConfig;
 use rosc::{OscMessage, OscPacket, OscType};
-use std::{f32::consts::PI, ffi::CString, net::UdpSocket};
+use std::{f32::consts::PI, net::UdpSocket};
 
 const RAD_TO_DEG: f32 = 180.0 / PI;
 

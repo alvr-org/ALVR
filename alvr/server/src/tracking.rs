@@ -1,8 +1,9 @@
-use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
+use crate::{body_tracking::LOCATION_VALID, to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
+use alvr_packets::BodyData;
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
 };
@@ -350,6 +351,77 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
             .try_into()
             .unwrap(),
     }
+}
+
+pub fn to_ffi_body_trackers(body_data: &BodyData) -> Option<Vec<FfiBodyTracker>> {
+    if let Some(fb_body_skeleton) = &body_data.fb_body_skeleton {
+        let mut trackers = Vec::<FfiBodyTracker>::new();
+
+        // XR_BODY_JOINT_HIPS_FB
+        if fb_body_skeleton[1].1 & LOCATION_VALID == LOCATION_VALID {
+            let position = [
+                -fb_body_skeleton[1].0.position.x,
+                fb_body_skeleton[1].0.position.y,
+                -fb_body_skeleton[1].0.position.z,
+            ];
+            trackers.push(
+                FfiBodyTracker {
+                    trackerID: 0,
+                    orientation: to_ffi_quat(fb_body_skeleton[1].0.orientation),
+                    position,
+                }
+            )
+        }
+        // XR_BODY_JOINT_CHEST_FB
+        if fb_body_skeleton[5].1 & LOCATION_VALID == LOCATION_VALID {
+            let position = [
+                -fb_body_skeleton[5].0.position.x,
+                fb_body_skeleton[5].0.position.y,
+                -fb_body_skeleton[5].0.position.z,
+            ];
+            trackers.push(
+                FfiBodyTracker {
+                    trackerID: 1,
+                    orientation: to_ffi_quat(fb_body_skeleton[5].0.orientation),
+                    position,
+                }
+            )
+        }
+        // XR_BODY_JOINT_LEFT_ARM_LOWER_FB
+        if fb_body_skeleton[11].1 & LOCATION_VALID == LOCATION_VALID {
+            let position = [
+                -fb_body_skeleton[11].0.position.x,
+                fb_body_skeleton[11].0.position.y,
+                -fb_body_skeleton[11].0.position.z,
+            ];
+            trackers.push(
+                FfiBodyTracker {
+                    trackerID: 2,
+                    orientation: to_ffi_quat(fb_body_skeleton[11].0.orientation),
+                    position,
+                }
+            )
+        }
+        // XR_BODY_JOINT_RIGHT_ARM_LOWER_FB
+        if fb_body_skeleton[16].1 & LOCATION_VALID == LOCATION_VALID {
+            let position = [
+                -fb_body_skeleton[16].0.position.x,
+                fb_body_skeleton[16].0.position.y,
+                -fb_body_skeleton[16].0.position.z,
+            ];
+            trackers.push(
+                FfiBodyTracker {
+                    trackerID: 3,
+                    orientation: to_ffi_quat(fb_body_skeleton[16].0.orientation),
+                    position,
+                }
+            )
+        }
+
+        return Some(trackers);
+    }
+
+    None
 }
 
 // Head and eyesmust be in the same (nt recentered) convention

@@ -8,10 +8,9 @@ use alvr_common::{
     parking_lot::RwLock,
     warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_packets::{FaceData, Tracking};
+use alvr_packets::{FaceData, BodyData, Tracking};
 use alvr_session::{
-    ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig,
-    FoveatedEncodingConfig,
+    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig, FoveatedEncodingConfig
 };
 use interaction::InteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
@@ -64,6 +63,7 @@ struct StreamConfig {
     foveated_encoding_config: Option<FoveatedEncodingConfig>,
     clientside_foveation_config: Option<ClientsideFoveationConfig>,
     face_sources_config: Option<FaceTrackingSourcesConfig>,
+    body_sources_config: Option<BodyTrackingSourcesConfig>,
 }
 
 struct StreamContext {
@@ -400,11 +400,20 @@ fn stream_input_pipeline(
         htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
+    let body_data = BodyData {
+        fb_body_skeleton: interaction::get_fb_body_skeleton(
+            &stream_ctx.reference_space.read(),
+            to_xr_time(now),
+            &interaction_ctx.body_sources,
+        ),
+    };
+
     alvr_client_core::send_tracking(Tracking {
         target_timestamp,
         device_motions,
         hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
         face_data,
+        body_data,
     });
 
     let button_entries =
@@ -443,6 +452,15 @@ fn initialize_stream(
         if config.face_tracking_fb && matches!(platform, Platform::Quest) {
             alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    if let Some(config) = &config.body_sources_config {
+        if (config.body_tracking_fb)
+            && matches!(platform, Platform::Quest)
+        {
+            alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }
 
@@ -609,6 +627,7 @@ pub fn entry_point() {
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
+    exts.fb_body_tracking = available_extensions.fb_body_tracking;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
@@ -697,6 +716,9 @@ pub fn entry_point() {
             stream_config
                 .as_ref()
                 .and_then(|c| c.face_sources_config.clone()),
+            stream_config
+                .as_ref()
+                .and_then(|c| c.body_sources_config.clone()),
         ));
 
         let mut session_running_context = None;
@@ -844,11 +866,16 @@ pub fn entry_point() {
                                 .clientside_foveation
                                 .as_option()
                                 .cloned(),
-                            face_sources_config: settings
-                                .headset
-                                .face_tracking
-                                .as_option()
-                                .map(|c| c.sources.clone()),
+                                face_sources_config: settings
+                                    .headset
+                                    .face_tracking
+                                    .as_option()
+                                    .map(|c| c.sources.clone()),
+                                body_sources_config: settings
+                                    .headset
+                                    .body_tracking
+                                    .as_option()
+                                    .map(|c| c.sources.clone()),
                         });
                         if stream_config != new_config {
                             stream_config = new_config;

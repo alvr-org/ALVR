@@ -109,6 +109,11 @@ pub struct FaceData {
     pub htc_lip_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 37]
 }
 
+#[derive(Serialize, Deserialize, Default)]
+pub struct BodyData {
+    pub fb_body_skeleton: Option<Vec<(Pose, u64)>>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct VideoPacketHeader {
     pub timestamp: Duration,
@@ -122,6 +127,7 @@ pub struct Tracking {
     pub device_motions: Vec<(u64, DeviceMotion)>,
     pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub face_data: FaceData,
+    pub body_data: BodyData,
 }
 
 #[derive(Serialize, Deserialize)]

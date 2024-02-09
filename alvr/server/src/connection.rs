@@ -1,14 +1,5 @@
 use crate::{
-    bitrate::BitrateManager,
-    face_tracking::FaceTrackingSink,
-    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
-    haptics,
-    input_mapping::ButtonMappingManager,
-    sockets::WelcomeSocket,
-    statistics::StatisticsManager,
-    tracking::{self, TrackingManager},
-    FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    bitrate::BitrateManager, body_tracking::{self, BodyTrackingSink}, face_tracking::FaceTrackingSink, hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET}, haptics, input_mapping::ButtonMappingManager, sockets::WelcomeSocket, statistics::StatisticsManager, tracking::{self, TrackingManager}, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -28,7 +19,7 @@ use alvr_packets::{
     ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig};
+use alvr_session::{BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
     KEEPALIVE_TIMEOUT,
@@ -97,6 +88,12 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         false
     };
 
+    let body_tracking_vive_enabled = if let Switch::Enabled(config) = settings.headset.body_tracking {
+        matches!(config.sink, BodyTrackingSinkConfig::ViveTrackerProxy)
+    } else {
+        false
+    };
+
     let mut foveation_center_size_x = 0.0;
     let mut foveation_center_size_y = 0.0;
     let mut foveation_center_shift_x = 0.0;
@@ -161,6 +158,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         sw_thread_count: settings.video.encoder_config.software.thread_count,
         controllers_enabled,
         controller_is_tracker,
+        body_tracking_vive_enabled,
         enable_foveated_encoding,
         foveation_center_size_x,
         foveation_center_size_y,
@@ -705,6 +703,15 @@ fn connection_pipeline(
                         FaceTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
                     });
 
+            let mut body_tracking_sink =
+                settings
+                    .headset
+                    .body_tracking
+                    .into_option()
+                    .and_then(|config| {
+                        BodyTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
+                    });
+
             while is_streaming(&client_hostname) {
                 let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
@@ -786,6 +793,7 @@ fn connection_pipeline(
                             fb_face_expression: tracking.face_data.fb_face_expression.clone(),
                             htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
                             htc_lip_expression: tracking.face_data.htc_lip_expression.clone(),
+                            fb_body_skeleton: tracking.body_data.fb_body_skeleton.clone(),
                         })))
                     }
                 }
@@ -797,10 +805,17 @@ fn connection_pipeline(
                     sink.send_tracking(face_data);
                 }
 
+                if let Some(sink) = &mut body_tracking_sink {
+                    sink.send_tracking(&tracking.body_data);
+                }
+
                 let ffi_motions = motions
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
+                
+
+                let ffi_body_trackers = tracking::to_ffi_body_trackers(&tracking.body_data);
 
                 let enable_skeleton = controllers_config
                     .as_ref()
@@ -870,6 +885,16 @@ fn connection_pipeline(
                                 ptr::null()
                             },
                             track_controllers.into(),
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.as_ptr()
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.len() as _
+                            } else {
+                                0
+                            }
                         )
                     };
                 }

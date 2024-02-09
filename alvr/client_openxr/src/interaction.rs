@@ -1,8 +1,9 @@
 use crate::{to_pose, to_quat, to_vec3, Platform, XrContext};
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
-use alvr_session::FaceTrackingSourcesConfig;
+use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
+use xr::SpaceLocationFlags;
 use std::collections::HashMap;
 
 pub enum ButtonAction {
@@ -28,17 +29,23 @@ pub struct FaceSources {
     pub lip_tracker_htc: Option<xr::FacialTrackerHTC>,
 }
 
+pub struct BodySources {
+    pub body_tracker_fb: Option<xr::BodyTrackerFB>,
+}
+
 pub struct InteractionContext {
     pub action_set: xr::ActionSet,
     pub button_actions: HashMap<u64, ButtonAction>,
     pub hands_interaction: [HandInteraction; 2],
     pub face_sources: FaceSources,
+    pub body_sources: BodySources,
 }
 
 pub fn initialize_interaction(
     xr_ctx: &XrContext,
     platform: Platform,
     face_tracking_sources: Option<FaceTrackingSourcesConfig>,
+    body_tracking_sources: Option<BodyTrackingSourcesConfig>,
 ) -> InteractionContext {
     let action_set = xr_ctx
         .instance
@@ -282,6 +289,17 @@ pub fn initialize_interaction(
             .unwrap()
     });
 
+    let body_tracker_fb = (body_tracking_sources
+        .as_ref()
+        .map(|s| s.body_tracking_fb)
+        .unwrap_or(false)
+        && xr_ctx.instance.exts().fb_body_tracking.is_some()
+        && xr_ctx
+            .instance
+            .supports_fb_body_tracking(xr_ctx.system)
+            .unwrap())
+    .then(|| xr_ctx.session.create_body_tracker_fb().unwrap());
+
     InteractionContext {
         action_set,
         button_actions,
@@ -311,6 +329,9 @@ pub fn initialize_interaction(
             face_tracker_fb,
             eye_tracker_htc,
             lip_tracker_htc,
+        },
+        body_sources: BodySources {
+            body_tracker_fb,
         },
     }
 }
@@ -494,4 +515,27 @@ pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
         .as_ref()
         .and_then(|t| t.get_facial_expressions().ok().flatten())
         .map(|w| w.weights.into_iter().collect())
+}
+
+pub fn get_fb_body_skeleton(
+    reference_space: &xr::Space,
+    time: xr::Time,
+    body_sources: &BodySources,
+) -> Option<Vec<(Pose, u64)>> {
+    if let Some(tracker) = &body_sources.body_tracker_fb {
+        if let Some(joint_locations) = reference_space
+            .locate_body_joints_fb(tracker, time)
+            .ok()
+            .flatten()
+        {
+            let joints = joint_locations
+                .iter()
+                .map(|j| { return (to_pose(j.pose), j.location_flags.into_raw()); })
+                .collect::<Vec<_>>();
+
+            return Some(joints);
+        }
+    }
+
+    None
 }

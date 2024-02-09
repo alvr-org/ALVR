@@ -8,9 +8,10 @@ use alvr_common::{
     parking_lot::RwLock,
     warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_packets::{FaceData, BodyData, Tracking};
+use alvr_packets::{BodyData, FaceData, Tracking};
 use alvr_session::{
-    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig, FoveatedEncodingConfig
+    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig,
 };
 use interaction::InteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
@@ -457,9 +458,7 @@ fn initialize_stream(
 
     #[cfg(target_os = "android")]
     if let Some(config) = &config.body_sources_config {
-        if (config.body_tracking_fb)
-            && matches!(platform, Platform::Quest)
-        {
+        if (config.body_tracking_fb) && matches!(platform, Platform::Quest) {
             alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }
@@ -866,16 +865,16 @@ pub fn entry_point() {
                                 .clientside_foveation
                                 .as_option()
                                 .cloned(),
-                                face_sources_config: settings
-                                    .headset
-                                    .face_tracking
-                                    .as_option()
-                                    .map(|c| c.sources.clone()),
-                                body_sources_config: settings
-                                    .headset
-                                    .body_tracking
-                                    .as_option()
-                                    .map(|c| c.sources.clone()),
+                            face_sources_config: settings
+                                .headset
+                                .face_tracking
+                                .as_option()
+                                .map(|c| c.sources.clone()),
+                            body_sources_config: settings
+                                .headset
+                                .body_tracking
+                                .as_option()
+                                .map(|c| c.sources.clone()),
                         });
                         if stream_config != new_config {
                             stream_config = new_config;

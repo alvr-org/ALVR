@@ -1,8 +1,8 @@
 mod bitrate;
+mod body_tracking;
 mod c_api;
 mod connection;
 mod face_tracking;
-mod body_tracking;
 mod hand_gestures;
 mod haptics;
 mod input_mapping;

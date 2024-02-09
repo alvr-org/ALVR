@@ -3,8 +3,8 @@ use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
-use xr::SpaceLocationFlags;
 use std::collections::HashMap;
+use xr::SpaceLocationFlags;
 
 pub enum ButtonAction {
     Binary(xr::Action<bool>),
@@ -330,9 +330,7 @@ pub fn initialize_interaction(
             eye_tracker_htc,
             lip_tracker_htc,
         },
-        body_sources: BodySources {
-            body_tracker_fb,
-        },
+        body_sources: BodySources { body_tracker_fb },
     }
 }
 
@@ -530,7 +528,9 @@ pub fn get_fb_body_skeleton(
         {
             let joints = joint_locations
                 .iter()
-                .map(|j| { return (to_pose(j.pose), j.location_flags.into_raw()); })
+                .map(|j| {
+                    return (to_pose(j.pose), j.location_flags.into_raw());
+                })
                 .collect::<Vec<_>>();
 
             return Some(joints);

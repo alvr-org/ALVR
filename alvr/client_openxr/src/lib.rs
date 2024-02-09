@@ -8,7 +8,7 @@ use alvr_common::{
     parking_lot::RwLock,
     warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_packets::{BodyData, FaceData, Tracking};
+use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode,
     FaceTrackingSourcesConfig, FoveatedEncodingConfig,
@@ -401,20 +401,19 @@ fn stream_input_pipeline(
         htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
-    let body_data = BodyData {
-        fb_body_skeleton: interaction::get_fb_body_skeleton(
+    if let Some(body_tracker_fb) = &interaction_ctx.body_sources.body_tracker_fb {
+        device_motions.append(&mut interaction::get_fb_body_tracking_points(
             &stream_ctx.reference_space.read(),
             to_xr_time(now),
-            &interaction_ctx.body_sources,
-        ),
-    };
+            body_tracker_fb,
+        ));
+    }
 
     alvr_client_core::send_tracking(Tracking {
         target_timestamp,
         device_motions,
         hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
         face_data,
-        body_data,
     });
 
     let button_entries =

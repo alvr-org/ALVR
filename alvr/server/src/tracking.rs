@@ -1,11 +1,12 @@
 use crate::{
-    body_tracking::LOCATION_VALID, to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton,
+    to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton,
 };
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    once_cell::sync::Lazy,
+    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_RIGHT_ELBOW_ID,
+    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_packets::BodyData;
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
 };
@@ -355,54 +356,33 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
     }
 }
 
+const BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
+    HashMap::from([
+        (*BODY_CHEST_ID, 0),
+        (*BODY_HIPS_ID, 1),
+        (*BODY_LEFT_ELBOW_ID, 2),
+        (*BODY_RIGHT_ELBOW_ID, 3),
+    ])
+});
+
 pub fn to_ffi_body_trackers(
-    body_data: &BodyData,
+    device_motions: &Vec<(u64, DeviceMotion)>,
     tracking_manager: &TrackingManager,
 ) -> Option<Vec<FfiBodyTracker>> {
-    if let Some(fb_body_skeleton) = &body_data.fb_body_skeleton {
-        let mut trackers = Vec::<FfiBodyTracker>::new();
+    let mut trackers = Vec::<FfiBodyTracker>::new();
 
-        // XR_BODY_JOINT_HIPS_FB
-        if fb_body_skeleton[1].1 & LOCATION_VALID == LOCATION_VALID {
-            let pose = tracking_manager.recenter_pose(fb_body_skeleton[1].0);
+    for (id, motion) in device_motions.iter() {
+        if BODY_TRACKER_ID_MAP.contains_key(id) {
+            let pose = tracking_manager.recenter_pose(motion.pose);
             trackers.push(FfiBodyTracker {
-                trackerID: 0,
+                trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
                 orientation: to_ffi_quat(pose.orientation),
                 position: pose.position.to_array(),
             });
         }
-        // XR_BODY_JOINT_CHEST_FB
-        if fb_body_skeleton[5].1 & LOCATION_VALID == LOCATION_VALID {
-            let pose = tracking_manager.recenter_pose(fb_body_skeleton[5].0);
-            trackers.push(FfiBodyTracker {
-                trackerID: 1,
-                orientation: to_ffi_quat(pose.orientation),
-                position: pose.position.to_array(),
-            });
-        }
-        // XR_BODY_JOINT_LEFT_ARM_LOWER_FB
-        if fb_body_skeleton[11].1 & LOCATION_VALID == LOCATION_VALID {
-            let pose = tracking_manager.recenter_pose(fb_body_skeleton[11].0);
-            trackers.push(FfiBodyTracker {
-                trackerID: 2,
-                orientation: to_ffi_quat(pose.orientation),
-                position: pose.position.to_array(),
-            });
-        }
-        // XR_BODY_JOINT_RIGHT_ARM_LOWER_FB
-        if fb_body_skeleton[16].1 & LOCATION_VALID == LOCATION_VALID {
-            let pose = tracking_manager.recenter_pose(fb_body_skeleton[16].0);
-            trackers.push(FfiBodyTracker {
-                trackerID: 3,
-                orientation: to_ffi_quat(pose.orientation),
-                position: pose.position.to_array(),
-            });
-        }
-
-        return Some(trackers);
     }
 
-    None
+    return Some(trackers);
 }
 
 // Head and eyesmust be in the same (nt recentered) convention

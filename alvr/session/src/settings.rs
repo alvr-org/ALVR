@@ -629,8 +629,8 @@ pub struct BodyTrackingSourcesConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub enum BodyTrackingSinkConfig {
-    #[schema(strings(display_name = "Vive Tracker Proxy"))]
-    ViveTrackerProxy,
+    #[schema(strings(display_name = "Fake Vive Trackers"))]
+    FakeViveTracker,
     #[schema(strings(display_name = "VRChat Body OSC"))]
     VrchatBodyOsc { port: u16 },
 }
@@ -1439,7 +1439,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     },
                     sink: BodyTrackingSinkConfigDefault {
                         VrchatBodyOsc: BodyTrackingSinkConfigVrchatBodyOscDefault { port: 9000 },
-                        variant: BodyTrackingSinkConfigDefaultVariant::ViveTrackerProxy,
+                        variant: BodyTrackingSinkConfigDefaultVariant::FakeViveTracker,
                     },
                 },
             },

@@ -102,7 +102,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 
     let body_tracking_vive_enabled = if let Switch::Enabled(config) = settings.headset.body_tracking
     {
-        matches!(config.sink, BodyTrackingSinkConfig::ViveTrackerProxy)
+        matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
     } else {
         false
     };
@@ -806,7 +806,6 @@ fn connection_pipeline(
                             fb_face_expression: tracking.face_data.fb_face_expression.clone(),
                             htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
                             htc_lip_expression: tracking.face_data.htc_lip_expression.clone(),
-                            fb_body_skeleton: tracking.body_data.fb_body_skeleton.clone(),
                         })))
                     }
                 }
@@ -819,7 +818,8 @@ fn connection_pipeline(
                 }
 
                 if let Some(sink) = &mut body_tracking_sink {
-                    sink.send_tracking(&tracking.body_data);
+                    let tracking_manager_lock = tracking_manager.lock();
+                    sink.send_tracking(&tracking.device_motions, &tracking_manager_lock);
                 }
 
                 let ffi_motions = motions
@@ -829,7 +829,7 @@ fn connection_pipeline(
 
                 let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
                     let tracking_manager_lock = tracking_manager.lock();
-                    tracking::to_ffi_body_trackers(&tracking.body_data, &tracking_manager_lock)
+                    tracking::to_ffi_body_trackers(&tracking.device_motions, &tracking_manager_lock)
                 };
 
                 let enable_skeleton = controllers_config

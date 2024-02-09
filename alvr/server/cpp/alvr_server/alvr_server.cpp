@@ -141,37 +141,40 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             }
             generic_trackers.push_back(std::move(rightElbowTracker));
 
-            auto leftKneeTracker = std::make_unique<FakeViveTracker>("left_knee");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftKneeTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              leftKneeTracker.get())) {
-                Warn("Failed to register Vive tracker (left_knee)");
-            }
-            generic_trackers.push_back(std::move(leftKneeTracker));
 
-            auto leftFootTracker = std::make_unique<FakeViveTracker>("left_foot");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftFootTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              leftFootTracker.get())) {
-                Warn("Failed to register Vive tracker (left_foot)");
-            }
-            generic_trackers.push_back(std::move(leftFootTracker));
+            if (Settings::Instance().m_bodyTrackingHasLegs) {
+                auto leftKneeTracker = std::make_unique<FakeViveTracker>("left_knee");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftKneeTracker->GetSerialNumber(),
+                                                                vr::TrackedDeviceClass_GenericTracker,
+                                                                leftKneeTracker.get())) {
+                    Warn("Failed to register Vive tracker (left_knee)");
+                }
+                generic_trackers.push_back(std::move(leftKneeTracker));
 
-            auto rightKneeTracker = std::make_unique<FakeViveTracker>("right_knee");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightKneeTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              rightKneeTracker.get())) {
-                Warn("Failed to register Vive tracker (right_knee)");
-            }
-            generic_trackers.push_back(std::move(rightKneeTracker));
+                auto leftFootTracker = std::make_unique<FakeViveTracker>("left_foot");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftFootTracker->GetSerialNumber(),
+                                                                vr::TrackedDeviceClass_GenericTracker,
+                                                                leftFootTracker.get())) {
+                    Warn("Failed to register Vive tracker (left_foot)");
+                }
+                generic_trackers.push_back(std::move(leftFootTracker));
 
-            auto rightFootTracker = std::make_unique<FakeViveTracker>("right_foot");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightFootTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              rightFootTracker.get())) {
-                Warn("Failed to register Vive tracker (right_foot)");
+                auto rightKneeTracker = std::make_unique<FakeViveTracker>("right_knee");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightKneeTracker->GetSerialNumber(),
+                                                                vr::TrackedDeviceClass_GenericTracker,
+                                                                rightKneeTracker.get())) {
+                    Warn("Failed to register Vive tracker (right_knee)");
+                }
+                generic_trackers.push_back(std::move(rightKneeTracker));
+
+                auto rightFootTracker = std::make_unique<FakeViveTracker>("right_foot");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightFootTracker->GetSerialNumber(),
+                                                                vr::TrackedDeviceClass_GenericTracker,
+                                                                rightFootTracker.get())) {
+                    Warn("Failed to register Vive tracker (right_foot)");
+                }
+                generic_trackers.push_back(std::move(rightFootTracker));
             }
-            generic_trackers.push_back(std::move(rightFootTracker));
         }
 
         return vr::VRInitError_None;

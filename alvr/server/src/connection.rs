@@ -1,6 +1,6 @@
 use crate::{
     bitrate::BitrateManager,
-    body_tracking::BodyTrackingSink,
+    body_tracking::{self, BodyTrackingSink},
     face_tracking::FaceTrackingSink,
     hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
@@ -107,6 +107,9 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         false
     };
 
+    // Should be true if using full body tracking
+    let body_tracking_has_legs = false;
+
     let mut foveation_center_size_x = 0.0;
     let mut foveation_center_size_y = 0.0;
     let mut foveation_center_shift_x = 0.0;
@@ -172,6 +175,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         controllers_enabled,
         controller_is_tracker,
         body_tracking_vive_enabled,
+        body_tracking_has_legs,
         enable_foveated_encoding,
         foveation_center_size_x,
         foveation_center_size_y,

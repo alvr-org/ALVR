@@ -83,4 +83,5 @@ class Settings {
     bool m_enableControllers;
     int m_controllerIsTracker = false;
     int m_enableBodyTrackingFakeVive = false;
+    int m_bodyTrackingHasLegs = false;
 };

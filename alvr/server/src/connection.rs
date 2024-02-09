@@ -1,5 +1,15 @@
 use crate::{
-    bitrate::BitrateManager, body_tracking::{self, BodyTrackingSink}, face_tracking::FaceTrackingSink, hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET}, haptics, input_mapping::ButtonMappingManager, sockets::WelcomeSocket, statistics::StatisticsManager, tracking::{self, TrackingManager}, FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE
+    bitrate::BitrateManager,
+    body_tracking::{self, BodyTrackingSink},
+    face_tracking::FaceTrackingSink,
+    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
+    haptics,
+    input_mapping::ButtonMappingManager,
+    sockets::WelcomeSocket,
+    statistics::StatisticsManager,
+    tracking::{self, TrackingManager},
+    FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -19,7 +29,9 @@ use alvr_packets::{
     ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig};
+use alvr_session::{
+    BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig,
+};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
     KEEPALIVE_TIMEOUT,
@@ -88,7 +100,8 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         false
     };
 
-    let body_tracking_vive_enabled = if let Switch::Enabled(config) = settings.headset.body_tracking {
+    let body_tracking_vive_enabled = if let Switch::Enabled(config) = settings.headset.body_tracking
+    {
         matches!(config.sink, BodyTrackingSinkConfig::ViveTrackerProxy)
     } else {
         false
@@ -813,7 +826,6 @@ fn connection_pipeline(
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
-                
 
                 let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
                     let tracking_manager_lock = tracking_manager.lock();
@@ -897,7 +909,7 @@ fn connection_pipeline(
                                 body_trackers.len() as _
                             } else {
                                 0
-                            }
+                            },
                         )
                     };
                 }

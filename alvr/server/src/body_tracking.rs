@@ -31,26 +31,25 @@ impl BodyTrackingSink {
                     config,
                     socket: Some(socket),
                 })
-            },
-            BodyTrackingSinkConfig::ViveTrackerProxy {} => {
-                Ok(Self {
-                    config,
-                    socket: None,
-                })
-            },
+            }
+            BodyTrackingSinkConfig::ViveTrackerProxy {} => Ok(Self {
+                config,
+                socket: None,
+            }),
         }
     }
 
     fn send_osc_message(&self, path: &str, args: Vec<OscType>) {
         if let Some(socket) = &self.socket {
-            socket.send(
-                &rosc::encoder::encode(&OscPacket::Message(OscMessage {
-                    addr: path.into(),
-                    args,
-                }))
-                .unwrap(),
-            )
-            .ok();
+            socket
+                .send(
+                    &rosc::encoder::encode(&OscPacket::Message(OscMessage {
+                        addr: path.into(),
+                        args,
+                    }))
+                    .unwrap(),
+                )
+                .ok();
         }
     }
 
@@ -80,8 +79,8 @@ impl BodyTrackingSink {
                                 ],
                             );
                         }
-                        
-                        // XR_BODY_JOINT_HIPS_FB 
+
+                        // XR_BODY_JOINT_HIPS_FB
                         let hips = poses[1];
                         let hips_euler = hips.0.orientation.to_euler(EulerRot::ZXY);
                         if hips.1 & LOCATION_VALID == LOCATION_VALID {
@@ -102,8 +101,8 @@ impl BodyTrackingSink {
                                 ],
                             );
                         }
-                        
-                        // XR_BODY_JOINT_CHEST_FB  
+
+                        // XR_BODY_JOINT_CHEST_FB
                         let chest = poses[5];
                         let chest_euler = chest.0.orientation.to_euler(EulerRot::ZXY);
                         if chest.1 & LOCATION_VALID == LOCATION_VALID {
@@ -124,8 +123,8 @@ impl BodyTrackingSink {
                                 ],
                             );
                         }
-                        
-                        // XR_BODY_JOINT_LEFT_ARM_LOWER_FB  
+
+                        // XR_BODY_JOINT_LEFT_ARM_LOWER_FB
                         let left_elbow = poses[11];
                         let left_elbow_euler = left_elbow.0.orientation.to_euler(EulerRot::ZXY);
                         if left_elbow.1 & LOCATION_VALID == LOCATION_VALID {
@@ -146,8 +145,8 @@ impl BodyTrackingSink {
                                 ],
                             );
                         }
-                        
-                        // XR_BODY_JOINT_RIGHT_ARM_LOWER_FB  
+
+                        // XR_BODY_JOINT_RIGHT_ARM_LOWER_FB
                         let right_elbow = poses[16];
                         let right_elbow_euler = right_elbow.0.orientation.to_euler(EulerRot::ZXY);
                         if right_elbow.1 & LOCATION_VALID == LOCATION_VALID {
@@ -171,7 +170,7 @@ impl BodyTrackingSink {
                     }
                 }
             }
-            BodyTrackingSinkConfig::ViveTrackerProxy => { }
+            BodyTrackingSinkConfig::ViveTrackerProxy => {}
         }
     }
 }

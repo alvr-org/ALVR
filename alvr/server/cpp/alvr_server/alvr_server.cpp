@@ -303,8 +303,10 @@ void SetTracking(unsigned long long targetTimestampNs,
             }
         }
     }
-    for (int i = 0; i < bodyTrackersCount; i++) {
-        g_driver_provider.generic_trackers.at(bodyTrackers[i].trackerID)->OnPoseUpdated(targetTimestampNs, bodyTrackers[i]);
+    if (Settings::Instance().m_enableBodyTrackingFakeVive) {
+        for (int i = 0; i < bodyTrackersCount; i++) {
+            g_driver_provider.generic_trackers.at(bodyTrackers[i].trackerID)->OnPoseUpdated(targetTimestampNs, bodyTrackers[i]);
+        }
     }
 }
 

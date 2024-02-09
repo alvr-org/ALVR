@@ -815,7 +815,10 @@ fn connection_pipeline(
                     .collect::<Vec<_>>();
                 
 
-                let ffi_body_trackers = tracking::to_ffi_body_trackers(&tracking.body_data);
+                let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
+                    let mut tracking_manager_lock = tracking_manager.lock();
+                    tracking::to_ffi_body_trackers(&tracking.body_data, &tracking_manager_lock)
+                };
 
                 let enable_skeleton = controllers_config
                     .as_ref()

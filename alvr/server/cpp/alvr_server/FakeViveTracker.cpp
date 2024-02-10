@@ -5,9 +5,10 @@
 #include "Utils.h"
 #include "bindings.h"
 
-FakeViveTracker::FakeViveTracker(const char* name)
+FakeViveTracker::FakeViveTracker(std::string name)
 :   m_unObjectId(vr::k_unTrackedDeviceIndexInvalid),
-    m_name(name)
+    m_name("ALVR/tracker/" + name),
+    m_serialNumber("ALVR Tracker (" + name + ")")
 {}
 
 vr::DriverPose_t FakeViveTracker::GetPose()

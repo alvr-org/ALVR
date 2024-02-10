@@ -292,7 +292,11 @@ pub fn initialize_interaction(
             .unwrap()
     });
 
-    let enable_full_body = body_tracking_sources.clone().is_some_and(|s| s.body_tracking_full_body_meta.into_option().is_some_and(|t| t.enable_full_body));
+    let enable_full_body = body_tracking_sources.clone().is_some_and(|s| {
+        s.body_tracking_full_body_meta
+            .into_option()
+            .is_some_and(|t| t.enable_full_body)
+    });
 
     let body_tracker_full_body_meta = (body_tracking_sources
         .as_ref()
@@ -307,7 +311,12 @@ pub fn initialize_interaction(
             .instance
             .supports_meta_body_tracking_full_body(xr_ctx.system)
             .unwrap())
-    .then(|| xr_ctx.session.create_body_tracker_full_body_meta(enable_full_body).unwrap());
+    .then(|| {
+        xr_ctx
+            .session
+            .create_body_tracker_full_body_meta(enable_full_body)
+            .unwrap()
+    });
 
     InteractionContext {
         action_set,

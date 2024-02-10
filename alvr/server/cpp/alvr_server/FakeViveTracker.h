@@ -6,7 +6,7 @@
 class FakeViveTracker final : public vr::ITrackedDeviceServerDriver
 {
 	vr::TrackedDeviceIndex_t m_unObjectId;
-   	const char* m_name;
+   	std::string m_name;
 	vr::DriverPose_t m_pose = {};
 public:
 

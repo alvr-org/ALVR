@@ -1,11 +1,12 @@
 use crate::{to_pose, to_quat, to_vec3, Platform, XrContext};
+use alvr_common::settings_schema::Switch;
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::collections::HashMap;
 use xr::sys::FullBodyJointMETA;
-use xr::{BodyJointFB, SpaceLocationFlags};
+use xr::SpaceLocationFlags;
 
 pub enum ButtonAction {
     Binary(xr::Action<bool>),
@@ -31,8 +32,8 @@ pub struct FaceSources {
 }
 
 pub struct BodySources {
-    pub body_tracker_fb: Option<xr::BodyTrackerFB>,
     pub body_tracker_full_body_meta: Option<xr::BodyTrackerFullBodyMETA>,
+    pub enable_full_body: bool,
 }
 
 pub struct InteractionContext {
@@ -291,20 +292,11 @@ pub fn initialize_interaction(
             .unwrap()
     });
 
-    let body_tracker_fb = (body_tracking_sources
-        .as_ref()
-        .map(|s| s.body_tracking_fb)
-        .unwrap_or(false)
-        && xr_ctx.instance.exts().fb_body_tracking.is_some()
-        && xr_ctx
-            .instance
-            .supports_fb_body_tracking(xr_ctx.system)
-            .unwrap())
-    .then(|| xr_ctx.session.create_body_tracker_fb().unwrap());
+    let enable_full_body = body_tracking_sources.clone().is_some_and(|s| s.body_tracking_full_body_meta.into_option().is_some_and(|t| t.enable_full_body));
 
     let body_tracker_full_body_meta = (body_tracking_sources
         .as_ref()
-        .map(|s| s.body_tracking_full_body_meta)
+        .map(|s| s.body_tracking_full_body_meta.enabled())
         .unwrap_or(false)
         && xr_ctx
             .instance
@@ -315,16 +307,7 @@ pub fn initialize_interaction(
             .instance
             .supports_meta_body_tracking_full_body(xr_ctx.system)
             .unwrap())
-    .then(|| xr_ctx.session.create_body_tracker_full_body_meta().unwrap());
-
-    info!(
-        "Has meta_body_tracking_full_body: {}",
-        xr_ctx
-            .instance
-            .exts()
-            .meta_body_tracking_full_body
-            .is_some()
-    );
+    .then(|| xr_ctx.session.create_body_tracker_full_body_meta(enable_full_body).unwrap());
 
     InteractionContext {
         action_set,
@@ -357,8 +340,8 @@ pub fn initialize_interaction(
             lip_tracker_htc,
         },
         body_sources: BodySources {
-            body_tracker_fb,
             body_tracker_full_body_meta,
+            enable_full_body,
         },
     }
 }
@@ -544,86 +527,14 @@ pub fn get_htc_lip_expression(context: &FaceSources) -> Option<Vec<f32>> {
         .map(|w| w.weights.into_iter().collect())
 }
 
-pub fn get_fb_body_tracking_points(
-    reference_space: &xr::Space,
-    time: xr::Time,
-    body_tracker_fb: &xr::BodyTrackerFB,
-) -> Vec<(u64, DeviceMotion)> {
-    if let Some(joint_locations) = reference_space
-        .locate_body_joints_fb(body_tracker_fb, time)
-        .ok()
-        .flatten()
-    {
-        let valid_flags: SpaceLocationFlags =
-            SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
-
-        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(4);
-
-        if let Some(joint) = joint_locations.get(BodyJointFB::CHEST.into_raw() as usize) {
-            if joint.location_flags & valid_flags == valid_flags {
-                joints.push((
-                    *BODY_CHEST_ID,
-                    DeviceMotion {
-                        pose: to_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
-        }
-
-        if let Some(joint) = joint_locations.get(BodyJointFB::HIPS.into_raw() as usize) {
-            if joint.location_flags & valid_flags == valid_flags {
-                joints.push((
-                    *BODY_HIPS_ID,
-                    DeviceMotion {
-                        pose: to_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
-        }
-
-        if let Some(joint) = joint_locations.get(BodyJointFB::LEFT_ARM_LOWER.into_raw() as usize) {
-            if joint.location_flags & valid_flags == valid_flags {
-                joints.push((
-                    *BODY_LEFT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: to_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
-        }
-
-        if let Some(joint) = joint_locations.get(BodyJointFB::RIGHT_ARM_LOWER.into_raw() as usize) {
-            if joint.location_flags & valid_flags == valid_flags {
-                joints.push((
-                    *BODY_RIGHT_ELBOW_ID,
-                    DeviceMotion {
-                        pose: to_pose(joint.pose),
-                        linear_velocity: Vec3::ZERO,
-                        angular_velocity: Vec3::ZERO,
-                    },
-                ))
-            }
-        }
-
-        return joints;
-    }
-
-    Vec::new()
-}
-
 pub fn get_meta_body_tracking_full_body_points(
     reference_space: &xr::Space,
     time: xr::Time,
     body_tracker_full_body_meta: &xr::BodyTrackerFullBodyMETA,
+    full_body: bool,
 ) -> Vec<(u64, DeviceMotion)> {
     if let Some(joint_locations) = reference_space
-        .locate_body_joints_full_body_meta(body_tracker_full_body_meta, time)
+        .locate_body_joints_full_body_meta(body_tracker_full_body_meta, time, full_body)
         .ok()
         .flatten()
     {
@@ -632,7 +543,7 @@ pub fn get_meta_body_tracking_full_body_points(
 
         let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
 
-        if let Some(joint) = joint_locations.get(BodyJointFB::CHEST.into_raw() as usize) {
+        if let Some(joint) = joint_locations.get(FullBodyJointMETA::CHEST.into_raw() as usize) {
             if joint.location_flags & valid_flags == valid_flags {
                 joints.push((
                     *BODY_CHEST_ID,

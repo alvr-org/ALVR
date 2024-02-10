@@ -2,7 +2,6 @@
 #include "Settings.h"
 
 #include <cassert>
-#include <format>
 #include "Utils.h"
 #include "bindings.h"
 

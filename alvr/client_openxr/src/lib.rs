@@ -401,29 +401,15 @@ fn stream_input_pipeline(
         htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
-    let mut added_tracking_points = false;
     if let Some(body_tracker_full_body_meta) =
         &interaction_ctx.body_sources.body_tracker_full_body_meta
     {
-        let tracking_points = &mut interaction::get_meta_body_tracking_full_body_points(
+        device_motions.append(&mut interaction::get_meta_body_tracking_full_body_points(
             &stream_ctx.reference_space.read(),
             to_xr_time(now),
             body_tracker_full_body_meta,
-        );
-        if tracking_points.len() > 0 {
-            added_tracking_points = true;
-            device_motions.append(tracking_points);
-        }
-    }
-    // fall back to iobt
-    if !added_tracking_points {
-        if let Some(body_tracker_fb) = &interaction_ctx.body_sources.body_tracker_fb {
-            device_motions.append(&mut interaction::get_fb_body_tracking_points(
-                &stream_ctx.reference_space.read(),
-                to_xr_time(now),
-                body_tracker_fb,
-            ));
-        }
+            interaction_ctx.body_sources.enable_full_body,
+        ));
     }
 
     alvr_client_core::send_tracking(Tracking {
@@ -474,7 +460,7 @@ fn initialize_stream(
 
     #[cfg(target_os = "android")]
     if let Some(config) = &config.body_sources_config {
-        if (config.body_tracking_fb) && matches!(platform, Platform::Quest) {
+        if (config.body_tracking_full_body_meta.enabled()) && matches!(platform, Platform::Quest) {
             alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }

@@ -624,8 +624,14 @@ pub struct FaceTrackingConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct BodyTrackingSourcesConfig {
-    pub body_tracking_fb: bool,
-    pub body_tracking_full_body_meta: bool,
+    pub body_tracking_full_body_meta: Switch<BodyTrackingFullBodyMETAConfig>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
+pub struct BodyTrackingFullBodyMETAConfig {
+    #[schema(strings(help = "Enable full body tracking"))]
+    pub enable_full_body: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1437,8 +1443,13 @@ pub fn session_settings_default() -> SettingsDefault {
                 content: BodyTrackingConfigDefault {
                     gui_collapsed: true,
                     sources: BodyTrackingSourcesConfigDefault {
-                        body_tracking_fb: true,
-                        body_tracking_full_body_meta: true,
+                        body_tracking_full_body_meta: SwitchDefault {
+                            enabled: true,
+                            content: BodyTrackingFullBodyMETAConfigDefault {
+                                gui_collapsed: true,
+                                enable_full_body: true,
+                            },
+                        },
                     },
                     sink: BodyTrackingSinkConfigDefault {
                         VrchatBodyOsc: BodyTrackingSinkConfigVrchatBodyOscDefault { port: 9000 },

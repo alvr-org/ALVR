@@ -4,6 +4,7 @@ use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
 use openxr as xr;
 use std::collections::HashMap;
+use xr::sys::FullBodyJointMETA;
 use xr::{BodyJointFB, SpaceLocationFlags};
 
 pub enum ButtonAction {
@@ -31,6 +32,7 @@ pub struct FaceSources {
 
 pub struct BodySources {
     pub body_tracker_fb: Option<xr::BodyTrackerFB>,
+    pub body_tracker_full_body_meta: Option<xr::BodyTrackerFullBodyMETA>,
 }
 
 pub struct InteractionContext {
@@ -300,6 +302,30 @@ pub fn initialize_interaction(
             .unwrap())
     .then(|| xr_ctx.session.create_body_tracker_fb().unwrap());
 
+    let body_tracker_full_body_meta = (body_tracking_sources
+        .as_ref()
+        .map(|s| s.body_tracking_full_body_meta)
+        .unwrap_or(false)
+        && xr_ctx
+            .instance
+            .exts()
+            .meta_body_tracking_full_body
+            .is_some()
+        && xr_ctx
+            .instance
+            .supports_meta_body_tracking_full_body(xr_ctx.system)
+            .unwrap())
+    .then(|| xr_ctx.session.create_body_tracker_full_body_meta().unwrap());
+
+    info!(
+        "Has meta_body_tracking_full_body: {}",
+        xr_ctx
+            .instance
+            .exts()
+            .meta_body_tracking_full_body
+            .is_some()
+    );
+
     InteractionContext {
         action_set,
         button_actions,
@@ -330,7 +356,10 @@ pub fn initialize_interaction(
             eye_tracker_htc,
             lip_tracker_htc,
         },
-        body_sources: BodySources { body_tracker_fb },
+        body_sources: BodySources {
+            body_tracker_fb,
+            body_tracker_full_body_meta,
+        },
     }
 }
 
@@ -573,6 +602,143 @@ pub fn get_fb_body_tracking_points(
             if joint.location_flags & valid_flags == valid_flags {
                 joints.push((
                     *BODY_RIGHT_ELBOW_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        return joints;
+    }
+
+    Vec::new()
+}
+
+pub fn get_meta_body_tracking_full_body_points(
+    reference_space: &xr::Space,
+    time: xr::Time,
+    body_tracker_full_body_meta: &xr::BodyTrackerFullBodyMETA,
+) -> Vec<(u64, DeviceMotion)> {
+    if let Some(joint_locations) = reference_space
+        .locate_body_joints_full_body_meta(body_tracker_full_body_meta, time)
+        .ok()
+        .flatten()
+    {
+        let valid_flags: SpaceLocationFlags =
+            SpaceLocationFlags::ORIENTATION_VALID | SpaceLocationFlags::POSITION_VALID;
+
+        let mut joints = Vec::<(u64, DeviceMotion)>::with_capacity(8);
+
+        if let Some(joint) = joint_locations.get(BodyJointFB::CHEST.into_raw() as usize) {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_CHEST_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) = joint_locations.get(FullBodyJointMETA::HIPS.into_raw() as usize) {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_HIPS_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::LEFT_ARM_LOWER.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_LEFT_ELBOW_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::RIGHT_ARM_LOWER.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_RIGHT_ELBOW_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::LEFT_LOWER_LEG.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_LEFT_KNEE_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::LEFT_FOOT_BALL.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_LEFT_FOOT_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::RIGHT_LOWER_LEG.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_RIGHT_KNEE_ID,
+                    DeviceMotion {
+                        pose: to_pose(joint.pose),
+                        linear_velocity: Vec3::ZERO,
+                        angular_velocity: Vec3::ZERO,
+                    },
+                ))
+            }
+        }
+
+        if let Some(joint) =
+            joint_locations.get(FullBodyJointMETA::RIGHT_FOOT_BALL.into_raw() as usize)
+        {
+            if joint.location_flags & valid_flags == valid_flags {
+                joints.push((
+                    *BODY_RIGHT_FOOT_ID,
                     DeviceMotion {
                         pose: to_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,

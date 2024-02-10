@@ -401,12 +401,29 @@ fn stream_input_pipeline(
         htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
-    if let Some(body_tracker_fb) = &interaction_ctx.body_sources.body_tracker_fb {
-        device_motions.append(&mut interaction::get_fb_body_tracking_points(
+    let mut added_tracking_points = false;
+    if let Some(body_tracker_full_body_meta) =
+        &interaction_ctx.body_sources.body_tracker_full_body_meta
+    {
+        let tracking_points = &mut interaction::get_meta_body_tracking_full_body_points(
             &stream_ctx.reference_space.read(),
             to_xr_time(now),
-            body_tracker_fb,
-        ));
+            body_tracker_full_body_meta,
+        );
+        if tracking_points.len() > 0 {
+            added_tracking_points = true;
+            device_motions.append(tracking_points);
+        }
+    }
+    // fall back to iobt
+    if !added_tracking_points {
+        if let Some(body_tracker_fb) = &interaction_ctx.body_sources.body_tracker_fb {
+            device_motions.append(&mut interaction::get_fb_body_tracking_points(
+                &stream_ctx.reference_space.read(),
+                to_xr_time(now),
+                body_tracker_fb,
+            ));
+        }
     }
 
     alvr_client_core::send_tracking(Tracking {
@@ -626,6 +643,7 @@ pub fn entry_point() {
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
     exts.fb_body_tracking = available_extensions.fb_body_tracking;
+    exts.meta_body_tracking_full_body = available_extensions.meta_body_tracking_full_body;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;

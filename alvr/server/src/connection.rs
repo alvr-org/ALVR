@@ -100,15 +100,19 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         false
     };
 
-    let body_tracking_vive_enabled = if let Switch::Enabled(config) = settings.headset.body_tracking
-    {
-        matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
+    let body_tracking_vive_enabled =
+        if let Switch::Enabled(config) = &settings.headset.body_tracking {
+            matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
+        } else {
+            false
+        };
+
+    // Should be true if using full body tracking
+    let body_tracking_has_legs = if let Switch::Enabled(config) = &settings.headset.body_tracking {
+        config.sources.body_tracking_full_body_meta
     } else {
         false
     };
-
-    // Should be true if using full body tracking
-    let body_tracking_has_legs = false;
 
     let mut foveation_center_size_x = 0.0;
     let mut foveation_center_size_y = 0.0;

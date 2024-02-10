@@ -2,8 +2,9 @@ use crate::{to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
-    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_RIGHT_ELBOW_ID,
-    HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
+    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HEAD_ID,
+    LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -356,10 +357,16 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
 
 const BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
     HashMap::from([
+        // Upper body
         (*BODY_CHEST_ID, 0),
         (*BODY_HIPS_ID, 1),
         (*BODY_LEFT_ELBOW_ID, 2),
         (*BODY_RIGHT_ELBOW_ID, 3),
+        // Legs
+        (*BODY_LEFT_KNEE_ID, 4),
+        (*BODY_LEFT_FOOT_ID, 5),
+        (*BODY_RIGHT_KNEE_ID, 6),
+        (*BODY_RIGHT_FOOT_ID, 7),
     ])
 });
 

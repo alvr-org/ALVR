@@ -10,7 +10,7 @@ use alvr_common::{
     parking_lot::Mutex,
     warn, DeviceMotion, Fov, Pose,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, Tracking};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking};
 use alvr_session::{CodecType, FoveatedEncodingConfig};
 use std::{
     collections::VecDeque,
@@ -25,9 +25,11 @@ struct ReconstructedNal {
     timestamp_ns: u64,
     data: Vec<u8>,
 }
+
+static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
+static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
-static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 
 #[repr(u8)]
 pub enum AlvrCodec {
@@ -43,13 +45,6 @@ pub enum AlvrEvent {
         view_width: u32,
         view_height: u32,
         refresh_rate_hint: f32,
-        enable_foveation: bool,
-        foveation_center_size_x: f32,
-        foveation_center_size_y: f32,
-        foveation_center_shift_x: f32,
-        foveation_center_shift_y: f32,
-        foveation_edge_ratio_x: f32,
-        foveation_edge_ratio_y: f32,
     },
     StreamingStopped,
     Haptics {
@@ -93,6 +88,11 @@ pub struct AlvrDeviceMotion {
     angular_velocity: [f32; 3],
 }
 
+pub struct AlvrPose {
+    pub orientation: AlvrQuat,
+    pub position: [f32; 3],
+}
+
 #[allow(dead_code)]
 #[repr(C)]
 pub enum AlvrButtonValue {
@@ -129,6 +129,17 @@ pub unsafe extern "C" fn alvr_log(level: AlvrLogLevel, message: *const c_char) {
 pub unsafe extern "C" fn alvr_log_time(tag: *const c_char) {
     let tag = CStr::from_ptr(tag).to_str().unwrap();
     error!("[ALVR NATIVE] {tag}: {:?}", Instant::now());
+}
+
+fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
+    let cstring = CString::new(value).unwrap();
+    if !buffer.is_null() {
+        unsafe {
+            ptr::copy_nonoverlapping(cstring.as_ptr(), buffer, cstring.as_bytes_with_nul().len());
+        }
+    }
+
+    cstring.as_bytes_with_nul().len() as u64
 }
 
 /// On non-Android platforms, java_vm and constext should be null.
@@ -192,30 +203,12 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 refresh_rate_hint,
                 settings,
             } => {
-                let foveated_encoding = settings.video.foveated_encoding.as_option();
+                *SETTINGS.lock() = serde_json::to_string(&settings).unwrap();
+
                 AlvrEvent::StreamingStarted {
                     view_width: view_resolution.x,
                     view_height: view_resolution.y,
                     refresh_rate_hint,
-                    enable_foveation: foveated_encoding.is_some(),
-                    foveation_center_size_x: foveated_encoding
-                        .map(|f| f.center_size_x)
-                        .unwrap_or_default(),
-                    foveation_center_size_y: foveated_encoding
-                        .map(|f| f.center_size_y)
-                        .unwrap_or_default(),
-                    foveation_center_shift_x: foveated_encoding
-                        .map(|f| f.center_shift_x)
-                        .unwrap_or_default(),
-                    foveation_center_shift_y: foveated_encoding
-                        .map(|f| f.center_shift_y)
-                        .unwrap_or_default(),
-                    foveation_edge_ratio_x: foveated_encoding
-                        .map(|f| f.edge_ratio_x)
-                        .unwrap_or_default(),
-                    foveation_edge_ratio_y: foveated_encoding
-                        .map(|f| f.edge_ratio_y)
-                        .unwrap_or_default(),
                 }
             }
             ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
@@ -260,6 +253,12 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     } else {
         false
     }
+}
+
+// Settings will be updated after receiving StreamingStarted event
+#[no_mangle]
+pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
+    string_to_c_str(buffer, &SETTINGS.lock())
 }
 
 /// Call only with external decoder
@@ -348,11 +347,19 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     crate::send_buttons(vec![ButtonEntry { path_id, value }]);
 }
 
+/// hand_skeleton:
+/// * outer ptr: array of 2 (can be null);
+/// * inner ptr: array of 26 (can be null if hand is absent)
+/// eye_gazes:
+/// * outer ptr: array of 2 (can be null);
+/// * inner ptr: pose (can be null if eye gaze is absent)
 #[no_mangle]
 pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
+    hand_skeletons: *const *const AlvrPose,
+    eye_gazes: *const *const AlvrPose,
 ) {
     fn from_capi_quat(quat: AlvrQuat) -> Quat {
         Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
@@ -384,10 +391,66 @@ pub extern "C" fn alvr_send_tracking(
         })
         .collect::<Vec<_>>();
 
+    let hand_skeletons = if !hand_skeletons.is_null() {
+        let hand_skeletons = unsafe { slice::from_raw_parts(hand_skeletons, 2) };
+        let hand_skeletons = hand_skeletons
+            .iter()
+            .map(|&hand_skeleton| {
+                if !hand_skeleton.is_null() {
+                    let hand_skeleton = unsafe { slice::from_raw_parts(hand_skeleton, 26) };
+
+                    let mut array = [Pose::default(); 26];
+
+                    for (pose, capi_pose) in array.iter_mut().zip(hand_skeleton.iter()) {
+                        *pose = Pose {
+                            orientation: from_capi_quat(capi_pose.orientation),
+                            position: Vec3::from_slice(&capi_pose.position),
+                        };
+                    }
+
+                    Some(array)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        [hand_skeletons[0], hand_skeletons[1]]
+    } else {
+        [None, None]
+    };
+
+    let eye_gazes = if !eye_gazes.is_null() {
+        let eye_gazes = unsafe { slice::from_raw_parts(eye_gazes, 2) };
+        let eye_gazes = eye_gazes
+            .iter()
+            .map(|&eye_gaze| {
+                if !eye_gaze.is_null() {
+                    let eye_gaze = unsafe { &*eye_gaze };
+
+                    Some(Pose {
+                        orientation: from_capi_quat(eye_gaze.orientation),
+                        position: Vec3::from_slice(&eye_gaze.position),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        [eye_gazes[0], eye_gazes[1]]
+    } else {
+        [None, None]
+    };
+
     let tracking = Tracking {
         target_timestamp: Duration::from_nanos(target_timestamp_ns),
         device_motions,
-        ..Default::default()
+        hand_skeletons,
+        face_data: FaceData {
+            eye_gazes,
+            ..Default::default()
+        },
     };
 
     crate::send_tracking(tracking);

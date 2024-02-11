@@ -273,7 +273,7 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
     m_output.imageInfo.mipLevels = 1;
     m_output.imageInfo.arrayLayers = 1;
     m_output.imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    m_output.imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    m_output.imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     m_output.imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     m_output.imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -474,7 +474,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         waitInfo.pValues = &waitValue;
         VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
 
-        dumpImage(m_images[index].image, m_images[index].layout, m_imageSize.width, m_imageSize.height, m_inputImageCapture);
+        dumpImage(m_images[index].image, m_images[index].view, m_images[index].layout, m_imageSize.width, m_imageSize.height, m_inputImageCapture);
         m_inputImageCapture.clear();
     }
 
@@ -607,7 +607,7 @@ Renderer::Timestamps Renderer::GetTimestamps()
     timestamp *= m_timestampPeriod;
 
     if (!m_outputImageCapture.empty()) {
-        dumpImage(m_output.image, m_output.layout, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
+        dumpImage(m_output.image, m_output.view, m_output.layout, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
         m_outputImageCapture.clear();
     }
 
@@ -738,7 +738,7 @@ void Renderer::addStagingImage(uint32_t width, uint32_t height)
     m_stagingImages.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, memory, view});
 }
 
-void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename)
+void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename)
 {
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -752,7 +752,7 @@ void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t widt
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
     VkImage dstImage;
     VK_CHECK(vkCreateImage(m_dev, &imageInfo, nullptr, &dstImage));
 
@@ -761,81 +761,131 @@ void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t widt
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     vkGetImageMemoryRequirements(m_dev, dstImage, &memReqs);
     memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memReqs.memoryTypeBits);
+    memAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memReqs.memoryTypeBits);
     VkDeviceMemory dstMemory;
     VK_CHECK(vkAllocateMemory(m_dev, &memAllocInfo, nullptr, &dstMemory));
     VK_CHECK(vkBindImageMemory(m_dev, dstImage, dstMemory, 0));
+
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = imageInfo.format;
+    viewInfo.image = dstImage;
+    viewInfo.subresourceRange = {};
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    VkImageView dstView;
+    VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &dstView));
 
     std::array<VkImageMemoryBarrier, 2> imageBarrierIn;
     imageBarrierIn[0] = {};
     imageBarrierIn[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     imageBarrierIn[0].oldLayout = imageLayout;
-    imageBarrierIn[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrierIn[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageBarrierIn[0].image = image;
     imageBarrierIn[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierIn[0].subresourceRange.layerCount = 1;
     imageBarrierIn[0].subresourceRange.levelCount = 1;
     imageBarrierIn[0].srcAccessMask = 0;
-    imageBarrierIn[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrierIn[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     imageBarrierIn[1] = {};
     imageBarrierIn[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     imageBarrierIn[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageBarrierIn[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarrierIn[1].newLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageBarrierIn[1].image = dstImage;
     imageBarrierIn[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierIn[1].subresourceRange.layerCount = 1;
     imageBarrierIn[1].subresourceRange.levelCount = 1;
     imageBarrierIn[1].srcAccessMask = 0;
-    imageBarrierIn[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarrierIn[1].dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 
-    VkImageBlit imageBlit;
-    imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBlit.srcSubresource.mipLevel = 0;
-    imageBlit.srcSubresource.baseArrayLayer = 0;
-    imageBlit.srcSubresource.layerCount = 1;
-    imageBlit.srcOffsets[0].x = 0;
-    imageBlit.srcOffsets[0].y = 0;
-    imageBlit.srcOffsets[0].z = 0;
-    imageBlit.srcOffsets[1].x = width;
-    imageBlit.srcOffsets[1].y = height;
-    imageBlit.srcOffsets[1].z = 1;
-    imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBlit.dstSubresource.mipLevel = 0;
-    imageBlit.dstSubresource.baseArrayLayer = 0;
-    imageBlit.dstSubresource.layerCount = 1;
-    imageBlit.dstOffsets[0].x = 0;
-    imageBlit.dstOffsets[0].y = 0;
-    imageBlit.dstOffsets[0].z = 0;
-    imageBlit.dstOffsets[1].x = width;
-    imageBlit.dstOffsets[1].y = height;
-    imageBlit.dstOffsets[1].z = 1;
+    // Shader
+    VkShaderModuleCreateInfo moduleInfo = {};
+    moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleInfo.codeSize = m_quadShaderSize;
+    moduleInfo.pCode = m_quadShaderCode;
+    VkShaderModule shader;
+    VK_CHECK(vkCreateShaderModule(m_dev, &moduleInfo, nullptr, &shader));
+
+    // Pipeline
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_descriptorLayout;
+    VkPipelineLayout pipelineLayout;
+    VK_CHECK(vkCreatePipelineLayout(m_dev, &pipelineLayoutInfo, nullptr, &pipelineLayout));
+
+    VkPipelineShaderStageCreateInfo stageInfo = {};
+    stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    stageInfo.pName = "main";
+    stageInfo.module = shader;
+
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.stage = stageInfo;
+    VkPipeline pipeline;
+    VK_CHECK(vkCreateComputePipelines(m_dev, nullptr, 1, &pipelineInfo, nullptr, &pipeline));
 
     std::array<VkImageMemoryBarrier, 2> imageBarrierOut;
     imageBarrierOut[0] = {};
     imageBarrierOut[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrierOut[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageBarrierOut[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageBarrierOut[0].newLayout = imageLayout;
     imageBarrierOut[0].image = image;
     imageBarrierOut[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierOut[0].subresourceRange.layerCount = 1;
     imageBarrierOut[0].subresourceRange.levelCount = 1;
-    imageBarrierOut[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    imageBarrierOut[0].srcAccessMask = 0;
     imageBarrierOut[0].dstAccessMask = 0;
     imageBarrierOut[1] = {};
     imageBarrierOut[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrierOut[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarrierOut[1].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageBarrierOut[1].newLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageBarrierOut[1].image = dstImage;
     imageBarrierOut[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarrierOut[1].subresourceRange.layerCount = 1;
     imageBarrierOut[1].subresourceRange.levelCount = 1;
-    imageBarrierOut[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarrierOut[1].srcAccessMask = 0;
     imageBarrierOut[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
 
+    std::vector<VkWriteDescriptorSet> descriptorWriteSets;
+
+    VkDescriptorImageInfo descriptorImageInfoIn = {};
+    descriptorImageInfoIn.imageView = imageView;
+    descriptorImageInfoIn.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkDescriptorImageInfo descriptorImageInfoOut = {};
+    descriptorImageInfoOut.imageView = dstView;
+    descriptorImageInfoOut.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    VkWriteDescriptorSet descriptorWriteSet = {};
+    descriptorWriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWriteSet.descriptorCount = 1;
+    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWriteSet.pImageInfo = &descriptorImageInfoIn;
+    descriptorWriteSet.dstBinding = 0;
+    descriptorWriteSets.push_back(descriptorWriteSet);
+
+    descriptorWriteSet.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWriteSet.pImageInfo = &descriptorImageInfoOut;
+    descriptorWriteSet.dstBinding = 1;
+    descriptorWriteSets.push_back(descriptorWriteSet);
+
     commandBufferBegin();
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierIn.size(), imageBarrierIn.data());
-    vkCmdBlitImage(m_commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageBlit, VK_FILTER_NEAREST);
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierOut.size(), imageBarrierOut.data());
+    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierIn.size(), imageBarrierIn.data());
+    vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+    d.vkCmdPushDescriptorSetKHR(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, descriptorWriteSets.size(), descriptorWriteSets.data());
+    vkCmdDispatch(m_commandBuffer, (imageInfo.extent.width + 7) / 8, (imageInfo.extent.height + 7) / 8, 1);
+    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierOut.size(), imageBarrierOut.data());
     commandBufferSubmit();
 
     VkImageSubresource subresource = {};
@@ -867,6 +917,10 @@ void Renderer::dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t widt
     vkUnmapMemory(m_dev, dstMemory);
     vkFreeMemory(m_dev, dstMemory, nullptr);
     vkDestroyImage(m_dev, dstImage, nullptr);
+    vkDestroyImageView(m_dev, dstView, nullptr);
+    vkDestroyShaderModule(m_dev, shader, nullptr);
+    vkDestroyPipeline(m_dev, pipeline, nullptr);
+    vkDestroyPipelineLayout(m_dev, pipelineLayout, nullptr);
 }
 
 uint32_t Renderer::memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const

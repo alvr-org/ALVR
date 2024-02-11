@@ -96,7 +96,7 @@ public:
     void commandBufferBegin();
     void commandBufferSubmit();
     void addStagingImage(uint32_t width, uint32_t height);
-    void dumpImage(VkImage image, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename);
+    void dumpImage(VkImage image, VkImageView imageView, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename);
     uint32_t memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const;
 
     struct {
@@ -128,6 +128,9 @@ public:
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     VkFence m_fence = VK_NULL_HANDLE;
     double m_timestampPeriod = 0;
+
+    size_t m_quadShaderSize = 0;
+    const uint32_t *m_quadShaderCode = nullptr;
 
     std::string m_inputImageCapture;
     std::string m_outputImageCapture;

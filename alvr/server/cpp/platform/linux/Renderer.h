@@ -107,6 +107,7 @@ public:
         PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;
         bool haveDmaBuf = false;
         bool haveDrmModifiers = false;
+        bool haveCalibratedTimestamps = false;
     } d;
 
     Output m_output;

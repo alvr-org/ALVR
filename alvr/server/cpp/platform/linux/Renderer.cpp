@@ -62,10 +62,8 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     };
     d.haveDmaBuf = checkExtension(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
+    d.haveCalibratedTimestamps = checkExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
 
-    if (!checkExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
-        throw std::runtime_error("Vulkan: Required extension " VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME " not available");
-    }
     if (!checkExtension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
         throw std::runtime_error("Vulkan: Required extension " VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME " not available");
     }
@@ -593,6 +591,10 @@ Renderer::Output &Renderer::GetOutput()
 
 Renderer::Timestamps Renderer::GetTimestamps()
 {
+    if (!d.haveCalibratedTimestamps) {
+        return {0, 0, 0};
+    }
+
     uint64_t queries[2];
     VK_CHECK(vkGetQueryPoolResults(m_dev, m_queryPool, 0, 2, 2 * sizeof(uint64_t), queries, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
     queries[0] *= m_timestampPeriod;

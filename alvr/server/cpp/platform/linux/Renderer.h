@@ -64,6 +64,7 @@ public:
     void AddPipeline(RenderPipeline *pipeline);
 
     void CreateOutput(uint32_t width, uint32_t height, ExternalHandle handle);
+    void ImportOutput(const DrmImage &drm);
 
     void Render(uint32_t index, uint64_t waitValue);
 
@@ -102,6 +103,7 @@ public:
     struct {
         PFN_vkImportSemaphoreFdKHR vkImportSemaphoreFdKHR = nullptr;
         PFN_vkGetMemoryFdKHR vkGetMemoryFdKHR = nullptr;
+        PFN_vkGetMemoryFdPropertiesKHR vkGetMemoryFdPropertiesKHR = nullptr;
         PFN_vkGetImageDrmFormatModifierPropertiesEXT vkGetImageDrmFormatModifierPropertiesEXT = nullptr;
         PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = nullptr;
         PFN_vkCmdPushDescriptorSetKHR vkCmdPushDescriptorSetKHR = nullptr;

@@ -58,24 +58,9 @@ void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
 }
 
 // Map the vulkan frames to corresponding vaapi frames
-AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr::VkFrame &input_frame)
+AVFrame *map_frame(AVBufferRef *hw_frames_ref, AVBufferRef *drm_device_ctx, alvr::VkFrame &input_frame)
 {
-  AVBufferRef *hw_frames_ref;
-  int err = 0;
-
-  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
-    throw std::runtime_error("Failed to create VAAPI frame context.");
-  }
   auto frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
-  frames_ctx->format = AV_PIX_FMT_VAAPI;
-  frames_ctx->sw_format = input_frame.avFormat();
-  frames_ctx->width = input_frame.imageInfo().extent.width;
-  frames_ctx->height = input_frame.imageInfo().extent.height;
-  frames_ctx->initial_pool_size = 1;
-  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
-    av_buffer_unref(&hw_frames_ref);
-    throw alvr::AvException("Failed to initialize VAAPI frame context:", err);
-  }
 
   AVFrame * mapped_frame = av_frame_alloc();
   mapped_frame->format = AV_PIX_FMT_VAAPI;
@@ -91,6 +76,7 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr
   drm_frames_ctx->width = frames_ctx->width;
   drm_frames_ctx->height = frames_ctx->height;
   drm_frames_ctx->initial_pool_size = 0;
+  int err;
   if ((err = av_hwframe_ctx_init(drm_frames_ref)) < 0) {
     av_buffer_unref(&drm_frames_ref);
     throw alvr::AvException("Failed to initialize DRM frame context:", err);
@@ -109,6 +95,35 @@ AVFrame *map_frame(AVBufferRef *hw_device_ctx, AVBufferRef *drm_device_ctx, alvr
   av_buffer_unref(&hw_frames_ref);
 
   return mapped_frame;
+}
+
+// Import VA surface
+AVFrame *import_frame(AVBufferRef *hw_frames_ref, DrmImage &drm)
+{
+  AVFrame *va_frame = av_frame_alloc();
+  int err = av_hwframe_get_buffer(hw_frames_ref, va_frame, 0);
+  if (err < 0) {
+    throw alvr::AvException("Failed to get hwframe buffer:", err);
+  }
+
+  AVFrame *mapped_frame = av_frame_alloc();
+  mapped_frame->format = AV_PIX_FMT_DRM_PRIME;
+  err = av_hwframe_map(mapped_frame, va_frame, AV_HWFRAME_MAP_WRITE);
+  if (err < 0) {
+    throw alvr::AvException("Failed to export va frame:", err);
+  }
+
+  auto desc = reinterpret_cast<AVDRMFrameDescriptor*>(mapped_frame->data[0]);
+  drm.fd = desc->objects[0].fd;
+  drm.format = desc->layers[0].format;
+  drm.modifier = desc->objects[0].format_modifier;
+  drm.planes = desc->layers[0].nb_planes;
+  for (uint32_t i = 0;i < drm.planes; ++i) {
+    drm.strides[0] = desc->layers[0].planes[i].pitch;
+    drm.offsets[0] = desc->layers[0].planes[i].offset;
+  }
+
+  return va_frame;
 }
 
 }
@@ -225,20 +240,26 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
       if (vk_ctx.amd) {
         quality.preset_mode = PRESET_MODE_QUALITY;
         encoder_ctx->compression_level = quality.quality; // (QUALITY preset, no pre-encoding, vbaq)
+      } else if (vk_ctx.intel) {
+        encoder_ctx->compression_level = 1;
       }
     break;
     case ALVR_BALANCED:
       if (vk_ctx.amd) {
         quality.preset_mode = PRESET_MODE_BALANCE;
         encoder_ctx->compression_level = quality.quality; // (BALANCE preset, no pre-encoding, vbaq)
+      } else if (vk_ctx.intel) {
+        encoder_ctx->compression_level = 4;
       }
     break;
     case ALVR_SPEED:
-      default:
-       if (vk_ctx.amd) {
-         quality.preset_mode = PRESET_MODE_SPEED;
-         encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
-       }
+    default:
+      if (vk_ctx.amd) {
+        quality.preset_mode = PRESET_MODE_SPEED;
+        encoder_ctx->compression_level = quality.quality; // (speed preset, no pre-encoding, vbaq)
+      } else if (vk_ctx.intel) {
+        encoder_ctx->compression_level = 7;
+      }
     break;
   }
 
@@ -251,8 +272,30 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(Renderer *render, VkContext &vk_c
     throw alvr::AvException("Cannot open video encoder codec:", err);
   }
 
+  AVBufferRef *hw_frames_ref;
+  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_ctx))) {
+    throw std::runtime_error("Failed to create VAAPI frame context.");
+  }
+  auto frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
+  frames_ctx->format = AV_PIX_FMT_VAAPI;
+  frames_ctx->sw_format = input_frame.avFormat();
+  frames_ctx->width = input_frame.imageInfo().extent.width;
+  frames_ctx->height = input_frame.imageInfo().extent.height;
+  frames_ctx->initial_pool_size = 1;
+  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+    av_buffer_unref(&hw_frames_ref);
+    throw alvr::AvException("Failed to initialize VAAPI frame context:", err);
+  }
+
   encoder_frame = av_frame_alloc();
-  mapped_frame = map_frame(hw_ctx, drm_ctx, input_frame);
+  if (vk_ctx.intel || getenv("ALVR_VAAPI_IMPORT_SURFACE")) {
+    Info("Importing VA surface");
+    DrmImage drm;
+    mapped_frame = import_frame(hw_frames_ref, drm);
+    r->ImportOutput(drm);
+  } else {
+    mapped_frame = map_frame(hw_frames_ref, drm_ctx, input_frame);
+  }
 
   filter_graph = avfilter_graph_alloc();
 
@@ -351,8 +394,6 @@ void alvr::EncodePipelineVAAPI::PushFrame(uint64_t targetTimestampNs, bool idr)
 
 void alvr::EncodePipelineVAAPI::SetParams(FfiDynamicEncoderParams params)
 {
-  const auto& settings = Settings::Instance();
-
   if (!params.updated) {
     return;
   }

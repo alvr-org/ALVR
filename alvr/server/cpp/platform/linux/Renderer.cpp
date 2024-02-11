@@ -71,6 +71,7 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
 #define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
     VK_LOAD_PFN(vkImportSemaphoreFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdKHR);
+    VK_LOAD_PFN(vkGetMemoryFdPropertiesKHR);
     VK_LOAD_PFN(vkGetImageDrmFormatModifierPropertiesEXT);
     VK_LOAD_PFN(vkGetCalibratedTimestampsEXT);
     VK_LOAD_PFN(vkCmdPushDescriptorSetKHR);
@@ -460,6 +461,89 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
     VkSemaphoreCreateInfo semInfo = {};
     semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VK_CHECK(vkCreateSemaphore(m_dev, &semInfo, nullptr, &m_output.semaphore));
+}
+
+void Renderer::ImportOutput(const DrmImage &drm)
+{
+    vkDestroyImageView(m_dev, m_output.view, nullptr);
+    vkDestroyImage(m_dev, m_output.image, nullptr);
+    vkFreeMemory(m_dev, m_output.memory, nullptr);
+
+    m_output.drm = drm;
+    m_output.imageInfo.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+
+    VkExternalMemoryImageCreateInfo extMemImageInfo = {};
+    extMemImageInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+    extMemImageInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+    m_output.imageInfo.pNext = &extMemImageInfo;
+
+    VkSubresourceLayout layouts[4] = {};
+    for (uint32_t i = 0; i < drm.planes; ++i) {
+        layouts[i].offset = drm.offsets[i];
+        layouts[i].rowPitch = drm.strides[i];
+    }
+    VkImageDrmFormatModifierExplicitCreateInfoEXT modifierInfo = {};
+    modifierInfo.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT;
+    modifierInfo.drmFormatModifier = drm.modifier;
+    modifierInfo.drmFormatModifierPlaneCount = drm.planes;
+    modifierInfo.pPlaneLayouts = layouts;
+    extMemImageInfo.pNext = &modifierInfo;
+
+    VK_CHECK(vkCreateImage(m_dev, &m_output.imageInfo, NULL, &m_output.image));
+
+    VkMemoryFdPropertiesKHR fdProps = {};
+    fdProps.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
+    VK_CHECK(d.vkGetMemoryFdPropertiesKHR(m_dev, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, drm.fd, &fdProps));
+
+    VkImageMemoryRequirementsInfo2 memoryReqsInfo = {};
+    memoryReqsInfo.image = m_output.image;
+    memoryReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+
+    VkMemoryRequirements2 memoryReqs = {};
+    memoryReqs.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+    vkGetImageMemoryRequirements2(m_dev, &memoryReqsInfo, &memoryReqs);
+
+    VkMemoryAllocateInfo memoryAllocInfo = {};
+    memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryAllocInfo.allocationSize = memoryReqs.memoryRequirements.size;
+    memoryAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits);
+
+    VkImportMemoryFdInfoKHR importMemInfo = {};
+    importMemInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+    importMemInfo.fd = drm.fd;
+    importMemInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+    memoryAllocInfo.pNext = &importMemInfo;
+
+    VkMemoryDedicatedAllocateInfo dedicatedMemInfo = {};
+    dedicatedMemInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+    dedicatedMemInfo.image = m_output.image;
+    importMemInfo.pNext = &dedicatedMemInfo;
+
+    VK_CHECK(vkAllocateMemory(m_dev, &memoryAllocInfo, NULL, &m_output.memory));
+
+    VkBindImageMemoryInfo bindInfo = {};
+    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+    bindInfo.image = m_output.image;
+    bindInfo.memory = m_output.memory;
+    bindInfo.memoryOffset = 0;
+    VK_CHECK(vkBindImageMemory2(m_dev, 1, &bindInfo));
+
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = m_output.imageInfo.format;
+    viewInfo.image = m_output.image;
+    viewInfo.subresourceRange = {};
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &m_output.view));
 }
 
 void Renderer::Render(uint32_t index, uint64_t waitValue)

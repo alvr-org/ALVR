@@ -144,8 +144,23 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
 pub struct AmfConfig {
     #[schema(flag = "steamvr-restart")]
     pub quality_preset: EncoderQualityPresetAmd,
-    #[schema(strings(display_name = "Enable VBAQ"), flag = "steamvr-restart")]
+    #[schema(
+        strings(
+            display_name = "Enable VBAQ/CAQ",
+            help = "Enables Variance Based Adaptive Quantization on h264 and HEVC, and Content Adaptive Quantization on AV1"
+        ),
+        flag = "steamvr-restart"
+    )]
     pub enable_vbaq: bool,
+    #[schema(
+        strings(
+            display_name = "Enable High-Motion Quality Boost",
+            help = r#"Enables high motion quality boost mode.
+Allows the encoder to perform pre-analysis the motion of the video and use the information for better encoding"#
+        ),
+        flag = "steamvr-restart"
+    )]
+    pub enable_hmqb: bool,
     #[schema(flag = "steamvr-restart")]
     pub use_preproc: bool,
     #[schema(gui(slider(min = 0, max = 10)))]
@@ -154,6 +169,15 @@ pub struct AmfConfig {
     #[schema(gui(slider(min = 0, max = 10)))]
     #[schema(flag = "steamvr-restart")]
     pub preproc_tor: u32,
+    #[schema(
+        strings(
+            display_name = "Enable Pre-analysis",
+            help = r#"Enables pre-analysis during encoding. This will likely result in reduced performance, but may increase quality.
+Does not work with the "Reduce color banding" option, requires enabling "Use preproc""#
+        ),
+        flag = "steamvr-restart"
+    )]
+    pub enable_pre_analysis: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -425,7 +449,7 @@ pub enum CodecType {
     H264 = 0,
     #[schema(strings(display_name = "HEVC"))]
     Hevc = 1,
-    #[schema(strings(display_name = "AV1 (VAAPI only)"))]
+    #[schema(strings(display_name = "AV1 (AMD only)"))]
     AV1 = 2,
 }
 
@@ -1258,7 +1282,9 @@ pub fn session_settings_default() -> SettingsDefault {
                     quality_preset: EncoderQualityPresetAmdDefault {
                         variant: EncoderQualityPresetAmdDefaultVariant::Speed,
                     },
+                    enable_pre_analysis: false,
                     enable_vbaq: false,
+                    enable_hmqb: false,
                     use_preproc: false,
                     preproc_sigma: 4,
                     preproc_tor: 7,

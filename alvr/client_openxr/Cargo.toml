@@ -17,7 +17,7 @@ alvr_session.workspace = true
 
 glow = "0.13"
 khronos-egl = { version = "6", features = ["dynamic"] }
-openxr = { git = "https://github.com/alvr-org/openxrs" }
+openxr = { git = "https://github.com/alvr-org/openxrs", rev = "f1f47ff" }
 # openxr = { path = "../../../../openxrs/openxr" }
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -102,12 +102,20 @@ required = false
 [[package.metadata.android.uses_feature]]
 name = "oculus.software.handtracking"
 required = false
+[[package.metadata.android.uses_feature]]
+name = "com.oculus.software.body_tracking"
+required = false
+[[package.metadata.android.uses_feature]]
+name = "com.oculus.experimental.enabled"
+required = false
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.EYE_TRACKING"
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.FACE_TRACKING"
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.HAND_TRACKING"
+[[package.metadata.android.uses_permission]]
+name = "com.oculus.permission.BODY_TRACKING"
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.WIFI_LOCK"
 [[package.metadata.android.application.meta_data]]

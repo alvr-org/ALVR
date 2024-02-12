@@ -1,7 +1,10 @@
-use crate::{to_ffi_quat, FfiDeviceMotion, FfiHandSkeleton};
+use crate::{to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
-    DeviceMotion, Pose, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    once_cell::sync::Lazy,
+    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
+    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HEAD_ID,
+    LEFT_HAND_ID, RIGHT_HAND_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -350,6 +353,41 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
             .try_into()
             .unwrap(),
     }
+}
+
+const BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
+    HashMap::from([
+        // Upper body
+        (*BODY_CHEST_ID, 0),
+        (*BODY_HIPS_ID, 1),
+        (*BODY_LEFT_ELBOW_ID, 2),
+        (*BODY_RIGHT_ELBOW_ID, 3),
+        // Legs
+        (*BODY_LEFT_KNEE_ID, 4),
+        (*BODY_LEFT_FOOT_ID, 5),
+        (*BODY_RIGHT_KNEE_ID, 6),
+        (*BODY_RIGHT_FOOT_ID, 7),
+    ])
+});
+
+pub fn to_ffi_body_trackers(
+    device_motions: &Vec<(u64, DeviceMotion)>,
+    tracking_manager: &TrackingManager,
+) -> Option<Vec<FfiBodyTracker>> {
+    let mut trackers = Vec::<FfiBodyTracker>::new();
+
+    for (id, motion) in device_motions.iter() {
+        if BODY_TRACKER_ID_MAP.contains_key(id) {
+            let pose = tracking_manager.recenter_pose(motion.pose);
+            trackers.push(FfiBodyTracker {
+                trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
+                orientation: to_ffi_quat(pose.orientation),
+                position: pose.position.to_array(),
+            });
+        }
+    }
+
+    return Some(trackers);
 }
 
 // Head and eyesmust be in the same (nt recentered) convention

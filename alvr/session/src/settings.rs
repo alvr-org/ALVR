@@ -646,6 +646,33 @@ pub struct FaceTrackingConfig {
     pub sink: FaceTrackingSinkConfig,
 }
 
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+pub struct BodyTrackingSourcesConfig {
+    pub body_tracking_full_body_meta: Switch<BodyTrackingFullBodyMETAConfig>,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
+#[schema(collapsible)]
+pub struct BodyTrackingFullBodyMETAConfig {
+    #[schema(strings(help = "Enable full body tracking"))]
+    pub enable_full_body: bool,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum BodyTrackingSinkConfig {
+    #[schema(strings(display_name = "Fake Vive Trackers"))]
+    FakeViveTracker,
+    #[schema(strings(display_name = "VRChat Body OSC"))]
+    VrchatBodyOsc { port: u16 },
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct BodyTrackingConfig {
+    pub sources: BodyTrackingSourcesConfig,
+    pub sink: BodyTrackingSinkConfig,
+}
+
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ControllersEmulationMode {
     #[schema(strings(display_name = "Rift S Touch"))]
@@ -908,6 +935,9 @@ pub struct HeadsetConfig {
     pub enable_vive_tracker_proxy: bool,
 
     pub face_tracking: Switch<FaceTrackingConfig>,
+
+    #[schema(flag = "steamvr-restart")]
+    pub body_tracking: Switch<BodyTrackingConfig>,
 
     #[schema(flag = "steamvr-restart")]
     pub controllers: Switch<ControllersConfig>,
@@ -1431,6 +1461,25 @@ pub fn session_settings_default() -> SettingsDefault {
                     sink: FaceTrackingSinkConfigDefault {
                         VrchatEyeOsc: FaceTrackingSinkConfigVrchatEyeOscDefault { port: 9000 },
                         variant: FaceTrackingSinkConfigDefaultVariant::VrchatEyeOsc,
+                    },
+                },
+            },
+            body_tracking: SwitchDefault {
+                enabled: false,
+                content: BodyTrackingConfigDefault {
+                    gui_collapsed: true,
+                    sources: BodyTrackingSourcesConfigDefault {
+                        body_tracking_full_body_meta: SwitchDefault {
+                            enabled: true,
+                            content: BodyTrackingFullBodyMETAConfigDefault {
+                                gui_collapsed: true,
+                                enable_full_body: true,
+                            },
+                        },
+                    },
+                    sink: BodyTrackingSinkConfigDefault {
+                        VrchatBodyOsc: BodyTrackingSinkConfigVrchatBodyOscDefault { port: 9000 },
+                        variant: BodyTrackingSinkConfigDefaultVariant::FakeViveTracker,
                     },
                 },
             },

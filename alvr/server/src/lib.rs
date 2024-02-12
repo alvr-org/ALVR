@@ -1,4 +1,5 @@
 mod bitrate;
+mod body_tracking;
 mod c_api;
 mod connection;
 mod face_tracking;

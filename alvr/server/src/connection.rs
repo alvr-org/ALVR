@@ -1,5 +1,6 @@
 use crate::{
     bitrate::BitrateManager,
+    body_tracking::BodyTrackingSink,
     face_tracking::FaceTrackingSink,
     hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
@@ -28,7 +29,9 @@ use alvr_packets::{
     ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig};
+use alvr_session::{
+    BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig,
+};
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
     KEEPALIVE_TIMEOUT,
@@ -93,6 +96,25 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         };
 
         true
+    } else {
+        false
+    };
+
+    let body_tracking_vive_enabled =
+        if let Switch::Enabled(config) = &settings.headset.body_tracking {
+            matches!(config.sink, BodyTrackingSinkConfig::FakeViveTracker)
+        } else {
+            false
+        };
+
+    // Should be true if using full body tracking
+    let body_tracking_has_legs = if let Switch::Enabled(config) = &settings.headset.body_tracking {
+        if let Switch::Enabled(body_source_settings) = &config.sources.body_tracking_full_body_meta
+        {
+            body_source_settings.enable_full_body
+        } else {
+            false
+        }
     } else {
         false
     };
@@ -163,6 +185,8 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         sw_thread_count: settings.video.encoder_config.software.thread_count,
         controllers_enabled,
         controller_is_tracker,
+        body_tracking_vive_enabled,
+        body_tracking_has_legs,
         enable_foveated_encoding,
         foveation_center_size_x,
         foveation_center_size_y,
@@ -707,6 +731,15 @@ fn connection_pipeline(
                         FaceTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
                     });
 
+            let mut body_tracking_sink =
+                settings
+                    .headset
+                    .body_tracking
+                    .into_option()
+                    .and_then(|config| {
+                        BodyTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
+                    });
+
             while is_streaming(&client_hostname) {
                 let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
@@ -799,10 +832,20 @@ fn connection_pipeline(
                     sink.send_tracking(face_data);
                 }
 
+                if let Some(sink) = &mut body_tracking_sink {
+                    let tracking_manager_lock = tracking_manager.lock();
+                    sink.send_tracking(&tracking.device_motions, &tracking_manager_lock);
+                }
+
                 let ffi_motions = motions
                     .into_iter()
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
+
+                let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
+                    let tracking_manager_lock = tracking_manager.lock();
+                    tracking::to_ffi_body_trackers(&tracking.device_motions, &tracking_manager_lock)
+                };
 
                 let enable_skeleton = controllers_config
                     .as_ref()
@@ -872,6 +915,16 @@ fn connection_pipeline(
                                 ptr::null()
                             },
                             track_controllers.into(),
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.as_ptr()
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.len() as _
+                            } else {
+                                0
+                            },
                         )
                     };
                 }

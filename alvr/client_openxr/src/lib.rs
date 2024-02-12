@@ -10,8 +10,8 @@ use alvr_common::{
 };
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
-    ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig,
-    FoveatedEncodingConfig,
+    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig,
 };
 use interaction::InteractionContext;
 use khronos_egl::{self as egl, EGL1_4};
@@ -64,6 +64,7 @@ struct StreamConfig {
     foveated_encoding_config: Option<FoveatedEncodingConfig>,
     clientside_foveation_config: Option<ClientsideFoveationConfig>,
     face_sources_config: Option<FaceTrackingSourcesConfig>,
+    body_sources_config: Option<BodyTrackingSourcesConfig>,
 }
 
 struct StreamContext {
@@ -400,6 +401,17 @@ fn stream_input_pipeline(
         htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
     };
 
+    if let Some(body_tracker_full_body_meta) =
+        &interaction_ctx.body_sources.body_tracker_full_body_meta
+    {
+        device_motions.append(&mut interaction::get_meta_body_tracking_full_body_points(
+            &stream_ctx.reference_space.read(),
+            to_xr_time(now),
+            body_tracker_full_body_meta,
+            interaction_ctx.body_sources.enable_full_body,
+        ));
+    }
+
     alvr_client_core::send_tracking(Tracking {
         target_timestamp,
         device_motions,
@@ -443,6 +455,13 @@ fn initialize_stream(
         if config.face_tracking_fb && matches!(platform, Platform::Quest) {
             alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
+        }
+    }
+
+    #[cfg(target_os = "android")]
+    if let Some(config) = &config.body_sources_config {
+        if (config.body_tracking_full_body_meta.enabled()) && matches!(platform, Platform::Quest) {
+            alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }
 
@@ -609,6 +628,8 @@ pub fn entry_point() {
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
     exts.fb_face_tracking2 = available_extensions.fb_face_tracking2;
+    exts.fb_body_tracking = available_extensions.fb_body_tracking;
+    exts.meta_body_tracking_full_body = available_extensions.meta_body_tracking_full_body;
     exts.fb_foveation = available_extensions.fb_foveation;
     exts.fb_foveation_configuration = available_extensions.fb_foveation_configuration;
     exts.fb_swapchain_update_state = available_extensions.fb_swapchain_update_state;
@@ -697,6 +718,9 @@ pub fn entry_point() {
             stream_config
                 .as_ref()
                 .and_then(|c| c.face_sources_config.clone()),
+            stream_config
+                .as_ref()
+                .and_then(|c| c.body_sources_config.clone()),
         ));
 
         let mut session_running_context = None;
@@ -847,6 +871,11 @@ pub fn entry_point() {
                             face_sources_config: settings
                                 .headset
                                 .face_tracking
+                                .as_option()
+                                .map(|c| c.sources.clone()),
+                            body_sources_config: settings
+                                .headset
+                                .body_tracking
                                 .as_option()
                                 .map(|c| c.sources.clone()),
                         });

@@ -78,6 +78,26 @@ pub static HEAD_ID: Lazy<u64> = Lazy::new(|| hash_string(HEAD_PATH));
 pub static LEFT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(LEFT_HAND_PATH));
 pub static RIGHT_HAND_ID: Lazy<u64> = Lazy::new(|| hash_string(RIGHT_HAND_PATH));
 
+// Body tracking points
+// These paths have been made up to suit the needs of body tracking
+pub const BODY_CHEST_PATH: &str = "/user/body/chest";
+pub const BODY_HIPS_PATH: &str = "/user/body/waist";
+pub const BODY_LEFT_ELBOW_PATH: &str = "/user/body/left_elbow";
+pub const BODY_RIGHT_ELBOW_PATH: &str = "/user/body/right_elbow";
+pub const BODY_LEFT_KNEE_PATH: &str = "/user/body/left_knee";
+pub const BODY_LEFT_FOOT_PATH: &str = "/user/body/left_foot";
+pub const BODY_RIGHT_KNEE_PATH: &str = "/user/body/right_knee";
+pub const BODY_RIGHT_FOOT_PATH: &str = "/user/body/right_foot";
+
+pub static BODY_CHEST_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_CHEST_PATH));
+pub static BODY_HIPS_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_HIPS_PATH));
+pub static BODY_LEFT_ELBOW_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_LEFT_ELBOW_PATH));
+pub static BODY_RIGHT_ELBOW_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_RIGHT_ELBOW_PATH));
+pub static BODY_LEFT_KNEE_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_LEFT_KNEE_PATH));
+pub static BODY_LEFT_FOOT_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_LEFT_FOOT_PATH));
+pub static BODY_RIGHT_KNEE_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_RIGHT_KNEE_PATH));
+pub static BODY_RIGHT_FOOT_ID: Lazy<u64> = Lazy::new(|| hash_string(BODY_RIGHT_FOOT_PATH));
+
 pub static QUEST_CONTROLLER_PROFILE_ID: Lazy<u64> =
     Lazy::new(|| hash_string(QUEST_CONTROLLER_PROFILE_PATH));
 pub static VIVE_CONTROLLER_PROFILE_ID: Lazy<u64> =

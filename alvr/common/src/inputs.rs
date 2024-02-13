@@ -2,65 +2,57 @@ use crate::hash_string;
 use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 
-macro_rules! path_id {
-    ($path:ident, $string:expr) => {
+macro_rules! interaction_profile {
+    ($ty:ident, $path:expr) => {
         paste::paste! {
-            pub const [<$path _PATH>]: &str = $string;
-            pub static [<$path _ID>]: Lazy<u64> = Lazy::new(|| hash_string([<$path _PATH>]));
+            pub const [<$ty _CONTROLLER_PROFILE_PATH>]: &str =
+                concat!("/interaction_profiles/", $path, "_controller");
+            pub static [<$ty _CONTROLLER_PROFILE_ID>]: Lazy<u64> =
+                Lazy::new(|| hash_string([<$ty _CONTROLLER_PROFILE_PATH>]));
         }
     };
 }
 
-path_id!(
-    QUEST_CONTROLLER_PROFILE,
-    "/interaction_profiles/oculus/touch_controller"
-);
-path_id!(
-    VIVE_CONTROLLER_PROFILE,
-    "/interaction_profiles/htc/vive_controller"
-);
-path_id!(
-    INDEX_CONTROLLER_PROFILE,
-    "/interaction_profiles/valve/index_controller"
-);
-path_id!(
-    PICO_NEO3_CONTROLLER_PROFILE,
-    "/interaction_profiles/bytedance/pico_neo3_controller"
-);
-path_id!(
-    PICO4_CONTROLLER_PROFILE,
-    "/interaction_profiles/bytedance/pico4_controller"
-);
-path_id!(
-    FOCUS3_CONTROLLER_PROFILE,
-    "/interaction_profiles/htc/vive_focus3_controller"
-);
-path_id!(
-    YVR_CONTROLLER_PROFILE,
-    "/interaction_profiles/yvr/touch_controller"
-);
+interaction_profile!(QUEST, "oculus/touch");
+interaction_profile!(VIVE, "htc/vive");
+interaction_profile!(INDEX, "valve/index");
+interaction_profile!(PICO_NEO3, "bytedance/pico_neo3");
+interaction_profile!(PICO4, "bytedance/pico4");
+interaction_profile!(FOCUS3, "htc/vive_focus3");
+interaction_profile!(YVR, "yvr/touch");
 
-path_id!(HEAD, "/user/head");
-path_id!(LEFT_HAND, "/user/hand/left");
-path_id!(RIGHT_HAND, "/user/hand/right");
-path_id!(BODY_CHEST, "/user/body/chest");
-path_id!(BODY_HIPS, "/user/body/waist");
-path_id!(BODY_LEFT_ELBOW, "/user/body/left_elbow");
-path_id!(BODY_RIGHT_ELBOW, "/user/body/right_elbow");
-path_id!(BODY_LEFT_KNEE, "/user/body/left_knee");
-path_id!(BODY_LEFT_FOOT, "/user/body/left_foot");
-path_id!(BODY_RIGHT_KNEE, "/user/body/right_knee");
-path_id!(BODY_RIGHT_FOOT, "/user/body/right_foot");
+macro_rules! devices {
+    ($(($name:ident, $path:expr),)*) => {
+        paste::paste! {
+            $(
+                pub const [<$name _PATH>]: &str = $path;
+                pub static [<$name _ID>]: Lazy<u64> = Lazy::new(|| hash_string([<$name _PATH>]));
+            )*
 
-pub static DEVICE_ID_TO_PATH: Lazy<HashMap<u64, &str>> = Lazy::new(|| {
-    [
-        (*HEAD_ID, HEAD_PATH),
-        (*LEFT_HAND_ID, LEFT_HAND_PATH),
-        (*RIGHT_HAND_ID, RIGHT_HAND_PATH),
-    ]
-    .into_iter()
-    .collect()
-});
+            pub static DEVICE_ID_TO_PATH: Lazy<HashMap<u64, &str>> = Lazy::new(|| {
+                [
+                    $((*[<$name _ID>], [<$name _PATH>]),)*
+                ]
+                .into_iter()
+                .collect()
+            });
+        }
+    };
+}
+
+devices! {
+    (HEAD, "/user/head"),
+    (HAND_LEFT, "/user/hand/left"),
+    (HAND_RIGHT, "/user/hand/right"),
+    (BODY_CHEST, "/user/body/chest"),
+    (BODY_HIPS, "/user/body/waist"),
+    (BODY_LEFT_ELBOW, "/user/body/left_elbow"),
+    (BODY_RIGHT_ELBOW, "/user/body/right_elbow"),
+    (BODY_LEFT_KNEE, "/user/body/left_knee"),
+    (BODY_LEFT_FOOT, "/user/body/left_foot"),
+    (BODY_RIGHT_KNEE, "/user/body/right_knee"),
+    (BODY_RIGHT_FOOT, "/user/body/right_foot"),
+}
 
 pub enum ButtonType {
     Binary,
@@ -94,7 +86,7 @@ macro_rules! controller_inputs {
                         ButtonInfo {
                             path: [<LEFT_ $inputs _PATH>],
                             button_type: ButtonType::$ty,
-                            device_id: *LEFT_HAND_ID,
+                            device_id: *HAND_LEFT_ID,
                         },
                     ),
                     (
@@ -102,7 +94,7 @@ macro_rules! controller_inputs {
                         ButtonInfo {
                             path: [<RIGHT_ $inputs _PATH>],
                             button_type: ButtonType::$ty,
-                            device_id: *RIGHT_HAND_ID,
+                            device_id: *HAND_RIGHT_ID,
                         },
                     ),)*
                 ]

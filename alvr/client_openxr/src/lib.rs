@@ -6,7 +6,7 @@ use alvr_common::{
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     parking_lot::RwLock,
-    warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
+    warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{FaceData, Tracking};
 use alvr_session::{
@@ -380,10 +380,10 @@ fn stream_input_pipeline(
     );
 
     if let Some(motion) = left_hand_motion {
-        device_motions.push((*LEFT_HAND_ID, motion));
+        device_motions.push((*HAND_LEFT_ID, motion));
     }
     if let Some(motion) = right_hand_motion {
-        device_motions.push((*RIGHT_HAND_ID, motion));
+        device_motions.push((*HAND_RIGHT_ID, motion));
     }
 
     let face_data = FaceData {
@@ -540,11 +540,11 @@ fn initialize_stream(
     );
 
     alvr_client_core::send_active_interaction_profile(
-        *LEFT_HAND_ID,
+        *HAND_LEFT_ID,
         interaction_ctx.hands_interaction[0].controllers_profile_id,
     );
     alvr_client_core::send_active_interaction_profile(
-        *RIGHT_HAND_ID,
+        *HAND_RIGHT_ID,
         interaction_ctx.hands_interaction[1].controllers_profile_id,
     );
 
@@ -904,7 +904,7 @@ pub fn entry_point() {
                         frequency,
                         amplitude,
                     } => {
-                        let action = if device_id == *LEFT_HAND_ID {
+                        let action = if device_id == *HAND_LEFT_ID {
                             &interaction_context.hands_interaction[0].vibration_action
                         } else {
                             &interaction_context.hands_interaction[1].vibration_action

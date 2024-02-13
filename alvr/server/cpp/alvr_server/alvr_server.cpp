@@ -86,13 +86,13 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         }
 
         if (Settings::Instance().m_enableControllers) {
-            this->left_controller = std::make_unique<Controller>(LEFT_HAND_ID);
-            this->right_controller = std::make_unique<Controller>(RIGHT_HAND_ID);
+            this->left_controller = std::make_unique<Controller>(HAND_LEFT_ID);
+            this->right_controller = std::make_unique<Controller>(HAND_RIGHT_ID);
 
             this->tracked_devices.insert(
-                {LEFT_HAND_ID, (TrackedDevice *)this->left_controller.get()});
+                {HAND_LEFT_ID, (TrackedDevice *)this->left_controller.get()});
             this->tracked_devices.insert(
-                {RIGHT_HAND_ID, (TrackedDevice *)this->right_controller.get()});
+                {HAND_RIGHT_ID, (TrackedDevice *)this->right_controller.get()});
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                     this->left_controller->get_serial_number().c_str(),
@@ -201,10 +201,10 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 uint64_t id = 0;
                 if (this->left_controller &&
                     haptics.containerHandle == this->left_controller->prop_container) {
-                    id = LEFT_HAND_ID;
+                    id = HAND_LEFT_ID;
                 } else if (this->right_controller &&
                            haptics.containerHandle == this->right_controller->prop_container) {
-                    id = RIGHT_HAND_ID;
+                    id = HAND_RIGHT_ID;
                 }
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
@@ -328,11 +328,11 @@ void SetTracking(unsigned long long targetTimestampNs,
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
-            if (g_driver_provider.left_controller && deviceMotions[i].deviceID == LEFT_HAND_ID) {
+            if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked);
             } else if (g_driver_provider.right_controller &&
-                       deviceMotions[i].deviceID == RIGHT_HAND_ID) {
+                       deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked);
             }

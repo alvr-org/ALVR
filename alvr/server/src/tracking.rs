@@ -3,8 +3,8 @@ use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
     DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
-    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HEAD_ID,
-    LEFT_HAND_ID, RIGHT_HAND_ID,
+    BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID,
+    HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_session::{
     settings_schema::Switch, HeadsetConfig, PositionRecenteringMode, RotationRecenteringMode,
@@ -144,7 +144,7 @@ impl TrackingManager {
             let r = controllers.left_controller_rotation_offset;
 
             device_motion_configs.insert(
-                *LEFT_HAND_ID,
+                *HAND_LEFT_ID,
                 MotionConfig {
                     pose_offset: Pose {
                         orientation: Quat::from_euler(
@@ -161,7 +161,7 @@ impl TrackingManager {
             );
 
             device_motion_configs.insert(
-                *RIGHT_HAND_ID,
+                *HAND_RIGHT_ID,
                 MotionConfig {
                     pose_offset: Pose {
                         orientation: Quat::from_euler(
@@ -196,9 +196,9 @@ impl TrackingManager {
                 motion.angular_velocity = inverse_origin_orientation * motion.angular_velocity;
 
                 // Apply custom transform
-                let pose_offset = if device_id == *LEFT_HAND_ID && hand_skeletons_enabled[0] {
+                let pose_offset = if device_id == *HAND_LEFT_ID && hand_skeletons_enabled[0] {
                     left_hand_skeleton_offset
-                } else if device_id == *RIGHT_HAND_ID && hand_skeletons_enabled[1] {
+                } else if device_id == *HAND_RIGHT_ID && hand_skeletons_enabled[1] {
                     right_hand_skeleton_offset
                 } else {
                     config.pose_offset
@@ -220,8 +220,8 @@ impl TrackingManager {
                     }
                 }
 
-                if (device_id == *LEFT_HAND_ID && hand_skeletons_enabled[0])
-                    || (device_id == *RIGHT_HAND_ID && hand_skeletons_enabled[1])
+                if (device_id == *HAND_LEFT_ID && hand_skeletons_enabled[0])
+                    || (device_id == *HAND_RIGHT_ID && hand_skeletons_enabled[1])
                 {
                     // On hand tracking, velocities seem to make hands overly jittery
                     motion.linear_velocity = Vec3::ZERO;
@@ -255,7 +255,7 @@ pub fn to_openvr_hand_skeleton(
         let p = parent.orientation.conjugate() * (current.position - parent.position);
 
         // Convert to SteamVR frame of reference
-        let (orientation, position) = if id == *LEFT_HAND_ID {
+        let (orientation, position) = if id == *HAND_LEFT_ID {
             (
                 Quat::from_xyzw(-o.z, -o.y, -o.x, o.w),
                 Vec3::new(-p.z, -p.y, -p.x),
@@ -289,13 +289,13 @@ pub fn to_openvr_hand_skeleton(
         Pose::default(),
         // Wrist
         {
-            let pose_offset = if device_id == *LEFT_HAND_ID {
+            let pose_offset = if device_id == *HAND_LEFT_ID {
                 left_hand_skeleton_offset
             } else {
                 right_hand_skeleton_offset
             };
 
-            let sign = if id == *LEFT_HAND_ID { -1.0 } else { 1.0 };
+            let sign = if id == *HAND_LEFT_ID { -1.0 } else { 1.0 };
             let orientation = pose_offset.orientation.conjugate()
                 * gj[0].orientation.conjugate()
                 * gj[1].orientation

@@ -296,7 +296,7 @@ impl HandGestureManager {
 
         let joystick_up = joystick_center
             .orientation
-            .mul_vec3(if device_id == *LEFT_HAND_ID {
+            .mul_vec3(if device_id == *HAND_LEFT_ID {
                 Vec3::X
             } else {
                 Vec3::NEG_X
@@ -304,7 +304,7 @@ impl HandGestureManager {
         let joystick_horizontal_vec =
             index_intermediate
                 .orientation
-                .mul_vec3(if device_id == *LEFT_HAND_ID {
+                .mul_vec3(if device_id == *HAND_LEFT_ID {
                     Vec3::Y
                 } else {
                     Vec3::NEG_Y
@@ -379,7 +379,7 @@ impl HandGestureManager {
         let in_range = first_anchor.position.distance(second_anchor.position)
             < (activation_dist + first_radius + second_radius);
 
-        let gesture_data = if device_id == *LEFT_HAND_ID {
+        let gesture_data = if device_id == *HAND_LEFT_ID {
             &mut self.gesture_data_left
         } else {
             &mut self.gesture_data_right
@@ -499,7 +499,7 @@ impl HandGestureManager {
 }
 
 fn get_click_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
-    if device_id == *LEFT_HAND_ID {
+    if device_id == *HAND_LEFT_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_CLICK_ID),
             HandGestureId::ThumbMiddlePinch => Some(*LEFT_Y_CLICK_ID),
@@ -522,7 +522,7 @@ fn get_click_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
 }
 
 fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
-    if device_id == *LEFT_HAND_ID {
+    if device_id == *HAND_LEFT_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_TOUCH_ID),
             HandGestureId::ThumbMiddlePinch => Some(*LEFT_Y_TOUCH_ID),
@@ -544,7 +544,7 @@ fn get_touch_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Opti
 }
 
 fn get_hover_bind_for_gesture(device_id: u64, gesture_id: HandGestureId) -> Option<u64> {
-    if device_id == *LEFT_HAND_ID {
+    if device_id == *HAND_LEFT_ID {
         match gesture_id {
             HandGestureId::ThumbIndexPinch => Some(*LEFT_TRIGGER_VALUE_ID),
             HandGestureId::GripCurl => Some(*LEFT_SQUEEZE_VALUE_ID),

@@ -248,6 +248,7 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot",
+ "paste",
  "rfd",
  "semver",
  "serde",

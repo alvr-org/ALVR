@@ -10,7 +10,7 @@ alvr_common.workspace = true
 alvr_gui_common.workspace = true
 
 anyhow = "1"
-eframe = "0.25"
+eframe = "0.26"
 futures-util = "0.3.28"
 open = "5"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "stream", "json"] }

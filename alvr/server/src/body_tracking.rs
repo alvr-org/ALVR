@@ -9,7 +9,7 @@ use std::{collections::HashMap, net::UdpSocket};
 
 use crate::tracking::TrackingManager;
 
-const BODY_TRACKER_OSC_PATH_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
+static BODY_TRACKER_OSC_PATH_MAP: Lazy<HashMap<u64, &'static str>> = Lazy::new(|| {
     HashMap::from([
         (*HEAD_ID, "/tracking/trackers/head/"),
         (*BODY_CHEST_ID, "/tracking/trackers/1/"),
@@ -63,7 +63,7 @@ impl BodyTrackingSink {
 
     pub fn send_tracking(
         &mut self,
-        device_motions: &Vec<(u64, DeviceMotion)>,
+        device_motions: &[(u64, DeviceMotion)],
         tracking_manager: &TrackingManager,
     ) {
         match self.config {

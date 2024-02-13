@@ -12,6 +12,6 @@ alvr_client_core.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 
-eframe = "0.25"
-env_logger = "0.10"
+eframe = "0.26"
+env_logger = "0.11"
 rand = "0.8"

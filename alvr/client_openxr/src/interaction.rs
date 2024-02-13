@@ -1,5 +1,4 @@
 use crate::{to_pose, to_quat, to_vec3, Platform, XrContext};
-use alvr_common::settings_schema::Switch;
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};

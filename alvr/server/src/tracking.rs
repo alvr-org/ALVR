@@ -16,6 +16,21 @@ use std::{
 
 const DEG_TO_RAD: f32 = PI / 180.0;
 
+static BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
+    HashMap::from([
+        // Upper body
+        (*BODY_CHEST_ID, 0),
+        (*BODY_HIPS_ID, 1),
+        (*BODY_LEFT_ELBOW_ID, 2),
+        (*BODY_RIGHT_ELBOW_ID, 3),
+        // Legs
+        (*BODY_LEFT_KNEE_ID, 4),
+        (*BODY_LEFT_FOOT_ID, 5),
+        (*BODY_RIGHT_KNEE_ID, 6),
+        (*BODY_RIGHT_FOOT_ID, 7),
+    ])
+});
+
 fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
     let left_offset;
     let right_offset;
@@ -355,23 +370,8 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
     }
 }
 
-const BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
-    HashMap::from([
-        // Upper body
-        (*BODY_CHEST_ID, 0),
-        (*BODY_HIPS_ID, 1),
-        (*BODY_LEFT_ELBOW_ID, 2),
-        (*BODY_RIGHT_ELBOW_ID, 3),
-        // Legs
-        (*BODY_LEFT_KNEE_ID, 4),
-        (*BODY_LEFT_FOOT_ID, 5),
-        (*BODY_RIGHT_KNEE_ID, 6),
-        (*BODY_RIGHT_FOOT_ID, 7),
-    ])
-});
-
 pub fn to_ffi_body_trackers(
-    device_motions: &Vec<(u64, DeviceMotion)>,
+    device_motions: &[(u64, DeviceMotion)],
     tracking_manager: &TrackingManager,
 ) -> Option<Vec<FfiBodyTracker>> {
     let mut trackers = Vec::<FfiBodyTracker>::new();
@@ -387,7 +387,7 @@ pub fn to_ffi_body_trackers(
         }
     }
 
-    return Some(trackers);
+    Some(trackers)
 }
 
 // Head and eyesmust be in the same (nt recentered) convention

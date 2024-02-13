@@ -212,6 +212,8 @@ void CEncoder::Run() {
       alvr::VkFrame frame(vk_ctx, output.image, output.imageInfo, output.size, output.memory, output.drm);
       auto encode_pipeline = alvr::EncodePipeline::Create(&render, vk_ctx, frame, vk_frame_ctx, render.GetEncodingWidth(), render.GetEncodingHeight());
 
+      bool valid_timestamps = true;
+
       fprintf(stderr, "CEncoder starting to read present packets");
       present_packet frame_info;
       while (not m_exiting) {
@@ -233,6 +235,11 @@ void CEncoder::Run() {
 
         render.Render(frame_info.image, frame_info.semaphore_value);
 
+        if (!valid_timestamps) {
+          ReportPresent(pose->targetTimestampNs, 0);
+          ReportComposed(pose->targetTimestampNs, 0);
+        }
+
         encode_pipeline->PushFrame(pose->targetTimestampNs, m_scheduler.CheckIDRInsertion());
 
         static_assert(sizeof(frame_info.pose) == sizeof(vr::HmdMatrix34_t&));
@@ -243,27 +250,31 @@ void CEncoder::Run() {
           continue;
         }
 
-        auto render_timestamps = render.GetTimestamps();
-        auto encode_timestamp = encode_pipeline->GetTimestamp();
+        if (valid_timestamps) {
+          auto render_timestamps = render.GetTimestamps();
+          auto encode_timestamp = encode_pipeline->GetTimestamp();
 
-        uint64_t present_offset = render_timestamps.now - render_timestamps.renderBegin;
-        uint64_t composed_offset = 0;
+          uint64_t present_offset = render_timestamps.now - render_timestamps.renderBegin;
+          uint64_t composed_offset = 0;
 
-        if (encode_timestamp.gpu) {
-          composed_offset = render_timestamps.now - encode_timestamp.gpu;
-        } else if (encode_timestamp.cpu) {
-          auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-          composed_offset = now - encode_timestamp.cpu;
-        } else {
-          composed_offset = render_timestamps.now - render_timestamps.renderComplete;
+          valid_timestamps = render_timestamps.now != 0;
+
+          if (encode_timestamp.gpu) {
+            composed_offset = render_timestamps.now - encode_timestamp.gpu;
+          } else if (encode_timestamp.cpu) {
+            auto now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            composed_offset = now - encode_timestamp.cpu;
+          } else {
+            composed_offset = render_timestamps.now - render_timestamps.renderComplete;
+          }
+
+          if (present_offset < composed_offset) {
+            present_offset = composed_offset;
+          }
+
+          ReportPresent(pose->targetTimestampNs, present_offset);
+          ReportComposed(pose->targetTimestampNs, composed_offset);
         }
-
-        if (present_offset < composed_offset) {
-          present_offset = composed_offset;
-        }
-
-        ReportPresent(pose->targetTimestampNs, present_offset);
-        ReportComposed(pose->targetTimestampNs, composed_offset);
 
         ParseFrameNals(encode_pipeline->GetCodec(), packet.data, packet.size, packet.pts, packet.isIDR);
       }

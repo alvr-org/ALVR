@@ -19,8 +19,7 @@ const char *encoder(ALVR_CODEC codec) {
     case ALVR_CODEC_HEVC:
         return "hevc_nvenc";
     case ALVR_CODEC_AV1:
-        Warn("AV1 is not supported by NvEnc. Using HEVC instead.");
-        return "hevc_nvenc";
+        return "av1_nvenc";
     }
     throw std::runtime_error("invalid codec " + std::to_string(codec));
 }

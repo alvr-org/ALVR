@@ -373,6 +373,7 @@ pub fn to_ffi_skeleton(skeleton: [Pose; 26]) -> FfiHandSkeleton {
 pub fn to_ffi_body_trackers(
     device_motions: &[(u64, DeviceMotion)],
     tracking_manager: &TrackingManager,
+    tracking: bool,
 ) -> Option<Vec<FfiBodyTracker>> {
     let mut trackers = Vec::<FfiBodyTracker>::new();
 
@@ -383,6 +384,7 @@ pub fn to_ffi_body_trackers(
                 trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
                 orientation: to_ffi_quat(pose.orientation),
                 position: pose.position.to_array(),
+                tracking: tracking.into(),
             });
         }
     }

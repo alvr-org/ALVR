@@ -86,9 +86,10 @@ void FakeViveTracker::OnPoseUpdated(uint64_t targetTimestampNs, FfiBodyTracker t
         return;
     }
     auto pose = vr::DriverPose_t{};
-    pose.poseIsValid = true;
-    pose.result = vr::TrackingResult_Running_OK;
-    pose.deviceIsConnected = true;
+    pose.poseIsValid = tracker.tracking;
+    pose.deviceIsConnected = tracker.tracking;
+    pose.result =
+        tracker.tracking ? vr::TrackingResult_Running_OK : vr::TrackingResult_Uninitialized;
 
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);

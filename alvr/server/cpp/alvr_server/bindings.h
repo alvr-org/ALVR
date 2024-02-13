@@ -31,6 +31,7 @@ struct FfiBodyTracker {
     unsigned int trackerID;
     FfiQuat orientation;
     float position[3];
+    unsigned int tracking;
 };
 
 enum FfiOpenvrPropertyType {

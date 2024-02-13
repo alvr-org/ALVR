@@ -408,10 +408,10 @@ fn connection_pipeline(
             ClientListAction::SetDisplayName(display_name),
         );
 
-        if client_protocol_id != alvr_common::protocol_id() {
+        if client_protocol_id != alvr_common::protocol_id_u64() {
             warn!(
                 "Trusted client is incompatible! Expected protocol ID: {}, found: {}",
-                alvr_common::protocol_id(),
+                alvr_common::protocol_id_u64(),
                 client_protocol_id,
             );
 

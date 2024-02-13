@@ -671,6 +671,9 @@ pub enum BodyTrackingSinkConfig {
 pub struct BodyTrackingConfig {
     pub sources: BodyTrackingSourcesConfig,
     pub sink: BodyTrackingSinkConfig,
+    #[schema(strings(help = "Turn this off to temporarily pause tracking."))]
+    #[schema(flag = "real-time")]
+    pub tracked: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -1481,6 +1484,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         VrchatBodyOsc: BodyTrackingSinkConfigVrchatBodyOscDefault { port: 9000 },
                         variant: BodyTrackingSinkConfigDefaultVariant::FakeViveTracker,
                     },
+                    tracked: true,
                 },
             },
             controllers: SwitchDefault {

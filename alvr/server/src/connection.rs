@@ -30,7 +30,8 @@ use alvr_packets::{
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig, SessionConfig,
+    BodyTrackingConfig, BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig,
+    SessionConfig,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -832,9 +833,19 @@ fn connection_pipeline(
                     sink.send_tracking(face_data);
                 }
 
-                if let Some(sink) = &mut body_tracking_sink {
-                    let tracking_manager_lock = tracking_manager.lock();
-                    sink.send_tracking(&tracking.device_motions, &tracking_manager_lock);
+                let track_body = {
+                    let data_manager_lock = SERVER_DATA_MANAGER.read();
+                    matches!(
+                        data_manager_lock.settings().headset.body_tracking,
+                        Switch::Enabled(BodyTrackingConfig { tracked: true, .. })
+                    )
+                };
+
+                if track_body {
+                    if let Some(sink) = &mut body_tracking_sink {
+                        let tracking_manager_lock = tracking_manager.lock();
+                        sink.send_tracking(&tracking.device_motions, &tracking_manager_lock);
+                    }
                 }
 
                 let ffi_motions = motions
@@ -844,7 +855,11 @@ fn connection_pipeline(
 
                 let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
                     let tracking_manager_lock = tracking_manager.lock();
-                    tracking::to_ffi_body_trackers(&tracking.device_motions, &tracking_manager_lock)
+                    tracking::to_ffi_body_trackers(
+                        &tracking.device_motions,
+                        &tracking_manager_lock,
+                        track_body,
+                    )
                 };
 
                 let enable_skeleton = controllers_config

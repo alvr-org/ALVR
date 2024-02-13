@@ -373,6 +373,7 @@ const BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
 pub fn to_ffi_body_trackers(
     device_motions: &Vec<(u64, DeviceMotion)>,
     tracking_manager: &TrackingManager,
+    tracking: bool,
 ) -> Option<Vec<FfiBodyTracker>> {
     let mut trackers = Vec::<FfiBodyTracker>::new();
 
@@ -383,6 +384,7 @@ pub fn to_ffi_body_trackers(
                 trackerID: *BODY_TRACKER_ID_MAP.get(id).unwrap(),
                 orientation: to_ffi_quat(pose.orientation),
                 position: pose.position.to_array(),
+                tracking: tracking.into(),
             });
         }
     }

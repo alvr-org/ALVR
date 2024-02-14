@@ -210,10 +210,16 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			caps->GetProperty(AMF_VIDEO_ENCODER_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
 			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
 		}
-		if (m_hasPreAnalysis) {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
-		} else {
-			Warn("Pre-analysis could not be enabled because your GPU does not support it for h264 encoding.");
+
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling h264 pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for h264 encoding.");
+			}
 		}
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
@@ -281,10 +287,16 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
 			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
 		}
-		if (m_hasPreAnalysis) {
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
-		} else {
-			Warn("Pre-analysis could not be enabled because your GPU does not support it for HEVC encoding.");
+
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling HEVC pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for HEVC encoding.");
+			}
 		}
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
@@ -361,11 +373,16 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
 			caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
 		}
-		if (m_hasPreAnalysis) {
-			Warn("Enabling AV1 pre-analysis.");
-			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
-		} else {
-			Warn("Pre-analysis could not be enabled because your GPU does not support it for AV1 encoding.");
+		
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling AV1 pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for AV1 encoding.");
+			}
 		}
 
 		// May impact performance but improves quality in high-motion areas

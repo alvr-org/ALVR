@@ -213,7 +213,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		if (Settings::Instance().m_enablePreAnalysis) {
 			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
-				Warn("Pre-analysis could not be enabled because your you \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
 			} else if (m_hasPreAnalysis) {
 				Warn("Enabling h264 pre-analysis. You may experience higher latency when this is enabled.");
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
@@ -290,7 +290,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		if (Settings::Instance().m_enablePreAnalysis) {
 			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
-				Warn("Pre-analysis could not be enabled because your you \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
 			} else if (m_hasPreAnalysis) {
 				Warn("Enabling HEVC pre-analysis. You may experience higher latency when this is enabled.");
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
@@ -376,7 +376,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		
 		if (Settings::Instance().m_enablePreAnalysis) {
 			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
-				Warn("Pre-analysis could not be enabled because your you \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
 			} else if (m_hasPreAnalysis) {
 				Warn("Enabling AV1 pre-analysis. You may experience higher latency when this is enabled.");
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);

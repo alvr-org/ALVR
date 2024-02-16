@@ -688,7 +688,7 @@ pub fn entry_point() {
             .unwrap();
         assert_eq!(views_config.len(), 2);
 
-        let recommended_view_resolution = UVec2::new(
+        let default_view_resolution = UVec2::new(
             views_config[0].recommended_image_rect_width,
             views_config[0].recommended_image_rect_height,
         );
@@ -703,8 +703,9 @@ pub fn entry_point() {
         static INIT_ONCE: Once = Once::new();
         INIT_ONCE.call_once(|| {
             alvr_client_core::initialize(
-                recommended_view_resolution,
+                default_view_resolution,
                 supported_refresh_rates,
+                platform != Platform::Other, // exclude smartphones
                 false,
             );
         });
@@ -740,12 +741,12 @@ pub fn entry_point() {
                                 .unwrap();
 
                             let lobby_swapchains = [
-                                create_swapchain(&xr_session, recommended_view_resolution, None),
-                                create_swapchain(&xr_session, recommended_view_resolution, None),
+                                create_swapchain(&xr_session, default_view_resolution, None),
+                                create_swapchain(&xr_session, default_view_resolution, None),
                             ];
 
                             alvr_client_core::opengl::resume(
-                                recommended_view_resolution,
+                                default_view_resolution,
                                 [
                                     lobby_swapchains[0]
                                         .enumerate_images()
@@ -851,18 +852,16 @@ pub fn entry_point() {
                         alvr_client_core::opengl::update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted {
-                        view_resolution,
-                        refresh_rate_hint,
                         settings,
+                        negotiated_config,
                     } => {
                         let new_config = Some(StreamConfig {
-                            view_resolution,
-                            refresh_rate_hint,
-                            foveated_encoding_config: settings
-                                .video
-                                .foveated_encoding
-                                .as_option()
-                                .cloned(),
+                            view_resolution: negotiated_config.view_resolution,
+                            refresh_rate_hint: negotiated_config.refresh_rate_hint,
+                            foveated_encoding_config: negotiated_config
+                                .enable_foveated_encoding
+                                .then(|| settings.video.foveated_encoding.as_option().cloned())
+                                .flatten(),
                             clientside_foveation_config: settings
                                 .video
                                 .clientside_foveation
@@ -1060,7 +1059,7 @@ pub fn entry_point() {
                 session_context.lobby_swapchains[1].release_image().unwrap();
 
                 display_time = vsync_time;
-                view_resolution = recommended_view_resolution;
+                view_resolution = default_view_resolution;
                 swapchains = &session_context.lobby_swapchains;
             }
 

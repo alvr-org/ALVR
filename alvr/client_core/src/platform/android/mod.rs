@@ -2,12 +2,8 @@ mod decoder;
 
 pub use decoder::*;
 
-use alvr_common::{warn, OptLazy};
-use jni::{
-    objects::{GlobalRef, JObject},
-    sys::jobject,
-    JNIEnv, JavaVM,
-};
+use alvr_common::warn;
+use jni::{objects::JObject, sys::jobject, JNIEnv, JavaVM};
 use std::net::{IpAddr, Ipv4Addr};
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
@@ -141,7 +137,6 @@ pub fn set_wifi_lock(enabled: bool) {
     let mut env = vm.attach_current_thread().unwrap();
 
     let wifi_manager = get_system_service(&mut env, "wifi");
-    let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
 
     fn set_lock<'a>(env: &mut JNIEnv<'a>, lock: &JObject, enabled: bool) {
         env.call_method(lock, "setReferenceCounted", "(Z)V", &[false.into()])
@@ -165,6 +160,7 @@ pub fn set_wifi_lock(enabled: bool) {
         }
     }
 
+    let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
     let wifi_lock = env
         .call_method(
             &wifi_manager,
@@ -186,17 +182,18 @@ pub fn set_wifi_lock(enabled: bool) {
         .unwrap();
     set_lock(&mut env, &wifi_lock, enabled);
 
+    let multicast_lock_jstring = env.new_string("alvr_multicast_lock").unwrap();
     let multicast_lock = env
         .call_method(
             wifi_manager,
             "createMulticastLock",
             "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$MulticastLock;",
-            &[(&wifi_lock_jstring).into()],
+            &[(&multicast_lock_jstring).into()],
         )
         .unwrap()
         .l()
         .unwrap();
-    set_lock(&mut env, &wifi_lock, enabled);
+    set_lock(&mut env, &multicast_lock, enabled);
 }
 
 pub fn get_battery_status() -> (f32, bool) {

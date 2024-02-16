@@ -31,7 +31,10 @@ use alvr_common::{
     parking_lot::{Mutex, RwLock},
     ConnectionState, Fov, LifecycleState, OptLazy,
 };
-use alvr_packets::{BatteryPacket, ButtonEntry, ClientControlPacket, Tracking, ViewsConfig};
+use alvr_packets::{
+    BatteryPacket, ButtonEntry, ClientControlPacket, NegotiatedStreamingConfig, Tracking,
+    ViewsConfig,
+};
 use alvr_session::{CodecType, Settings};
 use connection::{
     CONNECTION_STATE, CONTROL_SENDER, DISCONNECTED_NOTIF, STATISTICS_SENDER, TRACKING_SENDER,
@@ -59,9 +62,8 @@ static CONNECTION_THREAD: OptLazy<JoinHandle<()>> = alvr_common::lazy_mut_none()
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
     StreamingStarted {
-        view_resolution: UVec2,
-        refresh_rate_hint: f32,
         settings: Box<Settings>,
+        negotiated_config: NegotiatedStreamingConfig,
     },
     StreamingStopped,
     Haptics {
@@ -90,8 +92,9 @@ pub fn manufacturer_name() -> String {
 }
 
 pub fn initialize(
-    recommended_view_resolution: UVec2,
+    default_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
+    supports_foveated_encoding: bool,
     external_decoder: bool,
 ) {
     logging_backend::init_logging();
@@ -111,7 +114,11 @@ pub fn initialize(
     *LIFECYCLE_STATE.write() = LifecycleState::Idle;
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
-        connection::connection_lifecycle_loop(recommended_view_resolution, supported_refresh_rates)
+        connection::connection_lifecycle_loop(
+            default_view_resolution,
+            supported_refresh_rates,
+            supports_foveated_encoding,
+        )
     }));
 }
 

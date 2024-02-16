@@ -19,14 +19,14 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Condvar, Mutex},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, OptLazy, ToCon,
+    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, OptLazy,
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
     QUEST_CONTROLLER_PROFILE_PATH,
 };
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, Haptics,
-    ServerControlPacket, StreamConfigPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
+    NegotiatedStreamingConfig, ServerControlPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
@@ -426,7 +426,7 @@ fn connection_pipeline(
     };
 
     let streaming_caps = if let Some(streaming_caps) = maybe_streaming_caps {
-        streaming_caps
+        alvr_packets::decode_video_streaming_capabilities(&streaming_caps).to_con()?
     } else {
         con_bail!("Only streaming clients are supported for now");
     };
@@ -464,10 +464,10 @@ fn connection_pipeline(
     let fps = {
         let mut best_match = 0_f32;
         let mut min_diff = f32::MAX;
-        for rr in &streaming_caps.supported_refresh_rates {
-            let diff = (*rr - settings.video.preferred_fps).abs();
+        for rate in &streaming_caps.supported_refresh_rates {
+            let diff = (*rate - settings.video.preferred_fps).abs();
             if diff < min_diff {
-                best_match = *rr;
+                best_match = *rate;
                 min_diff = diff;
             }
         }
@@ -480,6 +480,19 @@ fn connection_pipeline(
     {
         warn!("Chosen refresh rate not supported. Using {fps}Hz");
     }
+
+    let enable_foveated_encoding = if let Switch::Enabled(config) = settings.video.foveated_encoding
+    {
+        let enable = streaming_caps.supports_foveated_encoding || config.force_enable;
+
+        if !enable {
+            warn!("Foveated encoding is not supported by the client.");
+        }
+
+        enable
+    } else {
+        false
+    };
 
     let game_audio_sample_rate =
         if let Switch::Enabled(game_audio_config) = &settings.audio.game_audio {
@@ -508,19 +521,17 @@ fn connection_pipeline(
             0
         };
 
-    let client_config = StreamConfigPacket {
-        session: {
-            let session = server_data_lock.session().clone();
-            serde_json::to_string(&session).to_con()?
+    let stream_config_packet = alvr_packets::encode_stream_config(
+        server_data_lock.session(),
+        &NegotiatedStreamingConfig {
+            view_resolution: stream_view_resolution,
+            refresh_rate_hint: fps,
+            game_audio_sample_rate,
+            enable_foveated_encoding,
         },
-        negotiated: serde_json::json!({
-            "view_resolution": stream_view_resolution,
-            "refresh_rate_hint": fps,
-            "game_audio_sample_rate": game_audio_sample_rate,
-        })
-        .to_string(),
-    };
-    proto_socket.send(&client_config).to_con()?;
+    )
+    .to_con()?;
+    proto_socket.send(&stream_config_packet).to_con()?;
 
     let (mut control_sender, mut control_receiver) =
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
@@ -531,6 +542,7 @@ fn connection_pipeline(
     new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
     new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
     new_openvr_config.refresh_rate = fps as _;
+    new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
 
     if server_data_lock.session().openvr_config != new_openvr_config {
         server_data_lock.session_mut().openvr_config = new_openvr_config;

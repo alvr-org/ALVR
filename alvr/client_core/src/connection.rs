@@ -17,21 +17,19 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Condvar, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
-    OptLazy, ToCon, ALVR_VERSION,
+    OptLazy, ALVR_VERSION,
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
     StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS,
     STATISTICS, TRACKING, VIDEO,
 };
-use alvr_session::{settings_schema::Switch, SessionConfig};
+use alvr_session::settings_schema::Switch;
 use alvr_sockets::{
     ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
     KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
-use serde_json as json;
 use std::{
-    collections::HashMap,
     sync::{mpsc, Arc},
     thread,
     time::{Duration, Instant},
@@ -97,16 +95,19 @@ fn is_streaming() -> bool {
 }
 
 pub fn connection_lifecycle_loop(
-    recommended_view_resolution: UVec2,
+    default_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
+    supports_foveated_encoding: bool,
 ) {
     set_hud_message(INITIAL_MESSAGE);
 
     while *LIFECYCLE_STATE.read() != LifecycleState::ShuttingDown {
         if *LIFECYCLE_STATE.read() == LifecycleState::Resumed {
-            if let Err(e) =
-                connection_pipeline(recommended_view_resolution, supported_refresh_rates.clone())
-            {
+            if let Err(e) = connection_pipeline(
+                default_view_resolution,
+                supported_refresh_rates.clone(),
+                supports_foveated_encoding,
+            ) {
                 let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                 set_hud_message(&message);
                 error!("Connection error: {e}");
@@ -123,8 +124,9 @@ pub fn connection_lifecycle_loop(
 }
 
 fn connection_pipeline(
-    recommended_view_resolution: UVec2,
+    default_view_resolution: UVec2,
     supported_refresh_rates: Vec<f32>,
+    supports_foveated_encoding: bool,
 ) -> ConResult {
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
@@ -172,58 +174,40 @@ fn connection_pipeline(
     *connection_state_lock = ConnectionState::Connecting;
 
     let microphone_sample_rate = AudioDevice::new_input(None)
-        .unwrap()
+        .to_con()?
         .input_sample_rate()
-        .unwrap();
+        .to_con()?;
 
     proto_control_socket
         .send(&ClientConnectionResult::ConnectionAccepted {
             client_protocol_id: alvr_common::protocol_id_u64(),
             display_name: platform::device_model(),
             server_ip,
-            streaming_capabilities: Some(VideoStreamingCapabilities {
-                default_view_resolution: recommended_view_resolution,
-                supported_refresh_rates,
-                microphone_sample_rate,
-            }),
+            streaming_capabilities: Some(
+                alvr_packets::encode_video_streaming_capabilities(&VideoStreamingCapabilities {
+                    default_view_resolution,
+                    supported_refresh_rates,
+                    microphone_sample_rate,
+                    supports_foveated_encoding,
+                })
+                .to_con()?,
+            ),
         })
         .to_con()?;
     let config_packet =
         proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
 
-    let settings = {
-        let mut session_desc = SessionConfig::default();
-        session_desc
-            .merge_from_json(&json::from_str(&config_packet.session).to_con()?)
-            .to_con()?;
-        session_desc.to_settings()
-    };
-
-    let negotiated_config =
-        json::from_str::<HashMap<String, json::Value>>(&config_packet.negotiated).to_con()?;
-
-    let view_resolution = negotiated_config
-        .get("view_resolution")
-        .and_then(|v| json::from_value(v.clone()).ok())
-        .unwrap_or(UVec2::ZERO);
-    let refresh_rate_hint = negotiated_config
-        .get("refresh_rate_hint")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(60.0) as f32;
-    let game_audio_sample_rate = negotiated_config
-        .get("game_audio_sample_rate")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(44100) as u32;
+    let (settings, negotiated_config) =
+        alvr_packets::decode_stream_config(&config_packet).to_con()?;
 
     let streaming_start_event = ClientCoreEvent::StreamingStarted {
-        view_resolution,
-        refresh_rate_hint,
         settings: Box::new(settings.clone()),
+        negotiated_config: negotiated_config.clone(),
     };
 
     *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,
-        Duration::from_secs_f32(1.0 / refresh_rate_hint),
+        Duration::from_secs_f32(1.0 / negotiated_config.refresh_rate_hint),
         if let Switch::Enabled(config) = settings.headset.controllers {
             config.steamvr_pipeline_frames
         } else {
@@ -350,7 +334,7 @@ fn connection_pipeline(
                     is_streaming,
                     &device,
                     2,
-                    game_audio_sample_rate,
+                    negotiated_config.game_audio_sample_rate,
                     config.buffering.clone(),
                     &mut game_audio_receiver,
                 ));

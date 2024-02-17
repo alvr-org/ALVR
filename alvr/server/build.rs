@@ -16,6 +16,7 @@ fn get_ffmpeg_path() -> PathBuf {
     }
 }
 
+#[cfg(all(target_os = "linux", feature = "gpl"))]
 fn get_linux_x264_path() -> PathBuf {
     alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
 }
@@ -92,7 +93,7 @@ fn main() {
         build.include(ffmpeg_path.join("include"));
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "gpl"))]
     {
         let x264_path = get_linux_x264_path();
 
@@ -105,7 +106,7 @@ fn main() {
 
     build.compile("bindings");
 
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", feature = "gpl"))]
     {
         let x264_path = get_linux_x264_path();
         let x264_lib_path = x264_path.join("lib");
@@ -190,6 +191,11 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         pkg_config::Config::new().probe("vulkan").unwrap();
+
+        #[cfg(not(feature = "gpl"))]
+        {
+            pkg_config::Config::new().probe("x264").unwrap();
+        }
 
         // fail build if there are undefined symbols in final library
         println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");

@@ -123,8 +123,6 @@ pub fn build_x264_linux(deps_path: &Path) {
     )
     .unwrap();
 
-    println!("{}", final_path.to_str().unwrap());
-
     let flags = ["--enable-static", "--disable-cli", "--enable-pic"];
 
     let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());

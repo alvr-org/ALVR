@@ -45,6 +45,7 @@ pub enum AlvrEvent {
         view_width: u32,
         view_height: u32,
         refresh_rate_hint: f32,
+        enable_foveated_encoding: bool,
     },
     StreamingStopped,
     Haptics {
@@ -80,17 +81,18 @@ pub struct AlvrQuat {
 
 #[repr(C)]
 #[derive(Clone, Default)]
-pub struct AlvrDeviceMotion {
-    device_id: u64,
+pub struct AlvrPose {
     orientation: AlvrQuat,
     position: [f32; 3],
-    linear_velocity: [f32; 3],
-    angular_velocity: [f32; 3],
 }
 
-pub struct AlvrPose {
-    pub orientation: AlvrQuat,
-    pub position: [f32; 3],
+#[repr(C)]
+#[derive(Clone, Default)]
+pub struct AlvrDeviceMotion {
+    device_id: u64,
+    pose: AlvrPose,
+    linear_velocity: [f32; 3],
+    angular_velocity: [f32; 3],
 }
 
 #[allow(dead_code)]
@@ -166,23 +168,25 @@ pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
 pub unsafe extern "C" fn alvr_initialize(
     java_vm: *mut c_void,
     context: *mut c_void,
-    recommended_view_width: u32,
-    recommended_view_height: u32,
+    default_view_width: u32,
+    default_view_height: u32,
     refresh_rates: *const f32,
     refresh_rates_count: i32,
+    supports_foveated_encoding: bool,
     external_decoder: bool,
 ) {
     #[cfg(target_os = "android")]
     ndk_context::initialize_android_context(java_vm, context);
 
-    let recommended_view_resolution = UVec2::new(recommended_view_width, recommended_view_height);
+    let default_view_resolution = UVec2::new(default_view_width, default_view_height);
 
     let supported_refresh_rates =
         slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
 
     crate::initialize(
-        recommended_view_resolution,
+        default_view_resolution,
         supported_refresh_rates,
+        supports_foveated_encoding,
         external_decoder,
     );
 }
@@ -216,16 +220,16 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 AlvrEvent::HudMessageUpdated
             }
             ClientCoreEvent::StreamingStarted {
-                view_resolution,
-                refresh_rate_hint,
                 settings,
+                negotiated_config,
             } => {
                 *SETTINGS.lock() = serde_json::to_string(&settings).unwrap();
 
                 AlvrEvent::StreamingStarted {
-                    view_width: view_resolution.x,
-                    view_height: view_resolution.y,
-                    refresh_rate_hint,
+                    view_width: negotiated_config.view_resolution.x,
+                    view_height: negotiated_config.view_resolution.y,
+                    refresh_rate_hint: negotiated_config.refresh_rate_hint,
+                    enable_foveated_encoding: negotiated_config.enable_foveated_encoding,
                 }
             }
             ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
@@ -398,8 +402,8 @@ pub extern "C" fn alvr_send_tracking(
                 motion.device_id,
                 DeviceMotion {
                     pose: Pose {
-                        orientation: from_capi_quat(motion.orientation),
-                        position: Vec3::from_slice(&motion.position),
+                        orientation: from_capi_quat(motion.pose.orientation),
+                        position: Vec3::from_slice(&motion.pose.position),
                     },
                     linear_velocity: Vec3::from_slice(&motion.linear_velocity),
                     angular_velocity: Vec3::from_slice(&motion.angular_velocity),
@@ -609,6 +613,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
     let swapchain_textures =
         convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
     let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
+        force_enable: true,
         center_size_x: config.foveation_center_size_x,
         center_size_y: config.foveation_center_size_y,
         center_shift_x: config.foveation_center_shift_x,

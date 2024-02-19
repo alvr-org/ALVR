@@ -1083,7 +1083,7 @@ pub fn entry_point() {
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,
-                &[&layer1, &layer2],
+                &[&layer2],
             );
 
             if let Err(e) = res {

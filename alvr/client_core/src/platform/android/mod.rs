@@ -61,7 +61,7 @@ pub fn try_get_permission(permission: &str) {
     }
 }
 
-pub fn device_model() -> String {
+pub fn model_name() -> String {
     let vm = vm();
     let mut env = vm.attach_current_thread().unwrap();
 

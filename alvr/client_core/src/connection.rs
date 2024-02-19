@@ -181,7 +181,7 @@ fn connection_pipeline(
     proto_control_socket
         .send(&ClientConnectionResult::ConnectionAccepted {
             client_protocol_id: alvr_common::protocol_id_u64(),
-            display_name: platform::device_model(),
+            display_name: platform::display_name(),
             server_ip,
             streaming_capabilities: Some(
                 alvr_packets::encode_video_streaming_capabilities(&VideoStreamingCapabilities {

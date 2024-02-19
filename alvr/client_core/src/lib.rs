@@ -83,8 +83,8 @@ pub enum ClientCoreEvent {
     },
 }
 
-pub fn device_model() -> String {
-    platform::device_model()
+pub fn model_name() -> String {
+    platform::model_name()
 }
 
 pub fn manufacturer_name() -> String {

@@ -587,11 +587,11 @@ pub fn entry_point() {
     alvr_client_core::init_logging();
 
     let manufacturer_name = alvr_client_core::manufacturer_name();
-    let device_model = alvr_client_core::device_model();
+    let model_name = alvr_client_core::model_name();
 
-    info!("Manufacturer: {manufacturer_name}, device model: {device_model}");
+    info!("Manufacturer: {manufacturer_name}, model: {model_name}");
 
-    let platform = match (manufacturer_name.as_str(), device_model.as_str()) {
+    let platform = match (manufacturer_name.as_str(), model_name.as_str()) {
         ("Oculus", _) => Platform::Quest,
         ("Pico", "Pico Neo 3") => Platform::PicoNeo3,
         ("Pico", _) => Platform::Pico4,

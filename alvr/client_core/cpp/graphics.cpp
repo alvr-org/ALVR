@@ -678,8 +678,6 @@ void renderEye(
         GL(glEnable(GL_BLEND));
         GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-        //GL(glClear(GL_DEPTH_BUFFER_BIT));
-
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 
         GL(glUniformMatrix4fv(renderer->streamProgram.UniformLocation[UNIFORM_MVP_MATRIX],

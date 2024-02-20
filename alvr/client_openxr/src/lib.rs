@@ -1,8 +1,4 @@
 mod interaction;
-use core::ffi::c_void;
-use std::ops::Deref;
-use std::mem;
-use std::marker::PhantomData;
 use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
 use alvr_common::{
     error,
@@ -668,7 +664,7 @@ pub fn entry_point() {
             .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
             .unwrap();
 
-        let passthrough_layer = xr_session.create_passthrough_layer(
+        let _passthrough_layer = xr_session.create_passthrough_layer(
             &passthrough, 
             xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
             xr::PassthroughLayerPurposeFB::RECONSTRUCTION

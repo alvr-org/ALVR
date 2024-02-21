@@ -106,6 +106,13 @@ pub struct OpenvrConfig {
     pub _controller_profile: i32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub enum ClientStreamMode {
+    Normal,
+    NoVideoAudio,
+    Mirror,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ClientConnectionConfig {
     pub display_name: String,
@@ -113,7 +120,7 @@ pub struct ClientConnectionConfig {
     pub manual_ips: HashSet<IpAddr>,
     pub trusted: bool,
     pub connection_state: ConnectionState,
-    pub cabled: bool,
+    pub stream_mode: ClientStreamMode,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

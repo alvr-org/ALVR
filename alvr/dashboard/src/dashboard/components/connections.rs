@@ -228,9 +228,6 @@ fn trusted_clients_section(
                                                 ConnectionState::Connected => {
                                                     ui.colored_label(theme::OK_GREEN, "Connected")
                                                 }
-                                                ConnectionState::Streaming => {
-                                                    ui.colored_label(theme::OK_GREEN, "Streaming")
-                                                }
                                                 ConnectionState::Disconnecting { .. } => ui
                                                     .colored_label(
                                                         log_colors::WARNING_LIGHT,

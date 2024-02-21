@@ -12,7 +12,7 @@ use alvr_common::{
 };
 use alvr_events::EventType;
 use alvr_packets::{AudioDevicesList, ClientListAction, PathSegment, PathValuePair};
-use alvr_session::{ClientConnectionConfig, SessionConfig, Settings};
+use alvr_session::{ClientConnectionConfig, ClientStreamMode, SessionConfig, Settings};
 use cpal::traits::{DeviceTrait, HostTrait};
 use serde_json as json;
 use std::{
@@ -190,7 +190,7 @@ impl ServerDataManager {
 
         let maybe_client_entry = client_connections.entry(hostname);
 
-        let mut updated = false;
+        let mut update = false;
         match action {
             ClientListAction::AddIfMissing {
                 trusted,
@@ -203,39 +203,39 @@ impl ServerDataManager {
                         manual_ips: manual_ips.into_iter().collect(),
                         trusted,
                         connection_state: ConnectionState::Disconnected,
-                        cabled: false,
+                        stream_mode: ClientStreamMode::Normal,
                     };
                     new_entry.insert(client_connection_desc);
 
-                    updated = true;
+                    update = true;
                 }
             }
             ClientListAction::SetDisplayName(name) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().display_name = name;
 
-                    updated = true;
+                    update = true;
                 }
             }
             ClientListAction::Trust => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().trusted = true;
 
-                    updated = true;
+                    update = true;
                 }
             }
             ClientListAction::SetManualIps(ips) => {
                 if let Entry::Occupied(mut entry) = maybe_client_entry {
                     entry.get_mut().manual_ips = ips.into_iter().collect();
 
-                    updated = true;
+                    update = true;
                 }
             }
             ClientListAction::RemoveEntry => {
                 if let Entry::Occupied(entry) = maybe_client_entry {
                     entry.remove_entry();
 
-                    updated = true;
+                    update = true;
                 }
             }
             ClientListAction::UpdateCurrentIp(current_ip) => {
@@ -243,7 +243,7 @@ impl ServerDataManager {
                     if entry.get().current_ip != current_ip {
                         entry.get_mut().current_ip = current_ip;
 
-                        updated = true;
+                        update = true;
                     }
                 }
             }
@@ -252,13 +252,22 @@ impl ServerDataManager {
                     if entry.get().connection_state != state {
                         entry.get_mut().connection_state = state;
 
-                        updated = true;
+                        update = true;
+                    }
+                }
+            }
+            ClientListAction::SetClientStreamMode(stream_mode) => {
+                if let Entry::Occupied(mut entry) = maybe_client_entry {
+                    if entry.get().stream_mode != stream_mode {
+                        entry.get_mut().stream_mode = stream_mode;
+
+                        update = true;
                     }
                 }
             }
         }
 
-        if updated {
+        if update {
             self.session.client_connections = client_connections;
 
             save_session(&self.session, &self.session_path).unwrap();

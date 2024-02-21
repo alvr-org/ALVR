@@ -64,7 +64,6 @@ pub enum ConnectionState {
     Disconnected,
     Connecting,
     Connected,
-    Streaming,
     Disconnecting,
 }
 

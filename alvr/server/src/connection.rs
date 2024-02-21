@@ -2,7 +2,7 @@ use crate::{
     bitrate::BitrateManager,
     body_tracking::BodyTrackingSink,
     face_tracking::FaceTrackingSink,
-    hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
+    hand_gestures::{self, HandGestureManager, HAND_GESTURE_BUTTON_SET},
     haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
@@ -61,19 +61,17 @@ const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
 static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
 static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 static CONNECTION_THREADS: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(vec![]));
-pub static CLIENTS_TO_BE_REMOVED: Lazy<Mutex<HashSet<String>>> =
+
+// When you click "Remove" the client is queued to be removed after it disconnects
+pub static CLIENTS_TO_FORGET: Lazy<Mutex<HashSet<String>>> =
     Lazy::new(|| Mutex::new(HashSet::new()));
 
-fn align32(value: f32) -> u32 {
-    ((value / 32.).floor() * 32.) as u32
-}
-
-fn is_streaming(client_hostname: &str) -> bool {
+fn is_connected(client_hostname: &str) -> bool {
     SERVER_DATA_MANAGER
         .read()
         .client_list()
         .get(client_hostname)
-        .map(|c| c.connection_state == ConnectionState::Streaming)
+        .map(|c| c.connection_state == ConnectionState::Connected)
         .unwrap_or(false)
 }
 
@@ -350,7 +348,7 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
             error!("Handshake error for {client_hostname}: {e}");
         }
 
-        let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
+        let mut clients_to_be_removed = CLIENTS_TO_FORGET.lock();
 
         let action = if clients_to_be_removed.contains(&client_hostname) {
             clients_to_be_removed.remove(&client_hostname);
@@ -447,6 +445,10 @@ fn connection_pipeline(
                 )
             }
         };
+
+        fn align32(value: f32) -> u32 {
+            ((value / 32.).floor() * 32.) as u32
+        }
 
         UVec2::new(align32(res.x), align32(res.y))
     }
@@ -600,7 +602,7 @@ fn connection_pipeline(
     let video_send_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
         move || {
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 let VideoPacket { header, payload } =
                     match video_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT) {
                         Ok(packet) => packet,
@@ -621,7 +623,7 @@ fn connection_pipeline(
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 let device = match AudioDevice::new_output(
                     Some(settings.audio.linux_backend),
                     config.device.as_ref(),
@@ -651,7 +653,7 @@ fn connection_pipeline(
                 if let Err(e) = alvr_audio::record_audio_blocking(
                     Arc::new({
                         let client_hostname = client_hostname.clone();
-                        move || is_streaming(&client_hostname)
+                        move || is_connected(&client_hostname)
                     }),
                     game_audio_sender.clone(),
                     &device,
@@ -705,7 +707,7 @@ fn connection_pipeline(
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 {
                     let client_hostname = client_hostname.clone();
-                    move || is_streaming(&client_hostname)
+                    move || is_connected(&client_hostname)
                 },
                 &sink,
                 1,
@@ -753,7 +755,7 @@ fn connection_pipeline(
                         BodyTrackingSink::new(config.sink, settings.connection.osc_local_port).ok()
                     });
 
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 let data = match tracking_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(tracking) => tracking,
                     Err(ConnectionError::TryAgain(_)) => continue,
@@ -889,7 +891,7 @@ fn connection_pipeline(
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
                     if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                        trigger_hand_gesture_actions(
+                        hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
                             *HAND_LEFT_ID,
                             &hand_gesture_manager_lock.get_active_gestures(
@@ -901,7 +903,7 @@ fn connection_pipeline(
                         );
                     }
                     if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                        trigger_hand_gesture_actions(
+                        hand_gestures::trigger_hand_gesture_actions(
                             gestures_button_mapping_manager,
                             *HAND_RIGHT_ID,
                             &hand_gesture_manager_lock.get_active_gestures(
@@ -954,7 +956,7 @@ fn connection_pipeline(
     let statistics_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
         move || {
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 let data = match statics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(stats) => stats,
                     Err(ConnectionError::TryAgain(_)) => continue,
@@ -988,7 +990,7 @@ fn connection_pipeline(
         let disconnect_notif = Arc::clone(&disconnect_notif);
         let client_hostname = client_hostname.clone();
         move || {
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 if let Err(e) = control_sender.lock().send(&ServerControlPacket::KeepAlive) {
                     info!("Client disconnected. Cause: {e:?}");
 
@@ -1029,7 +1031,7 @@ fn connection_pipeline(
             unsafe { crate::InitOpenvrClient() };
 
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(packet) => packet,
                     Err(ConnectionError::TryAgain(_)) => {
@@ -1172,7 +1174,7 @@ fn connection_pipeline(
         let disconnect_notif = Arc::clone(&disconnect_notif);
         let client_hostname = client_hostname.clone();
         move || {
-            while is_streaming(&client_hostname) {
+            while is_connected(&client_hostname) {
                 match stream_socket.recv() {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
@@ -1196,7 +1198,7 @@ fn connection_pipeline(
                 .read()
                 .client_list()
                 .get(&client_hostname)
-                .map(|c| c.connection_state == ConnectionState::Streaming)
+                .map(|c| c.connection_state == ConnectionState::Connected)
                 .unwrap_or(false)
                 && *LIFECYCLE_STATE.read() == LifecycleState::Resumed
             {
@@ -1229,7 +1231,7 @@ fn connection_pipeline(
 
     server_data_lock.update_client_list(
         client_hostname.clone(),
-        ClientListAction::SetConnectionState(ConnectionState::Streaming),
+        ClientListAction::SetConnectionState(ConnectionState::Connected),
     );
 
     alvr_common::wait_rwlock(&disconnect_notif, &mut server_data_lock);

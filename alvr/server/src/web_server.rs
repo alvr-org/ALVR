@@ -1,5 +1,5 @@
 use crate::{
-    bindings::FfiButtonValue, connection::CLIENTS_TO_BE_REMOVED, DECODER_CONFIG, FILESYSTEM_LAYOUT,
+    bindings::FfiButtonValue, connection::CLIENTS_TO_FORGET, DECODER_CONFIG, FILESYSTEM_LAYOUT,
     SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
@@ -119,7 +119,7 @@ async fn http_api(
                         if matches!(action, ClientListAction::RemoveEntry) {
                             if let Some(entry) = data_manager.client_list().get(&hostname) {
                                 if entry.connection_state != ConnectionState::Disconnected {
-                                    CLIENTS_TO_BE_REMOVED.lock().insert(hostname.clone());
+                                    CLIENTS_TO_FORGET.lock().insert(hostname.clone());
 
                                     action = ClientListAction::SetConnectionState(
                                         ConnectionState::Disconnecting,

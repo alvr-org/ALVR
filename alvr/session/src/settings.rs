@@ -926,6 +926,20 @@ pub enum RotationRecenteringMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub enum Device {
+    HMD,
+    LeftController,
+    RightController,
+    CustomPath(String),
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct DeviceMapping {
+    pub source: Device,
+    pub target: Device,
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct HeadsetConfig {
     #[schema(flag = "steamvr-restart")]
@@ -963,6 +977,9 @@ Tilted: the world gets tilted when long pressing the oculus button. This is usef
     ))]
     #[schema(flag = "real-time")]
     pub rotation_recentering_mode: RotationRecenteringMode,
+
+    #[schema(flag = "real-time")]
+    pub device_assignment: Option<Vec<(String, Vec<DeviceMapping>)>>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1607,6 +1624,28 @@ pub fn session_settings_default() -> SettingsDefault {
             },
             rotation_recentering_mode: RotationRecenteringModeDefault {
                 variant: RotationRecenteringModeDefaultVariant::Yaw,
+            },
+            device_assignment: OptionalDefault {
+                set: false,
+                content: DictionaryDefault {
+                    gui_collapsed: false,
+                    key: "XXXX.client".into(),
+                    value: VectorDefault {
+                        gui_collapsed: false,
+                        element: DeviceMappingDefault {
+                            source: DeviceDefault {
+                                CustomPath: "/user/body/left_elbow".into(),
+                                variant: DeviceDefaultVariant::HMD,
+                            },
+                            target: DeviceDefault {
+                                CustomPath: "/user/body/left_elbow".into(),
+                                variant: DeviceDefaultVariant::HMD,
+                            },
+                        },
+                        content: vec![],
+                    },
+                    content: vec![],
+                },
             },
         },
         connection: ConnectionConfigDefault {

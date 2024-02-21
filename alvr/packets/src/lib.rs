@@ -3,7 +3,7 @@ use alvr_common::{
     glam::{UVec2, Vec2},
     ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
-use alvr_session::{CodecType, SessionConfig, Settings};
+use alvr_session::{ClientStreamMode, CodecType, SessionConfig, Settings};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::{
@@ -297,6 +297,7 @@ pub enum ClientListAction {
     RemoveEntry,
     UpdateCurrentIp(Option<IpAddr>),
     SetConnectionState(ConnectionState),
+    SetClientStreamMode(ClientStreamMode),
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]

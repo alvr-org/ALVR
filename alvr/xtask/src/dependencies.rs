@@ -57,7 +57,7 @@ pub fn prepare_ffmpeg_windows(deps_path: &Path) {
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
             "ffmpeg-n5.1-latest-win64-gpl-shared-5.1.zip"
         ),
-        &deps_path,
+        deps_path,
     )
     .unwrap();
 
@@ -111,7 +111,7 @@ pub fn build_x264_linux(deps_path: &Path) {
     // x264 0.164
     command::download_and_extract_tar(
         "https://code.videolan.org/videolan/x264/-/archive/c196240409e4d7c01b47448d93b1f9683aaa7cf7/x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7.tar.bz2",
-        &deps_path,
+        deps_path,
     )
     .unwrap();
 
@@ -143,7 +143,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
 
     command::download_and_extract_zip(
         "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
-        &deps_path,
+        deps_path,
     )
     .unwrap();
 

@@ -90,8 +90,8 @@ fn set_hud_message(message: &str) {
         .push_back(ClientCoreEvent::UpdateHudMessage(message));
 }
 
-fn is_streaming() -> bool {
-    *CONNECTION_STATE.read() == ConnectionState::Streaming
+fn is_connected() -> bool {
+    *CONNECTION_STATE.read() == ConnectionState::Connected
 }
 
 pub fn connection_lifecycle_loop(
@@ -284,7 +284,7 @@ fn connection_pipeline(
 
     let video_receive_thread = thread::spawn(move || {
         let mut stream_corrupted = false;
-        while is_streaming() {
+        while is_connected() {
             let data = match video_receiver.recv(STREAMING_RECV_TIMEOUT) {
                 Ok(data) => data,
                 Err(ConnectionError::TryAgain(_)) => continue,
@@ -329,9 +329,9 @@ fn connection_pipeline(
         let device = AudioDevice::new_output(None, None).to_con()?;
 
         thread::spawn(move || {
-            while is_streaming() {
+            while is_connected() {
                 alvr_common::show_err(audio::play_audio_loop(
-                    is_streaming,
+                    is_connected,
                     &device,
                     2,
                     negotiated_config.game_audio_sample_rate,
@@ -350,9 +350,9 @@ fn connection_pipeline(
         let microphone_sender = stream_socket.request_stream(AUDIO);
 
         thread::spawn(move || {
-            while is_streaming() {
+            while is_connected() {
                 match audio::record_audio_blocking(
-                    Arc::new(is_streaming),
+                    Arc::new(is_connected),
                     microphone_sender.clone(),
                     &device,
                     1,
@@ -372,7 +372,7 @@ fn connection_pipeline(
     };
 
     let haptics_receive_thread = thread::spawn(move || {
-        while is_streaming() {
+        while is_connected() {
             let data = match haptics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                 Ok(packet) => packet,
                 Err(ConnectionError::TryAgain(_)) => continue,
@@ -401,7 +401,7 @@ fn connection_pipeline(
             #[cfg(target_os = "android")]
             let mut battery_deadline = Instant::now();
 
-            while is_streaming() && *LIFECYCLE_STATE.read() == LifecycleState::Resumed {
+            while is_connected() && *LIFECYCLE_STATE.read() == LifecycleState::Resumed {
                 if let (Ok(packet), Some(sender)) = (
                     log_channel_receiver.recv_timeout(STREAMING_RECV_TIMEOUT),
                     &mut *CONTROL_SENDER.lock(),
@@ -447,7 +447,7 @@ fn connection_pipeline(
         let disconnect_notif = Arc::clone(&disconnect_notif);
         move || {
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
-            while is_streaming() {
+            while is_connected() {
                 let maybe_packet = control_receiver.recv(STREAMING_RECV_TIMEOUT);
 
                 match maybe_packet {
@@ -487,7 +487,7 @@ fn connection_pipeline(
     let stream_receive_thread = thread::spawn({
         let disconnect_notif = Arc::clone(&disconnect_notif);
         move || {
-            while is_streaming() {
+            while is_connected() {
                 match stream_socket.recv() {
                     Ok(()) => (),
                     Err(ConnectionError::TryAgain(_)) => continue,
@@ -512,7 +512,7 @@ fn connection_pipeline(
     }
     EVENT_QUEUE.lock().push_back(streaming_start_event);
 
-    *connection_state_lock = ConnectionState::Streaming;
+    *connection_state_lock = ConnectionState::Connected;
 
     // Unlock CONNECTION_STATE and block thread
     wait_rwlock(&disconnect_notif, &mut connection_state_lock);

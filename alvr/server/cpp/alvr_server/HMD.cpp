@@ -41,13 +41,13 @@ Hmd::Hmd()
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
-    m_pose = vr::DriverPose_t{};
-    m_pose.poseIsValid = true;
-    m_pose.result = vr::TrackingResult_Running_OK;
-    m_pose.deviceIsConnected = true;
-    m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose = vr::DriverPose_t{};
+    pose.poseIsValid = true;
+    pose.result = vr::TrackingResult_Running_OK;
+    pose.deviceIsConnected = true;
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
     m_poseHistory = std::make_shared<PoseHistory>();
 
@@ -84,15 +84,10 @@ Hmd::~Hmd() {
 #endif
 }
 
-vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    Debug("CRemoteHmd Activate %d\n", unObjectId);
+vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t object_id) {
+    TrackedDevice::Activate(object_id);
 
     auto vr_properties = vr::VRProperties();
-
-    this->object_id = unObjectId;
-    this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
-
-    SetOpenvrProps(this->device_id);
 
     vr_properties->SetFloatProperty(this->prop_container,
                                     vr::Prop_DisplayFrequency_Float,
@@ -167,11 +162,6 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     return vr::VRInitError_None;
 }
 
-void Hmd::Deactivate() {
-    this->object_id = vr::k_unTrackedDeviceIndexInvalid;
-    this->prop_container = vr::k_ulInvalidPropertyContainer;
-}
-
 void *Hmd::GetComponent(const char *component_name_and_version) {
     // NB: "this" pointer needs to be statically cast to point to the correct vtable
 
@@ -189,33 +179,31 @@ void *Hmd::GetComponent(const char *component_name_and_version) {
     return nullptr;
 }
 
-vr::DriverPose_t Hmd::GetPose() { return m_pose; }
-
-void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
+void Hmd::UpdateMotion(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return;
     }
-    auto pose = vr::DriverPose_t{};
-    pose.poseIsValid = true;
-    pose.result = vr::TrackingResult_Running_OK;
-    pose.deviceIsConnected = true;
+    auto pose_ = vr::DriverPose_t{};
+    pose_.poseIsValid = true;
+    pose_.result = vr::TrackingResult_Running_OK;
+    pose_.deviceIsConnected = true;
 
-    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose_.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose_.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    pose.qRotation = HmdQuaternion_Init(
+    pose_.qRotation = HmdQuaternion_Init(
         motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
 
-    pose.vecPosition[0] = motion.position[0];
-    pose.vecPosition[1] = motion.position[1];
-    pose.vecPosition[2] = motion.position[2];
+    pose_.vecPosition[0] = motion.position[0];
+    pose_.vecPosition[1] = motion.position[1];
+    pose_.vecPosition[2] = motion.position[2];
 
-    m_pose = pose;
-
-    m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
+    pose = pose_;
 
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
         this->object_id, pose, sizeof(vr::DriverPose_t));
+
+    m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
 
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();

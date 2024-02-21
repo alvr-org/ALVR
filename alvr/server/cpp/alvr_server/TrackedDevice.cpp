@@ -1,13 +1,27 @@
 #include "TrackedDevice.h"
 #include "Logger.h"
+#include "Utils.h"
 
-std::string TrackedDevice::get_serial_number() {
+TrackedDevice::TrackedDevice(uint64_t device_id) : device_id(device_id) {
+    pose = vr::DriverPose_t{};
+    pose.poseIsValid = false;
+    pose.deviceIsConnected = false;
+    pose.result = vr::TrackingResult_Uninitialized;
+
+    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+}
+
+bool TrackedDevice::register_device() {
     auto size = GetSerialNumber(this->device_id, nullptr);
 
-    auto buffer = std::vector<char>(size);
-    GetSerialNumber(this->device_id, &buffer[0]);
+    auto serial_number = std::vector<char>(size);
+    GetSerialNumber(this->device_id, &serial_number[0]);
 
-    return std::string(&buffer[0]);
+    vr::VRServerDriverHost()->TrackedDeviceAdded(&serial_number[0], device_class(), this);
+
+    return true;
 }
 
 void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
@@ -55,4 +69,63 @@ void TrackedDevice::set_prop(FfiOpenvrProperty prop) {
     event_data.property.prop = key;
     vr::VRServerDriverHost()->VendorSpecificEvent(
         this->object_id, vr::VREvent_PropertyChanged, event_data, 0.);
+}
+
+bool TrackedDevice::set_motion(FfiDeviceMotion motion) {
+    auto pose = vr::DriverPose_t{};
+
+    pose.poseIsValid = motion.is_tracked;
+    pose.deviceIsConnected = motion.is_tracked;
+    pose.result =
+        motion.is_tracked ? vr::TrackingResult_Running_OK : vr::TrackingResult_Uninitialized;
+
+    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+
+    pose.qRotation = HmdQuaternion_Init(
+        motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
+
+    pose.vecPosition[0] = motion.position[0];
+    pose.vecPosition[1] = motion.position[1];
+    pose.vecPosition[2] = motion.position[2];
+
+    pose.vecVelocity[0] = motion.linear_velocity[0];
+    pose.vecVelocity[1] = motion.linear_velocity[1];
+    pose.vecVelocity[2] = motion.linear_velocity[2];
+
+    pose.vecAngularVelocity[0] = motion.angular_velocity[0];
+    pose.vecAngularVelocity[1] = motion.angular_velocity[1];
+    pose.vecAngularVelocity[2] = motion.angular_velocity[2];
+
+    pose.poseTimeOffset = motion.prediction_s;
+
+    this->pose = pose;
+
+    if (this->object_id != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            this->object_id, pose, sizeof(vr::DriverPose_t));
+
+        return true;
+    } else {
+        return false;
+    }
+}
+
+vr::EVRInitError TrackedDevice::Activate(vr::TrackedDeviceIndex_t object_id) {
+    this->object_id = object_id;
+    this->prop_container = vr::VRProperties()->TrackedDeviceToPropertyContainer(object_id);
+
+    SetOpenvrProps(object_id);
+}
+
+void TrackedDevice::Deactivate() {
+    this->object_id = vr::k_unTrackedDeviceIndexInvalid;
+    this->prop_container = vr::k_ulInvalidPropertyContainer;
+}
+
+void TrackedDevice::DebugRequest(const char *request,
+                                 char *resp_buffer,
+                                 uint32_t resp_buffer_size) {
+    if (resp_buffer_size >= 1)
+        resp_buffer[0] = 0;
 }

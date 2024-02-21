@@ -14,33 +14,14 @@ vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
     return vr::TrackedDeviceClass_Controller;
 }
 
-Controller::Controller(uint64_t deviceID) : TrackedDevice(deviceID) {
-    m_pose = vr::DriverPose_t{};
-    m_pose.poseIsValid = false;
-    m_pose.deviceIsConnected = false;
-    m_pose.result = vr::TrackingResult_Uninitialized;
+Controller::Controller(uint64_t deviceID) : TrackedDevice(deviceID) {}
 
-    m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-}
-
-//
-// ITrackedDeviceServerDriver
-//
-
-vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    Debug("RemoteController::Activate. objectId=%d\n", unObjectId);
-
-    auto vr_properties = vr::VRProperties();
-    auto vr_driver_input = vr::VRDriverInput();
-
-    this->object_id = unObjectId;
-    this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
-
-    SetOpenvrProps(this->device_id);
+vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t object_id) {
+    TrackedDevice::Activate(object_id);
 
     RegisterButtons(this->device_id);
+
+    auto vr_driver_input = vr::VRDriverInput();
 
     vr_driver_input->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 
@@ -105,31 +86,6 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     return vr::VRInitError_None;
 }
 
-void Controller::Deactivate() {
-    Debug("RemoteController::Deactivate\n");
-    this->object_id = vr::k_unTrackedDeviceIndexInvalid;
-}
-
-void Controller::EnterStandby() {}
-
-void *Controller::GetComponent(const char *pchComponentNameAndVersion) {
-    Debug("RemoteController::GetComponent. Name=%hs\n", pchComponentNameAndVersion);
-
-    return NULL;
-}
-
-void PowerOff() {}
-
-/** debug request from a client */
-void Controller::DebugRequest(const char * /*pchRequest*/,
-                              char *pchResponseBuffer,
-                              uint32_t unResponseBufferSize) {
-    if (unResponseBufferSize >= 1)
-        pchResponseBuffer[0] = 0;
-}
-
-vr::DriverPose_t Controller::GetPose() { return m_pose; }
-
 vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHaptic; }
 
 void Controller::RegisterButton(uint64_t id) {
@@ -186,56 +142,23 @@ void Controller::SetButton(uint64_t id, FfiButtonValue value) {
     }
 }
 
-bool Controller::onPoseUpdate(float predictionS,
-                              FfiDeviceMotion motion,
-                              const FfiHandSkeleton *handSkeleton,
-                              unsigned int controllersTracked) {
-    if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
-        return false;
+void Controller::UpdateTracking(FfiDeviceMotion motion, const FfiHandSkeleton *handSkeleton) {
+    if (!set_motion(motion)) {
+        return;
     }
 
     auto vr_driver_input = vr::VRDriverInput();
 
-    auto pose = vr::DriverPose_t{};
-    pose.poseIsValid = controllersTracked;
-    pose.deviceIsConnected = controllersTracked;
-    pose.result =
-        controllersTracked ? vr::TrackingResult_Running_OK : vr::TrackingResult_Uninitialized;
-
-    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-
-    pose.qRotation = HmdQuaternion_Init(motion.orientation.w,
-                                        motion.orientation.x,
-                                        motion.orientation.y,
-                                        motion.orientation.z); // controllerRotation;
-
-    pose.vecPosition[0] = motion.position[0];
-    pose.vecPosition[1] = motion.position[1];
-    pose.vecPosition[2] = motion.position[2];
-
-    pose.vecVelocity[0] = motion.linearVelocity[0];
-    pose.vecVelocity[1] = motion.linearVelocity[1];
-    pose.vecVelocity[2] = motion.linearVelocity[2];
-
-    pose.vecAngularVelocity[0] = motion.angularVelocity[0];
-    pose.vecAngularVelocity[1] = motion.angularVelocity[1];
-    pose.vecAngularVelocity[2] = motion.angularVelocity[2];
-
-    pose.poseTimeOffset = predictionS;
-
-    m_pose = pose;
-
     if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT];
         for (int j = 0; j < 26; j++) {
-            boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;
-            boneTransform[j].orientation.x = handSkeleton->jointRotations[j].x;
-            boneTransform[j].orientation.y = handSkeleton->jointRotations[j].y;
-            boneTransform[j].orientation.z = handSkeleton->jointRotations[j].z;
-            boneTransform[j].position.v[0] = handSkeleton->jointPositions[j][0];
-            boneTransform[j].position.v[1] = handSkeleton->jointPositions[j][1];
-            boneTransform[j].position.v[2] = handSkeleton->jointPositions[j][2];
+            boneTransform[j].orientation.w = handSkeleton->joint_rotations[j].w;
+            boneTransform[j].orientation.x = handSkeleton->joint_rotations[j].x;
+            boneTransform[j].orientation.y = handSkeleton->joint_rotations[j].y;
+            boneTransform[j].orientation.z = handSkeleton->joint_rotations[j].z;
+            boneTransform[j].position.v[0] = handSkeleton->joint_positions[j][0];
+            boneTransform[j].position.v[1] = handSkeleton->joint_positions[j][1];
+            boneTransform[j].position.v[2] = handSkeleton->joint_positions[j][2];
             boneTransform[j].position.v[3] = 1.0;
         }
 
@@ -248,22 +171,24 @@ bool Controller::onPoseUpdate(float predictionS,
                                                  boneTransform,
                                                  SKELETON_BONE_COUNT);
 
-        float rotThumb = (handSkeleton->jointRotations[2].z + handSkeleton->jointRotations[2].y +
-                          handSkeleton->jointRotations[3].z + handSkeleton->jointRotations[3].y +
-                          handSkeleton->jointRotations[4].z + handSkeleton->jointRotations[4].y) *
+        float rotThumb = (handSkeleton->joint_rotations[2].z + handSkeleton->joint_rotations[2].y +
+                          handSkeleton->joint_rotations[3].z + handSkeleton->joint_rotations[3].y +
+                          handSkeleton->joint_rotations[4].z + handSkeleton->joint_rotations[4].y) *
                          0.67f;
-        float rotIndex = (handSkeleton->jointRotations[7].z + handSkeleton->jointRotations[8].z +
-                          handSkeleton->jointRotations[9].z) *
+        float rotIndex = (handSkeleton->joint_rotations[7].z + handSkeleton->joint_rotations[8].z +
+                          handSkeleton->joint_rotations[9].z) *
                          0.67f;
-        float rotMiddle = (handSkeleton->jointRotations[12].z + handSkeleton->jointRotations[13].z +
-                           handSkeleton->jointRotations[14].z) *
-                          0.67f;
-        float rotRing = (handSkeleton->jointRotations[17].z + handSkeleton->jointRotations[18].z +
-                         handSkeleton->jointRotations[19].z) *
+        float rotMiddle =
+            (handSkeleton->joint_rotations[12].z + handSkeleton->joint_rotations[13].z +
+             handSkeleton->joint_rotations[14].z) *
+            0.67f;
+        float rotRing = (handSkeleton->joint_rotations[17].z + handSkeleton->joint_rotations[18].z +
+                         handSkeleton->joint_rotations[19].z) *
                         0.67f;
-        float rotPinky = (handSkeleton->jointRotations[22].z + handSkeleton->jointRotations[23].z +
-                          handSkeleton->jointRotations[24].z) *
-                         0.67f;
+        float rotPinky =
+            (handSkeleton->joint_rotations[22].z + handSkeleton->joint_rotations[23].z +
+             handSkeleton->joint_rotations[24].z) *
+            0.67f;
 
         vr_driver_input->UpdateScalarComponent(
             m_buttonHandles[ALVR_INPUT_FINGER_INDEX], rotIndex, 0.0);
@@ -350,9 +275,6 @@ bool Controller::onPoseUpdate(float predictionS,
             Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
         }
     }
-
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t));
 
     return false;
 }

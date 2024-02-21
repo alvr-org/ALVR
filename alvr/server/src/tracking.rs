@@ -137,7 +137,6 @@ impl TrackingManager {
         hand_skeletons_enabled: [bool; 2],
     ) -> Vec<(u64, DeviceMotion)> {
         let mut device_motion_configs = HashMap::new();
-        device_motion_configs.insert(*HEAD_ID, MotionConfig::default());
 
         if let Switch::Enabled(controllers) = &config.controllers {
             let t = controllers.left_controller_position_offset;
@@ -176,6 +175,14 @@ impl TrackingManager {
                     angular_velocity_cutoff: controllers.angular_velocity_cutoff * DEG_TO_RAD,
                 },
             );
+        }
+
+        for (id, _) in device_motions {
+            device_motion_configs.entry(*id).or_insert(MotionConfig {
+                pose_offset: Pose::default(),
+                linear_velocity_cutoff: 0.,
+                angular_velocity_cutoff: 0.,
+            });
         }
 
         let (left_hand_skeleton_offset, right_hand_skeleton_offset) =
@@ -343,13 +350,20 @@ pub fn to_openvr_hand_skeleton(
     ]
 }
 
-pub fn to_ffi_motion(device_id: u64, motion: DeviceMotion) -> FfiDeviceMotion {
+pub fn to_ffi_motion(
+    device_id: u64,
+    motion: DeviceMotion,
+    prediction: Duration,
+    is_tracked: bool,
+) -> FfiDeviceMotion {
     FfiDeviceMotion {
-        deviceID: device_id,
+        device_id,
+        prediction_s: prediction.as_secs_f32(),
+        is_tracked: is_tracked.into(),
         orientation: to_ffi_quat(motion.pose.orientation),
         position: motion.pose.position.to_array(),
-        linearVelocity: motion.linear_velocity.to_array(),
-        angularVelocity: motion.angular_velocity.to_array(),
+        linear_velocity: motion.linear_velocity.to_array(),
+        angular_velocity: motion.angular_velocity.to_array(),
     }
 }
 

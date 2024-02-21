@@ -854,7 +854,15 @@ fn connection_pipeline(
 
                 let ffi_motions = motions
                     .into_iter()
-                    .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
+                    .map(|(id, motion)| {
+                        let prediction = (id != HEAD_ID)
+                            .then(|| stats.tracker_pose_time_offset())
+                            .unwrap_or_default();
+                        let is_tracked = id == HEAD_ID
+                            || ((id == HAND_LEFT_ID || id == HAND_RIGHT_ID) && track_controllers)
+                            || track_body;
+                        tracking::to_ffi_motion(id, motion, prediction, is_tracked)
+                    })
                     .collect::<Vec<_>>();
 
                 let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
@@ -920,7 +928,6 @@ fn connection_pipeline(
                     unsafe {
                         crate::SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
-                            stats.tracker_pose_time_offset().as_secs_f32(),
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
@@ -932,17 +939,6 @@ fn connection_pipeline(
                                 skeleton
                             } else {
                                 ptr::null()
-                            },
-                            track_controllers.into(),
-                            if let Some(body_trackers) = &ffi_body_trackers {
-                                body_trackers.as_ptr()
-                            } else {
-                                ptr::null()
-                            },
-                            if let Some(body_trackers) = &ffi_body_trackers {
-                                body_trackers.len() as _
-                            } else {
-                                0
                             },
                         )
                     };

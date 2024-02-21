@@ -18,20 +18,13 @@ class CD3DRender;
 #endif
 class PoseHistory;
 
-class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVRDisplayComponent {
+class Hmd final : public TrackedDevice, vr::IVRDisplayComponent {
   public:
     Hmd();
 
     virtual ~Hmd();
 
-    virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
-    virtual void Deactivate();
-    virtual void EnterStandby() {}
-    void *GetComponent(const char *pchComponentNameAndVersion);
-    virtual void DebugRequest(const char *, char *, uint32_t) {}
-    virtual vr::DriverPose_t GetPose();
-
-    void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
+    void UpdateMotion(uint64_t targetTimestampNs, FfiDeviceMotion motion);
 
     void StartStreaming();
 
@@ -40,8 +33,15 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
     void SetViewsConfig(FfiViewsConfig config);
 
     vr::ETrackedDeviceClass GetDeviceClass() const { return m_deviceClass; }
+
     bool IsTrackingRef() const { return m_deviceClass == vr::TrackedDeviceClass_TrackingReference; }
+
     bool IsHMD() const { return m_deviceClass == vr::TrackedDeviceClass_HMD; }
+
+    // ITrackedDeviceServerDriver
+
+    virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
+    void *GetComponent(const char *pchComponentNameAndVersion);
 
     // IVRDisplayComponent
 
@@ -83,8 +83,6 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
 #endif
 
     std::shared_ptr<ViveTrackerProxy> m_viveTrackerProxy;
-
-    vr::DriverPose_t m_pose = {};
 
 #ifndef _WIN32
     bool m_refreshRateSet = false;

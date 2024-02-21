@@ -15,23 +15,18 @@ struct FfiQuat {
 };
 
 struct FfiHandSkeleton {
-    float jointPositions[26][3];
-    FfiQuat jointRotations[26];
+    float joint_positions[26][3];
+    FfiQuat joint_rotations[26];
 };
 
 struct FfiDeviceMotion {
-    unsigned long long deviceID;
+    unsigned long long device_id;
+    float prediction_s;
+    int is_tracked;
     FfiQuat orientation;
     float position[3];
-    float linearVelocity[3];
-    float angularVelocity[3];
-};
-
-struct FfiBodyTracker {
-    unsigned int trackerID;
-    FfiQuat orientation;
-    float position[3];
-    unsigned int tracking;
+    float linear_velocity[3];
+    float angular_velocity[3];
 };
 
 enum FfiOpenvrPropertyType {
@@ -114,10 +109,10 @@ extern "C" void (*LogDebug)(const char *stringPtr);
 extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*SetVideoConfigNals)(const unsigned char *configBuffer, int len, int codec);
-extern "C" void (*VideoSend)(unsigned long long targetTimestampNs,
+extern "C" void (*VideoSend)(unsigned long long target_timestamp_ns,
                              unsigned char *buf,
                              int len,
-                             bool isIdr);
+                             bool is_idr);
 extern "C" void (*HapticsSend)(unsigned long long path,
                                float duration_s,
                                float frequency,
@@ -127,9 +122,9 @@ extern "C" unsigned long long (*PathStringToHash)(const char *path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
-extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
-extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
-extern "C" void (*RegisterButtons)(unsigned long long deviceID);
+extern "C" unsigned long long (*GetSerialNumber)(unsigned long long device_id, char *outString);
+extern "C" void (*SetOpenvrProps)(unsigned long long device_id);
+extern "C" void (*RegisterButtons)(unsigned long long device_id);
 extern "C" void (*WaitForVSync)();
 
 extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
@@ -137,33 +132,29 @@ extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();
 extern "C" void RequestIDR();
-extern "C" void SetTracking(unsigned long long targetTimestampNs,
-                            float controllerPoseTimeOffsetS,
-                            const FfiDeviceMotion *deviceMotions,
-                            int motionsCount,
-                            const FfiHandSkeleton *leftHand,
-                            const FfiHandSkeleton *rightHand,
-                            unsigned int controllersTracked,
-                            const FfiBodyTracker *bodyTrackers,
-                            int bodyTrackersCount);
+extern "C" void SetTracking(unsigned long long target_timestamp_ns,
+                            const FfiDeviceMotion *device_motions,
+                            int motions_count,
+                            const FfiHandSkeleton *left_hand,
+                            const FfiHandSkeleton *right_hand);
 extern "C" void VideoErrorReportReceive();
 extern "C" void ShutdownSteamvr();
 
-extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
-extern "C" void RegisterButton(unsigned long long buttonID);
+extern "C" void SetOpenvrProperty(unsigned long long device_id, FfiOpenvrProperty prop);
+extern "C" void RegisterButton(unsigned long long button_id);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
-extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
-extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);
+extern "C" void SetBattery(unsigned long long device_id, float gauge_value, bool is_plugged);
+extern "C" void SetButton(unsigned long long button_id, FfiButtonValue value);
 
 extern "C" void InitOpenvrClient();
 extern "C" void ShutdownOpenvrClient();
-extern "C" void SetChaperoneArea(float areaWidth, float areaHeight);
+extern "C" void SetChaperoneArea(float area_width, float area_height);
 
 extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(
-    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr);
+    int codec, unsigned char *buf, int len, unsigned long long target_timestamp_ns, bool is_idr);
 
 // CrashHandler.cpp
 void HookCrashHandler();

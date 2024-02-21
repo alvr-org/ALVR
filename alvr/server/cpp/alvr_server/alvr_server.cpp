@@ -7,7 +7,7 @@
 #include "platform/linux/CEncoder.h"
 #endif
 #include "Controller.h"
-#include "FakeViveTracker.h"
+#include "GenericTracker.h"
 #include "HMD.h"
 #include "Logger.h"
 #include "Paths.h"
@@ -67,7 +67,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
   public:
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
-    std::vector<std::unique_ptr<FakeViveTracker>> generic_trackers;
+    std::vector<GenericTracker> generic_trackers;
     bool shutdown_called = false;
 
     std::map<uint64_t, TrackedDevice *> tracked_devices;
@@ -109,7 +109,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         }
 
         if (Settings::Instance().m_enableBodyTrackingFakeVive) {
-            auto waistTracker = std::make_unique<FakeViveTracker>("waist");
+            auto waistTracker = std::make_unique<GenericTracker>("waist");
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(waistTracker->GetSerialNumber(),
                                                               vr::TrackedDeviceClass_GenericTracker,
                                                               waistTracker.get())) {
@@ -117,7 +117,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             }
             generic_trackers.push_back(std::move(waistTracker));
 
-            auto chestTracker = std::make_unique<FakeViveTracker>("chest");
+            auto chestTracker = std::make_unique<GenericTracker>("chest");
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(chestTracker->GetSerialNumber(),
                                                               vr::TrackedDeviceClass_GenericTracker,
                                                               chestTracker.get())) {
@@ -125,7 +125,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             }
             generic_trackers.push_back(std::move(chestTracker));
 
-            auto leftElbowTracker = std::make_unique<FakeViveTracker>("left_elbow");
+            auto leftElbowTracker = std::make_unique<GenericTracker>("left_elbow");
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftElbowTracker->GetSerialNumber(),
                                                               vr::TrackedDeviceClass_GenericTracker,
                                                               leftElbowTracker.get())) {
@@ -133,7 +133,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             }
             generic_trackers.push_back(std::move(leftElbowTracker));
 
-            auto rightElbowTracker = std::make_unique<FakeViveTracker>("right_elbow");
+            auto rightElbowTracker = std::make_unique<GenericTracker>("right_elbow");
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightElbowTracker->GetSerialNumber(),
                                                               vr::TrackedDeviceClass_GenericTracker,
                                                               rightElbowTracker.get())) {
@@ -141,36 +141,39 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             }
             generic_trackers.push_back(std::move(rightElbowTracker));
 
-
             if (Settings::Instance().m_bodyTrackingHasLegs) {
-                auto leftKneeTracker = std::make_unique<FakeViveTracker>("left_knee");
-                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftKneeTracker->GetSerialNumber(),
-                                                                vr::TrackedDeviceClass_GenericTracker,
-                                                                leftKneeTracker.get())) {
+                auto leftKneeTracker = std::make_unique<GenericTracker>("left_knee");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        leftKneeTracker->GetSerialNumber(),
+                        vr::TrackedDeviceClass_GenericTracker,
+                        leftKneeTracker.get())) {
                     Warn("Failed to register Vive tracker (left_knee)");
                 }
                 generic_trackers.push_back(std::move(leftKneeTracker));
 
-                auto leftFootTracker = std::make_unique<FakeViveTracker>("left_foot");
-                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftFootTracker->GetSerialNumber(),
-                                                                vr::TrackedDeviceClass_GenericTracker,
-                                                                leftFootTracker.get())) {
+                auto leftFootTracker = std::make_unique<GenericTracker>("left_foot");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        leftFootTracker->GetSerialNumber(),
+                        vr::TrackedDeviceClass_GenericTracker,
+                        leftFootTracker.get())) {
                     Warn("Failed to register Vive tracker (left_foot)");
                 }
                 generic_trackers.push_back(std::move(leftFootTracker));
 
-                auto rightKneeTracker = std::make_unique<FakeViveTracker>("right_knee");
-                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightKneeTracker->GetSerialNumber(),
-                                                                vr::TrackedDeviceClass_GenericTracker,
-                                                                rightKneeTracker.get())) {
+                auto rightKneeTracker = std::make_unique<GenericTracker>("right_knee");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        rightKneeTracker->GetSerialNumber(),
+                        vr::TrackedDeviceClass_GenericTracker,
+                        rightKneeTracker.get())) {
                     Warn("Failed to register Vive tracker (right_knee)");
                 }
                 generic_trackers.push_back(std::move(rightKneeTracker));
 
-                auto rightFootTracker = std::make_unique<FakeViveTracker>("right_foot");
-                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightFootTracker->GetSerialNumber(),
-                                                                vr::TrackedDeviceClass_GenericTracker,
-                                                                rightFootTracker.get())) {
+                auto rightFootTracker = std::make_unique<GenericTracker>("right_foot");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        rightFootTracker->GetSerialNumber(),
+                        vr::TrackedDeviceClass_GenericTracker,
+                        rightFootTracker.get())) {
                     Warn("Failed to register Vive tracker (right_foot)");
                 }
                 generic_trackers.push_back(std::move(rightFootTracker));
@@ -315,32 +318,30 @@ void RequestIDR() {
     }
 }
 
-void SetTracking(unsigned long long targetTimestampNs,
-                 float controllerPoseTimeOffsetS,
-                 const FfiDeviceMotion *deviceMotions,
-                 int motionsCount,
-                 const FfiHandSkeleton *leftHand,
-                 const FfiHandSkeleton *rightHand,
-                 unsigned int controllersTracked,
-                 const FfiBodyTracker *bodyTrackers,
-                 int bodyTrackersCount) {
-    for (int i = 0; i < motionsCount; i++) {
-        if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
-            g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
-        } else {
-            if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
-                g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked);
-            } else if (g_driver_provider.right_controller &&
-                       deviceMotions[i].deviceID == HAND_RIGHT_ID) {
-                g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked);
+void SetTracking(unsigned long long target_timestamp_ns,
+                 const FfiDeviceMotion *device_motions,
+                 int motions_count,
+                 const FfiHandSkeleton *left_hand,
+                 const FfiHandSkeleton *right_hand) {
+    for (int i = 0; i < motions_count; i++) {
+        if (device_motions[i].device_id == HEAD_ID) {
+            if (g_driver_provider.hmd) {
+                g_driver_provider.hmd->UpdateMotion(target_timestamp_ns, device_motions[i]);
             }
-        }
-    }
-    if (Settings::Instance().m_enableBodyTrackingFakeVive) {
-        for (int i = 0; i < bodyTrackersCount; i++) {
-            g_driver_provider.generic_trackers.at(bodyTrackers[i].trackerID)->OnPoseUpdated(targetTimestampNs, bodyTrackers[i]);
+        } else if (device_motions[i].device_id == HAND_LEFT_ID) {
+            if (g_driver_provider.left_controller) {
+                g_driver_provider.left_controller->UpdateTracking(device_motions[i], left_hand);
+            }
+        } else if (device_motions[i].device_id == HAND_RIGHT_ID) {
+            if (g_driver_provider.left_controller) {
+                g_driver_provider.right_controller->UpdateTracking(device_motions[i], right_hand);
+            }
+        } else {
+            auto device_it = g_driver_provider.tracked_devices.find(device_motions[i].device_id);
+
+            if (device_it != g_driver_provider.tracked_devices.end()) {
+                device_it->second->set_motion(device_motions[i]);
+            }
         }
     }
 }

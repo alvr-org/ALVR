@@ -600,7 +600,6 @@ pub fn entry_point() {
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
-    // assert!(available_extensions.fb_passthrough);
 
     let mut exts = xr::ExtensionSet::default();
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
@@ -660,6 +659,8 @@ pub fn entry_point() {
             system: xr_system,
             session: xr_session.clone(),
         };
+
+        //if exts.fb_passthrough {
         let passthrough = xr_session
             .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
             .unwrap();
@@ -669,6 +670,9 @@ pub fn entry_point() {
             xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
             xr::PassthroughLayerPurposeFB::RECONSTRUCTION
         ).unwrap();
+        // } else {
+        //     warn!("exts.fb_passthrough is not supported on this device. Passthrough will be disabled.");
+        // }
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(
@@ -1078,12 +1082,12 @@ pub fn entry_point() {
             let space = session_context.reference_space.read();
             let mut stream_layer = xr::CompositionLayerProjection::<xr::OpenGlEs>::new().space(&space).views(&projection_views_layers);
 
-            if exts.fb_passthrough {
-                let mut stream_layer_raw = stream_layer.into_raw();
-                stream_layer_raw.layer_flags = xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA;
-                unsafe { stream_layer = xr::CompositionLayerProjection::from_raw(stream_layer_raw) };
-            }
-
+            //if exts.fb_passthrough {
+            let mut stream_layer_raw = stream_layer.into_raw();
+            //set this layer to blend with any previous layers using the alpha channel
+            stream_layer_raw.layer_flags = xr::CompositionLayerFlags::BLEND_TEXTURE_SOURCE_ALPHA;
+            unsafe { stream_layer = xr::CompositionLayerProjection::from_raw(stream_layer_raw) };
+            //}
 
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),

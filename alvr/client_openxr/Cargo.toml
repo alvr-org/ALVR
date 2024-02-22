@@ -104,7 +104,7 @@ name = "oculus.software.handtracking"
 required = false
 [[package.metadata.android.uses_feature]]
 name = "com.oculus.feature.PASSTHROUGH"
-required = true
+required = false
 [[package.metadata.android.uses_permission]]
 name = "com.oculus.permission.EYE_TRACKING"
 [[package.metadata.android.uses_permission]]

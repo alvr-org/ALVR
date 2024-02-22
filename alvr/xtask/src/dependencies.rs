@@ -242,6 +242,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
             let nvenc_flags = &[
                 "--enable-encoder=h264_nvenc",
                 "--enable-encoder=hevc_nvenc",
+                "--enable-encoder=av1_nvenc",
                 "--enable-nonfree",
                 "--enable-cuda-nvcc",
                 "--enable-libnpp",

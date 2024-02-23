@@ -277,7 +277,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
 
 fn get_android_openxr_loaders() {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
+        let sh = Shell::new().unwrap();
         let temp_dir = afs::build_dir().join("temp_download");
+        sh.remove_path(&temp_dir).ok();
+        sh.create_dir(&temp_dir).unwrap();
         let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
         fs::create_dir_all(&destination_dir).unwrap();
 

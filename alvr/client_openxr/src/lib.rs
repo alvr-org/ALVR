@@ -7,7 +7,7 @@ use alvr_common::{
     parking_lot::RwLock,
     warn, DeviceMotion, Fov, Pose, RelaxedAtomic, HEAD_ID, LEFT_HAND_ID, RIGHT_HAND_ID,
 };
-use alvr_packets::{FaceData, Tracking};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking};
 use alvr_session::{
     ClientsideFoveationConfig, ClientsideFoveationMode, FaceTrackingSourcesConfig,
     FoveatedEncodingConfig,
@@ -281,8 +281,8 @@ pub fn create_swapchain(
 fn stream_input_pipeline(
     xr_ctx: &XrContext,
     interaction_ctx: &InteractionContext,
-    stream_ctx: &mut StreamInputContext,
-) {
+    stream_ctx: &mut StreamInputContext
+) -> Option<Vec<(u64, ButtonValue)>> {
     // Streaming related inputs are updated here. Make sure every input poll is done in this
     // thread
     if let Err(e) = xr_ctx
@@ -290,12 +290,12 @@ fn stream_input_pipeline(
         .sync_actions(&[(&interaction_ctx.action_set).into()])
     {
         error!("{e}");
-        return;
+        return None;
     }
 
     let Some(now) = xr_runtime_now(&xr_ctx.instance) else {
         error!("Cannot poll tracking: invalid time");
-        return;
+        return None;
     };
 
     let target_timestamp = now
@@ -409,10 +409,21 @@ fn stream_input_pipeline(
 
     let button_entries =
         interaction::update_buttons(&xr_ctx.session, &interaction_ctx.button_actions);
+
+    let returnval: Vec<(u64, ButtonValue)> = button_entries
+        .iter()
+        .map(|e: &ButtonEntry| (e.path_id, e.value))
+        .collect();
+
     if !button_entries.is_empty() {
         alvr_client_core::send_buttons(button_entries);
     }
+
+    Some(returnval)
 }
+
+// TODO can I get this into the configuration object?
+static mut passthrough_enable: bool = false;
 
 fn initialize_stream(
     xr_ctx: &XrContext,
@@ -542,11 +553,41 @@ fn initialize_stream(
         let running = Arc::clone(&running);
         let interaction_ctx = Arc::clone(&interaction_ctx);
         let input_rate = config.refresh_rate_hint;
+        let mut button1_state = false;
+        let mut button2_state = false;
+
         move || {
             let mut deadline = Instant::now();
             let frame_interval = Duration::from_secs_f32(1.0 / input_rate);
             while running.value() {
-                stream_input_pipeline(&xr_ctx, &interaction_ctx, &mut input_context);
+                
+                let buttons: Option<Vec<(u64, ButtonValue)>> = stream_input_pipeline(&xr_ctx, &interaction_ctx, &mut input_context);
+                if buttons.is_some() {  // TODO this is way too verbose cause I don't know rust
+                    for (button_id, _button_value) in &buttons.unwrap() {
+                        if *button_id == *alvr_common::RIGHT_A_CLICK_ID {
+                            if let ButtonValue::Binary(true) = _button_value {
+                                button1_state = true;
+                            } else {
+                                button1_state = false;
+                            }
+                        }
+                        if *button_id == *alvr_common::RIGHT_B_CLICK_ID {
+                            if let ButtonValue::Binary(true) = _button_value {
+                                button2_state = true;
+                            } else {
+                                button2_state = false;
+                            }
+
+                        }
+                        if button1_state && button2_state {
+                            println!("BUTTON You are toggling the effect");
+                            // Massive TODOs
+                            unsafe {
+                                passthrough_enable = !passthrough_enable;
+                            }
+                        }
+                    }
+                }
 
                 deadline += frame_interval / 3;
                 thread::sleep(deadline.saturating_duration_since(Instant::now()));

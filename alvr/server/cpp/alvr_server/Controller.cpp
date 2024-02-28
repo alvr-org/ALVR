@@ -227,7 +227,7 @@ bool Controller::onPoseUpdate(float predictionS,
     m_pose = pose;
 
     if (handSkeleton != nullptr) {
-        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT];
+        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
         for (int j = 0; j < 26; j++) {
             boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;
             boneTransform[j].orientation.x = handSkeleton->jointRotations[j].x;
@@ -237,6 +237,54 @@ bool Controller::onPoseUpdate(float predictionS,
             boneTransform[j].position.v[1] = handSkeleton->jointPositions[j][1];
             boneTransform[j].position.v[2] = handSkeleton->jointPositions[j][2];
             boneTransform[j].position.v[3] = 1.0;
+        }
+
+        // TODO: aux bone orientations
+        for (int j = 26; j < SKELETON_BONE_COUNT; j++) {
+            boneTransform[j].orientation.w = 1.0;
+            boneTransform[j].orientation.x = 0.0;
+            boneTransform[j].orientation.y = 0.0;
+            boneTransform[j].orientation.z = 0.0;
+        }
+
+        // Thumb aux
+        for (int j = 2; j <= 5; j++) {
+            boneTransform[26].position.v[0] += handSkeleton->jointPositions[j][0];
+            boneTransform[26].position.v[1] += handSkeleton->jointPositions[j][1];
+            boneTransform[26].position.v[2] += handSkeleton->jointPositions[j][2];
+            boneTransform[26].position.v[3] = 1.0;
+        }
+
+        // Index aux
+        for (int j = 6; j <= 6+4; j++) {
+            boneTransform[27].position.v[0] += handSkeleton->jointPositions[j][0];
+            boneTransform[27].position.v[1] += handSkeleton->jointPositions[j][1];
+            boneTransform[27].position.v[2] += handSkeleton->jointPositions[j][2];
+            boneTransform[27].position.v[3] = 1.0;
+        }
+
+        // Middle aux
+        for (int j = 11; j <= 11+4; j++) {
+            boneTransform[28].position.v[0] += handSkeleton->jointPositions[j][0];
+            boneTransform[28].position.v[1] += handSkeleton->jointPositions[j][1];
+            boneTransform[28].position.v[2] += handSkeleton->jointPositions[j][2];
+            boneTransform[28].position.v[3] = 1.0;
+        }
+
+        // Ring aux
+        for (int j = 16; j <= 16+4; j++) {
+            boneTransform[29].position.v[0] += handSkeleton->jointPositions[j][0];
+            boneTransform[29].position.v[1] += handSkeleton->jointPositions[j][1];
+            boneTransform[29].position.v[2] += handSkeleton->jointPositions[j][2];
+            boneTransform[29].position.v[3] = 1.0;
+        }
+
+        // Pinky aux
+        for (int j = 21; j <= 21+4; j++) {
+            boneTransform[30].position.v[0] += handSkeleton->jointPositions[j][0];
+            boneTransform[30].position.v[1] += handSkeleton->jointPositions[j][1];
+            boneTransform[30].position.v[2] += handSkeleton->jointPositions[j][2];
+            boneTransform[30].position.v[3] = 1.0;
         }
 
         vr_driver_input->UpdateSkeletonComponent(m_compSkeleton,

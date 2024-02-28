@@ -7,13 +7,11 @@ use crate::{
     sockets::AnnouncerSocket,
     statistics::StatisticsManager,
     storage::Config,
-    ClientCoreEvent, EVENT_QUEUE, LIFECYCLE_STATE, STATISTICS_MANAGER,
+    ClientCapabilities, ClientCoreEvent, EVENT_QUEUE, LIFECYCLE_STATE, STATISTICS_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    debug, error,
-    glam::UVec2,
-    info,
+    debug, error, info,
     once_cell::sync::Lazy,
     parking_lot::{Condvar, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
@@ -94,20 +92,12 @@ fn is_streaming() -> bool {
     *CONNECTION_STATE.read() == ConnectionState::Streaming
 }
 
-pub fn connection_lifecycle_loop(
-    default_view_resolution: UVec2,
-    supported_refresh_rates: Vec<f32>,
-    supports_foveated_encoding: bool,
-) {
+pub fn connection_lifecycle_loop(capabilities: ClientCapabilities) {
     set_hud_message(INITIAL_MESSAGE);
 
     while *LIFECYCLE_STATE.read() != LifecycleState::ShuttingDown {
         if *LIFECYCLE_STATE.read() == LifecycleState::Resumed {
-            if let Err(e) = connection_pipeline(
-                default_view_resolution,
-                supported_refresh_rates.clone(),
-                supports_foveated_encoding,
-            ) {
+            if let Err(e) = connection_pipeline(capabilities.clone()) {
                 let message = format!("Connection error:\n{e}\nCheck the PC for more details");
                 set_hud_message(&message);
                 error!("Connection error: {e}");
@@ -123,11 +113,7 @@ pub fn connection_lifecycle_loop(
     }
 }
 
-fn connection_pipeline(
-    default_view_resolution: UVec2,
-    supported_refresh_rates: Vec<f32>,
-    supports_foveated_encoding: bool,
-) -> ConResult {
+fn connection_pipeline(capabilities: ClientCapabilities) -> ConResult {
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
         let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
@@ -181,14 +167,17 @@ fn connection_pipeline(
     proto_control_socket
         .send(&ClientConnectionResult::ConnectionAccepted {
             client_protocol_id: alvr_common::protocol_id_u64(),
-            display_name: platform::display_name(),
+            display_name: platform::platform_strings().display,
             server_ip,
             streaming_capabilities: Some(
                 alvr_packets::encode_video_streaming_capabilities(&VideoStreamingCapabilities {
-                    default_view_resolution,
-                    supported_refresh_rates,
+                    default_view_resolution: capabilities.default_view_resolution,
+                    supported_refresh_rates: capabilities.refresh_rates,
                     microphone_sample_rate,
-                    supports_foveated_encoding,
+                    supports_foveated_encoding: capabilities.foveated_encoding,
+                    encoder_high_profile: capabilities.encoder_high_profile,
+                    encoder_10_bits: capabilities.encoder_10_bits,
+                    encoder_av1: capabilities.encoder_av1,
                 })
                 .to_con()?,
             ),

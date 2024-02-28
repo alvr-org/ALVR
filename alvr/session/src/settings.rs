@@ -445,7 +445,7 @@ pub struct ColorCorrectionConfig {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[schema(gui = "button_group")]
 pub enum CodecType {
     #[schema(strings(display_name = "h264"))]
@@ -457,7 +457,7 @@ pub enum CodecType {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[schema(gui = "button_group")]
 pub enum H264Profile {
     #[schema(strings(display_name = "High"))]

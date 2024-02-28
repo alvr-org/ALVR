@@ -1,6 +1,6 @@
 use crate::{
     opengl::{self, RenderViewInput},
-    storage, ClientCoreEvent,
+    storage, ClientCapabilities, ClientCoreEvent,
 };
 use alvr_common::{
     debug, error,
@@ -30,6 +30,19 @@ static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
+
+#[repr(C)]
+pub struct AlvrClientCapabilities {
+    default_view_width: u32,
+    default_view_height: u32,
+    external_decoder: bool,
+    refresh_rates: *const f32,
+    refresh_rates_count: i32,
+    foveated_encoding: bool,
+    encoder_high_profile: bool,
+    encoder_10_bits: bool,
+    encoder_av1: bool,
+}
 
 #[repr(u8)]
 pub enum AlvrCodec {
@@ -161,34 +174,36 @@ pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
     string_to_c_str(protocol_buffer, &storage::Config::load().protocol_id)
 }
 
-/// On non-Android platforms, java_vm and constext should be null.
-/// NB: context must be thread safe.
-#[allow(unused_variables)]
+/// NB: for android, `context` must be thread safe.
 #[no_mangle]
 pub unsafe extern "C" fn alvr_initialize(
-    java_vm: *mut c_void,
-    context: *mut c_void,
-    default_view_width: u32,
-    default_view_height: u32,
-    refresh_rates: *const f32,
-    refresh_rates_count: i32,
-    supports_foveated_encoding: bool,
-    external_decoder: bool,
+    #[cfg(target_os = "android")] java_vm: *mut c_void,
+    #[cfg(target_os = "android")] context: *mut c_void,
+    capabilities: AlvrClientCapabilities,
 ) {
     #[cfg(target_os = "android")]
     ndk_context::initialize_android_context(java_vm, context);
 
-    let default_view_resolution = UVec2::new(default_view_width, default_view_height);
-
-    let supported_refresh_rates =
-        slice::from_raw_parts(refresh_rates, refresh_rates_count as _).to_vec();
-
-    crate::initialize(
-        default_view_resolution,
-        supported_refresh_rates,
-        supports_foveated_encoding,
-        external_decoder,
+    let default_view_resolution = UVec2::new(
+        capabilities.default_view_width,
+        capabilities.default_view_height,
     );
+
+    let refresh_rates = slice::from_raw_parts(
+        capabilities.refresh_rates,
+        capabilities.refresh_rates_count as _,
+    )
+    .to_vec();
+
+    crate::initialize(ClientCapabilities {
+        default_view_resolution,
+        external_decoder: capabilities.external_decoder,
+        refresh_rates,
+        foveated_encoding: capabilities.foveated_encoding,
+        encoder_high_profile: capabilities.encoder_high_profile,
+        encoder_10_bits: capabilities.encoder_10_bits,
+        encoder_av1: capabilities.encoder_av1,
+    });
 }
 
 #[no_mangle]

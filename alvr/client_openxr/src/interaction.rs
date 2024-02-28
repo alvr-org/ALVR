@@ -61,7 +61,7 @@ pub fn initialize_interaction(
     }
 
     let controllers_profile_path = match platform {
-        Platform::Quest => QUEST_CONTROLLER_PROFILE_PATH,
+        Platform::Quest3 | Platform::QuestOther => QUEST_CONTROLLER_PROFILE_PATH,
         Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
         Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
         Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE_PATH,

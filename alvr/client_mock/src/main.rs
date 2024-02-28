@@ -1,4 +1,4 @@
-use alvr_client_core::ClientCoreEvent;
+use alvr_client_core::{ClientCapabilities, ClientCoreEvent};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
@@ -205,12 +205,15 @@ fn client_thread(
     output_sender: mpsc::Sender<WindowOutput>,
     input_receiver: mpsc::Receiver<WindowInput>,
 ) {
-    alvr_client_core::initialize(
-        UVec2::new(1920, 1832),
-        vec![60.0, 72.0, 80.0, 90.0, 120.0],
-        false,
-        true,
-    );
+    alvr_client_core::initialize(ClientCapabilities {
+        default_view_resolution: UVec2::new(1920, 1832),
+        external_decoder: true,
+        refresh_rates: vec![60.0, 72.0, 80.0, 90.0, 120.0],
+        foveated_encoding: false,
+        encoder_high_profile: false,
+        encoder_10_bits: false,
+        encoder_av1: false,
+    });
     alvr_client_core::resume();
 
     let streaming = Arc::new(RelaxedAtomic::new(true));

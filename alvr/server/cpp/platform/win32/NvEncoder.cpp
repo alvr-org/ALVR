@@ -193,7 +193,7 @@ void NvEncoder::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* pIntializeP
             pIntializeParams->encodeConfig->encodeCodecConfig.h264Config.chromaFormatIDC = 3;
         }
         pIntializeParams->encodeConfig->encodeCodecConfig.h264Config.idrPeriod = pIntializeParams->encodeConfig->gopLength;
-        pIntializeParams->encodeConfig->encodeCodecConfig.h264Config.h264VUIParameters.videoFullRangeFlag = 1;
+        pIntializeParams->encodeConfig->encodeCodecConfig.h264Config.h264VUIParameters.videoFullRangeFlag = 0;
     }
     else if (pIntializeParams->encodeGUID == NV_ENC_CODEC_HEVC_GUID)
     {
@@ -204,7 +204,7 @@ void NvEncoder::CreateDefaultEncoderParams(NV_ENC_INITIALIZE_PARAMS* pIntializeP
             pIntializeParams->encodeConfig->encodeCodecConfig.hevcConfig.chromaFormatIDC = 3;
         }
         pIntializeParams->encodeConfig->encodeCodecConfig.hevcConfig.idrPeriod = pIntializeParams->encodeConfig->gopLength;
-        pIntializeParams->encodeConfig->encodeCodecConfig.hevcConfig.hevcVUIParameters.videoFullRangeFlag = 1;
+        pIntializeParams->encodeConfig->encodeCodecConfig.hevcConfig.hevcVUIParameters.videoFullRangeFlag = 0;
     }
     else if (pIntializeParams->encodeGUID == NV_ENC_CODEC_AV1_GUID)
     {

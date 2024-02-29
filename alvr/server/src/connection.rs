@@ -170,6 +170,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         filler_data: settings.video.encoder_config.filler_data,
         entropy_coding: settings.video.encoder_config.entropy_coding as u32,
         use_10bit_encoder: settings.video.encoder_config.use_10bit,
+        use_full_range_encoding: settings.video.encoder_config.use_full_range,
         enable_pre_analysis: amf_controls.enable_pre_analysis,
         enable_vbaq: amf_controls.enable_vbaq,
         enable_hmqb: amf_controls.enable_hmqb,

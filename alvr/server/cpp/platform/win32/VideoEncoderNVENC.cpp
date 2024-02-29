@@ -224,6 +224,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
+
+		config.h264VUIParameters.videoFullRangeFlag = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
 	}
 	case ALVR_CODEC_HEVC:
 	{
@@ -248,6 +250,8 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
+
+		config.hevcVUIParameters.videoFullRangeFlag = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
 	}
 	case ALVR_CODEC_AV1:
 	{

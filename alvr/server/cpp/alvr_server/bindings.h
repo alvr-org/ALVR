@@ -15,8 +15,8 @@ struct FfiQuat {
 };
 
 struct FfiHandSkeleton {
-    float jointPositions[26][3];
-    FfiQuat jointRotations[26];
+    float jointPositions[31][3];
+    FfiQuat jointRotations[31];
 };
 
 struct FfiDeviceMotion {

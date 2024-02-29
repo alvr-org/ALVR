@@ -260,12 +260,14 @@ pub fn to_openvr_hand_skeleton(
         // Convert to SteamVR basis orientations
         let (orientation, position) = if id == *HAND_LEFT_ID {
             (
-                Quat::from_xyzw(o.x, o.y, o.z, o.w) * Quat::from_euler(EulerRot::YXZ, -FRAC_PI_2, FRAC_PI_2, 0.0),
+                Quat::from_xyzw(o.x, o.y, o.z, o.w)
+                    * Quat::from_euler(EulerRot::YXZ, -FRAC_PI_2, FRAC_PI_2, 0.0),
                 Vec3::new(p.x, p.y, p.z),
             )
         } else {
             (
-                Quat::from_xyzw(o.x, o.y, o.z, o.w) * Quat::from_euler(EulerRot::YXZ, FRAC_PI_2, -FRAC_PI_2, 0.0),
+                Quat::from_xyzw(o.x, o.y, o.z, o.w)
+                    * Quat::from_euler(EulerRot::YXZ, FRAC_PI_2, -FRAC_PI_2, 0.0),
                 Vec3::new(p.x, p.y, p.z),
             )
         };
@@ -303,8 +305,7 @@ pub fn to_openvr_hand_skeleton(
 
     // Adjust hand position based on the emulated controller for joints
     // parented to the root.
-    let root_parented_pose =  |pose: Pose| -> Pose
-    {
+    let root_parented_pose = |pose: Pose| -> Pose {
         let pose_offset = if id == *HAND_LEFT_ID {
             left_hand_skeleton_offset
         } else {
@@ -373,7 +374,7 @@ pub fn to_openvr_hand_skeleton(
         aux_orientation(id, root_parented_pose(gj[9])),
         aux_orientation(id, root_parented_pose(gj[14])),
         aux_orientation(id, root_parented_pose(gj[19])),
-        aux_orientation(id, root_parented_pose(gj[24]))
+        aux_orientation(id, root_parented_pose(gj[24])),
     ]
 }
 

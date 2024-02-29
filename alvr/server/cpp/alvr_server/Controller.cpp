@@ -227,8 +227,8 @@ bool Controller::onPoseUpdate(float predictionS,
     m_pose = pose;
 
     if (handSkeleton != nullptr) {
-        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT];
-        for (int j = 0; j < 26; j++) {
+        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
+        for (int j = 0; j < 31; j++) {
             boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;
             boneTransform[j].orientation.x = handSkeleton->jointRotations[j].x;
             boneTransform[j].orientation.y = handSkeleton->jointRotations[j].y;

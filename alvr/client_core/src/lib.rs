@@ -49,7 +49,7 @@ use std::{
 };
 use storage::Config;
 
-pub use platform::PlatformStrings;
+pub use platform::Platform;
 
 static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
 
@@ -85,8 +85,8 @@ pub enum ClientCoreEvent {
     },
 }
 
-pub fn platform_strings() -> PlatformStrings {
-    platform::platform_strings()
+pub fn platform() -> Platform {
+    platform::platform()
 }
 
 // Note: this struct may change without breaking network protocol changes

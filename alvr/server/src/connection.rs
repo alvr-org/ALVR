@@ -30,7 +30,8 @@ use alvr_packets::{
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize, H264Profile, OpenvrConfig, SessionConfig
+    BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
+    H264Profile, OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,

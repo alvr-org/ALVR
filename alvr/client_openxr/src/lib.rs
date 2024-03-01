@@ -1,8 +1,6 @@
 mod interaction;
 
-use alvr_client_core::{
-    opengl::RenderViewInput, ClientCapabilities, ClientCoreEvent, PlatformStrings,
-};
+use alvr_client_core::{opengl::RenderViewInput, ClientCapabilities, ClientCoreEvent, Platform};
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -31,19 +29,6 @@ use std::{
 const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
-
-// Platform of the device. It is used to match the VR runtime and enable features conditionally.
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Platform {
-    Quest3,
-    QuestOther,
-    PicoNeo3,
-    Pico4,
-    Focus3,
-    Yvr,
-    Lynx,
-    Other,
-}
 
 #[derive(Clone)]
 pub struct XrContext {
@@ -591,28 +576,10 @@ fn initialize_stream(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let PlatformStrings {
-        manufacturer,
-        model,
-        device,
-        ..
-    } = alvr_client_core::platform_strings();
-
-    info!("Manufacturer: {manufacturer}, model: {model}, device: {device}");
-
-    let platform = match (manufacturer.as_str(), model.as_str(), device.as_str()) {
-        ("Oculus", _, "eureka") => Platform::Quest3,
-        ("Oculus", _, _) => Platform::QuestOther,
-        ("Pico", "Pico Neo 3", _) => Platform::PicoNeo3,
-        ("Pico", _, _) => Platform::Pico4,
-        ("HTC", _, _) => Platform::Focus3,
-        ("YVR", _, _) => Platform::Yvr,
-        ("Lynx Mixed Reality", _, _) => Platform::Lynx,
-        _ => Platform::Other,
-    };
+    let platform = alvr_client_core::platform();
 
     let loader_suffix = match platform {
-        Platform::Quest3 | Platform::QuestOther => "quest",
+        Platform::Quest2 | Platform::Quest3 | Platform::QuestPro | Platform::QuestOther => "quest",
         Platform::PicoNeo3 | Platform::Pico4 => "pico",
         Platform::Yvr => "yvr",
         Platform::Lynx => "lynx",
@@ -716,9 +683,9 @@ pub fn entry_point() {
                 default_view_resolution,
                 external_decoder: false,
                 refresh_rates,
-                foveated_encoding: platform != Platform::Other,
-                encoder_high_profile: platform != Platform::Other,
-                encoder_10_bits: platform != Platform::Other,
+                foveated_encoding: platform != Platform::Unknown,
+                encoder_high_profile: platform != Platform::Unknown,
+                encoder_10_bits: platform != Platform::Unknown,
                 encoder_av1: platform == Platform::Quest3,
             });
         });

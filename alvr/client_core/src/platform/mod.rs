@@ -62,7 +62,7 @@ pub fn platform() -> Platform {
         let model = android::model_name();
         let device = android::device_name();
 
-        match (manufacturer, model, device) {
+        match (manufacturer.as_str(), model.as_str(), device.as_str()) {
             ("Oculus", _, "monterey") => Platform::Quest1,
             ("Oculus", _, "hollywood") => Platform::Quest2,
             ("Oculus", _, "eureka") => Platform::Quest3,
@@ -72,9 +72,9 @@ pub fn platform() -> Platform {
             ("Pico", _, _) => Platform::Pico4,
             ("HTC", "VIVE Focus 3", _) => Platform::Focus3,
             ("HTC", "VIVE XR Series", _) => Platform::XRElite,
-            ("HTC", _) => Platform::ViveUnknown,
-            ("YVR", _) => Platform::Yvr,
-            ("Lynx Mixed Reality", _) => Platform::Lynx,
+            ("HTC", _, _) => Platform::ViveUnknown,
+            ("YVR", _, _) => Platform::Yvr,
+            ("Lynx Mixed Reality", _, _) => Platform::Lynx,
             _ => Platform::AndroidUnknown,
         }
     }

@@ -855,7 +855,7 @@ pub fn entry_point() {
                         settings,
                         negotiated_config,
                     } => {
-                        let new_config = Some(StreamConfig {
+                        let new_config = StreamConfig {
                             view_resolution: negotiated_config.view_resolution,
                             refresh_rate_hint: negotiated_config.refresh_rate_hint,
                             foveated_encoding_config: negotiated_config
@@ -877,22 +877,31 @@ pub fn entry_point() {
                                 .body_tracking
                                 .as_option()
                                 .map(|c| c.sources.clone()),
-                        });
-                        if stream_config != new_config {
-                            stream_config = new_config;
+                        };
 
-                            xr_session.request_exit().ok();
-                        } else {
-                            session_context.stream_context = stream_config.as_ref().map(|config| {
-                                initialize_stream(
-                                    &xr_ctx,
-                                    Arc::clone(&interaction_context),
-                                    session_context,
-                                    platform,
-                                    config,
-                                )
-                            });
+                        if let Some(stream_config) = &stream_config {
+                            // combined_eye_gaze is a setting that needs to be enabled at session
+                            // creation. Since HTC headsets don't support session reinitialization,
+                            // skip all elements that need it, that is face and eye tracking.
+                            if (new_config.face_sources_config != stream_config.face_sources_config
+                                || new_config.body_sources_config
+                                    != stream_config.body_sources_config)
+                                && !matches!(platform, Platform::Focus3)
+                            {
+                                xr_session.request_exit().ok();
+                                continue;
+                            }
                         }
+
+                        session_context.stream_context = Some(initialize_stream(
+                            &xr_ctx,
+                            Arc::clone(&interaction_context),
+                            session_context,
+                            platform,
+                            &new_config,
+                        ));
+
+                        stream_config = Some(new_config);
                     }
                     ClientCoreEvent::StreamingStopped => {
                         session_context.stream_context = None;

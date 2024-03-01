@@ -30,8 +30,8 @@ use alvr_packets::{
     STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
-    BodyTrackingConfig, BodyTrackingSinkConfig, ControllersEmulationMode, FrameSize, OpenvrConfig,
-    SessionConfig,
+    BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
+    H264Profile, OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -494,6 +494,50 @@ fn connection_pipeline(
         false
     };
 
+    let encoder_profile = if settings.video.encoder_config.h264_profile == H264Profile::High {
+        let profile = if streaming_caps.encoder_high_profile {
+            H264Profile::High
+        } else {
+            H264Profile::Main
+        };
+
+        if profile != H264Profile::High {
+            warn!("High profile encoding is not supported by the client.");
+        }
+
+        profile
+    } else {
+        settings.video.encoder_config.h264_profile
+    };
+
+    let enable_10_bits_encoding = if settings.video.encoder_config.use_10bit {
+        let enable = streaming_caps.encoder_10_bits;
+
+        if !enable {
+            warn!("10 bits encoding is not supported by the client.");
+        }
+
+        enable
+    } else {
+        false
+    };
+
+    let codec = if settings.video.preferred_codec == CodecType::AV1 {
+        let codec = if streaming_caps.encoder_av1 {
+            CodecType::AV1
+        } else {
+            CodecType::Hevc
+        };
+
+        if codec != CodecType::AV1 {
+            warn!("AV1 encoding is not supported by the client.");
+        }
+
+        codec
+    } else {
+        settings.video.preferred_codec
+    };
+
     let game_audio_sample_rate =
         if let Switch::Enabled(game_audio_config) = &settings.audio.game_audio {
             let game_audio_device = AudioDevice::new_output(
@@ -543,6 +587,9 @@ fn connection_pipeline(
     new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
     new_openvr_config.refresh_rate = fps as _;
     new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
+    new_openvr_config.h264_profile = encoder_profile as _;
+    new_openvr_config.use_10bit_encoder = enable_10_bits_encoding;
+    new_openvr_config.codec = codec as _;
 
     if server_data_lock.session().openvr_config != new_openvr_config {
         server_data_lock.session_mut().openvr_config = new_openvr_config;

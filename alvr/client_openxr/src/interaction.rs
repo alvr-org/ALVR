@@ -61,10 +61,16 @@ pub fn initialize_interaction(
     }
 
     let controllers_profile_path = match platform {
-        Platform::Quest => QUEST_CONTROLLER_PROFILE_PATH,
+        Platform::Quest1
+        | Platform::Quest2
+        | Platform::Quest3
+        | Platform::QuestPro
+        | Platform::QuestUnknown => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
         Platform::PicoNeo3 => PICO_NEO3_CONTROLLER_PROFILE_PATH,
         Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
-        Platform::Focus3 => FOCUS3_CONTROLLER_PROFILE_PATH,
+        Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown => {
+            FOCUS3_CONTROLLER_PROFILE_PATH
+        }
         Platform::Yvr => YVR_CONTROLLER_PROFILE_PATH,
         _ => QUEST_CONTROLLER_PROFILE_PATH,
     };

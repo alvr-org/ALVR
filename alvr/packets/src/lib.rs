@@ -31,9 +31,12 @@ pub struct VideoStreamingCapabilitiesLegacy {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
-    pub supported_refresh_rates: Vec<f32>,
+    pub supported_refresh_rates: Vec<f32>, // todo rename
     pub microphone_sample_rate: u32,
-    pub supports_foveated_encoding: bool,
+    pub supports_foveated_encoding: bool, // todo rename
+    pub encoder_high_profile: bool,
+    pub encoder_10_bits: bool,
+    pub encoder_av1: bool,
 }
 
 // Nasty workaround to make the packet extensible, pushing the limits of protocol compatibility
@@ -84,6 +87,9 @@ pub fn decode_video_streaming_capabilities(
         supports_foveated_encoding: caps_json["supports_foveated_encoding"]
             .as_bool()
             .unwrap_or(true),
+        encoder_high_profile: caps_json["encoder_high_profile"].as_bool().unwrap_or(true),
+        encoder_10_bits: caps_json["encoder_10_bits"].as_bool().unwrap_or(true),
+        encoder_av1: caps_json["encoder_av1"].as_bool().unwrap_or(true),
     })
 }
 

@@ -1,6 +1,6 @@
 mod interaction;
 
-use alvr_client_core::{opengl::RenderViewInput, ClientCoreEvent};
+use alvr_client_core::{opengl::RenderViewInput, ClientCapabilities, ClientCoreEvent, Platform};
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -29,18 +29,6 @@ use std::{
 const MAX_PREDICTION: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
-
-// Platform of the device. It is used to match the VR runtime and enable features conditionally.
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Platform {
-    Quest,
-    PicoNeo3,
-    Pico4,
-    Focus3,
-    Yvr,
-    Lynx,
-    Other,
-}
 
 #[derive(Clone)]
 pub struct XrContext {
@@ -445,14 +433,14 @@ fn initialize_stream(
     #[cfg(target_os = "android")]
     if let Some(config) = &config.face_sources_config {
         if (config.combined_eye_gaze || config.eye_tracking_fb)
-            && matches!(platform, Platform::Quest)
+            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
         {
             alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
         }
         if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
             alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
-        if config.face_tracking_fb && matches!(platform, Platform::Quest) {
+        if config.face_tracking_fb && matches!(platform, Platform::Quest3 | Platform::QuestPro) {
             alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
@@ -460,7 +448,9 @@ fn initialize_stream(
 
     #[cfg(target_os = "android")]
     if let Some(config) = &config.body_sources_config {
-        if (config.body_tracking_full_body_meta.enabled()) && matches!(platform, Platform::Quest) {
+        if (config.body_tracking_full_body_meta.enabled())
+            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
+        {
             alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
     }
@@ -586,23 +576,14 @@ fn initialize_stream(
 pub fn entry_point() {
     alvr_client_core::init_logging();
 
-    let manufacturer_name = alvr_client_core::manufacturer_name();
-    let model_name = alvr_client_core::model_name();
-
-    info!("Manufacturer: {manufacturer_name}, model: {model_name}");
-
-    let platform = match (manufacturer_name.as_str(), model_name.as_str()) {
-        ("Oculus", _) => Platform::Quest,
-        ("Pico", "Pico Neo 3") => Platform::PicoNeo3,
-        ("Pico", _) => Platform::Pico4,
-        ("HTC", _) => Platform::Focus3,
-        ("YVR", _) => Platform::Yvr,
-        ("Lynx Mixed Reality", _) => Platform::Lynx,
-        _ => Platform::Other,
-    };
+    let platform = alvr_client_core::platform();
 
     let loader_suffix = match platform {
-        Platform::Quest => "quest",
+        Platform::Quest1
+        | Platform::Quest2
+        | Platform::Quest3
+        | Platform::QuestPro
+        | Platform::QuestUnknown => "quest",
         Platform::PicoNeo3 | Platform::Pico4 => "pico",
         Platform::Yvr => "yvr",
         Platform::Lynx => "lynx",
@@ -693,7 +674,7 @@ pub fn entry_point() {
             views_config[0].recommended_image_rect_height,
         );
 
-        let supported_refresh_rates = if exts.fb_display_refresh_rate {
+        let refresh_rates = if exts.fb_display_refresh_rate {
             xr_session.enumerate_display_refresh_rates().unwrap()
         } else {
             vec![90.0]
@@ -702,12 +683,15 @@ pub fn entry_point() {
         // Todo: refactor the logic to call this before the session creation
         static INIT_ONCE: Once = Once::new();
         INIT_ONCE.call_once(|| {
-            alvr_client_core::initialize(
+            alvr_client_core::initialize(ClientCapabilities {
                 default_view_resolution,
-                supported_refresh_rates,
-                platform != Platform::Other, // exclude smartphones
-                false,
-            );
+                external_decoder: false,
+                refresh_rates,
+                foveated_encoding: platform != Platform::Unknown,
+                encoder_high_profile: platform != Platform::Unknown,
+                encoder_10_bits: platform != Platform::Unknown,
+                encoder_av1: platform == Platform::Quest3,
+            });
         });
 
         alvr_client_core::opengl::initialize();
@@ -886,7 +870,10 @@ pub fn entry_point() {
                             if (new_config.face_sources_config != stream_config.face_sources_config
                                 || new_config.body_sources_config
                                     != stream_config.body_sources_config)
-                                && !matches!(platform, Platform::Focus3)
+                                && !matches!(
+                                    platform,
+                                    Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
+                                )
                             {
                                 xr_session.request_exit().ok();
                                 continue;

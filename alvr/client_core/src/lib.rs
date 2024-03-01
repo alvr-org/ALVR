@@ -49,6 +49,8 @@ use std::{
 };
 use storage::Config;
 
+pub use platform::Platform;
+
 static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
 
 static STATISTICS_MANAGER: OptLazy<StatisticsManager> = alvr_common::lazy_mut_none();
@@ -83,20 +85,23 @@ pub enum ClientCoreEvent {
     },
 }
 
-pub fn model_name() -> String {
-    platform::model_name()
+pub fn platform() -> Platform {
+    platform::platform()
 }
 
-pub fn manufacturer_name() -> String {
-    platform::manufacturer_name()
+// Note: this struct may change without breaking network protocol changes
+#[derive(Clone)]
+pub struct ClientCapabilities {
+    pub default_view_resolution: UVec2,
+    pub external_decoder: bool,
+    pub refresh_rates: Vec<f32>,
+    pub foveated_encoding: bool,
+    pub encoder_high_profile: bool,
+    pub encoder_10_bits: bool,
+    pub encoder_av1: bool,
 }
 
-pub fn initialize(
-    default_view_resolution: UVec2,
-    supported_refresh_rates: Vec<f32>,
-    supports_foveated_encoding: bool,
-    external_decoder: bool,
-) {
+pub fn initialize(capabilities: ClientCapabilities) {
     logging_backend::init_logging();
 
     // Make sure to reset config in case of version compat mismatch.
@@ -110,15 +115,11 @@ pub fn initialize(
     #[cfg(target_os = "android")]
     platform::set_wifi_lock(true);
 
-    EXTERNAL_DECODER.set(external_decoder);
+    EXTERNAL_DECODER.set(capabilities.external_decoder);
     *LIFECYCLE_STATE.write() = LifecycleState::Idle;
 
     *CONNECTION_THREAD.lock() = Some(thread::spawn(move || {
-        connection::connection_lifecycle_loop(
-            default_view_resolution,
-            supported_refresh_rates,
-            supports_foveated_encoding,
-        )
+        connection::connection_lifecycle_loop(capabilities)
     }));
 }
 

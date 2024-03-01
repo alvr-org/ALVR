@@ -870,7 +870,10 @@ pub fn entry_point() {
                             if (new_config.face_sources_config != stream_config.face_sources_config
                                 || new_config.body_sources_config
                                     != stream_config.body_sources_config)
-                                && !matches!(platform, Platform::Focus3)
+                                && !matches!(
+                                    platform,
+                                    Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
+                                )
                             {
                                 xr_session.request_exit().ok();
                                 continue;

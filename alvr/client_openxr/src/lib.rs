@@ -433,14 +433,14 @@ fn initialize_stream(
     #[cfg(target_os = "android")]
     if let Some(config) = &config.face_sources_config {
         if (config.combined_eye_gaze || config.eye_tracking_fb)
-            && matches!(platform, Platform::Quest3 | Platform::QuestOther)
+            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
         {
             alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
         }
         if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3) {
             alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
         }
-        if config.face_tracking_fb && matches!(platform, Platform::Quest3 | Platform::QuestOther) {
+        if config.face_tracking_fb && matches!(platform, Platform::Quest3 | Platform::QuestPro) {
             alvr_client_core::try_get_permission("android.permission.RECORD_AUDIO");
             alvr_client_core::try_get_permission("com.oculus.permission.FACE_TRACKING")
         }
@@ -449,7 +449,7 @@ fn initialize_stream(
     #[cfg(target_os = "android")]
     if let Some(config) = &config.body_sources_config {
         if (config.body_tracking_full_body_meta.enabled())
-            && matches!(platform, Platform::Quest3 | Platform::QuestOther)
+            && matches!(platform, Platform::Quest3 | Platform::QuestPro)
         {
             alvr_client_core::try_get_permission("com.oculus.permission.BODY_TRACKING")
         }
@@ -579,7 +579,11 @@ pub fn entry_point() {
     let platform = alvr_client_core::platform();
 
     let loader_suffix = match platform {
-        Platform::Quest2 | Platform::Quest3 | Platform::QuestPro | Platform::QuestOther => "quest",
+        Platform::Quest1
+        | Platform::Quest2
+        | Platform::Quest3
+        | Platform::QuestPro
+        | Platform::QuestUnknown => "quest",
         Platform::PicoNeo3 | Platform::Pico4 => "pico",
         Platform::Yvr => "yvr",
         Platform::Lynx => "lynx",

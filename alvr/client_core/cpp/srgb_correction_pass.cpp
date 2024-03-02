@@ -47,6 +47,10 @@ const string PASSTHOUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
         in vec2 uv;
         out vec4 color;
 
+        // Convert from limited colors to full
+        const float LIMITED_MIN = 16.0 / 255.0;
+        const float LIMITED_MAX = 235.0 / 255.0;
+
         void main()
         {
             color = texture(tex0, uv);

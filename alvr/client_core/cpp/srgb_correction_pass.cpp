@@ -22,12 +22,19 @@ const string SRGB_CORRECTION_FRAGMENT_SHADER = R"glsl(#version 300 es
         const float THRESHOLD = 0.04045;
         const vec3 GAMMA = vec3(2.4);
 
+        // Convert from limited colors to full
+        const float LIMITED_UNDER_ZERO = 20.0 / 255.0;
+        const float LIMITED_OVER_ONE = 16.0 / 255.0;
+        const float LIMITED_MIN = -LIMITED_UNDER_ZERO;
+        const float LIMITED_MAX = 1.0 + LIMITED_OVER_ONE;
+        const float LIMITED_SCALAR = (1.0 / (LIMITED_MAX - LIMITED_MIN));
+
         void main()
         {
             color = texture(tex0, uv);
 
-            // For some reason, the encoder shifts full-range color into the negatives.
-            color = color + vec4(16.0/255.0,16.0/255.0,16.0/255.0, 0.0);
+            // For some reason, the encoder shifts full-range color into the negatives and over one.
+            color.rgb = LIMITED_SCALAR * (color.rgb - LIMITED_MIN);
 
             vec3 condition = vec3(color.r < THRESHOLD, color.g < THRESHOLD, color.b < THRESHOLD);
             vec3 lowValues = color.rgb * DIV12;
@@ -47,8 +54,8 @@ const string PASSTHOUGH_FRAGMENT_SHADER = R"glsl(#version 300 es
         {
             color = texture(tex0, uv);
 
-            // For some reason, the encoder shifts full-range color into the negatives.
-            color = color + vec4(16.0/255.0,16.0/255.0,16.0/255.0, 0.0);
+            // For some reason, the encoder shifts full-range color into the negatives and over one.
+            color.rgb = LIMITED_SCALAR * (color.rgb - LIMITED_MIN);
         }
     )glsl";
 } // namespace

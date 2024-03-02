@@ -224,6 +224,14 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
+
+		config.h264VUIParameters.videoSignalTypePresentFlag = 1;
+		config.h264VUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
+		config.h264VUIParameters.videoFullRangeFlag = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+		config.h264VUIParameters.colourDescriptionPresentFlag = 1;
+		config.h264VUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
+		config.h264VUIParameters.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_BT709;
+		config.h264VUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
 	}
 	case ALVR_CODEC_HEVC:
 	{
@@ -248,6 +256,14 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		if (Settings::Instance().m_fillerData) {
 			config.enableFillerDataInsertion = Settings::Instance().m_rateControlMode == ALVR_CBR;
 		}
+
+		config.hevcVUIParameters.videoSignalTypePresentFlag = 1;
+		config.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
+		config.hevcVUIParameters.videoFullRangeFlag = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
+		config.hevcVUIParameters.colourDescriptionPresentFlag = 1;
+		config.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
+		config.hevcVUIParameters.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_BT709;
+		config.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
 	}
 	case ALVR_CODEC_AV1:
 	{

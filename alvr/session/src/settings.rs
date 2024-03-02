@@ -227,6 +227,13 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub use_10bit: bool,
 
+    #[schema(strings(
+        display_name = "Full range color",
+        help = "Sets the encoder to encode full range RGB (0-255) instead of limited/video range RGB (16-235)"
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub use_full_range: bool,
+
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
@@ -1283,6 +1290,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     variant: EntropyCodingDefaultVariant::Cavlc,
                 },
                 use_10bit: false,
+                use_full_range: true,
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {

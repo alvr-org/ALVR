@@ -65,6 +65,7 @@ void Settings::Load() {
         m_fillerData = config.get("filler_data").get<bool>();
         m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
         m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
+        m_useFullRangeEncoding = config.get("use_full_range_encoding").get<bool>();
         m_enablePreAnalysis = config.get("enable_pre_analysis").get<bool>();
         m_enableVbaq = config.get("enable_vbaq").get<bool>();
         m_enableHmqb = config.get("enable_hmqb").get<bool>();

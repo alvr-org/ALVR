@@ -863,21 +863,19 @@ pub fn entry_point() {
                                 .map(|c| c.sources.clone()),
                         };
 
-                        if let Some(stream_config) = &stream_config {
-                            // combined_eye_gaze is a setting that needs to be enabled at session
-                            // creation. Since HTC headsets don't support session reinitialization,
-                            // skip all elements that need it, that is face and eye tracking.
-                            if (new_config.face_sources_config != stream_config.face_sources_config
-                                || new_config.body_sources_config
-                                    != stream_config.body_sources_config)
-                                && !matches!(
-                                    platform,
-                                    Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
-                                )
-                            {
-                                xr_session.request_exit().ok();
-                                continue;
-                            }
+                        // combined_eye_gaze is a setting that needs to be enabled at session
+                        // creation. Since HTC headsets don't support session reinitialization, skip
+                        // all elements that need it, that is face and eye tracking.
+                        if stream_config.as_ref() != Some(&new_config)
+                            && !matches!(
+                                platform,
+                                Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown
+                            )
+                        {
+                            stream_config = Some(new_config);
+
+                            xr_session.request_exit().ok();
+                            continue;
                         }
 
                         session_context.stream_context = Some(initialize_stream(

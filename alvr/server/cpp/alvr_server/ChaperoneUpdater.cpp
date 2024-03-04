@@ -13,17 +13,25 @@ using namespace alvr_chaperone;
 
 std::mutex chaperone_mutex;
 
+bool isOpenvrInit = false;
+
 void InitOpenvrClient() {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
+    if (isOpenvrInit) {
+        return;
+    }
+
     vr::EVRInitError error;
-    vr::VR_Init(&error, vr::VRApplication_Utility);
+    // Background needed for VRCompositor()->GetTrackingSpace()
+    vr::VR_Init(&error, vr::VRApplication_Background);
 
     if (error != vr::VRInitError_None) {
         Warn("Failed to init OpenVR client! Error: %d", error);
         return;
     }
+    isOpenvrInit = true;
 #endif
 }
 
@@ -31,6 +39,11 @@ void ShutdownOpenvrClient() {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
+    if (!isOpenvrInit) {
+        return;
+    }
+
+    isOpenvrInit = false;
     vr::VR_Shutdown();
 #endif
 }
@@ -68,7 +81,15 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 }
 
 #ifdef __linux__
-vr::HmdMatrix34_t GetRawZeroPose() {
-    return vr::VRSystem()->GetRawZeroPoseToStandingAbsoluteTrackingPose();
+vr::HmdMatrix34_t GetInvZeroPose() {
+    vr::HmdMatrix34_t mat;
+    // revert pulls live into working copy
+    vr::VRChaperoneSetup()->RevertWorkingCopy();
+    if (vr::VRCompositor()->GetTrackingSpace() == vr::TrackingUniverseStanding) {
+        vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(&mat);
+    } else {
+        vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(&mat);
+    }
+    return mat;
 }
 #endif

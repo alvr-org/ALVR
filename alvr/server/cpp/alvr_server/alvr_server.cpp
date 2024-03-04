@@ -23,10 +23,15 @@
 #include <map>
 #include <optional>
 
-void _SetChaperoneArea(float areaWidth, float areaHeight);
 #ifdef __linux__
-vr::HmdMatrix34_t GetRawZeroPose();
+#include "include/openvr_math.h"
+vr::HmdMatrix34_t GetInvZeroPose();
+
+vr::HmdMatrix34_t GetRawZeroPose() {
+    return vrmath::matInv33(GetInvZeroPose());
+}
 #endif
+void _SetChaperoneArea(float areaWidth, float areaHeight);
 
 static void load_debug_privilege(void) {
 #ifdef _WIN32
@@ -210,12 +215,16 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
 #ifdef __linux__
-            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged) {
+            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
+                || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
+                || event.eventType == vr::VREvent_ChaperoneFlushCache
+                || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
+                || event.eventType == vr::VREvent_SeatedZeroPoseReset
+                || event.eventType == vr::VREvent_StandingZeroPoseReset
+                || event.eventType == vr::VREvent_SceneApplicationChanged) {
                 if (hmd && hmd->m_poseHistory) {
                     InitOpenvrClient();
-                    hmd->m_poseHistory->SetTransformUpdating();
                     hmd->m_poseHistory->SetTransform(GetRawZeroPose());
-                    ShutdownOpenvrClient();
                 }
             }
 #endif
@@ -410,7 +419,6 @@ void SetChaperoneArea(float areaWidth, float areaHeight) {
 
 #ifdef __linux__
     if (g_driver_provider.hmd && g_driver_provider.hmd->m_poseHistory) {
-        g_driver_provider.hmd->m_poseHistory->SetTransformUpdating();
         g_driver_provider.hmd->m_poseHistory->SetTransform(GetRawZeroPose());
     }
 #endif

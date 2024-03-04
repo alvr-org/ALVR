@@ -271,13 +271,7 @@ impl StatisticsManager {
                 self.packets_lost_partial_sum = 0;
             }
 
-            // While not accurate, this prevents NaNs and zeros that would cause a crash or pollute
-            // the graph
-            let bitrate_bps = if network_latency != Duration::ZERO {
-                frame.video_packet_bytes as f32 * 8.0 / network_latency.as_secs_f32()
-            } else {
-                0.0
-            };
+            let bitrate_bps = client_stats.throughput_client; 
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.

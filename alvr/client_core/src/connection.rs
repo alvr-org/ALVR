@@ -271,6 +271,7 @@ fn connection_pipeline(capabilities: ClientCapabilities) -> ConResult {
         stream_socket.subscribe_to_stream::<Haptics>(HAPTICS, MAX_UNREAD_PACKETS);
     let statistics_sender = stream_socket.request_stream(STATISTICS);
 
+    let mut actual_throughput_inseconds: f32 = 30_000_000.0;
     let video_receive_thread = thread::spawn(move || {
         let mut stream_corrupted = false;
         while is_streaming() {
@@ -283,8 +284,21 @@ fn connection_pipeline(capabilities: ClientCapabilities) -> ConResult {
                 return;
             };
 
+            let dt_throughput = data.get_throughput_timediff();
+
+            if dt_throughput != Duration::ZERO { // TODO: Assuming UDP for 42.0, for TCP it would be 54.0 instead. This loses a bit of accuracy for TCP (it's still a good estimate) but I could need to import session settings in the future
+                
+                let data_including_headers = (data.get_size_frame_bytes()) as f32 + 42.0 *(data.get_shards_in_frame() as f32 ); // UDP and IPv4 headers count as bytes for throughput too
+                actual_throughput_inseconds = data_including_headers * 8.0 / dt_throughput.as_secs_f32(); // bitrate for encoder is in bits per second,  here we had bytes; so we need to multiply by 8 the data size
+            }
+            else{
+                actual_throughput_inseconds = 0.0; 
+            }
+
+
             if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-                stats.report_video_packet_received(header.timestamp);
+                stats.report_video_packet_received(header.timestamp );
+                stats.report_throughput_client(header.timestamp, actual_throughput_inseconds)
             }
 
             if header.is_idr {

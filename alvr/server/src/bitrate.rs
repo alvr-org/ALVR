@@ -99,6 +99,7 @@ impl BitrateManager {
         timestamp: Duration,
         network_latency: Duration,
         decoder_latency: Duration,
+        throughput_reported_client: f32, 
     ) {
         if network_latency.is_zero() {
             return;
@@ -109,7 +110,7 @@ impl BitrateManager {
         while let Some(&(timestamp_, size_bits)) = self.packet_sizes_bits_history.front() {
             if timestamp_ == timestamp {
                 self.bitrate_average
-                    .submit_sample(size_bits as f32 / network_latency.as_secs_f32());
+                    .submit_sample(throughput_reported_client);
 
                 self.packet_sizes_bits_history.pop_front();
 

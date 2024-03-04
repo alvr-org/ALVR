@@ -1015,6 +1015,7 @@ fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
+                    let throughput_client: f32 = client_stats.throughput_client; 
                     let network_latency = stats.report_statistics(client_stats);
 
                     let server_data_lock = SERVER_DATA_MANAGER.read();
@@ -1023,6 +1024,7 @@ fn connection_pipeline(
                         timestamp,
                         network_latency,
                         decoder_latency,
+                        throughput_client, 
                     );
                 }
             }

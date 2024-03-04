@@ -99,7 +99,7 @@ impl BitrateManager {
         timestamp: Duration,
         network_latency: Duration,
         decoder_latency: Duration,
-        throughput_reported_client: f32, 
+        throughput_reported_client: f32,
     ) {
         if network_latency.is_zero() {
             return;

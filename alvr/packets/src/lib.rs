@@ -314,7 +314,7 @@ pub struct ClientStatistics {
     pub rendering: Duration,
     pub vsync_queue: Duration,
     pub total_pipeline_latency: Duration,
-    pub throughput_client: f32, 
+    pub throughput_client: f32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

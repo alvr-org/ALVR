@@ -94,9 +94,13 @@ impl StatisticsManager {
         }
     }
 
-    pub fn report_throughput_client(&mut self, target_timestamp: Duration, throughput_client: f32){
-        if let Some(frame) = self.history_buffer.iter_mut().find(|frame| frame.client_stats.target_timestamp == target_timestamp) {
-            frame.client_stats.throughput_client = throughput_client; 
+    pub fn report_throughput_client(&mut self, target_timestamp: Duration, throughput_client: f32) {
+        if let Some(frame) = self
+            .history_buffer
+            .iter_mut()
+            .find(|frame| frame.client_stats.target_timestamp == target_timestamp)
+        {
+            frame.client_stats.throughput_client = throughput_client;
         }
     }
     // vsync_queue is the latency between this call and the vsync. it cannot be measured by ALVR and

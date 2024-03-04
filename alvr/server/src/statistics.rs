@@ -271,7 +271,7 @@ impl StatisticsManager {
                 self.packets_lost_partial_sum = 0;
             }
 
-            let bitrate_bps = client_stats.throughput_client; 
+            let bitrate_bps = client_stats.throughput_client;
 
             // todo: use target timestamp in nanoseconds. the dashboard needs to use the first
             // timestamp as the graph time origin.

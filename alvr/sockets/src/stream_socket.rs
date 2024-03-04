@@ -30,7 +30,7 @@ use std::{
     net::{IpAddr, TcpListener, UdpSocket},
     sync::{mpsc, Arc},
     time::Duration,
-    time::Instant, 
+    time::Instant,
 };
 
 const SHARD_PREFIX_SIZE: usize = mem::size_of::<u32>() // packet length - field itself (4 bytes)
@@ -170,8 +170,8 @@ pub struct ReceiverData<H> {
     used_buffer_queue: mpsc::Sender<Vec<u8>>,
     had_packet_loss: bool,
     _phantom: PhantomData<H>,
-    throughput_time_diff_frame: Duration, 
-    shards_in_frame: usize, 
+    throughput_time_diff_frame: Duration,
+    shards_in_frame: usize,
 }
 
 impl<H> ReceiverData<H> {
@@ -182,12 +182,13 @@ impl<H> ReceiverData<H> {
     pub fn get_throughput_timediff(&self) -> Duration {
         self.throughput_time_diff_frame
     }
-    pub fn get_size_frame_bytes(&self) -> usize{
+    pub fn get_size_frame_bytes(&self) -> usize {
         self.size
     }
-    pub fn get_shards_in_frame(&self) -> usize{
-        self.shards_in_frame 
-    }}
+    pub fn get_shards_in_frame(&self) -> usize {
+        self.shards_in_frame
+    }
+}
 
 impl<H: DeserializeOwned> ReceiverData<H> {
     pub fn get(&self) -> Result<(H, &[u8])> {
@@ -214,8 +215,8 @@ struct ReconstructedPacket {
     index: u32,
     buffer: Vec<u8>,
     size: usize, // contains prefix
-    throughput_diff_frame: Duration, 
-    shards_in_frame: usize, 
+    throughput_diff_frame: Duration,
+    shards_in_frame: usize,
 }
 
 pub const VIDEO_ID: u16 = 3;
@@ -274,7 +275,7 @@ impl<H: DeserializeOwned + Serialize> StreamReceiver<H> {
             had_packet_loss,
             _phantom: PhantomData,
             throughput_time_diff_frame: packet.throughput_diff_frame,
-            shards_in_frame: packet.shards_in_frame, 
+            shards_in_frame: packet.shards_in_frame,
         })
     }
 }
@@ -341,10 +342,10 @@ impl StreamSocketBuilder {
             receive_socket,
             shard_recv_state: None,
             stream_recv_components: HashMap::new(),
-            first_shard_frame_rx: Some(Instant::now()), 
-            last_shard_frame_rx:  Some(Instant::now()),
-            throughput_time_diff: Some(Duration::from_millis(100)), 
-            last_new_frame_id: 0, 
+            first_shard_frame_rx: Some(Instant::now()),
+            last_shard_frame_rx: Some(Instant::now()),
+            throughput_time_diff: Some(Duration::from_millis(100)),
+            last_new_frame_id: 0,
         })
     }
 
@@ -390,10 +391,10 @@ impl StreamSocketBuilder {
             receive_socket,
             shard_recv_state: None,
             stream_recv_components: HashMap::new(),
-            first_shard_frame_rx: Some(Instant::now()), 
-            last_shard_frame_rx:  Some(Instant::now()),
-            throughput_time_diff: Some(Duration::from_millis(100)), 
-            last_new_frame_id: 0, 
+            first_shard_frame_rx: Some(Instant::now()),
+            last_shard_frame_rx: Some(Instant::now()),
+            throughput_time_diff: Some(Duration::from_millis(100)),
+            last_new_frame_id: 0,
         })
     }
 }
@@ -431,11 +432,10 @@ pub struct StreamSocket {
     receive_socket: Box<dyn SocketReader>,
     shard_recv_state: Option<RecvState>,
     stream_recv_components: HashMap<u16, StreamRecvComponents>,
-    first_shard_frame_rx: Option<Instant>, 
+    first_shard_frame_rx: Option<Instant>,
     last_shard_frame_rx: Option<Instant>,
     throughput_time_diff: Option<Duration>,
     last_new_frame_id: u32,
-
 }
 
 impl StreamSocket {
@@ -506,21 +506,24 @@ impl StreamSocket {
             let packet_index = u32::from_be_bytes(bytes[6..10].try_into().unwrap());
             let shards_count = u32::from_be_bytes(bytes[10..14].try_into().unwrap()) as usize;
             let shard_index = u32::from_be_bytes(bytes[14..18].try_into().unwrap()) as usize;
-            
-            if stream_id == VIDEO_ID {
-                if packet_index != self.last_new_frame_id  {
-                    self.last_new_frame_id = packet_index; // only if we receive a new frame 
-                    if shard_index == 0 {
-                        self.first_shard_frame_rx = Some(Instant::now()) ; 
-                    }
-                }
-                else if shard_index == shards_count - 1 { // if it's the same frame as in first_shard_frame_rx and we haven't received a new frame yet, compute time difference
-                        self.throughput_time_diff = Some( Instant::now().saturating_duration_since( self.last_shard_frame_rx.unwrap_or_else(
-                            || Instant::now() - Duration::from_millis(555))) ); 
-                        self.last_shard_frame_rx = Some(Instant::now()); 
-                    }
-            }
 
+            if stream_id == VIDEO_ID {
+                if packet_index != self.last_new_frame_id {
+                    self.last_new_frame_id = packet_index; // only if we receive a new frame
+                    if shard_index == 0 {
+                        self.first_shard_frame_rx = Some(Instant::now());
+                    }
+                } else if shard_index == shards_count - 1 {
+                    // if it's the same frame as in first_shard_frame_rx and we haven't received a new frame yet, compute time difference
+                    self.throughput_time_diff = Some(
+                        Instant::now().saturating_duration_since(
+                            self.last_shard_frame_rx
+                                .unwrap_or_else(|| Instant::now() - Duration::from_millis(555)),
+                        ),
+                    );
+                    self.last_shard_frame_rx = Some(Instant::now());
+                }
+            }
 
             self.shard_recv_state.insert(RecvState {
                 shard_length,
@@ -639,7 +642,7 @@ impl StreamSocket {
         // Check if packet is complete and send
         if in_progress_packet.received_shard_indices.len() == shard_recv_state_mut.shards_count {
             let size = in_progress_packet.buffer_length;
-            let get_shards_in_frame = shard_recv_state_mut.shards_count; 
+            let get_shards_in_frame = shard_recv_state_mut.shards_count;
             components
                 .packet_queue
                 .send(ReconstructedPacket {
@@ -650,9 +653,10 @@ impl StreamSocket {
                         .unwrap()
                         .buffer,
                     size,
-                    throughput_diff_frame: self.throughput_time_diff.unwrap_or(Duration::from_millis(100)),
+                    throughput_diff_frame: self
+                        .throughput_time_diff
+                        .unwrap_or(Duration::from_millis(100)),
                     shards_in_frame: get_shards_in_frame,
-
                 })
                 .ok();
 

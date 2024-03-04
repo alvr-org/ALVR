@@ -222,6 +222,9 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			}
 		}
 
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, Settings::Instance().m_useFullRangeEncoding);
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
@@ -298,6 +301,9 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				Warn("Pre-analysis could not be enabled because your GPU does not support it for HEVC encoding.");
 			}
 		}
+
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL : AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_STUDIO);
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
@@ -384,6 +390,9 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				Warn("Pre-analysis could not be enabled because your GPU does not support it for AV1 encoding.");
 			}
 		}
+
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_JPEG : AMF_VIDEO_CONVERTER_COLOR_PROFILE_UNKNOWN);
 
 		// May impact performance but improves quality in high-motion areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings::Instance().m_enableHmqb);

@@ -42,7 +42,7 @@ pub fn destroy() {
     }
 }
 
-pub fn resume(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2]) {
+pub fn initialize_lobby(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2]) {
     #[cfg(target_os = "android")]
     unsafe {
         let swapchain_length = swapchain_textures[0].len();

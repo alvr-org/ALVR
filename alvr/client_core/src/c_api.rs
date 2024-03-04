@@ -606,7 +606,7 @@ pub unsafe extern "C" fn alvr_resume_opengl(
     swapchain_textures: *mut *const u32,
     swapchain_length: u32,
 ) {
-    opengl::resume(
+    opengl::initialize_lobby(
         UVec2::new(preferred_view_width, preferred_view_height),
         convert_swapchain_array(swapchain_textures, swapchain_length),
     );

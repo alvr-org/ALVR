@@ -274,6 +274,10 @@ The specific packet format used over the network is not clearly defined since AL
 
 Since the amount of data streamed is large, the socket buffer size is increased both on the driver side and on the client.
 
+Previous versions of ALVR made an estimation at the server of the network throughput that the client receives (from video), by dividing the size in bits of each frame between the network latency. Unfortunately, some secondary issues came from this due to noisiness and undeterministic changes in the RTT. These problems affected mainly the effective bitrate of the video stream, and could cause huge drops in quality when network latency increased. 
+
+A change has been made so that at the stream_socket level for video streaming, the client keeps in memory the Instant of receiving the last shard of a frame (using shard_index field in header). In this way, when a newer frame is received the time difference at client level can be computed. This time difference is then used at a higher level on client_core/src/connection.rs to compute an estimation of the throughput received by the client at each frame, also taking into account the individual shard headers. This value is passed through ClientStatistics to the server, and from server/src/connection.rs the client throughput is used finally at the BitrateManager; where the reported client value is submitted to the bitrate average.   
+
 ## SteamVR driver
 
 The driver is the component responsible for most of the streamer functionality. It is implemented as a shared library loaded by SteamVR. It implements the [OpenVR API](https://github.com/ValveSoftware/openvr) in order to interface with SteamVR.

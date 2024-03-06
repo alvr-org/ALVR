@@ -374,6 +374,11 @@ pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
 }
 
 #[no_mangle]
+pub extern "C" fn alvr_send_active_interaction_profile(device_id: u64, profile_id: u64) {
+    crate::send_active_interaction_profile(device_id, profile_id)
+}
+
+#[no_mangle]
 pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     let value = match value {
         AlvrButtonValue::Binary(value) => ButtonValue::Binary(value),

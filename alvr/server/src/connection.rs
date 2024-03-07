@@ -1073,7 +1073,10 @@ fn connection_pipeline(
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
-            unsafe { crate::InitOpenvrClient() };
+            unsafe {
+                crate::InitOpenvrClient();
+                crate::HmdConnected();
+            }
 
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while is_streaming(&client_hostname) {

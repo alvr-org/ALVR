@@ -48,6 +48,10 @@ void ShutdownOpenvrClient() {
 #endif
 }
 
+bool IsOpenvrClientReady() {
+    return isOpenvrInit;
+}
+
 void _SetChaperoneArea(float areaWidth, float areaHeight) {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);

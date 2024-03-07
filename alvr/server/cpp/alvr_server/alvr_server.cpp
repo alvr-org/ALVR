@@ -30,8 +30,12 @@ vr::HmdMatrix34_t GetInvZeroPose();
 vr::HmdMatrix34_t GetRawZeroPose() {
     return vrmath::matInv33(GetInvZeroPose());
 }
+
+bool IsOpenvrClientReady();
 #endif
 void _SetChaperoneArea(float areaWidth, float areaHeight);
+
+vr::EVREventType VendorEvent_ALVRHmdConnected = (vr::EVREventType) (vr::VREvent_VendorSpecific_Reserved_Start + ((vr::EVREventType) 0xC0));
 
 static void load_debug_privilege(void) {
 #ifdef _WIN32
@@ -221,9 +225,9 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
                 || event.eventType == vr::VREvent_SeatedZeroPoseReset
                 || event.eventType == vr::VREvent_StandingZeroPoseReset
-                || event.eventType == vr::VREvent_SceneApplicationChanged) {
-                if (hmd && hmd->m_poseHistory) {
-                    InitOpenvrClient();
+                || event.eventType == vr::VREvent_SceneApplicationChanged
+                || event.eventType == VendorEvent_ALVRHmdConnected) {
+                if (hmd && hmd->m_poseHistory && IsOpenvrClientReady()) {
                     hmd->m_poseHistory->SetTransform(GetRawZeroPose());
                 }
             }
@@ -360,6 +364,13 @@ void VideoErrorReportReceive() {
     }
 }
 
+void HmdConnected() {
+    if (g_driver_provider.hmd) {
+        vr::VRServerDriverHost()->VendorSpecificEvent(
+            g_driver_provider.hmd->object_id, VendorEvent_ALVRHmdConnected, {}, 0);
+    }
+}
+
 void ShutdownSteamvr() {
     if (g_driver_provider.hmd) {
         vr::VRServerDriverHost()->VendorSpecificEvent(
@@ -431,3 +442,4 @@ void CaptureFrame() {
     }
 #endif
 }
+

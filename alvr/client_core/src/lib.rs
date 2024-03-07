@@ -32,8 +32,8 @@ use alvr_common::{
     ConnectionState, Fov, LifecycleState, OptLazy,
 };
 use alvr_packets::{
-    BatteryPacket, ButtonEntry, ClientControlPacket, NegotiatedStreamingConfig, Tracking,
-    ViewsConfig,
+    BatteryPacket, ButtonEntry, ClientControlPacket, NegotiatedStreamingConfig,
+    ReservedClientControlPacket, Tracking, ViewsConfig,
 };
 use alvr_session::{CodecType, Settings};
 use connection::{
@@ -43,7 +43,7 @@ use decoder::EXTERNAL_DECODER;
 use serde::{Deserialize, Serialize};
 use statistics::StatisticsManager;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -189,6 +189,19 @@ pub fn send_active_interaction_profile(device_id: u64, profile_id: u64) {
                 device_id,
                 profile_id,
             })
+            .ok();
+    }
+}
+
+pub fn send_custom_interaction_profile(device_id: u64, input_ids: HashSet<u64>) {
+    if let Some(sender) = &mut *CONTROL_SENDER.lock() {
+        sender
+            .send(&alvr_packets::encode_reserved_client_control_packet(
+                &ReservedClientControlPacket::CustomInteractionProfile {
+                    device_id,
+                    input_ids,
+                },
+            ))
             .ok();
     }
 }

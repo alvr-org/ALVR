@@ -26,8 +26,8 @@ use alvr_common::{
 use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, Haptics,
-    NegotiatedStreamingConfig, ServerControlPacket, Tracking, VideoPacketHeader, AUDIO, HAPTICS,
-    STATISTICS, TRACKING, VIDEO,
+    NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
+    VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
     BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
@@ -1204,6 +1204,40 @@ fn connection_pipeline(
                     }
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
+                    }
+                    ClientControlPacket::Reserved(json_string) => {
+                        let reserved: ReservedClientControlPacket =
+                            match serde_json::from_str(&json_string) {
+                                Ok(reserved) => reserved,
+                                Err(e) => {
+                                    info!(
+                                    "Failed to parse reserved packet: {e}. Packet: {json_string}"
+                                );
+                                    continue;
+                                }
+                            };
+
+                        match reserved {
+                            ReservedClientControlPacket::CustomInteractionProfile {
+                                device_id: _,
+                                input_ids,
+                            } => {
+                                controller_button_mapping_manager = if let Switch::Enabled(config) =
+                                    &SERVER_DATA_MANAGER.read().settings().headset.controllers
+                                {
+                                    if let Some(mappings) = &config.button_mappings {
+                                        Some(ButtonMappingManager::new_manual(mappings))
+                                    } else {
+                                        Some(ButtonMappingManager::new_automatic(
+                                            &input_ids,
+                                            &config.button_mapping_config,
+                                        ))
+                                    }
+                                } else {
+                                    None
+                                };
+                            }
+                        }
                     }
                     _ => (),
                 }

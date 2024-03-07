@@ -7,6 +7,7 @@ use alvr_session::{CodecType, SessionConfig, Settings};
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use std::{
+    collections::HashSet,
     fmt::{self, Debug},
     net::IpAddr,
     path::PathBuf,
@@ -198,6 +199,21 @@ pub enum ButtonValue {
 pub struct ButtonEntry {
     pub path_id: u64,
     pub value: ButtonValue,
+}
+
+// to be de/serialized with ClientControlPacket::Reserved()
+#[derive(Serialize, Deserialize)]
+pub enum ReservedClientControlPacket {
+    CustomInteractionProfile {
+        device_id: u64,
+        input_ids: HashSet<u64>,
+    },
+}
+
+pub fn encode_reserved_client_control_packet(
+    packet: &ReservedClientControlPacket,
+) -> ClientControlPacket {
+    ClientControlPacket::Reserved(json::to_string(packet).unwrap())
 }
 
 #[derive(Serialize, Deserialize)]

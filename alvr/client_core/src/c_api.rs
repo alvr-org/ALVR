@@ -379,6 +379,16 @@ pub extern "C" fn alvr_send_active_interaction_profile(device_id: u64, profile_i
 }
 
 #[no_mangle]
+pub extern "C" fn alvr_send_custom_interaction_profile(
+    device_id: u64,
+    input_ids_ptr: *const u64,
+    input_ids_count: u64,
+) {
+    let input_ids = unsafe { slice::from_raw_parts(input_ids_ptr, input_ids_count as _) };
+    crate::send_custom_interaction_profile(device_id, input_ids.iter().cloned().collect())
+}
+
+#[no_mangle]
 pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     let value = match value {
         AlvrButtonValue::Binary(value) => ButtonValue::Binary(value),

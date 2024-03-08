@@ -19,11 +19,6 @@ pub mod opengl;
 #[cfg(target_os = "android")]
 mod audio;
 
-pub use decoder::get_frame;
-pub use logging_backend::init_logging;
-#[cfg(target_os = "android")]
-pub use platform::try_get_permission;
-
 use alvr_common::{
     error,
     glam::{UVec2, Vec2},
@@ -60,6 +55,15 @@ static EVENT_QUEUE: Lazy<Mutex<VecDeque<ClientCoreEvent>>> =
 
 static CONNECTION_THREAD: OptLazy<JoinHandle<()>> = alvr_common::lazy_mut_none();
 
+pub use logging_backend::init_logging;
+
+#[cfg(target_os = "android")]
+pub use platform::try_get_permission;
+
+pub fn platform() -> Platform {
+    platform::platform()
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum ClientCoreEvent {
     UpdateHudMessage(String),
@@ -85,10 +89,6 @@ pub enum ClientCoreEvent {
     },
 }
 
-pub fn platform() -> Platform {
-    platform::platform()
-}
-
 // Note: this struct may change without breaking network protocol changes
 #[derive(Clone)]
 pub struct ClientCapabilities {
@@ -99,6 +99,94 @@ pub struct ClientCapabilities {
     pub encoder_high_profile: bool,
     pub encoder_10_bits: bool,
     pub encoder_av1: bool,
+}
+
+pub struct ClientCoreContext {}
+
+impl ClientCoreContext {
+    pub fn new(capabilities: ClientCapabilities) -> Self {
+        initialize(capabilities);
+
+        Self {}
+    }
+
+    pub fn resume(&self) {
+        resume();
+    }
+
+    pub fn pause(&self) {
+        pause();
+    }
+
+    pub fn destroy(&self) {
+        destroy();
+    }
+
+    pub fn poll_event(&self) -> Option<ClientCoreEvent> {
+        poll_event()
+    }
+
+    pub fn send_views_config(&self, fov: [Fov; 2], ipd_m: f32) {
+        send_views_config(fov, ipd_m);
+    }
+
+    pub fn send_battery(&self, device_id: u64, gauge_value: f32, is_plugged: bool) {
+        send_battery(device_id, gauge_value, is_plugged);
+    }
+
+    pub fn send_playspace(&self, area: Option<Vec2>) {
+        send_playspace(area);
+    }
+
+    pub fn send_active_interaction_profile(&self, device_id: u64, profile_id: u64) {
+        send_active_interaction_profile(device_id, profile_id);
+    }
+
+    pub fn send_custom_interaction_profile(&self, device_id: u64, input_ids: HashSet<u64>) {
+        send_custom_interaction_profile(device_id, input_ids);
+    }
+
+    pub fn send_buttons(&self, entries: Vec<ButtonEntry>) {
+        send_buttons(entries);
+    }
+
+    pub fn send_tracking(&self, tracking: Tracking) {
+        send_tracking(tracking);
+    }
+
+    pub fn get_head_prediction_offset(&self) -> Duration {
+        get_head_prediction_offset()
+    }
+
+    pub fn get_tracker_prediction_offset(&self) -> Duration {
+        get_tracker_prediction_offset()
+    }
+
+    pub fn get_frame(&self) -> Option<(Duration, *mut std::ffi::c_void)> {
+        decoder::get_frame()
+    }
+
+    pub fn request_idr(&self) {
+        request_idr();
+    }
+
+    pub fn report_frame_decoded(&self, target_timestamp: Duration) {
+        report_frame_decoded(target_timestamp);
+    }
+
+    pub fn report_compositor_start(&self, target_timestamp: Duration) {
+        report_compositor_start(target_timestamp);
+    }
+
+    pub fn report_submit(&self, target_timestamp: Duration, vsync_queue: Duration) {
+        report_submit(target_timestamp, vsync_queue);
+    }
+}
+
+impl Drop for ClientCoreContext {
+    fn drop(&mut self) {
+        destroy();
+    }
 }
 
 pub fn initialize(capabilities: ClientCapabilities) {

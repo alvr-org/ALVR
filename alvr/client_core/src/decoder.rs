@@ -5,7 +5,7 @@ use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct DecoderInitConfig {
+pub struct DecoderConfig {
     pub codec: CodecType,
     pub force_software_decoder: bool,
     pub max_buffering_frames: f32,
@@ -13,8 +13,8 @@ pub struct DecoderInitConfig {
     pub options: Vec<(String, MediacodecDataType)>,
 }
 
-pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderInitConfig>> = Lazy::new(|| {
-    Mutex::new(DecoderInitConfig {
+pub static DECODER_INIT_CONFIG: Lazy<Mutex<DecoderConfig>> = Lazy::new(|| {
+    Mutex::new(DecoderConfig {
         codec: CodecType::H264,
         force_software_decoder: false,
         max_buffering_frames: 1.0,

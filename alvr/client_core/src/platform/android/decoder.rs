@@ -1,4 +1,3 @@
-use crate::decoder::DecoderInitConfig;
 use alvr_common::{
     anyhow::{anyhow, bail, Context, Result},
     error, info,
@@ -25,6 +24,8 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
+
+use crate::decoder::DecoderConfig;
 
 struct FakeThreadSafe<T>(T);
 unsafe impl<T> Send for FakeThreadSafe<T> {}
@@ -89,7 +90,7 @@ pub struct VideoDecoderSource {
     running: Arc<RelaxedAtomic>,
     dequeue_thread: Option<JoinHandle<()>>,
     image_queue: Arc<Mutex<VecDeque<QueuedImage>>>,
-    config: DecoderInitConfig,
+    config: DecoderConfig,
     buffering_running_average: f32,
 }
 
@@ -185,7 +186,7 @@ fn decoder_attempt_setup(
 
 // Create a sink/source pair
 pub fn video_decoder_split(
-    config: DecoderInitConfig,
+    config: DecoderConfig,
     csd_0: Vec<u8>,
     dequeued_frame_callback: impl Fn(Duration) + Send + 'static,
 ) -> Result<(VideoDecoderSink, VideoDecoderSource)> {

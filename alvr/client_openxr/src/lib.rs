@@ -252,13 +252,13 @@ pub fn entry_point() {
                                 default_view_resolution,
                             );
 
-                            core_context.resume();
-
                             session_running_context = Some(SessionRunningContext {
                                 reference_space,
                                 lobby,
                                 stream_context: None,
                             });
+
+                            core_context.resume();
                         }
                         xr::SessionState::STOPPING => {
                             core_context.pause();

@@ -182,7 +182,7 @@ impl StatisticsManager {
 
     // Called every frame. Some statistics are reported once every frame
     // Returns network latency
-    pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> Duration {
+    pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> (Duration, Duration) {
         if let Some(frame) = self
             .history_buffer
             .iter_mut()
@@ -297,9 +297,9 @@ impl StatisticsManager {
                 actual_bitrate_bps: bitrate_bps,
             }));
 
-            network_latency
+            (network_latency, game_time_latency)
         } else {
-            Duration::ZERO
+            (Duration::ZERO, Duration::ZERO)
         }
     }
 

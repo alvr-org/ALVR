@@ -35,7 +35,7 @@ bool IsOpenvrClientReady();
 #endif
 void _SetChaperoneArea(float areaWidth, float areaHeight);
 
-vr::EVREventType VendorEvent_ALVRHmdConnected = (vr::EVREventType) (vr::VREvent_VendorSpecific_Reserved_Start + ((vr::EVREventType) 0xC0));
+vr::EVREventType VendorEvent_ALVRDriverResync = (vr::EVREventType) (vr::VREvent_VendorSpecific_Reserved_Start + ((vr::EVREventType) 0xC0));
 
 static void load_debug_privilege(void) {
 #ifdef _WIN32
@@ -226,7 +226,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 || event.eventType == vr::VREvent_SeatedZeroPoseReset
                 || event.eventType == vr::VREvent_StandingZeroPoseReset
                 || event.eventType == vr::VREvent_SceneApplicationChanged
-                || event.eventType == VendorEvent_ALVRHmdConnected) {
+                || event.eventType == VendorEvent_ALVRDriverResync) {
                 if (hmd && hmd->m_poseHistory && IsOpenvrClientReady()) {
                     hmd->m_poseHistory->SetTransform(GetRawZeroPose());
                 }
@@ -364,10 +364,10 @@ void VideoErrorReportReceive() {
     }
 }
 
-void HmdConnected() {
+void RequestDriverResync() {
     if (g_driver_provider.hmd) {
         vr::VRServerDriverHost()->VendorSpecificEvent(
-            g_driver_provider.hmd->object_id, VendorEvent_ALVRHmdConnected, {}, 0);
+            g_driver_provider.hmd->object_id, VendorEvent_ALVRDriverResync, {}, 0);
     }
 }
 

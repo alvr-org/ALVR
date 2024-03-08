@@ -147,7 +147,7 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             const FfiBodyTracker *bodyTrackers,
                             int bodyTrackersCount);
 extern "C" void VideoErrorReportReceive();
-extern "C" void HmdConnected();
+extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);

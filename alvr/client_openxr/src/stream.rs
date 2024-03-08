@@ -3,7 +3,7 @@ use crate::{
     interaction::{self, InteractionContext},
     XrContext,
 };
-use alvr_client_core::Platform;
+use alvr_client_core::{ClientCoreContext, Platform};
 use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
@@ -68,6 +68,7 @@ struct ViewsHistorySample {
 }
 
 pub struct StreamContext {
+    core_context: Arc<ClientCoreContext>,
     xr_instance: xr::Instance,
     rect: xr::Rect2Di,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
@@ -80,6 +81,7 @@ pub struct StreamContext {
 
 impl StreamContext {
     pub fn new(
+        core_ctx: Arc<ClientCoreContext>,
         xr_ctx: &XrContext,
         interaction_ctx: Arc<InteractionContext>,
         reference_space: Arc<RwLock<xr::Space>>,
@@ -194,7 +196,7 @@ impl StreamContext {
             platform != Platform::Lynx,
         );
 
-        alvr_client_core::send_playspace(
+        core_ctx.send_playspace(
             xr_ctx
                 .session
                 .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
@@ -202,11 +204,11 @@ impl StreamContext {
                 .map(|a| Vec2::new(a.width, a.height)),
         );
 
-        alvr_client_core::send_active_interaction_profile(
+        core_ctx.send_active_interaction_profile(
             *HAND_LEFT_ID,
             interaction_ctx.hands_interaction[0].controllers_profile_id,
         );
-        alvr_client_core::send_active_interaction_profile(
+        core_ctx.send_active_interaction_profile(
             *HAND_RIGHT_ID,
             interaction_ctx.hands_interaction[1].controllers_profile_id,
         );
@@ -222,6 +224,7 @@ impl StreamContext {
             last_hand_positions: [Vec3::ZERO; 2],
         };
         let input_thread = thread::spawn({
+            let core_ctx = Arc::clone(&core_ctx);
             let xr_ctx = xr_ctx.clone();
             let running = Arc::clone(&running);
             let interaction_ctx = Arc::clone(&interaction_ctx);
@@ -230,7 +233,7 @@ impl StreamContext {
                 let mut deadline = Instant::now();
                 let frame_interval = Duration::from_secs_f32(1.0 / input_rate);
                 while running.value() {
-                    stream_input_pipeline(&xr_ctx, &interaction_ctx, &mut input_context);
+                    stream_input_pipeline(&core_ctx, &xr_ctx, &interaction_ctx, &mut input_context);
 
                     deadline += frame_interval / 3;
                     thread::sleep(deadline.saturating_duration_since(Instant::now()));
@@ -239,6 +242,7 @@ impl StreamContext {
         });
 
         StreamContext {
+            core_context: core_ctx,
             xr_instance: xr_ctx.instance.clone(),
             rect,
             swapchains,
@@ -293,7 +297,8 @@ impl StreamContext {
 
         if !hardware_buffer.is_null() {
             if let Some(now) = crate::xr_runtime_now(&self.xr_instance) {
-                alvr_client_core::report_submit(timestamp, vsync_time.saturating_sub(now));
+                self.core_context
+                    .report_submit(timestamp, vsync_time.saturating_sub(now));
             }
         }
 
@@ -335,6 +340,7 @@ struct StreamInputContext {
 }
 
 fn stream_input_pipeline(
+    core_ctx: &ClientCoreContext,
     xr_ctx: &XrContext,
     interaction_ctx: &InteractionContext,
     stream_ctx: &mut StreamInputContext,
@@ -354,11 +360,8 @@ fn stream_input_pipeline(
         return;
     };
 
-    let target_timestamp = now
-        + Duration::min(
-            alvr_client_core::get_head_prediction_offset(),
-            MAX_PREDICTION,
-        );
+    let target_timestamp =
+        now + Duration::min(core_ctx.get_head_prediction_offset(), MAX_PREDICTION);
 
     let mut device_motions = Vec::with_capacity(3);
 
@@ -381,7 +384,7 @@ fn stream_input_pipeline(
         let ipd = (crate::to_vec3(views[0].pose.position) - crate::to_vec3(views[1].pose.position))
             .length();
         if f32::abs(stream_ctx.last_ipd - ipd) > IPD_CHANGE_EPS {
-            alvr_client_core::send_views_config(
+            core_ctx.send_views_config(
                 [crate::to_fov(views[0].fov), crate::to_fov(views[1].fov)],
                 ipd,
             );
@@ -417,10 +420,7 @@ fn stream_input_pipeline(
     }
 
     let tracker_time = crate::to_xr_time(
-        now + Duration::min(
-            alvr_client_core::get_tracker_prediction_offset(),
-            MAX_PREDICTION,
-        ),
+        now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
     );
 
     let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_motion(
@@ -471,7 +471,7 @@ fn stream_input_pipeline(
         ));
     }
 
-    alvr_client_core::send_tracking(Tracking {
+    core_ctx.send_tracking(Tracking {
         target_timestamp,
         device_motions,
         hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
@@ -481,6 +481,6 @@ fn stream_input_pipeline(
     let button_entries =
         interaction::update_buttons(&xr_ctx.session, &interaction_ctx.button_actions);
     if !button_entries.is_empty() {
-        alvr_client_core::send_buttons(button_entries);
+        core_ctx.send_buttons(button_entries);
     }
 }

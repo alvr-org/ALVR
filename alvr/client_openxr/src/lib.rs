@@ -4,7 +4,7 @@ mod lobby;
 mod stream;
 
 use crate::stream::StreamConfig;
-use alvr_client_core::{ClientCapabilities, ClientCoreEvent, Platform};
+use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform};
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -17,7 +17,7 @@ use openxr as xr;
 use std::{
     path::Path,
     ptr,
-    sync::{Arc, Once},
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
@@ -62,8 +62,6 @@ pub struct XrContext {
 
 pub struct SessionRunningContext {
     reference_space: Arc<RwLock<xr::Space>>,
-    // views_history_sender: mpsc::Sender<ViewsHistorySample>,
-    // views_history_receiver: mpsc::Receiver<ViewsHistorySample>,
     lobby: Lobby,
     stream_context: Option<StreamContext>,
 }
@@ -198,19 +196,16 @@ pub fn entry_point() {
             vec![90.0]
         };
 
-        // Todo: refactor the logic to call this before the session creation
-        static INIT_ONCE: Once = Once::new();
-        INIT_ONCE.call_once(|| {
-            alvr_client_core::initialize(ClientCapabilities {
-                default_view_resolution,
-                external_decoder: false,
-                refresh_rates,
-                foveated_encoding: platform != Platform::Unknown,
-                encoder_high_profile: platform != Platform::Unknown,
-                encoder_10_bits: platform != Platform::Unknown,
-                encoder_av1: platform == Platform::Quest3,
-            });
-        });
+        let capabilities = ClientCapabilities {
+            default_view_resolution,
+            external_decoder: false,
+            refresh_rates,
+            foveated_encoding: platform != Platform::Unknown,
+            encoder_high_profile: platform != Platform::Unknown,
+            encoder_10_bits: platform != Platform::Unknown,
+            encoder_av1: platform == Platform::Quest3,
+        };
+        let core_context = Arc::new(ClientCoreContext::new(capabilities));
 
         alvr_client_core::opengl::initialize();
         alvr_client_core::opengl::update_hud_message(&last_lobby_message);
@@ -257,20 +252,16 @@ pub fn entry_point() {
                                 default_view_resolution,
                             );
 
-                            alvr_client_core::resume();
-
-                            // let (views_history_sender, views_history_receiver) = mpsc::channel();
-
                             session_running_context = Some(SessionRunningContext {
                                 reference_space,
-                                // views_history_sender,
-                                // views_history_receiver,
                                 lobby,
                                 stream_context: None,
                             });
+
+                            core_context.resume();
                         }
                         xr::SessionState::STOPPING => {
-                            alvr_client_core::pause();
+                            core_context.pause();
                             alvr_client_core::opengl::pause();
 
                             // Delete all resources and stop thread
@@ -296,7 +287,7 @@ pub fn entry_point() {
                                 )
                                 .unwrap();
 
-                            alvr_client_core::send_playspace(
+                            core_context.send_playspace(
                                 xr_session
                                     .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
                                     .unwrap()
@@ -330,7 +321,7 @@ pub fn entry_point() {
                 continue;
             };
 
-            while let Some(event) = alvr_client_core::poll_event() {
+            while let Some(event) = core_context.poll_event() {
                 match event {
                     ClientCoreEvent::UpdateHudMessage(message) => {
                         last_lobby_message = message.clone();
@@ -358,6 +349,7 @@ pub fn entry_point() {
                         }
 
                         session_context.stream_context = Some(StreamContext::new(
+                            Arc::clone(&core_context),
                             &xr_ctx,
                             Arc::clone(&interaction_context),
                             Arc::clone(&session_context.reference_space),
@@ -431,7 +423,7 @@ pub fn entry_point() {
                     );
                 let mut frame_result = None;
                 while frame_result.is_none() && Instant::now() < frame_poll_deadline {
-                    frame_result = alvr_client_core::get_frame();
+                    frame_result = core_context.get_frame();
                     thread::yield_now();
                 }
 
@@ -477,8 +469,6 @@ pub fn entry_point() {
 
         alvr_client_core::opengl::destroy();
     }
-
-    alvr_client_core::destroy();
 }
 
 #[allow(unused)]

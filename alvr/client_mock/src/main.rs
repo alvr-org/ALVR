@@ -1,4 +1,4 @@
-use alvr_client_core::{ClientCapabilities, ClientCoreEvent};
+use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
@@ -153,7 +153,12 @@ impl eframe::App for Window {
     }
 }
 
-fn tracking_thread(streaming: Arc<RelaxedAtomic>, fps: f32, input: Arc<RwLock<WindowInput>>) {
+fn tracking_thread(
+    context: Arc<ClientCoreContext>,
+    streaming: Arc<RelaxedAtomic>,
+    fps: f32,
+    input: Arc<RwLock<WindowInput>>,
+) {
     let timestamp_origin = Instant::now();
 
     let mut position_offset = Vec3::ZERO;
@@ -177,9 +182,9 @@ fn tracking_thread(streaming: Arc<RelaxedAtomic>, fps: f32, input: Arc<RwLock<Wi
 
         let position = Vec3::new(0.0, input_lock.height, 0.0) + position_offset;
 
-        alvr_client_core::send_tracking(Tracking {
+        context.send_tracking(Tracking {
             target_timestamp: Instant::now() - timestamp_origin
-                + alvr_client_core::get_head_prediction_offset(),
+                + context.get_head_prediction_offset(),
             device_motions: vec![(
                 *HEAD_ID,
                 DeviceMotion {
@@ -205,7 +210,7 @@ fn client_thread(
     output_sender: mpsc::Sender<WindowOutput>,
     input_receiver: mpsc::Receiver<WindowInput>,
 ) {
-    alvr_client_core::initialize(ClientCapabilities {
+    let capabilities = ClientCapabilities {
         default_view_resolution: UVec2::new(1920, 1832),
         external_decoder: true,
         refresh_rates: vec![60.0, 72.0, 80.0, 90.0, 120.0],
@@ -213,8 +218,10 @@ fn client_thread(
         encoder_high_profile: false,
         encoder_10_bits: false,
         encoder_av1: false,
-    });
-    alvr_client_core::resume();
+    };
+    let client_core_context = Arc::new(ClientCoreContext::new(capabilities));
+
+    client_core_context.resume();
 
     let streaming = Arc::new(RelaxedAtomic::new(true));
     let mut maybe_tracking_thread = None;
@@ -226,7 +233,7 @@ fn client_thread(
     'main_loop: loop {
         let input_lock = window_input.read();
 
-        while let Some(event) = alvr_client_core::poll_event() {
+        while let Some(event) = client_core_context.poll_event() {
             match event {
                 ClientCoreEvent::UpdateHudMessage(message) => {
                     window_output.hud_message = message;
@@ -238,10 +245,16 @@ fn client_thread(
                     window_output.connected = true;
                     window_output.resolution = negotiated_config.view_resolution;
 
+                    let context = Arc::clone(&client_core_context);
                     let streaming = Arc::clone(&streaming);
                     let input = Arc::clone(&window_input);
                     maybe_tracking_thread = Some(thread::spawn(move || {
-                        tracking_thread(streaming, negotiated_config.refresh_rate_hint, input)
+                        tracking_thread(
+                            context,
+                            streaming,
+                            negotiated_config.refresh_rate_hint,
+                            input,
+                        )
                     }));
                 }
                 ClientCoreEvent::StreamingStopped => {
@@ -258,7 +271,7 @@ fn client_thread(
                     window_output.current_frame_timestamp = timestamp;
 
                     thread::sleep(Duration::from_millis(input_lock.emulated_decode_ms));
-                    alvr_client_core::report_frame_decoded(timestamp);
+                    client_core_context.report_frame_decoded(timestamp);
                 }
             }
 
@@ -267,11 +280,11 @@ fn client_thread(
 
         thread::sleep(Duration::from_millis(3));
 
-        alvr_client_core::report_compositor_start(window_output.current_frame_timestamp);
+        client_core_context.report_compositor_start(window_output.current_frame_timestamp);
 
         thread::sleep(Duration::from_millis(input_lock.emulated_compositor_ms));
 
-        alvr_client_core::report_submit(
+        client_core_context.report_submit(
             window_output.current_frame_timestamp,
             Duration::from_millis(input_lock.emulated_vsync_ms),
         );
@@ -293,8 +306,9 @@ fn client_thread(
         thread.join().unwrap();
     }
 
-    alvr_client_core::pause();
-    alvr_client_core::destroy();
+    client_core_context.pause()
+
+    // client_core_context destroy is called here on drop
 }
 
 fn main() {

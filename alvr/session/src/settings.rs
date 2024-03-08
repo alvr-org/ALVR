@@ -452,9 +452,10 @@ pub struct ColorCorrectionConfig {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(SettingsSchema, Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, Default)]
 #[schema(gui = "button_group")]
 pub enum CodecType {
+    #[default]
     #[schema(strings(display_name = "h264"))]
     H264 = 0,
     #[schema(strings(display_name = "HEVC"))]

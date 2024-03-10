@@ -339,41 +339,19 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let mut device = AudioDevice::new_output(None, None).to_con()?;
+        let device = AudioDevice::new_output(None, None).to_con()?;
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
                 while is_streaming(&ctx) {
-                    info!("Audio output started");
-                    let res = audio::play_audio_loop(
+                    alvr_common::show_err(audio::play_audio_loop(
                         || is_streaming(&ctx),
                         &device,
                         2,
                         negotiated_config.game_audio_sample_rate,
                         config.buffering.clone(),
                         &mut game_audio_receiver,
-                    );
-                    match res {
-                        Ok(()) => break,
-                        Err(e) => match e.downcast_ref::<oboe::Error>() {
-                            Some(oboe::Error::Disconnected) => {
-                                warn!("Audio output device disconnected, trying to reconnect");
-                                match AudioDevice::new_output(None, None) {
-                                    Ok(new_device) => {
-                                        device = new_device;
-                                    }
-                                    Err(e) => {
-                                        error!("Failed to reopen default audio device: {e}");
-                                        break;
-                                    }
-                                }
-                            }
-                            _ => {
-                                error!("Audio playback error: {e}");
-                                break;
-                            }
-                        },
-                    }
+                    ));
                 }
             }
         })

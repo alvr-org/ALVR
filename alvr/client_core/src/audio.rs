@@ -103,8 +103,14 @@ pub fn record_audio_blocking(
     res
 }
 
+pub enum AudioPlaybackState {
+    Playing,
+    Err(oboe::Error),
+}
+
 struct PlayerCallback {
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    state: Arc<Mutex<AudioPlaybackState>>,
     batch_frames_count: usize,
 }
 
@@ -130,6 +136,14 @@ impl AudioOutputCallback for PlayerCallback {
 
         DataCallbackResult::Continue
     }
+
+    fn on_error_before_close(
+        &mut self,
+        _audio_stream: &mut dyn AudioOutputStreamSafe,
+        _error: oboe::Error,
+    ) {
+        *self.state.lock() = AudioPlaybackState::Err(_error.into());
+    }
 }
 
 #[allow(unused_variables)]
@@ -152,6 +166,8 @@ pub fn play_audio_loop(
         sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
+    let device_connected = Arc::new(Mutex::new(true));
+    let state = Arc::new(Mutex::new(AudioPlaybackState::Playing));
 
     let mut stream = AudioStreamBuilder::default()
         .set_shared()
@@ -166,13 +182,14 @@ pub fn play_audio_loop(
         .set_callback(PlayerCallback {
             sample_buffer: Arc::clone(&sample_buffer),
             batch_frames_count,
+            state: state.clone(),
         })
         .open_stream()?;
 
     stream.start()?;
 
     alvr_audio::receive_samples_loop(
-        is_running,
+        || is_running() && matches!(*state.lock(), AudioPlaybackState::Playing),
         receiver,
         sample_buffer,
         2,
@@ -184,5 +201,9 @@ pub fn play_audio_loop(
     // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
     stream.stop_with_timeout(0).ok();
 
-    Ok(())
+    let result = match *state.lock() {
+        AudioPlaybackState::Err(error) => Err(error.into()),
+        _ => Ok(()),
+    };
+    result
 }

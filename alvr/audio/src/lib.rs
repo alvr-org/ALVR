@@ -280,6 +280,11 @@ fn downmix_audio(data: Vec<u8>, in_channels: u16, out_channels: u16) -> Vec<u8> 
     } else {
         let channels = match in_channels {
             2 => vec![AudioChannel::FrontLeft, AudioChannel::FrontRight],
+            3 => vec![
+                AudioChannel::FrontLeft,
+                AudioChannel::FrontRight,
+                AudioChannel::LowFrequency,
+            ],
             4 => vec![
                 AudioChannel::FrontLeft,
                 AudioChannel::FrontRight,
@@ -331,7 +336,7 @@ pub fn record_audio_blocking(
             "Audio devices with more than 8 channels are not supported. {}",
             "Please turn off surround audio."
         );
-    } else if config.channels() == 3 || config.channels() == 5 || config.channels() == 7 {
+    } else if config.channels() == 5 || config.channels() == 7 {
         bail!(
             "Audio devices with {} channels are not supported.",
             config.channels()

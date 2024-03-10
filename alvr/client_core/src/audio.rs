@@ -166,7 +166,6 @@ pub fn play_audio_loop(
         sample_rate as usize * config.average_buffering_ms as usize / 1000;
 
     let sample_buffer = Arc::new(Mutex::new(VecDeque::new()));
-    let device_connected = Arc::new(Mutex::new(true));
     let state = Arc::new(Mutex::new(AudioPlaybackState::Playing));
 
     let mut stream = AudioStreamBuilder::default()

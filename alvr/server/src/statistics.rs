@@ -181,7 +181,7 @@ impl StatisticsManager {
     }
 
     // Called every frame. Some statistics are reported once every frame
-    // Returns network latency
+    // Returns (network latency, game time latency)
     pub fn report_statistics(&mut self, client_stats: ClientStatistics) -> (Duration, Duration) {
         if let Some(frame) = self
             .history_buffer

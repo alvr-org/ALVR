@@ -2,7 +2,7 @@
 // todo: fill out more properties for headset and controllers
 // todo: add more emulation modes
 
-use crate::{FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER};
+use crate::{FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER, STATISTICS_MANAGER};
 use alvr_common::{info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
@@ -111,6 +111,12 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
     let data_manager_lock = SERVER_DATA_MANAGER.read();
     let settings = data_manager_lock.settings();
 
+    let latency = if let Some(manager) = &*STATISTICS_MANAGER.lock() {
+        manager.video_pipeline_latency_average().as_secs_f32()
+    } else {
+        0.0
+    };
+
     if device_id == *HEAD_ID {
         fn set_prop(prop: OpenvrProperty) {
             info!("Setting head OpenVR prop: {prop:?}");
@@ -203,7 +209,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
 
         set_prop(UserIpdMeters(0.063));
         set_prop(UserHeadToEyeDepthMeters(0.0));
-        set_prop(SecondsFromVsyncToPhotons(0.0));
+        set_prop(SecondsFromVsyncToPhotons(latency));
 
         // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
         set_prop(CurrentUniverseId(2));

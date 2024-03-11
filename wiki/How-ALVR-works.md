@@ -152,7 +152,7 @@ ALVR uses a unified configuration file, that is `session.json`. It is generated 
 
 * `"server_version"`: the current version of the streamer. It helps during a version upgrade.
 * `"drivers_backup"`: temporary storage for SteamVR driver paths. Used by the dashboard.
-* `"openvr_config"`: contains a list of settings that have been checked for a diff. It is used by C++ code inside the driver.
+* `"vulkan_layer_config"`: settings needed to nitialize the vulkan layer.
 * `"client_connections"`: contains entries corresponding to known clients.
 * `"session_settings"`: all ALVR settings, laid in a tree structure.
 

@@ -42,7 +42,7 @@ void Settings::Load()
 			return;
 		}
 
-		auto config = v.get("openvr_config");
+		auto config = v.get("vulkan_layer_config");
 
 		m_renderWidth = config.get("eye_resolution_width").get<int64_t>() * 2;
 		m_renderHeight = config.get("eye_resolution_height").get<int64_t>();

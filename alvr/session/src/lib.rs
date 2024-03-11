@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 use serde_json as json;
 use settings_schema::{NumberType, SchemaNode};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::DefaultHasher, HashMap, HashSet},
+    hash::{Hash, Hasher},
     net::IpAddr,
     path::PathBuf,
 };
@@ -21,90 +22,96 @@ use std::{
 // the settings representation that the UI uses.
 pub type SessionSettings = settings::SettingsDefault;
 
+impl Settings {
+    pub fn steamvr_restart_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        let setting = json::to_value(self).unwrap();
+        hash_settings_with_flags(
+            &mut hasher,
+            &setting,
+            &Settings::schema(settings::session_settings_default()),
+        );
+
+        hasher.finish()
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DriversBackup {
     pub alvr_path: PathBuf,
     pub other_paths: Vec<PathBuf>,
 }
 
-// This structure is used to store the minimum configuration data that ALVR driver needs to
-// initialize OpenVR before having the chance to communicate with a client. When a client is
-// connected, a new OpenvrConfig instance is generated, then the connection is accepted only if that
-// instance is equivalent to the one stored in the session, otherwise SteamVR is restarted.
-// Other components (like the encoder, audio recorder) don't need this treatment and are initialized
-// dynamically.
-// todo: properties that can be set after the OpenVR initialization should be removed and set with
-// UpdateForStream.
 #[derive(Serialize, Deserialize, PartialEq, Default, Clone, Debug)]
-pub struct OpenvrConfig {
+pub struct VulkanLayerConfig {
     pub eye_resolution_width: u32,
     pub eye_resolution_height: u32,
-    pub target_eye_resolution_width: u32,
-    pub target_eye_resolution_height: u32,
-    pub tracking_ref_only: bool,
-    pub enable_vive_tracker_proxy: bool,
-    pub minimum_idr_interval_ms: u64,
-    pub adapter_index: u32,
-    pub codec: u8,
-    pub h264_profile: u32,
+    // pub target_eye_resolution_width: u32,
+    // pub target_eye_resolution_height: u32,
+    // pub tracking_ref_only: bool,
+    // pub enable_vive_tracker_proxy: bool,
+    // pub minimum_idr_interval_ms: u64,
+    // pub adapter_index: u32,
+    // pub codec: u8,
+    // pub h264_profile: u32,
     pub refresh_rate: u32,
-    pub use_10bit_encoder: bool,
-    pub use_full_range_encoding: bool,
-    pub enable_pre_analysis: bool,
-    pub enable_vbaq: bool,
-    pub enable_hmqb: bool,
-    pub use_preproc: bool,
-    pub preproc_sigma: u32,
-    pub preproc_tor: u32,
-    pub amd_encoder_quality_preset: u32,
-    pub rate_control_mode: u32,
-    pub filler_data: bool,
-    pub entropy_coding: u32,
-    pub force_sw_encoding: bool,
-    pub sw_thread_count: u32,
-    pub controller_is_tracker: bool,
-    pub controllers_enabled: bool,
-    pub body_tracking_vive_enabled: bool,
-    pub body_tracking_has_legs: bool,
-    pub enable_foveated_encoding: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
-    pub enable_color_correction: bool,
-    pub brightness: f32,
-    pub contrast: f32,
-    pub saturation: f32,
-    pub gamma: f32,
-    pub sharpening: f32,
-    pub linux_async_compute: bool,
-    pub linux_async_reprojection: bool,
-    pub nvenc_quality_preset: u32,
-    pub nvenc_tuning_preset: u32,
-    pub nvenc_multi_pass: u32,
-    pub nvenc_adaptive_quantization_mode: u32,
-    pub nvenc_low_delay_key_frame_scale: i64,
-    pub nvenc_refresh_rate: i64,
-    pub enable_intra_refresh: bool,
-    pub intra_refresh_period: i64,
-    pub intra_refresh_count: i64,
-    pub max_num_ref_frames: i64,
-    pub gop_length: i64,
-    pub p_frame_strategy: i64,
-    pub nvenc_rate_control_mode: i64,
-    pub rc_buffer_size: i64,
-    pub rc_initial_delay: i64,
-    pub rc_max_bitrate: i64,
-    pub rc_average_bitrate: i64,
-    pub nvenc_enable_weighted_prediction: bool,
-    pub capture_frame_dir: String,
-    pub amd_bitrate_corruption_fix: bool,
+    // pub use_10bit_encoder: bool,
+    // pub use_full_range_encoding: bool,
+    // pub enable_pre_analysis: bool,
+    // pub enable_vbaq: bool,
+    // pub enable_hmqb: bool,
+    // pub use_preproc: bool,
+    // pub preproc_sigma: u32,
+    // pub preproc_tor: u32,
+    // pub amd_encoder_quality_preset: u32,
+    // pub rate_control_mode: u32,
+    // pub filler_data: bool,
+    // pub entropy_coding: u32,
+    // pub force_sw_encoding: bool,
+    // pub sw_thread_count: u32,
+    // pub controller_is_tracker: bool,
+    // pub controllers_enabled: bool,
+    // pub body_tracking_vive_enabled: bool,
+    // pub body_tracking_has_legs: bool,
+    // pub enable_foveated_encoding: bool,
+    // pub foveation_center_size_x: f32,
+    // pub foveation_center_size_y: f32,
+    // pub foveation_center_shift_x: f32,
+    // pub foveation_center_shift_y: f32,
+    // pub foveation_edge_ratio_x: f32,
+    // pub foveation_edge_ratio_y: f32,
+    // pub enable_color_correction: bool,
+    // pub brightness: f32,
+    // pub contrast: f32,
+    // pub saturation: f32,
+    // pub gamma: f32,
+    // pub sharpening: f32,
+    // pub linux_async_compute: bool,
+    // pub linux_async_reprojection: bool,
+    // pub nvenc_quality_preset: u32,
+    // pub nvenc_tuning_preset: u32,
+    // pub nvenc_multi_pass: u32,
+    // pub nvenc_adaptive_quantization_mode: u32,
+    // pub nvenc_low_delay_key_frame_scale: i64,
+    // pub nvenc_refresh_rate: i64,
+    // pub enable_intra_refresh: bool,
+    // pub intra_refresh_period: i64,
+    // pub intra_refresh_count: i64,
+    // pub max_num_ref_frames: i64,
+    // pub gop_length: i64,
+    // pub p_frame_strategy: i64,
+    // pub nvenc_rate_control_mode: i64,
+    // pub rc_buffer_size: i64,
+    // pub rc_initial_delay: i64,
+    // pub rc_max_bitrate: i64,
+    // pub rc_average_bitrate: i64,
+    // pub nvenc_enable_weighted_prediction: bool,
+    // pub capture_frame_dir: String,
+    // pub amd_bitrate_corruption_fix: bool,
 
-    // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
-    // restart
-    pub _controller_profile: i32,
+    // // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
+    // // restart
+    // pub _controller_profile: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -121,7 +128,7 @@ pub struct ClientConnectionConfig {
 pub struct SessionConfig {
     pub server_version: Version,
     pub drivers_backup: Option<DriversBackup>,
-    pub openvr_config: OpenvrConfig,
+    pub vulkan_layer_config: VulkanLayerConfig,
     // The hashmap key is the hostname
     pub client_connections: HashMap<String, ClientConnectionConfig>,
     pub session_settings: SessionSettings,
@@ -132,22 +139,21 @@ impl Default for SessionConfig {
         Self {
             server_version: ALVR_VERSION.clone(),
             drivers_backup: None,
-            openvr_config: OpenvrConfig {
+            vulkan_layer_config: VulkanLayerConfig {
                 // avoid realistic resolutions, as on first start, on Linux, it
                 // could trigger direct mode on an existing monitor
                 eye_resolution_width: 800,
                 eye_resolution_height: 900,
-                target_eye_resolution_width: 800,
-                target_eye_resolution_height: 900,
-                adapter_index: 0,
+                // target_eye_resolution_width: 800,
+                // target_eye_resolution_height: 900,
+                // adapter_index: 0,
                 refresh_rate: 60,
-                controllers_enabled: false,
-                body_tracking_vive_enabled: false,
-                enable_foveated_encoding: false,
-                enable_color_correction: false,
-                linux_async_reprojection: false,
-                capture_frame_dir: "/tmp".into(),
-                ..<_>::default()
+                // controllers_enabled: false,
+                // body_tracking_vive_enabled: false,
+                // enable_foveated_encoding: false,
+                // enable_color_correction: false,
+                // linux_async_reprojection: false,
+                // capture_frame_dir: "/tmp".into(),
             },
             client_connections: HashMap::new(),
             session_settings: settings::session_settings_default(),
@@ -577,6 +583,57 @@ fn json_session_settings_to_settings(
         )
         .unwrap(),
         _ => unreachable!(),
+    }
+}
+
+pub fn hash_settings_with_flags(
+    hasher: &mut DefaultHasher,
+    settings: &json::Value,
+    schema: &SchemaNode,
+) {
+    match schema {
+        SchemaNode::Section { entries, .. } => {
+            for named_entry in entries {
+                if named_entry.flags.contains("steamvr-restart") {
+                    json::to_string(&settings[&named_entry.name])
+                        .unwrap()
+                        .hash(hasher);
+                } else {
+                    hash_settings_with_flags(
+                        hasher,
+                        &settings[&named_entry.name],
+                        &named_entry.content,
+                    )
+                }
+            }
+        }
+
+        SchemaNode::Choice { variants, .. } => {
+            if let Some(variant) = settings.as_object() {
+                let schema = variants
+                    .iter()
+                    .find(|named_entry| named_entry.name == *variant.iter().next().unwrap().0)
+                    .unwrap()
+                    .content
+                    .clone()
+                    .unwrap();
+
+                hash_settings_with_flags(hasher, variant.iter().next().unwrap().1, &schema)
+            }
+        }
+
+        SchemaNode::Optional { content, .. } => {
+            if settings["set"].as_bool().unwrap() {
+                hash_settings_with_flags(hasher, &settings["content"], content)
+            }
+        }
+
+        SchemaNode::Switch { content, .. } => {
+            if settings["enabled"].as_bool().unwrap() {
+                hash_settings_with_flags(hasher, &settings["content"], content)
+            }
+        }
+        _ => (),
     }
 }
 

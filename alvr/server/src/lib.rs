@@ -169,7 +169,7 @@ pub extern "C" fn shutdown_driver() {
     {
         let mut server_data_lock = SERVER_DATA_MANAGER.write();
         server_data_lock.session_mut().openvr_config =
-            connection::contruct_openvr_config(server_data_lock.session());
+            connection::contruct_cpp_settings(server_data_lock.session());
     }
 
     if let Some(backup) = SERVER_DATA_MANAGER
@@ -451,5 +451,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
     WaitForVSync = Some(wait_for_vsync);
 
-    CppEntryPoint(interface_name, return_code)
+    let cpp_settings = connection::contruct_cpp_settings(&SERVER_DATA_MANAGER.read().session());
+
+    CppEntryPoint(interface_name, return_code, cpp_settings)
 }

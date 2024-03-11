@@ -84,6 +84,80 @@ struct FfiDynamicEncoderParams {
     float framerate;
 };
 
+struct CppSettings {
+    int refreshRate;
+    unsigned int renderWidth;
+    unsigned int renderHeight;
+    int recommendedTargetWidth;
+    int recommendedTargetHeight;
+    int nAdapterIndex;
+    char captureFrameDir[256];
+
+    bool enableFoveatedEncoding;
+    float foveationCenterSizeX;
+    float foveationCenterSizeY;
+    float foveationCenterShiftX;
+    float foveationCenterShiftY;
+    float foveationEdgeRatioX;
+    float foveationEdgeRatioY;
+
+    bool enableColorCorrection;
+    float brightness;
+    float contrast;
+    float saturation;
+    float gamma;
+    float sharpening;
+
+    int codec;
+    int h264Profile;
+    bool use10bitEncoder;
+    bool useFullRangeEncoding;
+    bool enablePreAnalysis;
+    bool enableVbaq;
+    bool enableHmqb;
+    bool usePreproc;
+    unsigned int preProcSigma;
+    unsigned int preProcTor;
+    unsigned int amdEncoderQualityPreset;
+    bool amdBitrateCorruptionFix;
+    unsigned int nvencQualityPreset;
+    unsigned int rateControlMode;
+    bool fillerData;
+    unsigned int entropyCoding;
+    bool force_sw_encoding;
+    unsigned int swThreadCount;
+
+    unsigned int nvencTuningPreset;
+    unsigned int nvencMultiPass;
+    unsigned int nvencAdaptiveQuantizationMode;
+    long long nvencLowDelayKeyFrameScale;
+    long long nvencRefreshRate;
+    bool nvencEnableIntraRefresh;
+    long long nvencIntraRefreshPeriod;
+    long long nvencIntraRefreshCount;
+    long long nvencMaxNumRefFrames;
+    long long nvencGopLength;
+    long long nvencPFrameStrategy;
+    long long nvencRateControlMode;
+    long long nvencRcBufferSize;
+    long long nvencRcInitialDelay;
+    long long nvencRcMaxBitrate;
+    long long nvencRcAverageBitrate;
+    bool nvencEnableWeightedPrediction;
+
+    unsigned long long minimumIdrIntervalMs;
+
+    bool enableViveTrackerProxy = false;
+    bool trackingRefOnly = false;
+    bool enableLinuxVulkanAsyncCompute;
+    bool enableLinuxAsyncReprojection;
+
+    bool enableControllers;
+    int controllerIsTracker = false;
+    int enableBodyTrackingFakeVive = false;
+    int bodyTrackingHasLegs = false;
+};
+
 extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
@@ -106,6 +180,7 @@ extern "C" unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 
 extern "C" const char *g_sessionPath;
 extern "C" const char *g_driverRootDir;
+extern "C" const char *g_settings;
 
 extern "C" void (*LogError)(const char *stringPtr);
 extern "C" void (*LogWarn)(const char *stringPtr);
@@ -132,7 +207,7 @@ extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
 extern "C" void (*RegisterButtons)(unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
-extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
+extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode, CppSettings settings);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();

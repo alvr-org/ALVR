@@ -215,7 +215,7 @@ extern "C" drmModeConnectorPtr drmModeGetConnector(int fd, uint32_t connectorId)
         auto json = std::string(std::istreambuf_iterator<char>(sessionFile), std::istreambuf_iterator<char>());
         picojson::value v;
         picojson::parse(v, json);
-        auto config = v.get("openvr_config");
+        auto config = v.get("vulkan_layer_config");
 
         con->count_modes = 1;
         con->modes = (drmModeModeInfo*)calloc(1, sizeof(drmModeModeInfo));

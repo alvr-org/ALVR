@@ -31,7 +31,7 @@ use alvr_packets::{
 };
 use alvr_session::{
     BodyTrackingConfig, BodyTrackingSinkConfig, CodecType, ControllersEmulationMode, FrameSize,
-    H264Profile, OpenvrConfig, SessionConfig,
+    H264Profile, Settings,
 };
 use alvr_sockets::{
     PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
@@ -39,6 +39,7 @@ use alvr_sockets::{
 };
 use std::{
     collections::{HashMap, HashSet},
+    ffi::{c_char, CString},
     io::Write,
     net::IpAddr,
     process::Command,
@@ -77,10 +78,81 @@ fn is_streaming(client_hostname: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
-    let old_config = session.openvr_config.clone();
-    let settings = session.to_settings();
+// struct CppSettings {
+//     int refreshRate;
+//     unsigned int renderWidth;
+//     unsigned int renderHeight;
+//     int recommendedTargetWidth;
+//     int recommendedTargetHeight;
+//     int nAdapterIndex;
+//     char captureFrameDir[256];
 
+//     bool enableFoveatedEncoding;
+//     float foveationCenterSizeX;
+//     float foveationCenterSizeY;
+//     float foveationCenterShiftX;
+//     float foveationCenterShiftY;
+//     float foveationEdgeRatioX;
+//     float foveationEdgeRatioY;
+
+//     bool enableColorCorrection;
+//     float brightness;
+//     float contrast;
+//     float saturation;
+//     float gamma;
+//     float sharpening;
+
+//     int codec;
+//     int h264Profile;
+//     bool use10bitEncoder;
+//     bool useFullRangeEncoding;
+//     bool enablePreAnalysis;
+//     bool enableVbaq;
+//     bool enableHmqb;
+//     bool usePreproc;
+//     unsigned int preProcSigma;
+//     unsigned int preProcTor;
+//     unsigned int amdEncoderQualityPreset;
+//     bool amdBitrateCorruptionFix;
+//     unsigned int nvencQualityPreset;
+//     unsigned int rateControlMode;
+//     bool fillerData;
+//     unsigned int entropyCoding;
+//     bool force_sw_encoding;
+//     unsigned int swThreadCount;
+
+//     unsigned int nvencTuningPreset;
+//     unsigned int nvencMultiPass;
+//     unsigned int nvencAdaptiveQuantizationMode;
+//     long long nvencLowDelayKeyFrameScale;
+//     long long nvencRefreshRate;
+//     bool nvencEnableIntraRefresh;
+//     long long nvencIntraRefreshPeriod;
+//     long long nvencIntraRefreshCount;
+//     long long nvencMaxNumRefFrames;
+//     long long nvencGopLength;
+//     long long nvencPFrameStrategy;
+//     long long nvencRateControlMode;
+//     long long nvencRcBufferSize;
+//     long long nvencRcInitialDelay;
+//     long long nvencRcMaxBitrate;
+//     long long nvencRcAverageBitrate;
+//     bool nvencEnableWeightedPrediction;
+
+//     unsigned long long minimumIdrIntervalMs;
+
+//     bool enableViveTrackerProxy = false;
+//     bool TrackingRefOnly = false;
+//     bool enableLinuxVulkanAsyncCompute;
+//     bool enableLinuxAsyncReprojection;
+
+//     bool enableControllers;
+//     int controllerIsTracker = false;
+//     int enableBodyTrackingFakeVive = false;
+//     int bodyTrackingHasLegs = false;
+// };
+
+pub fn contruct_cpp_settings(settings: &Settings) -> crate::CppSettings {
     let mut controller_is_tracker = false;
     let mut _controller_profile = 0;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
@@ -159,72 +231,86 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
     let nvenc_overrides = settings.video.encoder_config.nvenc;
     let amf_controls = settings.video.encoder_config.amf;
 
-    OpenvrConfig {
-        tracking_ref_only: settings.headset.tracking_ref_only,
-        enable_vive_tracker_proxy: settings.headset.enable_vive_tracker_proxy,
-        minimum_idr_interval_ms: settings.connection.minimum_idr_interval_ms,
-        adapter_index: settings.video.adapter_index,
-        codec: settings.video.preferred_codec as _,
-        h264_profile: settings.video.encoder_config.h264_profile as u32,
-        rate_control_mode: settings.video.encoder_config.rate_control_mode as u32,
-        filler_data: settings.video.encoder_config.filler_data,
-        entropy_coding: settings.video.encoder_config.entropy_coding as u32,
-        use_10bit_encoder: settings.video.encoder_config.use_10bit,
-        use_full_range_encoding: settings.video.encoder_config.use_full_range,
-        enable_pre_analysis: amf_controls.enable_pre_analysis,
-        enable_vbaq: amf_controls.enable_vbaq,
-        enable_hmqb: amf_controls.enable_hmqb,
-        use_preproc: amf_controls.use_preproc,
-        preproc_sigma: amf_controls.preproc_sigma,
-        preproc_tor: amf_controls.preproc_tor,
-        nvenc_quality_preset: nvenc_overrides.quality_preset as u32,
-        amd_encoder_quality_preset: amf_controls.quality_preset as u32,
-        force_sw_encoding: settings
-            .video
-            .encoder_config
-            .software
-            .force_software_encoding,
-        sw_thread_count: settings.video.encoder_config.software.thread_count,
-        controllers_enabled,
-        controller_is_tracker,
-        body_tracking_vive_enabled,
-        body_tracking_has_legs,
-        enable_foveated_encoding,
-        foveation_center_size_x,
-        foveation_center_size_y,
-        foveation_center_shift_x,
-        foveation_center_shift_y,
-        foveation_edge_ratio_x,
-        foveation_edge_ratio_y,
-        enable_color_correction,
+    let capture_frame_dir = CString::new(settings.capture.capture_frame_dir).unwrap();
+
+    let mut capture_frame_dir_buffer = [0 as c_char; 256];
+    unsafe {
+        ptr::copy_nonoverlapping(
+            capture_frame_dir.as_ptr(),
+            capture_frame_dir_buffer.as_mut_ptr(),
+            capture_frame_dir.as_bytes().len(),
+        );
+    }
+
+    crate::CppSettings {
+        refreshRate: settings.video.preferred_fps as _,
+        renderWidth: settings.video.encoder_config.resolution.width as _ * 2,
+        renderHeight: settings.video.encoder_config.resolution.height as _,
+        recommendedTargetWidth: settings.video.emulated_headset_view_resolution.width as _,
+        recommendedTargetHeight: settings.video.emulated_headset_view_resolution.height as _,
+        nAdapterIndex: settings.video.adapter_index as _,
+        captureFrameDir: capture_frame_dir_buffer,
+        enableFoveatedEncoding: enable_foveated_encoding,
+        foveationCenterSizeX: foveation_center_size_x,
+        foveationCenterSizeY: foveation_center_size_y,
+        foveationCenterShiftX: foveation_center_shift_x,
+        foveationCenterShiftY: foveation_center_shift_y,
+        foveationEdgeRatioX: foveation_edge_ratio_x,
+        foveationEdgeRatioY: foveation_edge_ratio_y,
+        enableColorCorrection: enable_color_correction,
         brightness,
         contrast,
         saturation,
         gamma,
         sharpening,
-        linux_async_compute: settings.patches.linux_async_compute,
-        linux_async_reprojection: settings.patches.linux_async_reprojection,
-        nvenc_tuning_preset: nvenc_overrides.tuning_preset as u32,
-        nvenc_multi_pass: nvenc_overrides.multi_pass as u32,
-        nvenc_adaptive_quantization_mode: nvenc_overrides.adaptive_quantization_mode as u32,
-        nvenc_low_delay_key_frame_scale: nvenc_overrides.low_delay_key_frame_scale,
-        nvenc_refresh_rate: nvenc_overrides.refresh_rate,
-        enable_intra_refresh: nvenc_overrides.enable_intra_refresh,
-        intra_refresh_period: nvenc_overrides.intra_refresh_period,
-        intra_refresh_count: nvenc_overrides.intra_refresh_count,
-        max_num_ref_frames: nvenc_overrides.max_num_ref_frames,
-        gop_length: nvenc_overrides.gop_length,
-        p_frame_strategy: nvenc_overrides.p_frame_strategy,
-        nvenc_rate_control_mode: nvenc_overrides.rate_control_mode,
-        rc_buffer_size: nvenc_overrides.rc_buffer_size,
-        rc_initial_delay: nvenc_overrides.rc_initial_delay,
-        rc_max_bitrate: nvenc_overrides.rc_max_bitrate,
-        rc_average_bitrate: nvenc_overrides.rc_average_bitrate,
-        nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
-        capture_frame_dir: settings.capture.capture_frame_dir,
-        amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
-        _controller_profile,
-        ..old_config
+        codec: settings.video.preferred_codec as _,
+        h264Profile: settings.video.encoder_config.h264_profile as u32,
+        use10bitEncoder: settings.video.encoder_config.use_10bit,
+        useFullRangeEncoding: settings.video.encoder_config.use_full_range,
+        enablePreAnalysis: amf_controls.enable_pre_analysis,
+        enableVbaq: amf_controls.enable_vbaq,
+        enableHmqb: amf_controls.enable_hmqb,
+        usePreproc: amf_controls.use_preproc,
+        preProcSigma: amf_controls.preproc_sigma,
+        preProcTor: amf_controls.preproc_tor,
+        amdEncoderQualityPreset: amf_controls.quality_preset as u32,
+        amdBitrateCorruptionFix: settings.video.bitrate.image_corruption_fix,
+        nvencQualityPreset: nvenc_overrides.quality_preset as u32,
+        rateControlMode: settings.video.encoder_config.rate_control_mode as u32,
+        fillerData: settings.video.encoder_config.filler_data,
+        entropyCoding: settings.video.encoder_config.entropy_coding as u32,
+        force_sw_encoding: settings
+            .video
+            .encoder_config
+            .software
+            .force_software_encoding,
+        swThreadCount: settings.video.encoder_config.software.thread_count,
+        nvencTuningPreset: nvenc_overrides.tuning_preset as u32,
+        nvencMultiPass: nvenc_overrides.multi_pass as u32,
+        nvencAdaptiveQuantizationMode: nvenc_overrides.adaptive_quantization_mode as u32,
+        nvencLowDelayKeyFrameScale: nvenc_overrides.low_delay_key_frame_scale,
+        nvencRefreshRate: nvenc_overrides.refresh_rate,
+        nvencEnableIntraRefresh: nvenc_overrides.enable_intra_refresh,
+        nvencIntraRefreshPeriod: nvenc_overrides.intra_refresh_period,
+        nvencIntraRefreshCount: nvenc_overrides.intra_refresh_count,
+        nvencMaxNumRefFrames: nvenc_overrides.max_num_ref_frames,
+        nvencGopLength: nvenc_overrides.gop_length,
+        nvencPFrameStrategy: nvenc_overrides.p_frame_strategy,
+        nvencRateControlMode: nvenc_overrides.rate_control_mode,
+        nvencRcBufferSize: nvenc_overrides.rc_buffer_size,
+        nvencRcInitialDelay: nvenc_overrides.rc_initial_delay,
+        nvencRcMaxBitrate: nvenc_overrides.rc_max_bitrate,
+        nvencRcAverageBitrate: nvenc_overrides.rc_average_bitrate,
+        nvencEnableWeightedPrediction: nvenc_overrides.enable_weighted_prediction,
+        minimumIdrIntervalMs: settings.connection.minimum_idr_interval_ms as u64,
+        enableViveTrackerProxy: settings.headset.enable_vive_tracker_proxy,
+        trackingRefOnly: settings.headset.tracking_ref_only,
+        enableLinuxVulkanAsyncCompute: settings.patches.linux_async_compute,
+        enableLinuxAsyncReprojection: settings.patches.linux_async_reprojection,
+        enableControllers: controllers_enabled,
+        controllerIsTracker: controller_is_tracker as _,
+        enableBodyTrackingFakeVive: body_tracking_vive_enabled as _,
+        bodyTrackingHasLegs: body_tracking_has_legs as _,
     }
 }
 
@@ -581,19 +667,19 @@ fn connection_pipeline(
     let (mut control_sender, mut control_receiver) =
         proto_socket.split(STREAMING_RECV_TIMEOUT).to_con()?;
 
-    let mut new_openvr_config = contruct_openvr_config(server_data_lock.session());
-    new_openvr_config.eye_resolution_width = stream_view_resolution.x;
-    new_openvr_config.eye_resolution_height = stream_view_resolution.y;
-    new_openvr_config.target_eye_resolution_width = target_view_resolution.x;
-    new_openvr_config.target_eye_resolution_height = target_view_resolution.y;
-    new_openvr_config.refresh_rate = fps as _;
-    new_openvr_config.enable_foveated_encoding = enable_foveated_encoding;
-    new_openvr_config.h264_profile = encoder_profile as _;
-    new_openvr_config.use_10bit_encoder = enable_10_bits_encoding;
-    new_openvr_config.codec = codec as _;
+    let mut cpp_config = contruct_cpp_settings(server_data_lock.session());
+    cpp_config.renderWidth = stream_view_resolution.x * 2;
+    cpp_config.renderHeight = stream_view_resolution.y;
+    cpp_config.target_eye_resolution_width = target_view_resolution.x;
+    cpp_config.target_eye_resolution_height = target_view_resolution.y;
+    cpp_config.refresh_rate = fps as _;
+    cpp_config.enable_foveated_encoding = enable_foveated_encoding;
+    cpp_config.h264_profile = encoder_profile as _;
+    cpp_config.use_10bit_encoder = enable_10_bits_encoding;
+    cpp_config.codec = codec as _;
 
-    if server_data_lock.session().openvr_config != new_openvr_config {
-        server_data_lock.session_mut().openvr_config = new_openvr_config;
+    if server_data_lock.session().openvr_config != cpp_config {
+        server_data_lock.session_mut().openvr_config = cpp_config;
 
         control_sender.send(&ServerControlPacket::Restarting).ok();
 

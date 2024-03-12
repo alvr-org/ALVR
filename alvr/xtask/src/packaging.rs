@@ -164,7 +164,8 @@ pub fn package_streamer(gpl: bool, root: Option<String>, appimage: bool, zsync: 
         command::zip(&sh, &afs::streamer_build_dir()).unwrap();
 
         // todo: remove installer
-        build_windows_installer();
+        // note: wix package is broken, find alternative
+        //build_windows_installer();
     } else {
         command::targz(&sh, &afs::streamer_build_dir()).unwrap();
 

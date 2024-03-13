@@ -140,9 +140,9 @@ impl AudioOutputCallback for PlayerCallback {
     fn on_error_before_close(
         &mut self,
         _audio_stream: &mut dyn AudioOutputStreamSafe,
-        _error: oboe::Error,
+        error: oboe::Error,
     ) {
-        *self.state.lock() = AudioPlaybackState::Err(_error.into());
+        *self.state.lock() = AudioPlaybackState::Err(error);
     }
 }
 
@@ -202,7 +202,7 @@ pub fn play_audio_loop(
 
     let result = match *state.lock() {
         AudioPlaybackState::Err(error) => Err(error.into()),
-        _ => Ok(()),
+        AudioPlaybackState::Playing => Ok(()),
     };
     result
 }

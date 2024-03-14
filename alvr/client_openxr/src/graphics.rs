@@ -125,3 +125,27 @@ pub fn create_swapchain(
         session.create_swapchain(&swapchain_info).unwrap()
     }
 }
+
+// This is needed to work around lifetime limitations
+pub struct CompositionLayerBuilder<'a> {
+    reference_space: &'a xr::Space,
+    layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
+}
+
+impl<'a> CompositionLayerBuilder<'a> {
+    pub fn new(
+        reference_space: &'a xr::Space,
+        layers: [xr::CompositionLayerProjectionView<'a, xr::OpenGlEs>; 2],
+    ) -> Self {
+        Self {
+            reference_space,
+            layers,
+        }
+    }
+
+    pub fn build(&self) -> xr::CompositionLayerProjection<xr::OpenGlEs> {
+        xr::CompositionLayerProjection::new()
+            .space(self.reference_space)
+            .views(&self.layers)
+    }
+}

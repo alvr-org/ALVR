@@ -1,5 +1,5 @@
 use crate::{
-    graphics,
+    graphics::{self, CompositionLayerBuilder},
     interaction::{self, InteractionContext},
     XrContext,
 };
@@ -7,7 +7,6 @@ use alvr_client_core::{ClientCoreContext, Platform};
 use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
-    parking_lot::RwLock,
     DeviceMotion, Pose, RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, Tracking};
@@ -69,33 +68,28 @@ struct ViewsHistorySample {
 
 pub struct StreamContext {
     core_context: Arc<ClientCoreContext>,
-    xr_instance: xr::Instance,
-    rect: xr::Rect2Di,
+    xr_context: XrContext,
+    interaction_context: Arc<InteractionContext>,
+    reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
+    view_resolution: UVec2,
+    refresh_rate: f32,
     views_history: VecDeque<ViewsHistorySample>,
     last_good_views: Vec<xr::View>,
-    running: Arc<RelaxedAtomic>,
     input_thread: Option<JoinHandle<()>>,
+    input_thread_running: Arc<RelaxedAtomic>,
+    views_history_sender: mpsc::Sender<ViewsHistorySample>,
     views_history_receiver: mpsc::Receiver<ViewsHistorySample>,
 }
 
 impl StreamContext {
     pub fn new(
         core_ctx: Arc<ClientCoreContext>,
-        xr_ctx: &XrContext,
+        xr_ctx: XrContext,
         interaction_ctx: Arc<InteractionContext>,
-        reference_space: Arc<RwLock<xr::Space>>,
         platform: Platform,
         config: &StreamConfig,
     ) -> StreamContext {
-        let rect = xr::Rect2Di {
-            offset: xr::Offset2Di { x: 0, y: 0 },
-            extent: xr::Extent2Di {
-                width: config.view_resolution.x as _,
-                height: config.view_resolution.y as _,
-            },
-        };
-
         if xr_ctx.instance.exts().fb_display_refresh_rate.is_some() {
             xr_ctx
                 .session
@@ -213,45 +207,91 @@ impl StreamContext {
             interaction_ctx.hands_interaction[1].controllers_profile_id,
         );
 
-        let running = Arc::new(RelaxedAtomic::new(true));
+        let input_thread_running = Arc::new(RelaxedAtomic::new(true));
 
         let (views_history_sender, views_history_receiver) = mpsc::channel();
 
-        let mut input_context = StreamInputContext {
-            views_history_sender,
-            reference_space,
-            last_ipd: 0.0,
-            last_hand_positions: [Vec3::ZERO; 2],
-        };
+        let reference_space = Arc::new(interaction::get_stage_reference_space(&xr_ctx.session));
+
         let input_thread = thread::spawn({
             let core_ctx = Arc::clone(&core_ctx);
             let xr_ctx = xr_ctx.clone();
-            let running = Arc::clone(&running);
             let interaction_ctx = Arc::clone(&interaction_ctx);
-            let input_rate = config.refresh_rate_hint;
+            let reference_space = Arc::clone(&reference_space);
+            let refresh_rate = config.refresh_rate_hint;
+            let views_history_sender = views_history_sender.clone();
+            let running = Arc::clone(&input_thread_running);
             move || {
-                let mut deadline = Instant::now();
-                let frame_interval = Duration::from_secs_f32(1.0 / input_rate);
-                while running.value() {
-                    stream_input_pipeline(&core_ctx, &xr_ctx, &interaction_ctx, &mut input_context);
-
-                    deadline += frame_interval / 3;
-                    thread::sleep(deadline.saturating_duration_since(Instant::now()));
-                }
+                stream_input_loop(
+                    &core_ctx,
+                    xr_ctx,
+                    &interaction_ctx,
+                    Arc::clone(&reference_space),
+                    refresh_rate,
+                    views_history_sender,
+                    running,
+                )
             }
         });
 
         StreamContext {
             core_context: core_ctx,
-            xr_instance: xr_ctx.instance.clone(),
-            rect,
+            xr_context: xr_ctx,
+            interaction_context: interaction_ctx,
+            reference_space,
             swapchains,
+            view_resolution: config.view_resolution,
+            refresh_rate: config.refresh_rate_hint,
             views_history: VecDeque::new(),
             last_good_views: vec![crate::default_view(), crate::default_view()],
-            running,
             input_thread: Some(input_thread),
+            input_thread_running,
+            views_history_sender,
             views_history_receiver,
         }
+    }
+
+    pub fn update_reference_space(&mut self) {
+        self.input_thread_running.set(false);
+
+        self.reference_space = Arc::new(interaction::get_stage_reference_space(
+            &self.xr_context.session,
+        ));
+
+        self.core_context.send_playspace(
+            self.xr_context
+                .session
+                .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
+                .unwrap()
+                .map(|a| Vec2::new(a.width, a.height)),
+        );
+
+        if let Some(running) = self.input_thread.take() {
+            running.join().ok();
+        }
+
+        self.input_thread_running.set(true);
+
+        self.input_thread = Some(thread::spawn({
+            let core_ctx = Arc::clone(&self.core_context);
+            let xr_ctx = self.xr_context.clone();
+            let interaction_ctx = Arc::clone(&self.interaction_context);
+            let reference_space = Arc::clone(&self.reference_space);
+            let refresh_rate = self.refresh_rate;
+            let views_history_sender = self.views_history_sender.clone();
+            let running = Arc::clone(&self.input_thread_running);
+            move || {
+                stream_input_loop(
+                    &core_ctx,
+                    xr_ctx,
+                    &interaction_ctx,
+                    Arc::clone(&reference_space),
+                    refresh_rate,
+                    views_history_sender,
+                    running,
+                )
+            }
+        }));
     }
 
     pub fn render(
@@ -259,7 +299,7 @@ impl StreamContext {
         timestamp: Duration,
         hardware_buffer: *mut c_void,
         vsync_time: Duration,
-    ) -> [xr::CompositionLayerProjectionView<xr::OpenGlEs>; 2] {
+    ) -> CompositionLayerBuilder {
         while let Ok(views) = self.views_history_receiver.try_recv() {
             if self.views_history.len() > 360 {
                 self.views_history.pop_front();
@@ -296,191 +336,209 @@ impl StreamContext {
         self.swapchains[1].release_image().unwrap();
 
         if !hardware_buffer.is_null() {
-            if let Some(now) = crate::xr_runtime_now(&self.xr_instance) {
+            if let Some(now) = crate::xr_runtime_now(&self.xr_context.instance) {
                 self.core_context
                     .report_submit(timestamp, vsync_time.saturating_sub(now));
             }
         }
 
-        [
-            xr::CompositionLayerProjectionView::new()
-                .pose(views[0].pose)
-                .fov(views[0].fov)
-                .sub_image(
-                    xr::SwapchainSubImage::new()
-                        .swapchain(&self.swapchains[0])
-                        .image_array_index(0)
-                        .image_rect(self.rect),
-                ),
-            xr::CompositionLayerProjectionView::new()
-                .pose(views[1].pose)
-                .fov(views[1].fov)
-                .sub_image(
-                    xr::SwapchainSubImage::new()
-                        .swapchain(&self.swapchains[1])
-                        .image_array_index(0)
-                        .image_rect(self.rect),
-                ),
-        ]
+        let rect = xr::Rect2Di {
+            offset: xr::Offset2Di { x: 0, y: 0 },
+            extent: xr::Extent2Di {
+                width: self.view_resolution.x as _,
+                height: self.view_resolution.y as _,
+            },
+        };
+
+        CompositionLayerBuilder::new(
+            &self.reference_space,
+            [
+                xr::CompositionLayerProjectionView::new()
+                    .pose(views[0].pose)
+                    .fov(views[0].fov)
+                    .sub_image(
+                        xr::SwapchainSubImage::new()
+                            .swapchain(&self.swapchains[0])
+                            .image_array_index(0)
+                            .image_rect(rect),
+                    ),
+                xr::CompositionLayerProjectionView::new()
+                    .pose(views[1].pose)
+                    .fov(views[1].fov)
+                    .sub_image(
+                        xr::SwapchainSubImage::new()
+                            .swapchain(&self.swapchains[1])
+                            .image_array_index(0)
+                            .image_rect(rect),
+                    ),
+            ],
+        )
     }
 }
 
 impl Drop for StreamContext {
     fn drop(&mut self) {
-        self.running.set(false);
+        self.input_thread_running.set(false);
         self.input_thread.take().unwrap().join().ok();
     }
 }
 
-struct StreamInputContext {
-    views_history_sender: mpsc::Sender<ViewsHistorySample>,
-    reference_space: Arc<RwLock<xr::Space>>,
-    last_ipd: f32,
-    last_hand_positions: [Vec3; 2],
-}
-
-fn stream_input_pipeline(
+fn stream_input_loop(
     core_ctx: &ClientCoreContext,
-    xr_ctx: &XrContext,
+    xr_ctx: XrContext,
     interaction_ctx: &InteractionContext,
-    stream_ctx: &mut StreamInputContext,
+    reference_space: Arc<xr::Space>,
+    refresh_rate: f32,
+    views_history_sender: mpsc::Sender<ViewsHistorySample>,
+    running: Arc<RelaxedAtomic>,
 ) {
-    // Streaming related inputs are updated here. Make sure every input poll is done in this
-    // thread
-    if let Err(e) = xr_ctx
-        .session
-        .sync_actions(&[(&interaction_ctx.action_set).into()])
-    {
-        error!("{e}");
-        return;
-    }
+    let mut last_ipd = 0.0;
+    let mut last_hand_positions = [Vec3::ZERO; 2];
 
-    let Some(now) = crate::xr_runtime_now(&xr_ctx.instance) else {
-        error!("Cannot poll tracking: invalid time");
-        return;
-    };
+    let mut deadline = Instant::now();
+    let frame_interval = Duration::from_secs_f32(1.0 / refresh_rate);
+    while running.value() {
+        // Streaming related inputs are updated here. Make sure every input poll is done in this
+        // thread
+        if let Err(e) = xr_ctx
+            .session
+            .sync_actions(&[(&interaction_ctx.action_set).into()])
+        {
+            error!("{e}");
+            return;
+        }
 
-    let target_timestamp =
-        now + Duration::min(core_ctx.get_head_prediction_offset(), MAX_PREDICTION);
-
-    let mut device_motions = Vec::with_capacity(3);
-
-    'head_tracking: {
-        let Ok((view_flags, views)) = xr_ctx.session.locate_views(
-            xr::ViewConfigurationType::PRIMARY_STEREO,
-            crate::to_xr_time(target_timestamp),
-            &stream_ctx.reference_space.read(),
-        ) else {
-            error!("Cannot locate views");
-            break 'head_tracking;
+        let Some(now) = crate::xr_runtime_now(&xr_ctx.instance) else {
+            error!("Cannot poll tracking: invalid time");
+            return;
         };
 
-        if !view_flags.contains(xr::ViewStateFlags::POSITION_VALID)
-            || !view_flags.contains(xr::ViewStateFlags::ORIENTATION_VALID)
-        {
-            break 'head_tracking;
-        }
+        let target_timestamp =
+            now + Duration::min(core_ctx.get_head_prediction_offset(), MAX_PREDICTION);
 
-        let ipd = (crate::to_vec3(views[0].pose.position) - crate::to_vec3(views[1].pose.position))
+        let mut device_motions = Vec::with_capacity(3);
+
+        'head_tracking: {
+            let Ok((view_flags, views)) = xr_ctx.session.locate_views(
+                xr::ViewConfigurationType::PRIMARY_STEREO,
+                crate::to_xr_time(target_timestamp),
+                &reference_space,
+            ) else {
+                error!("Cannot locate views");
+                break 'head_tracking;
+            };
+
+            if !view_flags.contains(xr::ViewStateFlags::POSITION_VALID)
+                || !view_flags.contains(xr::ViewStateFlags::ORIENTATION_VALID)
+            {
+                break 'head_tracking;
+            }
+
+            let ipd = (crate::to_vec3(views[0].pose.position)
+                - crate::to_vec3(views[1].pose.position))
             .length();
-        if f32::abs(stream_ctx.last_ipd - ipd) > IPD_CHANGE_EPS {
-            core_ctx.send_views_config(
-                [crate::to_fov(views[0].fov), crate::to_fov(views[1].fov)],
-                ipd,
-            );
+            if f32::abs(last_ipd - ipd) > IPD_CHANGE_EPS {
+                core_ctx.send_views_config(
+                    [crate::to_fov(views[0].fov), crate::to_fov(views[1].fov)],
+                    ipd,
+                );
 
-            stream_ctx.last_ipd = ipd;
+                last_ipd = ipd;
+            }
+
+            // Note: Here is assumed that views are on the same plane and orientation. The head
+            // position is approximated as the center point between the eyes.
+            let head_position = (crate::to_vec3(views[0].pose.position)
+                + crate::to_vec3(views[1].pose.position))
+                / 2.0;
+            let head_orientation = crate::to_quat(views[0].pose.orientation);
+
+            views_history_sender
+                .send(ViewsHistorySample {
+                    timestamp: target_timestamp,
+                    views,
+                })
+                .ok();
+
+            device_motions.push((
+                *HEAD_ID,
+                DeviceMotion {
+                    pose: Pose {
+                        orientation: head_orientation,
+                        position: head_position,
+                    },
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ));
         }
 
-        // Note: Here is assumed that views are on the same plane and orientation. The head position
-        // is approximated as the center point between the eyes.
-        let head_position =
-            (crate::to_vec3(views[0].pose.position) + crate::to_vec3(views[1].pose.position)) / 2.0;
-        let head_orientation = crate::to_quat(views[0].pose.orientation);
+        let tracker_time = crate::to_xr_time(
+            now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
+        );
 
-        stream_ctx
-            .views_history_sender
-            .send(ViewsHistorySample {
-                timestamp: target_timestamp,
-                views,
-            })
-            .ok();
-
-        device_motions.push((
-            *HEAD_ID,
-            DeviceMotion {
-                pose: Pose {
-                    orientation: head_orientation,
-                    position: head_position,
-                },
-                linear_velocity: Vec3::ZERO,
-                angular_velocity: Vec3::ZERO,
-            },
-        ));
-    }
-
-    let tracker_time = crate::to_xr_time(
-        now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
-    );
-
-    let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_motion(
-        &xr_ctx.session,
-        &stream_ctx.reference_space.read(),
-        tracker_time,
-        &interaction_ctx.hands_interaction[0],
-        &mut stream_ctx.last_hand_positions[0],
-    );
-    let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_motion(
-        &xr_ctx.session,
-        &stream_ctx.reference_space.read(),
-        tracker_time,
-        &interaction_ctx.hands_interaction[1],
-        &mut stream_ctx.last_hand_positions[1],
-    );
-
-    if let Some(motion) = left_hand_motion {
-        device_motions.push((*HAND_LEFT_ID, motion));
-    }
-    if let Some(motion) = right_hand_motion {
-        device_motions.push((*HAND_RIGHT_ID, motion));
-    }
-
-    let face_data = FaceData {
-        eye_gazes: interaction::get_eye_gazes(
+        let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_motion(
             &xr_ctx.session,
-            &interaction_ctx.face_sources,
-            &stream_ctx.reference_space.read(),
-            crate::to_xr_time(now),
-        ),
-        fb_face_expression: interaction::get_fb_face_expression(
-            &interaction_ctx.face_sources,
-            crate::to_xr_time(now),
-        ),
-        htc_eye_expression: interaction::get_htc_eye_expression(&interaction_ctx.face_sources),
-        htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
-    };
+            &reference_space,
+            tracker_time,
+            &interaction_ctx.hands_interaction[0],
+            &mut last_hand_positions[0],
+        );
+        let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_motion(
+            &xr_ctx.session,
+            &reference_space,
+            tracker_time,
+            &interaction_ctx.hands_interaction[1],
+            &mut last_hand_positions[1],
+        );
 
-    if let Some(body_tracker_full_body_meta) =
-        &interaction_ctx.body_sources.body_tracker_full_body_meta
-    {
-        device_motions.append(&mut interaction::get_meta_body_tracking_full_body_points(
-            &stream_ctx.reference_space.read(),
-            crate::to_xr_time(now),
-            body_tracker_full_body_meta,
-            interaction_ctx.body_sources.enable_full_body,
-        ));
-    }
+        if let Some(motion) = left_hand_motion {
+            device_motions.push((*HAND_LEFT_ID, motion));
+        }
+        if let Some(motion) = right_hand_motion {
+            device_motions.push((*HAND_RIGHT_ID, motion));
+        }
 
-    core_ctx.send_tracking(Tracking {
-        target_timestamp,
-        device_motions,
-        hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
-        face_data,
-    });
+        let face_data = FaceData {
+            eye_gazes: interaction::get_eye_gazes(
+                &xr_ctx.session,
+                &interaction_ctx.face_sources,
+                &reference_space,
+                crate::to_xr_time(now),
+            ),
+            fb_face_expression: interaction::get_fb_face_expression(
+                &interaction_ctx.face_sources,
+                crate::to_xr_time(now),
+            ),
+            htc_eye_expression: interaction::get_htc_eye_expression(&interaction_ctx.face_sources),
+            htc_lip_expression: interaction::get_htc_lip_expression(&interaction_ctx.face_sources),
+        };
 
-    let button_entries =
-        interaction::update_buttons(&xr_ctx.session, &interaction_ctx.button_actions);
-    if !button_entries.is_empty() {
-        core_ctx.send_buttons(button_entries);
+        if let Some(body_tracker_full_body_meta) =
+            &interaction_ctx.body_sources.body_tracker_full_body_meta
+        {
+            device_motions.append(&mut interaction::get_meta_body_tracking_full_body_points(
+                &reference_space,
+                crate::to_xr_time(now),
+                body_tracker_full_body_meta,
+                interaction_ctx.body_sources.enable_full_body,
+            ));
+        }
+
+        core_ctx.send_tracking(Tracking {
+            target_timestamp,
+            device_motions,
+            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+            face_data,
+        });
+
+        let button_entries =
+            interaction::update_buttons(&xr_ctx.session, &interaction_ctx.button_actions);
+        if !button_entries.is_empty() {
+            core_ctx.send_buttons(button_entries);
+        }
+
+        deadline += frame_interval / 3;
+        thread::sleep(deadline.saturating_duration_since(Instant::now()));
     }
 }

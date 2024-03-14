@@ -360,6 +360,12 @@ pub fn initialize_interaction(
     }
 }
 
+pub fn get_stage_reference_space(xr_session: &xr::Session<xr::OpenGlEs>) -> xr::Space {
+    xr_session
+        .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
+        .unwrap()
+}
+
 pub fn get_hand_motion(
     xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,

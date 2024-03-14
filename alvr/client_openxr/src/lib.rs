@@ -7,10 +7,8 @@ use crate::stream::StreamConfig;
 use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform};
 use alvr_common::{
     error,
-    glam::{Quat, UVec2, Vec2, Vec3},
-    info,
-    parking_lot::RwLock,
-    warn, Fov, Pose, HAND_LEFT_ID,
+    glam::{Quat, UVec2, Vec3},
+    info, warn, Fov, Pose, HAND_LEFT_ID,
 };
 use lobby::Lobby;
 use openxr as xr;
@@ -58,12 +56,6 @@ pub struct XrContext {
     instance: xr::Instance,
     system: xr::SystemId,
     session: xr::Session<xr::OpenGlEs>,
-}
-
-pub struct SessionRunningContext {
-    reference_space: Arc<RwLock<xr::Space>>,
-    lobby: Lobby,
-    stream_context: Option<StreamContext>,
 }
 
 fn default_view() -> xr::View {
@@ -171,7 +163,7 @@ pub fn entry_point() {
                 .unwrap()
         };
 
-        let xr_ctx = XrContext {
+        let xr_context = XrContext {
             instance: xr_instance.clone(),
             system: xr_system,
             session: xr_session.clone(),
@@ -211,7 +203,7 @@ pub fn entry_point() {
         alvr_client_core::opengl::update_hud_message(&last_lobby_message);
 
         let interaction_context = Arc::new(interaction::initialize_interaction(
-            &xr_ctx,
+            &xr_context,
             platform,
             stream_config
                 .as_ref()
@@ -221,7 +213,9 @@ pub fn entry_point() {
                 .and_then(|c| c.body_sources_config.clone()),
         ));
 
-        let mut session_running_context = None;
+        let mut lobby = Lobby::new(xr_session.clone(), default_view_resolution);
+        let mut session_running = false;
+        let mut stream_context = None::<StreamContext>;
 
         let mut event_storage = xr::EventDataBuffer::new();
         'render_loop: loop {
@@ -237,35 +231,14 @@ pub fn entry_point() {
                                 .begin(xr::ViewConfigurationType::PRIMARY_STEREO)
                                 .unwrap();
 
-                            let reference_space = Arc::new(RwLock::new(
-                                xr_session
-                                    .create_reference_space(
-                                        xr::ReferenceSpaceType::STAGE,
-                                        xr::Posef::IDENTITY,
-                                    )
-                                    .unwrap(),
-                            ));
-
-                            let lobby = Lobby::new(
-                                xr_session.clone(),
-                                Arc::clone(&reference_space),
-                                default_view_resolution,
-                            );
-
-                            session_running_context = Some(SessionRunningContext {
-                                reference_space,
-                                lobby,
-                                stream_context: None,
-                            });
-
                             core_context.resume();
+
+                            session_running = true;
                         }
                         xr::SessionState::STOPPING => {
-                            core_context.pause();
-                            alvr_client_core::opengl::pause();
+                            session_running = false;
 
-                            // Delete all resources and stop thread
-                            session_running_context = None;
+                            core_context.pause();
 
                             xr_session.end().unwrap();
                         }
@@ -279,20 +252,10 @@ pub fn entry_point() {
                             event.reference_space_type()
                         );
 
-                        if let Some(ctx) = &session_running_context {
-                            *ctx.reference_space.write() = xr_session
-                                .create_reference_space(
-                                    xr::ReferenceSpaceType::STAGE,
-                                    xr::Posef::IDENTITY,
-                                )
-                                .unwrap();
+                        lobby.update_reference_space();
 
-                            core_context.send_playspace(
-                                xr_session
-                                    .reference_space_bounds_rect(xr::ReferenceSpaceType::STAGE)
-                                    .unwrap()
-                                    .map(|a| Vec2::new(a.width, a.height)),
-                            );
+                        if let Some(context) = &mut stream_context {
+                            context.update_reference_space();
                         }
                     }
                     xr::Event::PerfSettingsEXT(event) => {
@@ -314,12 +277,10 @@ pub fn entry_point() {
                 }
             }
 
-            let session_context = if let Some(ctx) = &mut session_running_context {
-                ctx
-            } else {
+            if !session_running {
                 thread::sleep(Duration::from_millis(100));
                 continue;
-            };
+            }
 
             while let Some(event) = core_context.poll_event() {
                 match event {
@@ -348,11 +309,10 @@ pub fn entry_point() {
                             continue;
                         }
 
-                        session_context.stream_context = Some(StreamContext::new(
+                        stream_context = Some(StreamContext::new(
                             Arc::clone(&core_context),
-                            &xr_ctx,
+                            xr_context.clone(),
                             Arc::clone(&interaction_context),
-                            Arc::clone(&session_context.reference_space),
                             platform,
                             &new_config,
                         ));
@@ -360,7 +320,7 @@ pub fn entry_point() {
                         stream_config = Some(new_config);
                     }
                     ClientCoreEvent::StreamingStopped => {
-                        session_context.stream_context = None;
+                        stream_context = None;
                     }
                     ClientCoreEvent::Haptics {
                         device_id,
@@ -416,7 +376,7 @@ pub fn entry_point() {
             }
 
             // todo: allow rendering lobby and stream layers at the same time and add cross fade
-            let (layer, display_time) = if let Some(context) = &mut session_context.stream_context {
+            let (layer, display_time) = if let Some(context) = &mut stream_context {
                 let frame_poll_deadline = Instant::now()
                     + Duration::from_secs_f32(
                         frame_interval.as_secs_f32() * DECODER_MAX_TIMEOUT_MULTIPLIER,
@@ -438,9 +398,7 @@ pub fn entry_point() {
 
                 (layer, timestamp)
             } else {
-                let layer = session_context
-                    .lobby
-                    .render(frame_state.predicted_display_time);
+                let layer = lobby.render(frame_state.predicted_display_time);
 
                 (layer, vsync_time)
             };
@@ -448,9 +406,7 @@ pub fn entry_point() {
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,
-                &[&xr::CompositionLayerProjection::new()
-                    .space(&session_context.reference_space.read())
-                    .views(&layer)],
+                &[&layer.build()],
             );
 
             if let Err(e) = res {
@@ -467,6 +423,7 @@ pub fn entry_point() {
             }
         }
 
+        alvr_client_core::opengl::pause();
         alvr_client_core::opengl::destroy();
     }
 }

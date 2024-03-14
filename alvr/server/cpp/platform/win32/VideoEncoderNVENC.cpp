@@ -29,7 +29,7 @@ void VideoEncoderNVENC::Initialize()
 	NV_ENC_BUFFER_FORMAT format = NV_ENC_BUFFER_FORMAT_ABGR;
 	
 	if (Settings::Instance().m_use10bitEncoder) {
-		format = NV_ENC_BUFFER_FORMAT_ABGR10;
+		format = NV_ENC_BUFFER_FORMAT_YUV420_10BIT; // NV_ENC_BUFFER_FORMAT_ABGR10 for non-HDR
 	}
 
 	Debug("Initializing CNvEncoder. Width=%d Height=%d Format=%d\n", m_renderWidth, m_renderHeight, format);
@@ -46,7 +46,6 @@ void VideoEncoderNVENC::Initialize()
 	initializeParams.encodeConfig = &encodeConfig;
 
 	FillEncodeConfig(initializeParams, m_refreshRate, m_renderWidth, m_renderHeight, m_bitrateInMBits * 1'000'000L);
-	   
 	try {
 		m_NvNecoder->CreateEncoder(&initializeParams);
 	} 
@@ -261,9 +260,9 @@ void VideoEncoderNVENC::FillEncodeConfig(NV_ENC_INITIALIZE_PARAMS &initializePar
 		config.hevcVUIParameters.videoFormat = NV_ENC_VUI_VIDEO_FORMAT_UNSPECIFIED;
 		config.hevcVUIParameters.videoFullRangeFlag = Settings::Instance().m_useFullRangeEncoding ? 1 : 0;
 		config.hevcVUIParameters.colourDescriptionPresentFlag = 1;
-		config.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT709;
-		config.hevcVUIParameters.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_BT709;
-		config.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT709;
+		config.hevcVUIParameters.colourPrimaries = NV_ENC_VUI_COLOR_PRIMARIES_BT2020;
+		config.hevcVUIParameters.transferCharacteristics = NV_ENC_VUI_TRANSFER_CHARACTERISTIC_SRGB;
+		config.hevcVUIParameters.colourMatrix = NV_ENC_VUI_MATRIX_COEFFS_BT2020_NCL;
 	}
 	case ALVR_CODEC_AV1:
 	{

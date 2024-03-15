@@ -86,8 +86,7 @@ static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
 static COLOR_CORRECTION_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
-static RGBTOYUV420_CSO: &[u8] =
-    include_bytes!("../cpp/platform/win32/rgbtoyuv420.cso");
+static RGBTOYUV420_CSO: &[u8] = include_bytes!("../cpp/platform/win32/rgbtoyuv420.cso");
 
 static QUAD_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.comp.spv");
 static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.comp.spv");

@@ -35,7 +35,7 @@ bool FrameRender::Startup()
 	ZeroMemory(&compositionTextureDesc, sizeof(compositionTextureDesc));
 	compositionTextureDesc.Width = Settings::Instance().m_renderWidth;
 	compositionTextureDesc.Height = Settings::Instance().m_renderHeight;
-	compositionTextureDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	compositionTextureDesc.Format = Settings::Instance().m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	compositionTextureDesc.MipLevels = 1;
 	compositionTextureDesc.ArraySize = 1;
 	compositionTextureDesc.SampleDesc.Count = 1;
@@ -279,7 +279,7 @@ bool FrameRender::Startup()
 
 		ComPtr<ID3D11Texture2D> colorCorrectedTexture = CreateTexture(m_pD3DRender->GetDevice(),
 			Settings::Instance().m_renderWidth, Settings::Instance().m_renderHeight,
-			DXGI_FORMAT_R16G16B16A16_FLOAT);
+			Settings::Instance().m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 		struct ColorCorrection {
 			float renderWidth;
@@ -312,14 +312,14 @@ bool FrameRender::Startup()
 		m_pStagingTexture = m_ffr->GetOutputTexture();
 	}
 
-	if (1) {
+	if (Settings::Instance().m_enableHdr) {
 		std::vector<uint8_t> yuv420ShaderCSO(RGBTOYUV420_CSO_PTR, RGBTOYUV420_CSO_PTR + RGBTOYUV420_CSO_LEN);
 		uint32_t texWidth, texHeight;
 		GetEncodingResolution(&texWidth, &texHeight);
 		
 		ComPtr<ID3D11Texture2D> yuvTexture = CreateTexture(m_pD3DRender->GetDevice(),
 			texWidth, texHeight,
-			DXGI_FORMAT_P010);
+			Settings::Instance().m_use10bitEncoder ? DXGI_FORMAT_P010 : DXGI_FORMAT_NV12);
 		
 		struct YUVParams {
 			float renderWidth;
@@ -495,7 +495,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		m_ffr->Render();
 	}
 
-	if (m_yuvPipeline) {
+	if (Settings::Instance().m_enableHdr) {
 		m_yuvPipeline->Render();
 	}
 

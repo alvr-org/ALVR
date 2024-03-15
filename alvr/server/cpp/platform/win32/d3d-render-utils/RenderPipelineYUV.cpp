@@ -21,9 +21,15 @@ namespace d3d_render_utils {
 			mInputTextureViews.push_back(resourceView);
 		}
 
+		D3D11_TEXTURE2D_DESC renderTargetDesc;
+		renderTarget->GetDesc(&renderTargetDesc);
+
+		DXGI_FORMAT uvFormat = renderTargetDesc.Format == DXGI_FORMAT_NV12 ? DXGI_FORMAT_R8G8_UNORM : DXGI_FORMAT_R16G16_UNORM;
+		DXGI_FORMAT yFormat = renderTargetDesc.Format == DXGI_FORMAT_NV12 ? DXGI_FORMAT_R8_UNORM : DXGI_FORMAT_R16_UNORM;
+
 		// Create SRV for luminance (Y) plane
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDescY = {};
-		srvDescY.Format = DXGI_FORMAT_R16_UNORM; // Luminance format
+		srvDescY.Format = yFormat; // Luminance format
 		srvDescY.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDescY.Texture2D.MostDetailedMip = 0;
 		srvDescY.Texture2D.MipLevels = 1;
@@ -33,7 +39,7 @@ namespace d3d_render_utils {
 
 		// Create SRV for chrominance (UV) planes
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDescUV = {};
-		srvDescUV.Format = DXGI_FORMAT_R16G16_UNORM; // Chrominance format
+		srvDescUV.Format = uvFormat; // Chrominance format
 		srvDescUV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDescUV.Texture2D.MostDetailedMip = 0;
 		srvDescUV.Texture2D.MipLevels = 1;
@@ -43,7 +49,7 @@ namespace d3d_render_utils {
 
 		// Create luminance (Y) render target view
 		D3D11_RENDER_TARGET_VIEW_DESC rtvDescLuminance = {};
-		rtvDescLuminance.Format = DXGI_FORMAT_R16_UNORM; // Luminance view format
+		rtvDescLuminance.Format = yFormat; // Luminance view format
 		rtvDescLuminance.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		rtvDescLuminance.Texture2D.MipSlice = 0;
 		ID3D11RenderTargetView* pRTVLuminance;
@@ -52,15 +58,12 @@ namespace d3d_render_utils {
 
 		// Create chrominance (UV) render target view
 		D3D11_RENDER_TARGET_VIEW_DESC rtvDescChrominance = {};
-		rtvDescChrominance.Format = DXGI_FORMAT_R16G16_UNORM; // Chrominance view format
+		rtvDescChrominance.Format = uvFormat; // Chrominance view format
 		rtvDescChrominance.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		rtvDescChrominance.Texture2D.MipSlice = 0;
 		ID3D11RenderTargetView* pRTVChrominance;
 		OK_OR_THROW(mDevice->CreateRenderTargetView(renderTarget, &rtvDescChrominance, &mRenderTargetViewUV),
 			"Failed to create ID3D11RenderTargetView.");
-
-		D3D11_TEXTURE2D_DESC renderTargetDesc;
-		renderTarget->GetDesc(&renderTargetDesc);
 
 		mViewportY.Width = (FLOAT)renderTargetDesc.Width;
 		mViewportY.Height = (FLOAT)renderTargetDesc.Height;

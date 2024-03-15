@@ -10,12 +10,10 @@ namespace d3d_render_utils {
 
 		void Initialize(std::vector<ID3D11Texture2D *> inputTextures,
 			ID3D11VertexShader *quadVertexShader, std::vector<uint8_t> &pixelShaderCSO,
-			ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer = nullptr,
-			bool enableAlphaBlend = false, bool overrideAlpha = false);
+			ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer = nullptr);
 		void Initialize(std::vector<ID3D11Texture2D *> inputTextures,
 			ID3D11VertexShader *quadVertexShader, ID3D11PixelShader *pixelShader,
-			ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer = nullptr,
-			bool enableAlphaBlend = false, bool overrideAlpha = false);
+			ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer = nullptr);
 
 		void Render(ID3D11DeviceContext *otherContext = nullptr);
 

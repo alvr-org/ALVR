@@ -10,8 +10,7 @@ namespace d3d_render_utils {
 	}
 
 	void RenderPipelineYUV::Initialize(std::vector<ID3D11Texture2D *> inputTextures, ID3D11VertexShader *quadVertexShader,
-		ID3D11PixelShader *pixelShader, ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer,
-		bool enableAlphaBlend, bool overrideAlpha)
+		ID3D11PixelShader *pixelShader, ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer)
 	{
 		mInputTextureViews.clear();
 		for (auto tex : inputTextures) {
@@ -29,7 +28,7 @@ namespace d3d_render_utils {
 
 		// Create SRV for luminance (Y) plane
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDescY = {};
-		srvDescY.Format = yFormat; // Luminance format
+		srvDescY.Format = yFormat;
 		srvDescY.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDescY.Texture2D.MostDetailedMip = 0;
 		srvDescY.Texture2D.MipLevels = 1;
@@ -39,7 +38,7 @@ namespace d3d_render_utils {
 
 		// Create SRV for chrominance (UV) planes
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDescUV = {};
-		srvDescUV.Format = uvFormat; // Chrominance format
+		srvDescUV.Format = uvFormat;
 		srvDescUV.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDescUV.Texture2D.MostDetailedMip = 0;
 		srvDescUV.Texture2D.MipLevels = 1;
@@ -49,7 +48,7 @@ namespace d3d_render_utils {
 
 		// Create luminance (Y) render target view
 		D3D11_RENDER_TARGET_VIEW_DESC rtvDescLuminance = {};
-		rtvDescLuminance.Format = yFormat; // Luminance view format
+		rtvDescLuminance.Format = yFormat;
 		rtvDescLuminance.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		rtvDescLuminance.Texture2D.MipSlice = 0;
 		ID3D11RenderTargetView* pRTVLuminance;
@@ -58,7 +57,7 @@ namespace d3d_render_utils {
 
 		// Create chrominance (UV) render target view
 		D3D11_RENDER_TARGET_VIEW_DESC rtvDescChrominance = {};
-		rtvDescChrominance.Format = uvFormat; // Chrominance view format
+		rtvDescChrominance.Format = uvFormat;
 		rtvDescChrominance.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		rtvDescChrominance.Texture2D.MipSlice = 0;
 		ID3D11RenderTargetView* pRTVChrominance;
@@ -87,12 +86,11 @@ namespace d3d_render_utils {
 	}
 
 	void RenderPipelineYUV::Initialize(std::vector<ID3D11Texture2D *> inputTextures, ID3D11VertexShader *quadVertexShader,
-		std::vector<uint8_t> &pixelShaderCSO, ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer,
-		bool enableAlphaBlend, bool overrideAlpha)
+		std::vector<uint8_t> &pixelShaderCSO, ID3D11Texture2D *renderTarget, ID3D11Buffer *shaderBuffer)
 	{
 		auto pixelShader = CreatePixelShader(mDevice.Get(), pixelShaderCSO);
 		Initialize(inputTextures, quadVertexShader, pixelShader, renderTarget,
-			shaderBuffer, enableAlphaBlend, overrideAlpha);
+			shaderBuffer);
 	}
 
 	void RenderPipelineYUV::Render(ID3D11DeviceContext *otherContext) {

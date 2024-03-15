@@ -115,7 +115,12 @@ VideoEncoderAMF::VideoEncoderAMF(std::shared_ptr<CD3DRender> d3dRender
 	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
 	, m_use10bit(Settings::Instance().m_use10bitEncoder)
 	, m_hasQueryTimeout(false)
-{}
+{
+	if (Settings::Instance().m_enableHdr) {
+		// Bypass preprocessor and converters for HDR, since it will already be YUV
+		m_surfaceFormat = m_use10bit ? amf::AMF_SURFACE_P010 : amf::AMF_SURFACE_NV12;
+	}
+}
 
 VideoEncoderAMF::~VideoEncoderAMF() {}
 
@@ -225,6 +230,23 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		// Enable Full Range 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, Settings::Instance().m_useFullRangeEncoding);
 
+		// Use BT.2020 for HDR encoding, BT.709 otherwise.
+		if (Settings::Instance().m_enableHdr) {
+			// Also specify the input formats for HDR to prevent incorrect color conversions
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+		}
+		else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT709);
+		}
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
 
@@ -304,6 +326,23 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 
 		// Enable Full Range 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL : AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_STUDIO);
+
+		// Use BT.2020 for HDR encoding, BT.709 otherwise.
+		if (Settings::Instance().m_enableHdr) {
+			// Also specify the input formats for HDR to prevent incorrect color conversions
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+		}
+		else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT709);
+		}
 
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
@@ -462,7 +501,11 @@ void VideoEncoderAMF::Initialize()
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
 	amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
-	if (m_use10bit) {
+	if (Settings::Instance().m_enableHdr) {
+		// Bypass preprocessor and converters for HDR, since it will already be YUV
+		;
+	}
+	else if (m_use10bit) {
 		inFormat = amf::AMF_SURFACE_R10G10B10A2;
 		m_amfComponents.emplace_back(MakeConverter(
 			m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat

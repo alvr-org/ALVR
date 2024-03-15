@@ -34,10 +34,11 @@ float3 LinearToSRGB(float3 linearRGB)
 PS_OUTPUT main(float2 uv : TEXCOORD0) {
 	PS_OUTPUT output;
 
-	const float3 offset = float3( 0.0,    0.501,  0.501);
-	const float3 YCoeff = float3( 0.257,  0.504,  0.098);
-	const float3 UCoeff = float3(-0.148, -0.291,  0.439);
-	const float3 VCoeff = float3( 0.439, -0.368, -0.071);
+	// RGB to YUV BT.2020 conversion
+	const float3 offset = float3( 16.0/255.0,    0.501,  0.501);
+	const float3 YCoeff = float3( 0.2256,  0.5832, 0.0509);
+	const float3 UCoeff = float3(-0.1227, -0.3166, 0.4392);
+	const float3 VCoeff = float3( 0.4392, -0.4039 , -0.0353);
 
 	uint2 uvTexels = uint2(uv * float2(renderWidth, renderHeight));
 

@@ -14,7 +14,7 @@ void OvrDirectModeComponent::SetEncoder(std::shared_ptr<CEncoder> pEncoder) {
 /** Specific to Oculus compositor support, textures supplied must be created using this method. */
 void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapTextureSetDesc_t *pSwapTextureSetDesc, SwapTextureSet_t *pOutSwapTextureSet)
 {
-	Debug("CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d\n", unPid, pSwapTextureSetDesc->nFormat
+	Warn("CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d\n", unPid, pSwapTextureSetDesc->nFormat
 		, pSwapTextureSetDesc->nWidth, pSwapTextureSetDesc->nHeight, pSwapTextureSetDesc->nSampleCount);
 
 	//HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, 0, D3D11_SDK_VERSION, &pDevice, &eFeatureLevel, &pContext);
@@ -45,7 +45,8 @@ void OvrDirectModeComponent::CreateSwapTextureSet(uint32_t unPid, const SwapText
 
 	for (int i = 0; i < 3; i++) {
 		HRESULT hr = m_pD3DRender->GetDevice()->CreateTexture2D(&SharedTextureDesc, NULL, &processResource->textures[i]);
-		//LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
+		//if (SharedTextureDesc.BindFlags == D3D11_BIND_DEPTH_STENCIL)
+		//	Warn("texture%d %p res:%d fmt:%u %s", i, processResource->textures[i], hr, format, GetErrorStr(hr).c_str());
 		if (FAILED(hr)) {
 			Error("CreateSwapTextureSet CreateTexture2D %p %ls\n", hr, GetErrorStr(hr).c_str());
 			delete processResource;
@@ -132,6 +133,9 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(vr::SharedTextureHandle_
 void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t(&perEye)[2])
 {
 	m_presentMutex.lock();
+
+	if (perEye[0].hDepthTexture)
+		Warn("%p %p\n", perEye[0].hDepthTexture, perEye[0].hTexture);
 
 	auto pPose = &perEye[0].mHmdPose; // TODO: are both poses the same? Name HMD suggests yes.
 

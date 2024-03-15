@@ -316,11 +316,11 @@ bool FrameRender::Startup()
 		std::vector<uint8_t> yuv420ShaderCSO(RGBTOYUV420_CSO_PTR, RGBTOYUV420_CSO_PTR + RGBTOYUV420_CSO_LEN);
 		uint32_t texWidth, texHeight;
 		GetEncodingResolution(&texWidth, &texHeight);
-		
+
 		ComPtr<ID3D11Texture2D> yuvTexture = CreateTexture(m_pD3DRender->GetDevice(),
 			texWidth, texHeight,
 			Settings::Instance().m_use10bitEncoder ? DXGI_FORMAT_P010 : DXGI_FORMAT_NV12);
-		
+
 		struct YUVParams {
 			float offset[4];
 			float yCoeff[4];
@@ -336,7 +336,7 @@ bool FrameRender::Startup()
 		// Bless this page for ending my stint of plugging in random values
 		// from other projects:
 		// https://kdashg.github.io/misc/colors/from-coeffs.html
-		YUVParams paramStruct_bt2020_8bit_full = { 
+		YUVParams paramStruct_bt2020_8bit_full = {
 			{ 0.0000000f,  0.5019608f,  0.5019608f, 0.0f}, // offset
 			{ 0.2627000f,  0.6780000f,  0.0593000f, 0.0f}, // yCoeff
 			{-0.1390825f, -0.3589567f,  0.4980392f, 0.0f}, // uCoeff
@@ -344,7 +344,7 @@ bool FrameRender::Startup()
 			(float)texWidth, (float)texHeight, 0.0, 0.0
 		};
 
-		YUVParams paramStruct_bt2020_10bit_full = { 
+		YUVParams paramStruct_bt2020_10bit_full = {
 			{ 0.0000000f,  0.5004888f,  0.5004888f, 0.0f}, // offset
 			{ 0.2627000f,  0.6780000f,  0.0593000f, 0.0f}, // yCoeff
 			{-0.1394936f, -0.3600177f,  0.4995112f, 0.0f}, // uCoeff
@@ -352,7 +352,7 @@ bool FrameRender::Startup()
 			(float)texWidth, (float)texHeight, 0.0, 0.0
 		};
 
-		YUVParams paramStruct_bt2020_8bit_limited = { 
+		YUVParams paramStruct_bt2020_8bit_limited = {
 			{ 0.0627451f,  0.5019608f,  0.5019608f, 0.0f}, // offset
 			{ 0.2256129f,  0.5822824f,  0.0509282f, 0.0f}, // yCoeff
 			{-0.1226554f, -0.3165603f,  0.4392157f, 0.0f}, // uCoeff
@@ -360,7 +360,7 @@ bool FrameRender::Startup()
 			(float)texWidth, (float)texHeight, 0.0, 0.0
 		};
 
-		YUVParams paramStruct_bt2020_10bit_limited = { 
+		YUVParams paramStruct_bt2020_10bit_limited = {
 			{ 0.0625611f,  0.5004888f,  0.5004888f, 0.0f}, // offset
 			{ 0.2249513f,  0.5805748f,  0.0507789f, 0.0f}, // yCoeff
 			{-0.1222957f, -0.3156319f,  0.4379277f, 0.0f}, // uCoeff

@@ -100,19 +100,12 @@ namespace d3d_render_utils {
 
 		ID3D11RenderTargetView* aRenderTargets[] = { mRenderTargetViewY.Get(), mRenderTargetViewUV.Get() };
 		D3D11_VIEWPORT aViewports[] = { mViewportY, mViewportUV };
-		
+
 		ID3D11RenderTargetView* aRenderTargetsHack[] = { mRenderTargetViewY.Get()};
 		D3D11_VIEWPORT aViewportsHack[] = { mViewportY };
-		
-		
+
 		context->OMSetRenderTargets(2, aRenderTargets, nullptr);
 		context->RSSetViewports(2, aViewports);
-		//context->RSSetScissorRects(2, nullptr);
-		context->OMSetDepthStencilState(nullptr, 0);
-
-		float clearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f }; // Assuming black clear color
-		context->ClearRenderTargetView(mRenderTargetViewY.Get(), clearColor);
-		context->ClearRenderTargetView(mRenderTargetViewUV.Get(), clearColor);
 
 		if (mShaderBuffer != nullptr) {
 			context->PSSetConstantBuffers(0, 1, mShaderBuffer.GetAddressOf());

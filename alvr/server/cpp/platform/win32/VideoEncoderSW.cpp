@@ -83,7 +83,18 @@ void VideoEncoderSW::Initialize() {
 	m_codecContext->time_base = AVRational{1, (int)(1e9)};
 	m_codecContext->framerate = AVRational{settings.m_refreshRate, 1};
 	m_codecContext->sample_aspect_ratio = AVRational{1, 1};
-	m_codecContext->pix_fmt = AV_PIX_FMT_YUV420P;
+	m_codecContext->pix_fmt = settings.m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+	m_codecContext->color_range = settings.m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
+	if (settings.m_enableHdr) {
+		m_codecContext->color_primaries = AVCOL_PRI_BT2020;
+		m_codecContext->color_trc = AVCOL_TRC_GAMMA22;
+		m_codecContext->colorspace = AVCOL_SPC_BT2020_NCL;
+	}
+	else {
+		m_codecContext->color_primaries = AVCOL_PRI_BT709;
+		m_codecContext->color_trc = AVCOL_TRC_GAMMA22;
+		m_codecContext->colorspace = AVCOL_SPC_BT709;
+	}
 	m_codecContext->max_b_frames = 0;
 	m_codecContext->gop_size = 0;
 	m_codecContext->bit_rate = m_bitrateInMBits * 1'000'000L;
@@ -158,10 +169,14 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 	}
 	//Debug("Success in mapping staging texture");
 
+	AVPixelFormat inputFormat = AV_PIX_FMT_RGBA;
+	if (Settings::Instance().m_enableHdr) {
+		inputFormat = Settings::Instance().m_use10bitEncoder ? AV_PIX_FMT_YUV420P10 : AV_PIX_FMT_YUV420P;
+	}
+
 	// Setup software scaler if not defined yet; we can only define it here as we now have the texture's size
-	// FIXME: Hardcoded to DirectX's R8G8B8A8, make more robust system if needed
 	if(!m_scalerContext) {
-		m_scalerContext = sws_getContext(m_stagingTexDesc.Width, m_stagingTexDesc.Height, AV_PIX_FMT_RGBA,
+		m_scalerContext = sws_getContext(m_stagingTexDesc.Width, m_stagingTexDesc.Height, inputFormat,
 			m_codecContext->width, m_codecContext->height, m_codecContext->pix_fmt,
 			SWS_BILINEAR, NULL, NULL, NULL);
 		if(!m_scalerContext) {
@@ -177,7 +192,7 @@ void VideoEncoderSW::Transmit(ID3D11Texture2D *pTexture, uint64_t presentationTi
 	m_transferredFrame->height = m_stagingTexDesc.Height;
 	m_transferredFrame->data[0] = (uint8_t*)m_stagingTexMap.pData;
 	m_transferredFrame->linesize[0] = m_stagingTexMap.RowPitch;
-	m_transferredFrame->format = AV_PIX_FMT_RGBA;
+	m_transferredFrame->format = inputFormat;
 	m_transferredFrame->pts = targetTimestampNs;
 
 	// Use SWScaler for scaling

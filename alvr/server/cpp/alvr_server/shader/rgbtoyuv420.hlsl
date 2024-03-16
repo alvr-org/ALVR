@@ -24,30 +24,18 @@ SamplerState bilinearSampler {
 	AddressV = CLAMP;
 };
 
-float3 LinearToSRGB(float3 linearRGB)
-{
-	float3 sRGB;
-
-	// Apply sRGB transfer function to each channel
-	sRGB.x = (linearRGB.x <= 0.0031308) ? (linearRGB.x * 12.92) : (1.055 * pow(linearRGB.x, 1.0 / 2.4) - 0.055);
-	sRGB.y = (linearRGB.y <= 0.0031308) ? (linearRGB.y * 12.92) : (1.055 * pow(linearRGB.y, 1.0 / 2.4) - 0.055);
-	sRGB.z = (linearRGB.z <= 0.0031308) ? (linearRGB.z * 12.92) : (1.055 * pow(linearRGB.z, 1.0 / 2.4) - 0.055);
-
-	return sRGB;
-}
-
 PS_OUTPUT main(float2 uv : TEXCOORD0) {
 	PS_OUTPUT output;
 
 	uint2 uvTexels = uint2(uv * float2(renderWidth, renderHeight));
 
 	// Y @ 1x for YUV420
-	float3 point1 = LinearToSRGB(sourceTexture.Sample(bilinearSampler, uv).rgb);
+	float3 point1 = sourceTexture.Sample(bilinearSampler, uv).rgb;
 	float y = dot(point1, yCoeff.rgb) + offset.x;
 
 	// UV @ 1/2x for YUV420
 	float2 image_uv = float2((uvTexels.x * 2) % renderWidth / renderWidth, (uvTexels.y * 2) % renderHeight / renderHeight);
-	float3 point2 = LinearToSRGB(sourceTexture.Sample(bilinearSampler, image_uv).rgb);
+	float3 point2 = sourceTexture.Sample(bilinearSampler, image_uv).rgb;
 	float  u = dot(point2, uCoeff.rgb) + offset.y;
 	float  v = dot(point2, vCoeff.rgb) + offset.z;
 

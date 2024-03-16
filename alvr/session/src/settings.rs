@@ -241,6 +241,13 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub enable_hdr: bool,
 
+    #[schema(strings(
+        display_name = "Force HDR sRGB Correction",
+        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub force_hdr_srgb_correction: bool,
+
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
@@ -1299,6 +1306,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 use_10bit: false,
                 use_full_range: true,
                 enable_hdr: false,
+                force_hdr_srgb_correction: false,
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {

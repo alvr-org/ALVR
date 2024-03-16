@@ -172,6 +172,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         use_10bit_encoder: settings.video.encoder_config.use_10bit,
         use_full_range_encoding: settings.video.encoder_config.use_full_range,
         enable_hdr: settings.video.encoder_config.enable_hdr,
+        force_hdr_srgb_correction: settings.video.encoder_config.force_hdr_srgb_correction,
         enable_pre_analysis: amf_controls.enable_pre_analysis,
         enable_vbaq: amf_controls.enable_vbaq,
         enable_hmqb: amf_controls.enable_hmqb,

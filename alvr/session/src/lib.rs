@@ -51,6 +51,7 @@ pub struct OpenvrConfig {
     pub use_10bit_encoder: bool,
     pub use_full_range_encoding: bool,
     pub enable_hdr: bool,
+    pub force_hdr_srgb_correction: bool,
     pub enable_pre_analysis: bool,
     pub enable_vbaq: bool,
     pub enable_hmqb: bool,

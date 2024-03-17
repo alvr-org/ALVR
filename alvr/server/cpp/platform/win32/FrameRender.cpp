@@ -481,18 +481,21 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		// We need clear depth buffer to correctly render layers.
 		m_pD3DRender->GetContext()->ClearDepthStencilView(m_pDepthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-		int srgbShift = 0;
+		int inputColorAdjust = 0;
 		if (Settings::Instance().m_enableHdr) {
 			if (SRVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || SRVDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB || SRVDesc.Format == DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
-				srgbShift = 1;
+				inputColorAdjust = 1; // do sRGB manually
 			}
 			if (Settings::Instance().m_forceHdrSrgbCorrection) {
-				srgbShift = 1;
+				inputColorAdjust = 1;
 			}
 		}
 		else {
 			if (SRVDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
-				srgbShift = 2;
+				inputColorAdjust = 2; // undo sRGB?
+			}
+			if (Settings::Instance().m_forceHdrSrgbCorrection) {
+				inputColorAdjust = 0;
 			}
 		}
 
@@ -503,15 +506,15 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 		SimpleVertex vertices[] =
 		{
 			// Left View
-			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMax), 0 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMin), 0 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMax), 0 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMin), 0 + (srgbShift*2) },
+			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMax), 0 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMin), 0 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMax, bound[0].vMax), 0 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[0].uMin, bound[0].vMin), 0 + (inputColorAdjust*2) },
 		// Right View
-		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMax), 1 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMin), 1 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMax), 1 + (srgbShift*2) },
-		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin), 1 + (srgbShift*2) },
+		{ DirectX::XMFLOAT3(0.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMax), 1 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(1.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMin), 1 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(1.0f, -1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMax, bound[1].vMax), 1 + (inputColorAdjust*2) },
+		{ DirectX::XMFLOAT3(0.0f,  1.0f, 0.5f), DirectX::XMFLOAT2(bound[1].uMin, bound[1].vMin), 1 + (inputColorAdjust*2) },
 		};
 
 		// TODO: Which is better? UpdateSubresource or Map

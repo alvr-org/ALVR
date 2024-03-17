@@ -72,6 +72,7 @@ pub fn start_stream(
     swapchain_textures: [Vec<u32>; 2],
     foveated_encoding: Option<FoveatedEncodingConfig>,
     enable_srgb_correction: bool,
+    fix_limited_range: bool
 ) {
     #[cfg(target_os = "android")]
     unsafe {
@@ -109,6 +110,7 @@ pub fn start_stream(
                 .map(|f| f.edge_ratio_y)
                 .unwrap_or_default(),
             enableSrgbCorrection: enable_srgb_correction as u32,
+            fixLimitedRange: fix_limited_range as u32,
         };
 
         streamStartNative(config);

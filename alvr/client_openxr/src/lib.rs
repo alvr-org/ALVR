@@ -14,6 +14,7 @@ use alvr_common::{
 };
 use lobby::Lobby;
 use openxr as xr;
+use xr::ColorSpaceFB;
 use std::{
     path::Path,
     ptr,
@@ -197,6 +198,10 @@ pub fn entry_point() {
         } else {
             vec![90.0]
         };
+
+        if exts.fb_color_space {
+            xr_session.set_color_space(ColorSpaceFB::P3).unwrap();
+        }
 
         // Todo: refactor the logic to call this before the session creation
         static INIT_ONCE: Once = Once::new();

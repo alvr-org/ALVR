@@ -101,7 +101,7 @@ pub fn create_swapchain(
     let swapchain_info = xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: glow::SRGB8_ALPHA8,
+        format: glow::RGBA16F,
         sample_count: 1,
         width: resolution.x,
         height: resolution.y,

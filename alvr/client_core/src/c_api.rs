@@ -652,7 +652,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         edge_ratio_y: config.foveation_edge_ratio_y,
     });
 
-    opengl::start_stream(view_resolution, swapchain_textures, foveated_encoding, true);
+    opengl::start_stream(view_resolution, swapchain_textures, foveated_encoding, true, false);
 }
 
 #[no_mangle]

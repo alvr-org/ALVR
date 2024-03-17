@@ -23,6 +23,7 @@ struct FfiStreamConfig {
     float foveationEdgeRatioX;
     float foveationEdgeRatioY;
     unsigned int enableSrgbCorrection;
+    unsigned int fixLimitedRange;
 };
 
 // gltf_model.h

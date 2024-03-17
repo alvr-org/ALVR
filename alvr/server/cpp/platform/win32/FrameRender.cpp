@@ -490,6 +490,11 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 				srgbShift = 1;
 			}
 		}
+		else {
+			if (SRVDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
+				srgbShift = 2;
+			}
+		}
 
 		//
 		// Update uv-coordinates in vertex buffer according to bounds.

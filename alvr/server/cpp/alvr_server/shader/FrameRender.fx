@@ -29,6 +29,18 @@ float4 LinearToSRGB(float4 linearRGB)
 	return sRGB;
 }
 
+float4 sRGBToLinear(float4 color)
+{
+    float4 linearColor;
+
+    linearColor.r = (color.r <= 0.04045) ? (color.r / 12.92) : pow((color.r + 0.055) / 1.055, 2.4);
+    linearColor.g = (color.g <= 0.04045) ? (color.g / 12.92) : pow((color.g + 0.055) / 1.055, 2.4);
+    linearColor.b = (color.b <= 0.04045) ? (color.b / 12.92) : pow((color.b + 0.055) / 1.055, 2.4);
+	linearColor.a = (color.a <= 0.04045) ? (color.a / 12.92) : pow((color.a + 0.055) / 1.055, 2.4);
+
+    return linearColor;
+}
+
 PS_INPUT VS(VS_INPUT input)
 {
 	PS_INPUT output = (PS_INPUT)0;
@@ -49,7 +61,13 @@ float4 PS(PS_INPUT input) : SV_Target
 	else if (input.View == (uint)2) { // Left View sRGB
 		return LinearToSRGB(txLeft.Sample(samLinear, input.Tex));
 	}
-	else { // Right View sRGB
+	else if (input.View == (uint)3) { // Right View sRGB
 		return LinearToSRGB(txRight.Sample(samLinear, input.Tex));
+	}
+	else if (input.View == (uint)4) { // Left View non-HDR linear
+		return sRGBToLinear(txLeft.Sample(samLinear, input.Tex));
+	}
+	else { // Right View non-HDR linear
+		return sRGBToLinear(txRight.Sample(samLinear, input.Tex));
 	}
 };

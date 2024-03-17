@@ -1,6 +1,7 @@
 #include "PoseHistory.h"
 #include "Utils.h"
 #include "Logger.h"
+#include "include/openvr_math.h"
 #include <mutex>
 #include <optional>
 
@@ -18,15 +19,7 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
 
 	std::unique_lock<std::mutex> lock(m_mutex);
 	if (!m_transformIdentity) {
-		vr::HmdMatrix34_t rotation = {};
-		for (int i = 0; i < 3; ++i) {
-			for (int j = 0; j < 3; ++j) {
-				rotation.m[j][i] = 0;
-				for (int k = 0; k < 3; ++k) {
-					rotation.m[j][i] += history.rotationMatrix.m[k][i] * m_transform.m[j][k];
-				}
-			}
-		}
+		vr::HmdMatrix34_t rotation = vrmath::matMul33(m_transform, history.rotationMatrix);
 		history.rotationMatrix = rotation;
 	}
 
@@ -48,9 +41,6 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
 std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t &pose) const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
-	if (m_transformUpdating && !m_poseBuffer.empty()) {
-		return m_poseBuffer.back();
-	}
 	float minDiff = 100000;
 	auto minIt = m_poseBuffer.begin();
 	for (auto it = m_poseBuffer.begin(); it != m_poseBuffer.end(); ++it) {
@@ -85,18 +75,10 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t
 	return {};
 }
 
-void PoseHistory::SetTransformUpdating()
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-	m_transformUpdating = true;
-}
-
 void PoseHistory::SetTransform(const vr::HmdMatrix34_t &transform)
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 	m_transform = transform;
-	m_transformUpdating = false;
-	m_poseBuffer.clear();
 
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {

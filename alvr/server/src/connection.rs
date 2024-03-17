@@ -1005,6 +1005,7 @@ fn connection_pipeline(
     let statistics_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
         move || {
+            let mut _last_resync = Instant::now();
             while is_streaming(&client_hostname) {
                 let data = match statics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(stats) => stats,
@@ -1018,7 +1019,10 @@ fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
-                    let network_latency = stats.report_statistics(client_stats);
+                    let (network_latency, _game_latency) = stats.report_statistics(client_stats);
+
+                    #[cfg(target_os = "linux")]
+                    detect_desync(&_game_latency, &mut _last_resync);
 
                     let server_data_lock = SERVER_DATA_MANAGER.read();
                     BITRATE_MANAGER.lock().report_frame_latencies(
@@ -1077,7 +1081,10 @@ fn connection_pipeline(
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
-            unsafe { crate::InitOpenvrClient() };
+            unsafe {
+                crate::InitOpenvrClient();
+                crate::RequestDriverResync();
+            }
 
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while is_streaming(&client_hostname) {
@@ -1477,5 +1484,19 @@ pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, 
         sender
             .send_header(&haptics::map_haptics(&config, haptics))
             .ok();
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn detect_desync(game_latency: &Duration, last_resync: &mut Instant) {
+    if game_latency.as_secs_f32() > 0.25 {
+        let now = Instant::now();
+        if now.saturating_duration_since(*last_resync).as_secs_f32() > 0.1 {
+            *last_resync = now;
+            warn!("Desync detected. Attempting recovery.");
+            unsafe {
+                crate::RequestDriverResync();
+            }
+        }
     }
 }

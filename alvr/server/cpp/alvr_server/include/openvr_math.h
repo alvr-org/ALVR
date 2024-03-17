@@ -297,5 +297,45 @@ namespace vrmath {
 		result.m[2][3] = a.m[2][3];
 		return result;
 	}
+
+  inline vr::HmdMatrix34_t matInv33(const vr::HmdMatrix34_t &matrix) {
+    vr::HmdMatrix34_t result;
+    float cofac00 = matrix.m[1][1] * matrix.m[2][2] - matrix.m[1][2] * matrix.m[2][1];
+    float cofac10 = matrix.m[1][2] * matrix.m[2][0] - matrix.m[1][0] * matrix.m[2][2];
+    float cofac20 = matrix.m[1][0] * matrix.m[2][1] - matrix.m[1][1] * matrix.m[2][0];
+
+    float det = matrix.m[0][0] * cofac00 + matrix.m[0][1] * cofac10 + matrix.m[0][2] * cofac20;
+
+    if (det == 0) {
+        vr::HmdMatrix34_t result = { { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 } } };
+        return result;
+    }
+
+    float invDet = 1.0f / det;
+
+    float cofac01 = matrix.m[0][2] * matrix.m[2][1] - matrix.m[0][1] * matrix.m[2][2];
+    float cofac02 = matrix.m[0][1] * matrix.m[1][2] - matrix.m[0][2] * matrix.m[1][1];
+    float cofac11 = matrix.m[0][0] * matrix.m[2][2] - matrix.m[0][2] * matrix.m[2][0];
+    float cofac12 = matrix.m[0][2] * matrix.m[1][0] - matrix.m[0][0] * matrix.m[1][2];
+    float cofac21 = matrix.m[0][1] * matrix.m[2][0] - matrix.m[0][0] * matrix.m[2][1];
+    float cofac22 = matrix.m[0][0] * matrix.m[1][1] - matrix.m[0][1] * matrix.m[1][0];
+
+    result.m[0][0] = invDet * cofac00;
+    result.m[0][1] = invDet * cofac01;
+    result.m[0][2] = invDet * cofac02;
+    result.m[0][3] = 0.0f;
+
+    result.m[1][0] = invDet * cofac10;
+    result.m[1][1] = invDet * cofac11;
+    result.m[1][2] = invDet * cofac12;
+    result.m[1][3] = 0.0f;
+
+    result.m[2][0] = invDet * cofac20;
+    result.m[2][1] = invDet * cofac21;
+    result.m[2][2] = invDet * cofac22;
+    result.m[2][3] = 0.0f;
+
+    return result;
+  }
 }
 

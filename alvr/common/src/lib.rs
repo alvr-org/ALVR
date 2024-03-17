@@ -59,8 +59,9 @@ pub enum LifecycleState {
     ShuttingDown,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 pub enum ConnectionState {
+    #[default]
     Disconnected,
     Connecting,
     Connected,

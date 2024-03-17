@@ -1,6 +1,6 @@
 use crate::{
     opengl::{self, RenderViewInput},
-    storage, ClientCapabilities, ClientCoreEvent,
+    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
 };
 use alvr_common::{
     debug, error,
@@ -8,7 +8,7 @@ use alvr_common::{
     info,
     once_cell::sync::Lazy,
     parking_lot::Mutex,
-    warn, DeviceMotion, Fov, Pose,
+    warn, DeviceMotion, Fov, OptLazy, Pose,
 };
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking};
 use alvr_session::{CodecType, FoveatedEncodingConfig};
@@ -19,17 +19,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-// Core interface:
-
-struct ReconstructedNal {
-    timestamp_ns: u64,
-    data: Vec<u8>,
-}
-
+static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
 static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
-static NAL_QUEUE: Lazy<Mutex<VecDeque<ReconstructedNal>>> =
-    Lazy::new(|| Mutex::new(VecDeque::new()));
+#[allow(clippy::type_complexity)]
+static NAL_QUEUE: Lazy<Mutex<VecDeque<(u64, Vec<u8>)>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
+
+// Core interface:
 
 #[repr(C)]
 pub struct AlvrClientCapabilities {
@@ -116,7 +112,7 @@ pub enum AlvrButtonValue {
 }
 
 #[allow(dead_code)]
-#[repr(C)]
+#[repr(u8)]
 pub enum AlvrLogLevel {
     Error,
     Warn,
@@ -174,6 +170,12 @@ pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
     string_to_c_str(protocol_buffer, &storage::Config::load().protocol_id)
 }
 
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn alvr_try_get_permission(permission: *const c_char) {
+    crate::platform::try_get_permission(CStr::from_ptr(permission).to_str().unwrap());
+}
+
 /// NB: for android, `context` must be thread safe.
 #[no_mangle]
 pub unsafe extern "C" fn alvr_initialize(
@@ -195,7 +197,7 @@ pub unsafe extern "C" fn alvr_initialize(
     )
     .to_vec();
 
-    crate::initialize(ClientCapabilities {
+    let capabilities = ClientCapabilities {
         default_view_resolution,
         external_decoder: capabilities.external_decoder,
         refresh_rates,
@@ -203,12 +205,13 @@ pub unsafe extern "C" fn alvr_initialize(
         encoder_high_profile: capabilities.encoder_high_profile,
         encoder_10_bits: capabilities.encoder_10_bits,
         encoder_av1: capabilities.encoder_av1,
-    });
+    };
+    *CLIENT_CORE_CONTEXT.lock() = Some(ClientCoreContext::new(capabilities));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_destroy() {
-    crate::destroy();
+    *CLIENT_CORE_CONTEXT.lock() = None;
 
     #[cfg(target_os = "android")]
     ndk_context::release_android_context();
@@ -216,76 +219,78 @@ pub unsafe extern "C" fn alvr_destroy() {
 
 #[no_mangle]
 pub extern "C" fn alvr_resume() {
-    crate::resume();
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.resume();
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_pause() {
-    crate::pause();
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.pause();
+    }
 }
 
 /// Returns true if there was a new event
 #[no_mangle]
 pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    if let Some(event) = crate::poll_event() {
-        let event = match event {
-            ClientCoreEvent::UpdateHudMessage(message) => {
-                *HUD_MESSAGE.lock() = message;
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        if let Some(event) = context.poll_event() {
+            let event = match event {
+                ClientCoreEvent::UpdateHudMessage(message) => {
+                    *HUD_MESSAGE.lock() = message;
 
-                AlvrEvent::HudMessageUpdated
-            }
-            ClientCoreEvent::StreamingStarted {
-                settings,
-                negotiated_config,
-            } => {
-                *SETTINGS.lock() = serde_json::to_string(&settings).unwrap();
-
-                AlvrEvent::StreamingStarted {
-                    view_width: negotiated_config.view_resolution.x,
-                    view_height: negotiated_config.view_resolution.y,
-                    refresh_rate_hint: negotiated_config.refresh_rate_hint,
-                    enable_foveated_encoding: negotiated_config.enable_foveated_encoding,
+                    AlvrEvent::HudMessageUpdated
                 }
-            }
-            ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
-            ClientCoreEvent::Haptics {
-                device_id,
-                duration,
-                frequency,
-                amplitude,
-            } => AlvrEvent::Haptics {
-                device_id,
-                duration_s: duration.as_secs_f32(),
-                frequency,
-                amplitude,
-            },
-            ClientCoreEvent::DecoderConfig { codec, config_nal } => {
-                NAL_QUEUE.lock().push_back(ReconstructedNal {
-                    timestamp_ns: 0,
-                    data: config_nal,
-                });
+                ClientCoreEvent::StreamingStarted {
+                    settings,
+                    negotiated_config,
+                } => {
+                    *SETTINGS.lock() = serde_json::to_string(&settings).unwrap();
 
-                AlvrEvent::DecoderConfig {
-                    codec: match codec {
-                        CodecType::H264 => AlvrCodec::H264,
-                        CodecType::Hevc => AlvrCodec::Hevc,
-                        CodecType::AV1 => AlvrCodec::AV1,
-                    },
+                    AlvrEvent::StreamingStarted {
+                        view_width: negotiated_config.view_resolution.x,
+                        view_height: negotiated_config.view_resolution.y,
+                        refresh_rate_hint: negotiated_config.refresh_rate_hint,
+                        enable_foveated_encoding: negotiated_config.enable_foveated_encoding,
+                    }
                 }
-            }
-            ClientCoreEvent::FrameReady { timestamp, nal } => {
-                NAL_QUEUE.lock().push_back(ReconstructedNal {
-                    timestamp_ns: timestamp.as_nanos() as _,
-                    data: nal,
-                });
+                ClientCoreEvent::StreamingStopped => AlvrEvent::StreamingStopped,
+                ClientCoreEvent::Haptics {
+                    device_id,
+                    duration,
+                    frequency,
+                    amplitude,
+                } => AlvrEvent::Haptics {
+                    device_id,
+                    duration_s: duration.as_secs_f32(),
+                    frequency,
+                    amplitude,
+                },
+                ClientCoreEvent::DecoderConfig { codec, config_nal } => {
+                    NAL_QUEUE.lock().push_back((0, config_nal));
 
-                AlvrEvent::FrameReady
-            }
-        };
+                    AlvrEvent::DecoderConfig {
+                        codec: match codec {
+                            CodecType::H264 => AlvrCodec::H264,
+                            CodecType::Hevc => AlvrCodec::Hevc,
+                            CodecType::AV1 => AlvrCodec::AV1,
+                        },
+                    }
+                }
+                ClientCoreEvent::FrameReady { timestamp, nal } => {
+                    NAL_QUEUE.lock().push_back((timestamp.as_nanos() as _, nal));
 
-        unsafe { *out_event = event };
+                    AlvrEvent::FrameReady
+                }
+            };
 
-        true
+            unsafe { *out_event = event };
+
+            true
+        } else {
+            false
+        }
     } else {
         false
     }
@@ -304,7 +309,7 @@ pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
 #[no_mangle]
 pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64) -> u64 {
     let mut queue_lock = NAL_QUEUE.lock();
-    if let Some(ReconstructedNal { timestamp_ns, data }) = queue_lock.pop_front() {
+    if let Some((timestamp_ns, data)) = queue_lock.pop_front() {
         let nal_size = data.len();
         if !out_nal.is_null() && !out_timestamp_ns.is_null() {
             unsafe {
@@ -312,7 +317,7 @@ pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64
                 *out_timestamp_ns = timestamp_ns;
             }
         } else {
-            queue_lock.push_front(ReconstructedNal { timestamp_ns, data })
+            queue_lock.push_front((timestamp_ns, data))
         }
 
         nal_size as u64
@@ -356,26 +361,34 @@ pub unsafe extern "C" fn alvr_send_views_config(fov: *const AlvrFov, ipd_m: f32)
         },
     ];
 
-    crate::send_views_config(fov, ipd_m);
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_views_config(fov, ipd_m);
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged: bool) {
-    crate::send_battery(device_id, gauge_value, is_plugged);
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_battery(device_id, gauge_value, is_plugged);
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
-    if width != 0.0 && height != 0.0 {
-        crate::send_playspace(Some(Vec2::new(width, height)));
-    } else {
-        crate::send_playspace(None);
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_playspace(if width != 0.0 && height != 0.0 {
+            Some(Vec2::new(width, height))
+        } else {
+            None
+        });
     }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_send_active_interaction_profile(device_id: u64, profile_id: u64) {
-    crate::send_active_interaction_profile(device_id, profile_id)
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_active_interaction_profile(device_id, profile_id);
+    }
 }
 
 #[no_mangle]
@@ -385,7 +398,9 @@ pub extern "C" fn alvr_send_custom_interaction_profile(
     input_ids_count: u64,
 ) {
     let input_ids = unsafe { slice::from_raw_parts(input_ids_ptr, input_ids_count as _) };
-    crate::send_custom_interaction_profile(device_id, input_ids.iter().cloned().collect())
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_custom_interaction_profile(device_id, input_ids.iter().cloned().collect());
+    }
 }
 
 #[no_mangle]
@@ -395,7 +410,10 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
         AlvrButtonValue::Scalar(value) => ButtonValue::Scalar(value),
     };
 
-    crate::send_buttons(vec![ButtonEntry { path_id, value }]);
+    // crate::send_buttons(vec![ButtonEntry { path_id, value }]);
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_buttons(vec![ButtonEntry { path_id, value }]);
+    }
 }
 
 /// hand_skeleton:
@@ -504,55 +522,72 @@ pub extern "C" fn alvr_send_tracking(
         },
     };
 
-    crate::send_tracking(tracking);
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.send_tracking(tracking);
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_get_head_prediction_offset_ns() -> u64 {
-    crate::get_head_prediction_offset().as_nanos() as _
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.get_head_prediction_offset().as_nanos() as _
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_get_tracker_prediction_offset_ns() -> u64 {
-    crate::get_tracker_prediction_offset().as_nanos() as _
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.get_tracker_prediction_offset().as_nanos() as _
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_report_submit(target_timestamp_ns: u64, vsync_queue_ns: u64) {
-    crate::report_submit(
-        Duration::from_nanos(target_timestamp_ns),
-        Duration::from_nanos(vsync_queue_ns),
-    );
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.report_submit(
+            Duration::from_nanos(target_timestamp_ns),
+            Duration::from_nanos(vsync_queue_ns),
+        );
+    }
 }
 
-/// Call only with external decoder
 #[no_mangle]
 pub extern "C" fn alvr_request_idr() {
-    crate::request_idr();
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.request_idr();
+    }
 }
 
-/// Call only with external decoder
 #[no_mangle]
 pub extern "C" fn alvr_report_frame_decoded(target_timestamp_ns: u64) {
-    crate::report_frame_decoded(Duration::from_nanos(target_timestamp_ns as _));
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.report_frame_decoded(Duration::from_nanos(target_timestamp_ns as _));
+    }
 }
 
-/// Call only with external decoder
 #[no_mangle]
 pub extern "C" fn alvr_report_compositor_start(target_timestamp_ns: u64) {
-    crate::report_compositor_start(Duration::from_nanos(target_timestamp_ns as _));
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        context.report_compositor_start(Duration::from_nanos(target_timestamp_ns as _));
+    }
 }
 
-/// Call only with internal decoder (Android only)
 /// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
 /// from out_buffer.
-#[allow(unused_variables)]
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) -> i64 {
-    if let Some((timestamp, buffer)) = crate::decoder::get_frame() {
-        *out_buffer = buffer;
+    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
+        if let Some((timestamp, buffer)) = context.get_frame() {
+            *out_buffer = buffer;
 
-        timestamp.as_nanos() as _
+            timestamp.as_nanos() as _
+        } else {
+            -1
+        }
     } else {
         -1
     }

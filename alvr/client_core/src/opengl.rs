@@ -72,7 +72,7 @@ pub fn start_stream(
     swapchain_textures: [Vec<u32>; 2],
     foveated_encoding: Option<FoveatedEncodingConfig>,
     enable_srgb_correction: bool,
-    fix_limited_range: bool
+    fix_limited_range: bool,
 ) {
     #[cfg(target_os = "android")]
     unsafe {

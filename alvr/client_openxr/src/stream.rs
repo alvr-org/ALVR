@@ -11,8 +11,8 @@ use alvr_common::{
 };
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, Tracking};
 use alvr_session::{
-    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode,
-    FaceTrackingSourcesConfig, FoveatedEncodingConfig, EncoderConfig, Settings,
+    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, EncoderConfig,
+    FaceTrackingSourcesConfig, FoveatedEncodingConfig, Settings,
 };
 use openxr as xr;
 use std::{

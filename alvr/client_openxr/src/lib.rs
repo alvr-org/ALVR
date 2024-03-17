@@ -12,7 +12,6 @@ use alvr_common::{
 };
 use lobby::Lobby;
 use openxr as xr;
-use xr::ColorSpaceFB;
 use std::{
     path::Path,
     ptr,
@@ -21,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 use stream::StreamContext;
+use xr::ColorSpaceFB;
 
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 

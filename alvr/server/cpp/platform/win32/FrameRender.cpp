@@ -489,13 +489,21 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 			if (Settings::Instance().m_forceHdrSrgbCorrection) {
 				inputColorAdjust = 1;
 			}
+			if (Settings::Instance().m_clampHdrExtendedRange) {
+				inputColorAdjust |= 0x10; // Clamp values to 0.0 to 1.0
+			}
 		}
 		else {
 			if (SRVDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8A8_UNORM_SRGB && SRVDesc.Format != DXGI_FORMAT_B8G8R8X8_UNORM_SRGB) {
 				inputColorAdjust = 2; // undo sRGB?
+
+				if (Settings::Instance().m_forceHdrSrgbCorrection) {
+					inputColorAdjust = 0;
+				}
 			}
-			if (Settings::Instance().m_forceHdrSrgbCorrection) {
-				inputColorAdjust = 0;
+
+			if (Settings::Instance().m_clampHdrExtendedRange) {
+				inputColorAdjust |= 0x10; // Clamp values to 0.0 to 1.0
 			}
 		}
 

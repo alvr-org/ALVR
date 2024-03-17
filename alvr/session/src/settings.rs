@@ -248,6 +248,13 @@ CABAC produces better compression but it's significantly slower and may lead to 
     #[schema(flag = "steamvr-restart")]
     pub force_hdr_srgb_correction: bool,
 
+    #[schema(strings(
+        display_name = "Clamp HDR extended range",
+        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub clamp_hdr_extended_range: bool,
+
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
     pub nvenc: NvencConfig,
@@ -1307,6 +1314,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 use_full_range: true,
                 enable_hdr: false,
                 force_hdr_srgb_correction: false,
+                clamp_hdr_extended_range: false,
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {

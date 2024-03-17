@@ -52,22 +52,29 @@ PS_INPUT VS(VS_INPUT input)
 }
 float4 PS(PS_INPUT input) : SV_Target
 {
-	if (input.View == (uint)0) { // Left View
-		return txLeft.Sample(samLinear, input.Tex);
+	float4 color = float4(1.0, 0.0, 0.0, 1.0);
+	uint correctionType = (input.View >> 1) & 0xF;
+	uint shouldClamp = (input.View >> 5);
+
+	if ((input.View & 1) == 1) {
+		color = txRight.Sample(samLinear, input.Tex);
 	}
-	else if (input.View == (uint)1) { // Right View
-		return txRight.Sample(samLinear, input.Tex);
+	else {
+		color = txLeft.Sample(samLinear, input.Tex);
 	}
-	else if (input.View == (uint)2) { // Left View sRGB
-		return LinearToSRGB(txLeft.Sample(samLinear, input.Tex));
+	
+	if (shouldClamp == (uint)1) {
+		color = clamp(color, 0.0, 1.0);
 	}
-	else if (input.View == (uint)3) { // Right View sRGB
-		return LinearToSRGB(txRight.Sample(samLinear, input.Tex));
+	if (correctionType == (uint)1) { // Left View sRGB
+		color = LinearToSRGB(color);
 	}
-	else if (input.View == (uint)4) { // Left View non-HDR linear
-		return sRGBToLinear(txLeft.Sample(samLinear, input.Tex));
+	else if (correctionType == (uint)2) { // Left View non-HDR linear
+		color = sRGBToLinear(color);
 	}
-	else { // Right View non-HDR linear
-		return sRGBToLinear(txRight.Sample(samLinear, input.Tex));
+	if (shouldClamp == (uint)2) {
+		color = clamp(color, 0.0, 1.0);
 	}
+
+	return color;
 };

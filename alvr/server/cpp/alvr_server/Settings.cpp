@@ -68,6 +68,7 @@ void Settings::Load() {
         m_useFullRangeEncoding = config.get("use_full_range_encoding").get<bool>();
         m_enableHdr = config.get("enable_hdr").get<bool>();
         m_forceHdrSrgbCorrection = config.get("force_hdr_srgb_correction").get<bool>();
+        m_clampHdrExtendedRange = config.get("clamp_hdr_extended_range").get<bool>();
         m_enablePreAnalysis = config.get("enable_pre_analysis").get<bool>();
         m_enableVbaq = config.get("enable_vbaq").get<bool>();
         m_enableHmqb = config.get("enable_hmqb").get<bool>();

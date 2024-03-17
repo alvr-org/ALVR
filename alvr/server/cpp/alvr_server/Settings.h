@@ -45,6 +45,7 @@ class Settings {
     bool m_useFullRangeEncoding;
     bool m_enableHdr;
     bool m_forceHdrSrgbCorrection;
+    bool m_clampHdrExtendedRange;
     bool m_enablePreAnalysis;
     bool m_enableVbaq;
     bool m_enableHmqb;

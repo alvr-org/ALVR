@@ -23,8 +23,8 @@ use alvr_packets::{
 };
 use alvr_session::settings_schema::Switch;
 use alvr_sockets::{
-    ControlSocketSender, PeerType, ProtoControlSocket, StreamSender,
-    StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
+    ControlSocketSender, PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder,
+    KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
 use std::{
     collections::VecDeque,
@@ -340,17 +340,19 @@ fn connection_pipeline(
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
         let device = AudioDevice::new_output(None, None).to_con()?;
-
-        thread::spawn(move || {
-            while is_streaming() {
-                alvr_common::show_err(audio::play_audio_loop(
-                    is_streaming,
-                    &device,
-                    2,
-                    game_audio_sample_rate,
-                    config.buffering.clone(),
-                    &mut game_audio_receiver,
-                ));
+        thread::spawn({
+            let ctx = Arc::clone(&ctx);
+            move || {
+                while is_streaming(&ctx) {
+                    alvr_common::show_err(audio::play_audio_loop(
+                        || is_streaming(&ctx),
+                        &device,
+                        2,
+                        negotiated_config.game_audio_sample_rate,
+                        config.buffering.clone(),
+                        &mut game_audio_receiver,
+                    ));
+                }
             }
         })
     } else {

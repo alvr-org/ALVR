@@ -42,7 +42,11 @@ pub fn destroy() {
     }
 }
 
-pub fn initialize_lobby(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2]) {
+pub fn initialize_lobby(
+    preferred_view_resolution: UVec2,
+    swapchain_textures: [Vec<u32>; 2],
+    enable_srgb_correction: bool,
+) {
     #[cfg(target_os = "android")]
     unsafe {
         let swapchain_length = swapchain_textures[0].len();
@@ -56,6 +60,7 @@ pub fn initialize_lobby(preferred_view_resolution: UVec2, swapchain_textures: [V
             preferred_view_resolution.y as _,
             swapchain_textures.as_mut_ptr(),
             swapchain_length as _,
+            enable_srgb_correction,
         );
     }
 }

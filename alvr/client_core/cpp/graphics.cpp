@@ -794,7 +794,8 @@ void destroyGraphicsNative() {
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
                       const unsigned int *swapchainTextures[2],
-                      int swapchainLength) {
+                      int swapchainLength,
+                      bool enable_srgb_correction) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
 
@@ -812,7 +813,7 @@ void prepareLobbyRoom(int viewWidth,
                        g_ctx.lobbySwapchainTextures,
                        {false},
                        true,
-                       false,
+                       enable_srgb_correction,
                        false);
 }
 

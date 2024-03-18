@@ -189,7 +189,9 @@ impl StreamContext {
                     .collect(),
             ],
             config.foveated_encoding_config.clone(),
-            platform != Platform::Lynx,
+            platform != Platform::Lynx
+                && platform != Platform::Pico4
+                && platform != Platform::PicoNeo3,
             config.encoder_config.enable_hdr != true,
         );
 

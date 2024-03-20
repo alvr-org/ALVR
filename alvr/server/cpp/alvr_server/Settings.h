@@ -43,6 +43,7 @@ class Settings {
     int m_h264Profile;
     bool m_use10bitEncoder;
     bool m_useFullRangeEncoding;
+    double m_encodingGamma;
     bool m_enableHdr;
     bool m_forceHdrSrgbCorrection;
     bool m_clampHdrExtendedRange;

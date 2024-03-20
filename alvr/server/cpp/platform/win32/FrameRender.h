@@ -62,6 +62,7 @@ private:
 	ComPtr<ID3D11InputLayout> m_pVertexLayout;
 	ComPtr<ID3D11Buffer> m_pVertexBuffer;
 	ComPtr<ID3D11Buffer> m_pIndexBuffer;
+	ComPtr<ID3D11Buffer> m_pFrameRenderCBuffer;
 
 	ComPtr<ID3D11SamplerState> m_pSamplerLinear;
 

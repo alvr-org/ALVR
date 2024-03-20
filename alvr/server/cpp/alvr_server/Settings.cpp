@@ -66,6 +66,7 @@ void Settings::Load() {
         m_entropyCoding = (uint32_t)config.get("entropy_coding").get<int64_t>();
         m_use10bitEncoder = config.get("use_10bit_encoder").get<bool>();
         m_useFullRangeEncoding = config.get("use_full_range_encoding").get<bool>();
+        m_encodingGamma = config.get("encoding_gamma").get<double>();
         m_enableHdr = config.get("enable_hdr").get<bool>();
         m_forceHdrSrgbCorrection = config.get("force_hdr_srgb_correction").get<bool>();
         m_clampHdrExtendedRange = config.get("clamp_hdr_extended_range").get<bool>();

@@ -78,6 +78,7 @@ pub fn start_stream(
     foveated_encoding: Option<FoveatedEncodingConfig>,
     enable_srgb_correction: bool,
     fix_limited_range: bool,
+    encoding_gamma: f32,
 ) {
     #[cfg(target_os = "android")]
     unsafe {
@@ -116,6 +117,7 @@ pub fn start_stream(
                 .unwrap_or_default(),
             enableSrgbCorrection: enable_srgb_correction as u32,
             fixLimitedRange: fix_limited_range as u32,
+            encodingGamma: encoding_gamma,
         };
 
         streamStartNative(config);

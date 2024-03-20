@@ -581,19 +581,20 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         FFRData ffrData,
                         bool isLobby,
                         bool enableSrgbCorrection,
-                        bool fixLimitedRange) {
+                        bool fixLimitedRange,
+                        float encodingGamma) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
         renderer->enableFFE = ffrData.enabled;
         if (renderer->enableFFE) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
             renderer->srgbCorrectionPass->Initialize(
-                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection, fixLimitedRange);
+                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
             renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
-            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection, fixLimitedRange);
+            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->streamRenderTexture =
                 renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
@@ -814,7 +815,8 @@ void prepareLobbyRoom(int viewWidth,
                        {false},
                        true,
                        enable_srgb_correction,
-                       false);
+                       false,
+                       1.0);
 }
 
 // on pause
@@ -861,7 +863,8 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationEdgeRatioY},
                        false,
                        config.enableSrgbCorrection,
-                       config.fixLimitedRange);
+                       config.fixLimitedRange,
+                       config.encodingGamma);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {

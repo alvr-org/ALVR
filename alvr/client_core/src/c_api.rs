@@ -694,7 +694,8 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         swapchain_textures,
         foveated_encoding,
         true,
-        false,
+        false, // TODO: limited range fix config
+        1.0 // TODO: encoding gamma config
     );
 }
 

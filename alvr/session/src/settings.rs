@@ -235,6 +235,13 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub use_full_range: bool,
 
     #[schema(strings(
+        display_name = "Encoding Gamma",
+        help = "To prioritize darker pixels at the expense of potentially additional banding in midtones, set to 2.2. To allow the encoder to decide priority on its own, set to 1.0."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub encoding_gamma: f32,
+
+    #[schema(strings(
         display_name = "Enable HDR",
         help = "Composite VR layers to an RGBA float16 framebuffer, and do sRGB/YUV conversions in shader code."
     ))]
@@ -1313,6 +1320,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 use_10bit: false,
                 use_full_range: true,
+                encoding_gamma: 1.0,
                 enable_hdr: false,
                 force_hdr_srgb_correction: false,
                 clamp_hdr_extended_range: false,

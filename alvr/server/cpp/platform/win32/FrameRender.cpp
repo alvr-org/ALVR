@@ -144,6 +144,18 @@ bool FrameRender::Startup()
 	m_pD3DRender->GetContext()->IASetInputLayout(m_pVertexLayout.Get());
 
 	//
+	// Create frame render CBuffer
+	//
+	struct FrameRenderBuffer {
+		float encodingGamma;
+		float _align0;
+		float _align1;
+		float _align2;
+	};
+	FrameRenderBuffer frameRenderStruct = { (float)(1.0 / Settings::Instance().m_encodingGamma), 0.0f, 0.0f, 0.0f};
+	m_pFrameRenderCBuffer = CreateBuffer(m_pD3DRender->GetDevice(), frameRenderStruct);
+
+	//
 	// Create vertex buffer
 	//
 
@@ -551,6 +563,7 @@ bool FrameRender::RenderFrame(ID3D11Texture2D *pTexture[][2], vr::VRTextureBound
 
 		m_pD3DRender->GetContext()->IASetIndexBuffer(m_pIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
 		m_pD3DRender->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_pD3DRender->GetContext()->PSSetConstantBuffers(0, 1, m_pFrameRenderCBuffer.GetAddressOf());
 
 		//
 		// Set shaders

@@ -179,8 +179,8 @@ pub unsafe extern "C" fn alvr_try_get_permission(permission: *const c_char) {
 /// NB: for android, `context` must be thread safe.
 #[no_mangle]
 pub unsafe extern "C" fn alvr_initialize(
-    #[cfg(target_os = "android")] java_vm: *mut c_void,
-    #[cfg(target_os = "android")] context: *mut c_void,
+    java_vm: *mut c_void,
+    context: *mut c_void,
     capabilities: AlvrClientCapabilities,
 ) {
     #[cfg(target_os = "android")]

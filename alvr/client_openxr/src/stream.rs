@@ -193,7 +193,7 @@ impl StreamContext {
                 && platform != Platform::Pico4
                 && platform != Platform::PicoNeo3,
             config.encoder_config.enable_hdr != true,
-            config.encoder_config.encoding_gamma
+            config.encoder_config.encoding_gamma,
         );
 
         core_ctx.send_playspace(

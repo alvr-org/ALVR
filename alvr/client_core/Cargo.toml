@@ -24,7 +24,7 @@ app_dirs2 = "2"
 bincode = "1"
 glyph_brush_layout = "0.2"
 jni = "0.21"
-local-ip-address = "0.5"
+local-ip-address = "0.6"
 mdns-sd = "0.10"
 rand = "0.8"
 serde = "1"
@@ -40,7 +40,7 @@ ndk = { version = "0.8", features = [
 ] }
 ndk-context = "0.1"
 ndk-sys = "0.5"
-oboe = "0.5" # todo: remove once AudioThread shutdown crash is fixed
+oboe = "0.6" # todo: remove once AudioThread shutdown crash is fixed
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11"

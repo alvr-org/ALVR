@@ -350,7 +350,9 @@ pub fn entry_point() {
                             )
                             .unwrap();
                     }
-                    _ => panic!(),
+                    ClientCoreEvent::DecoderConfig { .. } | ClientCoreEvent::FrameReady { .. } => {
+                        panic!()
+                    }
                 }
             }
 

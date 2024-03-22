@@ -356,7 +356,7 @@ pub fn record_audio_blocking(
         config.sample_format(),
         {
             let state = Arc::clone(&state);
-            let is_running = is_running.clone();
+            let is_running = Arc::clone(&is_running);
             move |data, _| {
                 let data = if config.sample_format() == SampleFormat::F32 {
                     data.bytes()

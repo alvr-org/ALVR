@@ -20,12 +20,14 @@ fn main() {
         .captures_iter(&openvr_driver_header_string)
         .map(|cap| {
             let code = cap[3].into();
-            let mut name = cap[1].replace('_', "");
-            if code == "1007" {
-                name = "HardwareRevisionString".into();
+            let name = if code == "1007" {
+                "HardwareRevisionString".into()
             } else if code == "1017" {
-                name = "HardwareRevisionUint64".into();
-            }
+                "HardwareRevisionUint64".into()
+            } else {
+                cap[1].replace('_', "")
+            };
+
             PropInfo {
                 name,
                 ty: cap[2].into(),

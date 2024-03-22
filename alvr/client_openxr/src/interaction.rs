@@ -1,4 +1,4 @@
-use crate::{to_pose, to_quat, to_vec3, Platform, XrContext};
+use crate::{from_xr_pose, from_xr_quat, from_xr_vec3, Platform, XrContext};
 use alvr_common::{glam::Vec3, *};
 use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{BodyTrackingSourcesConfig, FaceTrackingSourcesConfig};
@@ -381,12 +381,12 @@ pub fn get_hand_motion(
                 .location_flags
                 .contains(xr::SpaceLocationFlags::POSITION_VALID)
             {
-                *last_position = to_vec3(joint_locations[0].pose.position);
+                *last_position = from_xr_vec3(joint_locations[0].pose.position);
             }
 
             let root_motion = DeviceMotion {
                 pose: Pose {
-                    orientation: to_quat(joint_locations[0].pose.orientation),
+                    orientation: from_xr_quat(joint_locations[0].pose.orientation),
                     position: *last_position,
                 },
                 linear_velocity: Vec3::ZERO,
@@ -395,7 +395,7 @@ pub fn get_hand_motion(
 
             let joints = joint_locations
                 .iter()
-                .map(|j| to_pose(j.pose))
+                .map(|j| from_xr_pose(j.pose))
                 .collect::<Vec<_>>()
                 .try_into()
                 .unwrap();
@@ -427,16 +427,16 @@ pub fn get_hand_motion(
         .location_flags
         .contains(xr::SpaceLocationFlags::POSITION_VALID)
     {
-        *last_position = to_vec3(location.pose.position);
+        *last_position = from_xr_vec3(location.pose.position);
     }
 
     let hand_motion = DeviceMotion {
         pose: Pose {
-            orientation: to_quat(location.pose.orientation),
+            orientation: from_xr_quat(location.pose.orientation),
             position: *last_position,
         },
-        linear_velocity: to_vec3(velocity.linear_velocity),
-        angular_velocity: to_vec3(velocity.angular_velocity),
+        linear_velocity: from_xr_vec3(velocity.linear_velocity),
+        angular_velocity: from_xr_vec3(velocity.angular_velocity),
     };
 
     (Some(hand_motion), None)
@@ -492,8 +492,8 @@ pub fn get_eye_gazes(
 
         if let Ok(gazes) = tracker.get_eye_gazes(reference_space, time) {
             return [
-                gazes.gaze[0].as_ref().map(|g| to_pose(g.pose)),
-                gazes.gaze[1].as_ref().map(|g| to_pose(g.pose)),
+                gazes.gaze[0].as_ref().map(|g| from_xr_pose(g.pose)),
+                gazes.gaze[1].as_ref().map(|g| from_xr_pose(g.pose)),
             ];
         }
     };
@@ -513,7 +513,7 @@ pub fn get_eye_gazes(
             location
                 .location_flags
                 .contains(xr::SpaceLocationFlags::ORIENTATION_TRACKED)
-                .then(|| to_pose(location.pose)),
+                .then(|| from_xr_pose(location.pose)),
             None,
         ]
     } else {
@@ -566,7 +566,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_CHEST_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -579,7 +579,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_HIPS_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -594,7 +594,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_LEFT_ELBOW_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -609,7 +609,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_RIGHT_ELBOW_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -624,7 +624,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_LEFT_KNEE_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -639,7 +639,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_LEFT_FOOT_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -654,7 +654,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_RIGHT_KNEE_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },
@@ -669,7 +669,7 @@ pub fn get_meta_body_tracking_full_body_points(
                 joints.push((
                     *BODY_RIGHT_FOOT_ID,
                     DeviceMotion {
-                        pose: to_pose(joint.pose),
+                        pose: from_xr_pose(joint.pose),
                         linear_velocity: Vec3::ZERO,
                         angular_velocity: Vec3::ZERO,
                     },

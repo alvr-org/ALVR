@@ -18,8 +18,8 @@ use alvr_common::{
 };
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientStatistics, Haptics, ServerControlPacket,
-    StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, AUDIO, HAPTICS,
-    STATISTICS, TRACKING, VIDEO,
+    StreamConfigPacket, Tracking, VideoPacketHeader, VideoStreamingCapabilities, ViewParams, AUDIO,
+    HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::settings_schema::Switch;
 use alvr_sockets::{
@@ -75,6 +75,8 @@ pub struct ConnectionContext {
     pub statistics_manager: Mutex<Option<StatisticsManager>>,
     pub decoder_sink: Mutex<Option<DecoderSink>>,
     pub decoder_source: Mutex<Option<DecoderSource>>,
+    // todo: the server is supposed to receive and send view configs for each frame
+    pub view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
@@ -311,10 +313,26 @@ fn connection_pipeline(
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
                     if capabilities.external_decoder {
-                        event_queue.lock().push_back(ClientCoreEvent::FrameReady {
-                            timestamp: header.timestamp,
-                            nal: nal.to_vec(),
-                        });
+                        let mut view_params_queue_lock = ctx.view_params_queue.lock();
+                        while let Some((timestamp, view_params)) =
+                            view_params_queue_lock.pop_front()
+                        {
+                            match timestamp {
+                                t if t == header.timestamp => {
+                                    event_queue.lock().push_back(ClientCoreEvent::FrameReady {
+                                        timestamp,
+                                        view_params,
+                                        nal: nal.to_vec(),
+                                    });
+                                    break;
+                                }
+                                t if t > header.timestamp => {
+                                    view_params_queue_lock.push_front((timestamp, view_params));
+                                    break;
+                                }
+                                _ => continue,
+                            }
+                        }
                     } else if !ctx
                         .decoder_sink
                         .lock()

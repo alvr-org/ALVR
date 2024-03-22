@@ -82,13 +82,13 @@ impl Lobby {
 
         alvr_client_core::opengl::render_lobby([
             RenderViewInput {
-                pose: crate::to_pose(views[0].pose),
-                fov: crate::to_fov(views[0].fov),
+                pose: crate::from_xr_pose(views[0].pose),
+                fov: crate::from_xr_fov(views[0].fov),
                 swapchain_index: left_swapchain_idx,
             },
             RenderViewInput {
-                pose: crate::to_pose(views[1].pose),
-                fov: crate::to_fov(views[1].fov),
+                pose: crate::from_xr_pose(views[1].pose),
+                fov: crate::from_xr_fov(views[1].fov),
                 swapchain_index: right_swapchain_idx,
             },
         ]);

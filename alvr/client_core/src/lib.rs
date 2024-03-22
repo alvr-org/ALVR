@@ -21,13 +21,13 @@ mod audio;
 
 use alvr_common::{
     error,
-    glam::{UVec2, Vec2},
+    glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    ConnectionState, Fov, LifecycleState,
+    ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
 };
 use alvr_packets::{
-    BatteryPacket, ButtonEntry, ClientControlPacket, NegotiatedStreamingConfig,
-    ReservedClientControlPacket, Tracking, ViewsConfig,
+    BatteryPacket, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
+    ReservedClientControlPacket, Tracking, ViewParams, ViewsConfig,
 };
 use alvr_session::{CodecType, Settings};
 use connection::ConnectionContext;
@@ -40,12 +40,15 @@ use std::{
 };
 use storage::Config;
 
-pub use platform::Platform;
-
 pub use logging_backend::init_logging;
+pub use platform::Platform;
 
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
+
+// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
+const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(70);
+const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub fn platform() -> Platform {
     platform::platform()
@@ -72,8 +75,15 @@ pub enum ClientCoreEvent {
     },
     FrameReady {
         timestamp: Duration,
+        view_params: [ViewParams; 2],
         nal: Vec<u8>,
     },
+}
+
+pub struct DecodedFrame {
+    pub timestamp: Duration,
+    pub view_params: [ViewParams; 2],
+    pub buffer_ptr: *mut std::ffi::c_void,
 }
 
 // Note: this struct may change without breaking network protocol changes
@@ -93,6 +103,7 @@ pub struct ClientCoreContext {
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<Mutex<Option<JoinHandle<()>>>>,
+    last_ipd: Mutex<f32>,
 }
 
 impl ClientCoreContext {
@@ -130,6 +141,7 @@ impl ClientCoreContext {
             event_queue,
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
+            last_ipd: Mutex::new(0.0),
         }
     }
 
@@ -153,17 +165,6 @@ impl ClientCoreContext {
 
     pub fn poll_event(&self) -> Option<ClientCoreEvent> {
         self.event_queue.lock().pop_front()
-    }
-
-    pub fn send_views_config(&self, fov: [Fov; 2], ipd_m: f32) {
-        if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
-            sender
-                .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
-                    fov,
-                    ipd_m,
-                }))
-                .ok();
-        }
     }
 
     pub fn send_battery(&self, device_id: u64, gauge_value: f32, is_plugged: bool) {
@@ -214,12 +215,71 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn send_tracking(&self, tracking: Tracking) {
+    pub fn send_tracking(
+        &self,
+        target_timestamp: Duration,
+        views: [ViewParams; 2],
+        mut device_motions: Vec<(u64, DeviceMotion)>,
+        hand_skeletons: [Option<[Pose; 26]>; 2],
+        face_data: FaceData,
+    ) {
+        {
+            let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+            view_params_queue_lock.push_back((target_timestamp, views));
+
+            loop {
+                if let Some((timestamp, _)) = view_params_queue_lock.front() {
+                    if target_timestamp - *timestamp > MAX_POSE_HISTORY_INTERVAL {
+                        view_params_queue_lock.pop_front();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        {
+            let mut last_ipd_lock = self.last_ipd.lock();
+            let ipd = (views[0].pose.position - views[1].pose.position).length();
+            if f32::abs(*last_ipd_lock - ipd) > IPD_CHANGE_EPS {
+                if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
+                    sender
+                        .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
+                            fov: [views[0].fov, views[1].fov],
+                            ipd_m: ipd,
+                        }))
+                        .ok();
+
+                    *last_ipd_lock = ipd;
+                }
+            }
+        }
+
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
-            sender.send_header(&tracking).ok();
+            device_motions.push((
+                *HEAD_ID,
+                DeviceMotion {
+                    pose: Pose {
+                        orientation: views[0].pose.orientation,
+                        position: views[0].pose.position
+                            + (views[1].pose.position - views[0].pose.position) / 2.0,
+                    },
+                    linear_velocity: Vec3::ZERO,
+                    angular_velocity: Vec3::ZERO,
+                },
+            ));
+
+            sender
+                .send_header(&Tracking {
+                    target_timestamp,
+                    device_motions,
+                    hand_skeletons,
+                    face_data,
+                })
+                .ok();
 
             if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                stats.report_input_acquired(tracking.target_timestamp);
+                stats.report_input_acquired(target_timestamp);
             }
         }
     }
@@ -240,14 +300,32 @@ impl ClientCoreContext {
         }
     }
 
-    pub fn get_frame(&self) -> Option<(Duration, *mut std::ffi::c_void)> {
+    pub fn get_frame(&self) -> Option<DecodedFrame> {
         if let Some(source) = &mut *self.connection_context.decoder_source.lock() {
-            if let Some((timestamp, buffer_ptr)) = source.get_frame() {
+            if let Some((frame_timestamp, buffer_ptr)) = source.get_frame() {
                 if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                    stats.report_compositor_start(timestamp);
+                    stats.report_compositor_start(frame_timestamp);
                 }
 
-                Some((timestamp, buffer_ptr))
+                let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+                while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
+                    match timestamp {
+                        t if t == frame_timestamp => {
+                            return Some(DecodedFrame {
+                                timestamp: frame_timestamp,
+                                view_params,
+                                buffer_ptr,
+                            })
+                        }
+                        t if t > frame_timestamp => {
+                            view_params_queue_lock.push_front((timestamp, view_params));
+                            break;
+                        }
+                        _ => continue,
+                    }
+                }
+
+                None
             } else {
                 None
             }

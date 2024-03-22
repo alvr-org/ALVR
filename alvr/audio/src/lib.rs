@@ -22,7 +22,7 @@ use cpal::{
 use rodio::{OutputStream, Source};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::Arc,
+    sync::{mpsc, Arc},
     thread,
     time::Duration,
 };
@@ -449,6 +449,113 @@ pub fn get_next_frame_batch(
 // underflow, overflow, packet loss). In case the computation takes too much time, the audio
 // callback will gracefully handle an interruption, and the callback timing and sound wave
 // continuity will not be affected.
+#[cfg(windows)]
+pub fn receive_samples_loop(
+    is_running: impl Fn() -> bool,
+    receiver: &mut StreamReceiver<()>,
+    sample_buffer: Arc<Mutex<VecDeque<f32>>>,
+    channels_count: usize,
+    batch_frames_count: usize,
+    average_buffer_frames_count: usize,
+) -> Result<()> {
+    let mut recovery_sample_buffer = vec![];
+    while is_running() {
+        let data = match receiver.recv(Duration::from_millis(500)) {
+            Ok(data) => data,
+            Err(ConnectionError::TryAgain(_)) => continue,
+            Err(ConnectionError::Other(e)) => return Err(e),
+        };
+        let (_, packet) = data.get()?;
+
+        let new_samples = packet
+            .chunks_exact(2)
+            .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_sample::<f32>())
+            .collect::<Vec<_>>();
+
+        let mut sample_buffer_ref = sample_buffer.lock();
+
+        if data.had_packet_loss() {
+            info!("Audio packet loss!");
+
+            if sample_buffer_ref.len() / channels_count < batch_frames_count {
+                sample_buffer_ref.clear();
+            } else {
+                // clear remaining samples
+                sample_buffer_ref.drain(batch_frames_count * channels_count..);
+            }
+
+            recovery_sample_buffer.clear();
+        }
+
+        if sample_buffer_ref.len() / channels_count < batch_frames_count {
+            recovery_sample_buffer.extend(sample_buffer_ref.drain(..));
+        }
+
+        if sample_buffer_ref.len() == 0 || data.had_packet_loss() {
+            recovery_sample_buffer.extend(&new_samples);
+
+            if recovery_sample_buffer.len() / channels_count
+                > average_buffer_frames_count + batch_frames_count
+            {
+                // Fade-in
+                for f in 0..batch_frames_count {
+                    let volume = f as f32 / batch_frames_count as f32;
+                    for c in 0..channels_count {
+                        recovery_sample_buffer[f * channels_count + c] *= volume;
+                    }
+                }
+
+                if data.had_packet_loss()
+                    && sample_buffer_ref.len() / channels_count == batch_frames_count
+                {
+                    // Add a fade-out to make a cross-fade.
+                    for f in 0..batch_frames_count {
+                        let volume = 1. - f as f32 / batch_frames_count as f32;
+                        for c in 0..channels_count {
+                            recovery_sample_buffer[f * channels_count + c] +=
+                                sample_buffer_ref[f * channels_count + c] * volume;
+                        }
+                    }
+
+                    sample_buffer_ref.clear();
+                }
+
+                sample_buffer_ref.extend(recovery_sample_buffer.drain(..));
+                info!("Audio recovered");
+            }
+        } else {
+            sample_buffer_ref.extend(&new_samples);
+        }
+
+        // todo: use smarter policy with EventTiming
+        let buffer_frames_size = sample_buffer_ref.len() / channels_count;
+        if buffer_frames_size > 2 * average_buffer_frames_count + batch_frames_count {
+            info!("Audio buffer overflow! size: {buffer_frames_size}");
+
+            let drained_samples = sample_buffer_ref
+                .drain(0..(buffer_frames_size - average_buffer_frames_count) * channels_count)
+                .collect::<Vec<_>>();
+
+            // Render a cross-fade.
+            for f in 0..batch_frames_count {
+                let volume = f as f32 / batch_frames_count as f32;
+                for c in 0..channels_count {
+                    let index = f * channels_count + c;
+                    sample_buffer_ref[index] =
+                        sample_buffer_ref[index] * volume + drained_samples[index] * (1. - volume);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// The receive loop is resposible for ensuring smooth transitions in case of disruptions (buffer
+// underflow, overflow, packet loss). In case the computation takes too much time, the audio
+// callback will gracefully handle an interruption, and the callback timing and sound wave
+// continuity will not be affected.
+#[cfg(target_os = "android")]
 pub fn receive_samples_loop(
     is_running: impl Fn() -> bool,
     receiver: &mut StreamReceiver<()>,
@@ -599,6 +706,7 @@ impl Iterator for StreamingSource {
     }
 }
 
+#[cfg(windows)]
 pub fn play_audio_loop(
     is_running: impl Fn() -> bool,
     device: &AudioDevice,
@@ -638,4 +746,164 @@ pub fn play_audio_loop(
     .ok();
 
     Ok(())
+}
+
+struct Terminate;
+
+// TODO: Only works if something (anything, even pavucontrol) is listening for mic for now
+// TODO: Only thing you can receive all things considered is short pops from significant noise.
+// TODO: Actual issue right now: how to manage network stream of audio with pipewire buffer?
+//  Pipewire buffer technically is dynamic, but current code assumes it isn't? need more info
+#[cfg(target_os = "linux")]
+pub fn play_microphone_loop(
+    running: impl Fn() -> bool,
+    channels_count: u16,
+    sample_rate: u32,
+    config: AudioBufferingConfig,
+    receiver: &mut StreamReceiver<()>,
+) -> Result<()> {
+    let (pw_sender, pw_receiver) = pipewire::channel::channel();
+    pw_loop(pw_receiver, receiver);
+    let _ = pw_sender.send(Terminate);
+    unsafe { pipewire::deinit() };
+
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn pw_loop(
+    pw_receiver: pipewire::channel::Receiver<Terminate>,
+    receiver: &mut StreamReceiver<()>,
+) {
+    use alvr_common::{debug, error};
+    use pipewire as pw;
+    use pw::spa::{pod::Pod, Direction};
+    use pw::{
+        stream::{StreamFlags, StreamListener},
+        MainLoop,
+    };
+    pw::init();
+
+    debug!("Staring pw-thread");
+
+    let mainloop = MainLoop::new().unwrap();
+
+    let _receiver = pw_receiver.attach(mainloop.as_ref(), {
+        let mainloop = mainloop.clone();
+        move |_| mainloop.quit()
+    });
+
+    let context = pw::Context::new(&mainloop).unwrap();
+    let core = context.connect(None).unwrap();
+
+    let stream = pw::stream::Stream::new(
+        &core,
+        "ALVR-MIC",
+        pw::properties! {
+            *pw::keys::MEDIA_NAME => "ALVR-MIC",
+            *pw::keys::MEDIA_TYPE => "Audio",
+            *pw::keys::MEDIA_CATEGORY => "Playback",
+            *pw::keys::MEDIA_CLASS => "Audio/Source",
+            *pw::keys::MEDIA_ROLE => "Communication",
+        },
+    )
+    .unwrap();
+
+    let chan_size = std::mem::size_of::<i16>();
+    let default_channels_count = 1;
+    let _listener: StreamListener<i16> = stream
+        .add_local_listener()
+        .process(move |stream, _| match stream.dequeue_buffer() {
+            None => {
+                // Consume value for now because nothing is connected to microphone
+                debug!("No pw buffer received")
+            }
+            Some(mut pw_buffer) => {
+                // Stream is being used for something, start processing
+                debug!("Starting pw buffer");
+
+                let data = match receiver.recv(Duration::from_millis(2500)) {
+                    Ok(data) => data,
+                    Err(ConnectionError::TryAgain(_)) => return,
+                    Err(ConnectionError::Other(e)) => {
+                        error!("{e}");
+                        return;
+                    }
+                };
+                let (_, packet) = data.get().unwrap();
+
+                // TODO: How to convert whatever oboe sends to us into usable data for pipewire???
+                // debug!("{:02X?} PACKET", packet);
+                let buff = packet
+                    .chunks_exact(2)
+                    .map(|c| i16::from_ne_bytes([c[0], c[1]]).to_sample::<i16>())
+                    .collect::<Vec<_>>();
+
+                // Stream is available and we got pipewire data, start using it
+
+                // total amount of n_frames pipewire should expect to process
+                let mut total_size = 0;
+
+                let datas = pw_buffer.datas_mut();
+                // amount of bytes one full processing will take
+                let stride = chan_size * default_channels_count;
+                let pw_data = &mut datas[0];
+                if let Some(slice) = pw_data.data() {
+                    // how much of slices of out data we will process
+                    let n_frames = slice.len() / stride;
+                    total_size = n_frames;
+
+                    for i in 0..n_frames {
+                        for c in 0..default_channels_count {
+                            let start = i * stride + (c as usize * chan_size);
+                            let end = start + chan_size;
+                            let channel = &mut slice[start..end];
+                            // channel.copy_from_slice(&i16::to_le_bytes(*buf_data));
+                            total_size = total_size + 1;
+                        }
+                    }
+                }
+
+                let size = (stride * total_size) as u32;
+
+                let chunk = pw_data.chunk_mut();
+                *chunk.offset_mut() = 0;
+                *chunk.stride_mut() = stride as i32;
+                *chunk.size_mut() = size;
+                debug!("Enqueued {} bytes to pw", size);
+            }
+        })
+        .register()
+        .unwrap();
+
+    let mut audio_info = pw::spa::param::audio::AudioInfoRaw::new();
+    audio_info.set_format(pw::spa::param::audio::AudioFormat::S16LE);
+    audio_info.set_rate(44100);
+    audio_info.set_channels(1);
+
+    let values: Vec<u8> = pw::spa::pod::serialize::PodSerializer::serialize(
+        std::io::Cursor::new(Vec::new()),
+        &pw::spa::pod::Value::Object(pw::spa::pod::Object {
+            type_: libspa_sys::SPA_TYPE_OBJECT_Format,
+            id: libspa_sys::SPA_PARAM_EnumFormat,
+            properties: audio_info.into(),
+        }),
+    )
+    .unwrap()
+    .0
+    .into_inner();
+
+    let mut params = [Pod::from_bytes(&values).unwrap()];
+
+    stream
+        .connect(
+            Direction::Output,
+            None,
+            StreamFlags::AUTOCONNECT | StreamFlags::MAP_BUFFERS | StreamFlags::RT_PROCESS,
+            &mut params,
+        )
+        .unwrap();
+    debug!("Prepared pw-thread");
+
+    mainloop.run();
 }

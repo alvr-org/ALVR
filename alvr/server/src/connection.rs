@@ -730,6 +730,7 @@ fn connection_pipeline(
 
     let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
         #[allow(unused_variables)]
+        #[cfg(windows)]
         let (sink, source) = AudioDevice::new_virtual_microphone_pair(
             Some(settings.audio.linux_backend),
             config.devices,
@@ -750,12 +751,24 @@ fn connection_pipeline(
 
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
+            #[cfg(not(target_os = "linux"))]
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 {
                     let client_hostname = client_hostname.clone();
                     move || is_streaming(&client_hostname)
                 },
                 &sink,
+                1,
+                streaming_caps.microphone_sample_rate,
+                config.buffering,
+                &mut microphone_receiver,
+            ));
+            #[cfg(target_os = "linux")]
+            alvr_common::show_err(alvr_audio::play_microphone_loop(
+                {
+                    let client_hostname = client_hostname.clone();
+                    move || is_streaming(&client_hostname)
+                },
                 1,
                 streaming_caps.microphone_sample_rate,
                 config.buffering,

@@ -1,0 +1,27 @@
+[package]
+name = "alvr_graphics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+alvr_common.workspace = true
+
+ash = "0.37"
+glyph_brush_layout = "0.2"
+image = { version = "0.25", features = ["png"] }
+pollster = "0.3"
+rend3 = { git = "https://github.com/BVE-Reborn/rend3" }
+rend3-routine = { git = "https://github.com/BVE-Reborn/rend3" }
+rust-embed = { version = "8", features = [ # fix for rend3
+    "interpolate-folder-path",
+    "debug-embed",
+] }
+wgpu = "0.19"
+wgpu-core = { version = "0.19", features = ["vulkan"] }
+rand = "0.8"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_system_properties = "0.1"

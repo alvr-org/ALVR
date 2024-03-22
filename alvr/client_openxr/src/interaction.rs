@@ -358,14 +358,14 @@ pub fn initialize_interaction(
     }
 }
 
-pub fn get_stage_reference_space(xr_session: &xr::Session<xr::OpenGlEs>) -> xr::Space {
+pub fn get_stage_reference_space(xr_session: &xr::Session<xr::Vulkan>) -> xr::Space {
     xr_session
         .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
         .unwrap()
 }
 
 pub fn get_hand_motion(
-    xr_session: &xr::Session<xr::OpenGlEs>,
+    xr_session: &xr::Session<xr::Vulkan>,
     reference_space: &xr::Space,
     time: xr::Time,
     hand_source: &HandInteraction,
@@ -443,7 +443,7 @@ pub fn get_hand_motion(
 }
 
 pub fn update_buttons(
-    xr_session: &xr::Session<xr::OpenGlEs>,
+    xr_session: &xr::Session<xr::Vulkan>,
     button_actions: &HashMap<u64, ButtonAction>,
 ) -> Vec<ButtonEntry> {
     let mut button_entries = Vec::with_capacity(2);
@@ -480,7 +480,7 @@ pub fn update_buttons(
 }
 
 pub fn get_eye_gazes(
-    xr_session: &xr::Session<xr::OpenGlEs>,
+    xr_session: &xr::Session<xr::Vulkan>,
     sources: &FaceSources,
     reference_space: &xr::Space,
     time: xr::Time,

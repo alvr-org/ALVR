@@ -15,6 +15,7 @@ alvr_client_core = { path = "alvr/client_core" }
 alvr_common = { path = "alvr/common" }
 alvr_events = { path = "alvr/events" }
 alvr_filesystem = { path = "alvr/filesystem" }
+alvr_graphics = { path = "alvr/graphics" }
 alvr_packets = { path = "alvr/packets" }
 alvr_server_io = { path = "alvr/server_io" }
 alvr_session = { path = "alvr/session" }

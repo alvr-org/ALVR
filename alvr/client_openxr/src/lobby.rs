@@ -2,20 +2,26 @@ use crate::{
     graphics::{self, CompositionLayerBuilder},
     interaction,
 };
-use alvr_client_core::opengl::RenderViewInput;
-use alvr_common::glam::UVec2;
+use alvr_common::{anyhow::Result, glam::UVec2};
+use alvr_graphics::{GraphicsContext, LobbyRenderer, VulkanBackend};
 use openxr as xr;
 
 // todo: add interaction?
 pub struct Lobby {
-    xr_session: xr::Session<xr::OpenGlEs>,
+    xr_session: xr::Session<xr::Vulkan>,
+
     reference_space: xr::Space,
-    swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
+    renderer: LobbyRenderer,
+    swapchains: [xr::Swapchain<xr::Vulkan>; 2],
     view_resolution: UVec2,
 }
 
 impl Lobby {
-    pub fn new(xr_session: xr::Session<xr::OpenGlEs>, view_resolution: UVec2) -> Self {
+    pub fn new(
+        graphics_context: &GraphicsContext<VulkanBackend>,
+        xr_session: xr::Session<xr::Vulkan>,
+        view_resolution: UVec2,
+    ) -> Result<Self> {
         let reference_space = interaction::get_stage_reference_space(&xr_session);
 
         let swapchains = [
@@ -23,31 +29,39 @@ impl Lobby {
             graphics::create_swapchain(&xr_session, view_resolution, None, false),
         ];
 
-        alvr_client_core::opengl::initialize_lobby(
-            view_resolution,
-            [
-                swapchains[0]
-                    .enumerate_images()
-                    .unwrap()
-                    .iter()
-                    .map(|i| *i as _)
-                    .collect(),
-                swapchains[1]
-                    .enumerate_images()
-                    .unwrap()
-                    .iter()
-                    .map(|i| *i as _)
-                    .collect(),
-            ],
-            false, // TODO: correct lobby sRGB for some headsets
-        );
+        let swapchain_handles = [
+            swapchains[0].enumerate_images()?,
+            swapchains[1].enumerate_images()?,
+        ];
 
-        Self {
+        let renderer = LobbyRenderer::new(
+            graphics_context,
+            [
+                graphics_context.create_vulkan_swapchain_external(
+                    &swapchain_handles[0],
+                    view_resolution,
+                    1,
+                ),
+                graphics_context.create_vulkan_swapchain_external(
+                    &swapchain_handles[1],
+                    view_resolution,
+                    1,
+                ),
+            ],
+            view_resolution,
+        )?;
+
+        Ok(Self {
             xr_session,
             reference_space,
+            renderer,
             swapchains,
             view_resolution,
-        }
+        })
+    }
+
+    pub fn update_hud_message(&mut self, message: &str) -> Result<()> {
+        self.renderer.update_hud_message(message)
     }
 
     pub fn update_reference_space(&mut self) {
@@ -70,8 +84,8 @@ impl Lobby {
             vec![crate::default_view(), crate::default_view()]
         };
 
-        let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
-        let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
+        let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap() as usize;
+        let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap() as usize;
 
         self.swapchains[0]
             .wait_image(xr::Duration::INFINITE)
@@ -80,18 +94,17 @@ impl Lobby {
             .wait_image(xr::Duration::INFINITE)
             .unwrap();
 
-        alvr_client_core::opengl::render_lobby([
-            RenderViewInput {
-                pose: crate::from_xr_pose(views[0].pose),
-                fov: crate::from_xr_fov(views[0].fov),
-                swapchain_index: left_swapchain_idx,
-            },
-            RenderViewInput {
-                pose: crate::from_xr_pose(views[1].pose),
-                fov: crate::from_xr_fov(views[1].fov),
-                swapchain_index: right_swapchain_idx,
-            },
-        ]);
+        self.renderer.render(
+            [
+                crate::from_xr_pose(views[0].pose),
+                crate::from_xr_pose(views[1].pose),
+            ],
+            [
+                crate::from_xr_fov(views[0].fov),
+                crate::from_xr_fov(views[1].fov),
+            ],
+            [left_swapchain_idx, right_swapchain_idx],
+        );
 
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();

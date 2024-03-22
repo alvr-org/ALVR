@@ -1,7 +1,4 @@
-use crate::{
-    opengl::{self, RenderViewInput},
-    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
-};
+use crate::{storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -10,7 +7,8 @@ use alvr_common::{
     parking_lot::Mutex,
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
+use alvr_graphics::{ClientStreamRenderer, GraphicsContext, LobbyRenderer, VulkanBackend};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking, ViewParams};
 use alvr_session::{CodecType, FoveatedEncodingConfig};
 use std::{
     collections::VecDeque,
@@ -19,14 +17,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+// Core interface:
+
 static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
 static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 #[allow(clippy::type_complexity)]
 static NAL_QUEUE: Lazy<Mutex<VecDeque<(u64, [ViewParams; 2], Vec<u8>)>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
-
-// Core interface:
 
 #[repr(C)]
 pub struct AlvrClientCapabilities {
@@ -663,136 +661,142 @@ pub unsafe extern "C" fn alvr_get_frame(
     }
 }
 
-// OpenGL-related interface
+// Graphics-related interface
+
+static GRAPHICS_CONTEXT: OptLazy<GraphicsContext<VulkanBackend>> = alvr_common::lazy_mut_none();
+static LOBBY_RENDERER: OptLazy<LobbyRenderer> = alvr_common::lazy_mut_none();
+static STREAM_RENDERER: OptLazy<ClientStreamRenderer<VulkanBackend>> = alvr_common::lazy_mut_none();
 
 #[repr(C)]
 pub struct AlvrViewInput {
     pose: AlvrPose,
     fov: AlvrFov,
-    swapchain_index: u32,
 }
 
 #[repr(C)]
 pub struct AlvrStreamConfig {
-    pub view_resolution_width: u32,
-    pub view_resolution_height: u32,
-    pub swapchain_textures: *mut *const u32,
+    pub view_width: u32,
+    pub view_height: u32,
+    pub swapchain_textures: *mut *const c_void,
     pub swapchain_length: u32,
-    pub enable_foveation: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
+    pub foveation_json: *const c_char,
 }
 
+// Note: the swapchain images must have depht 2, format VK_FORMAT_R8G8B8A8_SRGB
 #[no_mangle]
-pub extern "C" fn alvr_initialize_opengl() {
-    opengl::initialize();
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_destroy_opengl() {
-    opengl::destroy();
-}
-
-unsafe fn convert_swapchain_array(
-    swapchain_textures: *mut *const u32,
-    swapchain_length: u32,
-) -> [Vec<u32>; 2] {
-    let swapchain_length = swapchain_length as usize;
-    let mut left_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures,
-        left_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-    let mut right_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures.offset(1),
-        right_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-
-    [left_swapchain, right_swapchain]
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_resume_opengl(
+pub extern "C" fn alvr_initialize_vk(
     preferred_view_width: u32,
     preferred_view_height: u32,
-    swapchain_textures: *mut *const u32,
     swapchain_length: u32,
+    out_swapchain_left: *mut u64,
+    out_swapchain_right: *mut u64,
     enable_srgb_correction: bool,
 ) {
-    opengl::initialize_lobby(
-        UVec2::new(preferred_view_width, preferred_view_height),
-        convert_swapchain_array(swapchain_textures, swapchain_length),
-        enable_srgb_correction,
-    );
+    // let graphics_context = GraphicsContext::new_vulkan().unwrap();
+
+    // let resolution = UVec2::new(preferred_view_width, preferred_view_height);
+
+    // // let swapchain_textures =
+    // //     unsafe { slice::from_raw_parts(swapchain_ptrs, swapchain_length as _) };
+    // // let swapchain_textures =
+    // //     graphics_context.create_vulkan_swapchain_external(swapchain_textures, resolution);
+
+    // let swapchain_left = graphics_context.create_vulkan_swapchain(swapchain_length, resolution, 1);
+    // let swapchain_right = graphics_context.create_vulkan_swapchain(swapchain_length, resolution, 1);
+
+    // *LOBBY_RENDERER.lock() = Some(
+    //     LobbyRenderer::new(
+    //         &graphics_context,
+    //         [swapchain_left, swapchain_right],
+    //         resolution,
+    //     )
+    //     .unwrap(),
+    // );
+    // *GRAPHICS_CONTEXT.lock() = Some(graphics_context);
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_pause_opengl() {
-    opengl::pause();
+pub unsafe extern "C" fn alvr_update_hud_message_vk(message: *const c_char) {
+    // opengl::update_hud_message(CStr::from_ptr(message).to_str().unwrap());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
-    opengl::update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+pub unsafe extern "C" fn alvr_start_stream_vk(config: AlvrStreamConfig) {
+    // let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
+    // let swapchain_textures =
+    //     convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
+    // let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
+    // force_enable: true,
+    //     center_size_x: config.foveation_center_size_x,
+    //     center_size_y: config.foveation_center_size_y,
+    //     center_shift_x: config.foveation_center_shift_x,
+    //     center_shift_y: config.foveation_center_shift_y,
+    //     edge_ratio_x: config.foveation_edge_ratio_x,
+    //     edge_ratio_y: config.foveation_edge_ratio_y,
+    // });
+
+    // opengl::start_stream(view_resolution, swapchain_textures, foveated_encoding, true);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
-    let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
-    let swapchain_textures =
-        convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
-    let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
-        force_enable: true,
-        center_size_x: config.foveation_center_size_x,
-        center_size_y: config.foveation_center_size_y,
-        center_shift_x: config.foveation_center_shift_x,
-        center_shift_y: config.foveation_center_shift_y,
-        edge_ratio_x: config.foveation_edge_ratio_x,
-        edge_ratio_y: config.foveation_edge_ratio_y,
-    });
+pub unsafe extern "C" fn alvr_render_lobby_vk(
+    view_inputs: *const AlvrViewInput,
+    swapchain_index: u32,
+) {
+    // let view_inputs = [
+    //     {
+    //         let o = (*view_inputs).orientation;
+    //         let f = (*view_inputs).fov;
+    //         RenderViewInput {
+    //             pose: Pose {
+    //                 orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+    //                 position: Vec3::from_array((*view_inputs).position),
+    //             },
+    //             fov: Fov {
+    //                 left: f.left,
+    //                 right: f.right,
+    //                 up: f.up,
+    //                 down: f.down,
+    //             },
+    //             swapchain_index: (*view_inputs).swapchain_index,
+    //         }
+    //     },
+    //     {
+    //         let o = (*view_inputs.offset(1)).orientation;
+    //         let f = (*view_inputs.offset(1)).fov;
+    //         RenderViewInput {
+    //             pose: Pose {
+    //                 orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+    //                 position: Vec3::from_array((*view_inputs.offset(1)).position),
+    //             },
+    //             fov: Fov {
+    //                 left: f.left,
+    //                 right: f.right,
+    //                 up: f.up,
+    //                 down: f.down,
+    //             },
+    //             swapchain_index: (*view_inputs.offset(1)).swapchain_index,
+    //         }
+    //     },
+    // ];
 
-    opengl::start_stream(
-        view_resolution,
-        swapchain_textures,
-        foveated_encoding,
-        true,
-        false, // TODO: limited range fix config
-        1.0,   // TODO: encoding gamma config
-    );
+    // opengl::render_lobby(view_inputs);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewInput) {
-    let view_inputs = [
-        RenderViewInput {
-            pose: from_capi_pose((*view_inputs).pose),
-            fov: from_capi_fov((*view_inputs).fov),
-            swapchain_index: (*view_inputs).swapchain_index,
-        },
-        RenderViewInput {
-            pose: from_capi_pose((*view_inputs.offset(1)).pose),
-            fov: from_capi_fov((*view_inputs.offset(1)).fov),
-            swapchain_index: (*view_inputs.offset(1)).swapchain_index,
-        },
-    ];
-
-    opengl::render_lobby(view_inputs);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream_opengl(
+pub unsafe extern "C" fn alvr_render_stream_vk(
     hardware_buffer: *mut c_void,
     swapchain_indices: *const u32,
 ) {
-    opengl::render_stream(
-        hardware_buffer,
-        [*swapchain_indices, *swapchain_indices.offset(1)],
-    );
+    // opengl::render_stream(
+    //     hardware_buffer,
+    //     [*swapchain_indices, *swapchain_indices.offset(1)],
+    // );
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_destroy_vk() {
+    *STREAM_RENDERER.lock() = None;
+    *LOBBY_RENDERER.lock() = None;
+    *GRAPHICS_CONTEXT.lock() = None;
 }

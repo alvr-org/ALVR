@@ -175,7 +175,7 @@ pub fn initialize_interaction(
         )
         .unwrap();
 
-    let combined_eyes_source = if face_tracking_sources
+    let combined_eyes_source = (face_tracking_sources
         .as_ref()
         .map(|s| s.combined_eye_gaze)
         .unwrap_or(false)
@@ -183,8 +183,8 @@ pub fn initialize_interaction(
         && xr_ctx
             .instance
             .supports_eye_gaze_interaction(xr_ctx.system)
-            .unwrap()
-    {
+            .unwrap())
+    .then(|| {
         let action = action_set
             .create_action("combined_eye_gaze", "Combined eye gaze", &[])
             .unwrap();
@@ -204,10 +204,8 @@ pub fn initialize_interaction(
             .create_space(xr_ctx.session.clone(), xr::Path::NULL, xr::Posef::IDENTITY)
             .unwrap();
 
-        Some((action, space))
-    } else {
-        None
-    };
+        (action, space)
+    });
 
     xr_ctx.session.attach_action_sets(&[&action_set]).unwrap();
 

@@ -177,15 +177,18 @@ pub unsafe extern "C" fn alvr_try_get_permission(permission: *const c_char) {
 }
 
 /// NB: for android, `context` must be thread safe.
+#[cfg(target_os = "android")]
 #[no_mangle]
-pub unsafe extern "C" fn alvr_initialize(
-    #[cfg(target_os = "android")] java_vm: *mut c_void,
-    #[cfg(target_os = "android")] context: *mut c_void,
-    capabilities: AlvrClientCapabilities,
+pub unsafe extern "C" fn alvr_initialize_android_context(
+    java_vm: *mut c_void,
+    context: *mut c_void,
 ) {
-    #[cfg(target_os = "android")]
     ndk_context::initialize_android_context(java_vm, context);
+}
 
+/// On android, alvr_initialize_android_context() must be called first, then alvr_initialize().
+#[no_mangle]
+pub unsafe extern "C" fn alvr_initialize(capabilities: AlvrClientCapabilities) {
     let default_view_resolution = UVec2::new(
         capabilities.default_view_width,
         capabilities.default_view_height,

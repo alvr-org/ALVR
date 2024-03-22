@@ -82,6 +82,8 @@ fn framed_recv<R: DeserializeOwned>(
             break;
         } else if Instant::now() > deadline {
             return alvr_common::try_again();
+        } else {
+            continue;
         }
     }
 

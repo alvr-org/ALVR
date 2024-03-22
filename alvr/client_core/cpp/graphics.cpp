@@ -322,7 +322,7 @@ void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
         frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
-            true, glRenderTarget, false, width, height, GL_SRGB8_ALPHA8, GL_RGBA));
+            true, glRenderTarget, false, width, height, GL_RGBA16F, GL_RGBA));
         frameBuffer->renderStates.push_back(
             std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
@@ -580,19 +580,21 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         std::vector<GLuint> textures[2],
                         FFRData ffrData,
                         bool isLobby,
-                        bool enableSrgbCorrection) {
+                        bool enableSrgbCorrection,
+                        bool fixLimitedRange,
+                        float encodingGamma) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
         renderer->enableFFE = ffrData.enabled;
         if (renderer->enableFFE) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
             renderer->srgbCorrectionPass->Initialize(
-                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection);
+                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
             renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
-            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection);
+            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->streamRenderTexture =
                 renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
@@ -793,7 +795,8 @@ void destroyGraphicsNative() {
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
                       const unsigned int *swapchainTextures[2],
-                      int swapchainLength) {
+                      int swapchainLength,
+                      bool enable_srgb_correction) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
 
@@ -811,7 +814,9 @@ void prepareLobbyRoom(int viewWidth,
                        g_ctx.lobbySwapchainTextures,
                        {false},
                        true,
-                       false);
+                       enable_srgb_correction,
+                       false,
+                       1.0);
 }
 
 // on pause
@@ -857,7 +862,9 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationEdgeRatioX,
                         config.foveationEdgeRatioY},
                        false,
-                       config.enableSrgbCorrection);
+                       config.enableSrgbCorrection,
+                       config.fixLimitedRange,
+                       config.encodingGamma);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {

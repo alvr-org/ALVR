@@ -31,13 +31,21 @@ const string CORRECTION_FRAGMENT_SHADER = R"glsl(
         {
             color = texture(tex0, uv);
 
+#ifdef LIMITED_RANGE_BUG
             // For some reason, the encoder shifts full-range color into the negatives and over one.
             color.rgb = LIMITED_MIN + ((LIMITED_MAX - LIMITED_MIN) * color.rgb);
+#endif
 #ifdef SRGB_CORRECTION
             vec3 condition = vec3(color.r < THRESHOLD, color.g < THRESHOLD, color.b < THRESHOLD);
             vec3 lowValues = color.rgb * DIV12;
             vec3 highValues = pow((color.rgb + 0.055) * DIV1, GAMMA);
             color.rgb = condition * lowValues + (1.0 - condition) * highValues;
+#endif
+#ifdef ENCODING_GAMMA
+            vec3 enc_condition = vec3(color.r < 0.0, color.g < 0.0, color.b < 0.0);
+            vec3 enc_lowValues = color.rgb;
+            vec3 enc_highValues = pow(color.rgb, vec3(ENCODING_GAMMA));
+            color.rgb = enc_condition * enc_lowValues + (1.0 - enc_condition) * enc_highValues;
 #endif
         }
     )glsl";
@@ -45,11 +53,17 @@ const string CORRECTION_FRAGMENT_SHADER = R"glsl(
 
 SrgbCorrectionPass::SrgbCorrectionPass(Texture *inputSurface) : mInputSurface(inputSurface) {}
 
-void SrgbCorrectionPass::Initialize(uint32_t width, uint32_t height, bool passthrough) {
+void SrgbCorrectionPass::Initialize(uint32_t width, uint32_t height, bool passthrough, bool fixLimitedRange, float encodingGamma) {
     mOutputTexture.reset(new Texture(false, 0, false, width * 2, height));
     mOutputTextureState = make_unique<RenderState>(mOutputTexture.get());
 
     string defines = passthrough ? "" : "#define SRGB_CORRECTION";
+    if (fixLimitedRange) {
+        defines += "\n#define LIMITED_RANGE_BUG";
+    }
+    if (encodingGamma != 1.0) {
+        defines += "\n#define ENCODING_GAMMA (" + std::to_string(encodingGamma) + ")";
+    }
 
     auto fragmentShader = CORRECTION_FRAGMENT_SHADER_HEADER + "\n" + defines + "\n" + CORRECTION_FRAGMENT_SHADER;
     mStagingPipeline = unique_ptr<RenderPipeline>(

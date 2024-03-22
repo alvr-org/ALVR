@@ -255,6 +255,8 @@ const unsigned char *COMPRESS_AXIS_ALIGNED_CSO_PTR;
 unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
 const unsigned char *COLOR_CORRECTION_CSO_PTR;
 unsigned int COLOR_CORRECTION_CSO_LEN;
+const unsigned char *RGBTOYUV420_CSO_PTR;
+unsigned int RGBTOYUV420_CSO_LEN;
 
 const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
 unsigned int QUAD_SHADER_COMP_SPV_LEN;

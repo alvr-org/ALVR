@@ -22,7 +22,7 @@ pub enum FrameSize {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum EncoderQualityPresetAmd {
     Quality = 0,
     Balanced = 1,
@@ -30,7 +30,7 @@ pub enum EncoderQualityPresetAmd {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum EncoderQualityPresetNvidia {
     P1 = 1,
     P2 = 2,
@@ -42,7 +42,7 @@ pub enum EncoderQualityPresetNvidia {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum NvencTuningPreset {
     HighQuality = 1,
     LowLatency = 2,
@@ -51,7 +51,7 @@ pub enum NvencTuningPreset {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum NvencMultiPass {
     Disabled = 0,
     #[schema(strings(display_name = "1/4 resolution"))]
@@ -60,7 +60,7 @@ pub enum NvencMultiPass {
 }
 
 #[repr(u32)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub enum NvencAdaptiveQuantizationMode {
     Disabled = 0,
     Spatial = 1,
@@ -68,7 +68,7 @@ pub enum NvencAdaptiveQuantizationMode {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum RateControlMode {
     #[schema(strings(display_name = "CBR"))]
@@ -78,7 +78,7 @@ pub enum RateControlMode {
 }
 
 #[repr(u8)]
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(gui = "button_group")]
 pub enum EntropyCoding {
     #[schema(strings(display_name = "CAVLC"))]
@@ -88,7 +88,7 @@ pub enum EntropyCoding {
 }
 
 /// Except for preset, the value of these fields is not applied if == -1 (flag)
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
 pub struct NvencConfig {
     #[schema(strings(
@@ -139,7 +139,7 @@ Temporal: Helps improve overall encoding quality, very small trade-off in speed.
     pub enable_weighted_prediction: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
 pub struct AmfConfig {
     #[schema(flag = "steamvr-restart")]
@@ -180,7 +180,7 @@ Does not work with the "Reduce color banding" option, requires enabling "Use pre
     pub enable_pre_analysis: bool,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 pub struct SoftwareEncodingConfig {
     #[schema(strings(
         display_name = "Force software encoding",
@@ -194,7 +194,7 @@ pub struct SoftwareEncodingConfig {
     pub thread_count: u32,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
 #[schema(collapsible)]
 pub struct EncoderConfig {
     #[schema(strings(help = r#"CBR: Constant BitRate mode. This is recommended.
@@ -233,6 +233,34 @@ CABAC produces better compression but it's significantly slower and may lead to 
     ))]
     #[schema(flag = "steamvr-restart")]
     pub use_full_range: bool,
+
+    #[schema(strings(
+        display_name = "Encoding Gamma",
+        help = "To prioritize darker pixels at the expense of potentially additional banding in midtones, set to 2.2. To allow the encoder to decide priority on its own, set to 1.0."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub encoding_gamma: f32,
+
+    #[schema(strings(
+        display_name = "Enable HDR",
+        help = "Composite VR layers to an RGBA float16 framebuffer, and do sRGB/YUV conversions in shader code."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub enable_hdr: bool,
+
+    #[schema(strings(
+        display_name = "Force HDR sRGB Correction",
+        help = "Forces sRGB correction on all composited SteamVR layers. Useful if an HDR-injected game is too dark."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub force_hdr_srgb_correction: bool,
+
+    #[schema(strings(
+        display_name = "Clamp HDR extended range",
+        help = "Clamps HDR extended range to 0.0~1.0, useful if you only want HDR to reduce banding."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub clamp_hdr_extended_range: bool,
 
     #[schema(strings(display_name = "NVENC"))]
     #[schema(flag = "steamvr-restart")]
@@ -1292,6 +1320,10 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 use_10bit: false,
                 use_full_range: true,
+                encoding_gamma: 1.0,
+                enable_hdr: false,
+                force_hdr_srgb_correction: false,
+                clamp_hdr_extended_range: false,
                 nvenc: NvencConfigDefault {
                     gui_collapsed: true,
                     quality_preset: EncoderQualityPresetNvidiaDefault {

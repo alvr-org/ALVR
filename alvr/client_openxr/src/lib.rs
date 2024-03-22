@@ -20,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 use stream::StreamContext;
+use xr::ColorSpaceFB;
 
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
@@ -187,6 +188,10 @@ pub fn entry_point() {
         } else {
             vec![90.0]
         };
+
+        if exts.fb_color_space {
+            xr_session.set_color_space(ColorSpaceFB::P3).unwrap();
+        }
 
         let capabilities = ClientCapabilities {
             default_view_resolution,

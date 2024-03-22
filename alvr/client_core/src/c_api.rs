@@ -658,10 +658,12 @@ pub unsafe extern "C" fn alvr_resume_opengl(
     preferred_view_height: u32,
     swapchain_textures: *mut *const u32,
     swapchain_length: u32,
+    enable_srgb_correction: bool,
 ) {
     opengl::initialize_lobby(
         UVec2::new(preferred_view_width, preferred_view_height),
         convert_swapchain_array(swapchain_textures, swapchain_length),
+        enable_srgb_correction,
     );
 }
 
@@ -690,7 +692,14 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         edge_ratio_y: config.foveation_edge_ratio_y,
     });
 
-    opengl::start_stream(view_resolution, swapchain_textures, foveated_encoding, true);
+    opengl::start_stream(
+        view_resolution,
+        swapchain_textures,
+        foveated_encoding,
+        true,
+        false, // TODO: limited range fix config
+        1.0,   // TODO: encoding gamma config
+    );
 }
 
 #[no_mangle]

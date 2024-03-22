@@ -11,7 +11,7 @@ use alvr_common::{
 };
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, Tracking};
 use alvr_session::{
-    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode,
+    BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, EncoderConfig,
     FaceTrackingSourcesConfig, FoveatedEncodingConfig, Settings,
 };
 use openxr as xr;
@@ -33,6 +33,7 @@ pub struct StreamConfig {
     pub refresh_rate_hint: f32,
     pub foveated_encoding_config: Option<FoveatedEncodingConfig>,
     pub clientside_foveation_config: Option<ClientsideFoveationConfig>,
+    pub encoder_config: EncoderConfig,
     pub face_sources_config: Option<FaceTrackingSourcesConfig>,
     pub body_sources_config: Option<BodyTrackingSourcesConfig>,
 }
@@ -47,6 +48,7 @@ impl StreamConfig {
                 .then(|| settings.video.foveated_encoding.as_option().cloned())
                 .flatten(),
             clientside_foveation_config: settings.video.clientside_foveation.as_option().cloned(),
+            encoder_config: settings.video.encoder_config.clone(),
             face_sources_config: settings
                 .headset
                 .face_tracking
@@ -187,7 +189,11 @@ impl StreamContext {
                     .collect(),
             ],
             config.foveated_encoding_config.clone(),
-            platform != Platform::Lynx,
+            platform != Platform::Lynx
+                && platform != Platform::Pico4
+                && platform != Platform::PicoNeo3,
+            config.encoder_config.enable_hdr != true,
+            config.encoder_config.encoding_gamma,
         );
 
         core_ctx.send_playspace(

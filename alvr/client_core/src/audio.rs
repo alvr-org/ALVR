@@ -144,6 +144,14 @@ impl AudioOutputCallback for PlayerCallback {
     ) {
         *self.state.lock() = AudioPlaybackState::Err(error);
     }
+
+    fn on_error_after_close(
+        &mut self,
+        _audio_stream: &mut dyn AudioOutputStreamSafe,
+        error: oboe::Error,
+    ) {
+        *self.state.lock() = AudioPlaybackState::Err(error);
+    }
 }
 
 #[allow(unused_variables)]
@@ -197,8 +205,11 @@ pub fn play_audio_loop(
     )
     .ok();
 
-    // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
-    stream.stop_with_timeout(0).ok();
+    // If we had an error, the stream is already stopped/closed
+    if matches!(*state.lock(), AudioPlaybackState::Playing) {
+        // Note: Oboe crahes if stream.stop() is NOT called on AudioPlayer
+        return Ok(stream.stop_with_timeout(0)?);
+    }
 
     let result = match *state.lock() {
         AudioPlaybackState::Err(error) => Err(error.into()),

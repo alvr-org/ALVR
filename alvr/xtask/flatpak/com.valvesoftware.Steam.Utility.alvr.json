@@ -45,14 +45,13 @@
             "build-commands": [
                 "echo 'insecure' >> .curlrc",
                 "cargo xtask prepare-deps --platform linux --no-nvidia",
-                "cargo xtask build-streamer --release",
+                "cargo xtask build-streamer --gpl --release",
                 "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
                 "cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
             ],
             "modules": [
                 "modules/yasm/yasm.json",
-                "modules/vulkan-headers/vulkan-headers.json",
-                "modules/x264/x264.json"
+                "modules/vulkan-headers/vulkan-headers.json"
             ],
             "sources": [
                 {

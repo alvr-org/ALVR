@@ -1,5 +1,5 @@
 use crate::data_sources;
-use alvr_common::{debug, glam::bool, info, once_cell::sync::Lazy, parking_lot::Mutex};
+use alvr_common::{debug, error, glam::bool, info, once_cell::sync::Lazy, parking_lot::Mutex};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
@@ -271,8 +271,9 @@ fn linux_hardware_encoders_check() {
                 } else {
                     alvr_common::show_e(format!(
                         "Couldn't find VA-API runtime on system, \
-                    you unlikely to have hardware encoding.
-                        Please install VA-API runtime for your distribution."
+                        you unlikely to have hardware encoding.
+                        Please install VA-API runtime for your distribution \
+                        and make sure it works (Manjaro, Fedora)."
                     ));
                 }
             }
@@ -290,7 +291,7 @@ fn probe_libva_encoder_profile(
     libva_display: &std::rc::Rc<libva::Display>,
     profile_type: libva::VAProfile::Type,
     profile_name: &str,
-    show_critical_dialog: bool,
+    is_critical: bool,
 ) {
     let profile_probe = libva_display.query_config_entrypoints(profile_type);
     if profile_probe.is_err() {
@@ -298,8 +299,8 @@ fn probe_libva_encoder_profile(
             "Couldn't find {} profile. You unlikely to have hardware encoding for it.",
             profile_name
         );
-        if show_critical_dialog {
-            alvr_common::show_e(message);
+        if is_critical {
+            error!("{}", message);
         } else {
             info!("{}", message);
         }
@@ -310,8 +311,8 @@ fn probe_libva_encoder_profile(
                 You unlikely to have hardware encoding for it.",
                 profile_name
             );
-            if show_critical_dialog {
-                alvr_common::show_e(message);
+            if is_critical {
+                error!("{}", message);
             } else {
                 info!("{}", message);
             }
@@ -322,8 +323,8 @@ fn probe_libva_encoder_profile(
                 You unlikely to have hardware encoding for it.",
                 profile_name
             );
-            if show_critical_dialog {
-                alvr_common::show_e(message);
+            if is_critical {
+                error!("{}", message);
             } else {
                 info!("{}", message);
             }

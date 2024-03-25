@@ -8,13 +8,12 @@ use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent, P
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
-    info, warn, Fov, Pose, HAND_LEFT_ID,
+    info, Fov, Pose, HAND_LEFT_ID,
 };
 use lobby::Lobby;
 use openxr as xr;
 use std::{
     path::Path,
-    ptr,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -24,27 +23,60 @@ use xr::ColorSpaceFB;
 
 const DECODER_MAX_TIMEOUT_MULTIPLIER: f32 = 0.8;
 
-fn to_vec3(v: xr::Vector3f) -> Vec3 {
+fn from_xr_vec3(v: xr::Vector3f) -> Vec3 {
     Vec3::new(v.x, v.y, v.z)
 }
 
-fn to_quat(q: xr::Quaternionf) -> Quat {
-    Quat::from_xyzw(q.x, q.y, q.z, q.w)
-}
-
-fn to_pose(p: xr::Posef) -> Pose {
-    Pose {
-        orientation: to_quat(p.orientation),
-        position: to_vec3(p.position),
+fn to_xr_vec3(v: Vec3) -> xr::Vector3f {
+    xr::Vector3f {
+        x: v.x,
+        y: v.y,
+        z: v.z,
     }
 }
 
-fn to_fov(f: xr::Fovf) -> Fov {
+fn from_xr_quat(q: xr::Quaternionf) -> Quat {
+    Quat::from_xyzw(q.x, q.y, q.z, q.w)
+}
+
+fn to_xr_quat(q: Quat) -> xr::Quaternionf {
+    xr::Quaternionf {
+        x: q.x,
+        y: q.y,
+        z: q.z,
+        w: q.w,
+    }
+}
+
+fn from_xr_pose(p: xr::Posef) -> Pose {
+    Pose {
+        orientation: from_xr_quat(p.orientation),
+        position: from_xr_vec3(p.position),
+    }
+}
+
+fn to_xr_pose(p: Pose) -> xr::Posef {
+    xr::Posef {
+        orientation: to_xr_quat(p.orientation),
+        position: to_xr_vec3(p.position),
+    }
+}
+
+fn from_xr_fov(f: xr::Fovf) -> Fov {
     Fov {
         left: f.angle_left,
         right: f.angle_right,
         up: f.angle_up,
         down: f.angle_down,
+    }
+}
+
+fn to_xr_fov(f: Fov) -> xr::Fovf {
+    xr::Fovf {
+        angle_left: f.left,
+        angle_right: f.right,
+        angle_up: f.up,
+        angle_down: f.down,
     }
 }
 
@@ -394,14 +426,12 @@ pub fn entry_point() {
                     thread::yield_now();
                 }
 
-                let (timestamp, hardware_buffer) = if let Some(pair) = frame_result {
-                    pair
-                } else {
-                    warn!("Timed out when waiting for frame!");
-                    (vsync_time, ptr::null_mut())
-                };
+                let timestamp = frame_result
+                    .as_ref()
+                    .map(|r| r.timestamp)
+                    .unwrap_or(vsync_time);
 
-                let layer = context.render(timestamp, hardware_buffer, vsync_time);
+                let layer = context.render(frame_result, vsync_time);
 
                 (layer, timestamp)
             } else {

@@ -1,5 +1,5 @@
 use crate::data_sources;
-use alvr_common::{debug, once_cell::sync::Lazy, parking_lot::Mutex};
+use alvr_common::{debug, glam::bool, info, once_cell::sync::Lazy, parking_lot::Mutex};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{
@@ -116,6 +116,9 @@ pub struct Launcher {
 
 impl Launcher {
     pub fn launch_steamvr(&self) {
+        #[cfg(target_os = "linux")]
+        linux_hardware_encoders_check();
+
         let mut data_source = data_sources::get_local_data_source();
 
         let launch_action = &data_source.settings().steamvr_launcher.driver_launch_action;
@@ -134,7 +137,6 @@ impl Launcher {
             } else {
                 vec![]
             };
-
             let alvr_driver_dir =
                 afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
                     .openvr_driver_root_dir;
@@ -191,6 +193,141 @@ impl Launcher {
     pub fn restart_steamvr(&self) {
         self.ensure_steamvr_shutdown();
         self.launch_steamvr();
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn linux_hardware_encoders_check() {
+    enum GpuType {
+        NVIDIA,
+        AMD,
+        INTEL,
+        LLVMPIPE,
+        UNKNOWN,
+    }
+    let wgpu_adapters = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::VULKAN,
+        flags: wgpu::InstanceFlags::empty(),
+        dx12_shader_compiler: Default::default(),
+        gles_minor_version: Default::default(),
+    })
+    .enumerate_adapters(wgpu::Backends::VULKAN);
+    let gpu_types = wgpu_adapters
+        .iter()
+        .map(|adapter| match adapter.get_info().vendor {
+            0x10de => {
+                return Some(GpuType::NVIDIA);
+            }
+            0x1002 => {
+                return Some(GpuType::AMD);
+            }
+            0x8086 => {
+                return Some(GpuType::INTEL);
+            }
+            0x10005 => {
+                return Some(GpuType::LLVMPIPE);
+            }
+            _ => {
+                return Some(GpuType::UNKNOWN);
+            }
+        })
+        .flatten();
+    for gpu_type in gpu_types {
+        match gpu_type {
+            GpuType::NVIDIA => {
+                if let Err(e) = pkg_config::Config::new().probe("cuda") {
+                    alvr_common::show_e(format!(
+                        "Couldn't find Nvidia CUDA runtime on system. \
+                        You unlikely to have hardware encoding for it.
+                        Please install CUDA. {}",
+                        e
+                    ));
+                }
+            }
+            GpuType::AMD | GpuType::INTEL => {
+                let libva_display_open = libva::Display::open();
+                if let Some(libva_display) = libva_display_open {
+                    if let Ok(vendor_string) = libva_display.query_vendor_string() {
+                        info!("GPU Encoder vendor: {}", vendor_string);
+                    }
+                    probe_libva_encoder_profile(
+                        &libva_display,
+                        libva::VAProfile::VAProfileH264Main,
+                        "H264",
+                        true,
+                    );
+                    probe_libva_encoder_profile(
+                        &libva_display,
+                        libva::VAProfile::VAProfileHEVCMain,
+                        "HEVC",
+                        true,
+                    );
+                    probe_libva_encoder_profile(
+                        &libva_display,
+                        libva::VAProfile::VAProfileAV1Profile0,
+                        "AV1",
+                        false,
+                    );
+                } else {
+                    alvr_common::show_e(format!(
+                        "Couldn't find VA-API runtime on system, \
+                    you unlikely to have hardware encoding.
+                        Please install VA-API runtime for your distribution."
+                    ));
+                }
+            }
+            GpuType::UNKNOWN => alvr_common::show_e(
+                "Couldn't determine gpu for hardware encoding. \
+            You will likely fallback to software encoding.",
+            ),
+            GpuType::LLVMPIPE => debug!("Found software vulkan driver."),
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn probe_libva_encoder_profile(
+    libva_display: &std::rc::Rc<libva::Display>,
+    profile_type: libva::VAProfile::Type,
+    profile_name: &str,
+    show_critical_dialog: bool,
+) {
+    let profile_probe = libva_display.query_config_entrypoints(profile_type);
+    if profile_probe.is_err() {
+        let message = format!(
+            "Couldn't find {} profile. You unlikely to have hardware encoding for it.",
+            profile_name
+        );
+        if show_critical_dialog {
+            alvr_common::show_e(message);
+        } else {
+            info!("{}", message);
+        }
+    } else if let Ok(profile) = profile_probe {
+        if profile.is_empty() {
+            let message = format!(
+                "{} profile entrypoint is empty. \
+                You unlikely to have hardware encoding for it.",
+                profile_name
+            );
+            if show_critical_dialog {
+                alvr_common::show_e(message);
+            } else {
+                info!("{}", message);
+            }
+        }
+        if !profile.contains(&libva::VAEntrypoint::VAEntrypointEncSlice) {
+            let message = format!(
+                "{} profile does not contain encoding entrypoint. \
+                You unlikely to have hardware encoding for it.",
+                profile_name
+            );
+            if show_critical_dialog {
+                alvr_common::show_e(message);
+            } else {
+                info!("{}", message);
+            }
+        }
     }
 }
 

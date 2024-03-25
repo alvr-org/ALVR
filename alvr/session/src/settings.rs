@@ -221,7 +221,7 @@ CABAC produces better compression but it's significantly slower and may lead to 
     pub entropy_coding: EntropyCoding,
 
     #[schema(strings(
-        display_name = "Reduce color banding",
+        display_name = "10 bit encoding",
         help = "Sets the encoder to use 10 bits per channel instead of 8. Does not work on Linux with Nvidia"
     ))]
     #[schema(flag = "steamvr-restart")]

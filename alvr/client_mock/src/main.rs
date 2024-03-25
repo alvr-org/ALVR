@@ -2,9 +2,9 @@ use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     glam::{Quat, UVec2, Vec3},
     parking_lot::RwLock,
-    DeviceMotion, Pose, RelaxedAtomic, HEAD_ID,
+    Fov, Pose, RelaxedAtomic,
 };
-use alvr_packets::Tracking;
+use alvr_packets::{FaceData, ViewParams};
 use alvr_session::CodecType;
 use eframe::{
     egui::{CentralPanel, Context, RichText, Slider, ViewportBuilder},
@@ -182,22 +182,48 @@ fn tracking_thread(
 
         let position = Vec3::new(0.0, input_lock.height, 0.0) + position_offset;
 
-        context.send_tracking(Tracking {
-            target_timestamp: Instant::now() - timestamp_origin
-                + context.get_head_prediction_offset(),
-            device_motions: vec![(
-                *HEAD_ID,
-                DeviceMotion {
-                    pose: Pose {
-                        orientation,
-                        position,
-                    },
-                    linear_velocity: Vec3::ZERO,
-                    angular_velocity: Vec3::ZERO,
-                },
-            )],
-            ..Default::default()
-        });
+        // Tracking {
+        //     target_timestamp: Instant::now() - timestamp_origin
+        //         + context.get_head_prediction_offset(),
+        //     device_motions: vec![(
+        //         *HEAD_ID,
+        //         DeviceMotion {
+        //             pose: Pose {
+        //                 orientation,
+        //                 position,
+        //             },
+        //             linear_velocity: Vec3::ZERO,
+        //             angular_velocity: Vec3::ZERO,
+        //         },
+        //     )],
+        //     ..Default::default()
+        // }
+
+        let views_params = ViewParams {
+            pose: Pose {
+                orientation,
+                position,
+            },
+            fov: Fov {
+                left: -1.0,
+                right: 1.0,
+                up: 1.0,
+                down: -1.0,
+            },
+        };
+
+        context.send_tracking(
+            Instant::now() - timestamp_origin + context.get_head_prediction_offset(),
+            [views_params, views_params],
+            vec![],
+            [None, None],
+            FaceData {
+                eye_gazes: [None, None],
+                fb_face_expression: None,
+                htc_eye_expression: None,
+                htc_lip_expression: None,
+            },
+        );
 
         drop(input_lock);
 

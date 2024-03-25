@@ -1,7 +1,4 @@
-use crate::{
-    opengl::{self, RenderViewInput},
-    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
-};
+use crate::{storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent};
 use alvr_common::{
     debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
@@ -10,7 +7,8 @@ use alvr_common::{
     parking_lot::Mutex,
     warn, DeviceMotion, Fov, OptLazy, Pose,
 };
-use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking};
+use alvr_graphics::{ClientStreamRenderer, GraphicsContext, LobbyRenderer, VulkanBackend};
+use alvr_packets::{ButtonEntry, ButtonValue, FaceData, Tracking, ViewParams};
 use alvr_session::{CodecType, FoveatedEncodingConfig};
 use std::{
     collections::VecDeque,
@@ -19,13 +17,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+// Core interface:
+
 static CLIENT_CORE_CONTEXT: OptLazy<ClientCoreContext> = alvr_common::lazy_mut_none();
 static HUD_MESSAGE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 static SETTINGS: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("".into()));
 #[allow(clippy::type_complexity)]
-static NAL_QUEUE: Lazy<Mutex<VecDeque<(u64, Vec<u8>)>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
-
-// Core interface:
+static NAL_QUEUE: Lazy<Mutex<VecDeque<(u64, [ViewParams; 2], Vec<u8>)>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
 #[repr(C)]
 pub struct AlvrClientCapabilities {
@@ -63,7 +62,7 @@ pub enum AlvrEvent {
         frequency: f32,
         amplitude: f32,
     },
-    // Note: All subsequent DecoderConfig events should be ignored until reconnection
+    /// Note: All subsequent DecoderConfig events should be ignored until reconnection
     DecoderConfig {
         codec: AlvrCodec,
     },
@@ -79,6 +78,24 @@ pub struct AlvrFov {
     down: f32,
 }
 
+pub fn from_capi_fov(fov: AlvrFov) -> Fov {
+    Fov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
+pub fn to_capi_fov(fov: Fov) -> AlvrFov {
+    AlvrFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct AlvrQuat {
@@ -88,11 +105,43 @@ pub struct AlvrQuat {
     w: f32,
 }
 
+pub fn from_capi_quat(quat: AlvrQuat) -> Quat {
+    Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
+}
+
+pub fn to_capi_quat(quat: Quat) -> AlvrQuat {
+    AlvrQuat {
+        x: quat.x,
+        y: quat.y,
+        z: quat.z,
+        w: quat.w,
+    }
+}
+
 #[repr(C)]
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct AlvrPose {
     orientation: AlvrQuat,
     position: [f32; 3],
+}
+
+pub fn from_capi_pose(pose: AlvrPose) -> Pose {
+    Pose {
+        orientation: from_capi_quat(pose.orientation),
+        position: Vec3::from_slice(&pose.position),
+    }
+}
+
+pub fn to_capi_pose(pose: Pose) -> AlvrPose {
+    AlvrPose {
+        orientation: to_capi_quat(pose.orientation),
+        position: pose.position.to_array(),
+    }
+}
+
+pub struct AlvrViewParams {
+    pub pose: AlvrPose,
+    pub fov: AlvrFov,
 }
 
 #[repr(C)]
@@ -158,13 +207,13 @@ pub extern "C" fn alvr_mdns_service(service_buffer: *mut c_char) -> u64 {
     string_to_c_str(service_buffer, alvr_sockets::MDNS_SERVICE_TYPE)
 }
 
-// To make sure the value is correct, call after alvr_initialize()
+/// To make sure the value is correct, call after alvr_initialize()
 #[no_mangle]
 pub extern "C" fn alvr_hostname(hostname_buffer: *mut c_char) -> u64 {
     string_to_c_str(hostname_buffer, &storage::Config::load().hostname)
 }
 
-// To make sure the value is correct, call after alvr_initialize()
+/// To make sure the value is correct, call after alvr_initialize()
 #[no_mangle]
 pub extern "C" fn alvr_protocol_id(protocol_buffer: *mut c_char) -> u64 {
     string_to_c_str(protocol_buffer, &storage::Config::load().protocol_id)
@@ -271,7 +320,9 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                     amplitude,
                 },
                 ClientCoreEvent::DecoderConfig { codec, config_nal } => {
-                    NAL_QUEUE.lock().push_back((0, config_nal));
+                    NAL_QUEUE
+                        .lock()
+                        .push_back((0, [ViewParams::default(); 2], config_nal));
 
                     AlvrEvent::DecoderConfig {
                         codec: match codec {
@@ -281,8 +332,14 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                         },
                     }
                 }
-                ClientCoreEvent::FrameReady { timestamp, nal } => {
-                    NAL_QUEUE.lock().push_back((timestamp.as_nanos() as _, nal));
+                ClientCoreEvent::FrameReady {
+                    timestamp,
+                    view_params,
+                    nal,
+                } => {
+                    NAL_QUEUE
+                        .lock()
+                        .push_back((timestamp.as_nanos() as _, view_params, nal));
 
                     AlvrEvent::FrameReady
                 }
@@ -299,7 +356,7 @@ pub extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     }
 }
 
-// Settings will be updated after receiving StreamingStarted event
+/// Settings will be updated after receiving StreamingStarted event
 #[no_mangle]
 pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
     string_to_c_str(buffer, &SETTINGS.lock())
@@ -310,17 +367,33 @@ pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
 /// If out_nal or out_timestamp_ns is null, no nal is dequeued. Use to get the nal allocation size.
 /// Returns out_timestamp_ns == 0 if config NAL.
 #[no_mangle]
-pub extern "C" fn alvr_poll_nal(out_nal: *mut c_char, out_timestamp_ns: *mut u64) -> u64 {
+pub extern "C" fn alvr_poll_nal(
+    out_timestamp_ns: *mut u64,
+    out_views_params: *mut AlvrViewParams,
+    out_nal: *mut c_char,
+) -> u64 {
     let mut queue_lock = NAL_QUEUE.lock();
-    if let Some((timestamp_ns, data)) = queue_lock.pop_front() {
+    if let Some((timestamp_ns, view_params, data)) = queue_lock.pop_front() {
         let nal_size = data.len();
         if !out_nal.is_null() && !out_timestamp_ns.is_null() {
             unsafe {
-                ptr::copy_nonoverlapping(data.as_ptr(), out_nal as _, nal_size);
                 *out_timestamp_ns = timestamp_ns;
+
+                if !out_views_params.is_null() {
+                    *out_views_params = AlvrViewParams {
+                        pose: to_capi_pose(view_params[0].pose),
+                        fov: to_capi_fov(view_params[0].fov),
+                    };
+                    *out_views_params.offset(1) = AlvrViewParams {
+                        pose: to_capi_pose(view_params[1].pose),
+                        fov: to_capi_fov(view_params[1].fov),
+                    };
+                }
+
+                ptr::copy_nonoverlapping(data.as_ptr(), out_nal as _, nal_size);
             }
         } else {
-            queue_lock.push_front((timestamp_ns, data))
+            queue_lock.push_front((timestamp_ns, view_params, data))
         }
 
         nal_size as u64
@@ -344,29 +417,6 @@ pub extern "C" fn alvr_hud_message(message_buffer: *mut c_char) -> u64 {
     }
 
     cstring.as_bytes_with_nul().len() as u64
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_send_views_config(fov: *const AlvrFov, ipd_m: f32) {
-    let fov = slice::from_raw_parts(fov, 2);
-    let fov = [
-        Fov {
-            left: fov[0].left,
-            right: fov[0].right,
-            up: fov[0].up,
-            down: fov[0].down,
-        },
-        Fov {
-            left: fov[1].left,
-            right: fov[1].right,
-            up: fov[1].up,
-            down: fov[1].down,
-        },
-    ];
-
-    if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_views_config(fov, ipd_m);
-    }
 }
 
 #[no_mangle]
@@ -419,6 +469,8 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
     }
 }
 
+/// view_params:
+/// * array of 2;
 /// hand_skeleton:
 /// * outer ptr: array of 2 (can be null);
 /// * inner ptr: array of 26 (can be null if hand is absent)
@@ -428,14 +480,24 @@ pub extern "C" fn alvr_send_button(path_id: u64, value: AlvrButtonValue) {
 #[no_mangle]
 pub extern "C" fn alvr_send_tracking(
     target_timestamp_ns: u64,
+    view_params: *const AlvrViewParams,
     device_motions: *const AlvrDeviceMotion,
     device_motions_count: u64,
     hand_skeletons: *const *const AlvrPose,
     eye_gazes: *const *const AlvrPose,
 ) {
-    fn from_capi_quat(quat: AlvrQuat) -> Quat {
-        Quat::from_xyzw(quat.x, quat.y, quat.z, quat.w)
-    }
+    let view_params = unsafe {
+        [
+            ViewParams {
+                pose: from_capi_pose((*view_params).pose),
+                fov: from_capi_fov((*view_params).fov),
+            },
+            ViewParams {
+                pose: from_capi_pose((*view_params.offset(1)).pose),
+                fov: from_capi_fov((*view_params.offset(1)).fov),
+            },
+        ]
+    };
 
     let mut raw_motions = vec![AlvrDeviceMotion::default(); device_motions_count as _];
     unsafe {
@@ -515,18 +577,17 @@ pub extern "C" fn alvr_send_tracking(
         [None, None]
     };
 
-    let tracking = Tracking {
-        target_timestamp: Duration::from_nanos(target_timestamp_ns),
-        device_motions,
-        hand_skeletons,
-        face_data: FaceData {
-            eye_gazes,
-            ..Default::default()
-        },
-    };
-
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_tracking(tracking);
+        context.send_tracking(
+            Duration::from_nanos(target_timestamp_ns),
+            view_params,
+            device_motions,
+            hand_skeletons,
+            FaceData {
+                eye_gazes,
+                ..Default::default()
+            },
+        );
     }
 }
 
@@ -582,12 +643,23 @@ pub extern "C" fn alvr_report_compositor_start(target_timestamp_ns: u64) {
 /// Returns frame timestamp in nanoseconds or -1 if no frame available. Returns an AHardwareBuffer
 /// from out_buffer.
 #[no_mangle]
-pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) -> i64 {
+pub unsafe extern "C" fn alvr_get_frame(
+    view_params: *mut AlvrViewParams,
+    out_buffer: *mut *mut std::ffi::c_void,
+) -> i64 {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        if let Some((timestamp, buffer)) = context.get_frame() {
-            *out_buffer = buffer;
+        if let Some(decoded_frame) = context.get_frame() {
+            *view_params = AlvrViewParams {
+                pose: to_capi_pose(decoded_frame.view_params[0].pose),
+                fov: to_capi_fov(decoded_frame.view_params[0].fov),
+            };
+            *view_params.offset(1) = AlvrViewParams {
+                pose: to_capi_pose(decoded_frame.view_params[1].pose),
+                fov: to_capi_fov(decoded_frame.view_params[1].fov),
+            };
+            *out_buffer = decoded_frame.buffer_ptr as _;
 
-            timestamp.as_nanos() as _
+            decoded_frame.timestamp.as_nanos() as _
         } else {
             -1
         }
@@ -596,161 +668,142 @@ pub unsafe extern "C" fn alvr_get_frame(out_buffer: *mut *mut std::ffi::c_void) 
     }
 }
 
-// OpenGL-related interface
+// Graphics-related interface
+
+static GRAPHICS_CONTEXT: OptLazy<GraphicsContext<VulkanBackend>> = alvr_common::lazy_mut_none();
+static LOBBY_RENDERER: OptLazy<LobbyRenderer> = alvr_common::lazy_mut_none();
+static STREAM_RENDERER: OptLazy<ClientStreamRenderer<VulkanBackend>> = alvr_common::lazy_mut_none();
 
 #[repr(C)]
 pub struct AlvrViewInput {
-    orientation: AlvrQuat,
-    position: [f32; 3],
+    pose: AlvrPose,
     fov: AlvrFov,
-    swapchain_index: u32,
 }
 
 #[repr(C)]
 pub struct AlvrStreamConfig {
-    pub view_resolution_width: u32,
-    pub view_resolution_height: u32,
-    pub swapchain_textures: *mut *const u32,
+    pub view_width: u32,
+    pub view_height: u32,
+    pub swapchain_textures: *mut *const c_void,
     pub swapchain_length: u32,
-    pub enable_foveation: bool,
-    pub foveation_center_size_x: f32,
-    pub foveation_center_size_y: f32,
-    pub foveation_center_shift_x: f32,
-    pub foveation_center_shift_y: f32,
-    pub foveation_edge_ratio_x: f32,
-    pub foveation_edge_ratio_y: f32,
+    pub foveation_json: *const c_char,
 }
 
+// Note: the swapchain images must have depht 2, format VK_FORMAT_R8G8B8A8_SRGB
 #[no_mangle]
-pub extern "C" fn alvr_initialize_opengl() {
-    opengl::initialize();
-}
-
-#[no_mangle]
-pub extern "C" fn alvr_destroy_opengl() {
-    opengl::destroy();
-}
-
-unsafe fn convert_swapchain_array(
-    swapchain_textures: *mut *const u32,
-    swapchain_length: u32,
-) -> [Vec<u32>; 2] {
-    let swapchain_length = swapchain_length as usize;
-    let mut left_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures,
-        left_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-    let mut right_swapchain = vec![0; swapchain_length];
-    ptr::copy_nonoverlapping(
-        *swapchain_textures.offset(1),
-        right_swapchain.as_mut_ptr(),
-        swapchain_length,
-    );
-
-    [left_swapchain, right_swapchain]
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_resume_opengl(
+pub extern "C" fn alvr_initialize_vk(
     preferred_view_width: u32,
     preferred_view_height: u32,
-    swapchain_textures: *mut *const u32,
     swapchain_length: u32,
+    out_swapchain_left: *mut u64,
+    out_swapchain_right: *mut u64,
     enable_srgb_correction: bool,
 ) {
-    opengl::initialize_lobby(
-        UVec2::new(preferred_view_width, preferred_view_height),
-        convert_swapchain_array(swapchain_textures, swapchain_length),
-        enable_srgb_correction,
-    );
+    // let graphics_context = GraphicsContext::new_vulkan().unwrap();
+
+    // let resolution = UVec2::new(preferred_view_width, preferred_view_height);
+
+    // // let swapchain_textures =
+    // //     unsafe { slice::from_raw_parts(swapchain_ptrs, swapchain_length as _) };
+    // // let swapchain_textures =
+    // //     graphics_context.create_vulkan_swapchain_external(swapchain_textures, resolution);
+
+    // let swapchain_left = graphics_context.create_vulkan_swapchain(swapchain_length, resolution, 1);
+    // let swapchain_right = graphics_context.create_vulkan_swapchain(swapchain_length, resolution, 1);
+
+    // *LOBBY_RENDERER.lock() = Some(
+    //     LobbyRenderer::new(
+    //         &graphics_context,
+    //         [swapchain_left, swapchain_right],
+    //         resolution,
+    //     )
+    //     .unwrap(),
+    // );
+    // *GRAPHICS_CONTEXT.lock() = Some(graphics_context);
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_pause_opengl() {
-    opengl::pause();
+pub unsafe extern "C" fn alvr_update_hud_message_vk(message: *const c_char) {
+    // opengl::update_hud_message(CStr::from_ptr(message).to_str().unwrap());
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
-    opengl::update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+pub unsafe extern "C" fn alvr_start_stream_vk(config: AlvrStreamConfig) {
+    // let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
+    // let swapchain_textures =
+    //     convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
+    // let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
+    // force_enable: true,
+    //     center_size_x: config.foveation_center_size_x,
+    //     center_size_y: config.foveation_center_size_y,
+    //     center_shift_x: config.foveation_center_shift_x,
+    //     center_shift_y: config.foveation_center_shift_y,
+    //     edge_ratio_x: config.foveation_edge_ratio_x,
+    //     edge_ratio_y: config.foveation_edge_ratio_y,
+    // });
+
+    // opengl::start_stream(view_resolution, swapchain_textures, foveated_encoding, true);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
-    let view_resolution = UVec2::new(config.view_resolution_width, config.view_resolution_height);
-    let swapchain_textures =
-        convert_swapchain_array(config.swapchain_textures, config.swapchain_length);
-    let foveated_encoding = config.enable_foveation.then_some(FoveatedEncodingConfig {
-        force_enable: true,
-        center_size_x: config.foveation_center_size_x,
-        center_size_y: config.foveation_center_size_y,
-        center_shift_x: config.foveation_center_shift_x,
-        center_shift_y: config.foveation_center_shift_y,
-        edge_ratio_x: config.foveation_edge_ratio_x,
-        edge_ratio_y: config.foveation_edge_ratio_y,
-    });
+pub unsafe extern "C" fn alvr_render_lobby_vk(
+    view_inputs: *const AlvrViewInput,
+    swapchain_index: u32,
+) {
+    // let view_inputs = [
+    //     {
+    //         let o = (*view_inputs).orientation;
+    //         let f = (*view_inputs).fov;
+    //         RenderViewInput {
+    //             pose: Pose {
+    //                 orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+    //                 position: Vec3::from_array((*view_inputs).position),
+    //             },
+    //             fov: Fov {
+    //                 left: f.left,
+    //                 right: f.right,
+    //                 up: f.up,
+    //                 down: f.down,
+    //             },
+    //             swapchain_index: (*view_inputs).swapchain_index,
+    //         }
+    //     },
+    //     {
+    //         let o = (*view_inputs.offset(1)).orientation;
+    //         let f = (*view_inputs.offset(1)).fov;
+    //         RenderViewInput {
+    //             pose: Pose {
+    //                 orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
+    //                 position: Vec3::from_array((*view_inputs.offset(1)).position),
+    //             },
+    //             fov: Fov {
+    //                 left: f.left,
+    //                 right: f.right,
+    //                 up: f.up,
+    //                 down: f.down,
+    //             },
+    //             swapchain_index: (*view_inputs.offset(1)).swapchain_index,
+    //         }
+    //     },
+    // ];
 
-    opengl::start_stream(
-        view_resolution,
-        swapchain_textures,
-        foveated_encoding,
-        true,
-        false, // TODO: limited range fix config
-        1.0,   // TODO: encoding gamma config
-    );
+    // opengl::render_lobby(view_inputs);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewInput) {
-    let view_inputs = [
-        {
-            let o = (*view_inputs).orientation;
-            let f = (*view_inputs).fov;
-            RenderViewInput {
-                pose: Pose {
-                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                    position: Vec3::from_array((*view_inputs).position),
-                },
-                fov: Fov {
-                    left: f.left,
-                    right: f.right,
-                    up: f.up,
-                    down: f.down,
-                },
-                swapchain_index: (*view_inputs).swapchain_index,
-            }
-        },
-        {
-            let o = (*view_inputs.offset(1)).orientation;
-            let f = (*view_inputs.offset(1)).fov;
-            RenderViewInput {
-                pose: Pose {
-                    orientation: Quat::from_xyzw(o.x, o.y, o.z, o.w),
-                    position: Vec3::from_array((*view_inputs.offset(1)).position),
-                },
-                fov: Fov {
-                    left: f.left,
-                    right: f.right,
-                    up: f.up,
-                    down: f.down,
-                },
-                swapchain_index: (*view_inputs.offset(1)).swapchain_index,
-            }
-        },
-    ];
-
-    opengl::render_lobby(view_inputs);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn alvr_render_stream_opengl(
+pub unsafe extern "C" fn alvr_render_stream_vk(
     hardware_buffer: *mut c_void,
     swapchain_indices: *const u32,
 ) {
-    opengl::render_stream(
-        hardware_buffer,
-        [*swapchain_indices, *swapchain_indices.offset(1)],
-    );
+    // opengl::render_stream(
+    //     hardware_buffer,
+    //     [*swapchain_indices, *swapchain_indices.offset(1)],
+    // );
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_destroy_vk() {
+    *STREAM_RENDERER.lock() = None;
+    *LOBBY_RENDERER.lock() = None;
+    *GRAPHICS_CONTEXT.lock() = None;
 }

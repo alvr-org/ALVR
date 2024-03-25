@@ -257,13 +257,13 @@ void Hmd::StartStreaming() {
 
         m_directModeComponent->SetEncoder(m_encoder);
 
-        m_encoder->OnStreamStart();
 #elif __APPLE__
         m_encoder = std::make_shared<CEncoder>();
 #else
         m_encoder = std::make_shared<CEncoder>(m_poseHistory);
         m_encoder->Start();
 #endif
+        m_encoder->OnStreamStart();
     }
 
     m_streamComponentsInitialized = true;

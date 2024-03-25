@@ -235,13 +235,23 @@ fn linux_hardware_encoders_check() {
     for gpu_type in gpu_types {
         match gpu_type {
             GpuType::NVIDIA => {
-                if let Err(e) = pkg_config::Config::new().probe("cuda") {
-                    alvr_common::show_e(format!(
-                        "Couldn't find Nvidia CUDA runtime on system. \
-                        You unlikely to have hardware encoding for it.
-                        Please install CUDA. {}",
-                        e
-                    ));
+                if let Ok(nvml) = nvml_wrapper::Nvml::init() {
+                    if let Ok(device) = nvml.device_by_index(0) {
+                        probe_nvenc_encoder_profile(
+                            &device,
+                            nvml_wrapper::enum_wrappers::device::EncoderType::H264,
+                            "H264",
+                        );
+                        probe_nvenc_encoder_profile(
+                            &device,
+                            nvml_wrapper::enum_wrappers::device::EncoderType::HEVC,
+                            "HEVC",
+                        );
+                    } else {
+                        error!("Failed to initialize NVML device.")
+                    }
+                } else {
+                    error!("Failed to initialize NVML for probing hardware encoding capabilities.")
                 }
             }
             GpuType::AMD | GpuType::INTEL => {
@@ -283,6 +293,29 @@ fn linux_hardware_encoders_check() {
             ),
             GpuType::LLVMPIPE => debug!("Found software vulkan driver."),
         }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn probe_nvenc_encoder_profile(
+    device: &nvml_wrapper::Device,
+    encoder_type: nvml_wrapper::enum_wrappers::device::EncoderType,
+    profile_name: &str,
+) {
+    match device.encoder_capacity(encoder_type) {
+        Ok(capacity) => {
+            info!(
+                "GPU supports up to {} on {} profile.",
+                capacity, profile_name
+            );
+        }
+        Err(e) => match e {
+            nvml_wrapper::error::NvmlError::NotSupported => alvr_common::show_e(format!(
+                "Your NVIDIA gpu doesn't support {}. Please make sure CUDA is installed. Error: {}",
+                profile_name, e
+            )),
+            _ => error!("{}", e),
+        },
     }
 }
 

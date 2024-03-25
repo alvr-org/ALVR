@@ -201,11 +201,11 @@ impl Launcher {
 #[cfg(target_os = "linux")]
 fn linux_hardware_encoders_check() {
     enum GpuType {
-        NVIDIA,
-        AMD,
-        INTEL,
-        LLVMPIPE,
-        UNKNOWN,
+        Nvidia,
+        Amd,
+        Intel,
+        Llvmpipe,
+        Unknown,
     }
     let wgpu_adapters = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: wgpu::Backends::VULKAN,
@@ -218,45 +218,52 @@ fn linux_hardware_encoders_check() {
         .iter()
         .map(|adapter| match adapter.get_info().vendor {
             0x10de => {
-                return Some(GpuType::NVIDIA);
+                return Some(GpuType::Nvidia);
             }
             0x1002 => {
-                return Some(GpuType::AMD);
+                return Some(GpuType::Amd);
             }
             0x8086 => {
-                return Some(GpuType::INTEL);
+                return Some(GpuType::Intel);
             }
             0x10005 => {
-                return Some(GpuType::LLVMPIPE);
+                return Some(GpuType::Llvmpipe);
             }
             _ => {
-                return Some(GpuType::UNKNOWN);
+                return Some(GpuType::Unknown);
             }
         })
         .flatten();
     for gpu_type in gpu_types {
         match gpu_type {
-            GpuType::NVIDIA => {
+            GpuType::Nvidia => {
                 if let Ok(nvml) = nvml_wrapper::Nvml::init() {
-                    if let Ok(device) = nvml.device_by_index(0) {
-                        probe_nvenc_encoder_profile(
-                            &device,
-                            nvml_wrapper::enum_wrappers::device::EncoderType::H264,
-                            "H264",
-                        );
-                        probe_nvenc_encoder_profile(
-                            &device,
-                            nvml_wrapper::enum_wrappers::device::EncoderType::HEVC,
-                            "HEVC",
-                        );
-                    } else {
-                        error!("Failed to initialize NVML device.")
+                    let device_count = nvml.device_count().unwrap();
+                    debug!("device count: {}", device_count);
+                    // fixme: on multi-gpu nvidia system will do it twice,
+                    for index in 0..device_count {
+                        if let Ok(device) = nvml.device_by_index(index) {
+                            debug!("device name: {}", device.name().unwrap());
+                            probe_nvenc_encoder_profile(
+                                &device,
+                                nvml_wrapper::enum_wrappers::device::EncoderType::H264,
+                                "H264",
+                            );
+                            probe_nvenc_encoder_profile(
+                                &device,
+                                nvml_wrapper::enum_wrappers::device::EncoderType::HEVC,
+                                "HEVC",
+                            );
+                            // todo: probe for AV1 when will be available in nvml-wrapper
+                        } else {
+                            error!("Failed to initialize CUDA device.")
+                        }
                     }
                 } else {
-                    error!("Failed to initialize NVML for probing hardware encoding capabilities.")
+                    alvr_common::show_e("Can't probe for nvenc. Please install CUDA.")
                 }
             }
-            GpuType::AMD | GpuType::INTEL => {
+            GpuType::Amd | GpuType::Intel => {
                 let libva_display_open = libva::Display::open();
                 if let Some(libva_display) = libva_display_open {
                     if let Ok(vendor_string) = libva_display.query_vendor_string() {
@@ -281,19 +288,19 @@ fn linux_hardware_encoders_check() {
                         false,
                     );
                 } else {
-                    alvr_common::show_e(format!(
+                    alvr_common::show_e(
                         "Couldn't find VA-API runtime on system, \
                         you unlikely to have hardware encoding. \
                         Please install VA-API runtime for your distribution \
-                        and make sure it works (Manjaro, Fedora)."
-                    ));
+                        and make sure it works (Manjaro, Fedora).",
+                    );
                 }
             }
-            GpuType::UNKNOWN => alvr_common::show_e(
+            GpuType::Unknown => alvr_common::show_e(
                 "Couldn't determine gpu for hardware encoding. \
             You will likely fallback to software encoding.",
             ),
-            GpuType::LLVMPIPE => debug!("Found software vulkan driver."),
+            GpuType::Llvmpipe => debug!("Found software vulkan driver."),
         }
     }
 }
@@ -305,15 +312,12 @@ fn probe_nvenc_encoder_profile(
     profile_name: &str,
 ) {
     match device.encoder_capacity(encoder_type) {
-        Ok(capacity) => {
-            info!(
-                "GPU supports up to {} on {} profile.",
-                capacity, profile_name
-            );
+        Ok(_) => {
+            info!("GPU supports {} profile.", profile_name);
         }
         Err(e) => match e {
             nvml_wrapper::error::NvmlError::NotSupported => alvr_common::show_e(format!(
-                "Your NVIDIA gpu doesn't support {}. Please make sure CUDA is installed. Error: {}",
+                "Your NVIDIA gpu doesn't support {}. Please make sure CUDA is installed properly. Error: {}",
                 profile_name, e
             )),
             _ => error!("{}", e),

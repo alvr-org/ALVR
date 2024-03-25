@@ -590,6 +590,10 @@ fn connection_pipeline(
 
     *connection_state_lock = ConnectionState::Streaming;
 
+    // Make sure IPD and FoV are resent after reconnection
+    // todo: send this data as part of the connection handshake
+    ctx.view_params_queue.lock().clear();
+
     // Unlock CONNECTION_STATE and block thread
     wait_rwlock(&disconnect_notif, &mut connection_state_lock);
 

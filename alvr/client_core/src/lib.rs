@@ -103,7 +103,6 @@ pub struct ClientCoreContext {
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
     connection_context: Arc<ConnectionContext>,
     connection_thread: Arc<Mutex<Option<JoinHandle<()>>>>,
-    last_ipd: Mutex<f32>,
 }
 
 impl ClientCoreContext {
@@ -141,7 +140,6 @@ impl ClientCoreContext {
             event_queue,
             connection_context,
             connection_thread: Arc::new(Mutex::new(Some(connection_thread))),
-            last_ipd: Mutex::new(0.0),
         }
     }
 
@@ -223,8 +221,15 @@ impl ClientCoreContext {
         hand_skeletons: [Option<[Pose; 26]>; 2],
         face_data: FaceData,
     ) {
-        {
+        let last_ipd = {
             let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+
+            let last_ipd = if let Some((_, params)) = view_params_queue_lock.front() {
+                (params[0].pose.position - params[1].pose.position).length()
+            } else {
+                0.0
+            };
+
             view_params_queue_lock.push_back((target_timestamp, views));
 
             loop {
@@ -236,12 +241,13 @@ impl ClientCoreContext {
                     }
                 }
             }
-        }
+
+            last_ipd
+        };
 
         {
-            let mut last_ipd_lock = self.last_ipd.lock();
             let ipd = (views[0].pose.position - views[1].pose.position).length();
-            if f32::abs(*last_ipd_lock - ipd) > IPD_CHANGE_EPS {
+            if f32::abs(last_ipd - ipd) > IPD_CHANGE_EPS {
                 if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
                     sender
                         .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
@@ -249,8 +255,6 @@ impl ClientCoreContext {
                             ipd_m: ipd,
                         }))
                         .ok();
-
-                    *last_ipd_lock = ipd;
                 }
             }
         }

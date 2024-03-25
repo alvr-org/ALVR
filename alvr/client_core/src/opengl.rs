@@ -42,7 +42,11 @@ pub fn destroy() {
     }
 }
 
-pub fn resume(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2]) {
+pub fn initialize_lobby(
+    preferred_view_resolution: UVec2,
+    swapchain_textures: [Vec<u32>; 2],
+    enable_srgb_correction: bool,
+) {
     #[cfg(target_os = "android")]
     unsafe {
         let swapchain_length = swapchain_textures[0].len();
@@ -56,6 +60,7 @@ pub fn resume(preferred_view_resolution: UVec2, swapchain_textures: [Vec<u32>; 2
             preferred_view_resolution.y as _,
             swapchain_textures.as_mut_ptr(),
             swapchain_length as _,
+            enable_srgb_correction,
         );
     }
 }
@@ -72,6 +77,8 @@ pub fn start_stream(
     swapchain_textures: [Vec<u32>; 2],
     foveated_encoding: Option<FoveatedEncodingConfig>,
     enable_srgb_correction: bool,
+    fix_limited_range: bool,
+    encoding_gamma: f32,
 ) {
     #[cfg(target_os = "android")]
     unsafe {
@@ -109,6 +116,8 @@ pub fn start_stream(
                 .map(|f| f.edge_ratio_y)
                 .unwrap_or_default(),
             enableSrgbCorrection: enable_srgb_correction as u32,
+            fixLimitedRange: fix_limited_range as u32,
+            encodingGamma: encoding_gamma,
         };
 
         streamStartNative(config);

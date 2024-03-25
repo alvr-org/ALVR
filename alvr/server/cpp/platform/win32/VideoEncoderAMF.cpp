@@ -9,18 +9,18 @@ if(res != AMF_OK){throw MakeException("AMF Error %d. %s", res, L#expr);}}
 const wchar_t *VideoEncoderAMF::START_TIME_PROPERTY = L"StartTimeProperty";
 const wchar_t *VideoEncoderAMF::FRAME_INDEX_PROPERTY = L"FrameIndexProperty";
 
-AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver) 
+AMFPipe::AMFPipe(amf::AMFComponentPtr src, AMFDataReceiver receiver)
 	: m_amfComponentSrc(src)
-	, m_receiver(receiver) 
+	, m_receiver(receiver)
 {}
 
-AMFPipe::~AMFPipe() 
+AMFPipe::~AMFPipe()
 {
 	Debug("AMFPipe::~AMFPipe()  m_amfComponentSrc->Drain\n");
 	m_amfComponentSrc->Drain();
 }
 
-void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution) 
+void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution)
 {
 	amf::AMFDataPtr data = nullptr;
 	if (hasQueryTimeout) {
@@ -49,12 +49,12 @@ void AMFPipe::doPassthrough(bool hasQueryTimeout, uint32_t timerResolution)
 	}
 }
 
-AMFSolidPipe::AMFSolidPipe(amf::AMFComponentPtr src, amf::AMFComponentPtr dst) 
+AMFSolidPipe::AMFSolidPipe(amf::AMFComponentPtr src, amf::AMFComponentPtr dst)
 	: AMFPipe(src, std::bind(&AMFSolidPipe::Passthrough, this, std::placeholders::_1))
-	, m_amfComponentDst(dst) 
+	, m_amfComponentDst(dst)
 {}
 
-void AMFSolidPipe::Passthrough(AMFDataPtr data) 
+void AMFSolidPipe::Passthrough(AMFDataPtr data)
 {
 	auto res = m_amfComponentDst->SubmitInput(data);
 	switch (res) {
@@ -72,22 +72,22 @@ void AMFSolidPipe::Passthrough(AMFDataPtr data)
 	}
 }
 
-AMFPipeline::AMFPipeline() 
+AMFPipeline::AMFPipeline()
 	: m_pipes()
 {
 	TIMECAPS tc;
 	m_timerResolution = timeGetDevCaps(&tc, sizeof(tc)) == TIMERR_NOERROR ? tc.wPeriodMin : 1;
 }
 
-AMFPipeline::~AMFPipeline() 
+AMFPipeline::~AMFPipeline()
 {
-	for (auto &pipe : m_pipes) 
+	for (auto &pipe : m_pipes)
 	{
 		delete pipe;
 	}
 }
 
-void AMFPipeline::Connect(AMFPipePtr pipe) 
+void AMFPipeline::Connect(AMFPipePtr pipe)
 {
 	m_pipes.emplace_back(pipe);
 }
@@ -115,13 +115,18 @@ VideoEncoderAMF::VideoEncoderAMF(std::shared_ptr<CD3DRender> d3dRender
 	, m_surfaceFormat(amf::AMF_SURFACE_RGBA)
 	, m_use10bit(Settings::Instance().m_use10bitEncoder)
 	, m_hasQueryTimeout(false)
-{}
+{
+	if (Settings::Instance().m_enableHdr) {
+		// Bypass preprocessor and converters for HDR, since it will already be YUV
+		m_surfaceFormat = m_use10bit ? amf::AMF_SURFACE_P010 : amf::AMF_SURFACE_NV12;
+	}
+}
 
 VideoEncoderAMF::~VideoEncoderAMF() {}
 
 amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 	amf::AMF_SURFACE_FORMAT inputFormat, int width, int height, int codec, int refreshRate, int bitrateInMbits
-) 
+)
 {
 	const wchar_t *pCodec;
 
@@ -139,8 +144,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		pCodec = AMFVideoEncoder_HEVC;
 		break;
 	case ALVR_CODEC_AV1:
-		Warn("AV1 encoding is not supported. Using HEVC instead.");
-		pCodec = AMFVideoEncoder_HEVC;
+		pCodec = AMFVideoEncoder_AV1;
 		break;
 	default:
 		throw MakeException("Unsupported video encoding %d", codec);
@@ -177,7 +181,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
 				break;
 		}
-		
+
 		switch (Settings::Instance().m_entropyCoding) {
 			case ALVR_CABAC:
 				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_CABAC_ENABLE, AMF_VIDEO_ENCODER_CABAC);
@@ -206,9 +210,49 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 				break;
 		}
 
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling h264 pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for h264 encoding.");
+			}
+		}
+
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_FULL_RANGE_COLOR, Settings::Instance().m_useFullRangeEncoding);
+
+		// Use BT.2020 for HDR encoding, BT.709 otherwise.
+		if (Settings::Instance().m_enableHdr) {
+			// Also specify the input formats for HDR to prevent incorrect color conversions
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_INPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+		}
+		else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT709);
+		}
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
-		
+
+		// May impact performance but improves quality in high-motion areas
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings::Instance().m_enableHmqb);
+
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_IDR_PERIOD, 0);
 
@@ -219,11 +263,7 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_VBV_BUFFER_SIZE, bitRateIn / frameRateIn * 1.1);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_MAX_NUM_REFRAMES, 0);
-		
-		amf::AMFCapsPtr caps;
-		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-		}
+
 		if (m_hasQueryTimeout) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
@@ -267,14 +307,54 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PROFILE, AMF_VIDEO_ENCODER_HEVC_PROFILE_MAIN);
 		}
 
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_HEVC_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
+		}
+
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling HEVC pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for HEVC encoding.");
+			}
+		}
+
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_FULL : AMF_VIDEO_ENCODER_HEVC_NOMINAL_RANGE_STUDIO);
+
+		// Use BT.2020 for HDR encoding, BT.709 otherwise.
+		if (Settings::Instance().m_enableHdr) {
+			// Also specify the input formats for HDR to prevent incorrect color conversions
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_2020 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_2020);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT2020);
+		}
+		else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_FULL_709 : AMF_VIDEO_CONVERTER_COLOR_PROFILE_709);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC, AMF_COLOR_TRANSFER_CHARACTERISTIC_GAMMA22); // sRGB
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PRIMARIES, AMF_COLOR_PRIMARIES_BT709);
+		}
+
 		//No noticable performance difference and should improve subjective quality by allocating more bits to smooth areas
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ, Settings::Instance().m_enableVbaq);
-		
+
+		// May impact performance but improves quality in high-motion areas
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_HIGH_MOTION_QUALITY_BOOST_ENABLE, Settings::Instance().m_enableHmqb);
+
 		//Turns Off IDR/I Frames
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_NUM_GOPS_PER_IDR, 0);
 		//Set infinite GOP length
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_GOP_SIZE, 0);
-		
+
 		// Disable AUD to produce the same stream format as VideoEncoderNVENC.
 		// FIXME: This option doesn't work in 22.10.3, but works in versions prior 22.5.1
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_INSERT_AUD, false);
@@ -282,13 +362,92 @@ amf::AMFComponentPtr VideoEncoderAMF::MakeEncoder(
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE, bitRateIn / frameRateIn * 1.1);
 
 		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_MAX_NUM_REFRAMES, 0);
-		
-		amf::AMFCapsPtr caps;
-		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
-			caps->GetProperty(AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT, &m_hasQueryTimeout);
-		}
+
 		if (m_hasQueryTimeout) {
 			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT, 1000); // 1s timeout
+		}
+	}
+	case ALVR_CODEC_AV1:
+	{
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_USAGE, AMF_VIDEO_ENCODER_AV1_USAGE_ULTRA_LOW_LATENCY);
+		switch (Settings::Instance().m_rateControlMode) {
+			case ALVR_CBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD_CBR);
+				// Required for CBR to work correctly
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_FILLER_DATA, Settings::Instance().m_fillerData);
+				break;
+			case ALVR_VBR:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD, AMF_VIDEO_ENCODER_AV1_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR);
+				break;
+		}
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_TARGET_BITRATE, bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PEAK_BITRATE, bitRateIn);
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_FRAMESIZE, ::AMFConstructSize(width, height));
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_FRAMERATE, ::AMFConstructRate(frameRateIn, 1));
+
+		switch (Settings::Instance().m_amdEncoderQualityPreset) {
+			case ALVR_QUALITY:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_QUALITY);
+				break;
+			case ALVR_BALANCED:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_BALANCED);
+				break;
+			case ALVR_SPEED:
+			default:
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET, AMF_VIDEO_ENCODER_AV1_QUALITY_PRESET_SPEED);
+				break;
+		}
+
+		if (m_use10bit) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_10);
+			// There's no separate profile for 10-bit for AV1 (as of AMF v1.4.33). Assumedly MAIN works fine for both.
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PROFILE, AMF_VIDEO_ENCODER_AV1_PROFILE_MAIN);
+		} else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_COLOR_BIT_DEPTH, AMF_COLOR_BIT_DEPTH_8);
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PROFILE, AMF_VIDEO_ENCODER_AV1_PROFILE_MAIN);
+		}
+
+		// There is no VBAQ option for AV1. Instead it has CAQ (Content adaptive quantization)
+		if (Settings::Instance().m_enableVbaq) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_CAQ);
+		} else {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_AQ_MODE, AMF_VIDEO_ENCODER_AV1_AQ_MODE_NONE);
+		}
+
+		amf::AMFCapsPtr caps;
+		if (amfEncoder->GetCaps(&caps) == AMF_OK) {
+			caps->GetProperty(AMF_VIDEO_ENCODER_AV1_CAP_PRE_ANALYSIS, &m_hasPreAnalysis);
+		}
+		
+		if (Settings::Instance().m_enablePreAnalysis) {
+			if (!Settings::Instance().m_usePreproc || Settings::Instance().m_use10bitEncoder) {
+				Warn("Pre-analysis could not be enabled because \"Use preproc\" is not enabled or \"Reduce color banding\" is enabled.");
+			} else if (m_hasPreAnalysis) {
+				Warn("Enabling AV1 pre-analysis. You may experience higher latency when this is enabled.");
+				amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_PRE_ANALYSIS_ENABLE, Settings::Instance().m_enablePreAnalysis);
+			} else {
+				Warn("Pre-analysis could not be enabled because your GPU does not support it for AV1 encoding.");
+			}
+		}
+
+		// Enable Full Range 
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_OUTPUT_COLOR_PROFILE, Settings::Instance().m_useFullRangeEncoding ? AMF_VIDEO_CONVERTER_COLOR_PROFILE_JPEG : AMF_VIDEO_CONVERTER_COLOR_PROFILE_UNKNOWN);
+
+		// May impact performance but improves quality in high-motion areas
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_HIGH_MOTION_QUALITY_BOOST, Settings::Instance().m_enableHmqb);
+
+		// Set infinite GOP length
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_GOP_SIZE, 0);
+
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_VBV_BUFFER_SIZE, bitRateIn / frameRateIn * 1.2);
+
+		amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_MAX_NUM_REFRAMES, 0);
+
+		// AV1 assumed always has support for query timeout.
+		m_hasQueryTimeout = true;
+
+		if (m_hasQueryTimeout) {
+			amfEncoder->SetProperty(AMF_VIDEO_ENCODER_AV1_QUERY_TIMEOUT, 1000); // 1s timeout
 		}
 	}
 	}
@@ -342,7 +501,11 @@ void VideoEncoderAMF::Initialize()
 	AMF_THROW_IF(m_amfContext->InitDX11(m_d3dRender->GetDevice()));
 
 	amf::AMF_SURFACE_FORMAT inFormat = m_surfaceFormat;
-	if (m_use10bit) {
+	if (Settings::Instance().m_enableHdr) {
+		// Bypass preprocessor and converters for HDR, since it will already be YUV
+		;
+	}
+	else if (m_use10bit) {
 		inFormat = amf::AMF_SURFACE_R10G10B10A2;
 		m_amfComponents.emplace_back(MakeConverter(
 			m_surfaceFormat, m_renderWidth, m_renderHeight, inFormat
@@ -457,7 +620,7 @@ void VideoEncoderAMF::Receive(AMFDataPtr data)
 
 	uint64_t type;
 	bool isIdr;
-	if(m_codec == ALVR_CODEC_H264) 
+	if(m_codec == ALVR_CODEC_H264)
 	{
 		data->GetProperty(AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE, &type);
 		isIdr = type == AMF_VIDEO_ENCODER_OUTPUT_DATA_TYPE_IDR;
@@ -496,7 +659,12 @@ void VideoEncoderAMF::ApplyFrameProperties(const amf::AMFSurfacePtr &surface, bo
 		}
 		break;
 	case ALVR_CODEC_AV1:
-		throw MakeException("AV1 encoding is not supported");
+		if (insertIDR) {
+			Debug("Inserting IDR frame for AV1.\n");
+			surface->SetProperty(AMF_VIDEO_ENCODER_AV1_FORCE_INSERT_SEQUENCE_HEADER, true);
+			surface->SetProperty(AMF_VIDEO_ENCODER_AV1_FORCE_FRAME_TYPE, AMF_VIDEO_ENCODER_AV1_FORCE_FRAME_TYPE_KEY);
+		}
+		break;
 	default:
 		throw MakeException("Invalid video codec");
 	}

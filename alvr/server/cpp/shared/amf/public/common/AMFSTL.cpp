@@ -46,6 +46,10 @@
     #include <codecvt>
 #endif
 
+#if !defined(__APPLE__) && !defined(_WIN32)
+#include <malloc.h>
+#endif
+
 #pragma warning(disable: 4996)
 
 #if defined(__linux) || defined(__APPLE__)
@@ -682,6 +686,28 @@ void* AMF_STD_CALL amf_alloc(size_t count)
 void AMF_STD_CALL amf_free(void* ptr)
 {
     free(ptr);
+}
+//----------------------------------------------------------------------------------------
+void* AMF_STD_CALL amf_aligned_alloc(size_t count, size_t alignment)
+{
+#if defined(_WIN32)
+    return _aligned_malloc(count, alignment);
+#elif defined (__APPLE__)
+    void* p = nullptr;
+    posix_memalign(&p, alignment, count);
+    return p;
+#elif defined(__linux)
+    return memalign(alignment, count);
+#endif
+}
+//----------------------------------------------------------------------------------------
+void AMF_STD_CALL amf_aligned_free(void* ptr)
+{
+#if defined(_WIN32)
+    return _aligned_free(ptr);
+#else
+    return free(ptr);
+#endif
 }
 //----------------------------------------------------------------------------------------
 #if defined (__ANDROID__)

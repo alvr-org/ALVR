@@ -65,7 +65,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                            vr::VRScalarType_Absolute,
                                            vr::VRScalarUnits_NormalizedOneSided);
 
-    if (this->device_id == LEFT_HAND_ID) {
+    if (this->device_id == HAND_LEFT_ID) {
         vr_driver_input->CreateSkeletonComponent(
             this->prop_container,
             "/input/skeleton/left",
@@ -134,7 +134,7 @@ vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHap
 
 void Controller::RegisterButton(uint64_t id) {
     ButtonInfo buttonInfo;
-    if (device_id == LEFT_HAND_ID) {
+    if (device_id == HAND_LEFT_ID) {
         buttonInfo = LEFT_CONTROLLER_BUTTON_MAPPING[id];
     } else {
         buttonInfo = RIGHT_CONTROLLER_BUTTON_MAPPING[id];
@@ -227,8 +227,8 @@ bool Controller::onPoseUpdate(float predictionS,
     m_pose = pose;
 
     if (handSkeleton != nullptr) {
-        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT];
-        for (int j = 0; j < 26; j++) {
+        vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
+        for (int j = 0; j < 31; j++) {
             boneTransform[j].orientation.w = handSkeleton->jointRotations[j].w;
             boneTransform[j].orientation.x = handSkeleton->jointRotations[j].x;
             boneTransform[j].orientation.y = handSkeleton->jointRotations[j].y;
@@ -1117,7 +1117,7 @@ void GetGripClickBoneTransform(bool withController,
 }
 
 void Controller::GetBoneTransform(bool withController, vr::VRBoneTransform_t outBoneTransform[]) {
-    auto isLeftHand = device_id == LEFT_HAND_ID;
+    auto isLeftHand = device_id == HAND_LEFT_ID;
 
     vr::VRBoneTransform_t boneTransform1[SKELETON_BONE_COUNT];
     vr::VRBoneTransform_t boneTransform2[SKELETON_BONE_COUNT];

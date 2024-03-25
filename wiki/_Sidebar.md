@@ -32,6 +32,8 @@
 
 * [My game is not working properly! Help](https://github.com/alvr-org/ALVR/wiki/My-game-is-not-working-properly!-Help!)
 
+* [Hardware Video Encoding](https://github.com/alvr-org/ALVR/wiki/Hardware-Video-Encoding)
+
 ***
 
 **Development**

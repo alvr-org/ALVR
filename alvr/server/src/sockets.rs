@@ -1,13 +1,19 @@
-use alvr_common::{anyhow::Result, warn, ConnectionError, HandleTryAgain, ALVR_NAME};
+use alvr_common::{
+    anyhow::{bail, Result},
+    warn, ConnectionError, HandleTryAgain, ToAny, ALVR_NAME,
+};
 use alvr_sockets::{CONTROL_PORT, HANDSHAKE_PACKET_SIZE_BYTES, LOCAL_IP};
+use flume::TryRecvError;
+use mdns_sd::{Receiver, ServiceDaemon, ServiceEvent};
 use std::{
     collections::HashMap,
     net::{IpAddr, UdpSocket},
 };
 
 pub struct WelcomeSocket {
-    socket: UdpSocket,
     buffer: [u8; HANDSHAKE_PACKET_SIZE_BYTES],
+    broadcast_receiver: UdpSocket,
+    mdns_receiver: Receiver<ServiceEvent>,
 }
 
 impl WelcomeSocket {
@@ -16,9 +22,12 @@ impl WelcomeSocket {
         // socket.set_read_timeout(Some(read_timeout))?;
         socket.set_nonblocking(true)?;
 
+        let mdns_receiver = ServiceDaemon::new()?.browse(alvr_sockets::MDNS_SERVICE_TYPE)?;
+
         Ok(Self {
-            socket,
             buffer: [0; HANDSHAKE_PACKET_SIZE_BYTES],
+            broadcast_receiver: socket,
+            mdns_receiver,
         })
     }
 
@@ -27,7 +36,11 @@ impl WelcomeSocket {
         let mut clients = HashMap::new();
 
         loop {
-            match self.socket.recv_from(&mut self.buffer).handle_try_again() {
+            match self
+                .broadcast_receiver
+                .recv_from(&mut self.buffer)
+                .handle_try_again()
+            {
                 Ok((size, address)) => {
                     if size == HANDSHAKE_PACKET_SIZE_BYTES
                         && &self.buffer[..ALVR_NAME.len()] == ALVR_NAME.as_bytes()
@@ -37,11 +50,11 @@ impl WelcomeSocket {
                         protocol_id_bytes.copy_from_slice(&self.buffer[16..24]);
                         let received_protocol_id = u64::from_le_bytes(protocol_id_bytes);
 
-                        if received_protocol_id != alvr_common::protocol_id() {
+                        if received_protocol_id != alvr_common::protocol_id_u64() {
                             warn!(
                                 "Found incompatible client! Upgrade or downgrade\n{} {}, {} {}",
                                 "Expected protocol ID",
-                                alvr_common::protocol_id(),
+                                alvr_common::protocol_id_u64(),
                                 "Found",
                                 received_protocol_id
                             );
@@ -67,6 +80,36 @@ impl WelcomeSocket {
                 }
                 Err(ConnectionError::TryAgain(_)) => break,
                 Err(ConnectionError::Other(e)) => return Err(e),
+            }
+        }
+
+        loop {
+            match self.mdns_receiver.try_recv() {
+                Ok(event) => {
+                    if let ServiceEvent::ServiceResolved(info) = event {
+                        let hostname = info.get_hostname();
+                        let address = *info.get_addresses().iter().next().to_any()?;
+
+                        let protocol = info
+                            .get_property_val_str(alvr_sockets::MDNS_PROTOCOL_KEY)
+                            .to_any()?;
+
+                        if protocol != alvr_common::protocol_id() {
+                            let msg = format!(
+                                r#"Expected protocol ID "{}", found "{}""#,
+                                alvr_common::protocol_id(),
+                                protocol
+                            );
+                            warn!(
+                                "Found incompatible client {hostname}! Upgrade or downgrade\n{msg}"
+                            );
+                        }
+
+                        clients.insert(hostname.into(), address);
+                    }
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(e) => bail!(e),
             }
         }
 

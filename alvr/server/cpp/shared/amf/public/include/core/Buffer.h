@@ -1,4 +1,4 @@
-// 
+//
 // Notice Regarding Standards.  AMD does not provide a license or sublicense to
 // any Intellectual Property Rights relating to any standards, including but not
 // limited to any audio and/or video codec technologies such as MPEG-2, MPEG-4;
@@ -6,9 +6,9 @@
 // (collectively, the "Media Technologies"). For clarity, you will pay any
 // royalties due for such third party technologies, which may include the Media
 // Technologies that are owed as a result of AMD providing the Software to you.
-// 
-// MIT license 
-// 
+//
+// MIT license
+//
 // Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,14 +51,16 @@ namespace amf
     // bit mask
     //----------------------------------------------------------------------------------------------
     typedef enum AMF_BUFFER_USAGE_BITS
-    {                                                      // D3D11                         D3D12                                       Vulkan 
-        AMF_BUFFER_USAGE_DEFAULT           = 0x80000000,   // D3D11_USAGE_STAGING,                                                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+    {                                                      // D3D11                         D3D12                                       Vulkan
+        AMF_BUFFER_USAGE_DEFAULT           = 0x80000000,   // D3D11_USAGE_STAGING,                                                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         AMF_BUFFER_USAGE_NONE              = 0x00000000,   // 0                  ,          D3D12_RESOURCE_FLAG_NONE,                   0
-        AMF_BUFFER_USAGE_CONSTANT          = 0x00000001,   // D3D11_BIND_CONSTANT_BUFFER,   											VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT 
+        AMF_BUFFER_USAGE_CONSTANT          = 0x00000001,   // D3D11_BIND_CONSTANT_BUFFER,   											VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
         AMF_BUFFER_USAGE_SHADER_RESOURCE   = 0x00000002,   // D3D11_BIND_SHADER_RESOURCE,   D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,    VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
         AMF_BUFFER_USAGE_UNORDERED_ACCESS  = 0x00000004,   // D3D11_BIND_UNORDERED_ACCESS,  D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
         AMF_BUFFER_USAGE_TRANSFER_SRC      = 0x00000008,   //                               								            VK_BUFFER_USAGE_TRANSFER_SRC_BIT
         AMF_BUFFER_USAGE_TRANSFER_DST      = 0x00000010,   //                               								            VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        AMF_BUFFER_USAGE_NOSYNC            = 0x00000020,   //  							    no fence (AMFFenceGUID) created	            no semaphore (AMFVulkanSync::hSemaphore) created
+        AMF_BUFFER_USAGE_DECODER_SRC       = 0x00000040,   //                               								            VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR
     } AMF_BUFFER_USAGE_BITS;
     typedef amf_flags AMF_BUFFER_USAGE;
     //----------------------------------------------------------------------------------------------

@@ -7,8 +7,8 @@
 #include "openvr_driver.h"
 
 extern uint64_t HEAD_ID;
-extern uint64_t LEFT_HAND_ID;
-extern uint64_t RIGHT_HAND_ID;
+extern uint64_t HAND_LEFT_ID;
+extern uint64_t HAND_RIGHT_ID;
 
 enum class ButtonType {
     Binary,

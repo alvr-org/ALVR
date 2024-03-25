@@ -1,4 +1,5 @@
 mod bitrate;
+mod body_tracking;
 mod c_api;
 mod connection;
 mod face_tracking;
@@ -85,6 +86,7 @@ static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
 static COLOR_CORRECTION_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
+static RGBTOYUV420_CSO: &[u8] = include_bytes!("../cpp/platform/win32/rgbtoyuv420.cso");
 
 static QUAD_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.comp.spv");
 static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.comp.spv");
@@ -273,6 +275,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     COMPRESS_AXIS_ALIGNED_CSO_LEN = COMPRESS_AXIS_ALIGNED_CSO.len() as _;
     COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
     COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
+    RGBTOYUV420_CSO_PTR = RGBTOYUV420_CSO.as_ptr();
+    RGBTOYUV420_CSO_LEN = RGBTOYUV420_CSO.len() as _;
     QUAD_SHADER_COMP_SPV_PTR = QUAD_SHADER_COMP_SPV.as_ptr();
     QUAD_SHADER_COMP_SPV_LEN = QUAD_SHADER_COMP_SPV.len() as _;
     COLOR_SHADER_COMP_SPV_PTR = COLOR_SHADER_COMP_SPV.as_ptr();

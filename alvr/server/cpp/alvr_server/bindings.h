@@ -15,8 +15,8 @@ struct FfiQuat {
 };
 
 struct FfiHandSkeleton {
-    float jointPositions[26][3];
-    FfiQuat jointRotations[26];
+    float jointPositions[31][3];
+    FfiQuat jointRotations[31];
 };
 
 struct FfiDeviceMotion {
@@ -25,6 +25,13 @@ struct FfiDeviceMotion {
     float position[3];
     float linearVelocity[3];
     float angularVelocity[3];
+};
+
+struct FfiBodyTracker {
+    unsigned int trackerID;
+    FfiQuat orientation;
+    float position[3];
+    unsigned int tracking;
 };
 
 enum FfiOpenvrPropertyType {
@@ -87,6 +94,9 @@ extern "C" const unsigned char *COMPRESS_AXIS_ALIGNED_CSO_PTR;
 extern "C" unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
 extern "C" const unsigned char *COLOR_CORRECTION_CSO_PTR;
 extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
+extern "C" const unsigned char *RGBTOYUV420_CSO_PTR;
+extern "C" unsigned int RGBTOYUV420_CSO_LEN;
+
 
 extern "C" const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int QUAD_SHADER_COMP_SPV_LEN;
@@ -136,8 +146,11 @@ extern "C" void SetTracking(unsigned long long targetTimestampNs,
                             int motionsCount,
                             const FfiHandSkeleton *leftHand,
                             const FfiHandSkeleton *rightHand,
-                            unsigned int controllersTracked);
+                            unsigned int controllersTracked,
+                            const FfiBodyTracker *bodyTrackers,
+                            int bodyTrackersCount);
 extern "C" void VideoErrorReportReceive();
+extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);

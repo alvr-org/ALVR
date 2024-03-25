@@ -37,6 +37,7 @@
 
 #include <timeapi.h>
 #include <windows.h>
+#include <memory>
 //----------------------------------------------------------------------------------------
 // threading
 //----------------------------------------------------------------------------------------
@@ -63,6 +64,10 @@ amf_handle AMF_CDECL_CALL amf_create_critical_section()
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_delete_critical_section(amf_handle cs)
 {
+    if(cs == NULL)
+    {
+        return false;
+    }
     ::DeleteCriticalSection((CRITICAL_SECTION*)cs);
     delete (CRITICAL_SECTION*)cs;
     return true; // in Win32 - no errors
@@ -70,12 +75,20 @@ bool AMF_CDECL_CALL amf_delete_critical_section(amf_handle cs)
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_enter_critical_section(amf_handle cs)
 {
+    if(cs == NULL)
+    {
+        return false;
+    }
     ::EnterCriticalSection((CRITICAL_SECTION*)cs);
     return true; // in Win32 - no errors
 }
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_wait_critical_section(amf_handle cs, amf_ulong ulTimeout)
 {
+    if(cs == NULL)
+    {
+        return false;
+    }
     while (true)
     {
         const BOOL success = ::TryEnterCriticalSection((CRITICAL_SECTION*)cs);
@@ -97,6 +110,10 @@ bool AMF_CDECL_CALL amf_wait_critical_section(amf_handle cs, amf_ulong ulTimeout
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_leave_critical_section(amf_handle cs)
 {
+    if(cs == NULL)
+    {
+        return false;
+    }
     ::LeaveCriticalSection((CRITICAL_SECTION*)cs);
     return true; // in Win32 - no errors
 }
@@ -117,21 +134,37 @@ amf_handle AMF_CDECL_CALL amf_create_event(bool bInitiallyOwned, bool bManualRes
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_delete_event(amf_handle hevent)
 {
+    if(hevent == NULL)
+    {
+        return false;
+    }
     return ::CloseHandle(hevent) != FALSE;
 }
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_set_event(amf_handle hevent)
 {
+    if(hevent == NULL)
+    {
+        return false;
+    }
     return ::SetEvent(hevent) != FALSE;
 }
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_reset_event(amf_handle hevent)
 {
+    if(hevent == NULL)
+    {
+        return false;
+    }
     return ::ResetEvent(hevent) != FALSE;
 }
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_wait_for_event(amf_handle hevent, amf_ulong ulTimeout)
 {
+    if(hevent == NULL)
+    {
+        return false;
+    }
 #if defined(METRO_APP)
     return ::WaitForSingleObjectEx(hevent, ulTimeout, FALSE) == WAIT_OBJECT_0;
 
@@ -143,6 +176,10 @@ bool AMF_CDECL_CALL amf_wait_for_event(amf_handle hevent, amf_ulong ulTimeout)
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_wait_for_event_timeout(amf_handle hevent, amf_ulong ulTimeout)
 {
+    if(hevent == NULL)
+    {
+        return false;
+    }
     DWORD ret;
 #if defined(METRO_APP)
     ret = ::WaitForSingleObjectEx(hevent, ulTimeout, FALSE);
@@ -171,11 +208,19 @@ amf_handle AMF_CDECL_CALL amf_open_mutex(const wchar_t* pName)
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_delete_mutex(amf_handle hmutex)
 {
+    if(hmutex == NULL)
+    {
+        return false;
+    }
     return ::CloseHandle(hmutex) != FALSE;
 }
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_wait_for_mutex(amf_handle hmutex, amf_ulong ulTimeout)
 {
+    if(hmutex == NULL)
+    {
+        return false;
+    }
 #if defined(METRO_APP)
     return ::WaitForSingleObjectEx(hmutex, ulTimeout, FALSE) == WAIT_OBJECT_0;
 
@@ -187,12 +232,16 @@ bool AMF_CDECL_CALL amf_wait_for_mutex(amf_handle hmutex, amf_ulong ulTimeout)
 //----------------------------------------------------------------------------------------
 bool AMF_CDECL_CALL amf_release_mutex(amf_handle hmutex)
 {
+    if(hmutex == NULL)
+    {
+        return false;
+    }
     return ::ReleaseMutex(hmutex) != FALSE;
 }
 //----------------------------------------------------------------------------------------
 amf_handle AMF_CDECL_CALL amf_create_semaphore(amf_long iInitCount, amf_long iMaxCount, const wchar_t* pName)
 {
-    if(iMaxCount == NULL)
+    if(iMaxCount == NULL || iInitCount > iMaxCount)
     {
         return NULL;
     }
@@ -209,7 +258,7 @@ bool AMF_CDECL_CALL amf_delete_semaphore(amf_handle hsemaphore)
 {
     if(hsemaphore == NULL)
     {
-        return true;
+        return false;
     }
     return ::CloseHandle(hsemaphore) != FALSE;
 }
@@ -233,7 +282,7 @@ bool AMF_CDECL_CALL amf_release_semaphore(amf_handle hsemaphore, amf_long iCount
 {
     if(hsemaphore == NULL)
     {
-        return true;
+        return false;
     }
     return ::ReleaseSemaphore(hsemaphore, iCount, iOldCount) != FALSE;
 }
@@ -382,7 +431,35 @@ void AMF_CDECL_CALL amf_virtual_free(void* ptr)
 {
     VirtualFree(ptr, NULL, MEM_RELEASE);
 }
-#endif //#if !defined(METRO_APP)//----------------------------------------------------------------------------------------
+#endif //#if !defined(METRO_APP)
+//----------------------------------------------------------------------------------------
+// cpu
+//----------------------------------------------------------------------------------------
+amf_int32 AMF_STD_CALL amf_get_cpu_cores()
+{
+    //query the number of CPU HW cores
+    DWORD len = 0;
+    GetLogicalProcessorInformation(NULL, &len);
+
+    amf_uint32 count = len / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+    std::unique_ptr<SYSTEM_LOGICAL_PROCESSOR_INFORMATION[]>  pBuffer(new SYSTEM_LOGICAL_PROCESSOR_INFORMATION[count]);
+    if (pBuffer)
+    {
+        GetLogicalProcessorInformation(pBuffer.get(), &len);
+        count = len / sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+        amf_int32 iCores = 0;
+        for (amf_uint32 idx = 0; idx < count; idx++)
+        {
+            if (pBuffer[idx].Relationship == RelationProcessorCore)
+            {
+                iCores++;
+            }
+        }
+        return iCores;
+    }
+
+    return 1;
+}
 //----------------------------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 #endif // _WIN32

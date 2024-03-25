@@ -8,24 +8,27 @@ use tokio::sync::broadcast::Sender;
 
 // todo: don't stringify events immediately, use Sender<Event>
 pub fn init_logging(events_sender: Sender<Event>) {
-    let mut log_dispatch = Dispatch::new().format(move |out, message, record| {
-        let maybe_event = format!("{message}");
-        let event_type = if maybe_event.starts_with('{') && maybe_event.ends_with('}') {
-            serde_json::from_str(&maybe_event).unwrap()
-        } else {
-            EventType::Log(LogEntry {
-                severity: LogSeverity::from_log_level(record.level()),
-                content: message.to_string(),
-            })
-        };
-        let event = Event {
-            timestamp: Local::now().format("%H:%M:%S.%f").to_string(),
-            event_type,
-        };
-        out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
+    let mut log_dispatch = Dispatch::new()
+        // Note: meta::target() is in the format <crate>::<module>
+        .filter(|meta| !meta.target().starts_with("mdns_sd"))
+        .format(move |out, message, record| {
+            let maybe_event = format!("{message}");
+            let event_type = if maybe_event.starts_with('{') && maybe_event.ends_with('}') {
+                serde_json::from_str(&maybe_event).unwrap()
+            } else {
+                EventType::Log(LogEntry {
+                    severity: LogSeverity::from_log_level(record.level()),
+                    content: message.to_string(),
+                })
+            };
+            let event = Event {
+                timestamp: Local::now().format("%H:%M:%S.%f").to_string(),
+                event_type,
+            };
+            out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
 
-        events_sender.send(event).ok();
-    });
+            events_sender.send(event).ok();
+        });
 
     if cfg!(debug_assertions) {
         log_dispatch = log_dispatch.level(LevelFilter::Debug)

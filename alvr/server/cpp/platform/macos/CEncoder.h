@@ -10,6 +10,7 @@ class CEncoder : public CThread {
     void Run() override {}
 
     void Stop() {}
+    void OnStreamStart() {}
     void OnPacketLoss() {}
     void InsertIDR() {}
 };

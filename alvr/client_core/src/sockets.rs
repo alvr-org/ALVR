@@ -14,13 +14,13 @@ impl AnnouncerSocket {
 
         let mut packet = [0; 56];
         packet[0..ALVR_NAME.len()].copy_from_slice(ALVR_NAME.as_bytes());
-        packet[16..24].copy_from_slice(&alvr_common::protocol_id().to_le_bytes());
+        packet[16..24].copy_from_slice(&alvr_common::protocol_id_u64().to_le_bytes());
         packet[24..24 + hostname.len()].copy_from_slice(hostname.as_bytes());
 
         Ok(Self { socket, packet })
     }
 
-    pub fn broadcast(&self) -> Result<()> {
+    pub fn announce_broadcast(&self) -> Result<()> {
         self.socket
             .send_to(&self.packet, (Ipv4Addr::BROADCAST, CONTROL_PORT))?;
 

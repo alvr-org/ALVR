@@ -125,6 +125,7 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                 } else {
                     r"Unsupported OS"
                 },
+                #[allow(unused_variables)]
                 |ui| {
                     #[cfg(windows)]
                     if ui.button("Download VB-Cable").clicked() {

@@ -16,6 +16,11 @@ fn get_ffmpeg_path() -> PathBuf {
     }
 }
 
+#[cfg(all(target_os = "linux", feature = "gpl"))]
+fn get_linux_x264_path() -> PathBuf {
+    alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
+}
+
 fn main() {
     let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -79,13 +84,21 @@ fn main() {
     // #[cfg(debug_assertions)]
     // build.define("ALVR_DEBUG_LOG", None);
 
-    let use_ffmpeg = cfg!(feature = "gpl") || cfg!(target_os = "linux");
+    let gpl_or_linux = cfg!(feature = "gpl") || cfg!(target_os = "linux");
 
-    if use_ffmpeg {
+    if gpl_or_linux {
         let ffmpeg_path = get_ffmpeg_path();
 
         assert!(ffmpeg_path.join("include").exists());
         build.include(ffmpeg_path.join("include"));
+    }
+
+    #[cfg(all(target_os = "linux", feature = "gpl"))]
+    {
+        let x264_path = get_linux_x264_path();
+
+        assert!(x264_path.join("include").exists());
+        build.include(x264_path.join("include"));
     }
 
     #[cfg(feature = "gpl")]
@@ -93,7 +106,36 @@ fn main() {
 
     build.compile("bindings");
 
-    if use_ffmpeg {
+    #[cfg(all(target_os = "linux", feature = "gpl"))]
+    {
+        let x264_path = get_linux_x264_path();
+        let x264_lib_path = x264_path.join("lib");
+
+        println!(
+            "cargo:rustc-link-search=native={}",
+            x264_lib_path.to_string_lossy()
+        );
+
+        let x264_pkg_path = x264_lib_path.join("pkgconfig");
+        assert!(x264_pkg_path.exists());
+
+        let x264_pkg_path = x264_pkg_path.to_string_lossy().to_string();
+        env::set_var(
+            "PKG_CONFIG_PATH",
+            env::var("PKG_CONFIG_PATH").map_or(x264_pkg_path.clone(), |old| {
+                format!("{x264_pkg_path}:{old}")
+            }),
+        );
+        println!("cargo:rustc-link-lib=static=x264");
+
+        pkg_config::Config::new()
+            .statik(true)
+            .probe("x264")
+            .unwrap();
+    }
+
+    // ffmpeg
+    if gpl_or_linux {
         let ffmpeg_path = get_ffmpeg_path();
         let ffmpeg_lib_path = ffmpeg_path.join("lib");
 
@@ -149,7 +191,11 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         pkg_config::Config::new().probe("vulkan").unwrap();
-        pkg_config::Config::new().probe("x264").unwrap();
+
+        #[cfg(not(feature = "gpl"))]
+        {
+            pkg_config::Config::new().probe("x264").unwrap();
+        }
 
         // fail build if there are undefined symbols in final library
         println!("cargo:rustc-cdylib-link-arg=-Wl,--no-undefined");

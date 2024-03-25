@@ -71,7 +71,7 @@ pub(crate) fn to_openvr_paths(paths: &[PathBuf]) -> json::Value {
 fn get_single_openvr_path(path_type: &str) -> Result<PathBuf> {
     let openvr_paths_json = load_openvr_paths_json()?;
     let paths_json = openvr_paths_json.get(path_type).to_any()?;
-    from_openvr_paths(paths_json).get(0).cloned().to_any()
+    from_openvr_paths(paths_json).first().cloned().to_any()
 }
 
 pub fn steamvr_root_dir() -> Result<PathBuf> {

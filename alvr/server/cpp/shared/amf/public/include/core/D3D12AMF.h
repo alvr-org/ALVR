@@ -35,6 +35,8 @@
 #pragma once 
 #include "Platform.h"
 #if defined(_WIN32)||(defined(__linux) && defined(AMF_WSL))
+
+#define AMFDX12_NUMBER_OF_DESCRYPTOR_HEAPS  L"NumberOfDescryptorHeaps" // amf_int64, default is 4, to be set on AMFContext
 // syncronization properties set via SetPrivateData()
 AMF_WEAK GUID  AMFResourceStateGUID = { 0x452da9bf, 0x4ad7, 0x47a5, { 0xa6, 0x9b, 0x96, 0xd3, 0x23, 0x76, 0xf2, 0xf3 } };   // Current resource state value (D3D12_RESOURCE_STATES ), sizeof(UINT), set on ID3D12Resource 
 AMF_WEAK GUID  AMFFenceGUID         = { 0x910a7928, 0x57bd, 0x4b04, { 0x91, 0xa3, 0xe7, 0xb8, 0x04, 0x12, 0xcd, 0xa5 } };   // IUnknown (ID3D12Fence), set on ID3D12Resource  syncronization fence for this resource

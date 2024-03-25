@@ -2,17 +2,11 @@ mod decoder;
 
 pub use decoder::*;
 
-use alvr_common::OptLazy;
-use jni::{
-    objects::{GlobalRef, JObject},
-    sys::jobject,
-    JNIEnv, JavaVM,
-};
+use alvr_common::warn;
+use jni::{objects::JObject, sys::jobject, JNIEnv, JavaVM};
 use std::net::{IpAddr, Ipv4Addr};
 
 pub const MICROPHONE_PERMISSION: &str = "android.permission.RECORD_AUDIO";
-
-static WIFI_LOCK: OptLazy<GlobalRef> = alvr_common::lazy_mut_none();
 
 pub fn vm() -> JavaVM {
     unsafe { JavaVM::from_raw(ndk_context::android_context().vm().cast()).unwrap() }
@@ -67,12 +61,12 @@ pub fn try_get_permission(permission: &str) {
     }
 }
 
-pub fn device_model() -> String {
+pub fn build_string(ty: &str) -> String {
     let vm = vm();
     let mut env = vm.attach_current_thread().unwrap();
 
     let jname = env
-        .get_static_field("android/os/Build", "MODEL", "Ljava/lang/String;")
+        .get_static_field("android/os/Build", ty, "Ljava/lang/String;")
         .unwrap()
         .l()
         .unwrap();
@@ -81,18 +75,16 @@ pub fn device_model() -> String {
     name_raw.to_string_lossy().as_ref().to_owned()
 }
 
+pub fn device_name() -> String {
+    build_string("DEVICE")
+}
+
+pub fn model_name() -> String {
+    build_string("MODEL")
+}
+
 pub fn manufacturer_name() -> String {
-    let vm = vm();
-    let mut env = vm.attach_current_thread().unwrap();
-
-    let jname = env
-        .get_static_field("android/os/Build", "MANUFACTURER", "Ljava/lang/String;")
-        .unwrap()
-        .l()
-        .unwrap();
-    let name_raw = env.get_string((&jname).into()).unwrap();
-
-    name_raw.to_string_lossy().as_ref().to_owned()
+    build_string("MANUFACTURER")
 }
 
 fn get_system_service<'a>(env: &mut JNIEnv<'a>, service_name: &str) -> JObject<'a> {
@@ -137,50 +129,69 @@ pub fn local_ip() -> IpAddr {
 }
 
 // This is needed to avoid wifi scans that disrupt streaming.
-pub fn acquire_wifi_lock() {
-    let mut maybe_wifi_lock = WIFI_LOCK.lock();
+// Code inspired from https://github.com/Meumeu/WiVRn/blob/master/client/application.cpp
+pub fn set_wifi_lock(enabled: bool) {
+    let vm = vm();
+    let mut env = vm.attach_current_thread().unwrap();
 
-    if maybe_wifi_lock.is_none() {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
+    let wifi_manager = get_system_service(&mut env, "wifi");
 
-        let wifi_mode = if get_api_level() >= 29 {
-            // Recommended for virtual reality since it disables WIFI scans
-            4 // WIFI_MODE_FULL_LOW_LATENCY
-        } else {
-            3 // WIFI_MODE_FULL_HIGH_PERF
-        };
+    fn set_lock<'a>(env: &mut JNIEnv<'a>, lock: &JObject, enabled: bool) {
+        env.call_method(lock, "setReferenceCounted", "(Z)V", &[false.into()])
+            .unwrap();
+        env.call_method(
+            &lock,
+            if enabled { "acquire" } else { "release" },
+            "()V",
+            &[],
+        )
+        .unwrap();
 
-        let wifi_manager = get_system_service(&mut env, "wifi");
-        let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
-        let wifi_lock = env
-            .call_method(
-                wifi_manager,
-                "createWifiLock",
-                "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
-                &[wifi_mode.into(), (&wifi_lock_jstring).into()],
-            )
+        let lock_is_aquired = env
+            .call_method(lock, "isHeld", "()Z", &[])
             .unwrap()
-            .l()
+            .z()
             .unwrap();
-        env.call_method(&wifi_lock, "acquire", "()V", &[]).unwrap();
 
-        *maybe_wifi_lock = Some(env.new_global_ref(wifi_lock).unwrap());
+        if lock_is_aquired != enabled {
+            warn!("Failed to set wifi lock: expected {enabled}, got {lock_is_aquired}");
+        }
     }
-}
 
-pub fn release_wifi_lock() {
-    if let Some(wifi_lock) = WIFI_LOCK.lock().take() {
-        let vm = vm();
-        let mut env = vm.attach_current_thread().unwrap();
+    let wifi_lock_jstring = env.new_string("alvr_wifi_lock").unwrap();
+    let wifi_lock = env
+        .call_method(
+            &wifi_manager,
+            "createWifiLock",
+            "(ILjava/lang/String;)Landroid/net/wifi/WifiManager$WifiLock;",
+            &[
+                if get_api_level() >= 29 {
+                    // Recommended for virtual reality since it disables WIFI scans
+                    4 // WIFI_MODE_FULL_LOW_LATENCY
+                } else {
+                    3 // WIFI_MODE_FULL_HIGH_PERF
+                }
+                .into(),
+                (&wifi_lock_jstring).into(),
+            ],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    set_lock(&mut env, &wifi_lock, enabled);
 
-        env.call_method(wifi_lock.as_obj(), "release", "()V", &[])
-            .unwrap();
-        // TODO: all JVM.call_method sometimes result in JavaExceptions, unwrap will only report Error as 'JavaException', ideally before unwrapping
-        // need to call JVM.describe_error() which will actually check if there is an exception and print error to stderr/logcat. Then unwrap.
-
-        // wifi_lock is dropped here
-    }
+    // let multicast_lock_jstring = env.new_string("alvr_multicast_lock").unwrap();
+    // let multicast_lock = env
+    //     .call_method(
+    //         wifi_manager,
+    //         "createMulticastLock",
+    //         "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$MulticastLock;",
+    //         &[(&multicast_lock_jstring).into()],
+    //     )
+    //     .unwrap()
+    //     .l()
+    //     .unwrap();
+    // set_lock(&mut env, &multicast_lock, enabled);
 }
 
 pub fn get_battery_status() -> (f32, bool) {

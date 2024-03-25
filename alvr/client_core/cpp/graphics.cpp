@@ -252,29 +252,54 @@ uniform lowp int Mode;
 void main()
 {
     if(Mode == 0){                                      // ground
-        lowp vec3 groundCenter = vec3(1.0, 1.0, 1.0);
-        lowp vec3 groundHorizon = vec3(1.0, 1.0, 1.0);
+        lowp vec3 groundCenter = vec3(0.0, 0.0, 0.00);
+        lowp vec3 groundHorizon = vec3(0.00, 0.00, 0.015);
+
+        lowp vec3 gridClose = vec3(0.114, 0.545, 0.804);
+        lowp vec3 gridFar = vec3(0.259, 0.863, 0.886);
+
+        lowp float lineFadeStart = 10.0;
+        lowp float lineFadeEnd = 50.0;
+        lowp float lineFadeDist = lineFadeEnd - lineFadeStart;
+
+        lowp float lineBloom = 10.0;
 
         lowp float distance = length(position.xz);
+
         // Pick a coordinate to visualize in a grid
         lowp vec2 coord = position.xz / 2.0;
+
         // Compute anti-aliased world-space grid lines
         lowp vec2 grid = abs(fract(coord - 0.5) - 0.5) / fwidth(coord);
-        lowp float line = min(grid.x, grid.y);
-        outColor.rgb = vec3(min(line, 1.0) * (1.0 - exp(-distance / 5.0 - 0.01) / 4.0)) * groundCenter;
-        if(distance > 3.0){
-            lowp float coef = 1.0 - 3.0 / distance;
+
+        // Create mask for grid lines and fade over distance
+        lowp float line = clamp(1.0 - min(grid.x, grid.y), 0.0, 1.0);
+        line *= clamp((lineFadeStart - distance) / lineFadeDist, 0.0, 1.0);
+
+        // Fill in normal ground colour
+        outColor.rgb = groundCenter * (1.0 - line);
+
+        // Add cheap and simple "bloom" to the grid lines
+        line *= 1.0 + lineBloom;
+
+        // Fill in grid line colour
+        outColor.rgb += line * mix(gridFar, gridClose, clamp((lineFadeEnd - distance) / lineFadeEnd, 0.0, 1.0));
+
+        // Fade to the horizon colour over distance
+        if(distance > 10.0){
+            lowp float coef = 1.0 - 10.0 / distance;
             outColor.rgb = (1.0 - coef) * outColor.rgb + coef * groundHorizon;
         }
+
         outColor.a = 1.0;
     } else if(Mode == 1) {                             // text
-        lowp vec3 textColor = vec3(0.0, 0.0, 0.0);
+        lowp vec3 textColor = vec3(1.0, 1.0, 1.0);
 
         outColor.rgb = textColor;
         outColor.a = texture(sTexture, uv).a;
     } else {                                           // sky
-        lowp vec3 skyCenter = vec3(0.95, 0.95, 0.95);
-        lowp vec3 skyHorizon = vec3(1.0, 1.0, 1.0);
+        lowp vec3 skyCenter = vec3(0.0, 0.0, 0.0);
+        lowp vec3 skyHorizon = vec3(0.0, 0.0, 0.02);
 
         lowp float coef = 1.0;
         if(position.y < 50.0){
@@ -287,9 +312,6 @@ void main()
         outColor.a = 1.0;
         outColor.rgb = skyCenter * coef + skyHorizon * (1.0 - coef);
     }
-
-    // invert. looks good only for black and white
-    outColor.rgb = 1.0 - outColor.rgb;
 }
 )glsl";
 
@@ -300,7 +322,7 @@ void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
     for (int i = 0; i < textures.size(); i++) {
         auto glRenderTarget = textures[i];
         frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
-            true, glRenderTarget, false, width, height, GL_SRGB8_ALPHA8, GL_RGBA));
+            true, glRenderTarget, false, width, height, GL_RGBA16F, GL_RGBA));
         frameBuffer->renderStates.push_back(
             std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
     }
@@ -558,19 +580,21 @@ void ovrRenderer_Create(ovrRenderer *renderer,
                         std::vector<GLuint> textures[2],
                         FFRData ffrData,
                         bool isLobby,
-                        bool enableSrgbCorrection) {
+                        bool enableSrgbCorrection,
+                        bool fixLimitedRange,
+                        float encodingGamma) {
     if (!isLobby) {
         renderer->srgbCorrectionPass = std::make_unique<SrgbCorrectionPass>(streamTexture);
         renderer->enableFFE = ffrData.enabled;
         if (renderer->enableFFE) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
             renderer->srgbCorrectionPass->Initialize(
-                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection);
+                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
             renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
-            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection);
+            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->streamRenderTexture =
                 renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
@@ -771,7 +795,8 @@ void destroyGraphicsNative() {
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
                       const unsigned int *swapchainTextures[2],
-                      int swapchainLength) {
+                      int swapchainLength,
+                      bool enable_srgb_correction) {
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
 
@@ -789,7 +814,9 @@ void prepareLobbyRoom(int viewWidth,
                        g_ctx.lobbySwapchainTextures,
                        {false},
                        true,
-                       false);
+                       enable_srgb_correction,
+                       false,
+                       1.0);
 }
 
 // on pause
@@ -835,7 +862,9 @@ void streamStartNative(FfiStreamConfig config) {
                         config.foveationEdgeRatioX,
                         config.foveationEdgeRatioY},
                        false,
-                       config.enableSrgbCorrection);
+                       config.enableSrgbCorrection,
+                       config.fixLimitedRange,
+                       config.encodingGamma);
 }
 
 void updateLobbyHudTexture(const unsigned char *data) {

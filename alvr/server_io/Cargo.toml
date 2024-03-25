@@ -16,5 +16,5 @@ alvr_session.workspace = true
 cpal = { version = "0.15", features = ["jack"] }
 encoding_rs_io = "0.1"
 dirs = "5"
-runas = "=1.0"
+runas = "^1.2" # version 1.1 is broken
 serde_json = "1"

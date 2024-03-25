@@ -1,6 +1,6 @@
 use crate::command;
 use alvr_filesystem as afs;
-use std::fs;
+use std::{fs, path::Path};
 use xshell::{cmd, Shell};
 
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
@@ -11,20 +11,20 @@ pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error>
     .run()
 }
 
-pub fn prepare_x264_windows() {
+pub fn prepare_x264_windows(deps_path: &Path) {
     let sh = Shell::new().unwrap();
 
     const VERSION: &str = "0.164";
     const REVISION: usize = 3086;
 
-    let deps_dir = afs::deps_dir();
+    let destination = deps_path.join("x264");
 
     command::download_and_extract_zip(
         &format!(
             "{}/{VERSION}.r{REVISION}/libx264_{VERSION}.r{REVISION}_msvc16.zip",
             "https://github.com/ShiftMediaProject/x264/releases/download",
         ),
-        &afs::deps_dir().join("windows/x264"),
+        &destination,
     )
     .unwrap();
 
@@ -43,37 +43,37 @@ Version: {VERSION}
 Libs: -L${{libdir}} -lx264
 Cflags: -I${{includedir}}
 "#,
-            deps_dir
-                .join("windows/x264")
-                .to_string_lossy()
-                .replace('\\', "/")
+            destination.to_string_lossy().replace('\\', "/")
         ),
     )
     .unwrap();
 
-    cmd!(sh, "setx PKG_CONFIG_PATH {deps_dir}").run().unwrap();
+    cmd!(sh, "setx PKG_CONFIG_PATH {deps_path}").run().unwrap();
 }
 
-pub fn prepare_ffmpeg_windows() {
-    let download_path = afs::deps_dir().join("windows");
+pub fn prepare_ffmpeg_windows(deps_path: &Path) {
     command::download_and_extract_zip(
         &format!(
             "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/{}",
             "ffmpeg-n5.1-latest-win64-gpl-shared-5.1.zip"
         ),
-        &download_path,
+        deps_path,
     )
     .unwrap();
 
     fs::rename(
-        download_path.join("ffmpeg-n5.1-latest-win64-gpl-shared-5.1"),
-        download_path.join("ffmpeg"),
+        deps_path.join("ffmpeg-n5.1-latest-win64-gpl-shared-5.1"),
+        deps_path.join("ffmpeg"),
     )
     .unwrap();
 }
 
 pub fn prepare_windows_deps(skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
+
+    let deps_path = afs::deps_dir().join("windows");
+    sh.remove_path(&deps_path).ok();
+    sh.create_dir(&deps_path).unwrap();
 
     if !skip_admin_priv {
         choco_install(
@@ -90,23 +90,66 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
         .unwrap();
     }
 
-    prepare_x264_windows();
-    prepare_ffmpeg_windows();
+    prepare_x264_windows(&deps_path);
+    prepare_ffmpeg_windows(&deps_path);
 }
 
-pub fn build_ffmpeg_linux(nvenc_flag: bool) {
+pub fn prepare_linux_deps(nvenc_flag: bool) {
     let sh = Shell::new().unwrap();
 
-    let download_path = afs::deps_dir().join("linux");
-    command::download_and_extract_zip(
-        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
-        &download_path,
+    let deps_path = afs::deps_dir().join("linux");
+    sh.remove_path(&deps_path).ok();
+    sh.create_dir(&deps_path).unwrap();
+
+    build_x264_linux(&deps_path);
+    build_ffmpeg_linux(nvenc_flag, &deps_path);
+}
+
+pub fn build_x264_linux(deps_path: &Path) {
+    let sh = Shell::new().unwrap();
+
+    // x264 0.164
+    command::download_and_extract_tar(
+        "https://code.videolan.org/videolan/x264/-/archive/c196240409e4d7c01b47448d93b1f9683aaa7cf7/x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7.tar.bz2",
+        deps_path,
     )
     .unwrap();
 
-    let final_path = download_path.join("ffmpeg");
+    let final_path = deps_path.join("x264");
 
-    fs::rename(download_path.join("FFmpeg-n6.0"), &final_path).unwrap();
+    fs::rename(
+        deps_path.join("x264-c196240409e4d7c01b47448d93b1f9683aaa7cf7"),
+        &final_path,
+    )
+    .unwrap();
+
+    let flags = ["--enable-static", "--disable-cli", "--enable-pic"];
+
+    let install_prefix = format!("--prefix={}", final_path.join("alvr_build").display());
+
+    let _push_guard = sh.push_dir(final_path);
+
+    cmd!(sh, "./configure {install_prefix} {flags...}")
+        .run()
+        .unwrap();
+
+    let nproc = cmd!(sh, "nproc").read().unwrap();
+    cmd!(sh, "make -j{nproc}").run().unwrap();
+    cmd!(sh, "make install").run().unwrap();
+}
+
+pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
+    let sh = Shell::new().unwrap();
+
+    command::download_and_extract_zip(
+        "https://codeload.github.com/FFmpeg/FFmpeg/zip/n6.0",
+        deps_path,
+    )
+    .unwrap();
+
+    let final_path = deps_path.join("ffmpeg");
+
+    fs::rename(deps_path.join("FFmpeg-n6.0"), &final_path).unwrap();
 
     let flags = [
         "--enable-gpl",
@@ -160,14 +203,14 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
         #[cfg(target_os = "linux")]
         {
             let codec_header_version = "12.1.14.0";
-            let temp_download_dir = download_path.join("dl_temp");
+            let temp_download_dir = deps_path.join("dl_temp");
             command::download_and_extract_zip(
                 &format!("https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n{codec_header_version}.zip"),
                 &temp_download_dir
             )
             .unwrap();
 
-            let header_dir = download_path.join("nv-codec-headers");
+            let header_dir = deps_path.join("nv-codec-headers");
             let header_build_dir = header_dir.join("build");
             fs::rename(
                 temp_download_dir.join(format!("nv-codec-headers-n{codec_header_version}")),
@@ -199,6 +242,7 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
             let nvenc_flags = &[
                 "--enable-encoder=h264_nvenc",
                 "--enable-encoder=hevc_nvenc",
+                "--enable-encoder=av1_nvenc",
                 "--enable-nonfree",
                 "--enable-cuda-nvcc",
                 "--enable-libnpp",
@@ -233,7 +277,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool) {
 
 fn get_android_openxr_loaders() {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
+        let sh = Shell::new().unwrap();
         let temp_dir = afs::build_dir().join("temp_download");
+        sh.remove_path(&temp_dir).ok();
+        sh.create_dir(&temp_dir).unwrap();
         let destination_dir = afs::deps_dir().join("android_openxr/arm64-v8a");
         fs::create_dir_all(&destination_dir).unwrap();
 

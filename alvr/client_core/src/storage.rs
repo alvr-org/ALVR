@@ -18,8 +18,8 @@ fn config_path() -> PathBuf {
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
-    pub protocol_id: u64,
     pub hostname: String,
+    pub protocol_id: String,
 }
 
 impl Default for Config {
@@ -27,14 +27,14 @@ impl Default for Config {
         let mut rng = rand::thread_rng();
 
         Self {
-            protocol_id: alvr_common::protocol_id(),
             hostname: format!(
-                "{}{}{}{}.client.alvr",
+                "{}{}{}{}.client",
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),
             ),
+            protocol_id: alvr_common::protocol_id(),
         }
     }
 }

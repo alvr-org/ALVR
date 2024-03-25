@@ -1,4 +1,4 @@
-// 
+//
 // Notice Regarding Standards.  AMD does not provide a license or sublicense to
 // any Intellectual Property Rights relating to any standards, including but not
 // limited to any audio and/or video codec technologies such as MPEG-2, MPEG-4;
@@ -6,9 +6,9 @@
 // (collectively, the "Media Technologies"). For clarity, you will pay any
 // royalties due for such third party technologies, which may include the Media
 // Technologies that are owed as a result of AMD providing the Software to you.
-// 
-// MIT license 
-// 
+//
+// MIT license
+//
 // Copyright (c) 2018 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -110,6 +110,10 @@ extern "C"
     #define amf_virtual_free amf_free
 #endif
 
+    // cpu
+#if defined(_WIN32) || (__linux__)
+    amf_int32   AMF_STD_CALL  amf_get_cpu_cores();
+#endif
 
 }
 
@@ -306,6 +310,7 @@ namespace amf
     class AMFThreadObj;
     class AMFThread
     {
+        friend class AMFThreadObj;
     public:
         AMFThread();
         virtual ~AMFThread();
@@ -316,6 +321,7 @@ namespace amf
         virtual bool StopRequested();
         virtual bool IsRunning() const;
 
+    protected:
         // this is executed in the thread and overloaded by implementor
         virtual void Run() = 0;
         virtual bool Init()

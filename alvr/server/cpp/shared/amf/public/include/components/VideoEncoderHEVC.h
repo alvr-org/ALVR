@@ -80,7 +80,10 @@ enum AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_ENUM
     AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CONSTANT_QP = 0,
     AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_LATENCY_CONSTRAINED_VBR,
     AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR,
-    AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR
+    AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_CBR,
+    AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_QUALITY_VBR,
+    AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_HIGH_QUALITY_VBR,
+    AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_HIGH_QUALITY_CBR
 };
 
 enum AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_ENUM
@@ -131,6 +134,19 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
     AMF_VIDEO_ENCODER_HEVC_LTR_MODE_KEEP_UNUSED
 };
 
+enum AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_ENUM
+{
+    AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_FRAME = 0,
+    AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_SLICE = 1
+};
+
+enum AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE_ENUM
+{
+    AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE_FRAME = 0,
+    AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE_SLICE = 1,
+    AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE_SLICE_LAST = 2
+};
+
 // Static properties - can be set before Init()
 #define AMF_VIDEO_ENCODER_HEVC_INSTANCE_INDEX                       L"HevcEncoderInstance"          // amf_int64; selected instance idx
 #define AMF_VIDEO_ENCODER_HEVC_FRAMESIZE                            L"HevcFrameSize"                // AMFSize; default = 0,0; Frame size
@@ -160,6 +176,7 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 
 // Rate control properties
 #define AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD                  L"HevcRateControlMethod"        // amf_int64(AMF_VIDEO_ENCODER_HEVC_RATE_CONTROL_METHOD_ENUM); default = depends on USAGE; Rate Control Method
+#define AMF_VIDEO_ENCODER_HEVC_QVBR_QUALITY_LEVEL                   L"HevcQvbrQualityLevel"         // amf_int64; default = 23; QVBR quality level; range = 1-51
 #define AMF_VIDEO_ENCODER_HEVC_VBV_BUFFER_SIZE                      L"HevcVBVBufferSize"            // amf_int64; default = depends on USAGE; VBV Buffer Size in bits
 #define AMF_VIDEO_ENCODER_HEVC_INITIAL_VBV_BUFFER_FULLNESS          L"HevcInitialVBVBufferFullness" // amf_int64; default =  64; Initial VBV Buffer Fullness 0=0% 64=100%
 #define AMF_VIDEO_ENCODER_HEVC_ENABLE_VBAQ                          L"HevcEnableVBAQ"               // // bool; default = depends on USAGE; Enable auto VBAQ
@@ -187,6 +204,9 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PROFILE                 L"HevcOutColorProfile"          // amf_int64(AMF_VIDEO_CONVERTER_COLOR_PROFILE_ENUM); default = AMF_VIDEO_CONVERTER_COLOR_PROFILE_UNKNOWN - mean AUTO by size
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_TRANSFER_CHARACTERISTIC       L"HevcOutColorTransferChar"     // amf_int64(AMF_COLOR_TRANSFER_CHARACTERISTIC_ENUM); default = AMF_COLOR_TRANSFER_CHARACTERISTIC_UNDEFINED, ISO/IEC 23001-8_2013 ?7.2 See VideoDecoderUVD.h for enum
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_COLOR_PRIMARIES               L"HevcOutColorPrimaries"        // amf_int64(AMF_COLOR_PRIMARIES_ENUM); default = AMF_COLOR_PRIMARIES_UNDEFINED, ISO/IEC 23001-8_2013 section 7.1 See ColorSpace.h for enum
+
+// Slice output
+#define AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE                          L"HevcOutputMode"               // amf_int64(AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_ENUM); default = AMF_VIDEO_ENCODER_HEVC_OUTPUT_MODE_FRAME - defines encoder output mode
 
 // Dynamic properties - can be set at any time
 
@@ -222,8 +242,11 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 
 // misc
 #define AMF_VIDEO_ENCODER_HEVC_QUERY_TIMEOUT                        L"HevcQueryTimeout"             // amf_int64; default = 0 (no wait); timeout for QueryOutput call in ms.
+#define AMF_VIDEO_ENCODER_HEVC_MEMORY_TYPE                          L"HevcEncoderMemoryType"        // amf_int64(AMF_MEMORY_TYPE) , default is AMF_MEMORY_UNKNOWN, Values : AMF_MEMORY_DX11, AMF_MEMORY_DX9, AMF_MEMORY_UNKNOWN (auto)
+#define AMF_VIDEO_ENCODER_HEVC_ENABLE_SMART_ACCESS_VIDEO            L"HevcEnableEncoderSmartAccessVideo"         // amf_bool; default = false; true = enables smart access video feature
+#define AMF_VIDEO_ENCODER_HEVC_INPUT_QUEUE_SIZE                     L"HevcInputQueueSize"           // amf_int64; default 16; Set amf input queue size
 
-// Per-submittion properties - can be set on input surface interface
+// Per-submission properties - can be set on input surface interface
 #define AMF_VIDEO_ENCODER_HEVC_END_OF_SEQUENCE                      L"HevcEndOfSequence"            // bool; default = false; generate end of sequence
 #define AMF_VIDEO_ENCODER_HEVC_FORCE_PICTURE_TYPE                   L"HevcForcePictureType"         // amf_int64(AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_ENUM); default = AMF_VIDEO_ENCODER_HEVC_PICTURE_TYPE_NONE; generate particular picture type
 #define AMF_VIDEO_ENCODER_HEVC_INSERT_AUD                           L"HevcInsertAUD"                // bool; default = false; insert AUD
@@ -243,6 +266,7 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_MARKED_LTR_INDEX              L"HevcMarkedLTRIndex"           // amf_int64; default = -1; Marked LTR index
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_REFERENCED_LTR_INDEX_BITFIELD L"HevcReferencedLTRIndexBitfield"// amf_int64; default = 0; referenced LTR bit-field
 #define AMF_VIDEO_ENCODER_HEVC_OUTPUT_TEMPORAL_LAYER                L"HevcOutputTemporalLayer"      // amf_int64; Temporal layer
+#define AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE                   L"HevcOutputBufferType"         // amf_int64(AMF_VIDEO_ENCODER_HEVC_OUTPUT_BUFFER_TYPE_ENUM); encoder output buffer type
 #define AMF_VIDEO_ENCODER_HEVC_RECONSTRUCTED_PICTURE                L"HevcReconstructedPicture"     // AMFInterface(AMFSurface); returns reconstructed picture as an AMFSurface attached to the output buffer as property AMF_VIDEO_ENCODER_RECONSTRUCTED_PICTURE of AMFInterface type
 #define AMF_VIDEO_ENCODER_HEVC_STATISTIC_PSNR_Y                     L"PSNRY"                        // double; PSNR Y
 #define AMF_VIDEO_ENCODER_HEVC_STATISTIC_PSNR_U                     L"PSNRU"                        // double; PSNR U
@@ -274,6 +298,7 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_HEVC_STATISTIC_SAD_FINAL                  L"HevcStatisticsFeedbackSadFinal"               // amf_int64; Frame level final SAD for full encoding
 #define AMF_VIDEO_ENCODER_HEVC_STATISTIC_SAD_INTRA                  L"HevcStatisticsFeedbackSadIntra"               // amf_int64; Frame level intra SAD for full encoding
 #define AMF_VIDEO_ENCODER_HEVC_STATISTIC_SAD_INTER                  L"HevcStatisticsFeedbackSadInter"               // amf_int64; Frame level inter SAD for full encoding
+#define AMF_VIDEO_ENCODER_HEVC_STATISTIC_VARIANCE                   L"HevcStatisticsFeedbackVariance"               // amf_int64; Frame level variance for full encoding
 
     // Encoder block level feedback
 #define AMF_VIDEO_ENCODER_HEVC_BLOCK_QP_MAP                         L"HevcBlockQpMap"                               // AMFInterface(AMFSurface); AMFSurface of format AMF_SURFACE_GRAY32 containing block level QP values
@@ -293,9 +318,10 @@ enum AMF_VIDEO_ENCODER_HEVC_LTR_MODE_ENUM
 #define AMF_VIDEO_ENCODER_HEVC_CAP_ROI                              L"HevcROIMap"                   // amf_bool - ROI map support is available for HEVC UVE encoder, n/a for the other encoders
 #define AMF_VIDEO_ENCODER_HEVC_CAP_MAX_THROUGHPUT                   L"HevcMaxThroughput"            // amf_int64 - MAX throughput for HEVC encoder in MB (16 x 16 pixel)
 #define AMF_VIDEO_ENCODER_HEVC_CAP_REQUESTED_THROUGHPUT             L"HevcRequestedThroughput"      // amf_int64 - Currently total requested throughput for HEVC encode in MB (16 x 16 pixel)
-#define AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT           L"HevcQueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call
+#define AMF_VIDEO_ENCODER_HEVC_CAP_QUERY_TIMEOUT_SUPPORT            L"HevcQueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call
+#define AMF_VIDEO_ENCODER_CAPS_HEVC_QUERY_TIMEOUT_SUPPORT           L"HevcQueryTimeoutSupport"      // amf_bool - Timeout supported for QueryOutout call (Deprecated, please use AMF_VIDEO_ENCODER_HEVC_CAP_QUERY_TIMEOUT_SUPPORT instead)
+#define AMF_VIDEO_ENCODER_HEVC_CAP_SUPPORT_SLICE_OUTPUT             L"HevcSupportSliceOutput"       // amf_bool - if slice output is supported
 
-// properties set on AMFComponent to control component creation
-#define AMF_VIDEO_ENCODER_HEVC_MEMORY_TYPE                          L"HevcEncoderMemoryType"        // amf_int64(AMF_MEMORY_TYPE) , default is AMF_MEMORY_UNKNOWN, Values : AMF_MEMORY_DX11, AMF_MEMORY_DX9, AMF_MEMORY_UNKNOWN (auto)
+#define AMF_VIDEO_ENCODER_HEVC_CAP_SUPPORT_SMART_ACCESS_VIDEO       L"HevcEncoderSupportSmartAccessVideo"        // amf_bool; returns true if system supports SmartAccess Video
 
 #endif //#ifndef AMF_VideoEncoderHEVC_h

@@ -16,6 +16,7 @@ This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 | Vive Focus 3/XR Elite |                           :heavy_check_mark:                           |
 |        YVR 1/2        |                           :heavy_check_mark:                           |
 |        Lynx R1        |                           :heavy_check_mark:                           |
+|   Apple Vision Pro    |  :construction: ([soon!](https://github.com/alvr-org/alvr-visionos))   |
 |   Smartphone/Monado   |                              :warning: *                               |
 |   Google Cardboard    | :warning: * ([PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR)) |
 |        GearVR         |                         :construction: (maybe)                         |

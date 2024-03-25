@@ -1,10 +1,13 @@
 use alvr_common::{
+    anyhow::Result,
     glam::{UVec2, Vec2},
-    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose,
+    ConnectionState, DeviceMotion, Fov, LogEntry, LogSeverity, Pose, ToAny,
 };
-use alvr_session::{CodecType, SessionConfig};
+use alvr_session::{CodecType, SessionConfig, Settings};
 use serde::{Deserialize, Serialize};
+use serde_json as json;
 use std::{
+    collections::HashSet,
     fmt::{self, Debug},
     net::IpAddr,
     path::PathBuf,
@@ -17,11 +20,78 @@ pub const AUDIO: u16 = 2;
 pub const VIDEO: u16 = 3;
 pub const STATISTICS: u16 = 4;
 
+// todo: use simple string
+#[derive(Serialize, Deserialize, Clone)]
+pub struct VideoStreamingCapabilitiesLegacy {
+    pub default_view_resolution: UVec2,
+    pub supported_refresh_rates_plus_extra_data: Vec<f32>,
+    pub microphone_sample_rate: u32,
+}
+
+// Note: not a network packet
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VideoStreamingCapabilities {
     pub default_view_resolution: UVec2,
-    pub supported_refresh_rates: Vec<f32>,
+    pub supported_refresh_rates: Vec<f32>, // todo rename
     pub microphone_sample_rate: u32,
+    pub supports_foveated_encoding: bool, // todo rename
+    pub encoder_high_profile: bool,
+    pub encoder_10_bits: bool,
+    pub encoder_av1: bool,
+}
+
+// Nasty workaround to make the packet extensible, pushing the limits of protocol compatibility
+// Todo: replace VideoStreamingCapabilitiesLegacy with simple json string
+pub fn encode_video_streaming_capabilities(
+    caps: &VideoStreamingCapabilities,
+) -> Result<VideoStreamingCapabilitiesLegacy> {
+    let caps_json = json::to_value(caps)?;
+
+    let mut supported_refresh_rates_plus_extra_data = vec![];
+    for rate in caps_json["supported_refresh_rates"].as_array().to_any()? {
+        supported_refresh_rates_plus_extra_data.push(rate.as_f64().to_any()? as f32);
+    }
+    for byte in json::to_string(caps)?.as_bytes() {
+        // using negative values is not going to trigger strange behavior for old servers
+        supported_refresh_rates_plus_extra_data.push(-(*byte as f32));
+    }
+
+    let default_view_resolution = json::from_value(caps_json["default_view_resolution"].clone())?;
+    let microphone_sample_rate = caps_json["microphone_sample_rate"].as_u64().to_any()? as u32;
+
+    Ok(VideoStreamingCapabilitiesLegacy {
+        default_view_resolution,
+        supported_refresh_rates_plus_extra_data,
+        microphone_sample_rate,
+    })
+}
+
+pub fn decode_video_streaming_capabilities(
+    legacy: &VideoStreamingCapabilitiesLegacy,
+) -> Result<VideoStreamingCapabilities> {
+    let mut json_bytes = vec![];
+    let mut supported_refresh_rates = vec![];
+    for rate in &legacy.supported_refresh_rates_plus_extra_data {
+        if *rate < 0.0 {
+            json_bytes.push((-*rate) as u8)
+        } else {
+            supported_refresh_rates.push(*rate);
+        }
+    }
+
+    let caps_json = json::from_str::<json::Value>(&String::from_utf8(json_bytes)?)?;
+
+    Ok(VideoStreamingCapabilities {
+        default_view_resolution: legacy.default_view_resolution,
+        supported_refresh_rates,
+        microphone_sample_rate: legacy.microphone_sample_rate,
+        supports_foveated_encoding: caps_json["supports_foveated_encoding"]
+            .as_bool()
+            .unwrap_or(true),
+        encoder_high_profile: caps_json["encoder_high_profile"].as_bool().unwrap_or(true),
+        encoder_10_bits: caps_json["encoder_10_bits"].as_bool().unwrap_or(true),
+        encoder_av1: caps_json["encoder_av1"].as_bool().unwrap_or(true),
+    })
 }
 
 #[derive(Serialize, Deserialize)]
@@ -30,16 +100,62 @@ pub enum ClientConnectionResult {
         client_protocol_id: u64,
         display_name: String,
         server_ip: IpAddr,
-        streaming_capabilities: Option<VideoStreamingCapabilities>,
+        streaming_capabilities: Option<VideoStreamingCapabilitiesLegacy>, // todo: use String
     },
     ClientStandby,
 }
 
+// Note: not a network packet
+#[derive(Serialize, Deserialize, Clone)]
+pub struct NegotiatedStreamingConfig {
+    pub view_resolution: UVec2,
+    pub refresh_rate_hint: f32,
+    pub game_audio_sample_rate: u32,
+    pub enable_foveated_encoding: bool,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct StreamConfigPacket {
-    pub session: String, // JSON session that allows for extrapolation
-    pub negotiated: String, // JSON dictionary containing negotiated configuration. Can be extended
-                         // without a breaking protocol change, but entries can't be removed.
+    pub session: String,    // JSON session that allows for extrapolation
+    pub negotiated: String, // Encoded NegotiatedVideoStreamingConfig
+}
+
+pub fn encode_stream_config(
+    session: &SessionConfig,
+    negotiated: &NegotiatedStreamingConfig,
+) -> Result<StreamConfigPacket> {
+    Ok(StreamConfigPacket {
+        session: json::to_string(session)?,
+        negotiated: json::to_string(negotiated)?,
+    })
+}
+
+pub fn decode_stream_config(
+    packet: &StreamConfigPacket,
+) -> Result<(Settings, NegotiatedStreamingConfig)> {
+    let mut session_config = SessionConfig::default();
+    session_config.merge_from_json(&json::from_str(&packet.session)?)?;
+    let settings = session_config.to_settings();
+
+    let negotiated_json = json::from_str::<json::Value>(&packet.negotiated)?;
+
+    let view_resolution = json::from_value(negotiated_json["view_resolution"].clone())?;
+    let refresh_rate_hint = json::from_value(negotiated_json["refresh_rate_hint"].clone())?;
+    let game_audio_sample_rate =
+        json::from_value(negotiated_json["game_audio_sample_rate"].clone())?;
+    let enable_foveated_encoding =
+        json::from_value(negotiated_json["enable_foveated_encoding"].clone())
+            .unwrap_or_else(|_| settings.video.foveated_encoding.enabled());
+
+    Ok((
+        settings,
+        NegotiatedStreamingConfig {
+            view_resolution,
+            refresh_rate_hint,
+            game_audio_sample_rate,
+            enable_foveated_encoding,
+        },
+    ))
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -51,7 +167,7 @@ pub struct DecoderInitializationConfig {
 #[derive(Serialize, Deserialize)]
 pub enum ServerControlPacket {
     StartStream,
-    InitializeDecoder(DecoderInitializationConfig),
+    DecoderConfig(DecoderInitializationConfig),
     Restarting,
     KeepAlive,
     ServerPredictionAverage(Duration), // todo: remove
@@ -83,6 +199,21 @@ pub enum ButtonValue {
 pub struct ButtonEntry {
     pub path_id: u64,
     pub value: ButtonValue,
+}
+
+// to be de/serialized with ClientControlPacket::Reserved()
+#[derive(Serialize, Deserialize)]
+pub enum ReservedClientControlPacket {
+    CustomInteractionProfile {
+        device_id: u64,
+        input_ids: HashSet<u64>,
+    },
+}
+
+pub fn encode_reserved_client_control_packet(
+    packet: &ReservedClientControlPacket,
+) -> ClientControlPacket {
+    ClientControlPacket::Reserved(json::to_string(packet).unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -204,7 +335,7 @@ pub struct ClientStatistics {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PathValuePair {
     pub path: Vec<PathSegment>,
-    pub value: serde_json::Value,
+    pub value: json::Value,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -234,4 +365,12 @@ pub enum ServerRequest {
     GetDriverList,
     RestartSteamvr,
     ShutdownSteamvr,
+}
+
+// Per eye view parameters
+// todo: send together with video frame
+#[derive(Serialize, Deserialize, Clone, Copy, Default)]
+pub struct ViewParams {
+    pub pose: Pose,
+    pub fov: Fov,
 }

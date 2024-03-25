@@ -85,7 +85,7 @@ void FFR::Initialize(ID3D11Texture2D* compositionTexture) {
 	mQuadVertexShader = CreateVertexShader(mDevice.Get(), quadShaderCSO);
 
 	mOptimizedTexture = CreateTexture(mDevice.Get(), fovVars.optimizedEyeWidth * 2,
-		fovVars.optimizedEyeHeight, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+		fovVars.optimizedEyeHeight, Settings::Instance().m_enableHdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
 	if (Settings::Instance().m_enableFoveatedEncoding) {
 		std::vector<uint8_t> compressAxisAlignedShaderCSO(COMPRESS_AXIS_ALIGNED_CSO_PTR, COMPRESS_AXIS_ALIGNED_CSO_PTR + COMPRESS_AXIS_ALIGNED_CSO_LEN);

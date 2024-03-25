@@ -19,8 +19,7 @@ const char *encoder(ALVR_CODEC codec) {
     case ALVR_CODEC_HEVC:
         return "hevc_nvenc";
     case ALVR_CODEC_AV1:
-        Warn("AV1 is not supported by NvEnc. Using HEVC instead.");
-        return "hevc_nvenc";
+        return "av1_nvenc";
     }
     throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
@@ -161,6 +160,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
+    encoder_ctx->color_range = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
     params.bitrate_bps = 30'000'000;

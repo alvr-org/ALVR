@@ -70,18 +70,15 @@ Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-thro
 
 Notes:
 
-* This is generally recommended way to install ALVR on non-arch distributions and can practically work on any distribution. You can of course use it in case you have issues installing or using ALVR even on Arch Linux.
+* This should be used in case you can't install or have issues with ALVR on your system. Do note that on Nvidia it uses host drivers and cuda nvenc, so if you're on older distribution like Debian and having older driver and cuda version, it will not work properly either way.
 
 * Guide also contains fixes, tweaks, additional software like desktop overlay to help you run with steamvr better and workaround it's issues.
 
-* It didn't have a *huge* feedback history yet, so if you happen to have issues, please report them into [the said](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide) repository.
-
 Installation:
 
-1. `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git` or download zip from https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide, unpack it
-   somewhere in your home directory (steam doesn't like long paths)
-
-1.1. If you want to use nightly (potentially unstable, but fresh) builds use [nightly](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/tree/nightly) branch.
+1. Download zip from https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide, unpack it somewhere in your home directory (steam doesn't like long paths) or `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git`.
+   
+   If you want to use nightly (potentially unstable, but fresh) builds, set `IS_NIGHTLY=0` variable in `env.sh` to `IS_NIGHTLY=1`.
 
 2. `cd ALVR-Distrobox-Linux-Guide`
 

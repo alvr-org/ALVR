@@ -9,7 +9,7 @@ class SrgbCorrectionPass {
   public:
     SrgbCorrectionPass(gl_render_utils::Texture *inputSurface);
 
-    void Initialize(uint32_t width, uint32_t height, bool passthrough);
+    void Initialize(uint32_t width, uint32_t height, bool passthrough, bool fixLimitedRange, float encodingGamma);
 
     void Render() const;
 

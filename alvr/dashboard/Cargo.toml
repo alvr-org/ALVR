@@ -16,7 +16,7 @@ alvr_gui_common.workspace = true
 
 bincode = "1"
 chrono = "0.4"
-eframe = "0.25"
+eframe = "0.26"
 env_logger = "0.11"
 ico = "0.3"
 rand = "0.8"
@@ -33,7 +33,7 @@ ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1"
-ewebsock = "0.4"
+ewebsock = "0.5"
 futures = "0.3"
 gloo-net = "0.5"
 instant = { version = "0.1", features = ["wasm-bindgen"] }

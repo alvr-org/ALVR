@@ -15,6 +15,7 @@
 #include <unknwn.h>
 #include <cinttypes>
 
+#include "d3d-render-utils/RenderPipelineYUV.h"
 #include "shared/d3drender.h"
 #include "openvr_driver.h"
 #include "FFR.h"
@@ -61,6 +62,7 @@ private:
 	ComPtr<ID3D11InputLayout> m_pVertexLayout;
 	ComPtr<ID3D11Buffer> m_pVertexBuffer;
 	ComPtr<ID3D11Buffer> m_pIndexBuffer;
+	ComPtr<ID3D11Buffer> m_pFrameRenderCBuffer;
 
 	ComPtr<ID3D11SamplerState> m_pSamplerLinear;
 
@@ -90,6 +92,8 @@ private:
 
 	std::unique_ptr<FFR> m_ffr;
 	bool enableFFE;
+
+	std::unique_ptr<d3d_render_utils::RenderPipelineYUV> m_yuvPipeline;
 
 	static bool SetGpuPriority(ID3D11Device* device)
 	{

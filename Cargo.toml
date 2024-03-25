@@ -21,6 +21,10 @@ alvr_session = { path = "alvr/session" }
 alvr_sockets = { path = "alvr/sockets" }
 alvr_gui_common = { path = "alvr/gui_common" }
 
+[profile.release]
+debug = "limited"
+strip = false
+
 [profile.distribution]
 inherits = "release"
 lto = true

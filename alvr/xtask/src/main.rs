@@ -175,7 +175,7 @@ fn main() {
                     if let Some(platform) = platform {
                         match platform.as_str() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
-                            "linux" => dependencies::build_ffmpeg_linux(!no_nvidia),
+                            "linux" => dependencies::prepare_linux_deps(!no_nvidia),
                             "android" => dependencies::build_android_deps(for_ci),
                             _ => panic!("Unrecognized platform."),
                         }
@@ -183,7 +183,7 @@ fn main() {
                         if cfg!(windows) {
                             dependencies::prepare_windows_deps(for_ci);
                         } else if cfg!(target_os = "linux") {
-                            dependencies::build_ffmpeg_linux(!no_nvidia);
+                            dependencies::prepare_linux_deps(!no_nvidia);
                         }
 
                         dependencies::build_android_deps(for_ci);

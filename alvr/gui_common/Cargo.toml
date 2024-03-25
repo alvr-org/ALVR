@@ -9,4 +9,4 @@ license.workspace = true
 [dependencies]
 alvr_common.workspace = true
 
-egui = "0.25"
+egui = "0.26"

@@ -271,7 +271,7 @@ fn linux_hardware_encoders_check() {
                 } else {
                     alvr_common::show_e(format!(
                         "Couldn't find VA-API runtime on system, \
-                        you unlikely to have hardware encoding.
+                        you unlikely to have hardware encoding. \
                         Please install VA-API runtime for your distribution \
                         and make sure it works (Manjaro, Fedora)."
                     ));

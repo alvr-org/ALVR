@@ -1,5 +1,7 @@
 use crate::data_sources;
-use alvr_common::{debug, error, glam::bool, info, once_cell::sync::Lazy, parking_lot::Mutex};
+use alvr_common::{debug, glam::bool, once_cell::sync::Lazy, parking_lot::Mutex};
+#[cfg(target_os = "linux")]
+use alvr_common::{error, info};
 use alvr_filesystem as afs;
 use alvr_session::{DriverLaunchAction, DriversBackup};
 use std::{

@@ -36,17 +36,17 @@ Once Flatpak is installed, the flatpak dependencies must also be installed. They
 These can be installed like so:
 
 ```
-flatpak install flathub org.freedesktop.Sdk//22.08 \
-    org.freedesktop.Sdk.Extension.llvm16//22.08 \
-    org.freedesktop.Sdk.Extension.rust-stable//22.08 \
+flatpak install flathub org.freedesktop.Sdk//23.08 \
+    org.freedesktop.Sdk.Extension.llvm16//23.08 \
+    org.freedesktop.Sdk.Extension.rust-stable//23.08 \
     com.valvesoftware.Steam
 ```
 
 AMD users may need to install the appropriate Mesa codec extensions as well:
 
 ```
-flatpak install flathub org.freedesktop.Platform.GL.default//22.08-extra \
-   org.freedesktop.Platform.GL32.default//22.08-extra
+flatpak install flathub org.freedesktop.Platform.GL.default//23.08-extra \
+   org.freedesktop.Platform.GL32.default//23.08-extra
 ```
 
 ## Setup

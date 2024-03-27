@@ -23,7 +23,7 @@ use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
+    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
 };
 use alvr_packets::{
     BatteryPacket, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
@@ -305,37 +305,44 @@ impl ClientCoreContext {
     }
 
     pub fn get_frame(&self) -> Option<DecodedFrame> {
-        if let Some(source) = &mut *self.connection_context.decoder_source.lock() {
-            if let Some((frame_timestamp, buffer_ptr)) = source.get_frame() {
-                if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                    stats.report_compositor_start(frame_timestamp);
-                }
+        let mut decoder_source_lock = self.connection_context.decoder_source.lock();
+        let decoder_source = decoder_source_lock.as_mut()?;
 
-                let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
-                while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
-                    match timestamp {
-                        t if t == frame_timestamp => {
-                            return Some(DecodedFrame {
-                                timestamp: frame_timestamp,
-                                view_params,
-                                buffer_ptr,
-                            })
-                        }
-                        t if t > frame_timestamp => {
-                            view_params_queue_lock.push_front((timestamp, view_params));
-                            break;
-                        }
-                        _ => continue,
-                    }
-                }
+        let (frame_timestamp, buffer_ptr) = match decoder_source.get_frame() {
+            Ok(maybe_pair) => maybe_pair?,
+            Err(e) => {
+                error!("Error getting frame, restarting connection: {}", e);
 
-                None
-            } else {
-                None
+                // The connection loop observes changes on this value
+                *self.connection_context.state.write() = ConnectionState::Disconnecting;
+
+                return None;
             }
-        } else {
-            None
+        };
+
+        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
+            stats.report_compositor_start(frame_timestamp);
         }
+
+        let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+        while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
+            match timestamp {
+                t if t == frame_timestamp => {
+                    return Some(DecodedFrame {
+                        timestamp: frame_timestamp,
+                        view_params,
+                        buffer_ptr,
+                    })
+                }
+                t if t > frame_timestamp => {
+                    view_params_queue_lock.push_front((timestamp, view_params));
+                    break;
+                }
+                _ => continue,
+            }
+        }
+
+        None
     }
 
     /// Call only with external decoder
@@ -367,7 +374,7 @@ impl ClientCoreContext {
                 if let Some(stats) = stats.summary(target_timestamp) {
                     sender.send_header(&stats).ok();
                 } else {
-                    error!("Statistics summary not ready!");
+                    warn!("Statistics summary not ready!");
                 }
             }
         }

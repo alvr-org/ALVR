@@ -6,6 +6,8 @@
 #include <memory>
 #ifdef _WIN32
 #include "platform/win32/OvrDirectModeComponent.h"
+#else
+#include "platform/linux/OvrDirectModeComponent.h"
 #endif
 
 class Controller;
@@ -15,6 +17,8 @@ class ViveTrackerProxy;
 class CEncoder;
 #ifdef _WIN32
 class CD3DRender;
+#elif __linux__
+class Renderer;
 #endif
 class PoseHistory;
 
@@ -76,11 +80,11 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
 
 #ifdef _WIN32
     std::shared_ptr<CD3DRender> m_D3DRender;
+#elif __linux__
+    std::shared_ptr<Renderer> m_VKRender;
 #endif
 
-#ifdef _WIN32
     std::shared_ptr<OvrDirectModeComponent> m_directModeComponent;
-#endif
 
     std::shared_ptr<ViveTrackerProxy> m_viveTrackerProxy;
 

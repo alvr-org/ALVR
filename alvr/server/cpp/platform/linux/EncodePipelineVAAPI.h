@@ -29,6 +29,7 @@ public:
   ~EncodePipelineVAAPI();
   EncodePipelineVAAPI(Renderer *render, VkContext &vk_ctx, VkFrame &input_frame, uint32_t width, uint32_t height);
 
+  void Transmit(VkImage *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool insertIDR);
   void PushFrame(uint64_t targetTimestampNs, bool idr) override;
   void SetParams(FfiDynamicEncoderParams params) override;
 

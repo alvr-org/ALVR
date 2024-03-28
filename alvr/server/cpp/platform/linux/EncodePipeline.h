@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 #include "alvr_server/bindings.h"
 
 extern "C" struct AVCodecContext;
@@ -33,7 +34,7 @@ public:
 
   virtual ~EncodePipeline();
 
-  virtual void PushFrame(uint64_t targetTimestampNs, bool idr) = 0;
+  virtual void PushFrame(VkImage *pTexture, uint64_t presentationTime, uint64_t targetTimestampNs, bool idr) = 0; // Linux version of VideoEncoder::Transmit
   virtual bool GetEncoded(FramePacket &data);
   virtual Timestamp GetTimestamp() { return timestamp; }
   virtual int GetCodec();

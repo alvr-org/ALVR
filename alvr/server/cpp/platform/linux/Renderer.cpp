@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstring>
 #include <algorithm>
+#include <vulkan/vulkan_core.h>
 
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0
@@ -51,7 +52,7 @@ static bool filter_modifier(uint64_t modifier)
     return true;
 }
 
-Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
+/*Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
@@ -80,11 +81,13 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     VkPhysicalDeviceProperties props = {};
     vkGetPhysicalDeviceProperties(m_physDev, &props);
     m_timestampPeriod = props.limits.timestampPeriod;
-}
+}*/
 
 Renderer::~Renderer()
 {
     vkDeviceWaitIdle(m_dev);
+
+    vkDestroyInstance(m_inst, nullptr);
 
     for (const InputImage &image : m_images) {
         vkDestroyImageView(m_dev, image.view, nullptr);
@@ -113,6 +116,24 @@ Renderer::~Renderer()
 
 void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
 {
+    VkApplicationInfo appInfo{};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 3, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_3;
+
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+
+    //TODO: get extensions
+
+
+    if (vkCreateInstance(&createInfo, nullptr, &m_inst) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create instance!");
+    }
+
     m_format = format;
     m_imageSize.width = width;
     m_imageSize.height = height;

@@ -9,6 +9,7 @@
 #include "ViveTrackerProxy.h"
 #include "bindings.h"
 #include <cfloat>
+#include <memory>
 
 #ifdef _WIN32
 #include "platform/win32/CEncoder.h"
@@ -99,7 +100,7 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
                                     static_cast<float>(Settings::Instance().m_refreshRate));
 
     vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
-
+//remove ifdef?
 #ifdef _WIN32
     float originalIPD =
         vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
@@ -108,16 +109,6 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
     HmdMatrix_SetIdentity(&m_eyeToHeadLeft);
     HmdMatrix_SetIdentity(&m_eyeToHeadRight);
-
-// Disable async reprojection on Linux. Windows interface uses IVRDriverDirectModeComponent
-// which never applies reprojection
-// Also Disable async reprojection on vulkan
-#ifndef _WIN32
-    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
-        Settings::Instance().m_enableLinuxVulkanAsyncCompute);
-    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool,
-        !Settings::Instance().m_enableLinuxAsyncReprojection);
-#endif
 
     if (!m_baseComponentsInitialized) {
         m_baseComponentsInitialized = true;
@@ -151,6 +142,14 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
             m_directModeComponent =
                 std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
+#elif __linux__
+            m_VKRender = std::make_shared<Renderer>();
+
+            if(!m_VKRender->Startup()) {
+                Error("Could not create graphics device.");
+                return vr::VRInitError_Driver_Failed;
+            }
+        m_directModeComponent =std::make_shared<OvrDirectModeComponent>(m_VKRender, m_poseHistory);
 #endif
         }
 
@@ -180,11 +179,9 @@ void *Hmd::GetComponent(const char *component_name_and_version) {
         return (vr::IVRDisplayComponent *)this;
     }
 
-#ifdef _WIN32
     if (name_and_vers == vr::IVRDriverDirectModeComponent_Version) {
         return m_directModeComponent.get();
     }
-#endif
 
     return nullptr;
 }
@@ -303,11 +300,7 @@ void Hmd::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_
 }
 
 bool Hmd::IsDisplayRealDisplay() {
-#ifdef _WIN32
     return false;
-#else
-    return true;
-#endif
 }
 
 void Hmd::GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight) {

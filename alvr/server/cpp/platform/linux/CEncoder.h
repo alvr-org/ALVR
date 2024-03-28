@@ -1,22 +1,32 @@
 #pragma once
 
+#include "EncodePipeline.h"
+#include "FrameRender.h"
+#include "alvr_server/Utils.h"
 #include "alvr_server/IDRScheduler.h"
 #include "shared/threadtools.h"
 #include <atomic>
 #include <memory>
 #include <poll.h>
 #include <sys/types.h>
+#include <vulkan/vulkan_core.h>
 
 class PoseHistory;
 
 class CEncoder : public CThread {
   public:
-    CEncoder(std::shared_ptr<PoseHistory> poseHistory);
+    CEncoder();
     ~CEncoder();
     bool Init() override { return true; }
-    void Run() override;
 
+    bool CopyToStaging(VkImage *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
+			, uint64_t presentationTime, uint64_t targetTimestampNs, const std::string& message, const std::string& debugText);
+
+    void Run() override;
     void Stop();
+
+    void NewFrameReady();  //TODO: implement for linux directmode
+		void WaitForEncode();  //TODO: implement for linux directmode
     void OnStreamStart();
     void OnPacketLoss();
     void InsertIDR();
@@ -24,13 +34,16 @@ class CEncoder : public CThread {
     void CaptureFrame();
 
   private:
-    void GetFds(int client, int (*fds)[6]);
-    std::shared_ptr<PoseHistory> m_poseHistory;
+    //void GetFds(int client, int (*fds)[6]);
+    CThreadEvent m_newFrameReady, m_encodeFinished; //TODO use to sync present with encoded frames
+    std::shared_ptr<alvr::EncodePipeline> m_videoEncoder;
     std::atomic_bool m_exiting{false};
+    uint64_t m_presentationTime;
+		uint64_t m_targetTimestampNs;
+  
+    std::shared_ptr<FrameRender> m_FrameRender;
+    
     IDRScheduler m_scheduler;
-    pollfd m_socket;
-    std::string m_socketPath;
-    int m_fds[6];
     bool m_connected = false;
     std::atomic_bool m_captureFrame = false;
 };

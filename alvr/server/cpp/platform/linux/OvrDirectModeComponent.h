@@ -2,17 +2,17 @@
 #include "openvr_driver.h"
 #include "alvr_server/Utils.h"
 #include "CEncoder.h"
+#include "Renderer.h"
 #include "alvr_server/PoseHistory.h"
 
 #include "alvr_server/Settings.h"
 
 #include <mutex>
 
-
-class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
+class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent, vr::IVRIPCResourceManagerClient
 {
 public:
-	OvrDirectModeComponent(std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory);
+	OvrDirectModeComponent(std::shared_ptr<Renderer> pVKRender, std::shared_ptr<PoseHistory> poseHistory);
 
 	void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
 
@@ -40,18 +40,25 @@ public:
 
 	void CopyTexture(uint32_t layerCount);
 
+	///IVRIPCResourceManagerClient
+	virtual bool NewSharedVulkanImage( uint32_t nImageFormat, uint32_t nWidth, uint32_t nHeight, bool bRenderable, bool bMappable, bool bComputeAccess, uint32_t unMipLevels, uint32_t unArrayLayerCount, vr::SharedTextureHandle_t *pSharedHandle );
+
+	/** Create a new tracked Vulkan Buffer */
+	virtual bool NewSharedVulkanBuffer( size_t nSize, uint32_t nUsageFlags, vr::SharedTextureHandle_t *pSharedHandle );
+
+	/** Create a new tracked Vulkan Semaphore */
+	virtual bool NewSharedVulkanSemaphore( vr::SharedTextureHandle_t *pSharedHandle );
+
+	/** Grab a reference to hSharedHandle, and optionally generate a new IPC handle if pNewIpcHandle is not nullptr  */
+	virtual bool RefResource( vr::SharedTextureHandle_t hSharedHandle, uint64_t *pNewIpcHandle );
+
+	/** Drop a reference to hSharedHandle */
+	virtual bool UnrefResource( vr::SharedTextureHandle_t hSharedHandle );
+
 private:
-	std::shared_ptr<CD3DRender> m_pD3DRender;
+	std::shared_ptr<Renderer> m_pVKRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<PoseHistory> m_poseHistory;
-
-	// Resource for each process
-	struct ProcessResource {
-		ComPtr<ID3D11Texture2D> textures[3];
-		HANDLE sharedHandles[3];
-		uint32_t pid;
-	};
-	std::map<HANDLE, std::pair<ProcessResource *, int> > m_handleMap;
 
 	static const int MAX_LAYERS = 10;
 	int m_submitLayer;

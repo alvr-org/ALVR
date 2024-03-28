@@ -226,6 +226,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
+
+//remove?
 #ifdef __linux__
             else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged ||
                      event.eventType == vr::VREvent_ChaperoneRoomSetupFinished ||

@@ -32,10 +32,24 @@ pub fn is_steamvr_running() -> bool {
 pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     use std::fs;
 
+    use alvr_common::anyhow::bail;
+
     let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
         .join("bin")
         .join("linux64");
     let launcher_path = steamvr_bin_dir.join("vrcompositor");
+    match launcher_path.try_exists() {
+        Ok(exists) => {
+            if !exists {
+                bail!(
+                    "SteamVR linux files missing, aborting startup, please re-check compatibility tools for SteamVR."
+                );
+            }
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
+    };
 
     // In case of SteamVR update, vrcompositor will be restored
     if fs::read_link(&launcher_path).is_ok() {
@@ -134,7 +148,13 @@ impl Launcher {
         }
 
         #[cfg(target_os = "linux")]
-        alvr_common::show_err(maybe_wrap_vrcompositor_launcher());
+        {
+            let vrcompositor_wrap_result = maybe_wrap_vrcompositor_launcher();
+            alvr_common::show_err(maybe_wrap_vrcompositor_launcher());
+            if let Err(_) = vrcompositor_wrap_result {
+                return;
+            }
+        }
 
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
@@ -150,7 +170,7 @@ impl Launcher {
             }
             #[cfg(not(windows))]
             {
-                Command::new("xdg-open")
+                Command::new("steam")
                     .args(["steam://rungameid/250820"])
                     .spawn()
                     .ok();

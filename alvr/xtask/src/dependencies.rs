@@ -11,6 +11,30 @@ pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error>
     .run()
 }
 
+pub fn prepare_openvr_sdk() {
+    let sh = Shell::new().unwrap();
+
+    let deps_path = afs::deps_dir().join("openvr");
+    sh.remove_path(&deps_path).ok();
+
+    const VERSION: &str = "1.16.8";
+
+    command::download_and_extract_zip(
+        &format!(
+            "{}/v{VERSION}.zip",
+            "https://github.com/ValveSoftware/openvr/archive/refs/tags"
+        ),
+        &afs::deps_dir(),
+    )
+    .unwrap();
+
+    fs::rename(
+        afs::deps_dir().join(&format!("openvr-{VERSION}")),
+        &deps_path,
+    )
+    .unwrap();
+}
+
 pub fn prepare_x264_windows(deps_path: &Path) {
     let sh = Shell::new().unwrap();
 
@@ -90,6 +114,7 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
         .unwrap();
     }
 
+    prepare_openvr_sdk();
     prepare_x264_windows(&deps_path);
     prepare_ffmpeg_windows(&deps_path);
 }
@@ -101,11 +126,12 @@ pub fn prepare_linux_deps(nvenc_flag: bool) {
     sh.remove_path(&deps_path).ok();
     sh.create_dir(&deps_path).unwrap();
 
-    build_x264_linux(&deps_path);
-    build_ffmpeg_linux(nvenc_flag, &deps_path);
+    prepare_openvr_sdk();
+    prepare_x264_linux(&deps_path);
+    prepare_ffmpeg_linux(nvenc_flag, &deps_path);
 }
 
-pub fn build_x264_linux(deps_path: &Path) {
+pub fn prepare_x264_linux(deps_path: &Path) {
     let sh = Shell::new().unwrap();
 
     // x264 0.164
@@ -138,7 +164,7 @@ pub fn build_x264_linux(deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
-pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
+pub fn prepare_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
     let sh = Shell::new().unwrap();
 
     command::download_and_extract_zip(
@@ -275,6 +301,10 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
+pub fn prepare_macos_deps() {
+    prepare_openvr_sdk();
+}
+
 fn get_android_openxr_loaders() {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
         let sh = Shell::new().unwrap();
@@ -350,5 +380,6 @@ pub fn build_android_deps(skip_admin_priv: bool) {
         .run()
         .unwrap();
 
+    prepare_openvr_sdk();
     get_android_openxr_loaders();
 }

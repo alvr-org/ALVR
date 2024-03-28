@@ -15,4 +15,6 @@ serde_json = "1"
 settings-schema = { git = "https://github.com/alvr-org/settings-schema-rs", rev = "676185f" }
 
 [build-dependencies]
+alvr_filesystem.workspace = true
+
 regex = "1"

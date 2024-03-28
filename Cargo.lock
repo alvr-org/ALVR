@@ -269,6 +269,7 @@ dependencies = [
  "bincode",
  "chrono",
  "console_error_panic_hook",
+ "cros-libva",
  "eframe",
  "env_logger 0.11.3",
  "ewebsock",
@@ -276,6 +277,7 @@ dependencies = [
  "gloo-net",
  "ico",
  "instant",
+ "nvml-wrapper",
  "rand",
  "serde",
  "serde_json",
@@ -1496,6 +1498,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3855a8a784b474f333699ef2bbca9db2c4a1f6d9088a90a2d25b1eb53111eaa"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "cros-libva"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f75943ee30eb2f8b4f3beb8f047e69ecc1c91d098c344b34a0fdd8dd8b2614a"
+dependencies = [
+ "bitflags 1.3.2",
+ "log",
+ "pkg-config",
+ "thiserror",
 ]
 
 [[package]]
@@ -3554,6 +3568,29 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.53",
+]
+
+[[package]]
+name = "nvml-wrapper"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c9bff0aa1d48904a1385ea2a8b97576fbdcbc9a3cfccd0d31fe978e1c4038c5"
+dependencies = [
+ "bitflags 2.5.0",
+ "libloading 0.8.3",
+ "nvml-wrapper-sys",
+ "static_assertions",
+ "thiserror",
+ "wrapcenum-derive",
+]
+
+[[package]]
+name = "nvml-wrapper-sys"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "698d45156f28781a4e79652b6ebe2eaa0589057d588d3aec1333f6466f13fcb5"
+dependencies = [
+ "libloading 0.8.3",
 ]
 
 [[package]]
@@ -6276,6 +6313,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b68db261ef59e9e52806f688020631e987592bd83619edccda9c47d42cde4f6c"
 dependencies = [
  "toml",
+]
+
+[[package]]
+name = "wrapcenum-derive"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76ff259533532054cfbaefb115c613203c73707017459206380f03b3b3f266e"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.53",
 ]
 
 [[package]]

@@ -27,25 +27,25 @@ std::unique_ptr<alvr::EncodePipeline> alvr::EncodePipeline::Create(Renderer *ren
     if (vk_ctx.nvidia) {
       try {
         auto nvenc = std::make_unique<alvr::EncodePipelineNvEnc>(render, vk_ctx, input_frame, vk_frame_ctx, width, height);
-        Info("using NvEnc encoder");
+        Info("Using NvEnc encoder");
         return nvenc;
       } catch (std::exception &e)
       {
-        Info("failed to create NvEnc encoder: %s", e.what());
+        Error("Failed to create NvEnc encoder: %s\nPlease make sure you have installed CUDA runtime.", e.what());
       }
     } else {
       try {
         auto vaapi = std::make_unique<alvr::EncodePipelineVAAPI>(render, vk_ctx, input_frame, width, height);
-        Info("using VAAPI encoder");
+        Info("Using VAAPI encoder");
         return vaapi;
       } catch (std::exception &e)
       {
-        Info("failed to create VAAPI encoder: %s", e.what());
+        Error("Failed to create VAAPI encoder: %s\nPlease make sure you have installed VAAPI runtime.", e.what());
       }
     }
   }
   auto sw = std::make_unique<alvr::EncodePipelineSW>(render, width, height);
-  Info("using SW encoder");
+  Info("Using SW encoder");
   return sw;
 }
 

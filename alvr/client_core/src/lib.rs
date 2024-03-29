@@ -47,7 +47,7 @@ pub use platform::Platform;
 pub use platform::try_get_permission;
 
 // When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(70);
+const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(100);
 const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub fn platform() -> Platform {
@@ -222,7 +222,7 @@ impl ClientCoreContext {
         face_data: FaceData,
     ) {
         let last_ipd = {
-            let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+            let mut view_params_queue_lock = self.connection_context.view_params_queue.write();
 
             let last_ipd = if let Some((_, params)) = view_params_queue_lock.front() {
                 (params[0].pose.position - params[1].pose.position).length()
@@ -324,25 +324,27 @@ impl ClientCoreContext {
             stats.report_compositor_start(frame_timestamp);
         }
 
-        let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
-        while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
-            match timestamp {
-                t if t == frame_timestamp => {
-                    return Some(DecodedFrame {
-                        timestamp: frame_timestamp,
-                        view_params,
-                        buffer_ptr,
-                    })
-                }
-                t if t > frame_timestamp => {
-                    view_params_queue_lock.push_front((timestamp, view_params));
-                    break;
-                }
-                _ => continue,
+        let mut best_view_params = [ViewParams::default(); 2];
+        let mut min_timestamp_diff = Duration::MAX;
+        for &(timestamp, view_params) in &*self.connection_context.view_params_queue.read() {
+            let timestamp_diff = Duration::max(
+                frame_timestamp.saturating_sub(timestamp),
+                timestamp.saturating_sub(frame_timestamp),
+            );
+
+            if timestamp_diff < min_timestamp_diff {
+                best_view_params = view_params;
+                min_timestamp_diff = timestamp_diff;
+            } else {
+                break;
             }
         }
 
-        None
+        Some(DecodedFrame {
+            timestamp: frame_timestamp,
+            view_params: best_view_params,
+            buffer_ptr,
+        })
     }
 
     /// Call only with external decoder

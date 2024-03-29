@@ -431,7 +431,9 @@ pub extern "C" fn alvr_send_battery(device_id: u64, gauge_value: f32, is_plugged
 #[no_mangle]
 pub extern "C" fn alvr_send_playspace(width: f32, height: f32) {
     if let Some(context) = &*CLIENT_CORE_CONTEXT.lock() {
-        context.send_playspace(if width != 0.0 && height != 0.0 {
+        let wh = width * height;
+        // If either is NaN/Inf, the product will be NaN/Inf
+        context.send_playspace(if wh.is_finite() && wh > 0.0 {
             Some(Vec2::new(width, height))
         } else {
             None

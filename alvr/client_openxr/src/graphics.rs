@@ -105,7 +105,7 @@ pub fn create_swapchain(
         glow::RGBA16F,
         glow::RGB16F,
         glow::SRGB8_ALPHA8,
-        glow::SRGB8_ALPHA8,
+        glow::SRGB8,
         glow::RGBA8,
         glow::BGRA,
         glow::RGB8,

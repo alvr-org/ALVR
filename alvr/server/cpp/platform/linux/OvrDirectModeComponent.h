@@ -9,7 +9,7 @@
 
 #include <mutex>
 
-class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent, vr::IVRIPCResourceManagerClient
+class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent
 {
 public:
 	OvrDirectModeComponent(std::shared_ptr<Renderer> pVKRender, std::shared_ptr<PoseHistory> poseHistory);
@@ -40,25 +40,17 @@ public:
 
 	void CopyTexture(uint32_t layerCount);
 
-	///IVRIPCResourceManagerClient
-	virtual bool NewSharedVulkanImage( uint32_t nImageFormat, uint32_t nWidth, uint32_t nHeight, bool bRenderable, bool bMappable, bool bComputeAccess, uint32_t unMipLevels, uint32_t unArrayLayerCount, vr::SharedTextureHandle_t *pSharedHandle );
-
-	/** Create a new tracked Vulkan Buffer */
-	virtual bool NewSharedVulkanBuffer( size_t nSize, uint32_t nUsageFlags, vr::SharedTextureHandle_t *pSharedHandle );
-
-	/** Create a new tracked Vulkan Semaphore */
-	virtual bool NewSharedVulkanSemaphore( vr::SharedTextureHandle_t *pSharedHandle );
-
-	/** Grab a reference to hSharedHandle, and optionally generate a new IPC handle if pNewIpcHandle is not nullptr  */
-	virtual bool RefResource( vr::SharedTextureHandle_t hSharedHandle, uint64_t *pNewIpcHandle );
-
-	/** Drop a reference to hSharedHandle */
-	virtual bool UnrefResource( vr::SharedTextureHandle_t hSharedHandle );
-
 private:
 	std::shared_ptr<Renderer> m_pVKRender;
 	std::shared_ptr<CEncoder> m_pEncoder;
 	std::shared_ptr<PoseHistory> m_poseHistory;
+
+	// Resource for each process
+	struct ProcessResource {
+		vr::SharedTextureHandle_t sharedHandles[3];
+		uint32_t pid;
+	};
+	std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource *, int> > m_handleMap;
 
 	static const int MAX_LAYERS = 10;
 	int m_submitLayer;

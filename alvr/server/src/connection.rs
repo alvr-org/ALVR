@@ -1122,6 +1122,7 @@ fn connection_pipeline(
                                 unsafe { crate::SetChaperoneArea(area.x, area.y) };
                             } else {
                                 warn!("Received invalid playspace size: {}", area);
+                                unsafe { crate::SetChaperoneArea(2.0, 2.0) };
                             }
                         }
                     }

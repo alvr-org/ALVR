@@ -232,14 +232,8 @@ impl ClientCoreContext {
 
             view_params_queue_lock.push_back((target_timestamp, views));
 
-            loop {
-                if let Some((timestamp, _)) = view_params_queue_lock.front() {
-                    if target_timestamp - *timestamp > MAX_POSE_HISTORY_INTERVAL {
-                        view_params_queue_lock.pop_front();
-                    } else {
-                        break;
-                    }
-                }
+            while view_params_queue_lock.len() > 360 {
+                view_params_queue_lock.pop_front();
             }
 
             last_ipd

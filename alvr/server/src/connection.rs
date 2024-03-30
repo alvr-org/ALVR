@@ -1116,7 +1116,13 @@ fn connection_pipeline(
                             );
 
                             let area = packet.unwrap_or(Vec2::new(2.0, 2.0));
-                            unsafe { crate::SetChaperoneArea(area.x, area.y) };
+                            let wh = area.x * area.y;
+                            if wh.is_finite() && wh > 0.0 {
+                                info!("Received new playspace with size: {}", area);
+                                unsafe { crate::SetChaperoneArea(area.x, area.y) };
+                            } else {
+                                warn!("Received invalid playspace size: {}", area);
+                            }
                         }
                     }
                     ClientControlPacket::RequestIdr => {

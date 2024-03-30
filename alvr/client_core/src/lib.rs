@@ -232,7 +232,7 @@ impl ClientCoreContext {
 
             view_params_queue_lock.push_back((target_timestamp, views));
 
-            while view_params_queue_lock.len() > 360 {
+            while view_params_queue_lock.len() > 1024 {
                 view_params_queue_lock.pop_front();
             }
 

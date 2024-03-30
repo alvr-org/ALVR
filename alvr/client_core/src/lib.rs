@@ -46,8 +46,6 @@ pub use platform::Platform;
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
 
-// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(100);
 const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub fn platform() -> Platform {
@@ -318,25 +316,17 @@ impl ClientCoreContext {
             stats.report_compositor_start(frame_timestamp);
         }
 
-        let mut best_view_params = [ViewParams::default(); 2];
-        let mut min_timestamp_diff = Duration::MAX;
-        for &(timestamp, view_params) in &*self.connection_context.view_params_queue.read() {
-            let timestamp_diff = Duration::max(
-                frame_timestamp.saturating_sub(timestamp),
-                timestamp.saturating_sub(frame_timestamp),
-            );
-
-            if timestamp_diff < min_timestamp_diff {
-                best_view_params = view_params;
-                min_timestamp_diff = timestamp_diff;
-            } else {
+        let mut view_params = *self.connection_context.last_good_view_params.read();
+        for (timestamp, views) in &*self.connection_context.view_params_queue.read() {
+            if *timestamp == frame_timestamp {
+                view_params = *views;
                 break;
             }
         }
 
         Some(DecodedFrame {
             timestamp: frame_timestamp,
-            view_params: best_view_params,
+            view_params,
             buffer_ptr,
         })
     }

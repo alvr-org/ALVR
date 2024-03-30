@@ -77,6 +77,7 @@ pub struct ConnectionContext {
     pub decoder_source: Mutex<Option<DecoderSource>>,
     // todo: the server is supposed to receive and send view configs for each frame
     pub view_params_queue: RwLock<VecDeque<(Duration, [ViewParams; 2])>>,
+    pub last_good_view_params: RwLock<[ViewParams; 2]>,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
@@ -313,24 +314,16 @@ fn connection_pipeline(
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
                     if capabilities.external_decoder {
-                        let mut best_view_params = [ViewParams::default(); 2];
-                        let mut min_timestamp_diff = Duration::MAX;
-                        for &(timestamp, view_params) in &*ctx.view_params_queue.read() {
-                            let timestamp_diff = Duration::max(
-                                header.timestamp.saturating_sub(timestamp),
-                                timestamp.saturating_sub(header.timestamp),
-                            );
-
-                            if timestamp_diff < min_timestamp_diff {
-                                best_view_params = view_params;
-                                min_timestamp_diff = timestamp_diff;
-                            } else {
+                        let mut view_params = *ctx.last_good_view_params.read();
+                        for (timestamp, views) in &*ctx.view_params_queue.read() {
+                            if *timestamp == header.timestamp {
+                                view_params = *views;
                                 break;
                             }
                         }
                         event_queue.lock().push_back(ClientCoreEvent::FrameReady {
                             timestamp: header.timestamp,
-                            view_params: best_view_params,
+                            view_params,
                             nal: nal.to_vec(),
                         });
                     } else if !ctx

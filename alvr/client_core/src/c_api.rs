@@ -141,6 +141,7 @@ pub fn to_capi_pose(pose: Pose) -> AlvrPose {
     }
 }
 
+#[repr(C)]
 pub struct AlvrViewParams {
     pub pose: AlvrPose,
     pub fov: AlvrFov,

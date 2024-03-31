@@ -76,7 +76,8 @@ pub struct ConnectionContext {
     pub decoder_sink: Mutex<Option<DecoderSink>>,
     pub decoder_source: Mutex<Option<DecoderSource>>,
     // todo: the server is supposed to receive and send view configs for each frame
-    pub view_params_queue: Mutex<VecDeque<(Duration, [ViewParams; 2])>>,
+    pub view_params_queue: RwLock<VecDeque<(Duration, [ViewParams; 2])>>,
+    pub last_good_view_params: RwLock<[ViewParams; 2]>,
 }
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
@@ -313,26 +314,18 @@ fn connection_pipeline(
 
                 if !stream_corrupted || !settings.connection.avoid_video_glitching {
                     if capabilities.external_decoder {
-                        let mut view_params_queue_lock = ctx.view_params_queue.lock();
-                        while let Some((timestamp, view_params)) =
-                            view_params_queue_lock.pop_front()
-                        {
-                            match timestamp {
-                                t if t == header.timestamp => {
-                                    event_queue.lock().push_back(ClientCoreEvent::FrameReady {
-                                        timestamp,
-                                        view_params,
-                                        nal: nal.to_vec(),
-                                    });
-                                    break;
-                                }
-                                t if t > header.timestamp => {
-                                    view_params_queue_lock.push_front((timestamp, view_params));
-                                    break;
-                                }
-                                _ => continue,
+                        let mut view_params = *ctx.last_good_view_params.read();
+                        for (timestamp, views) in &*ctx.view_params_queue.read() {
+                            if *timestamp == header.timestamp {
+                                view_params = *views;
+                                break;
                             }
                         }
+                        event_queue.lock().push_back(ClientCoreEvent::FrameReady {
+                            timestamp: header.timestamp,
+                            view_params,
+                            nal: nal.to_vec(),
+                        });
                     } else if !ctx
                         .decoder_sink
                         .lock()
@@ -592,7 +585,7 @@ fn connection_pipeline(
 
     // Make sure IPD and FoV are resent after reconnection
     // todo: send this data as part of the connection handshake
-    ctx.view_params_queue.lock().clear();
+    ctx.view_params_queue.write().clear();
 
     // Unlock CONNECTION_STATE and block thread
     wait_rwlock(&disconnect_notif, &mut connection_state_lock);

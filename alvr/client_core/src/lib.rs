@@ -46,8 +46,6 @@ pub use platform::Platform;
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
 
-// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub fn platform() -> Platform {
@@ -222,7 +220,7 @@ impl ClientCoreContext {
         face_data: FaceData,
     ) {
         let last_ipd = {
-            let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+            let mut view_params_queue_lock = self.connection_context.view_params_queue.write();
 
             let last_ipd = if let Some((_, params)) = view_params_queue_lock.front() {
                 (params[0].pose.position - params[1].pose.position).length()
@@ -232,14 +230,8 @@ impl ClientCoreContext {
 
             view_params_queue_lock.push_back((target_timestamp, views));
 
-            loop {
-                if let Some((timestamp, _)) = view_params_queue_lock.front() {
-                    if target_timestamp - *timestamp > MAX_POSE_HISTORY_INTERVAL {
-                        view_params_queue_lock.pop_front();
-                    } else {
-                        break;
-                    }
-                }
+            while view_params_queue_lock.len() > 1024 {
+                view_params_queue_lock.pop_front();
             }
 
             last_ipd
@@ -324,25 +316,19 @@ impl ClientCoreContext {
             stats.report_compositor_start(frame_timestamp);
         }
 
-        let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
-        while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
-            match timestamp {
-                t if t == frame_timestamp => {
-                    return Some(DecodedFrame {
-                        timestamp: frame_timestamp,
-                        view_params,
-                        buffer_ptr,
-                    })
-                }
-                t if t > frame_timestamp => {
-                    view_params_queue_lock.push_front((timestamp, view_params));
-                    break;
-                }
-                _ => continue,
+        let mut view_params = *self.connection_context.last_good_view_params.read();
+        for (timestamp, views) in &*self.connection_context.view_params_queue.read() {
+            if *timestamp == frame_timestamp {
+                view_params = *views;
+                break;
             }
         }
 
-        None
+        Some(DecodedFrame {
+            timestamp: frame_timestamp,
+            view_params,
+            buffer_ptr,
+        })
     }
 
     /// Call only with external decoder

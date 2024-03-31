@@ -81,7 +81,6 @@ This issue can have multiple causes. It is likely that the issue is with the PC 
 ALVR client list is empty
 ---
 
-
 ![Empty ALVR client list](images/ALVRexe-no-clients.png)
 
 Check that the PC app and the headset app run on the latest version of ALVR. At the time of writing, the latest version is v20.4.3. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is https://github.com/alvr-org/ALVR.

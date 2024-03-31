@@ -81,11 +81,14 @@ This issue can have multiple causes. It is likely that the issue is with the PC 
 ALVR client list is empty
 ---
 
+
 ![Empty ALVR client list](images/ALVRexe-no-clients.png)
 
 Check that the PC app and the headset app run on the latest version of ALVR. At the time of writing, the latest version is v20.4.3. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is https://github.com/alvr-org/ALVR.
 
-Make sure ALVR is running both on the PC and on the headset. To be visible in the client list, ALVR on the headset sends broadcast packets which the PC application listens for. These can be blocked by your firewall or possibly your router, if both headset and PC are connected wirelessly, having AP isolation enabled on the router will cause this.
+> Please note that ALVR does not currently support IPv6. Make sure that both the PC and Headset have only IPv4 addresses before continuing.
+
+Make sure ALVR is running both on the PC and on the headset. To be visible in the client list, ALVR on the headset sends broadcast packets which the PC application listens for. These can be blocked by your firewall or possibly your router, if both headset and PC are connected wirelessly, having AP isolation enabled on the router will cause this. 
 
 To fix this, you can try the following:
 

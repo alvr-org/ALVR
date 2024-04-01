@@ -70,7 +70,6 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
     perimeterPoints[3][0] = 1.0f * areaWidth;
     perimeterPoints[3][1] = -1.0f * areaHeight;
 
-    vr::VRChaperoneSetup()->RoomSetupStarting();
     vr::VRChaperoneSetup()->SetWorkingPerimeter(
         reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
     vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);

@@ -176,7 +176,6 @@ fn main() {
                         match platform.as_str() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
                             "linux" => dependencies::prepare_linux_deps(!no_nvidia),
-                            "macos" => dependencies::prepare_macos_deps(),
                             "android" => dependencies::build_android_deps(for_ci),
                             _ => panic!("Unrecognized platform."),
                         }

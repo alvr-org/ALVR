@@ -403,7 +403,6 @@ name = "alvr_session"
 version = "21.0.0-dev00"
 dependencies = [
  "alvr_common",
- "alvr_filesystem",
  "bytemuck",
  "regex",
  "serde",

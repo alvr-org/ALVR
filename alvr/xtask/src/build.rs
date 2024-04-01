@@ -184,7 +184,7 @@ pub fn build_streamer(
     if cfg!(windows) {
         command::copy_recursive(
             &sh,
-            &afs::deps_dir().join("openvr/bin/win64"),
+            &afs::crate_dir("server").join("cpp/bin/windows"),
             &build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();

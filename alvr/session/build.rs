@@ -1,10 +1,9 @@
-use alvr_filesystem as afs;
 use regex::Regex;
 use std::{env, fmt::Write, fs, path::PathBuf};
 
 fn main() {
     let openvr_driver_header_string =
-        fs::read_to_string(afs::deps_dir().join("openvr/headers/openvr_driver.h")).unwrap();
+        fs::read_to_string("../server/cpp/openvr/headers/openvr_driver.h").unwrap();
 
     let property_finder = Regex::new(
         r"\tProp_([A-Za-z\d_]+)_(Bool|Int32|Uint64|Float|String|Vector3)[\t ]+= ([0-9]+)",

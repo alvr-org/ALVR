@@ -184,7 +184,7 @@ pub fn build_streamer(
     if cfg!(windows) {
         command::copy_recursive(
             &sh,
-            &afs::crate_dir("server").join("cpp/bin/windows"),
+            &afs::deps_dir().join("openvr/bin/win64"),
             &build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();
@@ -235,6 +235,13 @@ pub fn build_streamer(
         sh.copy_file(
             afs::crate_dir("vulkan_layer").join("layer/alvr_x86_64.json"),
             build_layout.vulkan_layer_manifest(),
+        )
+        .unwrap();
+
+        command::copy_recursive(
+            &sh,
+            &afs::deps_dir().join("openvr/bin/linux64"),
+            &build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();
 

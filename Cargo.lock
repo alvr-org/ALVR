@@ -329,11 +329,13 @@ dependencies = [
  "eframe",
  "flate2",
  "futures-util",
+ "ico",
  "open",
  "reqwest 0.12.0",
  "serde_json",
  "tar",
  "tokio",
+ "winres",
  "zip",
 ]
 

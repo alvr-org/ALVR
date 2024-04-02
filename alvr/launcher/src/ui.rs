@@ -1,8 +1,8 @@
 use crate::{actions, InstallationInfo, Progress, ReleaseChannelsInfo, UiMessage, WorkerMessage};
 use eframe::{
     egui::{
-        Button, CentralPanel, ComboBox, Context, Frame, Grid, Layout, ProgressBar, ViewportCommand,
-        Window,
+        self, Button, CentralPanel, ComboBox, Context, Frame, Grid, Layout, ProgressBar, RichText,
+        ViewportCommand, Window,
     },
     emath::{Align, Align2},
     epaint::Color32,
@@ -273,7 +273,7 @@ impl eframe::App for Launcher {
         CentralPanel::default().show(ctx, |ui| match &self.state {
             State::Default => {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.label("ALVR Launcher");
+                    ui.label(RichText::new("ALVR Launcher").size(25.0).strong());
                     ui.label(match &self.release_channels_info {
                         Some(data) => format!("Latest stable release: {}", data.stable[0].version),
                         None => "Fetching latest release...".to_string(),
@@ -284,6 +284,7 @@ impl eframe::App for Launcher {
 
                         Frame::group(ui.style())
                             .fill(alvr_gui_common::theme::SECTION_BG)
+                            .inner_margin(egui::vec2(10.0, 5.0))
                             .show(ui, |ui| {
                                 Grid::new(&installation.version)
                                     .num_columns(2)

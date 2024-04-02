@@ -290,22 +290,14 @@ impl eframe::App for Launcher {
                                     .show(ui, |ui| {
                                         ui.label(&installation.version);
                                         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-                                            if ui.button("Launch").clicked() {
-                                                match actions::launch_dashboard(
-                                                    &installation.version,
-                                                ) {
-                                                    Ok(()) => {
-                                                        self.ui_message_sender
-                                                            .send(UiMessage::Quit)
-                                                            .unwrap();
-                                                        ctx.send_viewport_cmd(
-                                                            ViewportCommand::Close,
-                                                        );
-                                                    }
-                                                    Err(e) => {
-                                                        self.state = State::Error(e.to_string());
-                                                    }
-                                                }
+                                            if ui.button("Edit").clicked() {
+                                                self.popup = Popup::EditVersion(
+                                                    installation.version.clone(),
+                                                );
+                                            }
+
+                                            if ui.button("Open directory").clicked() {
+                                                open::that_in_background(path);
                                             }
 
                                             let release_info = self
@@ -338,13 +330,22 @@ impl eframe::App for Launcher {
                                                 }
                                             };
 
-                                            if ui.button("Open directory").clicked() {
-                                                open::that_in_background(path);
-                                            }
-                                            if ui.button("Edit").clicked() {
-                                                self.popup = Popup::EditVersion(
-                                                    installation.version.clone(),
-                                                );
+                                            if ui.button("Launch").clicked() {
+                                                match actions::launch_dashboard(
+                                                    &installation.version,
+                                                ) {
+                                                    Ok(()) => {
+                                                        self.ui_message_sender
+                                                            .send(UiMessage::Quit)
+                                                            .unwrap();
+                                                        ctx.send_viewport_cmd(
+                                                            ViewportCommand::Close,
+                                                        );
+                                                    }
+                                                    Err(e) => {
+                                                        self.state = State::Error(e.to_string());
+                                                    }
+                                                }
                                             }
                                         })
                                     })

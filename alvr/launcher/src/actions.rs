@@ -174,7 +174,7 @@ async fn install_apk(
 
     let res = match Command::new(ADB_EXECUTABLE)
         .arg("install")
-        .arg("-r")
+        .arg("-d")
         .arg(&apk_path)
         .output()
     {

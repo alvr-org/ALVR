@@ -28,31 +28,15 @@ enum Popup {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-enum Version {
-    Stable(String),
-    Nightly(String),
+enum ReleaseChannelType {
+    Stable,
+    Nightly,
 }
 
-impl Version {
-    fn inner(&self) -> &String {
-        match self {
-            Version::Stable(version) => version,
-            Version::Nightly(version) => version,
-        }
-    }
-}
-
-impl ToString for Version {
-    fn to_string(&self) -> String {
-        match self {
-            Version::Stable(version) => {
-                format!("Stable {}", version)
-            }
-            Version::Nightly(version) => {
-                format!("Nightly {}", version)
-            }
-        }
-    }
+#[derive(Clone, PartialEq, Eq)]
+struct Version {
+    version: String,
+    release_channel: ReleaseChannelType,
 }
 
 struct VersionPopup {
@@ -60,8 +44,8 @@ struct VersionPopup {
 }
 
 pub struct Launcher {
-    rx: Receiver<WorkerMessage>,
-    tx: Sender<UiMessage>,
+    worker_message_receiver: Receiver<WorkerMessage>,
+    ui_message_sender: Sender<UiMessage>,
     state: State,
     release_channels_info: Option<ReleaseChannelsInfo>,
     installations: Vec<InstallationInfo>,
@@ -71,14 +55,14 @@ pub struct Launcher {
 impl Launcher {
     pub fn new(
         cc: &eframe::CreationContext,
-        rx: Receiver<WorkerMessage>,
-        tx: Sender<UiMessage>,
+        worker_message_receiver: Receiver<WorkerMessage>,
+        ui_message_sender: Sender<UiMessage>,
     ) -> Self {
         alvr_gui_common::theme::set_theme(&cc.egui_ctx);
 
         Self {
-            rx,
-            tx,
+            worker_message_receiver,
+            ui_message_sender,
             state: State::Default,
             release_channels_info: None,
             installations: actions::get_installations(),
@@ -92,25 +76,32 @@ impl Launcher {
             .resizable(false)
             .collapsible(false)
             .show(ctx, |ui| {
+                // Safety: unwrap is safe because the "Add release" button is available after populating the release_channels_info.
                 let release_channels_info = self.release_channels_info.as_ref().unwrap();
                 let (channel, version_str, versions): (&str, String, Vec<Version>) =
-                    match version_popup.version.clone() {
-                        Version::Stable(version) => (
+                    match version_popup.version.release_channel.clone() {
+                        ReleaseChannelType::Stable => (
                             "Stable",
-                            version,
+                            version_popup.version.version.clone(),
                             release_channels_info
                                 .stable
                                 .iter()
-                                .map(|release| Version::Stable(release.tag.clone()))
+                                .map(|release| Version {
+                                    version: release.version.clone(),
+                                    release_channel: ReleaseChannelType::Stable,
+                                })
                                 .collect(),
                         ),
-                        Version::Nightly(version) => (
+                        ReleaseChannelType::Nightly => (
                             "Nightly",
-                            version,
+                            version_popup.version.version.clone(),
                             release_channels_info
                                 .nightly
                                 .iter()
-                                .map(|release| Version::Nightly(release.tag.clone()))
+                                .map(|release| Version {
+                                    version: release.version.clone(),
+                                    release_channel: ReleaseChannelType::Nightly,
+                                })
                                 .collect(),
                         ),
                     };
@@ -123,20 +114,30 @@ impl Launcher {
                             .show_ui(ui, |ui| {
                                 ui.selectable_value(
                                     &mut version_popup.version,
-                                    Version::Stable(
-                                        self.release_channels_info.as_ref().unwrap().stable[0]
-                                            .tag
+                                    Version {
+                                        version: self
+                                            .release_channels_info
+                                            .as_ref()
+                                            .unwrap()
+                                            .stable[0]
+                                            .version
                                             .clone(),
-                                    ),
+                                        release_channel: ReleaseChannelType::Stable,
+                                    },
                                     "Stable",
                                 );
                                 ui.selectable_value(
                                     &mut version_popup.version,
-                                    Version::Nightly(
-                                        self.release_channels_info.as_ref().unwrap().nightly[0]
-                                            .tag
+                                    Version {
+                                        version: self
+                                            .release_channels_info
+                                            .as_ref()
+                                            .unwrap()
+                                            .nightly[0]
+                                            .version
                                             .clone(),
-                                    ),
+                                        release_channel: ReleaseChannelType::Nightly,
+                                    },
                                     "Nightly",
                                 );
                             })
@@ -152,7 +153,7 @@ impl Launcher {
                                     ui.selectable_value(
                                         &mut version_popup.version,
                                         version.clone(),
-                                        version.inner(),
+                                        version.version,
                                     );
                                 }
                             })
@@ -165,21 +166,27 @@ impl Launcher {
                     }
 
                     if ui[1].button("Install").clicked() {
-                        self.tx
-                            .send(UiMessage::Install(match &version_popup.version {
-                                Version::Stable(version) => release_channels_info
-                                    .stable
-                                    .iter()
-                                    .find(|release| release.tag == *version)
-                                    .unwrap()
-                                    .clone(),
-                                Version::Nightly(version) => release_channels_info
-                                    .nightly
-                                    .iter()
-                                    .find(|release| release.tag == *version)
-                                    .unwrap()
-                                    .clone(),
-                            }))
+                        self.ui_message_sender
+                            .send(UiMessage::InstallServer(
+                                match &version_popup.version.release_channel {
+                                    ReleaseChannelType::Stable => release_channels_info
+                                        .stable
+                                        .iter()
+                                        .find(|release| {
+                                            release.version == version_popup.version.version
+                                        })
+                                        .unwrap()
+                                        .clone(),
+                                    ReleaseChannelType::Nightly => release_channels_info
+                                        .nightly
+                                        .iter()
+                                        .find(|release| {
+                                            release.version == version_popup.version.version
+                                        })
+                                        .unwrap()
+                                        .clone(),
+                                },
+                            ))
                             .unwrap();
                         return Popup::None;
                     }
@@ -248,7 +255,7 @@ impl Launcher {
 
 impl eframe::App for Launcher {
     fn update(&mut self, ctx: &Context, _: &mut eframe::Frame) {
-        while let Ok(msg) = self.rx.try_recv() {
+        while let Ok(msg) = self.worker_message_receiver.try_recv() {
             match msg {
                 WorkerMessage::ReleaseChannelsInfo(data) => self.release_channels_info = Some(data),
                 WorkerMessage::ProgressUpdate(progress) => {
@@ -268,7 +275,7 @@ impl eframe::App for Launcher {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.label("ALVR Launcher");
                     ui.label(match &self.release_channels_info {
-                        Some(data) => format!("Latest stable release: {}", data.stable[0].tag),
+                        Some(data) => format!("Latest stable release: {}", data.stable[0].version),
                         None => "Fetching latest release...".to_string(),
                     });
 
@@ -288,7 +295,9 @@ impl eframe::App for Launcher {
                                                     &installation.version,
                                                 ) {
                                                     Ok(()) => {
-                                                        self.tx.send(UiMessage::Quit).unwrap();
+                                                        self.ui_message_sender
+                                                            .send(UiMessage::Quit)
+                                                            .unwrap();
                                                         ctx.send_viewport_cmd(
                                                             ViewportCommand::Close,
                                                         );
@@ -299,34 +308,36 @@ impl eframe::App for Launcher {
                                                 }
                                             }
 
+                                            let release_info = self
+                                                .release_channels_info
+                                                .as_ref()
+                                                .and_then(|info| {
+                                                    actions::get_release(
+                                                        info,
+                                                        &installation.version,
+                                                    )
+                                                });
                                             if ui
                                                 .add_enabled(
-                                                    self.release_channels_info.is_some()
-                                                        && actions::get_release(
-                                                            self.release_channels_info
-                                                                .as_ref()
-                                                                .unwrap(),
-                                                            &installation.version,
-                                                        )
-                                                        .is_some()
+                                                    release_info.is_some()
                                                         || installation.is_apk_downloaded,
                                                     Button::new("Install APK"),
                                                 )
                                                 .clicked()
                                             {
-                                                self.tx
-                                                    .send(UiMessage::InstallClient(
-                                                        actions::get_release(
-                                                            self.release_channels_info
-                                                                .as_ref()
-                                                                .unwrap(),
-                                                            &installation.version,
-                                                        )
-                                                        .unwrap()
-                                                        .clone(),
-                                                    ))
-                                                    .unwrap();
+                                                if let Some(release_info) = release_info {
+                                                    self.ui_message_sender
+                                                        .send(UiMessage::InstallClient(
+                                                            release_info,
+                                                        ))
+                                                        .unwrap();
+                                                } else {
+                                                    self.state = State::Error(
+                                                        "Failed to get release info".to_string(),
+                                                    );
+                                                }
                                             };
+
                                             if ui.button("Open directory").clicked() {
                                                 open::that_in_background(path);
                                             }
@@ -348,11 +359,12 @@ impl eframe::App for Launcher {
                         .clicked()
                     {
                         self.popup = Popup::Version(VersionPopup {
-                            version: Version::Stable(
-                                self.release_channels_info.as_ref().unwrap().stable[0]
-                                    .tag
+                            version: Version {
+                                version: self.release_channels_info.as_ref().unwrap().stable[0]
+                                    .version
                                     .clone(),
-                            ),
+                                release_channel: ReleaseChannelType::Stable,
+                            },
                         });
                     }
 
@@ -367,7 +379,7 @@ impl eframe::App for Launcher {
             }
             State::Installing(progress) => {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
-                    ui.label(&progress.msg);
+                    ui.label(&progress.message);
                     ui.add(ProgressBar::new(progress.progress).animate(true));
                 });
             }
@@ -385,7 +397,7 @@ impl eframe::App for Launcher {
         });
 
         if ctx.input(|i| i.viewport().close_requested()) {
-            self.tx.send(UiMessage::Quit).unwrap();
+            self.ui_message_sender.send(UiMessage::Quit).unwrap();
         }
     }
 }

@@ -6,12 +6,12 @@ use ui::Launcher;
 
 #[derive(Clone)]
 struct ReleaseInfo {
-    tag: String,
+    version: String,
     assets: BTreeMap<String, String>,
 }
 
 struct Progress {
-    msg: String,
+    message: String,
     progress: f32,
 }
 
@@ -23,7 +23,7 @@ enum WorkerMessage {
 }
 
 enum UiMessage {
-    Install(ReleaseInfo),
+    InstallServer(ReleaseInfo),
     InstallClient(ReleaseInfo),
     Quit,
 }
@@ -39,17 +39,24 @@ struct InstallationInfo {
 }
 
 fn main() {
-    let (worker_tx, gui_rx) = mpsc::channel::<WorkerMessage>();
-    let (gui_tx, worker_rx) = mpsc::channel::<UiMessage>();
+    let (worker_message_sender, worker_message_receiver) = mpsc::channel::<WorkerMessage>();
+    let (ui_message_sender, ui_message_receiver) = mpsc::channel::<UiMessage>();
 
-    let worker_handle = thread::spawn(|| actions::worker(worker_rx, worker_tx));
+    let worker_handle =
+        thread::spawn(|| actions::worker(ui_message_receiver, worker_message_sender));
 
     eframe::run_native(
         "ALVR Launcher",
         eframe::NativeOptions {
             ..Default::default()
         },
-        Box::new(move |cc| Box::new(Launcher::new(cc, gui_rx, gui_tx))),
+        Box::new(move |cc| {
+            Box::new(Launcher::new(
+                cc,
+                worker_message_receiver,
+                ui_message_sender,
+            ))
+        }),
     )
     .expect("Failed to run eframe");
 

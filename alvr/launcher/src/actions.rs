@@ -1,7 +1,7 @@
 use crate::{
     InstallationInfo, Progress, ReleaseChannelsInfo, ReleaseInfo, UiMessage, WorkerMessage,
 };
-use alvr_common::anyhow::Result;
+use alvr_common::{anyhow::Result, ToAny};
 use anyhow::bail;
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
@@ -19,9 +19,12 @@ const ADB_EXECUTABLE: &str = "adb";
 #[cfg(windows)]
 const ADB_EXECUTABLE: &str = "adb.exe";
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
 const PLATFORM_TOOLS_DL_LINK: &str =
     "https://dl.google.com/android/repository/platform-tools-latest-linux.zip";
+#[cfg(target_os = "macos")]
+const PLATFORM_TOOLS_DL_LINK: &str =
+    "https://dl.google.com/android/repository/platform-tools-latest-macos.zip";
 #[cfg(windows)]
 const PLATFORM_TOOLS_DL_LINK: &str =
     "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
@@ -32,7 +35,10 @@ pub fn installations_dir() -> PathBuf {
     data_dir().join("installations")
 }
 
-pub fn worker(rx: Receiver<UiMessage>, tx: Sender<WorkerMessage>) {
+pub fn worker(
+    ui_message_receiver: Receiver<UiMessage>,
+    worker_message_sender: Sender<WorkerMessage>,
+) {
     tokio::runtime::Runtime::new()
         .expect("Failed to create tokio runtime")
         .block_on(async {
@@ -42,35 +48,34 @@ pub fn worker(rx: Receiver<UiMessage>, tx: Sender<WorkerMessage>) {
                 .unwrap();
             let version_data = match fetch_all_releases(&client).await {
                 Ok(data) => data,
-                Err(why) => {
-                    eprintln!("Error fetching version data: {}", why);
+                Err(e) => {
+                    eprintln!("Error fetching version data: {}", e);
                     return;
                 }
             };
 
-            tx.send(WorkerMessage::ReleaseChannelsInfo(version_data))
+            worker_message_sender
+                .send(WorkerMessage::ReleaseChannelsInfo(version_data))
                 .unwrap();
 
             loop {
-                let message = match rx.recv() {
-                    Ok(message) => message,
-                    Err(e) => {
-                        eprintln!("receiver error {e}");
-                        break;
+                let Ok(message) = ui_message_receiver.recv() else {
+                    return;
+                };
+                let res = match message {
+                    UiMessage::Quit => return,
+                    UiMessage::InstallServer(release) => {
+                        install_server(&worker_message_sender, release, &client).await
+                    }
+                    UiMessage::InstallClient(release_info) => {
+                        install_apk(&worker_message_sender, release_info, &client).await
                     }
                 };
-                match message {
-                    UiMessage::Quit => return,
-                    UiMessage::Install(release) => match install(&tx, release, &client).await {
-                        Ok(_) => tx.send(WorkerMessage::Done).unwrap(),
-                        Err(why) => tx.send(WorkerMessage::Error(why.to_string())).unwrap(),
-                    },
-                    UiMessage::InstallClient(release) => {
-                        match install_apk(&tx, release, &client).await {
-                            Ok(_) => tx.send(WorkerMessage::Done).unwrap(),
-                            Err(why) => tx.send(WorkerMessage::Error(why.to_string())).unwrap(),
-                        }
-                    }
+                match res {
+                    Ok(()) => worker_message_sender.send(WorkerMessage::Done).unwrap(),
+                    Err(e) => worker_message_sender
+                        .send(WorkerMessage::Error(e.to_string()))
+                        .unwrap(),
                 }
             }
         });
@@ -95,18 +100,18 @@ async fn fetch_releases_for_repo(client: &reqwest::Client, url: &str) -> Result<
     let response: serde_json::Value = client.get(url).send().await?.json().await?;
 
     let mut releases = Vec::new();
-    for value in response.as_array().unwrap() {
+    for value in response.as_array().to_any()? {
         releases.push(ReleaseInfo {
-            tag: value["tag_name"].as_str().unwrap().to_string(),
+            version: value["tag_name"].as_str().to_any()?.to_string(),
             assets: value["assets"]
                 .as_array()
-                .unwrap()
+                .to_any()?
                 .iter()
-                .map(|value| {
-                    (
-                        value["name"].as_str().unwrap().to_string(),
-                        value["browser_download_url"].as_str().unwrap().to_string(),
-                    )
+                .filter_map(|value| {
+                    Some((
+                        value["name"].as_str()?.to_string(),
+                        value["browser_download_url"].as_str()?.to_string(),
+                    ))
                 })
                 .collect(),
         })
@@ -114,17 +119,20 @@ async fn fetch_releases_for_repo(client: &reqwest::Client, url: &str) -> Result<
     Ok(releases)
 }
 
-pub fn get_release(release_info: &ReleaseChannelsInfo, version: &str) -> Option<ReleaseInfo> {
-    release_info
+pub fn get_release(
+    release_channels_info: &ReleaseChannelsInfo,
+    version: &str,
+) -> Option<ReleaseInfo> {
+    release_channels_info
         .stable
         .iter()
-        .find(|release| release.tag == version)
+        .find(|release| release.version == version)
         .cloned()
         .or_else(|| {
-            release_info
+            release_channels_info
                 .nightly
                 .iter()
-                .find(|release| release.tag == version)
+                .find(|release| release.version == version)
                 .cloned()
         })
 }
@@ -135,12 +143,11 @@ async fn install_apk(
     client: &reqwest::Client,
 ) -> anyhow::Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        msg: "Starting install".to_string(),
+        message: "Starting install".to_string(),
         progress: 0.0,
-    }))
-    .unwrap();
+    }))?;
 
-    let installation_dir = installations_dir().join(&release.tag);
+    let installation_dir = installations_dir().join(&release.version);
 
     let apk_path = installation_dir.clone().join(APK_NAME);
 
@@ -161,10 +168,9 @@ async fn install_apk(
     }
 
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        msg: "Installing APK".to_string(),
+        message: "Installing APK".to_string(),
         progress: 0.0,
-    }))
-    .unwrap();
+    }))?;
 
     let res = match Command::new(ADB_EXECUTABLE)
         .arg("install")
@@ -191,10 +197,9 @@ async fn install_apk(
             }
 
             worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                msg: "Installing APK".to_string(),
+                message: "Installing APK".to_string(),
                 progress: 0.0,
-            }))
-            .unwrap();
+            }))?;
 
             Command::new(adb_path)
                 .arg("install")
@@ -215,7 +220,7 @@ async fn install_apk(
 
 async fn download(
     worker_message_sender: &Sender<WorkerMessage>,
-    msg: &str,
+    message: &str,
     url: &str,
     client: &reqwest::Client,
 ) -> anyhow::Result<Vec<u8>> {
@@ -227,34 +232,31 @@ async fn download(
         buffer.extend(item?);
 
         match total_size {
-            Some(total_size) => worker_message_sender
-                .send(WorkerMessage::ProgressUpdate(Progress {
-                    msg: msg.to_string(),
+            Some(total_size) => {
+                worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
+                    message: message.to_string(),
                     progress: buffer.len() as f32 / total_size as f32,
-                }))
-                .unwrap(),
-            None => worker_message_sender
-                .send(WorkerMessage::ProgressUpdate(Progress {
-                    msg: format!("{} (Progress unavailable)", msg),
-                    progress: 0.5,
-                }))
-                .unwrap(),
+                }))?
+            }
+            None => worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
+                message: format!("{} (Progress unavailable)", message),
+                progress: 0.5,
+            }))?,
         }
     }
 
     Ok(buffer)
 }
 
-async fn install(
-    tx: &Sender<WorkerMessage>,
+async fn install_server(
+    worker_message_sender: &Sender<WorkerMessage>,
     release: ReleaseInfo,
     client: &reqwest::Client,
 ) -> anyhow::Result<()> {
-    tx.send(WorkerMessage::ProgressUpdate(Progress {
-        msg: "Starting install".to_string(),
+    worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
+        message: "Starting install".to_string(),
         progress: 0.0,
-    }))
-    .unwrap();
+    }))?;
 
     let file_name = if cfg!(windows) {
         "alvr_streamer_windows.zip"
@@ -267,9 +269,9 @@ async fn install(
         .get(file_name)
         .ok_or(anyhow::anyhow!("Unable to determine download link"))?;
 
-    let buffer = download(tx, "Downloading Streamer", url, client).await?;
+    let buffer = download(worker_message_sender, "Downloading Streamer", url, client).await?;
 
-    let installation_dir = installations_dir().join(&release.tag);
+    let installation_dir = installations_dir().join(&release.version);
 
     fs::create_dir_all(&installation_dir)?;
 
@@ -303,8 +305,8 @@ pub fn get_installations() -> Vec<InstallationInfo> {
                     .ok()
                     .filter(|entry| match entry.file_type() {
                         Ok(file_type) => file_type.is_dir(),
-                        Err(why) => {
-                            eprintln!("Failed to read entry file type: {}", why);
+                        Err(e) => {
+                            eprintln!("Failed to read entry file type: {}", e);
                             false
                         }
                     })
@@ -318,8 +320,8 @@ pub fn get_installations() -> Vec<InstallationInfo> {
                     })
             })
             .collect(),
-        Err(why) => {
-            eprintln!("Failed to read versions dir: {}", why);
+        Err(e) => {
+            eprintln!("Failed to read versions dir: {}", e);
             Vec::new()
         }
     }
@@ -331,7 +333,7 @@ pub fn launch_dashboard(version: &str) -> Result<()> {
     let dashboard_path = if cfg!(windows) {
         installation_dir.join("ALVR Dashboard.exe")
     } else if cfg!(target_os = "linux") {
-        installation_dir.join("bin/alvr_alvr_dashboard")
+        installation_dir.join("alvr_streamer_linux/bin/alvr_dashboard")
     } else {
         bail!("Unsupported platform")
     };

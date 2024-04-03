@@ -19,8 +19,8 @@ impl Lobby {
         let reference_space = interaction::get_stage_reference_space(&xr_session);
 
         let swapchains = [
-            graphics::create_swapchain(&xr_session, view_resolution, None),
-            graphics::create_swapchain(&xr_session, view_resolution, None),
+            graphics::create_swapchain(&xr_session, view_resolution, None, false),
+            graphics::create_swapchain(&xr_session, view_resolution, None, false),
         ];
 
         alvr_client_core::opengl::initialize_lobby(

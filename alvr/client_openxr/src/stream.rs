@@ -154,11 +154,13 @@ impl StreamContext {
                 &xr_ctx.session,
                 config.view_resolution,
                 foveation_profile.as_ref(),
+                config.encoder_config.enable_hdr,
             ),
             graphics::create_swapchain(
                 &xr_ctx.session,
                 config.view_resolution,
                 foveation_profile.as_ref(),
+                config.encoder_config.enable_hdr,
             ),
         ];
 

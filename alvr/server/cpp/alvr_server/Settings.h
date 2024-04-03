@@ -80,7 +80,7 @@ class Settings {
     int64_t m_nvencRcAverageBitrate;
     bool m_nvencEnableWeightedPrediction;
 
-    uint64_t m_minimumIdrIntervalMs;
+    bool m_aggressiveKeyframeResend;
 
     bool m_enableViveTrackerProxy = false;
     bool m_TrackingRefOnly = false;

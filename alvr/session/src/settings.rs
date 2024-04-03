@@ -1066,10 +1066,11 @@ For now works only on Windows+Nvidia"#
     ))]
     pub avoid_video_glitching: bool,
 
-    #[schema(strings(display_name = "Minimum IDR interval"))]
+    #[schema(strings(
+        help = "Reduce minimum delay between IDR keyframes from 100ms to 5ms. Use on networks with high packet loss."
+    ))]
     #[schema(flag = "steamvr-restart")]
-    #[schema(gui(slider(min = 5, max = 1000, step = 5)), suffix = "ms")]
-    pub minimum_idr_interval_ms: u64,
+    pub aggressive_keyframe_resend: bool,
 
     #[schema(strings(
         help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."
@@ -1682,7 +1683,7 @@ pub fn session_settings_default() -> SettingsDefault {
             client_recv_buffer_bytes: socket_buffer,
             max_queued_server_video_frames: 1024,
             avoid_video_glitching: false,
-            minimum_idr_interval_ms: 100,
+            aggressive_keyframe_resend: false,
             on_connect_script: "".into(),
             on_disconnect_script: "".into(),
             packet_size: 1400,

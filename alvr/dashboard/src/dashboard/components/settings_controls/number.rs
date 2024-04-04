@@ -115,7 +115,7 @@ impl Control {
             };
             if response.drag_started() || response.gained_focus() {
                 self.editing_value_f64 = Some(session_value)
-            } else if response.drag_released() || response.lost_focus() {
+            } else if response.drag_stopped() || response.lost_focus() {
                 request = get_request(&self.nesting_info, *editing_value_mut, self.ty);
                 *session_fragment = to_json_value(*editing_value_mut, self.ty);
 

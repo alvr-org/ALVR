@@ -606,7 +606,10 @@ pub struct AudioBufferingConfig {
 #[schema(collapsible)]
 pub struct GameAudioConfig {
     pub device: Option<CustomAudioDeviceConfig>,
+
+    #[schema(strings(display_name = "Mute desktop audio when streaming"))]
     pub mute_when_streaming: bool,
+
     pub buffering: AudioBufferingConfig,
 }
 
@@ -644,8 +647,10 @@ pub struct AudioConfig {
     #[schema(strings(help = "ALSA is recommended for most PulseAudio or PipeWire-based setups"))]
     pub linux_backend: LinuxAudioBackend,
 
+    #[schema(strings(display_name = "Headset speaker"))]
     pub game_audio: Switch<GameAudioConfig>,
 
+    #[schema(strings(display_name = "Headset microphone"))]
     pub microphone: Switch<MicrophoneConfig>,
 }
 

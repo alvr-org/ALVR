@@ -88,27 +88,7 @@ jobs:
         run: |
           cargo xtask prepare-deps --platform windows --ci
           cargo xtask package-streamer --gpl
-          $file = Get-ChildItem -Name .\build\*.exe | Select-Object -f 1
-          echo "::set-output name=exe_filename::$file"
 
-      - name: Upload Windows installer (exe)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/${{ steps.build.outputs.exe_filename }}
-          asset_name: ${{ steps.build.outputs.exe_filename }}
-          asset_content_type: application/octet-stream
-      - name: Upload Windows installer (msi)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
-          asset_path: ./build/alvr_streamer_windows.msi
-          asset_name: alvr_streamer_windows.msi
-          asset_content_type: application/octet-stream
       - name: Upload portable streamer for Windows
         uses: actions/upload-release-asset@v1
         env:

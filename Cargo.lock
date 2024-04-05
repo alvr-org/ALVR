@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "alvr_launcher"
-version = "21.0.0-dev00"
+version = "20.7.0"
 dependencies = [
  "alvr_common",
  "alvr_gui_common",

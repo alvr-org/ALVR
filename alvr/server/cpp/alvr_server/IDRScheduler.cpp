@@ -14,18 +14,6 @@ IDRScheduler::~IDRScheduler()
 
 void IDRScheduler::OnPacketLoss()
 {
-	InsertIDR();
-}
-
-void IDRScheduler::OnStreamStart()
-{
-	m_minIDRFrameInterval = Settings::Instance().m_minimumIdrIntervalMs * 1000;
-	m_scheduled = false;
-	InsertIDR();
-}
-
-void IDRScheduler::InsertIDR()
-{
 	std::unique_lock lock(m_mutex);
 
 	if (m_scheduled) {
@@ -42,6 +30,24 @@ void IDRScheduler::InsertIDR()
 		m_insertIDRTime += m_minIDRFrameInterval;
 		m_scheduled = true;
 	}
+}
+
+void IDRScheduler::OnStreamStart()
+{
+	if (Settings::Instance().IsLoaded() && Settings::Instance().m_aggressiveKeyframeResend) {
+		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL_AGGRESSIVE;
+	} else {
+		m_minIDRFrameInterval = MIN_IDR_FRAME_INTERVAL;
+	}
+	InsertIDR();
+}
+
+void IDRScheduler::InsertIDR()
+{
+	std::unique_lock lock(m_mutex);
+
+	m_insertIDRTime = GetTimestampUs() - MIN_IDR_FRAME_INTERVAL * 2;
+	m_scheduled = true;
 }
 
 bool IDRScheduler::CheckIDRInsertion() {

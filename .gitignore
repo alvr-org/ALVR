@@ -64,3 +64,5 @@ node_modules
 
 # flatpak
 .flatpak*
+
+ALVR-Launcher

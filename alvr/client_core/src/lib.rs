@@ -23,7 +23,7 @@ use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
-    ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
+    warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
 };
 use alvr_packets::{
     BatteryPacket, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
@@ -46,8 +46,6 @@ pub use platform::Platform;
 #[cfg(target_os = "android")]
 pub use platform::try_get_permission;
 
-// When the latency goes too high, if prediction offset is not capped tracking poll will fail.
-const MAX_POSE_HISTORY_INTERVAL: Duration = Duration::from_millis(70);
 const IPD_CHANGE_EPS: f32 = 0.001;
 
 pub fn platform() -> Platform {
@@ -222,7 +220,7 @@ impl ClientCoreContext {
         face_data: FaceData,
     ) {
         let last_ipd = {
-            let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
+            let mut view_params_queue_lock = self.connection_context.view_params_queue.write();
 
             let last_ipd = if let Some((_, params)) = view_params_queue_lock.front() {
                 (params[0].pose.position - params[1].pose.position).length()
@@ -232,14 +230,8 @@ impl ClientCoreContext {
 
             view_params_queue_lock.push_back((target_timestamp, views));
 
-            loop {
-                if let Some((timestamp, _)) = view_params_queue_lock.front() {
-                    if target_timestamp - *timestamp > MAX_POSE_HISTORY_INTERVAL {
-                        view_params_queue_lock.pop_front();
-                    } else {
-                        break;
-                    }
-                }
+            while view_params_queue_lock.len() > 1024 {
+                view_params_queue_lock.pop_front();
             }
 
             last_ipd
@@ -305,37 +297,38 @@ impl ClientCoreContext {
     }
 
     pub fn get_frame(&self) -> Option<DecodedFrame> {
-        if let Some(source) = &mut *self.connection_context.decoder_source.lock() {
-            if let Some((frame_timestamp, buffer_ptr)) = source.get_frame() {
-                if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
-                    stats.report_compositor_start(frame_timestamp);
-                }
+        let mut decoder_source_lock = self.connection_context.decoder_source.lock();
+        let decoder_source = decoder_source_lock.as_mut()?;
 
-                let mut view_params_queue_lock = self.connection_context.view_params_queue.lock();
-                while let Some((timestamp, view_params)) = view_params_queue_lock.pop_front() {
-                    match timestamp {
-                        t if t == frame_timestamp => {
-                            return Some(DecodedFrame {
-                                timestamp: frame_timestamp,
-                                view_params,
-                                buffer_ptr,
-                            })
-                        }
-                        t if t > frame_timestamp => {
-                            view_params_queue_lock.push_front((timestamp, view_params));
-                            break;
-                        }
-                        _ => continue,
-                    }
-                }
+        let (frame_timestamp, buffer_ptr) = match decoder_source.get_frame() {
+            Ok(maybe_pair) => maybe_pair?,
+            Err(e) => {
+                error!("Error getting frame, restarting connection: {}", e);
 
-                None
-            } else {
-                None
+                // The connection loop observes changes on this value
+                *self.connection_context.state.write() = ConnectionState::Disconnecting;
+
+                return None;
             }
-        } else {
-            None
+        };
+
+        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
+            stats.report_compositor_start(frame_timestamp);
         }
+
+        let mut view_params = *self.connection_context.last_good_view_params.read();
+        for (timestamp, views) in &*self.connection_context.view_params_queue.read() {
+            if *timestamp == frame_timestamp {
+                view_params = *views;
+                break;
+            }
+        }
+
+        Some(DecodedFrame {
+            timestamp: frame_timestamp,
+            view_params,
+            buffer_ptr,
+        })
     }
 
     /// Call only with external decoder
@@ -367,7 +360,7 @@ impl ClientCoreContext {
                 if let Some(stats) = stats.summary(target_timestamp) {
                     sender.send_header(&stats).ok();
                 } else {
-                    error!("Statistics summary not ready!");
+                    warn!("Statistics summary not ready!");
                 }
             }
         }

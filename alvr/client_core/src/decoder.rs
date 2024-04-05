@@ -1,3 +1,4 @@
+use alvr_common::anyhow::{bail, Result};
 use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
@@ -36,13 +37,13 @@ pub struct DecoderSource {
 
 impl DecoderSource {
     /// If a frame is available, return the timestamp and the AHardwareBuffer.
-    pub fn get_frame(&mut self) -> Option<(Duration, *mut std::ffi::c_void)> {
+    pub fn get_frame(&mut self) -> Result<Option<(Duration, *mut std::ffi::c_void)>> {
         #[cfg(target_os = "android")]
         {
             self.inner.dequeue_frame()
         }
         #[cfg(not(target_os = "android"))]
-        None
+        bail!("Not implemented");
     }
 }
 

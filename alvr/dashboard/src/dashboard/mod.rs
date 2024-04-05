@@ -10,9 +10,7 @@ use alvr_events::EventType;
 use alvr_gui_common::theme;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
-use eframe::egui::{
-    self, style::Margin, Align, CentralPanel, Frame, Layout, RichText, SidePanel, Stroke,
-};
+use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
 use std::{
     collections::BTreeMap,
     ops::Deref,

@@ -97,11 +97,40 @@ pub fn create_swapchain(
     session: &xr::Session<xr::OpenGlEs>,
     resolution: UVec2,
     foveation: Option<&xr::FoveationProfileFB>,
+    enable_hdr: bool,
 ) -> xr::Swapchain<xr::OpenGlEs> {
+    // Priority-sorted list of swapchain formats we'll accept--
+    let mut app_supported_swapchain_formats = vec![
+        glow::SRGB8_ALPHA8,
+        glow::SRGB8,
+        glow::RGBA8,
+        glow::BGRA,
+        glow::RGB8,
+        glow::BGR,
+    ];
+
+    // float16 is required for HDR output. However, float16 swapchains
+    // have a high perf cost, so only use these if HDR is enabled.
+    if enable_hdr {
+        app_supported_swapchain_formats.insert(0, glow::RGB16F);
+        app_supported_swapchain_formats.insert(0, glow::RGBA16F);
+    }
+
+    // If we can't enumerate, default to a required format (SRGBA8)
+    let mut swapchain_format = glow::SRGB8_ALPHA8;
+    if let Ok(supported_formats) = session.enumerate_swapchain_formats() {
+        for f in app_supported_swapchain_formats {
+            if supported_formats.contains(&f) {
+                swapchain_format = f;
+                break;
+            }
+        }
+    }
+
     let swapchain_info = xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: glow::RGBA16F,
+        format: swapchain_format,
         sample_count: 1,
         width: resolution.x,
         height: resolution.y,

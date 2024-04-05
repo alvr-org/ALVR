@@ -1,5 +1,27 @@
 # Changelog
 
+## v20.7.0
+
+* Add AV1 support on Windows/AMD (by @barnabwhy #1967)
+* Add AV1 support on Linux/Nvidia (by @wsippel #1975, @Vixea #1994)
+* Add HDR support on Windows (by @shinyquagsire23 #2030)
+* Add full range encoding support (by @shinyquagsire23 #2011, @Vixea #1971)
+* Fix VAAPI encoder on Intel GPUs (by @nowrep #1981)
+* Add Pre-Analysis support on Windows/AMD (by @barnabwhy #1985)
+* Add linux hardware encoding checks (by @Meister1593 #2042 #2055)
+* Add full body tracking support on Quest (by @barnabwhy #1979, @galister #1984)
+* Fix aux-bones in SteamVR (by @shinyquagsire23 #2009)
+* Make USB connection work when WiFi is disabled (by @Meister1593 #1962)
+* Add mDNS discovery on the server (by @zarik5 #1978)
+* Fix audio when disconnecting headphones in headset (by @Okabintaro #2025 #2040)
+* Add compatibility layer for surround audio devices (by @barnabwhy #2026)
+* Fix black screen on Vive Focus 3, XR Elite (by @zarik5)
+* Fix stuttering on Linux after recentering (by @galister #2017)
+* Fixes for Flatpak (by @jkcdarunday #1980, @Meister1593 #2039 #2044)
+* Change colors of lobby room (by @barnabwhy #1968)
+* Remove WIX installer (by @zarik5)
+* Remove AppImage (by @Meister1593 #2056)
+
 ### v20.6.1
 
 * Add AV1 support, only for Linux/VAAPI, with 10bits support (by @wsippel #1955 #1964)

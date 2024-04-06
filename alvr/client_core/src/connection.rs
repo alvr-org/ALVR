@@ -33,9 +33,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "macos"))]
 use crate::audio;
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "macos")))]
 use alvr_audio as audio;
 
 const INITIAL_MESSAGE: &str = concat!(
@@ -324,7 +324,7 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None, None).to_con()?;
+        let device = AudioDevice::new_output(None).to_con()?;
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {
@@ -353,7 +353,7 @@ fn connection_pipeline(
             let ctx = Arc::clone(&ctx);
             move || {
                 while is_streaming(&ctx) {
-                    let ctx = Arc::clone(&ctx);
+                    let ctx: Arc<ConnectionContext> = Arc::clone(&ctx);
                     match audio::record_audio_blocking(
                         Arc::new(move || is_streaming(&ctx)),
                         microphone_sender.clone(),

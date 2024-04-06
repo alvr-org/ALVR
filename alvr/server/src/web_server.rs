@@ -134,6 +134,7 @@ async fn http_api(
                         data_manager.update_client_list(hostname, action);
                     }
                     ServerRequest::GetAudioDevices => {
+                        #[cfg(not(target_os = "linux"))]
                         if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
                             alvr_events::send_event(EventType::AudioDevices(list));
                         }

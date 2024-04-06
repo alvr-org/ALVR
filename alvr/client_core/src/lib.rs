@@ -14,7 +14,7 @@ mod sockets;
 mod statistics;
 mod storage;
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "macos"))]
 mod audio;
 
 pub mod graphics;

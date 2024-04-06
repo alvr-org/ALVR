@@ -289,14 +289,10 @@ impl ServerDataManager {
         }
     }
 
+
+    #[cfg(not(target_os = "linux"))]
     #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
     pub fn get_audio_devices_list(&self) -> Result<AudioDevicesList> {
-        #[cfg(target_os = "linux")]
-        let host = match self.session.to_settings().audio.linux_backend {
-            alvr_session::LinuxAudioBackend::Alsa => cpal::host_from_id(cpal::HostId::Alsa)?,
-            alvr_session::LinuxAudioBackend::Jack => cpal::host_from_id(cpal::HostId::Jack)?,
-        };
-        #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
         let output = host

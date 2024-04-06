@@ -1,6 +1,9 @@
 #[cfg(windows)]
 mod windows;
 
+#[cfg(target_os = "linux")]
+pub mod linux;
+
 #[cfg(windows)]
 pub use crate::windows::*;
 
@@ -88,16 +91,8 @@ pub struct AudioDevice {
 #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
 impl AudioDevice {
     pub fn new_output(
-        linux_backend: Option<LinuxAudioBackend>,
         config: Option<&CustomAudioDeviceConfig>,
     ) -> Result<Self> {
-        #[cfg(target_os = "linux")]
-        let host = match linux_backend {
-            Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
-            Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
-            None => cpal::default_host(),
-        };
-        #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
         let device = match config {
@@ -131,16 +126,8 @@ impl AudioDevice {
 
     // returns (sink, source)
     pub fn new_virtual_microphone_pair(
-        linux_backend: Option<LinuxAudioBackend>,
         config: MicrophoneDevicesConfig,
     ) -> Result<(Self, Self)> {
-        #[cfg(target_os = "linux")]
-        let host = match linux_backend {
-            Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
-            Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
-            None => cpal::default_host(),
-        };
-        #[cfg(not(target_os = "linux"))]
         let host = cpal::default_host();
 
         let (sink, source) = match config {

@@ -1,3 +1,4 @@
+mod c_api;
 mod graphics;
 mod interaction;
 mod lobby;

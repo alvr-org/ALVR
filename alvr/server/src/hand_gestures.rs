@@ -311,13 +311,18 @@ impl HandGestureManager {
                 });
         let joystick_vertical_vec = index_intermediate.orientation.mul_vec3(Vec3::Z);
 
+        let joystick_offset_horizontal_direction = if device_id == *HAND_LEFT_ID {
+            1.0
+        } else {
+            -1.0
+        };
         let joystick_pos = self.get_joystick_values(
             joystick_center,
             thumb_tip,
             joystick_range,
             joystick_horizontal_vec,
             joystick_vertical_vec,
-            config.joystick_offset_horizontal * 0.01,
+            config.joystick_offset_horizontal * 0.01 * joystick_offset_horizontal_direction,
             config.joystick_offset_vertical * 0.01,
         );
         let joystick_contact = index_curl >= 0.75

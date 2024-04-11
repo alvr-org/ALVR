@@ -196,7 +196,7 @@ pub fn package_launcher(appimage: bool) {
 pub fn package_client_lib(link_stdcpp: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_client_lib(Profile::Distribution, link_stdcpp);
+    build::build_android_client_core_lib(Profile::Distribution, link_stdcpp);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

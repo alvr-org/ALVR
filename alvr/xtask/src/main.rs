@@ -25,6 +25,7 @@ SUBCOMMANDS:
     build-server-lib    Build a C-ABI ALVR server library and header
     build-client        Build client, then copy binaries to build folder
     build-client-lib    Build a C-ABI ALVR client library and header
+    build-client-xr-lib Build a C-ABI ALVR OpenXR entry point client library and header
     run-streamer        Build streamer and then open the dashboard
     run-launcher        Build launcher and then open it
     package-streamer    Build streamer with distribution profile, make archive
@@ -195,7 +196,10 @@ fn main() {
                 "build-launcher" => build::build_launcher(profile, true, false),
                 "build-server-lib" => build::build_server_lib(profile, true, gpl, None, false),
                 "build-client" => build::build_android_client(profile),
-                "build-client-lib" => build::build_client_lib(profile, link_stdcpp),
+                "build-client-lib" => build::build_android_client_core_lib(profile, link_stdcpp),
+                "build-client-xr-lib" => {
+                    build::build_android_client_openxr_lib(profile, link_stdcpp)
+                }
                 "run-streamer" => {
                     if !no_rebuild {
                         build::build_streamer(

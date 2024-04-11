@@ -297,39 +297,58 @@ pub fn build_launcher(profile: Profile, enable_messagebox: bool, reproducible: b
     .unwrap();
 }
 
-pub fn build_client_lib(profile: Profile, link_stdcpp: bool) {
+fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool) {
     let sh = Shell::new().unwrap();
 
-    let strip_flag = matches!(profile, Profile::Debug).then_some("--no-strip");
+    let ndk_flags = &[
+        "-t",
+        "arm64-v8a",
+        "-t",
+        "armeabi-v7a",
+        "-t",
+        "x86_64",
+        "-t",
+        "x86",
+        "-p",
+        "26",
+        "--no-strip",
+    ];
 
-    let mut flags = vec![];
+    let mut rust_flags = vec![];
     match profile {
         Profile::Distribution => {
-            flags.push("--profile");
-            flags.push("distribution")
+            rust_flags.push("--profile");
+            rust_flags.push("distribution")
         }
-        Profile::Release => flags.push("--release"),
+        Profile::Release => rust_flags.push("--release"),
         Profile::Debug => (),
     }
     if !link_stdcpp {
-        flags.push("--no-default-features");
+        rust_flags.push("--no-default-features");
     }
-    let flags_ref = &flags;
+    let rust_flags_ref = &rust_flags;
 
-    let build_dir = afs::build_dir().join("alvr_client_core");
+    let build_dir = afs::build_dir().join(format!("alvr_{dir_name}"));
     sh.create_dir(&build_dir).unwrap();
 
-    let _push_guard = sh.push_dir(afs::crate_dir("client_core"));
-
+    let _push_guard = sh.push_dir(afs::crate_dir(dir_name));
     cmd!(
         sh,
-        "cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -t x86 -p 26 {strip_flag...} -o {build_dir} build {flags_ref...}"
+        "cargo ndk {ndk_flags...} -o {build_dir} build {rust_flags_ref...}"
     )
     .run()
     .unwrap();
 
-    let out = build_dir.join("alvr_client_core.h");
+    let out = build_dir.join(format!("alvr_{dir_name}.h"));
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
+}
+
+pub fn build_android_client_core_lib(profile: Profile, link_stdcpp: bool) {
+    build_android_lib_impl("client_core", profile, link_stdcpp)
+}
+
+pub fn build_android_client_openxr_lib(profile: Profile, link_stdcpp: bool) {
+    build_android_lib_impl("client_openxr", profile, link_stdcpp)
 }
 
 pub fn build_android_client(profile: Profile) {

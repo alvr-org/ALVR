@@ -205,14 +205,16 @@ pub fn entry_point() {
         };
 
         let passthrough = xr_session
-        .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
-        .unwrap();
+            .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
+            .unwrap();
 
-        let _passthrough_layer = xr_session.create_passthrough_layer(
-            &passthrough, 
-            xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
-            xr::PassthroughLayerPurposeFB::RECONSTRUCTION
-        ).unwrap();
+        let _passthrough_layer = xr_session
+            .create_passthrough_layer(
+                &passthrough,
+                xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
+                xr::PassthroughLayerPurposeFB::RECONSTRUCTION,
+            )
+            .unwrap();
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(

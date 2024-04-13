@@ -103,6 +103,9 @@ required = false
 name = "oculus.software.handtracking"
 required = false
 [[package.metadata.android.uses_feature]]
+name = "com.oculus.feature.PASSTHROUGH"
+required = false
+[[package.metadata.android.uses_feature]]
 name = "com.oculus.software.body_tracking"
 required = false
 [[package.metadata.android.uses_feature]]

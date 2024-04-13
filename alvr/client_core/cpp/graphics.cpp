@@ -191,9 +191,22 @@ in lowp vec2 uv;
 in lowp vec4 fragmentColor;
 out lowp vec4 outColor;
 uniform sampler2D Texture0;
-void main()
-{
+
+vec2 RGBToCC(vec4 rgba) {
+    float Y = 0.299 * rgba.r + 0.587 * rgba.g + 0.114 * rgba.b;
+    return vec2((rgba.b - Y) * 0.565, (rgba.r - Y) * 0.713);
+}      
+
+void main() {
+    vec4 keyRGBA = vec4(0.0, 1.0, 0.0, 1.0);    // key color as rgba
+    vec2 keyCC = RGBToCC(keyRGBA);  // the CC part of YCC color model of key color 
+    vec2 range = vec2(0.3, 0.4);     // the smoothstep range
+
     outColor = texture(Texture0, uv);
+    vec2 CC = RGBToCC(outColor);
+
+    float mask = sqrt(pow(keyCC.x - CC.x, 2.0) + pow(keyCC.y - CC.y, 2.0));
+    outColor.a = smoothstep(range.x, range.y, mask);
 }
 )glsl";
 
@@ -683,7 +696,11 @@ void renderEye(
         GL(glBindVertexArray(0));
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     } else {
-        GL(glClear(GL_DEPTH_BUFFER_BIT));
+        GL(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+        GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
+        GL(glEnable(GL_BLEND));
+        GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
         GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
 

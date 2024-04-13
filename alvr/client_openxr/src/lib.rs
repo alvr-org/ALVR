@@ -156,6 +156,7 @@ pub fn entry_point() {
     exts.htc_facial_tracking = available_extensions.htc_facial_tracking;
     exts.htc_vive_focus3_controller_interaction =
         available_extensions.htc_vive_focus3_controller_interaction;
+    exts.fb_passthrough = available_extensions.fb_passthrough;
     #[cfg(target_os = "android")]
     {
         exts.khr_android_create_instance = true;
@@ -202,6 +203,16 @@ pub fn entry_point() {
             system: xr_system,
             session: xr_session.clone(),
         };
+
+        let passthrough = xr_session
+        .create_passthrough(xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION)
+        .unwrap();
+
+        let _passthrough_layer = xr_session.create_passthrough_layer(
+            &passthrough, 
+            xr::PassthroughFlagsFB::IS_RUNNING_AT_CREATION,
+            xr::PassthroughLayerPurposeFB::RECONSTRUCTION
+        ).unwrap();
 
         let views_config = xr_instance
             .enumerate_view_configuration_views(

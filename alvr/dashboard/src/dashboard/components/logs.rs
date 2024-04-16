@@ -34,7 +34,7 @@ impl LogsTab {
     }
 
     pub fn update_settings(&mut self, settings: &Settings) {
-        self.raw_events_config = settings.logging.show_raw_events.clone();
+        self.raw_events_config = settings.extra.logging.show_raw_events.clone();
     }
 
     pub fn push_event(&mut self, event: Event) {

@@ -3,9 +3,12 @@ use super::{
     NestingInfo, SettingControl, INDENTATION_STEP,
 };
 use crate::dashboard::{DisplayString, ServerRequest};
+use alvr_gui_common::theme;
 use alvr_packets::AudioDevicesList;
 use alvr_session::{SessionSettings, Settings};
-use eframe::egui::{Align, Grid, Label, Layout, RichText, ScrollArea, Ui};
+use eframe::egui::{
+    self, Align, Frame, Grid, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel, Ui
+};
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use serde_json as json;
@@ -22,7 +25,7 @@ struct TopLevelEntry {
 }
 
 pub struct SettingsTab {
-    selected_top_tab: String,
+    selected_top_tab_id: String,
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
     encoder_preset: PresetControl,
@@ -64,7 +67,7 @@ impl SettingsTab {
             .collect();
 
         Self {
-            selected_top_tab: "presets".to_string(),
+            selected_top_tab_id: "presets".to_string(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
@@ -130,25 +133,28 @@ impl SettingsTab {
 
         let mut path_value_pairs = vec![];
         ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-            ui.group(|ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.selectable_value(
-                        &mut self.selected_top_tab,
-                        "presets".to_string(),
-                        "Presets".to_string(),
-                    );
-                    for entry in self.top_level_entries.iter_mut() {
+            Frame::group(ui.style())
+                .fill(theme::DARKER_BG)
+                .inner_margin(egui::vec2(15.0, 12.0))
+                .show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(
-                            &mut self.selected_top_tab,
-                            entry.id.id.clone(),
-                            entry.id.display.clone(),
+                            &mut self.selected_top_tab_id,
+                            "presets".to_string(),
+                            "Presets".to_string(),
                         );
-                    }
+                        for entry in self.top_level_entries.iter_mut() {
+                            ui.selectable_value(
+                                &mut self.selected_top_tab_id,
+                                entry.id.id.clone(),
+                                entry.id.display.clone(),
+                            );
+                        }
+                    })
                 })
-            })
         });
 
-        if self.selected_top_tab == "presets" {
+        if self.selected_top_tab_id == "presets" {
             ScrollArea::new([false, true])
                 .id_source("presets_scroll")
                 .show(ui, |ui| {
@@ -181,9 +187,9 @@ impl SettingsTab {
                 });
         } else {
             ScrollArea::new([false, true])
-                .id_source(format!("{}_scroll", self.selected_top_tab))
+                .id_source(format!("{}_scroll", self.selected_top_tab_id))
                 .show(ui, |ui| {
-                    Grid::new(format!("{}_grid", self.selected_top_tab))
+                    Grid::new(format!("{}_grid", self.selected_top_tab_id))
                         .striped(true)
                         .num_columns(2)
                         .show(ui, |ui| {
@@ -194,7 +200,7 @@ impl SettingsTab {
                                 let entry = self
                                     .top_level_entries
                                     .iter_mut()
-                                    .find(|entry| entry.id.id == self.selected_top_tab)
+                                    .find(|entry| entry.id.id == self.selected_top_tab_id)
                                     .unwrap();
 
                                 let response = entry.control.ui(

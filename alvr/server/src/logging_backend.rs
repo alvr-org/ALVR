@@ -36,7 +36,7 @@ pub fn init_logging(events_sender: Sender<Event>) {
         log_dispatch = log_dispatch.level(LevelFilter::Info);
     }
 
-    if SERVER_DATA_MANAGER.read().settings().logging.log_to_disk {
+    if SERVER_DATA_MANAGER.read().settings().extra.logging.log_to_disk {
         log_dispatch = log_dispatch.chain(
             fs::OpenOptions::new()
                 .write(true)

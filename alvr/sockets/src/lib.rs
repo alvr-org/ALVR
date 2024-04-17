@@ -21,6 +21,7 @@ pub const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub const MDNS_SERVICE_TYPE: &str = "_alvr._tcp.local.";
 pub const MDNS_PROTOCOL_KEY: &str = "protocol";
+pub const MDNS_DEVICE_ID_KEY: &str = "device_id";
 
 fn set_socket_buffers(
     socket: &socket2::Socket,

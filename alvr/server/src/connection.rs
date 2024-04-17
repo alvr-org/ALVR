@@ -1175,7 +1175,12 @@ fn connection_pipeline(
                     ClientControlPacket::Buttons(entries) => {
                         {
                             let data_manager_lock = SERVER_DATA_MANAGER.read();
-                            if data_manager_lock.settings().extra.logging.log_button_presses {
+                            if data_manager_lock
+                                .settings()
+                                .extra
+                                .logging
+                                .log_button_presses
+                            {
                                 alvr_events::send_event(EventType::Buttons(
                                     entries
                                         .iter()

@@ -6,9 +6,7 @@ use crate::dashboard::{DisplayString, ServerRequest};
 use alvr_gui_common::theme;
 use alvr_packets::AudioDevicesList;
 use alvr_session::{SessionSettings, Settings};
-use eframe::egui::{
-    self, Align, Frame, Grid, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel, Ui
-};
+use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
 use serde_json as json;
@@ -141,13 +139,13 @@ impl SettingsTab {
                         ui.selectable_value(
                             &mut self.selected_top_tab_id,
                             "presets".to_string(),
-                            "Presets".to_string(),
+                            RichText::new("Presets").raised().size(15.0),
                         );
                         for entry in self.top_level_entries.iter_mut() {
                             ui.selectable_value(
                                 &mut self.selected_top_tab_id,
                                 entry.id.id.clone(),
-                                entry.id.display.clone(),
+                                RichText::new(entry.id.display.clone()).raised().size(15.0),
                             );
                         }
                     })
@@ -162,25 +160,31 @@ impl SettingsTab {
                         .striped(true)
                         .num_columns(2)
                         .show(ui, |ui| {
+                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.resolution_preset.ui(ui));
                             ui.end_row();
 
+                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.framerate_preset.ui(ui));
                             ui.end_row();
 
+                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
                             ui.end_row();
 
                             if let Some(preset) = &mut self.game_audio_preset {
+                                ui.add_space(INDENTATION_STEP);
                                 path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
                             }
 
                             if let Some(preset) = &mut self.microphone_preset {
+                                ui.add_space(INDENTATION_STEP);
                                 path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
                             }
 
+                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.eye_face_tracking_preset.ui(ui));
                             ui.end_row();
                         })
@@ -200,13 +204,15 @@ impl SettingsTab {
                                 let entry = self
                                     .top_level_entries
                                     .iter_mut()
-                                    .find(|entry| entry.id.id == self.selected_top_tab_id)
+                                    .find(|entry: &&mut TopLevelEntry| {
+                                        entry.id.id == self.selected_top_tab_id
+                                    })
                                     .unwrap();
 
                                 let response = entry.control.ui(
                                     ui,
                                     &mut session_fragments_mut[&entry.id.id],
-                                    true,
+                                    false,
                                 );
 
                                 if let Some(response) = response {

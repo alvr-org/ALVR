@@ -1746,6 +1746,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 linux_async_reprojection: false,
             },
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
-        }
+        },
     }
 }

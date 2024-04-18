@@ -59,7 +59,7 @@ iptables_cfg() {
     first_port_match_count=$(iptables -S | grep -c '9943')
     second_port_match_count=$(iptables -S | grep -c '9944')
     if [ "${1}" == 'add' ]; then
-        if [ "$first_port_match_count" != "4" ] || [ "$second_port_match_count" != "4" ]; then
+        if [ "$first_port_match_count" == "0" ] || [ "$second_port_match_count" == "0" ]; then
             iptables -I OUTPUT -p tcp --sport 9943 -j ACCEPT
             iptables -I INPUT -p tcp --dport 9943 -j ACCEPT
             iptables -I OUTPUT -p udp --sport 9943 -j ACCEPT

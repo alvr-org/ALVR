@@ -12,6 +12,7 @@ Release
 
 # editor
 .vs/
+.idea/
 
 # NuGet Packages
 *.nupkg

@@ -152,7 +152,7 @@ void FFR::Initialize(FoveationVars fv) {
     using glm::vec2;
 
     // Precalculate a bunch of constants that will be used in fragment shader
-    auto CENTER_SIZE = vec2(fv.centerSizeY, fv.centerSizeY); // Size of the center, non-distorted, region
+    auto CENTER_SIZE = vec2(fv.centerSizeX, fv.centerSizeY); // Size of the center, non-distorted region
     auto CENTER_SHIFT = vec2(fv.centerShiftX, fv.centerShiftY); // How much to shift the center region
     auto EDGE_RATIO = vec2(fv.edgeRatioX, fv.edgeRatioY); // Ratio of edge region VS center region
 

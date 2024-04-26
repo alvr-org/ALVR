@@ -573,7 +573,7 @@ fn connection_pipeline(
     *ctx.control_sender.lock() = Some(control_sender);
     *ctx.tracking_sender.lock() = Some(tracking_sender);
     *ctx.statistics_sender.lock() = Some(statistics_sender);
-    if let Switch::Enabled(filter_level) = settings.logging.client_log_report_level {
+    if let Switch::Enabled(filter_level) = settings.extra.logging.client_log_report_level {
         *LOG_CHANNEL_SENDER.lock() = Some(LogMirrorData {
             sender: log_channel_sender,
             filter_level,

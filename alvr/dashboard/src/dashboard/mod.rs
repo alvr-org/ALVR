@@ -168,7 +168,7 @@ impl eframe::App for Dashboard {
                     self.logs_tab.update_settings(&settings);
                     self.notification_bar.update_settings(&settings);
                     if self.just_opened {
-                        if settings.open_setup_wizard {
+                        if settings.extra.open_setup_wizard {
                             self.setup_wizard_open = true;
                         }
 
@@ -210,7 +210,7 @@ impl eframe::App for Dashboard {
                             if finished {
                                 requests.push(ServerRequest::SetValues(vec![PathValuePair {
                                     path: alvr_packets::parse_path(
-                                        "session_settings.open_setup_wizard",
+                                        "session_settings.extra.open_setup_wizard",
                                     ),
                                     value: serde_json::Value::Bool(false),
                                 }]))
@@ -341,6 +341,7 @@ impl eframe::App for Dashboard {
                 .as_ref()
                 .map(|s| {
                     s.to_settings()
+                        .extra
                         .steamvr_launcher
                         .open_close_steamvr_with_dashboard
                 })

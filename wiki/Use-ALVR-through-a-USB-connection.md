@@ -1,16 +1,10 @@
 # ALVR wired setup (ALVR over USB)
 
-## ALVR Configuration
+## ALVR Streamer (PC) Configuration:
 
-### ALVR Client (Headset):
-
-* WiFi must be turned on and connected, otherwise ALVR will not search for the streamer.
-
-### ALVR Streamer (PC):
-
+* **Switch the connection streaming protocol to TCP** in Settings > Connection.
 * If your headset is detected, click "Trust." Click "Edit", "Add new" and change the IP address to `127.0.0.1`.
 * If your headset is not detected, click "Add client manually" and use the IP address `127.0.0.1`. Use the hostname displayed on your headset screen.
-* Switch the connection streaming protocol to TCP in Settings > Connection.
 
 ## Letting your PC communicate with your HMD
 
@@ -18,7 +12,9 @@ The Quest, Pico HMDs are Android devices, therefore, we can use [Android Device 
 
 You can accomplish this with some pre-made applications/scripts (just below), or run the commands manually with [SideQuest](https://sidequestvr.com/setup-howto)
 
-If you haven't already, connect a USB cable from your PC to your headset. USB 2.0 will work fine but 3.0 and higher is best. Make sure to authorize the computer in your headset.
+If you haven't already, connect a USB cable from your PC to your headset. USB 2.0 will work fine but 3.0 and higher is best. 
+
+**Make sure to enable dev account and authorize the computer in your headset if you're on quest or enable USB Debug on Pico in settings.**
 
 ### Option 1 - Dedicated ADB Applications
 

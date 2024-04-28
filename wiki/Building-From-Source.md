@@ -36,14 +36,14 @@ If you are on Linux, install these additional packages:
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**
   
   ```bash
-  sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc-8 g++-8 yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers
+  sudo apt install build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers
   ```
 
 * **Fedora**
   
   ```bash
   sudo dnf groupinstall 'Development Tools' | For c++ and build tools
-  sudo dnf install yasm libdrm-devel vulkan-headers pipewire-jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang openssl-devel alsa-lib-devel libva-devel
+  sudo dnf install nasm yasm libdrm-devel vulkan-headers pipewire-jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang openssl-devel alsa-lib-devel libva-devel
   ```
   
   If you are using Nvidia, see [Fedora cuda installation](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#fedora-cuda-installation)

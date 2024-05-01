@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "bindings.h"
 #include <mutex>
+#include <memory>
 
 #ifndef __APPLE__
 // Workaround symbol clash in openvr.h / openvr_driver.h
@@ -84,14 +85,19 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 }
 
 #ifdef __linux__
-vr::HmdMatrix34_t GetInvZeroPose() {
-    vr::HmdMatrix34_t mat;
+std::unique_ptr<vr::HmdMatrix34_t> GetInvZeroPose() {
+    std::unique_lock<std::mutex> lock(chaperone_mutex);
+    if (!isOpenvrInit)
+    {
+        return nullptr;
+    }
+    std::unique_ptr<vr::HmdMatrix34_t> mat;
     // revert pulls live into working copy
     vr::VRChaperoneSetup()->RevertWorkingCopy();
     if (vr::VRCompositor()->GetTrackingSpace() == vr::TrackingUniverseStanding) {
-        vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(&mat);
+        vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(mat.get());
     } else {
-        vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(&mat);
+        vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(mat.get());
     }
     return mat;
 }

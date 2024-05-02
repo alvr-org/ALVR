@@ -16,6 +16,12 @@ jobs:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -32,6 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -57,6 +69,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -73,6 +91,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -118,6 +142,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -136,12 +166,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: submodules recursively
+        run: git submodule update --init --recursive
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
           components: rustfmt
+
       - uses: actions-rs/cargo@v1
         with:
           command: fmt

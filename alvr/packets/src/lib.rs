@@ -79,7 +79,8 @@ pub fn decode_video_streaming_capabilities(
         }
     }
 
-    let caps_json = json::from_str::<json::Value>(&String::from_utf8(json_bytes)?)?;
+    let caps_json =
+        json::from_str::<json::Value>(&String::from_utf8(json_bytes)?).unwrap_or(json::Value::Null);
 
     Ok(VideoStreamingCapabilities {
         default_view_resolution: legacy.default_view_resolution,

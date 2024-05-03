@@ -4,8 +4,6 @@ mod build_shaders;
 use build_shaders::SHADERS;
 #[cfg(target_os = "windows")]
 use regex::{Captures, Regex};
-#[cfg(not(target_os = "windows"))]
-use shaderc;
 #[cfg(target_os = "windows")]
 use windows::{core::PCSTR, Win32::Graphics::Direct3D::Fxc::D3DCompile};
 

@@ -1,4 +1,12 @@
-use std::{env, path::PathBuf};
+use std::{env, fs, path::PathBuf};
+
+use regex::{Captures, Regex};
+#[cfg(not(target_os = "windows"))]
+use shaderc::{self, ShaderKind};
+#[cfg(target_os = "windows")]
+use windows::core::{s, PCSTR};
+#[cfg(target_os = "windows")]
+use windows::Win32::Graphics::Direct3D::Fxc::D3DCompile;
 
 fn get_ffmpeg_path() -> PathBuf {
     let ffmpeg_path = alvr_filesystem::deps_dir()
@@ -19,6 +27,178 @@ fn get_ffmpeg_path() -> PathBuf {
 #[cfg(all(target_os = "linux", feature = "gpl"))]
 fn get_linux_x264_path() -> PathBuf {
     alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
+}
+
+#[cfg(not(target_os = "windows"))]
+struct Shader {
+    source_file: &'static str,
+    out_file: &'static str,
+    entry_point: &'static str,
+    kind: ShaderKind,
+}
+#[cfg(target_os = "windows")]
+struct Shader {
+    source_file: &'static str,
+    out_file: &'static str,
+    entry_point: PCSTR,
+    profile: PCSTR,
+}
+
+#[cfg(target_os = "linux")]
+const SHADERS: [Shader; 4] = [
+    Shader {
+        source_file: "color.comp",
+        out_file: "color.comp.spv",
+        entry_point: "main",
+        kind: ShaderKind::Compute,
+    },
+    Shader {
+        source_file: "ffr.comp",
+        out_file: "ffr.comp.spv",
+        entry_point: "main",
+        kind: ShaderKind::Compute,
+    },
+    Shader {
+        source_file: "quad.comp",
+        out_file: "quad.comp.spv",
+        entry_point: "main",
+        kind: ShaderKind::Compute,
+    },
+    Shader {
+        source_file: "rgbtoyuv420.comp",
+        out_file: "rgbtoyuv420.comp.spv",
+        entry_point: "main",
+        kind: ShaderKind::Compute,
+    },
+];
+
+#[cfg(target_os = "windows")]
+const SHADERS: [Shader; 6] = [
+    Shader {
+        source_file: "ColorCorrectionPixelShader.hlsl",
+        out_file: "ColorCorrectionPixelShader.cso",
+        entry_point: s!("main"),
+        profile: s!("ps_5_0"),
+    },
+    Shader {
+        source_file: "CompressAxisAlignedPixelShader.hlsl",
+        out_file: "CompressAxisAlignedPixelShader.cso",
+        entry_point: s!("main"),
+        profile: s!("ps_5_0"),
+    },
+    Shader {
+        source_file: "FrameRenderPS.hlsl",
+        out_file: "FrameRenderPS.cso",
+        entry_point: s!("PS"),
+        profile: s!("ps_5_0"),
+    },
+    Shader {
+        source_file: "FrameRenderVS.hlsl",
+        out_file: "FrameRenderVS.cso",
+        entry_point: s!("VS"),
+        profile: s!("vs_5_0"),
+    },
+    Shader {
+        source_file: "QuadVertexShader.hlsl",
+        out_file: "QuadVertexShader.cso",
+        entry_point: s!("main"),
+        profile: s!("vs_5_0"),
+    },
+    Shader {
+        source_file: "rgbtoyuv420.hlsl",
+        out_file: "rgbtoyuv420.cso",
+        entry_point: s!("main"),
+        profile: s!("ps_5_0"),
+    },
+];
+
+#[cfg(target_os = "macos")]
+const SHADERS: [Shader; 0] = [];
+
+fn compile_shaders(platform_name: &str, platform_subpath: &str) {
+    let shader_dir = PathBuf::from(platform_subpath).join("shader");
+
+    match platform_name {
+        #[cfg(target_os = "windows")]
+        "windows" => {
+            for shader in SHADERS {
+                let source_path = shader_dir.join(shader.source_file);
+                let source = fs::read_to_string(&source_path).unwrap();
+
+                let re = Regex::new("#include \"(.*)\"").unwrap();
+
+                let source = re.replace_all(source.as_str(), |caps: &Captures| {
+                    let include_path = shader_dir.join(caps.get(1).unwrap().as_str());
+                    let include_source = fs::read_to_string(include_path).unwrap();
+                    include_source
+                });
+
+                fn to_pcstr(s: &str) -> PCSTR {
+                    PCSTR::from_raw([s, "\0"].join("").as_ptr())
+                }
+
+                let mut out_shader = None;
+                let mut out_errors = None;
+                let out_shader = unsafe {
+                    D3DCompile(
+                        source.as_bytes().as_ptr() as _,
+                        source.as_bytes().len(),
+                        to_pcstr(shader.source_file),
+                        None,
+                        None,
+                        shader.entry_point,
+                        shader.profile,
+                        0,
+                        0,
+                        &mut out_shader,
+                        Some(&mut out_errors),
+                    )
+                }
+                .map(|()| out_shader);
+
+                match out_shader {
+                    Err(err) => {
+                        if let Some(out_errors) = out_errors {
+                            let error_data = unsafe {
+                                let ptr = out_errors.GetBufferPointer();
+                                let size = out_errors.GetBufferSize();
+                                std::slice::from_raw_parts(ptr as *const u8, size as usize)
+                            };
+                            println!("Shader compilation error for \"{}\": {}", shader.source_file, error_data.iter().map(|&b| b as char).collect::<String>());
+                        }
+                        panic!("Shader compilation failed: {}", err);
+                    }
+                    Ok(_) => {
+                        let dxil = out_shader.unwrap().unwrap();
+                        let out_buf = unsafe {
+                            let ptr = dxil.GetBufferPointer();
+                            let size = dxil.GetBufferSize();
+                            std::slice::from_raw_parts(ptr as *const u8, size as usize)
+                        };
+
+                        let out_path = shader_dir.join(shader.out_file);
+                        fs::write(out_path, out_buf).unwrap();
+                    }
+                }
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        "linux" => {
+            let compiler = shaderc::Compiler::new().unwrap();
+            let options = shaderc::CompileOptions::new().unwrap();
+
+            for shader in SHADERS {
+                let source_path = shader_dir.join(shader.source_file);
+                let source = fs::read_to_string(source_path).unwrap();
+
+                let binary_result = compiler.compile_into_spirv(source.as_str(), shader.kind, shader.source_file, shader.entry_point, Some(&options)).unwrap();
+                let out_path = shader_dir.join(shader.out_file);
+                fs::write(out_path, binary_result.as_binary_u8()).unwrap();
+            }
+        }
+        "macos" => {}
+        _ => panic!(),
+    }
 }
 
 fn main() {
@@ -58,6 +238,9 @@ fn main() {
             })
             .is_some()
     });
+
+    // compile shaders
+    compile_shaders(&platform_name, platform_subpath);
 
     let mut build = cc::Build::new();
     build

@@ -79,14 +79,14 @@ pub struct VideoPacket {
 static VIDEO_MIRROR_SENDER: OptLazy<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
 static VIDEO_RECORDING_FILE: OptLazy<File> = alvr_common::lazy_mut_none();
 
-static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
-static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
-static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/QuadVertexShader.cso");
+static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/FrameRenderVS.cso");
+static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/FrameRenderPS.cso");
+static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/QuadVertexShader.cso");
 static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
-    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
+    include_bytes!("../cpp/platform/win32/shader/CompressAxisAlignedPixelShader.cso");
 static COLOR_CORRECTION_CSO: &[u8] =
-    include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
-static RGBTOYUV420_CSO: &[u8] = include_bytes!("../cpp/platform/win32/rgbtoyuv420.cso");
+    include_bytes!("../cpp/platform/win32/shader/ColorCorrectionPixelShader.cso");
+static RGBTOYUV420_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/rgbtoyuv420.cso");
 
 static QUAD_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.comp.spv");
 static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.comp.spv");

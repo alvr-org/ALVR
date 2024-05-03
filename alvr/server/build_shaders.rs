@@ -1,7 +1,7 @@
 #[cfg(not(target_os = "windows"))]
 use shaderc::ShaderKind;
 #[cfg(target_os = "windows")]
-use windows::core::{PCSTR, s};
+use windows::core::{s, PCSTR};
 
 #[cfg(not(target_os = "windows"))]
 pub(crate) struct Shader {

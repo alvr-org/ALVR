@@ -2,10 +2,10 @@ use std::{env, fs, path::PathBuf};
 
 mod build_shaders;
 use build_shaders::SHADERS;
-#[cfg(not(target_os = "windows"))]
-use shaderc;
 #[cfg(target_os = "windows")]
 use regex::{Captures, Regex};
+#[cfg(not(target_os = "windows"))]
+use shaderc;
 #[cfg(target_os = "windows")]
 use windows::{core::PCSTR, Win32::Graphics::Direct3D::Fxc::D3DCompile};
 
@@ -79,7 +79,11 @@ fn compile_shaders(platform_name: &str, platform_subpath: &str) {
                                 let size = out_errors.GetBufferSize();
                                 std::slice::from_raw_parts(ptr as *const u8, size as usize)
                             };
-                            println!("Shader compilation error for \"{}\": {}", shader.source_file, error_data.iter().map(|&b| b as char).collect::<String>());
+                            println!(
+                                "Shader compilation error for \"{}\": {}",
+                                shader.source_file,
+                                error_data.iter().map(|&b| b as char).collect::<String>()
+                            );
                         }
                         panic!("Shader compilation failed: {}", err);
                     }
@@ -106,7 +110,15 @@ fn compile_shaders(platform_name: &str, platform_subpath: &str) {
                 let source_path = shader_dir.join(shader.source_file);
                 let source = fs::read_to_string(source_path).unwrap();
 
-                let binary_result = compiler.compile_into_spirv(source.as_str(), shader.kind, shader.source_file, shader.entry_point, Some(&options)).unwrap();
+                let binary_result = compiler
+                    .compile_into_spirv(
+                        source.as_str(),
+                        shader.kind,
+                        shader.source_file,
+                        shader.entry_point,
+                        Some(&options),
+                    )
+                    .unwrap();
                 let out_path = shader_dir.join(shader.out_file);
                 fs::write(out_path, binary_result.as_binary_u8()).unwrap();
             }

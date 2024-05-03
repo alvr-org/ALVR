@@ -79,8 +79,10 @@ pub struct VideoPacket {
 static VIDEO_MIRROR_SENDER: OptLazy<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
 static VIDEO_RECORDING_FILE: OptLazy<File> = alvr_common::lazy_mut_none();
 
-static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/FrameRenderVS.cso");
-static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/FrameRenderPS.cso");
+static FRAME_RENDER_VS_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/shader/FrameRenderVS.cso");
+static FRAME_RENDER_PS_CSO: &[u8] =
+    include_bytes!("../cpp/platform/win32/shader/FrameRenderPS.cso");
 static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/shader/QuadVertexShader.cso");
 static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
     include_bytes!("../cpp/platform/win32/shader/CompressAxisAlignedPixelShader.cso");

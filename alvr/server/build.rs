@@ -1,5 +1,6 @@
 use std::{env, fs, path::PathBuf};
 
+#[cfg(not(target_os = "windows"))]
 use regex::{Captures, Regex};
 #[cfg(not(target_os = "windows"))]
 use shaderc::{self, ShaderKind};

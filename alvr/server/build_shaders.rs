@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "windows"))]
+use shaderc::ShaderKind;
 #[cfg(target_os = "windows")]
 use windows::core::{PCSTR, s};
 

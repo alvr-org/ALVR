@@ -3,13 +3,11 @@ use std::{env, fs, path::PathBuf};
 mod build_shaders;
 use build_shaders::SHADERS;
 #[cfg(not(target_os = "windows"))]
-use shaderc::{self, ShaderKind};
+use shaderc;
 #[cfg(target_os = "windows")]
 use regex::{Captures, Regex};
 #[cfg(target_os = "windows")]
-use windows::core::PCSTR;
-#[cfg(target_os = "windows")]
-use windows::Win32::Graphics::Direct3D::Fxc::D3DCompile;
+use windows::{core::PCSTR, Win32::Graphics::Direct3D::Fxc::D3DCompile};
 
 fn get_ffmpeg_path() -> PathBuf {
     let ffmpeg_path = alvr_filesystem::deps_dir()

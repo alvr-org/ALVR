@@ -10,13 +10,6 @@ pub(crate) struct Shader {
     pub(crate) entry_point: &'static str,
     pub(crate) kind: ShaderKind,
 }
-#[cfg(target_os = "windows")]
-pub(crate) struct Shader {
-    pub(crate) source_file: &'static str,
-    pub(crate) out_file: &'static str,
-    pub(crate) entry_point: PCSTR,
-    pub(crate) profile: PCSTR,
-}
 
 #[cfg(target_os = "linux")]
 pub const SHADERS: [Shader; 4] = [
@@ -45,6 +38,14 @@ pub const SHADERS: [Shader; 4] = [
         kind: ShaderKind::Compute,
     },
 ];
+
+#[cfg(target_os = "windows")]
+pub(crate) struct Shader {
+    pub(crate) source_file: &'static str,
+    pub(crate) out_file: &'static str,
+    pub(crate) entry_point: PCSTR,
+    pub(crate) profile: PCSTR,
+}
 
 #[cfg(target_os = "windows")]
 pub const SHADERS: [Shader; 6] = [

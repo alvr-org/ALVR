@@ -1,11 +1,13 @@
 use std::{env, fs, path::PathBuf};
 
-#[cfg(not(target_os = "windows"))]
-use regex::{Captures, Regex};
+mod build_shaders;
+use build_shaders::SHADERS;
 #[cfg(not(target_os = "windows"))]
 use shaderc::{self, ShaderKind};
 #[cfg(target_os = "windows")]
-use windows::core::{s, PCSTR};
+use regex::{Captures, Regex};
+#[cfg(target_os = "windows")]
+use windows::core::PCSTR;
 #[cfg(target_os = "windows")]
 use windows::Win32::Graphics::Direct3D::Fxc::D3DCompile;
 
@@ -29,92 +31,6 @@ fn get_ffmpeg_path() -> PathBuf {
 fn get_linux_x264_path() -> PathBuf {
     alvr_filesystem::deps_dir().join("linux/x264/alvr_build")
 }
-
-#[cfg(not(target_os = "windows"))]
-struct Shader {
-    source_file: &'static str,
-    out_file: &'static str,
-    entry_point: &'static str,
-    kind: ShaderKind,
-}
-#[cfg(target_os = "windows")]
-struct Shader {
-    source_file: &'static str,
-    out_file: &'static str,
-    entry_point: PCSTR,
-    profile: PCSTR,
-}
-
-#[cfg(target_os = "linux")]
-const SHADERS: [Shader; 4] = [
-    Shader {
-        source_file: "color.comp",
-        out_file: "color.comp.spv",
-        entry_point: "main",
-        kind: ShaderKind::Compute,
-    },
-    Shader {
-        source_file: "ffr.comp",
-        out_file: "ffr.comp.spv",
-        entry_point: "main",
-        kind: ShaderKind::Compute,
-    },
-    Shader {
-        source_file: "quad.comp",
-        out_file: "quad.comp.spv",
-        entry_point: "main",
-        kind: ShaderKind::Compute,
-    },
-    Shader {
-        source_file: "rgbtoyuv420.comp",
-        out_file: "rgbtoyuv420.comp.spv",
-        entry_point: "main",
-        kind: ShaderKind::Compute,
-    },
-];
-
-#[cfg(target_os = "windows")]
-const SHADERS: [Shader; 6] = [
-    Shader {
-        source_file: "ColorCorrectionPixelShader.hlsl",
-        out_file: "ColorCorrectionPixelShader.cso",
-        entry_point: s!("main"),
-        profile: s!("ps_5_0"),
-    },
-    Shader {
-        source_file: "CompressAxisAlignedPixelShader.hlsl",
-        out_file: "CompressAxisAlignedPixelShader.cso",
-        entry_point: s!("main"),
-        profile: s!("ps_5_0"),
-    },
-    Shader {
-        source_file: "FrameRenderPS.hlsl",
-        out_file: "FrameRenderPS.cso",
-        entry_point: s!("PS"),
-        profile: s!("ps_5_0"),
-    },
-    Shader {
-        source_file: "FrameRenderVS.hlsl",
-        out_file: "FrameRenderVS.cso",
-        entry_point: s!("VS"),
-        profile: s!("vs_5_0"),
-    },
-    Shader {
-        source_file: "QuadVertexShader.hlsl",
-        out_file: "QuadVertexShader.cso",
-        entry_point: s!("main"),
-        profile: s!("vs_5_0"),
-    },
-    Shader {
-        source_file: "rgbtoyuv420.hlsl",
-        out_file: "rgbtoyuv420.cso",
-        entry_point: s!("main"),
-        profile: s!("ps_5_0"),
-    },
-];
-
-#[cfg(target_os = "macos")]
-const SHADERS: [Shader; 0] = [];
 
 fn compile_shaders(platform_name: &str, platform_subpath: &str) {
     let shader_dir = PathBuf::from(platform_subpath).join("shader");

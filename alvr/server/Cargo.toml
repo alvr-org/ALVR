@@ -23,7 +23,7 @@ alvr_server_io.workspace = true
 alvr_session.workspace = true
 alvr_sockets.workspace = true
 
-ash = "0.37"
+ash = "0.38"
 bincode = "1"
 bytes = "1"
 chrono = "0.4"
@@ -38,7 +38,7 @@ hyper = { version = "0.14", features = [
     "runtime",
     "tcp",
 ] }
-mdns-sd = "0.10"
+mdns-sd = "0.11"
 profiling = { version = "1", optional = true }
 reqwest = "0.11" # not used but webserver does not work without it. todo: investigate
 rosc = "0.10"

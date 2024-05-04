@@ -17,7 +17,7 @@ serde = "1"
 
 [target.'cfg(windows)'.dependencies]
 widestring = "1"
-windows = { version = "0.52", features = [
+windows = { version = "0.56", features = [
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio_Endpoints",

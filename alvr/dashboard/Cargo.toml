@@ -41,7 +41,7 @@ wasm-bindgen-futures = "0.4"
 wasm-logger = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wgpu = "0.19"
+wgpu = "0.20"
 libva = { package = "cros-libva", version = "0.0.6" }
 nvml-wrapper = "0.10.0"
 

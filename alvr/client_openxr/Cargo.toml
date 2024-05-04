@@ -21,7 +21,7 @@ openxr = { git = "https://github.com/alvr-org/openxrs", rev = "f1f47ff" }
 # openxr = { path = "../../../../openxrs/openxr" }
 
 [target.'cfg(target_os = "android")'.dependencies]
-android-activity = { version = "0.5", features = ["native-activity"] }
+android-activity = { version = "0.6", features = ["native-activity"] }
 jni = "0.21"
 libc = "0.2"
 ndk-context = "0.1"

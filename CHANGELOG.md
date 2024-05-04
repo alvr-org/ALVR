@@ -1,5 +1,16 @@
 # Changelog
 
+## v20.8.0
+
+* Bring back settings tabs (by @Meister1593 #2076)
+* Make FFE shader much lighter (by @yoyobuae #2083)
+* Improve firewall rules on Linux (by @Meister1593 #2078)
+* Fix error message not displaying correctly on Linux sometimes (by @SniperJoe #2088)
+* Fix Nvidia encoder on some Linux systems (by @Xaphiosis @nowrep #2074)
+* Fix client warmstart crash (by @ShootingKing-AM #2084)
+* Fix segfault on Linux (by @SniperJoe #2090)
+* Fix protocol break in v20.7.0 (by @zarik5 2098)
+
 ### v20.7.1
 
 * Fix colors on Pico (by @shinyquagsire23 and @zarik5)

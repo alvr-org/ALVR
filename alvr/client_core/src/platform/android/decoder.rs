@@ -2,13 +2,13 @@ use alvr_common::{
     anyhow::{anyhow, bail, Context, Result},
     error, info,
     parking_lot::{Condvar, Mutex},
-    show_e, warn, RelaxedAtomic,
+    warn, RelaxedAtomic,
 };
 use alvr_session::{CodecType, MediacodecDataType};
 use ndk::{
     hardware_buffer::HardwareBufferUsage,
     media::{
-        image_reader::{Image, ImageFormat, ImageReader},
+        image_reader::{AcquireResult, Image, ImageFormat, ImageReader},
         media_codec::{
             DequeuedInputBufferResult, DequeuedOutputBufferInfoResult, MediaCodec,
             MediaCodecDirection, MediaFormat,
@@ -217,22 +217,21 @@ fn decoder_lifecycle(
             }
 
             match image_reader.acquire_next_image() {
-                Ok(mut image) => {
-                    if let Some(image) = image.take() {
-                        let timestamp = Duration::from_nanos(image.timestamp().unwrap() as u64);
+                Ok(AcquireResult::Image(image)) => {
+                    let timestamp = Duration::from_nanos(image.timestamp().unwrap() as u64);
 
-                        dequeued_frame_callback(timestamp);
+                    dequeued_frame_callback(timestamp);
 
-                        image_queue_lock.push_back(QueuedImage {
-                            timestamp,
-                            image,
-                            in_use: false,
-                        });
-                    } else {
-                        error!("ImageReader error: No image available");
+                    image_queue_lock.push_back(QueuedImage {
+                        timestamp,
+                        image,
+                        in_use: false,
+                    });
+                }
+                Ok(e) => {
+                    error!("ImageReader error: {e:?}");
 
-                        image_queue_lock.clear();
-                    }
+                    image_queue_lock.pop_front();
                 }
                 Err(e) => {
                     error!("ImageReader error: {e}");
@@ -249,7 +248,7 @@ fn decoder_lifecycle(
 
     let mime = mime_for_codec(config.codec);
 
-    let format = MediaFormat::new();
+    let mut format = MediaFormat::new();
     format.set_str("mime", mime);
     // Given https://github.com/alvr-org/ALVR/pull/1933#discussion_r1431902906 - change at own risk.
     // It might be harmless, it might not be, but it's definitely a risk.

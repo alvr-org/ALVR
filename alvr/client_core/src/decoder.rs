@@ -1,4 +1,4 @@
-use alvr_common::anyhow::{bail, Result};
+use alvr_common::anyhow::Result;
 use alvr_session::{CodecType, MediacodecDataType};
 use std::time::Duration;
 
@@ -43,7 +43,7 @@ impl DecoderSource {
             self.inner.dequeue_frame()
         }
         #[cfg(not(target_os = "android"))]
-        bail!("Not implemented");
+        alvr_common::anyhow::bail!("Not implemented");
     }
 }
 

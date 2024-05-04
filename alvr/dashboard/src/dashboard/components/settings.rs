@@ -1,16 +1,15 @@
 use super::{
-    notice,
     presets::{builtin_schema, PresetControl},
     NestingInfo, SettingControl, INDENTATION_STEP,
 };
 use crate::dashboard::{DisplayString, ServerRequest};
+use alvr_gui_common::theme;
 use alvr_packets::AudioDevicesList;
 use alvr_session::{SessionSettings, Settings};
-use eframe::egui::{Grid, Label, RichText, ScrollArea, Ui};
-use serde_json as json;
-
+use eframe::egui::{self, Align, Frame, Grid, Layout, RichText, ScrollArea, Ui};
 #[cfg(target_arch = "wasm32")]
 use instant::Instant;
+use serde_json as json;
 use settings_schema::SchemaNode;
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,6 +23,7 @@ struct TopLevelEntry {
 }
 
 pub struct SettingsTab {
+    selected_top_tab_id: String,
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
     encoder_preset: PresetControl,
@@ -65,6 +65,7 @@ impl SettingsTab {
             .collect();
 
         Self {
+            selected_top_tab_id: "presets".to_string(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
@@ -129,90 +130,100 @@ impl SettingsTab {
         }
 
         let mut path_value_pairs = vec![];
+        ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+            Frame::group(ui.style())
+                .fill(theme::DARKER_BG)
+                .inner_margin(egui::vec2(15.0, 12.0))
+                .show(ui, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.selectable_value(
+                            &mut self.selected_top_tab_id,
+                            "presets".to_string(),
+                            RichText::new("Presets").raised().size(15.0),
+                        );
+                        for entry in self.top_level_entries.iter_mut() {
+                            ui.selectable_value(
+                                &mut self.selected_top_tab_id,
+                                entry.id.id.clone(),
+                                RichText::new(entry.id.display.clone()).raised().size(15.0),
+                            );
+                        }
+                    })
+                })
+        });
 
-        ScrollArea::new([false, true])
-            .id_source("settings_tab_scroll")
-            .show(ui, |ui| {
-                ui.add(Label::new(RichText::new("Presets").size(20.0)));
-                ScrollArea::new([true, false])
-                    .id_source("presets_scroll")
-                    .show(ui, |ui| {
-                        Grid::new("presets_grid")
-                            .striped(true)
-                            .num_columns(2)
-                            .show(ui, |ui| {
-                                path_value_pairs.extend(self.resolution_preset.ui(ui));
+        if self.selected_top_tab_id == "presets" {
+            ScrollArea::new([false, true])
+                .id_source("presets_scroll")
+                .show(ui, |ui| {
+                    Grid::new("presets_grid")
+                        .striped(true)
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.add_space(INDENTATION_STEP);
+                            path_value_pairs.extend(self.resolution_preset.ui(ui));
+                            ui.end_row();
+
+                            ui.add_space(INDENTATION_STEP);
+                            path_value_pairs.extend(self.framerate_preset.ui(ui));
+                            ui.end_row();
+
+                            ui.add_space(INDENTATION_STEP);
+                            path_value_pairs.extend(self.encoder_preset.ui(ui));
+                            ui.end_row();
+
+                            if let Some(preset) = &mut self.game_audio_preset {
+                                ui.add_space(INDENTATION_STEP);
+                                path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
+                            }
 
-                                path_value_pairs.extend(self.framerate_preset.ui(ui));
+                            if let Some(preset) = &mut self.microphone_preset {
+                                ui.add_space(INDENTATION_STEP);
+                                path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
+                            }
 
-                                path_value_pairs.extend(self.encoder_preset.ui(ui));
-                                ui.end_row();
-
-                                if let Some(preset) = &mut self.game_audio_preset {
-                                    path_value_pairs.extend(preset.ui(ui));
-                                    ui.end_row();
-                                }
-
-                                if let Some(preset) = &mut self.microphone_preset {
-                                    path_value_pairs.extend(preset.ui(ui));
-                                    ui.end_row();
-                                }
-
-                                path_value_pairs.extend(self.eye_face_tracking_preset.ui(ui));
-                                ui.end_row();
-                            })
-                    });
-
-                ui.add_space(15.0);
-
-                ui.horizontal(|ui| {
-                    ui.add(Label::new(
-                        RichText::new("All Settings (Advanced)").size(20.0),
-                    ));
-                    notice::notice(ui, "Changing some advanced settings may break ALVR");
+                            ui.add_space(INDENTATION_STEP);
+                            path_value_pairs.extend(self.eye_face_tracking_preset.ui(ui));
+                            ui.end_row();
+                        })
                 });
-                ScrollArea::new([true, false])
-                    .id_source("advanced_scroll")
-                    .show(ui, |ui| {
-                        Grid::new("advanced_grid")
-                            .striped(true)
-                            .num_columns(2)
-                            .show(ui, |ui| {
-                                if let Some(session_fragment) = &mut self.session_settings_json {
-                                    let session_fragments_mut =
-                                        session_fragment.as_object_mut().unwrap();
+        } else {
+            ScrollArea::new([false, true])
+                .id_source(format!("{}_scroll", self.selected_top_tab_id))
+                .show(ui, |ui| {
+                    Grid::new(format!("{}_grid", self.selected_top_tab_id))
+                        .striped(true)
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            if let Some(session_fragment) = &mut self.session_settings_json {
+                                let session_fragments_mut =
+                                    session_fragment.as_object_mut().unwrap();
 
-                                    for entry in self.top_level_entries.iter_mut() {
-                                        ui.horizontal(|ui| {
-                                            ui.add_space(INDENTATION_STEP);
-                                            let label_res = ui.add(Label::new(
-                                                RichText::new(&entry.id.display)
-                                                    .size(18.0)
-                                                    .monospace(),
-                                            ));
-                                            if cfg!(debug_assertions) {
-                                                label_res.on_hover_text(&*entry.id);
-                                            }
-                                        });
+                                let entry = self
+                                    .top_level_entries
+                                    .iter_mut()
+                                    .find(|entry: &&mut TopLevelEntry| {
+                                        entry.id.id == self.selected_top_tab_id
+                                    })
+                                    .unwrap();
 
-                                        let response = entry.control.ui(
-                                            ui,
-                                            &mut session_fragments_mut[&entry.id.id],
-                                            true,
-                                        );
+                                let response = entry.control.ui(
+                                    ui,
+                                    &mut session_fragments_mut[&entry.id.id],
+                                    false,
+                                );
 
-                                        if let Some(response) = response {
-                                            path_value_pairs.push(response);
-                                        }
-
-                                        ui.end_row();
-                                    }
+                                if let Some(response) = response {
+                                    path_value_pairs.push(response);
                                 }
-                            })
-                    });
-            });
+
+                                ui.end_row();
+                            }
+                        })
+                });
+        }
 
         if !path_value_pairs.is_empty() {
             requests.push(ServerRequest::SetValues(path_value_pairs));

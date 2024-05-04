@@ -229,6 +229,7 @@ fn init() {
     if SERVER_DATA_MANAGER
         .read()
         .settings()
+        .extra
         .logging
         .prefer_backtrace
     {

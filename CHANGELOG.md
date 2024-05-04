@@ -1,5 +1,10 @@
 # Changelog
 
+### v20.7.1
+
+* Fix colors on Pico (by @shinyquagsire23 and @zarik5)
+* Fix joystick gesture offset on right hand (by @jarettmillard #2065)
+
 ## v20.7.0
 
 * Add AV1 support on Windows/AMD (by @barnabwhy #1967)

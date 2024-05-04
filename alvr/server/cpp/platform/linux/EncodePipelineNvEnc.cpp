@@ -151,6 +151,8 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     // Delay isn't actually a delay instead its how many surfaces to encode at a time
     av_opt_set_int(encoder_ctx->priv_data, "delay", 1, 0);
     av_opt_set_int(encoder_ctx->priv_data, "forced-idr", 1, 0);
+    // work around ffmpeg default not working for older NVIDIA cards
+    av_opt_set_int(encoder_ctx->priv_data, "b_ref_mode", 0, 0);
 
     encoder_ctx->pix_fmt = AV_PIX_FMT_CUDA;
     encoder_ctx->width = width;

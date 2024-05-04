@@ -25,10 +25,15 @@
 
 #ifdef __linux__
 #include "include/openvr_math.h"
-vr::HmdMatrix34_t GetInvZeroPose();
+std::unique_ptr<vr::HmdMatrix34_t> GetInvZeroPose();
 
-vr::HmdMatrix34_t GetRawZeroPose() {
-    return vrmath::matInv33(GetInvZeroPose());
+std::unique_ptr<vr::HmdMatrix34_t> GetRawZeroPose() {
+    auto invZeroPose = GetInvZeroPose();
+    if (invZeroPose == nullptr)
+    {
+        return nullptr;
+    }
+    return vrmath::matInv33(std::move(invZeroPose));
 }
 
 bool IsOpenvrClientReady();
@@ -227,8 +232,11 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 || event.eventType == vr::VREvent_StandingZeroPoseReset
                 || event.eventType == vr::VREvent_SceneApplicationChanged
                 || event.eventType == VendorEvent_ALVRDriverResync) {
-                if (hmd && hmd->m_poseHistory && IsOpenvrClientReady()) {
-                    hmd->m_poseHistory->SetTransform(GetRawZeroPose());
+                if (hmd && hmd->m_poseHistory) {
+                    auto rawZeroPose = GetRawZeroPose();
+                    if (rawZeroPose != nullptr) {
+                        hmd->m_poseHistory->SetTransform(*rawZeroPose);
+                    }
                 }
             }
 #endif

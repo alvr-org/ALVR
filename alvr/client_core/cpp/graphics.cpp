@@ -558,18 +558,18 @@ bool ovrProgram_Create(ovrProgram *program,
 }
 
 void ovrProgram_Destroy(ovrProgram *program) {
-    if (program->streamProgram != 0) {
+    if (GL_TRUE == glIsProgram(program->streamProgram)) {
         GL(glDeleteProgram(program->streamProgram));
-        program->streamProgram = 0;
     }
-    if (program->VertexShader != 0) {
+    program->streamProgram = 0;
+    if (GL_TRUE == glIsShader(program->VertexShader)) {
         GL(glDeleteShader(program->VertexShader));
-        program->VertexShader = 0;
     }
-    if (program->FragmentShader != 0) {
+    program->VertexShader = 0;
+    if (GL_TRUE == glIsShader(program->FragmentShader)) {
         GL(glDeleteShader(program->FragmentShader));
-        program->FragmentShader = 0;
     }
+    program->FragmentShader = 0;
 }
 
 void ovrRenderer_Create(ovrRenderer *renderer,
@@ -823,18 +823,18 @@ void prepareLobbyRoom(int viewWidth,
 void destroyRenderers() {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
-        g_ctx.streamRenderer.release();
+        g_ctx.streamRenderer.reset();
     }
     if (g_ctx.lobbyRenderer) {
         ovrRenderer_Destroy(g_ctx.lobbyRenderer.get());
-        g_ctx.lobbyRenderer.release();
+        g_ctx.lobbyRenderer.reset();
     }
 }
 
 void streamStartNative(FfiStreamConfig config) {
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
-        g_ctx.streamRenderer.release();
+        g_ctx.streamRenderer.reset();
     }
 
     for (int eye = 0; eye < 2; eye++) {

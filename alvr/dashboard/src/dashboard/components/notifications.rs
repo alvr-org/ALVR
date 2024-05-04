@@ -74,9 +74,9 @@ impl NotificationBar {
     }
 
     pub fn update_settings(&mut self, settings: &Settings) {
-        self.min_notification_level = settings.logging.notification_level;
+        self.min_notification_level = settings.extra.logging.notification_level;
 
-        if settings.logging.show_notification_tip {
+        if settings.extra.logging.show_notification_tip {
             if self.tip_message.is_none() {
                 self.tip_message = NOTIFICATION_TIPS
                     .choose(&mut rand::thread_rng())

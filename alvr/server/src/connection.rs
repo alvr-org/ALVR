@@ -314,11 +314,11 @@ pub fn handshake_loop() {
                 // do not attempt connection if the client is already connected
                 if trusted
                     && SERVER_DATA_MANAGER
-                        .read()
-                        .client_list()
-                        .get(&client_hostname)
-                        .map(|c| c.connection_state == ConnectionState::Disconnected)
-                        .unwrap_or(false)
+                    .read()
+                    .client_list()
+                    .get(&client_hostname)
+                    .map(|c| c.connection_state == ConnectionState::Disconnected)
+                    .unwrap_or(false)
                 {
                     if let Err(e) =
                         try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
@@ -549,7 +549,7 @@ fn connection_pipeline(
                 Some(settings.audio.linux_backend),
                 game_audio_config.device.as_ref(),
             )
-            .to_con()?;
+                .to_con()?;
 
             #[cfg(not(target_os = "linux"))]
             if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
@@ -557,7 +557,7 @@ fn connection_pipeline(
                     Some(settings.audio.linux_backend),
                     microphone_desc.devices.clone(),
                 )
-                .to_con()?;
+                    .to_con()?;
                 if alvr_audio::is_same_device(&game_audio_device, &sink)
                     || alvr_audio::is_same_device(&game_audio_device, &source)
                 {
@@ -565,17 +565,7 @@ fn connection_pipeline(
                 }
             }
 
-            let rate_result = game_audio_device.input_sample_rate();
-            if let Err(err) = rate_result {
-                let err_str = err.to_string();
-                warn!("{}", err_str);
-                0
-            }
-
-
-            else {
-                rate_result.unwrap()
-            }
+            game_audio_device.input_sample_rate().to_con()?
         } else {
             0
         };
@@ -589,7 +579,7 @@ fn connection_pipeline(
             enable_foveated_encoding,
         },
     )
-    .to_con()?;
+        .to_con()?;
     proto_socket.send(&stream_config_packet).to_con()?;
 
     let (mut control_sender, mut control_receiver) =
@@ -744,11 +734,11 @@ fn connection_pipeline(
 
     let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
         #[allow(unused_variables)]
-        let (sink, source) = AudioDevice::new_virtual_microphone_pair(
+            let (sink, source) = AudioDevice::new_virtual_microphone_pair(
             Some(settings.audio.linux_backend),
             config.devices,
         )
-        .to_con()?;
+            .to_con()?;
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
@@ -1434,10 +1424,10 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
 
         if !STREAM_CORRUPTED.load(Ordering::SeqCst)
             || !SERVER_DATA_MANAGER
-                .read()
-                .settings()
-                .connection
-                .avoid_video_glitching
+            .read()
+            .settings()
+            .connection
+            .avoid_video_glitching
         {
             if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
                 sender.send(payload.clone()).ok();

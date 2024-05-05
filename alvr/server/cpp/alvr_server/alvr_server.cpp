@@ -89,7 +89,6 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
     virtual vr::EVRInitError Init(vr::IVRDriverContext *pContext) override {
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
-        Warn("alvr_server startup");
 
         this->hmd = std::make_unique<Hmd>();
         this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)this->hmd.get()});

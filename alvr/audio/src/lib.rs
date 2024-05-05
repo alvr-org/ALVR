@@ -4,7 +4,13 @@ mod windows;
 #[cfg(windows)]
 pub use crate::windows::*;
 
-use alvr_common::{anyhow::{self, anyhow, bail, Context, Result}, info, once_cell::sync::Lazy, parking_lot::Mutex, ConnectionError, ToAny, warn};
+use alvr_common::{
+    anyhow::{self, anyhow, bail, Context, Result},
+    info,
+    once_cell::sync::Lazy,
+    parking_lot::Mutex,
+    ConnectionError, ToAny,
+};
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
 };
@@ -28,8 +34,8 @@ static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
         ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
     ]
-    .into_iter()
-    .collect()
+        .into_iter()
+        .collect()
 });
 
 fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> Result<Device> {
@@ -86,13 +92,13 @@ impl AudioDevice {
         config: Option<&CustomAudioDeviceConfig>,
     ) -> Result<Self> {
         #[cfg(target_os = "linux")]
-        let host = match linux_backend {
+            let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
             Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
             None => cpal::default_host(),
         };
         #[cfg(not(target_os = "linux"))]
-        let host = cpal::default_host();
+            let host = cpal::default_host();
 
         let device = match config {
             None => host
@@ -129,13 +135,13 @@ impl AudioDevice {
         config: MicrophoneDevicesConfig,
     ) -> Result<(Self, Self)> {
         #[cfg(target_os = "linux")]
-        let host = match linux_backend {
+            let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
             Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
             None => cpal::default_host(),
         };
         #[cfg(not(target_os = "linux"))]
-        let host = cpal::default_host();
+            let host = cpal::default_host();
 
         let (sink, source) = match config {
             MicrophoneDevicesConfig::Automatic => {
@@ -180,24 +186,13 @@ impl AudioDevice {
     }
 
     pub fn input_sample_rate(&self) -> Result<u32> {
-        let mut config = self
+        let config = self
             .inner
-            .default_input_config();
-        let device_name = self.inner.name().unwrap_or(String::from("unknown_device_name"));
-        warn!("abcdefgh: {}", device_name);
-        if let Err(err) = config {
-            let err_str = err.to_string();
-            warn!("input config for {} getting error: {}", device_name, err_str);
-            config = self.inner.default_output_config();
-        }
+            .default_input_config()
+            // On Windows, loopback devices are not recognized as input devices. Use output config.
+            .or_else(|_| self.inner.default_output_config())?;
 
-        if let Err(err) = config {
-            let err_str = err.to_string();
-            warn!("output config for {} getting error: {}", device_name, err_str);
-            Err(err.into())
-        } else {
-            Ok(config.unwrap().sample_rate().0)
-        }
+        Ok(config.sample_rate().0)
     }
 }
 
@@ -640,7 +635,7 @@ pub fn play_audio_loop(
         batch_frames_count,
         average_buffer_frames_count,
     )
-    .ok();
+        .ok();
 
     Ok(())
 }

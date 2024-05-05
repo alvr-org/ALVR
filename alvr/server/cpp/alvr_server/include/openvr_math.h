@@ -299,7 +299,7 @@ namespace vrmath {
 	}
 
   inline std::unique_ptr<vr::HmdMatrix34_t> matInv33(std::unique_ptr<vr::HmdMatrix34_t> matrix) {
-    std::unique_ptr<vr::HmdMatrix34_t> result;
+    auto result = std::make_unique<vr::HmdMatrix34_t>();
     float cofac00 = matrix->m[1][1] * matrix->m[2][2] - matrix->m[1][2] * matrix->m[2][1];
     float cofac10 = matrix->m[1][2] * matrix->m[2][0] - matrix->m[1][0] * matrix->m[2][2];
     float cofac20 = matrix->m[1][0] * matrix->m[2][1] - matrix->m[1][1] * matrix->m[2][0];

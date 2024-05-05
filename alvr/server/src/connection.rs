@@ -565,7 +565,17 @@ fn connection_pipeline(
                 }
             }
 
-            game_audio_device.input_sample_rate().to_con()?
+            let rate_result = game_audio_device.input_sample_rate();
+            if let Err(err) = rate_result {
+                let err_str = err.to_string();
+                warn!("{}", err_str);
+                0
+            }
+
+
+            else {
+                rate_result.unwrap()
+            }
         } else {
             0
         };

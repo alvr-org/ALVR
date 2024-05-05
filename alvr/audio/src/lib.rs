@@ -4,13 +4,7 @@ mod windows;
 #[cfg(windows)]
 pub use crate::windows::*;
 
-use alvr_common::{
-    anyhow::{self, anyhow, bail, Context, Result},
-    info,
-    once_cell::sync::Lazy,
-    parking_lot::Mutex,
-    ConnectionError, ToAny,
-};
+use alvr_common::{anyhow::{self, anyhow, bail, Context, Result}, info, once_cell::sync::Lazy, parking_lot::Mutex, ConnectionError, ToAny, warn};
 use alvr_session::{
     AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
 };
@@ -186,13 +180,24 @@ impl AudioDevice {
     }
 
     pub fn input_sample_rate(&self) -> Result<u32> {
-        let config = self
+        let mut config = self
             .inner
-            .default_input_config()
-            // On Windows, loopback devices are not recognized as input devices. Use output config.
-            .or_else(|_| self.inner.default_output_config())?;
+            .default_input_config();
+        let device_name = self.inner.name().unwrap_or(String::from("unknown_device_name"));
+        warn!("abcdefgh: {}", device_name);
+        if let Err(err) = config {
+            let err_str = err.to_string();
+            warn!("input config for {} getting error: {}", device_name, err_str);
+            config = self.inner.default_output_config();
+        }
 
-        Ok(config.sample_rate().0)
+        if let Err(err) = config {
+            let err_str = err.to_string();
+            warn!("output config for {} getting error: {}", device_name, err_str);
+            Err(err.into())
+        } else {
+            Ok(config.unwrap().sample_rate().0)
+        }
     }
 }
 

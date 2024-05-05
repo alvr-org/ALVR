@@ -34,8 +34,8 @@ static VIRTUAL_MICROPHONE_PAIRS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
         ("VoiceMeeter Aux Input", "VoiceMeeter Aux Output"),
         ("VoiceMeeter VAIO3 Input", "VoiceMeeter VAIO3 Output"),
     ]
-        .into_iter()
-        .collect()
+    .into_iter()
+    .collect()
 });
 
 fn device_from_custom_config(host: &Host, config: &CustomAudioDeviceConfig) -> Result<Device> {
@@ -92,13 +92,13 @@ impl AudioDevice {
         config: Option<&CustomAudioDeviceConfig>,
     ) -> Result<Self> {
         #[cfg(target_os = "linux")]
-            let host = match linux_backend {
+        let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
             Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
             None => cpal::default_host(),
         };
         #[cfg(not(target_os = "linux"))]
-            let host = cpal::default_host();
+        let host = cpal::default_host();
 
         let device = match config {
             None => host
@@ -135,13 +135,13 @@ impl AudioDevice {
         config: MicrophoneDevicesConfig,
     ) -> Result<(Self, Self)> {
         #[cfg(target_os = "linux")]
-            let host = match linux_backend {
+        let host = match linux_backend {
             Some(LinuxAudioBackend::Alsa) => cpal::host_from_id(cpal::HostId::Alsa).unwrap(),
             Some(LinuxAudioBackend::Jack) => cpal::host_from_id(cpal::HostId::Jack).unwrap(),
             None => cpal::default_host(),
         };
         #[cfg(not(target_os = "linux"))]
-            let host = cpal::default_host();
+        let host = cpal::default_host();
 
         let (sink, source) = match config {
             MicrophoneDevicesConfig::Automatic => {
@@ -635,7 +635,7 @@ pub fn play_audio_loop(
         batch_frames_count,
         average_buffer_frames_count,
     )
-        .ok();
+    .ok();
 
     Ok(())
 }

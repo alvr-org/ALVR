@@ -314,11 +314,11 @@ pub fn handshake_loop() {
                 // do not attempt connection if the client is already connected
                 if trusted
                     && SERVER_DATA_MANAGER
-                .read()
-                .client_list()
-                .get(&client_hostname)
-                .map(|c| c.connection_state == ConnectionState::Disconnected)
-                .unwrap_or(false)
+                        .read()
+                        .client_list()
+                        .get(&client_hostname)
+                        .map(|c| c.connection_state == ConnectionState::Disconnected)
+                        .unwrap_or(false)
                 {
                     if let Err(e) =
                         try_connect([(client_ip, client_hostname.clone())].into_iter().collect())

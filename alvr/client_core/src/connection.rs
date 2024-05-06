@@ -49,7 +49,7 @@ const SERVER_RESTART_MESSAGE: &str = "The streamer is restarting\nPlease wait...
 const SERVER_DISCONNECTED_MESSAGE: &str = "The streamer has disconnected.";
 const CONNECTION_TIMEOUT_MESSAGE: &str = "Connection timeout.";
 
-const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
+const SOCKET_INIT_RETRY_INTERVAL: Duration = Duration::from_millis(500);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
@@ -127,7 +127,7 @@ fn connection_pipeline(
 ) -> ConResult {
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let _announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
+        let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
         let listener_socket =
             alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT).to_con()?;
 
@@ -136,8 +136,10 @@ fn connection_pipeline(
                 return Ok(());
             }
 
+            announcer_socket.announce().to_con()?;
+
             if let Ok(pair) = ProtoControlSocket::connect_to(
-                DISCOVERY_RETRY_PAUSE,
+                SOCKET_INIT_RETRY_INTERVAL,
                 PeerType::Server(&listener_socket),
             ) {
                 set_hud_message(&event_queue, SUCCESS_CONNECT_MESSAGE);

@@ -43,22 +43,13 @@ const INITIAL_MESSAGE: &str = concat!(
     "Open ALVR on your PC then click \"Trust\"\n",
     "next to the client entry",
 );
-const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the streamer.\nNetwork error.";
 const SUCCESS_CONNECT_MESSAGE: &str = "Successful connection!\nPlease wait...";
-const LOCAL_TRY_MESSAGE: &str = "Trying to connect to localhost...";
-// const INCOMPATIBLE_VERSIONS_MESSAGE: &str = concat!(
-//     "Streamer and client have\n",
-//     "incompatible types.\n",
-//     "Please update either the app\n",
-//     "on the PC or on the headset",
-// );
 const STREAM_STARTING_MESSAGE: &str = "The stream will begin soon\nPlease wait...";
 const SERVER_RESTART_MESSAGE: &str = "The streamer is restarting\nPlease wait...";
 const SERVER_DISCONNECTED_MESSAGE: &str = "The streamer has disconnected.";
 const CONNECTION_TIMEOUT_MESSAGE: &str = "Connection timeout.";
 
 const DISCOVERY_RETRY_PAUSE: Duration = Duration::from_millis(500);
-const RETRY_CONNECT_MIN_INTERVAL: Duration = Duration::from_secs(1);
 const CONNECTION_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
@@ -136,7 +127,7 @@ fn connection_pipeline(
 ) -> ConResult {
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
-        let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
+        let _announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
         let listener_socket =
             alvr_sockets::get_server_listener(HANDSHAKE_ACTION_TIMEOUT).to_con()?;
 
@@ -145,31 +136,12 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            let mut is_broadcast_ok = false;
-            if let Err(e) = announcer_socket.announce_broadcast() {
-                debug!("Couldn't announce to localhost, retrying on local... {e:}");
-
-                set_hud_message(&event_queue, LOCAL_TRY_MESSAGE);
-            } else {
-                is_broadcast_ok = true;
-            }
-
             if let Ok(pair) = ProtoControlSocket::connect_to(
                 DISCOVERY_RETRY_PAUSE,
                 PeerType::Server(&listener_socket),
             ) {
                 set_hud_message(&event_queue, SUCCESS_CONNECT_MESSAGE);
                 break pair;
-            }
-
-            if !is_broadcast_ok {
-                warn!("Couldn't announce to network or connect to localhost.");
-                set_hud_message(&event_queue, NETWORK_UNREACHABLE_MESSAGE);
-
-                thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-
-                set_hud_message(&event_queue, INITIAL_MESSAGE);
-                return Ok(());
             }
         }
     };

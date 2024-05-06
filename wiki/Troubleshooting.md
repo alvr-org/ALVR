@@ -92,6 +92,7 @@ To fix this, you can try the following:
 * Ping the headset to check it's reachable from the PC - you can do this by opening CMD and typing `ping <headset IP>` without "<>" (you can find the headset's IP in the top left corner of SideQuest) - if ping fails, check that both PC and headset are connected to the same network
 * You can also try disabling your firewall for testing, but you shouldn't leave it disabled to use ALVR
 * Open ports 9943 and 9944 on your firewall
+* Disable the PMF (Protected Management Frames) setting on your Router
 
 If pinging works but you still don't see the client on the streamer app, then headset and PC might be on separate subnets. To solve this you can add the client manually.
 In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Add client`.

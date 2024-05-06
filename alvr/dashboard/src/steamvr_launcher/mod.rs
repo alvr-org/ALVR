@@ -43,7 +43,7 @@ pub fn maybe_kill_steamvr() {
         #[cfg(target_os = "linux")]
         linux_steamvr::linux_steamvr::terminate_process(&process);
         #[cfg(windows)]
-        windows::windows_steamvr::kill_process(process.pid().as_u32());
+        windows_steamvr::windows_steamvr::kill_process(process.pid().as_u32());
 
         thread::sleep(Duration::from_secs(1));
     }

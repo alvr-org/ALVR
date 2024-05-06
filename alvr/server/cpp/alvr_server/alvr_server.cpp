@@ -33,7 +33,7 @@ std::unique_ptr<vr::HmdMatrix34_t> GetRawZeroPose() {
     {
         return nullptr;
     }
-    return vrmath::matInv33(std::move(invZeroPose));
+    return std::make_unique<vr::HmdMatrix34_t>(vrmath::matInv33(*invZeroPose));
 }
 
 bool IsOpenvrClientReady();

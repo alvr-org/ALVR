@@ -71,16 +71,27 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
     perimeterPoints[3][0] = 1.0f * areaWidth;
     perimeterPoints[3][1] = -1.0f * areaHeight;
 
-    vr::VRChaperoneSetup()->SetWorkingPerimeter(
-        reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
-    vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
-    vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
-    vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(areaWidth, areaHeight);
-    vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
+    auto setup = vr::VRChaperoneSetup();
 
-    // Hide SteamVR Chaperone
-    vr::VRSettings()->SetFloat(
-        vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
+    if (setup != nullptr)
+    {
+        vr::VRChaperoneSetup()->SetWorkingPerimeter(
+            reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
+        vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
+        vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
+        vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(areaWidth, areaHeight);
+        vr::VRChaperoneSetup()->CommitWorkingCopy(vr::EChaperoneConfigFile_Live);
+    }
+
+    auto settings = vr::VRSettings();
+
+    if (settings != nullptr)
+    {
+        // Hide SteamVR Chaperone
+        vr::VRSettings()->SetFloat(
+            vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
+    }
+
 #endif
 }
 
@@ -91,10 +102,15 @@ std::unique_ptr<vr::HmdMatrix34_t> GetInvZeroPose() {
     {
         return nullptr;
     }
-    std::unique_ptr<vr::HmdMatrix34_t> mat;
+    auto mat = std::make_unique<vr::HmdMatrix34_t>();
     // revert pulls live into working copy
     vr::VRChaperoneSetup()->RevertWorkingCopy();
-    if (vr::VRCompositor()->GetTrackingSpace() == vr::TrackingUniverseStanding) {
+    auto compositor = vr::VRCompositor();
+    if (compositor == nullptr)
+    {
+        return nullptr;
+    }
+    if (compositor->GetTrackingSpace() == vr::TrackingUniverseStanding) {
         vr::VRChaperoneSetup()->GetWorkingStandingZeroPoseToRawTrackingPose(mat.get());
     } else {
         vr::VRChaperoneSetup()->GetWorkingSeatedZeroPoseToRawTrackingPose(mat.get());

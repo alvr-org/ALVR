@@ -1,7 +1,8 @@
+use std::fs;
 use std::{env, process::Command};
 
-use alvr_common::{debug, error, info};
-use alvr_filesystem as afs;
+use alvr_common::anyhow::bail;
+use alvr_common::{debug, error, info, warn};
 use sysinfo::Process;
 
 pub fn start_steamvr() {
@@ -16,10 +17,6 @@ pub fn terminate_process(process: &Process) {
 }
 
 pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
-    use std::fs;
-
-    use alvr_common::anyhow::bail;
-
     let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
         .join("bin")
         .join("linux64");
@@ -104,8 +101,6 @@ pub fn linux_hardware_checks() {
 }
 
 fn linux_hybrid_gpu_checks(device_infos: &Vec<DeviceInfo>) {
-    use alvr_common::warn;
-
     let have_igpu = device_infos.iter().any(|gpu| {
         gpu == &DeviceInfo::Amd {
             device_type: wgpu::DeviceType::IntegratedGpu,

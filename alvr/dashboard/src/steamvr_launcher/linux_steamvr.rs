@@ -47,7 +47,7 @@ pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
     }
 
     std::os::unix::fs::symlink(
-        afs::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
+        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
             .vrcompositor_wrapper(),
         &launcher_path,
     )?;

@@ -107,8 +107,7 @@ impl Launcher {
 
         #[cfg(target_os = "linux")]
         {
-            let vrcompositor_wrap_result =
-                linux_steamvr::maybe_wrap_vrcompositor_launcher();
+            let vrcompositor_wrap_result = linux_steamvr::maybe_wrap_vrcompositor_launcher();
             alvr_common::show_err(linux_steamvr::maybe_wrap_vrcompositor_launcher());
             if let Err(_) = vrcompositor_wrap_result {
                 return;

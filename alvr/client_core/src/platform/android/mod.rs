@@ -180,18 +180,18 @@ pub fn set_wifi_lock(enabled: bool) {
         .unwrap();
     set_lock(&mut env, &wifi_lock, enabled);
 
-    // let multicast_lock_jstring = env.new_string("alvr_multicast_lock").unwrap();
-    // let multicast_lock = env
-    //     .call_method(
-    //         wifi_manager,
-    //         "createMulticastLock",
-    //         "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$MulticastLock;",
-    //         &[(&multicast_lock_jstring).into()],
-    //     )
-    //     .unwrap()
-    //     .l()
-    //     .unwrap();
-    // set_lock(&mut env, &multicast_lock, enabled);
+    let multicast_lock_jstring = env.new_string("alvr_multicast_lock").unwrap();
+    let multicast_lock = env
+        .call_method(
+            wifi_manager,
+            "createMulticastLock",
+            "(Ljava/lang/String;)Landroid/net/wifi/WifiManager$MulticastLock;",
+            &[(&multicast_lock_jstring).into()],
+        )
+        .unwrap()
+        .l()
+        .unwrap();
+    set_lock(&mut env, &multicast_lock, enabled);
 }
 
 pub fn get_battery_status() -> (f32, bool) {

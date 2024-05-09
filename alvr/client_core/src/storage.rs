@@ -28,7 +28,7 @@ impl Default for Config {
 
         Self {
             hostname: format!(
-                "{}{}{}{}.client",
+                "{}{}{}{}.client.local.",
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),
                 rng.gen_range(0..10),

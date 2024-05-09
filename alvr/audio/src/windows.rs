@@ -1,14 +1,19 @@
 use crate::AudioDevice;
 use alvr_common::anyhow::{bail, Result};
 use rodio::DeviceTrait;
-
-fn get_windows_device(device: &AudioDevice) -> Result<windows::Win32::Media::Audio::IMMDevice> {
-    use windows::Win32::{
+use windows::{
+    core::GUID,
+    Win32::{
         Devices::FunctionDiscovery::PKEY_Device_FriendlyName,
-        Media::Audio::{eAll, IMMDeviceEnumerator, MMDeviceEnumerator, DEVICE_STATE_ACTIVE},
-        System::Com::{self, StructuredStorage, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
-    };
+        Media::Audio::{
+            eAll, Endpoints::IAudioEndpointVolume, IMMDevice, IMMDeviceEnumerator,
+            MMDeviceEnumerator, DEVICE_STATE_ACTIVE,
+        },
+        System::Com::{self, CLSCTX_ALL, COINIT_MULTITHREADED, STGM_READ},
+    },
+};
 
+fn get_windows_device(device: &AudioDevice) -> Result<IMMDevice> {
     let device_name = device.inner.name()?;
 
     unsafe {
@@ -39,14 +44,11 @@ fn get_windows_device(device: &AudioDevice) -> Result<windows::Win32::Media::Aud
 }
 
 pub fn get_windows_device_id(device: &AudioDevice) -> Result<String> {
-    use widestring::U16CStr;
-    use windows::Win32::System::Com;
-
     unsafe {
         let imm_device = get_windows_device(device)?;
 
         let id_str_ptr = imm_device.GetId()?;
-        let id_str = U16CStr::from_ptr_str(id_str_ptr.0).to_string()?;
+        let id_str = id_str_ptr.to_string()?;
         Com::CoTaskMemFree(Some(id_str_ptr.0 as _));
 
         Ok(id_str)
@@ -55,11 +57,6 @@ pub fn get_windows_device_id(device: &AudioDevice) -> Result<String> {
 
 // device must be an output device
 pub fn set_mute_windows_device(device: &AudioDevice, mute: bool) -> Result<()> {
-    use windows::{
-        core::GUID,
-        Win32::{Media::Audio::Endpoints::IAudioEndpointVolume, System::Com::CLSCTX_ALL},
-    };
-
     unsafe {
         let imm_device = get_windows_device(device)?;
 

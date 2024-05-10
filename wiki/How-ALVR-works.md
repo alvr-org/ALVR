@@ -183,7 +183,7 @@ These are the main components:
 TODO: Add screenshots
 
 * Sidebar: is used to select the tab for the main content page.
-* Connections tab: used to trust clients or add them manually specifying the IP
+* Devices tab: used to trust clients or add them manually specifying the IP
 * Statistics tab: shows graphs for latency and FPS and a summary page
 * Settings tab: settings page split between `Presets` and `All Settings`. `All Settings` are procedurally generated from a schema. `Presets` are controls that modify other settings.
 * Installation tab: utilities for installation: setting firewall rules, registering the driver, launching the setup wizard.
@@ -246,7 +246,7 @@ ALVR uses a custom protocol for client-driver communication. ALVR supports UDP a
 
 ### Discovery
 
-Usually the first step to establish a connection is discovery. When the server discovers a client it shows it in the "New clients" section in the Connection tab. The user can then trust the client and the connection is established.
+Usually the first step to establish a connection is discovery. When the server discovers a client it shows it in the "New devices" section in the Devices tab. The user can then trust the client and the connection is established.
 
 ALVR uses a UDP socket at 9943 for discovery. The client broadcasts a packet and waits for the driver to respond. It's the client that broadcasts and it's the driver that then asks for a connection: this is because of the balance in responsibility of the two peers. The client becomes the portal though a PC, that can contain sensitive data. For this reason the server has to trust the client before initiating the connection.
 

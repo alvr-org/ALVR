@@ -95,7 +95,7 @@ To fix this, you can try the following:
 * Disable the PMF (Protected Management Frames) setting on your Router
 
 If pinging works but you still don't see the client on the streamer app, then headset and PC might be on separate subnets. To solve this you can add the client manually.
-In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Add client`.
+In the Devices tab press `Add device manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the IP of the headset and then press `Save`.
 
 SteamVR says "headset not detected"
 ---

@@ -10,22 +10,22 @@ use eframe::{
 };
 
 struct EditPopupState {
-    new_client: bool,
+    new_devices: bool,
     hostname: String,
     ips: Vec<String>,
 }
 
-pub struct ConnectionsTab {
-    new_clients: Option<Vec<(String, ClientConnectionConfig)>>,
-    trusted_clients: Option<Vec<(String, ClientConnectionConfig)>>,
+pub struct DevicesTab {
+    new_devices: Option<Vec<(String, ClientConnectionConfig)>>,
+    trusted_devices: Option<Vec<(String, ClientConnectionConfig)>>,
     edit_popup_state: Option<EditPopupState>,
 }
 
-impl ConnectionsTab {
+impl DevicesTab {
     pub fn new() -> Self {
         Self {
-            new_clients: None,
-            trusted_clients: None,
+            new_devices: None,
+            trusted_devices: None,
             edit_popup_state: None,
         }
     }
@@ -38,14 +38,14 @@ impl ConnectionsTab {
                 .into_iter()
                 .partition::<Vec<_>, _>(|(_, data)| data.trusted);
 
-        self.trusted_clients = Some(trusted_clients);
-        self.new_clients = Some(untrusted_clients);
+        self.trusted_devices = Some(trusted_clients);
+        self.new_devices = Some(untrusted_clients);
     }
 
     pub fn ui(&mut self, ui: &mut Ui, connected_to_server: bool) -> Vec<ServerRequest> {
         let mut requests = vec![];
 
-        if self.new_clients.is_none() {
+        if self.new_devices.is_none() {
             requests.push(ServerRequest::GetSession);
         }
 
@@ -58,7 +58,7 @@ impl ConnectionsTab {
                             ui.add_space(10.0);
                             ui.heading(
                                 RichText::new(
-                                    "The streamer is not connected! Clients will not be discovered",
+                                    "The streamer is not connected! VR headsets will not be discovered",
                                 )
                                 .color(Color32::BLACK),
                             );
@@ -75,7 +75,7 @@ impl ConnectionsTab {
         }
 
         ui.vertical_centered_justified(|ui| {
-            if let Some(clients) = &self.new_clients {
+            if let Some(clients) = &self.new_devices {
                 if let Some(request) = new_clients_section(ui, clients) {
                     requests.push(request);
                 }
@@ -83,7 +83,7 @@ impl ConnectionsTab {
 
             ui.add_space(10.0);
 
-            if let Some(clients) = &mut self.trusted_clients {
+            if let Some(clients) = &mut self.trusted_devices {
                 if let Some(request) =
                     trusted_clients_section(ui, clients, &mut self.edit_popup_state)
                 {
@@ -101,7 +101,7 @@ impl ConnectionsTab {
                     ui.columns(2, |ui| {
                         ui[0].label("Hostname:");
                         ui[1].add_enabled(
-                            state.new_client,
+                            state.new_devices,
                             TextEdit::singleline(&mut state.hostname),
                         );
                         ui[0].label("IP Addresses:");
@@ -121,7 +121,7 @@ impl ConnectionsTab {
                             let manual_ips =
                                 state.ips.iter().filter_map(|s| s.parse().ok()).collect();
 
-                            if state.new_client {
+                            if state.new_devices {
                                 requests.push(ServerRequest::UpdateClientList {
                                     hostname: state.hostname,
                                     action: ClientListAction::AddIfMissing {
@@ -157,7 +157,7 @@ fn new_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("New clients");
+                ui.heading("New devices");
             });
             for (hostname, _) in clients {
                 Frame::group(ui.style())
@@ -200,7 +200,7 @@ fn trusted_clients_section(
         .show(ui, |ui| {
             ui.vertical_centered_justified(|ui| {
                 ui.add_space(5.0);
-                ui.heading("Trusted clients");
+                ui.heading("Trusted devices");
             });
 
             ui.vertical(|ui| {
@@ -257,7 +257,7 @@ fn trusted_clients_section(
                                         }
                                         if ui.button("Edit").clicked() {
                                             *edit_popup_state = Some(EditPopupState {
-                                                new_client: false,
+                                                new_devices: false,
                                                 hostname: hostname.to_owned(),
                                                 ips: data
                                                     .manual_ips
@@ -272,10 +272,10 @@ fn trusted_clients_section(
                 }
             });
 
-            if ui.button("Add client manually").clicked() {
+            if ui.button("Add device manually").clicked() {
                 *edit_popup_state = Some(EditPopupState {
-                    hostname: "XXXX.client.alvr".into(),
-                    new_client: true,
+                    hostname: "XXXX.client.local.".into(),
+                    new_devices: true,
                     ips: Vec::new(),
                 });
             }

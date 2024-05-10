@@ -574,7 +574,7 @@ pub fn trigger_hand_gesture_actions(
     gestures: &[HandGesture],
     only_touch: bool,
 ) {
-    for gesture in gestures.iter() {
+    for gesture in gestures {
         // Click bind
         if !only_touch {
             if let Some(click_bind) = get_click_bind_for_gesture(device_id, gesture.id) {

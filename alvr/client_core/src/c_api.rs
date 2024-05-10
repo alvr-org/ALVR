@@ -529,7 +529,7 @@ pub extern "C" fn alvr_send_tracking(
         let hand_skeletons = hand_skeletons
             .iter()
             .map(|&hand_skeleton| {
-                if !hand_skeleton.is_null() {
+                (!hand_skeleton.is_null()).then(|| {
                     let hand_skeleton = unsafe { slice::from_raw_parts(hand_skeleton, 26) };
 
                     let mut array = [Pose::default(); 26];
@@ -541,10 +541,8 @@ pub extern "C" fn alvr_send_tracking(
                         };
                     }
 
-                    Some(array)
-                } else {
-                    None
-                }
+                    array
+                })
             })
             .collect::<Vec<_>>();
 
@@ -558,16 +556,14 @@ pub extern "C" fn alvr_send_tracking(
         let eye_gazes = eye_gazes
             .iter()
             .map(|&eye_gaze| {
-                if !eye_gaze.is_null() {
+                (!eye_gaze.is_null()).then(|| {
                     let eye_gaze = unsafe { &*eye_gaze };
 
-                    Some(Pose {
+                    Pose {
                         orientation: from_capi_quat(eye_gaze.orientation),
                         position: Vec3::from_slice(&eye_gaze.position),
-                    })
-                } else {
-                    None
-                }
+                    }
+                })
             })
             .collect::<Vec<_>>();
 

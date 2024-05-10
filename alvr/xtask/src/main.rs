@@ -87,7 +87,6 @@ fn clippy() {
         "clone_on_ref_ptr",
         "create_dir",
         "decimal_literal_representation",
-        "else_if_without_else",
         "expect_used",
         "float_cmp_const",
         "fn_to_numeric_cast_any",

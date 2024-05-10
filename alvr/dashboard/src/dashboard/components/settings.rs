@@ -65,7 +65,7 @@ impl SettingsTab {
             .collect();
 
         Self {
-            selected_top_tab_id: "presets".to_string(),
+            selected_top_tab_id: "presets".into(),
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
@@ -138,10 +138,10 @@ impl SettingsTab {
                     ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(
                             &mut self.selected_top_tab_id,
-                            "presets".to_string(),
+                            "presets".into(),
                             RichText::new("Presets").raised().size(15.0),
                         );
-                        for entry in self.top_level_entries.iter_mut() {
+                        for entry in &mut self.top_level_entries {
                             ui.selectable_value(
                                 &mut self.selected_top_tab_id,
                                 entry.id.id.clone(),

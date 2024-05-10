@@ -133,7 +133,7 @@ impl Control {
                     |idx| self.variant_labels[idx].display.clone(),
                 );
                 if response.changed() {
-                    *variant_mut = self.variant_labels[index].id.clone();
+                    variant_mut.clone_from(&self.variant_labels[index].id);
                     request = get_request(&self.nesting_info, variant_mut);
                 }
 
@@ -155,7 +155,7 @@ impl Control {
                     },
                 );
                 if response.changed() {
-                    *variant_mut = self.variant_labels[index].id.clone();
+                    variant_mut.clone_from(&self.variant_labels[index].id);
                     request = get_request(&self.nesting_info, variant_mut);
                 }
             }

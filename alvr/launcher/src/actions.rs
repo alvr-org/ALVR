@@ -102,15 +102,15 @@ async fn fetch_releases_for_repo(client: &reqwest::Client, url: &str) -> Result<
     let mut releases = Vec::new();
     for value in response.as_array().to_any()? {
         releases.push(ReleaseInfo {
-            version: value["tag_name"].as_str().to_any()?.to_string(),
+            version: value["tag_name"].as_str().to_any()?.into(),
             assets: value["assets"]
                 .as_array()
                 .to_any()?
                 .iter()
                 .filter_map(|value| {
                     Some((
-                        value["name"].as_str()?.to_string(),
-                        value["browser_download_url"].as_str()?.to_string(),
+                        value["name"].as_str()?.into(),
+                        value["browser_download_url"].as_str()?.into(),
                     ))
                 })
                 .collect(),
@@ -143,7 +143,7 @@ async fn install_apk(
     client: &reqwest::Client,
 ) -> anyhow::Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        message: "Starting install".to_string(),
+        message: "Starting install".into(),
         progress: 0.0,
     }))?;
 
@@ -168,7 +168,7 @@ async fn install_apk(
     }
 
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        message: "Installing APK".to_string(),
+        message: "Installing APK".into(),
         progress: 0.0,
     }))?;
 
@@ -197,7 +197,7 @@ async fn install_apk(
             }
 
             worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                message: "Installing APK".to_string(),
+                message: "Installing APK".into(),
                 progress: 0.0,
             }))?;
 
@@ -234,7 +234,7 @@ async fn download(
         match total_size {
             Some(total_size) => {
                 worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-                    message: message.to_string(),
+                    message: message.into(),
                     progress: buffer.len() as f32 / total_size as f32,
                 }))?
             }
@@ -254,7 +254,7 @@ async fn install_server(
     client: &reqwest::Client,
 ) -> anyhow::Result<()> {
     worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {
-        message: "Starting install".to_string(),
+        message: "Starting install".into(),
         progress: 0.0,
     }))?;
 
@@ -314,7 +314,7 @@ pub fn get_installations() -> Vec<InstallationInfo> {
                         let mut apk_path = entry.path();
                         apk_path.push(APK_NAME);
                         InstallationInfo {
-                            version: entry.file_name().to_string_lossy().to_string(),
+                            version: entry.file_name().to_string_lossy().into(),
                             is_apk_downloaded: apk_path.exists(),
                         }
                     })

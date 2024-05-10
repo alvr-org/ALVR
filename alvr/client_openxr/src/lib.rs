@@ -323,7 +323,7 @@ pub fn entry_point() {
             while let Some(event) = core_context.poll_event() {
                 match event {
                     ClientCoreEvent::UpdateHudMessage(message) => {
-                        last_lobby_message = message.clone();
+                        last_lobby_message.clone_from(&message);
                         alvr_client_core::opengl::update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted {

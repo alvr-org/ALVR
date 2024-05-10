@@ -43,7 +43,7 @@ pub fn init_logging() {
             Level::Error => LogSeverity::Error,
             Level::Warn => LogSeverity::Warning,
             Level::Info => LogSeverity::Info,
-            _ => LogSeverity::Debug,
+            Level::Debug | Level::Trace => LogSeverity::Debug,
         };
         if level < data.filter_level {
             return;

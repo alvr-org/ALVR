@@ -20,10 +20,10 @@ fn build_windows_installer() {
     // Clear away build and prerelease version specifiers, MSI can have only dot-separated numbers.
     let mut version = version::version();
     if let Some(idx) = version.find('-') {
-        version = version[..idx].to_owned();
+        version.drain(idx..);
     }
     if let Some(idx) = version.find('+') {
-        version = version[..idx].to_owned();
+        version.drain(idx..);
     }
 
     let streamer_build_dir = afs::streamer_build_dir();

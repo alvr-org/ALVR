@@ -408,7 +408,6 @@ pub enum ClientsideFoveationMode {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-#[schema(collapsible)]
 pub struct ClientsideFoveationConfig {
     pub mode: ClientsideFoveationMode,
 
@@ -418,7 +417,6 @@ pub struct ClientsideFoveationConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, PartialEq)]
-#[schema(collapsible)]
 pub struct FoveatedEncodingConfig {
     #[schema(strings(help = "Force enable on smartphone clients"))]
     pub force_enable: bool,
@@ -456,7 +454,6 @@ pub struct FoveatedEncodingConfig {
 
 #[repr(C)]
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
-#[schema(collapsible)]
 pub struct ColorCorrectionConfig {
     #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
     #[schema(flag = "steamvr-restart")]
@@ -506,26 +503,19 @@ pub enum H264Profile {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct VideoConfig {
-    #[schema(strings(help = "You probably don't want to change this"))]
-    #[schema(flag = "steamvr-restart")]
-    pub adapter_index: u32,
+    pub bitrate: BitrateConfig,
 
     #[schema(strings(
-        help = "Resolution used for encoding and decoding. Relative to a single eye view."
+        help = "HEVC may provide better visual fidelity at the cost of increased encoder latency"
     ))]
     #[schema(flag = "steamvr-restart")]
-    pub transcoding_view_resolution: FrameSize,
+    pub preferred_codec: CodecType,
 
-    #[schema(strings(
-        help = "This is the resolution that SteamVR will use as default for the game rendering. Relative to a single eye view."
-    ))]
     #[schema(flag = "steamvr-restart")]
-    pub emulated_headset_view_resolution: FrameSize,
+    pub foveated_encoding: Switch<FoveatedEncodingConfig>,
 
-    #[schema(strings(display_name = "Preferred FPS"))]
-    #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
     #[schema(flag = "steamvr-restart")]
-    pub preferred_fps: f32,
+    pub color_correction: Switch<ColorCorrectionConfig>,
 
     #[schema(
         strings(
@@ -544,14 +534,6 @@ pub struct VideoConfig {
     #[schema(flag = "real-time")]
     pub optimize_game_render_latency: bool,
 
-    pub bitrate: BitrateConfig,
-
-    #[schema(strings(
-        help = "HEVC may provide better visual fidelity at the cost of increased encoder latency"
-    ))]
-    #[schema(flag = "steamvr-restart")]
-    pub preferred_codec: CodecType,
-
     #[schema(flag = "steamvr-restart")]
     pub encoder_config: EncoderConfig,
 
@@ -562,13 +544,28 @@ pub struct VideoConfig {
 
     pub mediacodec_extra_options: Vec<(String, MediacodecDataType)>,
 
+    #[schema(strings(
+        help = "Resolution used for encoding and decoding. Relative to a single eye view."
+    ))]
     #[schema(flag = "steamvr-restart")]
-    pub foveated_encoding: Switch<FoveatedEncodingConfig>,
+    pub transcoding_view_resolution: FrameSize,
+
+    #[schema(strings(
+        help = "This is the resolution that SteamVR will use as default for the game rendering. Relative to a single eye view."
+    ))]
+    #[schema(flag = "steamvr-restart")]
+    pub emulated_headset_view_resolution: FrameSize,
+
+    #[schema(strings(display_name = "Preferred FPS"))]
+    #[schema(gui(slider(min = 60.0, max = 120.0)), suffix = "Hz")]
+    #[schema(flag = "steamvr-restart")]
+    pub preferred_fps: f32,
+
+    #[schema(strings(help = "You probably don't want to change this"))]
+    #[schema(flag = "steamvr-restart")]
+    pub adapter_index: u32,
 
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
-
-    #[schema(flag = "steamvr-restart")]
-    pub color_correction: Switch<ColorCorrectionConfig>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -642,14 +639,14 @@ pub struct MicrophoneConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct AudioConfig {
-    #[schema(strings(help = "ALSA is recommended for most PulseAudio or PipeWire-based setups"))]
-    pub linux_backend: LinuxAudioBackend,
-
     #[schema(strings(display_name = "Headset speaker"))]
     pub game_audio: Switch<GameAudioConfig>,
 
     #[schema(strings(display_name = "Headset microphone"))]
     pub microphone: Switch<MicrophoneConfig>,
+
+    #[schema(strings(help = "ALSA is recommended for most PulseAudio or PipeWire-based setups"))]
+    pub linux_backend: LinuxAudioBackend,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -889,17 +886,6 @@ pub struct ControllersConfig {
     ))]
     pub enable_skeleton: bool,
 
-    #[schema(flag = "steamvr-restart")]
-    pub emulation_mode: ControllersEmulationMode,
-
-    #[schema(flag = "steamvr-restart")]
-    pub extra_openvr_props: Vec<OpenvrProperty>,
-
-    #[schema(strings(help = "List of OpenXR-syle paths"))]
-    pub button_mappings: Option<Vec<(String, Vec<ButtonBindingTarget>)>>,
-
-    pub button_mapping_config: AutomaticButtonMappingConfig,
-
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
@@ -914,6 +900,15 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     ))]
     #[schema(gui(slider(min = 1.0, max = 10.0, logarithmic)), suffix = "frames")]
     pub steamvr_pipeline_frames: f32,
+
+    #[schema(flag = "real-time")]
+    pub haptics: Switch<HapticsConfig>,
+
+    #[schema(flag = "steamvr-restart")]
+    pub emulation_mode: ControllersEmulationMode,
+
+    #[schema(flag = "steamvr-restart")]
+    pub extra_openvr_props: Vec<OpenvrProperty>,
 
     #[schema(flag = "real-time")]
     // note: logarithmic scale seems to be glitchy for this control
@@ -943,8 +938,10 @@ Currently this cannot be reliably estimated automatically. The correct value sho
     #[schema(gui(slider(min = -180.0, max = 180.0, step = 1.0)), suffix = "°")]
     pub left_hand_tracking_rotation_offset: [f32; 3],
 
-    #[schema(flag = "real-time")]
-    pub haptics: Switch<HapticsConfig>,
+    #[schema(strings(help = "List of OpenXR-syle paths"))]
+    pub button_mappings: Option<Vec<(String, Vec<ButtonBindingTarget>)>>,
+
+    pub button_mapping_config: AutomaticButtonMappingConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
@@ -966,6 +963,25 @@ pub enum RotationRecenteringMode {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HeadsetConfig {
+    #[schema(strings(
+        help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
+Local floor: the origin is on the floor and resets when long pressing the oculus button.
+Local: the origin resets when long pressing the oculus button, and is calculated as an offset from the current head position."#
+    ))]
+    #[schema(flag = "real-time")]
+    pub position_recentering_mode: PositionRecenteringMode,
+
+    #[schema(strings(
+        help = r#"Disabled: the playspace orientation is determined by the room-scale guardian setup.
+Yaw: the forward direction is reset when long pressing the oculus button.
+Tilted: the world gets tilted when long pressing the oculus button. This is useful for using VR while laying down."#
+    ))]
+    #[schema(flag = "real-time")]
+    pub rotation_recentering_mode: RotationRecenteringMode,
+
+    #[schema(flag = "steamvr-restart")]
+    pub controllers: Switch<ControllersConfig>,
+
     #[schema(flag = "steamvr-restart")]
     pub emulation_mode: HeadsetEmulationMode,
 
@@ -982,25 +998,6 @@ pub struct HeadsetConfig {
 
     #[schema(flag = "steamvr-restart")]
     pub body_tracking: Switch<BodyTrackingConfig>,
-
-    #[schema(flag = "steamvr-restart")]
-    pub controllers: Switch<ControllersConfig>,
-
-    #[schema(strings(
-        help = r#"Disabled: the playspace origin is determined by the room-scale guardian setup.
-Local floor: the origin is on the floor and resets when long pressing the oculus button.
-Local: the origin resets when long pressing the oculus button, and is calculated as an offset from the current head position."#
-    ))]
-    #[schema(flag = "real-time")]
-    pub position_recentering_mode: PositionRecenteringMode,
-
-    #[schema(strings(
-        help = r#"Disabled: the playspace orientation is determined by the room-scale guardian setup.
-Yaw: the forward direction is reset when long pressing the oculus button.
-Tilted: the world gets tilted when long pressing the oculus button. This is useful for using VR while laying down."#
-    ))]
-    #[schema(flag = "real-time")]
-    pub rotation_recentering_mode: RotationRecenteringMode,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1037,11 +1034,29 @@ TCP: Slower than UDP, but more stable. Pick this if you experience video or audi
 
     pub client_discovery: Switch<DiscoveryConfig>,
 
+    #[schema(strings(
+        help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."
+    ))]
+    pub on_connect_script: String,
+
+    #[schema(strings(
+        help = "This script will be ran when the headset disconnects, or when SteamVR shuts down. Env var ACTION will be set to `disconnect`."
+    ))]
+    #[schema(flag = "real-time")]
+    pub on_disconnect_script: String,
+
+    #[schema(strings(
+        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
+For now works only on Windows+Nvidia"#
+    ))]
+    pub avoid_video_glitching: bool,
+
+    #[schema(gui(slider(min = 1024, max = 65507, logarithmic)), suffix = "B")]
+    pub packet_size: i32,
+
     pub stream_port: u16,
     pub web_server_port: u16,
     pub osc_local_port: u16,
-
-    pub dscp: Option<DscpTos>,
 
     #[schema(strings(display_name = "Streamer send buffer size"))]
     pub server_send_buffer_bytes: SocketBufferSize,
@@ -1061,11 +1076,8 @@ This could happen on TCP. A IDR frame is requested in this case."#
     ))]
     pub max_queued_server_video_frames: usize,
 
-    #[schema(strings(
-        help = r#"If the client, server or the network discarded one packet, discard packets until a IDR packet is found.
-For now works only on Windows+Nvidia"#
-    ))]
-    pub avoid_video_glitching: bool,
+    #[schema(suffix = " frames")]
+    pub statistics_history_size: usize,
 
     #[schema(strings(
         help = "Reduce minimum delay between IDR keyframes from 100ms to 5ms. Use on networks with high packet loss."
@@ -1073,22 +1085,7 @@ For now works only on Windows+Nvidia"#
     #[schema(flag = "steamvr-restart")]
     pub aggressive_keyframe_resend: bool,
 
-    #[schema(strings(
-        help = "This script will be ran when the headset connects. Env var ACTION will be set to `connect`."
-    ))]
-    pub on_connect_script: String,
-
-    #[schema(strings(
-        help = "This script will be ran when the headset disconnects, or when SteamVR shuts down. Env var ACTION will be set to `disconnect`."
-    ))]
-    #[schema(flag = "real-time")]
-    pub on_disconnect_script: String,
-
-    #[schema(gui(slider(min = 1024, max = 65507, logarithmic)), suffix = "B")]
-    pub packet_size: i32,
-
-    #[schema(suffix = " frames")]
-    pub statistics_history_size: usize,
+    pub dscp: Option<DscpTos>,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1122,9 +1119,21 @@ pub struct RawEventsConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct LoggingConfig {
+    #[schema(strings(help = "Notification tips teach you how to use ALVR"))]
+    pub show_notification_tip: bool,
+
+    #[schema(strings(help = "This applies only to certain error or warning messages."))]
+    #[schema(flag = "steamvr-restart")]
+    pub prefer_backtrace: bool,
+
+    #[schema(flag = "real-time")]
+    pub notification_level: LogSeverity,
+
     pub client_log_report_level: Switch<LogSeverity>,
+
+    #[schema(flag = "real-time")]
+    pub show_raw_events: Switch<RawEventsConfig>,
 
     #[schema(strings(help = "Write logs into the session_log.txt file."))]
     pub log_to_disk: bool,
@@ -1137,19 +1146,6 @@ pub struct LoggingConfig {
 
     #[schema(flag = "real-time")]
     pub log_haptics: bool,
-
-    #[schema(flag = "real-time")]
-    pub notification_level: LogSeverity,
-
-    #[schema(flag = "real-time")]
-    pub show_raw_events: Switch<RawEventsConfig>,
-
-    #[schema(strings(help = "This applies only to certain error or warning messages."))]
-    #[schema(flag = "steamvr-restart")]
-    pub prefer_backtrace: bool,
-
-    #[schema(strings(help = "Notification tips teach you how to use ALVR"))]
-    pub show_notification_tip: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1161,7 +1157,6 @@ pub enum DriverLaunchAction {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct SteamvrLauncher {
     #[schema(strings(
         help = r#"This controls the driver registration operations while launching SteamVR.
@@ -1183,7 +1178,6 @@ pub struct RollingVideoFilesConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct CaptureConfig {
     #[schema(strings(display_name = "Start video recording at client connection"))]
     pub startup_video_recording: bool,
@@ -1195,7 +1189,6 @@ pub struct CaptureConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct Patches {
     #[schema(strings(
         help = "Async Compute is currently broken in SteamVR, keep disabled. ONLY FOR TESTING."
@@ -1211,9 +1204,9 @@ pub struct Patches {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct ExtraConfig {
-    pub logging: LoggingConfig,
     pub steamvr_launcher: SteamvrLauncher,
     pub capture: CaptureConfig,
+    pub logging: LoggingConfig,
     pub patches: Patches,
     pub open_setup_wizard: bool,
 }
@@ -1291,7 +1284,7 @@ pub fn session_settings_default() -> SettingsDefault {
                         decoder_latency_limiter: SwitchDefault {
                             enabled: true,
                             content: DecoderLatencyLimiterDefault {
-                                gui_collapsed: true,
+                                gui_collapsed: false,
                                 max_decoder_latency_ms: 30,
                                 latency_overstep_frames: 90,
                                 latency_overstep_multiplier: 0.99,
@@ -1406,7 +1399,6 @@ pub fn session_settings_default() -> SettingsDefault {
             foveated_encoding: SwitchDefault {
                 enabled: true,
                 content: FoveatedEncodingConfigDefault {
-                    gui_collapsed: true,
                     force_enable: false,
                     center_size_x: 0.45,
                     center_size_y: 0.4,
@@ -1417,9 +1409,8 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             clientside_foveation: SwitchDefault {
-                enabled: true,
+                enabled: false,
                 content: ClientsideFoveationConfigDefault {
-                    gui_collapsed: true,
                     mode: ClientsideFoveationModeDefault {
                         Static: ClientsideFoveationModeStaticDefault {
                             level: ClientsideFoveationLevelDefault {
@@ -1440,7 +1431,6 @@ pub fn session_settings_default() -> SettingsDefault {
             color_correction: SwitchDefault {
                 enabled: true,
                 content: ColorCorrectionConfigDefault {
-                    gui_collapsed: false,
                     brightness: 0.,
                     contrast: 0.,
                     saturation: 0.5,
@@ -1693,7 +1683,6 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         extra: ExtraConfigDefault {
             logging: LoggingConfigDefault {
-                gui_collapsed: false,
                 client_log_report_level: SwitchDefault {
                     enabled: true,
                     content: LogSeverityDefault {
@@ -1721,14 +1710,12 @@ pub fn session_settings_default() -> SettingsDefault {
                 show_notification_tip: true,
             },
             steamvr_launcher: SteamvrLauncherDefault {
-                gui_collapsed: false,
                 driver_launch_action: DriverLaunchActionDefault {
                     variant: DriverLaunchActionDefaultVariant::UnregisterOtherDriversAtStartup,
                 },
                 open_close_steamvr_with_dashboard: false,
             },
             capture: CaptureConfigDefault {
-                gui_collapsed: false,
                 startup_video_recording: false,
                 rolling_video_files: SwitchDefault {
                     enabled: false,
@@ -1741,7 +1728,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             patches: PatchesDefault {
-                gui_collapsed: false,
                 linux_async_compute: false,
                 linux_async_reprojection: false,
             },

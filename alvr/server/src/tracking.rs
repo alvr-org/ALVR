@@ -1,4 +1,4 @@
-use crate::{to_ffi_quat, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton};
+use crate::{FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
@@ -30,6 +30,15 @@ static BODY_TRACKER_ID_MAP: Lazy<HashMap<u64, u32>> = Lazy::new(|| {
         (*BODY_RIGHT_FOOT_ID, 7),
     ])
 });
+
+fn to_ffi_quat(quat: Quat) -> FfiQuat {
+    FfiQuat {
+        x: quat.x,
+        y: quat.y,
+        z: quat.z,
+        w: quat.w,
+    }
+}
 
 fn get_hand_skeleton_offsets(config: &HeadsetConfig) -> (Pose, Pose) {
     let left_offset;

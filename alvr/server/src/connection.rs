@@ -8,8 +8,8 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiFov, FfiViewsConfig, VideoPacket, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    FfiFov, FfiViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -57,6 +57,11 @@ const HANDSHAKE_ACTION_TIMEOUT: Duration = Duration::from_secs(2);
 const STREAMING_RECV_TIMEOUT: Duration = Duration::from_millis(500);
 
 const MAX_UNREAD_PACKETS: usize = 10; // Applies per stream
+
+pub struct VideoPacket {
+    pub header: VideoPacketHeader,
+    pub payload: Vec<u8>,
+}
 
 static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
 static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
@@ -691,7 +696,7 @@ fn connection_pipeline(
                     unsafe {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
-                            crate::openvr_props::to_ffi_openvr_prop(
+                            crate::openvr::to_ffi_openvr_prop(
                                 alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
                             ),
                         )
@@ -720,7 +725,7 @@ fn connection_pipeline(
                     unsafe {
                         crate::SetOpenvrProperty(
                             *alvr_common::HEAD_ID,
-                            crate::openvr_props::to_ffi_openvr_prop(
+                            crate::openvr::to_ffi_openvr_prop(
                                 alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
                             ),
                         )
@@ -745,7 +750,7 @@ fn connection_pipeline(
             unsafe {
                 crate::SetOpenvrProperty(
                     *alvr_common::HEAD_ID,
-                    crate::openvr_props::to_ffi_openvr_prop(
+                    crate::openvr::to_ffi_openvr_prop(
                         alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
                     ),
                 )

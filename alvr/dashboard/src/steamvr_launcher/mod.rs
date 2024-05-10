@@ -37,11 +37,12 @@ pub fn maybe_kill_steamvr() {
 
     // first kill vrmonitor, then kill vrserver if it is hung.
 
+    #[allow(unused_variables)]
     for process in system.processes_by_name(&afs::exec_fname("vrmonitor")) {
         debug!("Killing vrmonitor");
 
         #[cfg(target_os = "linux")]
-        linux_steamvr::terminate_process(&process);
+        linux_steamvr::terminate_process(process);
         #[cfg(windows)]
         windows_steamvr::kill_process(process.pid().as_u32());
 
@@ -50,11 +51,12 @@ pub fn maybe_kill_steamvr() {
 
     system.refresh_processes();
 
+    #[allow(unused_variables)]
     for process in system.processes_by_name(&afs::exec_fname("vrserver")) {
         debug!("Killing vrserver");
 
         #[cfg(target_os = "linux")]
-        linux_steamvr::terminate_process(&process);
+        linux_steamvr::terminate_process(process);
         #[cfg(windows)]
         windows_steamvr::kill_process(process.pid().as_u32());
 
@@ -109,7 +111,7 @@ impl Launcher {
         {
             let vrcompositor_wrap_result = linux_steamvr::maybe_wrap_vrcompositor_launcher();
             alvr_common::show_err(linux_steamvr::maybe_wrap_vrcompositor_launcher());
-            if let Err(_) = vrcompositor_wrap_result {
+            if vrcompositor_wrap_result.is_err() {
                 return;
             }
         }

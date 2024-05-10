@@ -57,7 +57,7 @@ impl Control {
             if response.lost_focus() {
                 if let Some(editing_value_mut) = &mut self.editing_value {
                     request = get_request(&self.nesting_info, editing_value_mut);
-                    *text_mut = editing_value_mut.clone();
+                    text_mut.clone_from(editing_value_mut);
                 }
 
                 self.editing_value = None;

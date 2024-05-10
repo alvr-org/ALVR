@@ -109,7 +109,7 @@ impl DevicesTab {
                             ui[1].text_edit_singleline(address);
                         }
                         if ui[1].button("Add new").clicked() {
-                            state.ips.push("192.168.X.X".to_string());
+                            state.ips.push("192.168.X.X".into());
                         }
                     });
                     ui.columns(2, |ui| {

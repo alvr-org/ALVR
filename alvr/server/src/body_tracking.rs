@@ -68,7 +68,7 @@ impl BodyTrackingSink {
     ) {
         match self.config {
             BodyTrackingSinkConfig::VrchatBodyOsc { .. } => {
-                for (id, motion) in device_motions.iter() {
+                for (id, motion) in device_motions {
                     if BODY_TRACKER_OSC_PATH_MAP.contains_key(id) {
                         // Only do position because rotation isn't quite right
                         let pose = tracking_manager.recenter_pose(motion.pose);

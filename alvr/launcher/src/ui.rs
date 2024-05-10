@@ -276,7 +276,7 @@ impl eframe::App for Launcher {
                     ui.label(RichText::new("ALVR Launcher").size(25.0).strong());
                     ui.label(match &self.release_channels_info {
                         Some(data) => format!("Latest stable release: {}", data.stable[0].version),
-                        None => "Fetching latest release...".to_string(),
+                        None => "Fetching latest release...".into(),
                     });
 
                     for installation in &self.installations {
@@ -326,7 +326,7 @@ impl eframe::App for Launcher {
                                                         .unwrap();
                                                 } else {
                                                     self.state = State::Error(
-                                                        "Failed to get release info".to_string(),
+                                                        "Failed to get release info".into(),
                                                     );
                                                 }
                                             };

@@ -126,7 +126,7 @@ impl Control {
             }
 
             // At this point the session matches all modifiers
-            selected_option = key.clone();
+            selected_option.clone_from(key);
 
             break;
         }

@@ -70,37 +70,28 @@ pub fn linux_hardware_checks() {
         gles_minor_version: Default::default(),
     })
     .enumerate_adapters(wgpu::Backends::VULKAN);
-    let device_infos: Vec<DeviceInfo> = wgpu_adapters
+    let device_infos = wgpu_adapters
         .iter()
         .filter(|adapter| {
             adapter.get_info().device_type == wgpu::DeviceType::DiscreteGpu
                 || adapter.get_info().device_type == wgpu::DeviceType::IntegratedGpu
         })
         .map(|adapter| match adapter.get_info().vendor {
-            0x10de => {
-                return Some(DeviceInfo::Nvidia);
-            }
-            0x1002 => {
-                return Some(DeviceInfo::Amd {
-                    device_type: adapter.get_info().device_type,
-                });
-            }
-            0x8086 => {
-                return Some(DeviceInfo::Intel {
-                    device_type: adapter.get_info().device_type,
-                });
-            }
-            _ => {
-                return Some(DeviceInfo::Unknown);
-            }
+            0x10de => DeviceInfo::Nvidia,
+            0x1002 => DeviceInfo::Amd {
+                device_type: adapter.get_info().device_type,
+            },
+            0x8086 => DeviceInfo::Intel {
+                device_type: adapter.get_info().device_type,
+            },
+            _ => DeviceInfo::Unknown,
         })
-        .flatten()
-        .collect();
+        .collect::<Vec<_>>();
     linux_hybrid_gpu_checks(&device_infos);
     linux_encoder_checks(&device_infos);
 }
 
-fn linux_hybrid_gpu_checks(device_infos: &Vec<DeviceInfo>) {
+fn linux_hybrid_gpu_checks(device_infos: &[DeviceInfo]) {
     let have_igpu = device_infos.iter().any(|gpu| {
         gpu == &DeviceInfo::Amd {
             device_type: wgpu::DeviceType::IntegratedGpu,
@@ -135,7 +126,7 @@ fn linux_hybrid_gpu_checks(device_infos: &Vec<DeviceInfo>) {
         }
     }
 }
-fn linux_encoder_checks(device_infos: &Vec<DeviceInfo>) {
+fn linux_encoder_checks(device_infos: &[DeviceInfo]) {
     for device_info in device_infos {
         match device_info {
             DeviceInfo::Nvidia => {

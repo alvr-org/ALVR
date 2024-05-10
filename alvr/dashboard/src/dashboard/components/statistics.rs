@@ -110,7 +110,7 @@ impl StatisticsTab {
             let history_index = (graph_pos.x as usize).clamp(0, GRAPH_HISTORY_SIZE - 1);
 
             popup::show_tooltip(ui.ctx(), Id::new("popup"), |ui| {
-                tooltip_content(ui, self.history.get(history_index).unwrap())
+                tooltip_content(ui, &self.history[history_index])
             });
         }
     }
@@ -130,7 +130,7 @@ impl StatisticsTab {
             0.0..=(data.quantile(UPPER_QUANTILE) * 1.2) as f32 * 1000.0,
             |painter, to_screen_trans| {
                 for i in 0..GRAPH_HISTORY_SIZE {
-                    let stats = self.history.get(i).unwrap();
+                    let stats = &self.history[i];
                     let mut offset = 0.0;
                     for (value, color) in &[
                         (stats.game_time_s, graph_colors::RENDER_VARIANT),

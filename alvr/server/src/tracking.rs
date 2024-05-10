@@ -421,7 +421,7 @@ pub fn to_ffi_body_trackers(
 ) -> Option<Vec<FfiBodyTracker>> {
     let mut trackers = Vec::<FfiBodyTracker>::new();
 
-    for (id, motion) in device_motions.iter() {
+    for (id, motion) in device_motions {
         if BODY_TRACKER_ID_MAP.contains_key(id) {
             let pose = tracking_manager.recenter_pose(motion.pose);
             trackers.push(FfiBodyTracker {

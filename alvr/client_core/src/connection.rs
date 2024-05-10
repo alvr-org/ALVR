@@ -41,7 +41,7 @@ use alvr_audio as audio;
 const INITIAL_MESSAGE: &str = concat!(
     "Searching for streamer...\n",
     "Open ALVR on your PC then click \"Trust\"\n",
-    "next to the client entry",
+    "next to the device entry",
 );
 const NETWORK_UNREACHABLE_MESSAGE: &str = "Cannot connect to the streamer.\nNetwork error.";
 const SUCCESS_CONNECT_MESSAGE: &str = "Successful connection!\nPlease wait...";

@@ -1,4 +1,4 @@
-# ALVR client and streamer on separate networks
+# Headset and ALVR streamer on separate networks
 
 # ALVR v14 and Above
 
@@ -12,7 +12,7 @@ Port-forwarding allows to connect devices that are behind different NATs, i.e. l
 
 1. Take note of the public IP of your headset. You can use the online tool [WhatIsMyIP](https://www.whatismyip.com/).
 2. Inside your router web interface or app, add a port-forwarding rule for your headset. You need to specify the ports 9943 and 9944 for both TCP and UDP.
-3. Connect to the remote PC and open ALVR. In the Connection tab press `Add client manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the remote IP of the headset (that is the IP you got on step 1.) and then press `Add client`.
+3. Connect to the remote PC and open ALVR. In the Devices tab press `Add device manually`. Fill in the fields with a name for your headset (you can use the name you want), the hostname (you can read it in the welcome screen in your headset when you open the ALVR app), the remote IP of the headset (that is the IP you got on step 1.) and then press `Save`.
 
 You can now use ALVR to connect to your remote PC.
 
@@ -51,7 +51,7 @@ After both your PC and your Quest are connected to the same ZeroTier network, we
 
 The IP should look something like this `192.168.143.195`. If there's a `/` at the end with a couple numbers following it, remove them along with the slash. 
 
-Next, we'll need to add the Quest to the ALVR dashboard. On your headset, launch ALVR. The on the ALVR dashboard on your PC, click the "Add Client Manually" button, provide a name and hostname (You can get this from the "trust" screen of ALVR on your Quest), then put in the IP address that we got from ZeroTier. 
+Next, we'll need to add the Quest to the ALVR dashboard. On your headset, launch ALVR. The on the ALVR dashboard on your PC, click the "Add device manually" button, provide a name and hostname (You can get this from the "trust" screen of ALVR on your Quest), then put in the IP address that we got from ZeroTier. 
 
 At this point, you should be ready to go. Have fun in VR!
 
@@ -99,7 +99,7 @@ We're going to use n2n v3, and set the port of _supernode_ to `1234` as the exam
 - Click "Current Setting" under the connect button, select the configuration we created just now, then click the connect button. If you're asked to allow hin2n to create a VPN connection, allow it.
 - Once you see `[OK] edge <<< ================ >>> supernode`, your Quest is done.
 - Open ALVR on your headset, record the hostname it shows.
-- Open ALVR dashboard on your PC, click "Add client manually" button, put the hostname you just recorded, and set IP address to `192.168.100.2` which is assigned to Quest just now.
+- Open ALVR dashboard on your PC, click "Add device manually" button, put the hostname you just recorded, and set IP address to `192.168.100.2` which is assigned to Quest just now.
 - Once it's done, you're all set.
 
 ### Troubleshooting

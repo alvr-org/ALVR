@@ -37,7 +37,7 @@ const NOTIFICATION_TIPS: &[&str] = &[
     r#"When using external trackers or controllers you should set both "Position/Rotation recentering mode" to "Disabled"."#,
     r#"You can enable tilt mode. Set "Position recentering mode to "Local" and "Rotation recentering mode" to "Tilted"."#,
     r#"If you often experience image glitching, you can trade that with stutter frames using "Avoid video glitching"."#,
-    r#"You can run custom commands/programs at client connection/disconnection using "On connect/disconnect script"."#,
+    r#"You can run custom commands/programs at headset connection/disconnection using "On connect/disconnect script"."#,
     r#"In case you want to report a bug, to get a log file enable "Log to disk". The log will be inside "session_log.txt"."#,
     r#"For hacking purposes, you can enable "Log tracking", "Log button presses", "Log haptics". You can get the data using a websocket at ws://localhost:8082/api/events"#,
     r#"In case you want to report a bug and share your log, you should enable "Prefer backtrace"."#,
@@ -46,7 +46,7 @@ const NOTIFICATION_TIPS: &[&str] = &[
     r#"It's handy to enable "Open and close SteamVR with dashboard"."#,
     r#"If you want to share a video recording for reporting a bug, you can enable "Rolling video files" to limit the file size of the upload."#,
     // Miscellaneous
-    r#"If your headset does not appear in the clients list it might be in a different subnet. Try "Add client manually"."#,
+    r#"If your headset does not appear in the devices list it might be in a different subnet. Try "Add device manually"."#,
     r#"For audio setup on Linux, check the wiki at https://github.com/alvr-org/ALVR/wiki/Installation-guide#automatic-audio--microphone-setup"#,
     r#"ALVR supports wired connection using USB. Check the wiki at https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)"#,
     r#"You can record a video of the gameplay using "Start recording" in the "Debug" category in the sidebar."#,

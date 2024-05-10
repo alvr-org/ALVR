@@ -149,7 +149,7 @@ impl Control {
                                     json::Value::String(editing_key_mut.clone()),
                                 );
 
-                                *text_mut = editing_key_mut.clone();
+                                text_mut.clone_from(editing_key_mut);
                             }
 
                             *editing_key_mut = None;

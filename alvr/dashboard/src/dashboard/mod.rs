@@ -288,10 +288,7 @@ impl eframe::App for Dashboard {
                 )
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                        ui.heading(
-                            RichText::new(*self.tab_labels.get(&self.selected_tab).unwrap())
-                                .size(25.0),
-                        );
+                        ui.heading(RichText::new(self.tab_labels[&self.selected_tab]).size(25.0));
                         match self.selected_tab {
                             Tab::Devices => {
                                 requests.extend(self.connections_tab.ui(ui, connected_to_server));

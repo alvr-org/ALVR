@@ -172,11 +172,11 @@ Script is not 100% stable and might cause some instability issues with pipewire,
                                         // scripts
                                         string_path_value_pair(
                                             "session_settings.connection.on_connect_script",
-                                            &audio_script_path.to_string_lossy().to_string(),
+                                            &audio_script_path.to_string_lossy(),
                                         ),
                                         string_path_value_pair(
                                             "session_settings.connection.on_disconnect_script",
-                                            &audio_script_path.to_string_lossy().to_string(),
+                                            &audio_script_path.to_string_lossy(),
                                         ),
                                         // game audio
                                         bool_path_value_pair(

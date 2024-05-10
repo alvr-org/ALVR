@@ -1209,10 +1209,7 @@ fn connection_pipeline(
                             }
                         };
                     }
-                    ClientControlPacket::ActiveInteractionProfile {
-                        device_id: _,
-                        profile_id,
-                    } => {
+                    ClientControlPacket::ActiveInteractionProfile { profile_id, .. } => {
                         controller_button_mapping_manager =
                             if let (Switch::Enabled(config), Some(profile_info)) = (
                                 &SERVER_DATA_MANAGER.read().settings().headset.controllers,
@@ -1247,8 +1244,8 @@ fn connection_pipeline(
 
                         match reserved {
                             ReservedClientControlPacket::CustomInteractionProfile {
-                                device_id: _,
                                 input_ids,
+                                ..
                             } => {
                                 controller_button_mapping_manager = if let Switch::Enabled(config) =
                                     &SERVER_DATA_MANAGER.read().settings().headset.controllers

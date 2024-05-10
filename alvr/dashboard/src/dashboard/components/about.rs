@@ -1,15 +1,9 @@
 use alvr_common::ALVR_VERSION;
-use eframe::egui::{RichText, Ui};
+use alvr_gui_common::theme;
+use eframe::egui::{self, Frame, Label, RichText, ScrollArea, Ui};
 
 pub fn about_tab_ui(ui: &mut Ui) {
     ui.label(RichText::new(format!("ALVR streamer v{}", *ALVR_VERSION)).size(30.0));
-    ui.label(
-r#"Stream VR games from your PC to your headset via Wi-Fi.
-ALVR uses technologies like Asynchronous TimeWarp (ATW) and Fixed Foveated Rendering (FFR) for a smoother experience.
-All games that work with an Oculus Rift(s) should work with ALVR.
-This is a fork of ALVR that works with Meta Quest and other standalone headsets.
-"#
-    );
     ui.add_space(10.0);
     ui.hyperlink_to("Visit us on GitHub", "https://github.com/alvr-org/ALVR");
     ui.hyperlink_to("Join us on Discord", "https://discord.gg/ALVR");
@@ -21,4 +15,14 @@ This is a fork of ALVR that works with Meta Quest and other standalone headsets.
         "Donate to ALVR on Open Collective",
         "https://opencollective.com/alvr",
     );
+    ui.add_space(10.0);
+    ui.label("License:");
+    Frame::group(ui.style())
+        .fill(theme::DARKER_BG)
+        .inner_margin(egui::vec2(15.0, 12.0))
+        .show(ui, |ui| {
+            ScrollArea::new([false, true])
+                .id_source("license_scroll")
+                .show(ui, |ui| ui.label(include_str!("../../../../../LICENSE")))
+        });
 }

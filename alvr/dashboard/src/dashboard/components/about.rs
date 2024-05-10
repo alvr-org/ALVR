@@ -1,6 +1,6 @@
 use alvr_common::ALVR_VERSION;
 use alvr_gui_common::theme;
-use eframe::egui::{self, Frame, Label, RichText, ScrollArea, Ui};
+use eframe::egui::{self, Frame, RichText, ScrollArea, Ui};
 
 pub fn about_tab_ui(ui: &mut Ui) {
     ui.label(RichText::new(format!("ALVR streamer v{}", *ALVR_VERSION)).size(30.0));

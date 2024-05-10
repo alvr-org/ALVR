@@ -97,7 +97,6 @@ extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
 extern "C" const unsigned char *RGBTOYUV420_CSO_PTR;
 extern "C" unsigned int RGBTOYUV420_CSO_LEN;
 
-
 extern "C" const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int QUAD_SHADER_COMP_SPV_LEN;
 extern "C" const unsigned char *COLOR_SHADER_COMP_SPV_PTR;
@@ -135,7 +134,8 @@ extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
 extern "C" void (*RegisterButtons)(unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
-extern "C" void *CppEntryPoint(const char *pInterfaceName, int *pReturnCode);
+extern "C" void CppInit();
+extern "C" void *CppOpenvrEntryPoint(const char *pInterfaceName, int *pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();

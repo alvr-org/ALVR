@@ -2,7 +2,7 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    ConnectionsTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
+    DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
 };
 use crate::{dashboard::components::StatisticsTab, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
@@ -45,7 +45,7 @@ fn get_id() -> usize {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
-    Connections,
+    Devices,
     Statistics,
     Settings,
     #[cfg(not(target_arch = "wasm32"))]
@@ -62,7 +62,7 @@ pub struct Dashboard {
     server_restarting_condvar: Arc<Condvar>,
     selected_tab: Tab,
     tab_labels: BTreeMap<Tab, &'static str>,
-    connections_tab: ConnectionsTab,
+    connections_tab: DevicesTab,
     statistics_tab: StatisticsTab,
     settings_tab: SettingsTab,
     #[cfg(not(target_arch = "wasm32"))]
@@ -87,9 +87,9 @@ impl Dashboard {
             just_opened: true,
             server_restarting: Arc::new(Mutex::new(false)),
             server_restarting_condvar: Arc::new(Condvar::new()),
-            selected_tab: Tab::Connections,
+            selected_tab: Tab::Devices,
             tab_labels: [
-                (Tab::Connections, "🔌  Connections"),
+                (Tab::Devices, "🔌  Devices"),
                 (Tab::Statistics, "📈  Statistics"),
                 (Tab::Settings, "⚙  Settings"),
                 #[cfg(not(target_arch = "wasm32"))]
@@ -100,7 +100,7 @@ impl Dashboard {
             ]
             .into_iter()
             .collect(),
-            connections_tab: ConnectionsTab::new(),
+            connections_tab: DevicesTab::new(),
             statistics_tab: StatisticsTab::new(),
             settings_tab: SettingsTab::new(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -293,7 +293,7 @@ impl eframe::App for Dashboard {
                                 .size(25.0),
                         );
                         match self.selected_tab {
-                            Tab::Connections => {
+                            Tab::Devices => {
                                 requests.extend(self.connections_tab.ui(ui, connected_to_server));
                             }
                             Tab::Statistics => {

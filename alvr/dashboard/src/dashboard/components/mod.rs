@@ -1,6 +1,6 @@
 mod about;
-mod connections;
 mod debug;
+mod devices;
 mod logs;
 mod notifications;
 mod settings;
@@ -12,8 +12,8 @@ mod statistics;
 mod installation;
 
 pub use about::*;
-pub use connections::*;
 pub use debug::*;
+pub use devices::*;
 pub use logs::*;
 pub use notifications::*;
 pub use settings::*;

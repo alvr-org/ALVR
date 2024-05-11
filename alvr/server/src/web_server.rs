@@ -1,12 +1,13 @@
 use crate::{
-    bindings::FfiButtonValue, connection::CLIENTS_TO_BE_REMOVED, DECODER_CONFIG, FILESYSTEM_LAYOUT,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    bindings::FfiButtonValue, connection::CLIENTS_TO_BE_REMOVED, logging_backend::EVENTS_SENDER,
+    DECODER_CONFIG, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
+    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
     anyhow::{self, Result},
     error, info, log, warn, ConnectionState,
 };
-use alvr_events::{ButtonEvent, Event, EventType};
+use alvr_events::{ButtonEvent, EventType};
 use alvr_packets::{ButtonValue, ClientListAction, ServerRequest};
 use bytes::Buf;
 use futures::SinkExt;
@@ -87,10 +88,7 @@ async fn websocket<T: Clone + Send + 'static>(
     }
 }
 
-async fn http_api(
-    request: Request<Body>,
-    events_sender: broadcast::Sender<Event>,
-) -> Result<Response<Body>> {
+async fn http_api(request: Request<Body>) -> Result<Response<Body>> {
     let mut response = match request.uri().path() {
         // New unified requests
         "/api/dashboard-request" => {
@@ -187,7 +185,7 @@ async fn http_api(
             }
         }
         "/api/events" => {
-            websocket(request, events_sender, |e| {
+            websocket(request, EVENTS_SENDER.clone(), |e| {
                 protocol::Message::Text(json::to_string(&e).unwrap())
             })
             .await?
@@ -294,28 +292,22 @@ async fn http_api(
     Ok(response)
 }
 
-pub async fn web_server(events_sender: broadcast::Sender<Event>) -> Result<()> {
+pub async fn web_server() -> Result<()> {
     let web_server_port = SERVER_DATA_MANAGER
         .read()
         .settings()
         .connection
         .web_server_port;
 
-    let service = service::make_service_fn(|_| {
-        let events_sender = events_sender.clone();
-        async move {
-            Ok::<_, anyhow::Error>(service::service_fn(move |request| {
-                let events_sender = events_sender.clone();
-                async move {
-                    let res = http_api(request, events_sender).await;
-                    if let Err(e) = &res {
-                        alvr_common::show_e(e);
-                    }
+    let service = service::make_service_fn(|_| async move {
+        Ok::<_, anyhow::Error>(service::service_fn(move |request| async move {
+            let res = http_api(request).await;
+            if let Err(e) = &res {
+                alvr_common::show_e(e);
+            }
 
-                    res
-                }
-            }))
-        }
+            res
+        }))
     });
 
     Ok(hyper::Server::bind(&SocketAddr::new(

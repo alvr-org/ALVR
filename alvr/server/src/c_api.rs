@@ -1,9 +1,14 @@
 #![allow(dead_code, unused_variables)]
 
+use crate::{logging_backend, ServerCoreContext};
+use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
 use std::{
+    collections::HashMap,
     ffi::{c_char, CStr},
-    time::Instant,
+    time::{Duration, Instant},
 };
+
+static mut SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = alvr_common::lazy_mut_none();
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -138,8 +143,67 @@ pub unsafe extern "C" fn alvr_path_to_id(path_string: *const c_char) -> u64 {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn alvr_log_error(string_ptr: *const c_char) {
+    alvr_common::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
+}
+
+pub fn log(level: log::Level, string_ptr: *const c_char) {
+    unsafe { log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy()) };
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_log_warn(string_ptr: *const c_char) {
+    log(log::Level::Warn, string_ptr);
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_log_info(string_ptr: *const c_char) {
+    log(log::Level::Info, string_ptr);
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_log_debug(string_ptr: *const c_char) {
+    log(log::Level::Debug, string_ptr);
+}
+
+// Should not be used in production
+#[no_mangle]
+pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
+    const INTERVAL: Duration = Duration::from_secs(1);
+    static LASTEST_TAG_TIMESTAMPS: Lazy<Mutex<HashMap<String, Instant>>> =
+        Lazy::new(|| Mutex::new(HashMap::new()));
+
+    let tag = CStr::from_ptr(tag_ptr).to_string_lossy();
+    let message = CStr::from_ptr(message_ptr).to_string_lossy();
+
+    let mut timestamps_ref = LASTEST_TAG_TIMESTAMPS.lock();
+    let old_timestamp = timestamps_ref
+        .entry(tag.to_string())
+        .or_insert_with(Instant::now);
+    if *old_timestamp + INTERVAL < Instant::now() {
+        *old_timestamp += INTERVAL;
+
+        log::warn!("{}: {}", tag, message);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_initialize_logging() {
+    logging_backend::init_logging();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn alvr_initialize(out_target_config: *mut AlvrTargetConfig) {
-    todo!()
+    *SERVER_CORE_CONTEXT.lock() = Some(ServerCoreContext::new());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_start_connection() {
+    SERVER_CORE_CONTEXT
+        .lock()
+        .as_ref()
+        .unwrap()
+        .start_connection();
 }
 
 #[no_mangle]

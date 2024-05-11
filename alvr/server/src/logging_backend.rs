@@ -1,13 +1,16 @@
 use crate::{FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER};
-use alvr_common::{log::LevelFilter, LogEntry, LogSeverity};
+use alvr_common::{log::LevelFilter, once_cell::sync::Lazy, LogEntry, LogSeverity};
 use alvr_events::{Event, EventType};
 use chrono::Local;
 use fern::Dispatch;
 use std::fs;
-use tokio::sync::broadcast::Sender;
+use tokio::sync::broadcast;
 
-// todo: don't stringify events immediately, use Sender<Event>
-pub fn init_logging(events_sender: Sender<Event>) {
+static CHANNEL_CAPACITY: usize = 256;
+pub static EVENTS_SENDER: Lazy<broadcast::Sender<Event>> =
+    Lazy::new(|| broadcast::channel(CHANNEL_CAPACITY).0);
+
+pub fn init_logging() {
     let mut log_dispatch = Dispatch::new()
         // Note: meta::target() is in the format <crate>::<module>
         .filter(|meta| !meta.target().starts_with("mdns_sd"))
@@ -27,7 +30,7 @@ pub fn init_logging(events_sender: Sender<Event>) {
             };
             out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
 
-            events_sender.send(event).ok();
+            EVENTS_SENDER.send(event).ok();
         });
 
     if cfg!(debug_assertions) {

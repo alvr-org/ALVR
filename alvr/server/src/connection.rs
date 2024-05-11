@@ -280,7 +280,7 @@ pub fn handshake_loop() {
             let clients = match welcome_socket.recv_all() {
                 Ok(clients) => clients,
                 Err(e) => {
-                    warn!("UDP handshake listening error: {e:?}");
+                    warn!("mDNS listening error: {e:?}");
 
                     thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                     continue;

@@ -272,25 +272,6 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
     });
 }
 
-pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
-    // Note: Idle state is not used on the server side
-    *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
-
-    thread::spawn(move || {
-        if set_default_chap {
-            // call this when inside a new thread. Calling this on the parent thread will crash
-            // SteamVR
-            unsafe {
-                InitOpenvrClient();
-                SetChaperoneArea(2.0, 2.0);
-                ShutdownOpenvrClient();
-            }
-        }
-
-        connection::handshake_loop();
-    });
-}
-
 unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
     alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
 }
@@ -354,10 +335,7 @@ extern "C" fn wait_for_vsync() {
     }
 }
 
-fn init() {
-    let (events_sender, _) = broadcast::channel(web_server::WS_BROADCAST_CAPACITY);
-    logging_backend::init_logging(events_sender.clone());
-
+fn initialize() {
     if SERVER_DATA_MANAGER
         .read()
         .settings()
@@ -371,7 +349,7 @@ fn init() {
     SERVER_DATA_MANAGER.write().clean_client_list();
 
     if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        runtime.spawn(async { alvr_common::show_err(web_server::web_server(events_sender).await) });
+        runtime.spawn(async { alvr_common::show_err(web_server::web_server().await) });
     }
 
     unsafe {
@@ -415,7 +393,6 @@ fn init() {
         LogInfo = Some(log_info);
         LogDebug = Some(log_debug);
         LogPeriodically = Some(log_periodically);
-        DriverReadyIdle = Some(driver_ready_idle);
         SetVideoConfigNals = Some(set_video_config_nals);
         VideoSend = Some(connection::send_video);
         HapticsSend = Some(connection::send_haptics);
@@ -430,5 +407,24 @@ fn init() {
         WaitForVSync = Some(wait_for_vsync);
 
         CppInit();
+    }
+}
+
+struct ServerCoreContext {}
+
+impl ServerCoreContext {
+    fn new() -> Self {
+        initialize();
+
+        Self {}
+    }
+
+    fn start_connection(&self) {
+        // Note: Idle state is not used on the server side
+        *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
+
+        thread::spawn(move || {
+            connection::handshake_loop();
+        });
     }
 }

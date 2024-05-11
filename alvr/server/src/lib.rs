@@ -26,7 +26,7 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, log,
+    error,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     ConnectionState, LifecycleState, OptLazy, RelaxedAtomic,
@@ -39,14 +39,13 @@ use alvr_session::{CodecType, Settings};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{
-    collections::HashMap,
     env,
-    ffi::{c_char, CStr, CString},
+    ffi::CString,
     fs::File,
     io::Write,
     ptr,
     thread::{self, JoinHandle},
-    time::{Duration, Instant},
+    time::Duration,
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
@@ -205,46 +204,6 @@ pub fn restart_driver() {
     shutdown_driver();
 }
 
-unsafe extern "C" fn log_error(string_ptr: *const c_char) {
-    alvr_common::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
-}
-
-unsafe fn log(level: log::Level, string_ptr: *const c_char) {
-    log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
-}
-
-unsafe extern "C" fn log_warn(string_ptr: *const c_char) {
-    log(log::Level::Warn, string_ptr);
-}
-
-unsafe extern "C" fn log_info(string_ptr: *const c_char) {
-    log(log::Level::Info, string_ptr);
-}
-
-unsafe extern "C" fn log_debug(string_ptr: *const c_char) {
-    log(log::Level::Debug, string_ptr);
-}
-
-// Should not be used in production
-unsafe extern "C" fn log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {
-    const INTERVAL: Duration = Duration::from_secs(1);
-    static LASTEST_TAG_TIMESTAMPS: Lazy<Mutex<HashMap<String, Instant>>> =
-        Lazy::new(|| Mutex::new(HashMap::new()));
-
-    let tag = CStr::from_ptr(tag_ptr).to_string_lossy();
-    let message = CStr::from_ptr(message_ptr).to_string_lossy();
-
-    let mut timestamps_ref = LASTEST_TAG_TIMESTAMPS.lock();
-    let old_timestamp = timestamps_ref
-        .entry(tag.to_string())
-        .or_insert_with(Instant::now);
-    if *old_timestamp + INTERVAL < Instant::now() {
-        *old_timestamp += INTERVAL;
-
-        log::warn!("{}: {}", tag, message);
-    }
-}
-
 extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
     let codec = if codec == 0 {
         CodecType::H264
@@ -270,10 +229,6 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
         codec,
         config_buffer,
     });
-}
-
-unsafe extern "C" fn path_string_to_hash(path: *const c_char) -> u64 {
-    alvr_common::hash_string(CStr::from_ptr(path).to_str().unwrap())
 }
 
 extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
@@ -388,16 +343,16 @@ fn initialize() {
         RGBTOYUV420_SHADER_COMP_SPV_PTR = RGBTOYUV420_SHADER_COMP_SPV.as_ptr();
         RGBTOYUV420_SHADER_COMP_SPV_LEN = RGBTOYUV420_SHADER_COMP_SPV.len() as _;
 
-        LogError = Some(log_error);
-        LogWarn = Some(log_warn);
-        LogInfo = Some(log_info);
-        LogDebug = Some(log_debug);
-        LogPeriodically = Some(log_periodically);
+        LogError = Some(c_api::alvr_log_error);
+        LogWarn = Some(c_api::alvr_log_warn);
+        LogInfo = Some(c_api::alvr_log_info);
+        LogDebug = Some(c_api::alvr_log_debug);
+        LogPeriodically = Some(c_api::alvr_log_periodically);
         SetVideoConfigNals = Some(set_video_config_nals);
         VideoSend = Some(connection::send_video);
         HapticsSend = Some(connection::send_haptics);
         ShutdownRuntime = Some(shutdown_driver);
-        PathStringToHash = Some(path_string_to_hash);
+        PathStringToHash = Some(c_api::alvr_path_to_id);
         ReportPresent = Some(report_present);
         ReportComposed = Some(report_composed);
         GetSerialNumber = Some(openvr::get_serial_number);

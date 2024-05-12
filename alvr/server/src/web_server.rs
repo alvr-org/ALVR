@@ -1,7 +1,7 @@
 use crate::{
     bindings::FfiButtonValue, connection::CLIENTS_TO_BE_REMOVED, logging_backend::EVENTS_SENDER,
-    DECODER_CONFIG, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
-    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    ServerCoreEvent, DECODER_CONFIG, EVENTS_QUEUE, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
+    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
     anyhow::{self, Result},
@@ -18,7 +18,7 @@ use hyper::{
 };
 use serde::de::DeserializeOwned;
 use serde_json as json;
-use std::{net::SocketAddr, thread};
+use std::net::SocketAddr;
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
 use tokio_util::codec::{BytesCodec, FramedRead};
@@ -169,14 +169,12 @@ async fn http_api(request: Request<Body>) -> Result<Response<Body>> {
                             alvr_events::send_event(EventType::DriversList(list));
                         }
                     }
-                    ServerRequest::RestartSteamvr => {
-                        thread::spawn(crate::restart_driver);
-                    }
-                    ServerRequest::ShutdownSteamvr => {
-                        // This lint is bugged with extern "C"
-                        #[allow(clippy::redundant_closure)]
-                        thread::spawn(|| crate::shutdown_driver());
-                    }
+                    ServerRequest::RestartSteamvr => EVENTS_QUEUE
+                        .lock()
+                        .push_back(ServerCoreEvent::RestartPending),
+                    ServerRequest::ShutdownSteamvr => EVENTS_QUEUE
+                        .lock()
+                        .push_back(ServerCoreEvent::ShutdownPending),
                 }
 
                 reply(StatusCode::OK)?

@@ -3,6 +3,7 @@ mod body_tracking;
 mod c_api;
 mod connection;
 mod face_tracking;
+mod graphics;
 mod hand_gestures;
 mod haptics;
 mod input_mapping;
@@ -29,11 +30,11 @@ use alvr_common::{
     error,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    ConnectionState, LifecycleState, OptLazy, RelaxedAtomic,
+    ConnectionState, LifecycleState, OptLazy, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
-use alvr_events::EventType;
+use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_packets::{ClientListAction, DecoderInitializationConfig};
+use alvr_packets::{ClientListAction, DecoderInitializationConfig, Haptics};
 use alvr_server_io::ServerDataManager;
 use alvr_session::{CodecType, Settings};
 use bitrate::BitrateManager;
@@ -77,21 +78,6 @@ static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> =
 
 static VIDEO_MIRROR_SENDER: OptLazy<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
 static VIDEO_RECORDING_FILE: OptLazy<File> = alvr_common::lazy_mut_none();
-
-static FRAME_RENDER_VS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderVS.cso");
-static FRAME_RENDER_PS_CSO: &[u8] = include_bytes!("../cpp/platform/win32/FrameRenderPS.cso");
-static QUAD_SHADER_CSO: &[u8] = include_bytes!("../cpp/platform/win32/QuadVertexShader.cso");
-static COMPRESS_AXIS_ALIGNED_CSO: &[u8] =
-    include_bytes!("../cpp/platform/win32/CompressAxisAlignedPixelShader.cso");
-static COLOR_CORRECTION_CSO: &[u8] =
-    include_bytes!("../cpp/platform/win32/ColorCorrectionPixelShader.cso");
-static RGBTOYUV420_CSO: &[u8] = include_bytes!("../cpp/platform/win32/rgbtoyuv420.cso");
-
-static QUAD_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/quad.comp.spv");
-static COLOR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/color.comp.spv");
-static FFR_SHADER_COMP_SPV: &[u8] = include_bytes!("../cpp/platform/linux/shader/ffr.comp.spv");
-static RGBTOYUV420_SHADER_COMP_SPV: &[u8] =
-    include_bytes!("../cpp/platform/linux/shader/rgbtoyuv420.comp.spv");
 
 static DECODER_CONFIG: OptLazy<DecoderInitializationConfig> = alvr_common::lazy_mut_none();
 
@@ -227,85 +213,58 @@ extern "C" fn wait_for_vsync() {
     }
 }
 
-fn initialize() {
-    if SERVER_DATA_MANAGER
-        .read()
-        .settings()
-        .extra
-        .logging
-        .prefer_backtrace
-    {
-        env::set_var("RUST_BACKTRACE", "1");
-    }
-
-    SERVER_DATA_MANAGER.write().clean_client_list();
-
-    if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-        runtime.spawn(async { alvr_common::show_err(web_server::web_server().await) });
-    }
-
-    unsafe {
-        g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
-            .unwrap()
-            .into_raw();
-        g_driverRootDir = CString::new(
-            FILESYSTEM_LAYOUT
-                .openvr_driver_root_dir
-                .to_string_lossy()
-                .to_string(),
-        )
-        .unwrap()
-        .into_raw();
-    };
-
-    unsafe {
-        FRAME_RENDER_VS_CSO_PTR = FRAME_RENDER_VS_CSO.as_ptr();
-        FRAME_RENDER_VS_CSO_LEN = FRAME_RENDER_VS_CSO.len() as _;
-        FRAME_RENDER_PS_CSO_PTR = FRAME_RENDER_PS_CSO.as_ptr();
-        FRAME_RENDER_PS_CSO_LEN = FRAME_RENDER_PS_CSO.len() as _;
-        QUAD_SHADER_CSO_PTR = QUAD_SHADER_CSO.as_ptr();
-        QUAD_SHADER_CSO_LEN = QUAD_SHADER_CSO.len() as _;
-        COMPRESS_AXIS_ALIGNED_CSO_PTR = COMPRESS_AXIS_ALIGNED_CSO.as_ptr();
-        COMPRESS_AXIS_ALIGNED_CSO_LEN = COMPRESS_AXIS_ALIGNED_CSO.len() as _;
-        COLOR_CORRECTION_CSO_PTR = COLOR_CORRECTION_CSO.as_ptr();
-        COLOR_CORRECTION_CSO_LEN = COLOR_CORRECTION_CSO.len() as _;
-        RGBTOYUV420_CSO_PTR = RGBTOYUV420_CSO.as_ptr();
-        RGBTOYUV420_CSO_LEN = RGBTOYUV420_CSO.len() as _;
-        QUAD_SHADER_COMP_SPV_PTR = QUAD_SHADER_COMP_SPV.as_ptr();
-        QUAD_SHADER_COMP_SPV_LEN = QUAD_SHADER_COMP_SPV.len() as _;
-        COLOR_SHADER_COMP_SPV_PTR = COLOR_SHADER_COMP_SPV.as_ptr();
-        COLOR_SHADER_COMP_SPV_LEN = COLOR_SHADER_COMP_SPV.len() as _;
-        FFR_SHADER_COMP_SPV_PTR = FFR_SHADER_COMP_SPV.as_ptr();
-        FFR_SHADER_COMP_SPV_LEN = FFR_SHADER_COMP_SPV.len() as _;
-        RGBTOYUV420_SHADER_COMP_SPV_PTR = RGBTOYUV420_SHADER_COMP_SPV.as_ptr();
-        RGBTOYUV420_SHADER_COMP_SPV_LEN = RGBTOYUV420_SHADER_COMP_SPV.len() as _;
-
-        LogError = Some(c_api::alvr_log_error);
-        LogWarn = Some(c_api::alvr_log_warn);
-        LogInfo = Some(c_api::alvr_log_info);
-        LogDebug = Some(c_api::alvr_log_debug);
-        LogPeriodically = Some(c_api::alvr_log_periodically);
-        SetVideoConfigNals = Some(set_video_config_nals);
-        VideoSend = Some(connection::send_video);
-        HapticsSend = Some(connection::send_haptics);
-        PathStringToHash = Some(c_api::alvr_path_to_id);
-        ReportPresent = Some(report_present);
-        ReportComposed = Some(report_composed);
-        GetSerialNumber = Some(openvr::get_serial_number);
-        SetOpenvrProps = Some(openvr::set_device_openvr_props);
-        RegisterButtons = Some(input_mapping::register_buttons);
-        GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-        WaitForVSync = Some(wait_for_vsync);
-
-        CppInit();
-    }
-}
-
 struct ServerCoreContext {}
 
 impl ServerCoreContext {
     fn new() -> Self {
-        initialize();
+        if SERVER_DATA_MANAGER
+            .read()
+            .settings()
+            .extra
+            .logging
+            .prefer_backtrace
+        {
+            env::set_var("RUST_BACKTRACE", "1");
+        }
+
+        SERVER_DATA_MANAGER.write().clean_client_list();
+
+        if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
+            runtime.spawn(async { alvr_common::show_err(web_server::web_server().await) });
+        }
+
+        unsafe {
+            g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+                .unwrap()
+                .into_raw();
+            g_driverRootDir = CString::new(
+                FILESYSTEM_LAYOUT
+                    .openvr_driver_root_dir
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .unwrap()
+            .into_raw();
+        };
+
+        graphics::initialize_shaders();
+
+        unsafe {
+            LogError = Some(c_api::alvr_log_error);
+            LogWarn = Some(c_api::alvr_log_warn);
+            LogInfo = Some(c_api::alvr_log_info);
+            LogDebug = Some(c_api::alvr_log_debug);
+            LogPeriodically = Some(c_api::alvr_log_periodically);
+            SetVideoConfigNals = Some(set_video_config_nals);
+            VideoSend = Some(connection::send_video);
+            PathStringToHash = Some(c_api::alvr_path_to_id);
+            ReportPresent = Some(report_present);
+            ReportComposed = Some(report_composed);
+            GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
+            WaitForVSync = Some(wait_for_vsync);
+
+            CppInit();
+        }
 
         Self {}
     }
@@ -321,6 +280,39 @@ impl ServerCoreContext {
 
     fn poll_event(&self) -> Option<ServerCoreEvent> {
         EVENTS_QUEUE.lock().pop_front()
+    }
+
+    fn send_haptics(&self, haptics: Haptics) {
+        let haptics_config = {
+            let data_manager_lock = SERVER_DATA_MANAGER.read();
+
+            if data_manager_lock.settings().extra.logging.log_haptics {
+                alvr_events::send_event(EventType::Haptics(HapticsEvent {
+                    path: DEVICE_ID_TO_PATH
+                        .get(&haptics.device_id)
+                        .map(|p| (*p).to_owned())
+                        .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
+                    duration: haptics.duration,
+                    frequency: haptics.frequency,
+                    amplitude: haptics.amplitude,
+                }))
+            }
+
+            data_manager_lock
+                .settings()
+                .headset
+                .controllers
+                .as_option()
+                .and_then(|c| c.haptics.as_option().cloned())
+        };
+
+        if let (Some(config), Some(sender)) =
+            (haptics_config, &mut *connection::HAPTICS_SENDER.lock())
+        {
+            sender
+                .send_header(&haptics::map_haptics(&config, haptics))
+                .ok();
+        }
     }
 
     fn restart(self) {

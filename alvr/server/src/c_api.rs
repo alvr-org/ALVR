@@ -2,13 +2,14 @@
 
 use crate::{logging_backend, ServerCoreContext, ServerCoreEvent};
 use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
+use alvr_packets::Haptics;
 use std::{
     collections::HashMap,
     ffi::{c_char, CStr},
     time::{Duration, Instant},
 };
 
-static mut SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = alvr_common::lazy_mut_none();
+static SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = alvr_common::lazy_mut_none();
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -86,16 +87,6 @@ pub union AlvrInputValue {
 pub struct AlvrInput {
     pub id: u64,
     pub value: AlvrInputValue,
-}
-
-#[repr(u8)]
-#[derive(Clone, Copy)]
-pub enum AlvrOutput {
-    Haptics {
-        frequency: f32,
-        amplitude: f32,
-        duration_ns: u64,
-    },
 }
 
 #[repr(C)]
@@ -199,33 +190,48 @@ pub unsafe extern "C" fn alvr_initialize(out_target_config: *mut AlvrTargetConfi
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_connection() {
-    SERVER_CORE_CONTEXT
-        .lock()
-        .as_ref()
-        .unwrap()
-        .start_connection();
+    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+        context.start_connection();
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    SERVER_CORE_CONTEXT
-        .lock()
-        .as_ref()
-        .unwrap()
-        .poll_event()
-        .map(|event| {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+        if let Some(event) = context.poll_event() {
             match event {
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }
                 ServerCoreEvent::ShutdownPending => {
-                    *out_event = AlvrEvent::RestartPending;
+                    *out_event = AlvrEvent::ShutdownPending;
                 }
             }
 
             true
-        })
-        .unwrap_or(false)
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_send_haptics(
+    device_id: u64,
+    duration_s: f32,
+    frequency: f32,
+    amplitude: f32,
+) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+        context.send_haptics(Haptics {
+            device_id,
+            duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
+            frequency,
+            amplitude,
+        });
+    }
 }
 
 #[no_mangle]
@@ -281,12 +287,6 @@ pub unsafe extern "C" fn alvr_get_hand_tracking(
     timestamp_ns: u64,
     out_joint_set: *mut AlvrJointSet,
 ) {
-    todo!()
-}
-
-// Currently only haptics is supported
-#[no_mangle]
-pub unsafe extern "C" fn alvr_set_output(output_id: u64, value: *const AlvrOutput) {
     todo!()
 }
 

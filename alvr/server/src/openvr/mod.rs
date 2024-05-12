@@ -1,8 +1,9 @@
 mod props;
 use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
+use alvr_packets::Haptics;
 pub use props::*;
 
-use crate::{logging_backend, ServerCoreContext, ServerCoreEvent};
+use crate::{input_mapping, logging_backend, ServerCoreContext, ServerCoreEvent};
 use std::{
     ffi::{c_char, c_void},
     thread,
@@ -25,6 +26,10 @@ pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 crate::SetChaperoneArea(2.0, 2.0);
                 crate::ShutdownOpenvrClient();
             }
+        }
+
+        if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+            context.start_connection();
         }
 
         loop {
@@ -56,9 +61,18 @@ pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
             }
         }
     });
+}
 
+pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
-        context.start_connection();
+        let haptics = Haptics {
+            device_id,
+            duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
+            frequency,
+            amplitude,
+        };
+
+        context.send_haptics(haptics);
     }
 }
 
@@ -77,6 +91,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
     SERVER_CORE_CONTEXT.lock().as_ref();
 
     crate::DriverReadyIdle = Some(driver_ready_idle);
+    crate::GetSerialNumber = Some(get_serial_number);
+    crate::SetOpenvrProps = Some(set_device_openvr_props);
+    crate::RegisterButtons = Some(input_mapping::register_buttons);
+    crate::HapticsSend = Some(send_haptics);
     crate::ShutdownRuntime = Some(shutdown_driver);
 
     crate::CppOpenvrEntryPoint(interface_name, return_code)

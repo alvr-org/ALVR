@@ -3,7 +3,6 @@ use crate::{
     body_tracking::BodyTrackingSink,
     face_tracking::FaceTrackingSink,
     hand_gestures::{trigger_hand_gesture_actions, HandGestureManager, HAND_GESTURE_BUTTON_SET},
-    haptics,
     input_mapping::ButtonMappingManager,
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
@@ -23,7 +22,7 @@ use alvr_common::{
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
     QUEST_CONTROLLER_PROFILE_PATH,
 };
-use alvr_events::{ButtonEvent, EventType, HapticsEvent, TrackingEvent};
+use alvr_events::{ButtonEvent, EventType, TrackingEvent};
 use alvr_packets::{
     ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, Haptics,
     NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
@@ -64,8 +63,8 @@ pub struct VideoPacket {
 }
 
 static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
-static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 static CONNECTION_THREADS: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(vec![]));
+pub static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 pub static CLIENTS_TO_BE_REMOVED: Lazy<Mutex<HashSet<String>>> =
     Lazy::new(|| Mutex::new(HashSet::new()));
 
@@ -1462,44 +1461,6 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
                 .lock()
                 .report_frame_encoded(timestamp, encoder_latency, buffer_size);
         }
-    }
-}
-
-pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-    let haptics = Haptics {
-        device_id,
-        duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
-        frequency,
-        amplitude,
-    };
-
-    let haptics_config = {
-        let data_manager_lock = SERVER_DATA_MANAGER.read();
-
-        if data_manager_lock.settings().extra.logging.log_haptics {
-            alvr_events::send_event(EventType::Haptics(HapticsEvent {
-                path: DEVICE_ID_TO_PATH
-                    .get(&haptics.device_id)
-                    .map(|p| (*p).to_owned())
-                    .unwrap_or_else(|| format!("Unknown (ID: {:#16x})", haptics.device_id)),
-                duration: haptics.duration,
-                frequency: haptics.frequency,
-                amplitude: haptics.amplitude,
-            }))
-        }
-
-        data_manager_lock
-            .settings()
-            .headset
-            .controllers
-            .as_option()
-            .and_then(|c| c.haptics.as_option().cloned())
-    };
-
-    if let (Some(config), Some(sender)) = (haptics_config, &mut *HAPTICS_SENDER.lock()) {
-        sender
-            .send_header(&haptics::map_haptics(&config, haptics))
-            .ok();
     }
 }
 

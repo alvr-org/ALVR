@@ -39,6 +39,7 @@ use alvr_session::{CodecType, Settings};
 use bitrate::BitrateManager;
 use statistics::StatisticsManager;
 use std::{
+    collections::VecDeque,
     env,
     ffi::CString,
     fs::File,
@@ -49,6 +50,13 @@ use std::{
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
+
+pub enum ServerCoreEvent {
+    ShutdownPending,
+    RestartPending,
+}
+
+pub static EVENTS_QUEUE: Mutex<VecDeque<ServerCoreEvent>> = Mutex::new(VecDeque::new());
 
 pub static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
 pub static IS_RESTARTING: RelaxedAtomic = RelaxedAtomic::new(false);
@@ -116,70 +124,6 @@ pub fn create_recording_file(settings: &Settings) {
     }
 }
 
-// This call is blocking
-pub extern "C" fn shutdown_driver() {
-    // Invoke connection runtimes shutdown
-    *LIFECYCLE_STATE.write() = LifecycleState::ShuttingDown;
-
-    {
-        let mut data_manager_lock = SERVER_DATA_MANAGER.write();
-
-        let hostnames = data_manager_lock
-            .client_list()
-            .iter()
-            .filter(|&(_, info)| {
-                !matches!(
-                    info.connection_state,
-                    ConnectionState::Disconnected | ConnectionState::Disconnecting { .. }
-                )
-            })
-            .map(|(hostname, _)| hostname.clone())
-            .collect::<Vec<_>>();
-
-        for hostname in hostnames {
-            data_manager_lock.update_client_list(
-                hostname,
-                ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
-            );
-        }
-    }
-
-    if let Some(thread) = CONNECTION_THREAD.write().take() {
-        thread.join().ok();
-    }
-
-    // apply openvr config for the next launch
-    {
-        let mut server_data_lock = SERVER_DATA_MANAGER.write();
-        server_data_lock.session_mut().openvr_config =
-            connection::contruct_openvr_config(server_data_lock.session());
-    }
-
-    if let Some(backup) = SERVER_DATA_MANAGER
-        .write()
-        .session_mut()
-        .drivers_backup
-        .take()
-    {
-        alvr_server_io::driver_registration(&backup.other_paths, true).ok();
-        alvr_server_io::driver_registration(&[backup.alvr_path], false).ok();
-    }
-
-    while SERVER_DATA_MANAGER
-        .read()
-        .client_list()
-        .iter()
-        .any(|(_, info)| info.connection_state != ConnectionState::Disconnected)
-    {
-        thread::sleep(Duration::from_millis(100));
-    }
-
-    #[cfg(target_os = "windows")]
-    WEBSERVER_RUNTIME.lock().take();
-
-    unsafe { ShutdownSteamvr() };
-}
-
 pub fn notify_restart_driver() {
     let mut system = sysinfo::System::new_with_specifics(
         RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
@@ -195,13 +139,6 @@ pub fn notify_restart_driver() {
     } else {
         error!("Cannot restart SteamVR. No dashboard process found on local device.");
     }
-}
-
-// This call is blocking
-pub fn restart_driver() {
-    IS_RESTARTING.set(true);
-
-    shutdown_driver();
 }
 
 extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
@@ -351,7 +288,6 @@ fn initialize() {
         SetVideoConfigNals = Some(set_video_config_nals);
         VideoSend = Some(connection::send_video);
         HapticsSend = Some(connection::send_haptics);
-        ShutdownRuntime = Some(shutdown_driver);
         PathStringToHash = Some(c_api::alvr_path_to_id);
         ReportPresent = Some(report_present);
         ReportComposed = Some(report_composed);
@@ -381,5 +317,78 @@ impl ServerCoreContext {
         thread::spawn(move || {
             connection::handshake_loop();
         });
+    }
+
+    fn poll_event(&self) -> Option<ServerCoreEvent> {
+        EVENTS_QUEUE.lock().pop_front()
+    }
+
+    fn restart(self) {
+        IS_RESTARTING.set(true);
+
+        // drop is called here for self
+    }
+}
+
+impl Drop for ServerCoreContext {
+    fn drop(&mut self) {
+        // Invoke connection runtimes shutdown
+        *LIFECYCLE_STATE.write() = LifecycleState::ShuttingDown;
+
+        {
+            let mut data_manager_lock = SERVER_DATA_MANAGER.write();
+
+            let hostnames = data_manager_lock
+                .client_list()
+                .iter()
+                .filter(|&(_, info)| {
+                    !matches!(
+                        info.connection_state,
+                        ConnectionState::Disconnected | ConnectionState::Disconnecting { .. }
+                    )
+                })
+                .map(|(hostname, _)| hostname.clone())
+                .collect::<Vec<_>>();
+
+            for hostname in hostnames {
+                data_manager_lock.update_client_list(
+                    hostname,
+                    ClientListAction::SetConnectionState(ConnectionState::Disconnecting),
+                );
+            }
+        }
+
+        if let Some(thread) = CONNECTION_THREAD.write().take() {
+            thread.join().ok();
+        }
+
+        // apply openvr config for the next launch
+        {
+            let mut server_data_lock = SERVER_DATA_MANAGER.write();
+            server_data_lock.session_mut().openvr_config =
+                connection::contruct_openvr_config(server_data_lock.session());
+        }
+
+        if let Some(backup) = SERVER_DATA_MANAGER
+            .write()
+            .session_mut()
+            .drivers_backup
+            .take()
+        {
+            alvr_server_io::driver_registration(&backup.other_paths, true).ok();
+            alvr_server_io::driver_registration(&[backup.alvr_path], false).ok();
+        }
+
+        while SERVER_DATA_MANAGER
+            .read()
+            .client_list()
+            .iter()
+            .any(|(_, info)| info.connection_state != ConnectionState::Disconnected)
+        {
+            thread::sleep(Duration::from_millis(100));
+        }
+
+        #[cfg(target_os = "windows")]
+        WEBSERVER_RUNTIME.lock().take();
     }
 }

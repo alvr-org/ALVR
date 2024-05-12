@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables)]
 
-use crate::{logging_backend, ServerCoreContext};
+use crate::{logging_backend, ServerCoreContext, ServerCoreEvent};
 use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
 use std::{
     collections::HashMap,
@@ -110,8 +110,8 @@ pub struct AlvrBatteryValue {
 pub enum AlvrEvent {
     Battery(AlvrBatteryValue),
     Bounds([f32; 2]),
-    Restart,
-    Shutdown,
+    RestartPending,
+    ShutdownPending,
 }
 
 #[repr(C)]
@@ -208,12 +208,36 @@ pub unsafe extern "C" fn alvr_start_connection() {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    todo!()
+    SERVER_CORE_CONTEXT
+        .lock()
+        .as_ref()
+        .unwrap()
+        .poll_event()
+        .map(|event| {
+            match event {
+                ServerCoreEvent::RestartPending => {
+                    *out_event = AlvrEvent::RestartPending;
+                }
+                ServerCoreEvent::ShutdownPending => {
+                    *out_event = AlvrEvent::RestartPending;
+                }
+            }
+
+            true
+        })
+        .unwrap_or(false)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_restart() {
+    if let Some(context) = SERVER_CORE_CONTEXT.lock().take() {
+        context.restart();
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_shutdown() {
-    todo!()
+    SERVER_CORE_CONTEXT.lock().take();
 }
 
 // Device API:

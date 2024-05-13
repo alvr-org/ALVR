@@ -3,7 +3,9 @@ use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
 use alvr_packets::Haptics;
 pub use props::*;
 
-use crate::{input_mapping, logging_backend, ServerCoreContext, ServerCoreEvent};
+use crate::{
+    input_mapping, logging_backend, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
+};
 use std::{
     ffi::{c_char, c_void},
     thread,
@@ -16,7 +18,7 @@ static SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = Lazy::new(|| {
     Mutex::new(Some(ServerCoreContext::new()))
 });
 
-pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
+extern "C" fn driver_ready_idle(set_default_chap: bool) {
     thread::spawn(move || {
         unsafe { crate::InitOpenvrClient() };
 
@@ -72,7 +74,7 @@ pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
     });
 }
 
-pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
+extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
         let haptics = Haptics {
             device_id,
@@ -82,6 +84,24 @@ pub extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, 
         };
 
         context.send_haptics(haptics);
+    }
+}
+
+extern "C" fn wait_for_vsync() {
+    if SERVER_DATA_MANAGER
+        .read()
+        .settings()
+        .video
+        .optimize_game_render_latency
+    {
+        let context_lock = SERVER_CORE_CONTEXT.lock();
+
+        if let Some(wait_duration) = context_lock
+            .as_ref()
+            .and_then(|ctx| ctx.duration_until_next_vsync())
+        {
+            thread::sleep(wait_duration);
+        }
     }
 }
 
@@ -105,6 +125,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     crate::RegisterButtons = Some(input_mapping::register_buttons);
     crate::HapticsSend = Some(send_haptics);
     crate::ShutdownRuntime = Some(shutdown_driver);
+    crate::WaitForVSync = Some(wait_for_vsync);
 
     crate::CppOpenvrEntryPoint(interface_name, return_code)
 }

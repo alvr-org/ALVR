@@ -196,25 +196,6 @@ extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
     params
 }
 
-extern "C" fn wait_for_vsync() {
-    if SERVER_DATA_MANAGER
-        .read()
-        .settings()
-        .video
-        .optimize_game_render_latency
-    {
-        // Note: unlock STATISTICS_MANAGER as soon as possible
-        let wait_duration = STATISTICS_MANAGER
-            .lock()
-            .as_mut()
-            .map(|stats| stats.duration_until_next_vsync());
-
-        if let Some(duration) = wait_duration {
-            thread::sleep(duration);
-        }
-    }
-}
-
 struct ServerCoreContext {}
 
 impl ServerCoreContext {
@@ -263,7 +244,6 @@ impl ServerCoreContext {
             ReportPresent = Some(report_present);
             ReportComposed = Some(report_composed);
             GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-            WaitForVSync = Some(wait_for_vsync);
 
             CppInit();
         }
@@ -315,6 +295,13 @@ impl ServerCoreContext {
                 .send_header(&haptics::map_haptics(&config, haptics))
                 .ok();
         }
+    }
+
+    fn duration_until_next_vsync(&self) -> Option<Duration> {
+        STATISTICS_MANAGER
+            .lock()
+            .as_mut()
+            .map(|stats| stats.duration_until_next_vsync())
     }
 
     fn restart(self) {

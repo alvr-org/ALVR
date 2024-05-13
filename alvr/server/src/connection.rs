@@ -7,8 +7,9 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiFov, FfiViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, LIFECYCLE_STATE, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    FfiFov, FfiViewsConfig, ServerCoreEvent, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE,
+    LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER,
+    VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -1086,11 +1087,6 @@ fn connection_pipeline(
         let control_sender = Arc::clone(&control_sender);
         let client_hostname = client_hostname.clone();
         move || {
-            unsafe {
-                crate::InitOpenvrClient();
-                crate::RequestDriverResync();
-            }
-
             let mut disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             while is_streaming(&client_hostname) {
                 let packet = match control_receiver.recv(STREAMING_RECV_TIMEOUT) {
@@ -1268,7 +1264,6 @@ fn connection_pipeline(
 
                 disconnection_deadline = Instant::now() + KEEPALIVE_TIMEOUT;
             }
-            unsafe { crate::ShutdownOpenvrClient() };
 
             disconnect_notif.notify_one()
         }
@@ -1331,12 +1326,14 @@ fn connection_pipeline(
         crate::create_recording_file(server_data_lock.settings());
     }
 
-    unsafe { crate::InitializeStreaming() };
-
     server_data_lock.update_client_list(
         client_hostname.clone(),
         ClientListAction::SetConnectionState(ConnectionState::Streaming),
     );
+
+    EVENTS_QUEUE
+        .lock()
+        .push_back(ServerCoreEvent::ClientConnected);
 
     alvr_common::wait_rwlock(&disconnect_notif, &mut server_data_lock);
 
@@ -1345,8 +1342,6 @@ fn connection_pipeline(
     *HAPTICS_SENDER.lock() = None;
 
     *VIDEO_RECORDING_FILE.lock() = None;
-
-    unsafe { crate::DeinitializeStreaming() };
 
     server_data_lock.update_client_list(
         client_hostname.clone(),
@@ -1381,6 +1376,10 @@ fn connection_pipeline(
     stream_receive_thread.join().ok();
     keepalive_thread.join().ok();
     lifecycle_check_thread.join().ok();
+
+    EVENTS_QUEUE
+        .lock()
+        .push_back(ServerCoreEvent::ClientDisconnected);
 
     Ok(())
 }

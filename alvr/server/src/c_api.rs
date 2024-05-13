@@ -99,6 +99,8 @@ pub struct AlvrBatteryValue {
 
 #[repr(C)]
 pub enum AlvrEvent {
+    ClientConnected,
+    ClientDisconnected,
     Battery(AlvrBatteryValue),
     Bounds([f32; 2]),
     RestartPending,
@@ -200,6 +202,12 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
         if let Some(event) = context.poll_event() {
             match event {
+                ServerCoreEvent::ClientConnected => {
+                    *out_event = AlvrEvent::ClientConnected;
+                }
+                ServerCoreEvent::ClientDisconnected => {
+                    *out_event = AlvrEvent::ClientDisconnected;
+                }
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }

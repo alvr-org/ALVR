@@ -53,6 +53,8 @@ use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
 pub enum ServerCoreEvent {
+    ClientConnected,
+    ClientDisconnected,
     ShutdownPending,
     RestartPending,
 }

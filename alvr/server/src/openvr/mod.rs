@@ -18,13 +18,13 @@ static SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = Lazy::new(|| {
 
 pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
     thread::spawn(move || {
+        unsafe { crate::InitOpenvrClient() };
+
         if set_default_chap {
             // call this when inside a new thread. Calling this on the parent thread will crash
             // SteamVR
             unsafe {
-                crate::InitOpenvrClient();
                 crate::SetChaperoneArea(2.0, 2.0);
-                crate::ShutdownOpenvrClient();
             }
         }
 
@@ -46,6 +46,13 @@ pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
             };
 
             match event {
+                ServerCoreEvent::ClientConnected => {
+                    unsafe {
+                        crate::InitializeStreaming();
+                        crate::RequestDriverResync();
+                    };
+                }
+                ServerCoreEvent::ClientDisconnected => unsafe { crate::DeinitializeStreaming() },
                 ServerCoreEvent::ShutdownPending => {
                     SERVER_CORE_CONTEXT.lock().take();
 
@@ -60,6 +67,8 @@ pub extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 }
             }
         }
+
+        unsafe { crate::ShutdownOpenvrClient() };
     });
 }
 

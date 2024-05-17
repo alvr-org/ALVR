@@ -129,6 +129,24 @@ extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, ampl
     }
 }
 
+extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.report_composed(
+            Duration::from_nanos(timestamp_ns),
+            Duration::from_nanos(offset_ns),
+        );
+    }
+}
+
+extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.report_present(
+            Duration::from_nanos(timestamp_ns),
+            Duration::from_nanos(offset_ns),
+        );
+    }
+}
+
 extern "C" fn wait_for_vsync() {
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
     let sleep_duration = if SERVER_DATA_MANAGER
@@ -164,13 +182,15 @@ pub unsafe extern "C" fn HmdDriverFactory(
     // Make sure the context is initialized, and initialize logging
     SERVER_CORE_CONTEXT.read().as_ref();
 
-    crate::DriverReadyIdle = Some(driver_ready_idle);
     crate::GetSerialNumber = Some(get_serial_number);
     crate::SetOpenvrProps = Some(set_device_openvr_props);
     crate::RegisterButtons = Some(input_mapping::register_buttons);
+    crate::DriverReadyIdle = Some(driver_ready_idle);
     crate::HapticsSend = Some(send_haptics);
-    crate::ShutdownRuntime = Some(shutdown_driver);
+    crate::ReportComposed = Some(report_composed);
+    crate::ReportPresent = Some(report_present);
     crate::WaitForVSync = Some(wait_for_vsync);
+    crate::ShutdownRuntime = Some(shutdown_driver);
 
     crate::CppOpenvrEntryPoint(interface_name, return_code)
 }

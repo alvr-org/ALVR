@@ -169,29 +169,6 @@ extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32)
     });
 }
 
-extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
-    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-        stats.report_frame_present(
-            Duration::from_nanos(timestamp_ns),
-            Duration::from_nanos(offset_ns),
-        );
-    }
-
-    let server_data_lock = SERVER_DATA_MANAGER.read();
-    BITRATE_MANAGER
-        .lock()
-        .report_frame_present(&server_data_lock.settings().video.bitrate.adapt_to_framerate);
-}
-
-extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
-    if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-        stats.report_frame_composed(
-            Duration::from_nanos(timestamp_ns),
-            Duration::from_nanos(offset_ns),
-        );
-    }
-}
-
 extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
     let (params, stats) = {
         let server_data_lock = SERVER_DATA_MANAGER.read();
@@ -254,8 +231,6 @@ impl ServerCoreContext {
             SetVideoConfigNals = Some(set_video_config_nals);
             VideoSend = Some(connection::send_video);
             PathStringToHash = Some(c_api::alvr_path_to_id);
-            ReportPresent = Some(report_present);
-            ReportComposed = Some(report_composed);
             GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
 
             CppInit();
@@ -308,6 +283,23 @@ impl ServerCoreContext {
                 .send_header(&haptics::map_haptics(&config, haptics))
                 .ok();
         }
+    }
+
+    fn report_composed(&self, target_timestamp: Duration, offset: Duration) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_composed(target_timestamp, offset);
+        }
+    }
+
+    fn report_present(&self, target_timestamp: Duration, offset: Duration) {
+        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            stats.report_frame_present(target_timestamp, offset);
+        }
+
+        let server_data_lock = SERVER_DATA_MANAGER.read();
+        BITRATE_MANAGER
+            .lock()
+            .report_frame_present(&server_data_lock.settings().video.bitrate.adapt_to_framerate);
     }
 
     fn duration_until_next_vsync(&self) -> Option<Duration> {

@@ -1,15 +1,22 @@
 #![allow(dead_code, unused_variables)]
 
-use crate::{logging_backend, ServerCoreContext, ServerCoreEvent};
-use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, Fov, OptLazy, Pose};
+use crate::{logging_backend, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER};
+use alvr_common::{
+    log,
+    once_cell::sync::Lazy,
+    parking_lot::{Mutex, RwLock},
+    Fov, Pose,
+};
 use alvr_packets::Haptics;
 use std::{
     collections::HashMap,
-    ffi::{c_char, CStr},
+    ffi::{c_char, CStr, CString},
+    ptr,
     time::{Duration, Instant},
 };
 
-static SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = alvr_common::lazy_mut_none();
+static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
+    Lazy::new(|| RwLock::new(None));
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -116,8 +123,10 @@ pub enum AlvrEvent {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct AlvrTargetConfig {
-    target_width: u32,
-    target_height: u32,
+    game_render_width: u32,
+    game_render_height: u32,
+    stream_width: u32,
+    stream_height: u32,
 }
 
 #[repr(C)]
@@ -146,6 +155,17 @@ fn fov_to_capi(fov: &Fov) -> AlvrFov {
         up: fov.up,
         down: fov.down,
     }
+}
+
+fn string_to_c_str(buffer: *mut c_char, value: &str) -> u64 {
+    let cstring = CString::new(value).unwrap();
+    if !buffer.is_null() {
+        unsafe {
+            ptr::copy_nonoverlapping(cstring.as_ptr(), buffer, cstring.as_bytes_with_nul().len());
+        }
+    }
+
+    cstring.as_bytes_with_nul().len() as u64
 }
 
 // Get ALVR server time. The libalvr user should provide timestamps in the provided time frame of
@@ -208,25 +228,43 @@ pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_p
 }
 
 #[no_mangle]
+pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
+    string_to_c_str(
+        buffer,
+        &serde_json::to_string(&SERVER_DATA_MANAGER.read().settings()).unwrap(),
+    )
+}
+
+#[no_mangle]
 pub extern "C" fn alvr_initialize_logging() {
     logging_backend::init_logging();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_initialize(out_target_config: *mut AlvrTargetConfig) {
-    *SERVER_CORE_CONTEXT.lock() = Some(ServerCoreContext::new());
+pub unsafe extern "C" fn alvr_initialize() -> AlvrTargetConfig {
+    *SERVER_CORE_CONTEXT.write() = Some(ServerCoreContext::new());
+
+    let data_manager_lock = SERVER_DATA_MANAGER.read();
+    let restart_settings = &data_manager_lock.session().openvr_config;
+
+    AlvrTargetConfig {
+        game_render_width: restart_settings.target_eye_resolution_width,
+        game_render_height: restart_settings.target_eye_resolution_height,
+        stream_width: restart_settings.eye_resolution_width,
+        stream_height: restart_settings.eye_resolution_height,
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_start_connection() {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.start_connection();
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         if let Some(event) = context.poll_event() {
             match event {
                 ServerCoreEvent::ClientConnected => {
@@ -273,10 +311,45 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn alvr_send_haptics(
+    device_id: u64,
+    duration_s: f32,
+    frequency: f32,
+    amplitude: f32,
+) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.send_haptics(Haptics {
+            device_id,
+            duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
+            frequency,
+            amplitude,
+        });
+    }
+}
+
+extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.report_composed(
+            Duration::from_nanos(timestamp_ns),
+            Duration::from_nanos(offset_ns),
+        );
+    }
+}
+
+extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.report_present(
+            Duration::from_nanos(timestamp_ns),
+            Duration::from_nanos(offset_ns),
+        );
+    }
+}
+
 /// Retrun true if a valid value is provided
 #[no_mangle]
 pub extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         if let Some(duration) = context.duration_until_next_vsync() {
             unsafe { *out_ns = duration.as_nanos() as u64 };
             true
@@ -289,32 +362,15 @@ pub extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_send_haptics(
-    device_id: u64,
-    duration_s: f32,
-    frequency: f32,
-    amplitude: f32,
-) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
-        context.send_haptics(Haptics {
-            device_id,
-            duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
-            frequency,
-            amplitude,
-        });
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn alvr_restart() {
-    if let Some(context) = SERVER_CORE_CONTEXT.lock().take() {
+    if let Some(context) = SERVER_CORE_CONTEXT.write().take() {
         context.restart();
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_shutdown() {
-    SERVER_CORE_CONTEXT.lock().take();
+    SERVER_CORE_CONTEXT.write().take();
 }
 
 // // Device API:

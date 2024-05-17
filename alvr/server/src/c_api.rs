@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_variables)]
 
 use crate::{logging_backend, ServerCoreContext, ServerCoreEvent};
-use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
+use alvr_common::{log, once_cell::sync::Lazy, parking_lot::Mutex, Fov, OptLazy, Pose};
 use alvr_packets::Haptics;
 use std::{
     collections::HashMap,
@@ -91,18 +91,24 @@ pub struct AlvrInput {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct AlvrBatteryValue {
+pub struct AlvrBatteryInfo {
     pub device_id: u64,
     /// range [0, 1]
-    pub value: f32,
+    pub gauge_value: f32,
+    pub is_plugged: bool,
 }
 
 #[repr(C)]
 pub enum AlvrEvent {
     ClientConnected,
     ClientDisconnected,
-    Battery(AlvrBatteryValue),
-    Bounds([f32; 2]),
+    Battery(AlvrBatteryInfo),
+    PlayspaceSync([f32; 2]),
+    ViewsConfig {
+        local_view_transform: [AlvrPose; 2],
+        fov: [AlvrFov; 2],
+    },
+    RequestIDR,
     RestartPending,
     ShutdownPending,
 }
@@ -119,6 +125,27 @@ pub struct AlvrTargetConfig {
 pub struct AlvrDeviceConfig {
     device_id: u64,
     interaction_profile_id: u64,
+}
+
+fn pose_to_capi(pose: &Pose) -> AlvrPose {
+    AlvrPose {
+        orientation: AlvrQuat {
+            x: pose.orientation.x,
+            y: pose.orientation.y,
+            z: pose.orientation.z,
+            w: pose.orientation.w,
+        },
+        position: pose.position.to_array(),
+    }
+}
+
+fn fov_to_capi(fov: &Fov) -> AlvrFov {
+    AlvrFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
+    }
 }
 
 // Get ALVR server time. The libalvr user should provide timestamps in the provided time frame of
@@ -208,6 +235,27 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                 ServerCoreEvent::ClientDisconnected => {
                     *out_event = AlvrEvent::ClientDisconnected;
                 }
+                ServerCoreEvent::Battery(battery) => {
+                    *out_event = AlvrEvent::Battery(AlvrBatteryInfo {
+                        device_id: battery.device_id,
+                        gauge_value: battery.gauge_value,
+                        is_plugged: battery.is_plugged,
+                    });
+                }
+                ServerCoreEvent::PlayspaceSync(bounds) => {
+                    *out_event = AlvrEvent::PlayspaceSync(bounds.to_array())
+                }
+                ServerCoreEvent::ViewsConfig(config) => {
+                    *out_event = AlvrEvent::ViewsConfig {
+                        local_view_transform: [
+                            pose_to_capi(&config.local_view_transforms[0]),
+                            pose_to_capi(&config.local_view_transforms[1]),
+                        ],
+                        fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
+                    }
+                }
+                ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
+                ServerCoreEvent::GameRenderLatencyFeedback(_) => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;
                 }

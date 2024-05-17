@@ -28,13 +28,14 @@ use bindings::*;
 
 use alvr_common::{
     error,
+    glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    ConnectionState, LifecycleState, OptLazy, RelaxedAtomic, DEVICE_ID_TO_PATH,
+    ConnectionState, Fov, LifecycleState, OptLazy, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_packets::{ClientListAction, DecoderInitializationConfig, Haptics};
+use alvr_packets::{BatteryInfo, ClientListAction, DecoderInitializationConfig, Haptics};
 use alvr_server_io::ServerDataManager;
 use alvr_session::{CodecType, Settings};
 use bitrate::BitrateManager;
@@ -52,9 +53,21 @@ use std::{
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
+// todo: use this as the network packet
+pub struct ViewsConfig {
+    // transforms relative to the head
+    pub local_view_transforms: [Pose; 2],
+    pub fov: [Fov; 2],
+}
+
 pub enum ServerCoreEvent {
     ClientConnected,
     ClientDisconnected,
+    Battery(BatteryInfo),
+    PlayspaceSync(Vec2),
+    ViewsConfig(ViewsConfig),
+    RequestIDR,
+    GameRenderLatencyFeedback(Duration), // only used for SteamVR
     ShutdownPending,
     RestartPending,
 }

@@ -26,7 +26,7 @@ use alvr_common::{
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
 };
 use alvr_packets::{
-    BatteryPacket, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
+    BatteryInfo, ButtonEntry, ClientControlPacket, FaceData, NegotiatedStreamingConfig,
     ReservedClientControlPacket, Tracking, ViewParams, ViewsConfig,
 };
 use alvr_session::{CodecType, Settings};
@@ -166,7 +166,7 @@ impl ClientCoreContext {
     pub fn send_battery(&self, device_id: u64, gauge_value: f32, is_plugged: bool) {
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
-                .send(&ClientControlPacket::Battery(BatteryPacket {
+                .send(&ClientControlPacket::Battery(BatteryInfo {
                     device_id,
                     gauge_value,
                     is_plugged,

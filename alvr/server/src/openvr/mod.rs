@@ -1,15 +1,16 @@
 mod props;
-use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock};
+use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn};
 use alvr_packets::Haptics;
 pub use props::*;
 
 use crate::{
-    input_mapping, logging_backend, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
+    input_mapping, logging_backend, FfiFov, FfiViewsConfig, ServerCoreContext, ServerCoreEvent,
+    SERVER_DATA_MANAGER,
 };
 use std::{
     ffi::{c_char, c_void},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
@@ -34,6 +35,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
             context.start_connection();
         }
 
+        let mut last_resync = Instant::now();
         loop {
             let event = if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
                 match context.poll_event() {
@@ -55,6 +57,46 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     };
                 }
                 ServerCoreEvent::ClientDisconnected => unsafe { crate::DeinitializeStreaming() },
+                ServerCoreEvent::Battery(info) => unsafe {
+                    crate::SetBattery(info.device_id, info.gauge_value, info.is_plugged)
+                },
+                ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
+                    crate::SetChaperoneArea(bounds.x, bounds.y)
+                },
+                ServerCoreEvent::ViewsConfig(config) => unsafe {
+                    crate::SetViewsConfig(FfiViewsConfig {
+                        fov: [
+                            FfiFov {
+                                left: config.fov[0].left,
+                                right: config.fov[0].right,
+                                up: config.fov[0].up,
+                                down: config.fov[0].down,
+                            },
+                            FfiFov {
+                                left: config.fov[1].left,
+                                right: config.fov[1].right,
+                                up: config.fov[1].up,
+                                down: config.fov[1].down,
+                            },
+                        ],
+                        // todo: send full matrix to steamvr
+                        ipd_m: config.local_view_transforms[1].position.x
+                            - config.local_view_transforms[0].position.x,
+                    });
+                },
+                ServerCoreEvent::RequestIDR => unsafe { crate::RequestIDR() },
+                ServerCoreEvent::GameRenderLatencyFeedback(game_latency) => {
+                    if cfg!(target_os = "linux") && game_latency.as_secs_f32() > 0.25 {
+                        let now = Instant::now();
+                        if now.saturating_duration_since(last_resync).as_secs_f32() > 0.1 {
+                            last_resync = now;
+                            warn!("Desync detected. Attempting recovery.");
+                            unsafe {
+                                crate::RequestDriverResync();
+                            }
+                        }
+                    }
+                }
                 ServerCoreEvent::ShutdownPending => {
                     SERVER_CORE_CONTEXT.write().take();
 

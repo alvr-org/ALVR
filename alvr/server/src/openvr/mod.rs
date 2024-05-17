@@ -1,5 +1,5 @@
 mod props;
-use alvr_common::{once_cell::sync::Lazy, parking_lot::Mutex, OptLazy};
+use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock};
 use alvr_packets::Haptics;
 pub use props::*;
 
@@ -12,10 +12,10 @@ use std::{
     time::Duration,
 };
 
-static SERVER_CORE_CONTEXT: OptLazy<ServerCoreContext> = Lazy::new(|| {
+static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
     logging_backend::init_logging();
 
-    Mutex::new(Some(ServerCoreContext::new()))
+    RwLock::new(Some(ServerCoreContext::new()))
 });
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
@@ -30,16 +30,16 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
             }
         }
 
-        if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
             context.start_connection();
         }
 
         loop {
-            let event = if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+            let event = if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
                 match context.poll_event() {
                     Some(event) => event,
                     None => {
-                        thread::sleep(Duration::from_millis(100));
+                        thread::sleep(Duration::from_millis(5));
                         continue;
                     }
                 }
@@ -56,12 +56,12 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 }
                 ServerCoreEvent::ClientDisconnected => unsafe { crate::DeinitializeStreaming() },
                 ServerCoreEvent::ShutdownPending => {
-                    SERVER_CORE_CONTEXT.lock().take();
+                    SERVER_CORE_CONTEXT.write().take();
 
                     unsafe { crate::ShutdownSteamvr() };
                 }
                 ServerCoreEvent::RestartPending => {
-                    if let Some(context) = SERVER_CORE_CONTEXT.lock().take() {
+                    if let Some(context) = SERVER_CORE_CONTEXT.write().take() {
                         context.restart();
                     }
 
@@ -75,7 +75,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 }
 
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.lock() {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let haptics = Haptics {
             device_id,
             duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
@@ -88,25 +88,28 @@ extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, ampl
 }
 
 extern "C" fn wait_for_vsync() {
-    if SERVER_DATA_MANAGER
+    // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
+    let sleep_duration = if SERVER_DATA_MANAGER
         .read()
         .settings()
         .video
         .optimize_game_render_latency
     {
-        let context_lock = SERVER_CORE_CONTEXT.lock();
-
-        if let Some(wait_duration) = context_lock
+        SERVER_CORE_CONTEXT
+            .read()
             .as_ref()
             .and_then(|ctx| ctx.duration_until_next_vsync())
-        {
-            thread::sleep(wait_duration);
-        }
+    } else {
+        None
+    };
+
+    if let Some(duration) = sleep_duration {
+        thread::sleep(duration);
     }
 }
 
 pub extern "C" fn shutdown_driver() {
-    SERVER_CORE_CONTEXT.lock().take();
+    SERVER_CORE_CONTEXT.write().take();
 }
 
 /// This is the SteamVR/OpenVR entry point
@@ -117,7 +120,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
     return_code: *mut i32,
 ) -> *mut c_void {
     // Make sure the context is initialized, and initialize logging
-    SERVER_CORE_CONTEXT.lock().as_ref();
+    SERVER_CORE_CONTEXT.read().as_ref();
 
     crate::DriverReadyIdle = Some(driver_ready_idle);
     crate::GetSerialNumber = Some(get_serial_number);

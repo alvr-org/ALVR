@@ -463,7 +463,7 @@ fn connection_pipeline(
                     let (gauge_value, is_plugged) = platform::get_battery_status();
                     if let Some(sender) = &mut *ctx.control_sender.lock() {
                         sender
-                            .send(&ClientControlPacket::Battery(crate::BatteryPacket {
+                            .send(&ClientControlPacket::Battery(crate::BatteryInfo {
                                 device_id: *alvr_common::HEAD_ID,
                                 gauge_value,
                                 is_plugged,

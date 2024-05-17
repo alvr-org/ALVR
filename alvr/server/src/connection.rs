@@ -7,26 +7,26 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiFov, FfiViewsConfig, ServerCoreEvent, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE,
+    FfiBodyTracker, ServerCoreEvent, ViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE,
     LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER,
     VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, debug, error,
-    glam::{UVec2, Vec2},
+    glam::{Quat, UVec2, Vec2, Vec3},
     info,
     once_cell::sync::Lazy,
     parking_lot::{Condvar, Mutex},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, OptLazy,
+    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, OptLazy, Pose,
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
     QUEST_CONTROLLER_PROFILE_PATH,
 };
 use alvr_events::{ButtonEvent, EventType, TrackingEvent};
 use alvr_packets::{
-    ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics, Haptics,
-    NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
+    BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
+    Haptics, NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
     VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
@@ -914,7 +914,7 @@ fn connection_pipeline(
                     .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
                     .collect::<Vec<_>>();
 
-                let ffi_body_trackers: Option<Vec<crate::FfiBodyTracker>> = {
+                let ffi_body_trackers: Option<Vec<FfiBodyTracker>> = {
                     let tracking_manager_lock = tracking_manager.lock();
                     tracking::to_ffi_body_trackers(
                         &tracking.device_motions,
@@ -1011,7 +1011,6 @@ fn connection_pipeline(
     let statistics_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
         move || {
-            let mut _last_resync = Instant::now();
             while is_streaming(&client_hostname) {
                 let data = match statics_receiver.recv(STREAMING_RECV_TIMEOUT) {
                     Ok(stats) => stats,
@@ -1025,10 +1024,11 @@ fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
-                    let (network_latency, _game_latency) = stats.report_statistics(client_stats);
+                    let (network_latency, game_latency) = stats.report_statistics(client_stats);
 
-                    #[cfg(target_os = "linux")]
-                    detect_desync(&_game_latency, &mut _last_resync);
+                    EVENTS_QUEUE
+                        .lock()
+                        .push_back(ServerCoreEvent::GameRenderLatencyFeedback(game_latency));
 
                     let server_data_lock = SERVER_DATA_MANAGER.read();
                     BITRATE_MANAGER.lock().report_frame_latencies(
@@ -1119,10 +1119,14 @@ fn connection_pipeline(
                             let wh = area.x * area.y;
                             if wh.is_finite() && wh > 0.0 {
                                 info!("Received new playspace with size: {}", area);
-                                unsafe { crate::SetChaperoneArea(area.x, area.y) };
+                                EVENTS_QUEUE
+                                    .lock()
+                                    .push_back(ServerCoreEvent::PlayspaceSync(area));
                             } else {
                                 warn!("Received invalid playspace size: {}", area);
-                                unsafe { crate::SetChaperoneArea(2.0, 2.0) };
+                                EVENTS_QUEUE
+                                    .lock()
+                                    .push_back(ServerCoreEvent::PlayspaceSync(Vec2::new(2.0, 2.0)));
                             }
                         }
                     }
@@ -1133,36 +1137,40 @@ fn connection_pipeline(
                                 .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
-                        unsafe { crate::RequestIDR() }
+                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
                     }
                     ClientControlPacket::VideoErrorReport => {
                         // legacy endpoint. todo: remove
                         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                             stats.report_packet_loss();
                         }
-                        unsafe { crate::VideoErrorReportReceive() };
+                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR)
                     }
-                    ClientControlPacket::ViewsConfig(config) => unsafe {
-                        crate::SetViewsConfig(FfiViewsConfig {
-                            fov: [
-                                FfiFov {
-                                    left: config.fov[0].left,
-                                    right: config.fov[0].right,
-                                    up: config.fov[0].up,
-                                    down: config.fov[0].down,
-                                },
-                                FfiFov {
-                                    left: config.fov[1].left,
-                                    right: config.fov[1].right,
-                                    up: config.fov[1].up,
-                                    down: config.fov[1].down,
-                                },
-                            ],
-                            ipd_m: config.ipd_m,
-                        });
-                    },
-                    ClientControlPacket::Battery(packet) => unsafe {
-                        crate::SetBattery(packet.device_id, packet.gauge_value, packet.is_plugged);
+                    ClientControlPacket::ViewsConfig(config) => {
+                        EVENTS_QUEUE
+                            .lock()
+                            .push_back(ServerCoreEvent::ViewsConfig(ViewsConfig {
+                                local_view_transforms: [
+                                    Pose {
+                                        position: Vec3::new(-config.ipd_m / 2., 0., 0.),
+                                        orientation: Quat::IDENTITY,
+                                    },
+                                    Pose {
+                                        position: Vec3::new(config.ipd_m / 2., 0., 0.),
+                                        orientation: Quat::IDENTITY,
+                                    },
+                                ],
+                                fov: config.fov,
+                            }));
+                    }
+                    ClientControlPacket::Battery(packet) => {
+                        EVENTS_QUEUE
+                            .lock()
+                            .push_back(ServerCoreEvent::Battery(BatteryInfo {
+                                device_id: packet.device_id,
+                                gauge_value: packet.gauge_value,
+                                is_plugged: packet.is_plugged,
+                            }));
 
                         if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                             stats.report_battery(
@@ -1171,7 +1179,7 @@ fn connection_pipeline(
                                 packet.is_plugged,
                             );
                         }
-                    },
+                    }
                     ClientControlPacket::Buttons(entries) => {
                         {
                             let data_manager_lock = SERVER_DATA_MANAGER.read();
@@ -1404,7 +1412,7 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
             .rolling_video_files
         {
             if Instant::now() > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s) {
-                unsafe { crate::RequestIDR() };
+                EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
 
                 if is_idr {
                     crate::create_recording_file(SERVER_DATA_MANAGER.read().settings());
@@ -1445,7 +1453,7 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
                 Err(TrySendError::Full(_))
             ) {
                 STREAM_CORRUPTED.store(true, Ordering::SeqCst);
-                unsafe { crate::RequestIDR() };
+                EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
                 warn!("Dropping video packet. Reason: Can't push to network");
             }
         } else {
@@ -1459,20 +1467,6 @@ pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, i
             BITRATE_MANAGER
                 .lock()
                 .report_frame_encoded(timestamp, encoder_latency, buffer_size);
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-fn detect_desync(game_latency: &Duration, last_resync: &mut Instant) {
-    if game_latency.as_secs_f32() > 0.25 {
-        let now = Instant::now();
-        if now.saturating_duration_since(*last_resync).as_secs_f32() > 0.1 {
-            *last_resync = now;
-            warn!("Desync detected. Attempting recovery.");
-            unsafe {
-                crate::RequestDriverResync();
-            }
         }
     }
 }

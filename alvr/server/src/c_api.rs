@@ -8,6 +8,7 @@ use alvr_common::{
     Fov, Pose,
 };
 use alvr_packets::Haptics;
+use alvr_session::CodecType;
 use std::{
     collections::HashMap,
     ffi::{c_char, CStr, CString},
@@ -39,6 +40,7 @@ pub struct AlvrQuat {
     pub z: f32,
     pub w: f32,
 }
+
 impl Default for AlvrQuat {
     fn default() -> Self {
         Self {
@@ -48,6 +50,13 @@ impl Default for AlvrQuat {
             w: 1.0,
         }
     }
+}
+
+#[repr(u8)]
+pub enum AlvrCodecType {
+    H264 = 0,
+    Hevc = 1,
+    AV1 = 2,
 }
 
 #[repr(C)]
@@ -105,7 +114,7 @@ pub struct AlvrBatteryInfo {
     pub is_plugged: bool,
 }
 
-#[repr(C)]
+#[repr(u8)]
 pub enum AlvrEvent {
     ClientConnected,
     ClientDisconnected,
@@ -134,6 +143,12 @@ pub struct AlvrTargetConfig {
 pub struct AlvrDeviceConfig {
     device_id: u64,
     interaction_profile_id: u64,
+}
+
+#[repr(C)]
+pub struct AlvrDynamicEncoderParams {
+    bitrate_bps: u64,
+    framerate: f32,
 }
 
 fn pose_to_capi(pose: &Pose) -> AlvrPose {
@@ -328,7 +343,61 @@ pub extern "C" fn alvr_send_haptics(
     }
 }
 
-extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
+#[no_mangle]
+pub extern "C" fn alvr_set_video_config_nals(
+    codec: AlvrCodecType,
+    buffer_ptr: *const u8,
+    len: i32,
+) {
+    let codec = match codec {
+        AlvrCodecType::H264 => CodecType::H264,
+        AlvrCodecType::Hevc => CodecType::Hevc,
+        AlvrCodecType::AV1 => CodecType::AV1,
+    };
+
+    let mut config_buffer = vec![0; len as usize];
+
+    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.set_video_config_nals(config_buffer, codec);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_send_video_nal(
+    timestamp_ns: u64,
+    buffer_ptr: *mut u8,
+    len: i32,
+    is_idr: bool,
+) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+    }
+}
+
+// Returns true if updated
+#[no_mangle]
+pub unsafe extern "C" fn alvr_get_dynamic_encoder_params(
+    out_params: *mut AlvrDynamicEncoderParams,
+) -> bool {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        if let Some(params) = context.get_dynamic_encoder_params() {
+            (*out_params).bitrate_bps = params.bitrate_bps;
+            (*out_params).framerate = params.framerate;
+
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn alvr_report_composed(timestamp_ns: u64, offset_ns: u64) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.report_composed(
             Duration::from_nanos(timestamp_ns),
@@ -337,7 +406,8 @@ extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
     }
 }
 
-extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
+#[no_mangle]
+pub extern "C" fn alvr_report_present(timestamp_ns: u64, offset_ns: u64) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.report_present(
             Duration::from_nanos(timestamp_ns),

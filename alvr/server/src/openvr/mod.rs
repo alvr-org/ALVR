@@ -1,15 +1,16 @@
 mod props;
 use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn};
 use alvr_packets::Haptics;
+use alvr_session::CodecType;
 pub use props::*;
 
 use crate::{
-    input_mapping, logging_backend, FfiFov, FfiViewsConfig, ServerCoreContext, ServerCoreEvent,
-    SERVER_DATA_MANAGER,
+    input_mapping, logging_backend, FfiDynamicEncoderParams, FfiFov, FfiViewsConfig,
+    ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
 };
 use std::{
     ffi::{c_char, c_void},
-    thread,
+    ptr, thread,
     time::{Duration, Instant},
 };
 
@@ -129,6 +130,47 @@ extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, ampl
     }
 }
 
+extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
+    let codec = if codec == 0 {
+        CodecType::H264
+    } else if codec == 1 {
+        CodecType::Hevc
+    } else {
+        CodecType::AV1
+    };
+
+    let mut config_buffer = vec![0; len as usize];
+
+    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        context.set_video_config_nals(config_buffer, codec);
+    }
+}
+
+extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+        context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
+    }
+}
+
+extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
+    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+        if let Some(params) = context.get_dynamic_encoder_params() {
+            FfiDynamicEncoderParams {
+                updated: 1,
+                bitrate_bps: params.bitrate_bps,
+                framerate: params.framerate,
+            }
+        } else {
+            FfiDynamicEncoderParams::default()
+        }
+    } else {
+        FfiDynamicEncoderParams::default()
+    }
+}
+
 extern "C" fn report_composed(timestamp_ns: u64, offset_ns: u64) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.report_composed(
@@ -187,6 +229,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
     crate::RegisterButtons = Some(input_mapping::register_buttons);
     crate::DriverReadyIdle = Some(driver_ready_idle);
     crate::HapticsSend = Some(send_haptics);
+    crate::SetVideoConfigNals = Some(set_video_config_nals);
+    crate::VideoSend = Some(send_video);
+    crate::GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
     crate::ReportComposed = Some(report_composed);
     crate::ReportPresent = Some(report_present);
     crate::WaitForVSync = Some(wait_for_vsync);

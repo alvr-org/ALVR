@@ -8,8 +8,7 @@ use crate::{
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
     FfiBodyTracker, ServerCoreEvent, ViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE,
-    LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_MIRROR_SENDER,
-    VIDEO_RECORDING_FILE,
+    LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -39,13 +38,11 @@ use alvr_sockets::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    io::Write,
     net::IpAddr,
     process::Command,
     ptr,
     sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc::{RecvTimeoutError, SyncSender, TrySendError},
+        mpsc::{RecvTimeoutError, SyncSender},
         Arc,
     },
     thread::{self, JoinHandle},
@@ -63,11 +60,11 @@ pub struct VideoPacket {
     pub payload: Vec<u8>,
 }
 
-static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
 static CONNECTION_THREADS: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(vec![]));
-pub static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 pub static CLIENTS_TO_BE_REMOVED: Lazy<Mutex<HashSet<String>>> =
     Lazy::new(|| Mutex::new(HashSet::new()));
+pub static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
+pub static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -1390,83 +1387,4 @@ fn connection_pipeline(
         .push_back(ServerCoreEvent::ClientDisconnected);
 
     Ok(())
-}
-
-pub extern "C" fn send_video(timestamp_ns: u64, buffer_ptr: *mut u8, len: i32, is_idr: bool) {
-    // start in the corrupts state, the client didn't receive the initial IDR yet.
-    static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
-    static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
-
-    if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
-        let buffer_size = len as usize;
-
-        if is_idr {
-            STREAM_CORRUPTED.store(false, Ordering::SeqCst);
-        }
-
-        if let Switch::Enabled(config) = &SERVER_DATA_MANAGER
-            .read()
-            .settings()
-            .extra
-            .capture
-            .rolling_video_files
-        {
-            if Instant::now() > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s) {
-                EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
-
-                if is_idr {
-                    crate::create_recording_file(SERVER_DATA_MANAGER.read().settings());
-                    *LAST_IDR_INSTANT.lock() = Instant::now();
-                }
-            }
-        }
-
-        let timestamp = Duration::from_nanos(timestamp_ns);
-
-        let mut payload = vec![0; buffer_size];
-
-        // use copy_nonoverlapping (aka memcpy) to avoid freeing memory allocated by C++
-        unsafe {
-            ptr::copy_nonoverlapping(buffer_ptr, payload.as_mut_ptr(), buffer_size);
-        }
-
-        if !STREAM_CORRUPTED.load(Ordering::SeqCst)
-            || !SERVER_DATA_MANAGER
-                .read()
-                .settings()
-                .connection
-                .avoid_video_glitching
-        {
-            if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
-                sender.send(payload.clone()).ok();
-            }
-
-            if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
-                file.write_all(&payload).ok();
-            }
-
-            if matches!(
-                sender.try_send(VideoPacket {
-                    header: VideoPacketHeader { timestamp, is_idr },
-                    payload,
-                }),
-                Err(TrySendError::Full(_))
-            ) {
-                STREAM_CORRUPTED.store(true, Ordering::SeqCst);
-                EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
-                warn!("Dropping video packet. Reason: Can't push to network");
-            }
-        } else {
-            warn!("Dropping video packet. Reason: Waiting for IDR frame");
-        }
-
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
-            let encoder_latency =
-                stats.report_frame_encoded(Duration::from_nanos(timestamp_ns), buffer_size);
-
-            BITRATE_MANAGER
-                .lock()
-                .report_frame_encoded(timestamp, encoder_latency, buffer_size);
-        }
-    }
 }

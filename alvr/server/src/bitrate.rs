@@ -1,4 +1,3 @@
-use crate::FfiDynamicEncoderParams;
 use alvr_common::SlidingWindowAverage;
 use alvr_events::NominalBitrateStats;
 use alvr_session::{
@@ -10,6 +9,11 @@ use std::{
 };
 
 const UPDATE_INTERVAL: Duration = Duration::from_secs(1);
+
+pub struct DynamicEncoderParams {
+    pub bitrate_bps: u64,
+    pub framerate: f32,
+}
 
 pub struct BitrateManager {
     nominal_frame_interval: Duration,
@@ -145,7 +149,7 @@ impl BitrateManager {
     pub fn get_encoder_params(
         &mut self,
         config: &BitrateConfig,
-    ) -> (FfiDynamicEncoderParams, Option<NominalBitrateStats>) {
+    ) -> Option<(DynamicEncoderParams, NominalBitrateStats)> {
         let now = Instant::now();
 
         if self
@@ -160,14 +164,7 @@ impl BitrateManager {
             && (now < self.last_update_instant + UPDATE_INTERVAL
                 || matches!(config.mode, BitrateMode::ConstantMbps(_)))
         {
-            return (
-                FfiDynamicEncoderParams {
-                    updated: 0,
-                    bitrate_bps: 0,
-                    framerate: 0.0,
-                },
-                None,
-            );
+            return None;
         }
 
         self.last_update_instant = now;
@@ -240,13 +237,12 @@ impl BitrateManager {
             self.nominal_frame_interval
         };
 
-        (
-            FfiDynamicEncoderParams {
-                updated: 1,
+        Some((
+            DynamicEncoderParams {
                 bitrate_bps: bitrate_bps as u64,
                 framerate: 1.0 / frame_interval.as_secs_f32().min(1.0),
             },
-            Some(stats),
-        )
+            stats,
+        ))
     }
 }

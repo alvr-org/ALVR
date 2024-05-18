@@ -31,14 +31,17 @@ use alvr_common::{
     glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    ConnectionState, Fov, LifecycleState, OptLazy, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
+    settings_schema::Switch,
+    warn, ConnectionState, Fov, LifecycleState, OptLazy, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
-use alvr_packets::{BatteryInfo, ClientListAction, DecoderInitializationConfig, Haptics};
+use alvr_packets::{
+    BatteryInfo, ClientListAction, DecoderInitializationConfig, Haptics, VideoPacketHeader,
+};
 use alvr_server_io::ServerDataManager;
 use alvr_session::{CodecType, Settings};
-use bitrate::BitrateManager;
+use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
 use std::{
     collections::VecDeque,
@@ -46,12 +49,17 @@ use std::{
     ffi::CString,
     fs::File,
     io::Write,
-    ptr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::TrySendError,
+    },
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
+
+use crate::connection::{VideoPacket, VIDEO_CHANNEL_SENDER};
 
 // todo: use this as the network packet
 pub struct ViewsConfig {
@@ -142,50 +150,6 @@ pub fn notify_restart_driver() {
     }
 }
 
-extern "C" fn set_video_config_nals(buffer_ptr: *const u8, len: i32, codec: i32) {
-    let codec = if codec == 0 {
-        CodecType::H264
-    } else if codec == 1 {
-        CodecType::Hevc
-    } else {
-        CodecType::AV1
-    };
-
-    let mut config_buffer = vec![0; len as usize];
-
-    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
-
-    if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
-        sender.send(config_buffer.clone()).ok();
-    }
-
-    if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
-        file.write_all(&config_buffer).ok();
-    }
-
-    *DECODER_CONFIG.lock() = Some(DecoderInitializationConfig {
-        codec,
-        config_buffer,
-    });
-}
-
-extern "C" fn get_dynamic_encoder_params() -> FfiDynamicEncoderParams {
-    let (params, stats) = {
-        let server_data_lock = SERVER_DATA_MANAGER.read();
-        BITRATE_MANAGER
-            .lock()
-            .get_encoder_params(&server_data_lock.settings().video.bitrate)
-    };
-
-    if let Some(stats) = stats {
-        if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {
-            stats_manager.report_nominal_bitrate_stats(stats);
-        }
-    }
-
-    params
-}
-
 struct ServerCoreContext {}
 
 impl ServerCoreContext {
@@ -228,10 +192,7 @@ impl ServerCoreContext {
             LogInfo = Some(c_api::alvr_log_info);
             LogDebug = Some(c_api::alvr_log_debug);
             LogPeriodically = Some(c_api::alvr_log_periodically);
-            SetVideoConfigNals = Some(set_video_config_nals);
-            VideoSend = Some(connection::send_video);
             PathStringToHash = Some(c_api::alvr_path_to_id);
-            GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
 
             CppInit();
         }
@@ -282,6 +243,116 @@ impl ServerCoreContext {
             sender
                 .send_header(&haptics::map_haptics(&config, haptics))
                 .ok();
+        }
+    }
+
+    fn set_video_config_nals(&self, config_buffer: Vec<u8>, codec: CodecType) {
+        if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+            sender.send(config_buffer.clone()).ok();
+        }
+
+        if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+            file.write_all(&config_buffer).ok();
+        }
+
+        *DECODER_CONFIG.lock() = Some(DecoderInitializationConfig {
+            codec,
+            config_buffer,
+        });
+    }
+
+    fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
+        // start in the corrupts state, the client didn't receive the initial IDR yet.
+        static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
+        static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+
+        if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
+            let buffer_size = nal_buffer.len();
+
+            if is_idr {
+                STREAM_CORRUPTED.store(false, Ordering::SeqCst);
+            }
+
+            if let Switch::Enabled(config) = &SERVER_DATA_MANAGER
+                .read()
+                .settings()
+                .extra
+                .capture
+                .rolling_video_files
+            {
+                if Instant::now()
+                    > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s)
+                {
+                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
+
+                    if is_idr {
+                        crate::create_recording_file(SERVER_DATA_MANAGER.read().settings());
+                        *LAST_IDR_INSTANT.lock() = Instant::now();
+                    }
+                }
+            }
+
+            if !STREAM_CORRUPTED.load(Ordering::SeqCst)
+                || !SERVER_DATA_MANAGER
+                    .read()
+                    .settings()
+                    .connection
+                    .avoid_video_glitching
+            {
+                if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+                    sender.send(nal_buffer.clone()).ok();
+                }
+
+                if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+                    file.write_all(&nal_buffer).ok();
+                }
+
+                if matches!(
+                    sender.try_send(VideoPacket {
+                        header: VideoPacketHeader {
+                            timestamp: target_timestamp,
+                            is_idr
+                        },
+                        payload: nal_buffer,
+                    }),
+                    Err(TrySendError::Full(_))
+                ) {
+                    STREAM_CORRUPTED.store(true, Ordering::SeqCst);
+                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
+                    warn!("Dropping video packet. Reason: Can't push to network");
+                }
+            } else {
+                warn!("Dropping video packet. Reason: Waiting for IDR frame");
+            }
+
+            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                let encoder_latency = stats.report_frame_encoded(target_timestamp, buffer_size);
+
+                BITRATE_MANAGER.lock().report_frame_encoded(
+                    target_timestamp,
+                    encoder_latency,
+                    buffer_size,
+                );
+            }
+        }
+    }
+
+    fn get_dynamic_encoder_params(&self) -> Option<DynamicEncoderParams> {
+        let pair = {
+            let server_data_lock = SERVER_DATA_MANAGER.read();
+            BITRATE_MANAGER
+                .lock()
+                .get_encoder_params(&server_data_lock.settings().video.bitrate)
+        };
+
+        if let Some((params, stats)) = pair {
+            if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {
+                stats_manager.report_nominal_bitrate_stats(stats);
+            }
+
+            Some(params)
+        } else {
+            None
         }
     }
 

@@ -37,10 +37,11 @@ use alvr_common::{
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_packets::{
-    BatteryInfo, ClientListAction, DecoderInitializationConfig, Haptics, VideoPacketHeader,
+    BatteryInfo, ButtonEntry, ClientListAction, DecoderInitializationConfig, Haptics,
+    VideoPacketHeader,
 };
 use alvr_server_io::ServerDataManager;
-use alvr_session::{CodecType, Settings};
+use alvr_session::{CodecType, OpenvrProperty, Settings};
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
 use std::{
@@ -69,11 +70,16 @@ pub struct ViewsConfig {
 }
 
 pub enum ServerCoreEvent {
+    SetOpenvrProperty {
+        device_id: u64,
+        prop: OpenvrProperty,
+    },
     ClientConnected,
     ClientDisconnected,
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
     ViewsConfig(ViewsConfig),
+    Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
     GameRenderLatencyFeedback(Duration), // only used for SteamVR
     ShutdownPending,

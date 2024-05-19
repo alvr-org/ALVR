@@ -1,14 +1,14 @@
 use crate::{
-    bindings::FfiButtonValue, connection::CLIENTS_TO_BE_REMOVED, logging_backend::EVENTS_SENDER,
-    ServerCoreEvent, DECODER_CONFIG, EVENTS_QUEUE, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER,
-    STATISTICS_MANAGER, VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
+    connection::CLIENTS_TO_BE_REMOVED, logging_backend::EVENTS_SENDER, ServerCoreEvent,
+    DECODER_CONFIG, EVENTS_QUEUE, FILESYSTEM_LAYOUT, SERVER_DATA_MANAGER, STATISTICS_MANAGER,
+    VIDEO_MIRROR_SENDER, VIDEO_RECORDING_FILE,
 };
 use alvr_common::{
     anyhow::{self, Result},
     error, info, log, warn, ConnectionState,
 };
 use alvr_events::{ButtonEvent, EventType};
-use alvr_packets::{ButtonValue, ClientListAction, ServerRequest};
+use alvr_packets::{ButtonEntry, ClientListAction, ServerRequest};
 use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
@@ -212,25 +212,18 @@ async fn http_api(request: Request<Body>) -> Result<Response<Body>> {
             res
         }
         "/api/set-buttons" => {
-            let buttons = from_request_body::<Vec<ButtonEvent>>(request).await?;
+            let button_entries = from_request_body::<Vec<ButtonEvent>>(request)
+                .await?
+                .iter()
+                .map(|b| ButtonEntry {
+                    path_id: alvr_common::hash_string(&b.path),
+                    value: b.value,
+                })
+                .collect();
 
-            for button in buttons {
-                let value = match button.value {
-                    ButtonValue::Binary(value) => FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            binary: value.into(),
-                        },
-                    },
-
-                    ButtonValue::Scalar(value) => FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { scalar: value },
-                    },
-                };
-
-                unsafe { crate::SetButton(alvr_common::hash_string(&button.path), value) };
-            }
+            EVENTS_QUEUE
+                .lock()
+                .push_back(ServerCoreEvent::Buttons(button_entries));
 
             reply(StatusCode::OK)?
         }

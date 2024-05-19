@@ -1,6 +1,6 @@
-use crate::{bindings::FfiButtonValue, SERVER_DATA_MANAGER};
+use crate::SERVER_DATA_MANAGER;
 use alvr_common::{once_cell::sync::Lazy, settings_schema::Switch, *};
-use alvr_packets::ButtonValue;
+use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{
     AutomaticButtonMappingConfig, BinaryToScalarStates, ButtonBindingTarget, ButtonMappingType,
     ControllersEmulationMode, HysteresisThreshold, Range,
@@ -582,20 +582,23 @@ impl ButtonMappingManager {
     }
 
     // Apply any button changes that are mapped to this specific button
-    pub fn report_button(&mut self, source_id: u64, source_value: ButtonValue) {
-        if let ButtonValue::Binary(value) = source_value {
-            let val_ref = self.binary_source_states.entry(source_id).or_default();
+    pub fn map_button(&mut self, source_button: &ButtonEntry) -> Vec<ButtonEntry> {
+        if let ButtonValue::Binary(value) = source_button.value {
+            let val_ref = self
+                .binary_source_states
+                .entry(source_button.path_id)
+                .or_default();
 
-            if value != *val_ref {
-                *val_ref = value;
-            } else {
-                return;
+            if value == *val_ref {
+                return vec![];
             }
         }
 
-        if let Some(mappings) = self.mappings.get(&source_id) {
+        let mut destination_buttons = vec![];
+
+        if let Some(mappings) = self.mappings.get(&source_button.path_id) {
             'mapping: for mapping in mappings {
-                let destination_value = match (&mapping.mapping_type, source_value) {
+                let destination_value = match (&mapping.mapping_type, source_button.value) {
                     (ButtonMappingType::Passthrough, value) => value,
                     (
                         ButtonMappingType::HysteresisThreshold(threshold),
@@ -603,7 +606,7 @@ impl ButtonMappingManager {
                     ) => {
                         let state = self
                             .hysteresis_states
-                            .entry(source_id)
+                            .entry(source_button.path_id)
                             .or_default()
                             .entry(mapping.destination)
                             .or_default();
@@ -647,27 +650,19 @@ impl ButtonMappingManager {
                     }
                 }
 
-                let destination_value = match destination_value {
-                    ButtonValue::Binary(value) => FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                            binary: value.into(),
-                        },
-                    },
-
-                    ButtonValue::Scalar(value) => FfiButtonValue {
-                        type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                        __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 { scalar: value },
-                    },
-                };
-                unsafe { crate::SetButton(mapping.destination, destination_value) };
+                destination_buttons.push(ButtonEntry {
+                    path_id: mapping.destination,
+                    value: destination_value,
+                });
             }
         } else {
             let button_name = BUTTON_INFO
-                .get(&source_id)
+                .get(&source_button.path_id)
                 .map(|info| info.path)
                 .unwrap_or("Unknown");
             info!("Received button not mapped: {button_name}");
         }
+
+        destination_buttons
     }
 }

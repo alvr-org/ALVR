@@ -7,10 +7,10 @@ use alvr_common::{
     parking_lot::{Mutex, RwLock},
     Fov, Pose,
 };
-use alvr_packets::Haptics;
+use alvr_packets::{ButtonEntry, ButtonValue, Haptics};
 use alvr_session::CodecType;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     ffi::{c_char, CStr, CString},
     ptr,
     time::{Duration, Instant},
@@ -18,9 +18,10 @@ use std::{
 
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
+static BUTTONS_QUEUE: Lazy<Mutex<VecDeque<Vec<ButtonEntry>>>> =
+    Lazy::new(|| Mutex::new(VecDeque::new()));
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrFov {
     /// Negative, radians
     pub left: f32,
@@ -33,7 +34,6 @@ pub struct AlvrFov {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrQuat {
     pub x: f32,
     pub y: f32,
@@ -60,14 +60,12 @@ pub enum AlvrCodecType {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
 pub struct AlvrPose {
     orientation: AlvrQuat,
     position: [f32; 3],
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrSpaceRelation {
     pub pose: AlvrPose,
     pub linear_velocity: [f32; 3],
@@ -76,14 +74,12 @@ pub struct AlvrSpaceRelation {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrJoint {
     relation: AlvrSpaceRelation,
     radius: f32,
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrJointSet {
     values: [AlvrJoint; 26],
     global_hand_relation: AlvrSpaceRelation,
@@ -91,22 +87,19 @@ pub struct AlvrJointSet {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
-pub union AlvrInputValue {
-    pub bool_: bool,
-    pub float_: f32,
+pub union AlvrButtonValue {
+    pub scalar: bool,
+    pub float: f32,
 }
 
 // the profile is implied
 #[repr(C)]
-#[derive(Clone, Copy)]
-pub struct AlvrInput {
+pub struct AlvrButtonEntry {
     pub id: u64,
-    pub value: AlvrInputValue,
+    pub value: AlvrButtonValue,
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrBatteryInfo {
     pub device_id: u64,
     /// range [0, 1]
@@ -124,13 +117,13 @@ pub enum AlvrEvent {
         local_view_transform: [AlvrPose; 2],
         fov: [AlvrFov; 2],
     },
+    ButtonsUpdated,
     RequestIDR,
     RestartPending,
     ShutdownPending,
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrTargetConfig {
     game_render_width: u32,
     game_render_height: u32,
@@ -139,7 +132,6 @@ pub struct AlvrTargetConfig {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct AlvrDeviceConfig {
     device_id: u64,
     interaction_profile_id: u64,
@@ -282,6 +274,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         if let Some(event) = context.poll_event() {
             match event {
+                ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::ClientConnected => {
                     *out_event = AlvrEvent::ClientConnected;
                 }
@@ -307,6 +300,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                         fov: [fov_to_capi(&config.fov[0]), fov_to_capi(&config.fov[1])],
                     }
                 }
+                ServerCoreEvent::Buttons(entries) => BUTTONS_QUEUE.lock().push_back(entries),
                 ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
                 ServerCoreEvent::GameRenderLatencyFeedback(_) => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
@@ -323,6 +317,34 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
         }
     } else {
         false
+    }
+}
+
+/// Call with null out_entries to get the buffer length
+/// call with non-null out_entries to get the buttons and advanced the internal queue
+#[no_mangle]
+pub extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
+    let entries_count = BUTTONS_QUEUE.lock().front().map(|e| e.len()).unwrap_or(0) as u64;
+
+    if out_entries.is_null() {
+        return entries_count;
+    }
+
+    if let Some(button_entries) = BUTTONS_QUEUE.lock().pop_front() {
+        for (i, entry) in button_entries.into_iter().enumerate() {
+            unsafe {
+                let out_entry = &mut (*out_entries.add(i));
+                out_entry.id = entry.path_id;
+                match entry.value {
+                    ButtonValue::Binary(value) => out_entry.value.scalar = value,
+                    ButtonValue::Scalar(value) => out_entry.value.float = value,
+                }
+            }
+        }
+
+        entries_count
+    } else {
+        0
     }
 }
 

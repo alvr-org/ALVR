@@ -10,7 +10,7 @@ use alvr_common::{
     *,
 };
 
-use alvr_packets::ButtonValue;
+use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::HandGestureConfig;
 
 use crate::input_mapping::ButtonMappingManager;
@@ -573,34 +573,38 @@ pub fn trigger_hand_gesture_actions(
     device_id: u64,
     gestures: &[HandGesture],
     only_touch: bool,
-) {
+) -> Vec<ButtonEntry> {
+    let mut button_entries = vec![];
+
     for gesture in gestures {
         // Click bind
         if !only_touch {
             if let Some(click_bind) = get_click_bind_for_gesture(device_id, gesture.id) {
-                button_mapping_manager.report_button(
-                    click_bind,
-                    ButtonValue::Binary(gesture.active && gesture.clicked),
-                );
+                button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
+                    path_id: click_bind,
+                    value: ButtonValue::Binary(gesture.active && gesture.clicked),
+                }));
             }
         }
 
         // Touch bind
         if let Some(touch_bind) = get_touch_bind_for_gesture(device_id, gesture.id) {
-            button_mapping_manager.report_button(
-                touch_bind,
-                ButtonValue::Binary(gesture.active && gesture.touching),
-            );
+            button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
+                path_id: touch_bind,
+                value: ButtonValue::Binary(gesture.active && gesture.touching),
+            }));
         }
 
         // Hover bind
         if !only_touch {
             if let Some(hover_bind) = get_hover_bind_for_gesture(device_id, gesture.id) {
-                button_mapping_manager.report_button(
-                    hover_bind,
-                    ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
-                );
+                button_entries.append(&mut button_mapping_manager.map_button(&ButtonEntry {
+                    path_id: hover_bind,
+                    value: ButtonValue::Scalar(if gesture.active { gesture.value } else { 0.0 }),
+                }));
             }
         }
     }
+
+    button_entries
 }

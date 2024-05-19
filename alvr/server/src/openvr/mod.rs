@@ -1,12 +1,11 @@
 mod props;
 use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn};
-use alvr_packets::Haptics;
+use alvr_packets::{ButtonValue, Haptics};
 use alvr_session::CodecType;
-pub use props::*;
 
 use crate::{
-    input_mapping, logging_backend, FfiDynamicEncoderParams, FfiFov, FfiViewsConfig,
-    ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
+    input_mapping, logging_backend, FfiButtonValue, FfiDynamicEncoderParams, FfiFov,
+    FfiViewsConfig, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
 };
 use std::{
     ffi::{c_char, c_void},
@@ -51,6 +50,9 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
             };
 
             match event {
+                ServerCoreEvent::SetOpenvrProperty { device_id, prop } => unsafe {
+                    crate::SetOpenvrProperty(device_id, props::to_ffi_openvr_prop(prop))
+                },
                 ServerCoreEvent::ClientConnected => {
                     unsafe {
                         crate::InitializeStreaming();
@@ -85,6 +87,26 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             - config.local_view_transforms[0].position.x,
                     });
                 },
+                ServerCoreEvent::Buttons(entries) => {
+                    for entry in entries {
+                        let value = match entry.value {
+                            ButtonValue::Binary(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    binary: value.into(),
+                                },
+                            },
+
+                            ButtonValue::Scalar(value) => FfiButtonValue {
+                                type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
+                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                    scalar: value,
+                                },
+                            },
+                        };
+                        unsafe { crate::SetButton(entry.path_id, value) };
+                    }
+                }
                 ServerCoreEvent::RequestIDR => unsafe { crate::RequestIDR() },
                 ServerCoreEvent::GameRenderLatencyFeedback(game_latency) => {
                     if cfg!(target_os = "linux") && game_latency.as_secs_f32() > 0.25 {
@@ -224,8 +246,8 @@ pub unsafe extern "C" fn HmdDriverFactory(
     // Make sure the context is initialized, and initialize logging
     SERVER_CORE_CONTEXT.read().as_ref();
 
-    crate::GetSerialNumber = Some(get_serial_number);
-    crate::SetOpenvrProps = Some(set_device_openvr_props);
+    crate::GetSerialNumber = Some(props::get_serial_number);
+    crate::SetOpenvrProps = Some(props::set_device_openvr_props);
     crate::RegisterButtons = Some(input_mapping::register_buttons);
     crate::DriverReadyIdle = Some(driver_ready_idle);
     crate::HapticsSend = Some(send_haptics);

@@ -690,14 +690,12 @@ fn connection_pipeline(
 
                 #[cfg(windows)]
                 if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                    unsafe {
-                        crate::SetOpenvrProperty(
-                            *alvr_common::HEAD_ID,
-                            crate::openvr::to_ffi_openvr_prop(
-                                alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
-                            ),
-                        )
-                    }
+                    EVENTS_QUEUE
+                        .lock()
+                        .push_back(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                        })
                 } else {
                     continue;
                 };
@@ -719,14 +717,12 @@ fn connection_pipeline(
                 if let Ok(id) = AudioDevice::new_output(None, None)
                     .and_then(|d| alvr_audio::get_windows_device_id(&d))
                 {
-                    unsafe {
-                        crate::SetOpenvrProperty(
-                            *alvr_common::HEAD_ID,
-                            crate::openvr::to_ffi_openvr_prop(
-                                alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
-                            ),
-                        )
-                    }
+                    EVENTS_QUEUE
+                        .lock()
+                        .push_back(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                        })
                 }
             }
         })
@@ -744,14 +740,12 @@ fn connection_pipeline(
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            unsafe {
-                crate::SetOpenvrProperty(
-                    *alvr_common::HEAD_ID,
-                    crate::openvr::to_ffi_openvr_prop(
-                        alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
-                    ),
-                )
-            }
+            EVENTS_QUEUE
+                .lock()
+                .push_back(ServerCoreEvent::SetOpenvrProperty {
+                    device_id: *alvr_common::HEAD_ID,
+                    prop: alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
+                })
         }
 
         let client_hostname = client_hostname.clone();
@@ -906,33 +900,6 @@ fn connection_pipeline(
                     }
                 }
 
-                let ffi_motions = motions
-                    .into_iter()
-                    .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
-                    .collect::<Vec<_>>();
-
-                let ffi_body_trackers: Option<Vec<FfiBodyTracker>> = {
-                    let tracking_manager_lock = tracking_manager.lock();
-                    tracking::to_ffi_body_trackers(
-                        &tracking.device_motions,
-                        &tracking_manager_lock,
-                        track_body,
-                    )
-                };
-
-                let enable_skeleton = controllers_config
-                    .as_ref()
-                    .map(|c| c.enable_skeleton)
-                    .unwrap_or(false);
-                let ffi_left_hand_skeleton = enable_skeleton
-                    .then_some(left_hand_skeleton)
-                    .flatten()
-                    .map(tracking::to_ffi_skeleton);
-                let ffi_right_hand_skeleton = enable_skeleton
-                    .then_some(right_hand_skeleton)
-                    .flatten()
-                    .map(tracking::to_ffi_skeleton);
-
                 // Handle hand gestures
                 if let (Some(gestures_config), Some(gestures_button_mapping_manager)) = (
                     controllers_config
@@ -943,33 +910,64 @@ fn connection_pipeline(
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
                     if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                        trigger_hand_gesture_actions(
-                            gestures_button_mapping_manager,
-                            *HAND_LEFT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
-                                hand_skeleton,
-                                gestures_config,
+                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Buttons(
+                            trigger_hand_gesture_actions(
+                                gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
+                                &hand_gesture_manager_lock.get_active_gestures(
+                                    hand_skeleton,
+                                    gestures_config,
+                                    *HAND_LEFT_ID,
+                                ),
+                                gestures_config.only_touch,
                             ),
-                            gestures_config.only_touch,
-                        );
+                        ));
                     }
                     if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                        trigger_hand_gesture_actions(
-                            gestures_button_mapping_manager,
-                            *HAND_RIGHT_ID,
-                            &hand_gesture_manager_lock.get_active_gestures(
-                                hand_skeleton,
-                                gestures_config,
+                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Buttons(
+                            trigger_hand_gesture_actions(
+                                gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
+                                &hand_gesture_manager_lock.get_active_gestures(
+                                    hand_skeleton,
+                                    gestures_config,
+                                    *HAND_RIGHT_ID,
+                                ),
+                                gestures_config.only_touch,
                             ),
-                            gestures_config.only_touch,
-                        );
+                        ));
                     }
                 }
 
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
+
+                    let enable_skeleton = controllers_config
+                        .as_ref()
+                        .map(|c| c.enable_skeleton)
+                        .unwrap_or(false);
+                    let ffi_left_hand_skeleton = enable_skeleton
+                        .then_some(left_hand_skeleton)
+                        .flatten()
+                        .map(tracking::to_ffi_skeleton);
+                    let ffi_right_hand_skeleton = enable_skeleton
+                        .then_some(right_hand_skeleton)
+                        .flatten()
+                        .map(tracking::to_ffi_skeleton);
+
+                    let ffi_motions = motions
+                        .into_iter()
+                        .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
+                        .collect::<Vec<_>>();
+
+                    let ffi_body_trackers: Option<Vec<FfiBodyTracker>> = {
+                        let tracking_manager_lock = tracking_manager.lock();
+                        tracking::to_ffi_body_trackers(
+                            &tracking.device_motions,
+                            &tracking_manager_lock,
+                            track_body,
+                        )
+                    };
 
                     unsafe {
                         crate::SetTracking(
@@ -1204,8 +1202,15 @@ fn connection_pipeline(
                         }
 
                         if let Some(manager) = &mut controller_button_mapping_manager {
-                            for entry in entries {
-                                manager.report_button(entry.path_id, entry.value);
+                            let button_entries = entries
+                                .iter()
+                                .flat_map(|entry| manager.map_button(entry))
+                                .collect::<Vec<_>>();
+
+                            if !button_entries.is_empty() {
+                                EVENTS_QUEUE
+                                    .lock()
+                                    .push_back(ServerCoreEvent::Buttons(button_entries));
                             }
                         };
                     }

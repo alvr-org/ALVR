@@ -37,7 +37,7 @@ use alvr_common::{
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
 use alvr_packets::{
-    BatteryInfo, ButtonEntry, ClientListAction, DecoderInitializationConfig, Haptics,
+    BatteryInfo, ButtonEntry, ClientListAction, DecoderInitializationConfig, Haptics, Tracking,
     VideoPacketHeader,
 };
 use alvr_server_io::ServerDataManager;
@@ -79,6 +79,10 @@ pub enum ServerCoreEvent {
     Battery(BatteryInfo),
     PlayspaceSync(Vec2),
     ViewsConfig(ViewsConfig),
+    Tracking {
+        tracking: Box<Tracking>,
+        controllers_pose_time_offset: Duration,
+    },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
     GameRenderLatencyFeedback(Duration), // only used for SteamVR

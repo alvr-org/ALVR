@@ -7,8 +7,8 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    FfiBodyTracker, ServerCoreEvent, ViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE,
-    LIFECYCLE_STATE, SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE,
+    ServerCoreEvent, ViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE, LIFECYCLE_STATE,
+    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
@@ -40,7 +40,6 @@ use std::{
     collections::{HashMap, HashSet},
     net::IpAddr,
     process::Command,
-    ptr,
     sync::{
         mpsc::{RecvTimeoutError, SyncSender},
         Arc,
@@ -821,14 +820,8 @@ fn connection_pipeline(
                         .into_option()
                 };
 
-                let track_controllers = controllers_config
-                    .as_ref()
-                    .map(|c| c.tracked)
-                    .unwrap_or(false);
-
                 let motions;
-                let left_hand_skeleton;
-                let right_hand_skeleton;
+                let hand_skeletons;
                 {
                     let mut tracking_manager_lock = tracking_manager.lock();
                     let data_manager_lock = SERVER_DATA_MANAGER.read();
@@ -843,13 +836,13 @@ fn connection_pipeline(
                         ],
                     );
 
-                    left_hand_skeleton = tracking.hand_skeletons[0].map(|s| {
-                        tracking::to_openvr_hand_skeleton(headset_config, *HAND_LEFT_ID, s)
-                    });
-                    right_hand_skeleton = tracking.hand_skeletons[1].map(|s| {
-                        tracking::to_openvr_hand_skeleton(headset_config, *HAND_RIGHT_ID, s)
-                    });
-                }
+                    hand_skeletons = [
+                        tracking.hand_skeletons[0]
+                            .map(|s| tracking_manager_lock.transform_hand_skeleton(s)),
+                        tracking.hand_skeletons[1]
+                            .map(|s| tracking_manager_lock.transform_hand_skeleton(s)),
+                    ];
+                };
 
                 // Note: using the raw unrecentered head
                 let local_eye_gazes = tracking
@@ -869,7 +862,7 @@ fn connection_pipeline(
                                     Some(((*DEVICE_ID_TO_PATH.get(id)?).into(), *motion))
                                 })
                                 .collect(),
-                            hand_skeletons: [left_hand_skeleton, right_hand_skeleton],
+                            hand_skeletons: tracking.hand_skeletons,
                             eye_gazes: local_eye_gazes,
                             fb_face_expression: tracking.face_data.fb_face_expression.clone(),
                             htc_eye_expression: tracking.face_data.htc_eye_expression.clone(),
@@ -879,7 +872,7 @@ fn connection_pipeline(
                 }
 
                 if let Some(sink) = &mut face_tracking_sink {
-                    let mut face_data = tracking.face_data;
+                    let mut face_data = tracking.face_data.clone();
                     face_data.eye_gazes = local_eye_gazes;
 
                     sink.send_tracking(face_data);
@@ -942,62 +935,23 @@ fn connection_pipeline(
                 if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    let enable_skeleton = controllers_config
-                        .as_ref()
-                        .map(|c| c.enable_skeleton)
-                        .unwrap_or(false);
-                    let ffi_left_hand_skeleton = enable_skeleton
-                        .then_some(left_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
-                    let ffi_right_hand_skeleton = enable_skeleton
-                        .then_some(right_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
-
-                    let ffi_motions = motions
-                        .into_iter()
-                        .map(|(id, motion)| tracking::to_ffi_motion(id, motion))
-                        .collect::<Vec<_>>();
-
-                    let ffi_body_trackers: Option<Vec<FfiBodyTracker>> = {
-                        let tracking_manager_lock = tracking_manager.lock();
-                        tracking::to_ffi_body_trackers(
-                            &tracking.device_motions,
-                            &tracking_manager_lock,
-                            track_body,
-                        )
-                    };
-
-                    unsafe {
-                        crate::SetTracking(
-                            tracking.target_timestamp.as_nanos() as _,
-                            stats.tracker_pose_time_offset().as_secs_f32(),
-                            ffi_motions.as_ptr(),
-                            ffi_motions.len() as _,
-                            if let Some(skeleton) = &ffi_left_hand_skeleton {
-                                skeleton
+                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Tracking {
+                        tracking: Box::new(Tracking {
+                            target_timestamp: tracking.target_timestamp,
+                            device_motions: motions,
+                            hand_skeletons: if controllers_config
+                                .as_ref()
+                                .map(|c| c.enable_skeleton)
+                                .unwrap_or(false)
+                            {
+                                hand_skeletons
                             } else {
-                                ptr::null()
+                                [None, None]
                             },
-                            if let Some(skeleton) = &ffi_right_hand_skeleton {
-                                skeleton
-                            } else {
-                                ptr::null()
-                            },
-                            track_controllers.into(),
-                            if let Some(body_trackers) = &ffi_body_trackers {
-                                body_trackers.as_ptr()
-                            } else {
-                                ptr::null()
-                            },
-                            if let Some(body_trackers) = &ffi_body_trackers {
-                                body_trackers.len() as _
-                            } else {
-                                0
-                            },
-                        )
-                    };
+                            face_data: tracking.face_data,
+                        }),
+                        controllers_pose_time_offset: stats.tracker_pose_time_offset(),
+                    });
                 }
             }
         }

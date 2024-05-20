@@ -233,7 +233,7 @@ pub enum ClientControlPacket {
     ReservedBuffer(Vec<u8>),
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct FaceData {
     pub eye_gazes: [Option<Pose>; 2],
     pub fb_face_expression: Option<Vec<f32>>, // issue: Serialize does not support [f32; 63]

@@ -1,12 +1,13 @@
 mod props;
-use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn};
-use alvr_packets::{ButtonValue, Haptics};
-use alvr_session::CodecType;
+mod tracking;
 
 use crate::{
     input_mapping, logging_backend, FfiButtonValue, FfiDynamicEncoderParams, FfiFov,
     FfiViewsConfig, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
 };
+use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn, HAND_LEFT_ID, HAND_RIGHT_ID};
+use alvr_packets::{ButtonValue, Haptics};
+use alvr_session::CodecType;
 use std::{
     ffi::{c_char, c_void},
     ptr, thread,
@@ -87,6 +88,91 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             - config.local_view_transforms[0].position.x,
                     });
                 },
+                ServerCoreEvent::Tracking {
+                    tracking,
+                    controllers_pose_time_offset,
+                } => {
+                    let controllers_config;
+                    let track_body;
+                    {
+                        let data_lock = SERVER_DATA_MANAGER.read();
+                        let headset_config = &data_lock.settings().headset;
+
+                        controllers_config = headset_config.controllers.clone().into_option();
+                        track_body = headset_config.body_tracking.enabled();
+                    };
+
+                    let track_controllers = controllers_config
+                        .as_ref()
+                        .map(|c| c.tracked)
+                        .unwrap_or(false);
+
+                    let left_openvr_hand_skeleton;
+                    let right_openvr_hand_skeleton;
+                    {
+                        let data_manager_lock = SERVER_DATA_MANAGER.read();
+                        let headset_config = &data_manager_lock.settings().headset;
+
+                        left_openvr_hand_skeleton = tracking.hand_skeletons[0].map(|s| {
+                            tracking::to_openvr_hand_skeleton(headset_config, *HAND_LEFT_ID, s)
+                        });
+                        right_openvr_hand_skeleton = tracking.hand_skeletons[1].map(|s| {
+                            tracking::to_openvr_hand_skeleton(headset_config, *HAND_RIGHT_ID, s)
+                        });
+                    }
+
+                    let enable_skeleton = controllers_config
+                        .as_ref()
+                        .map(|c| c.enable_skeleton)
+                        .unwrap_or(false);
+                    let ffi_left_hand_skeleton = enable_skeleton
+                        .then_some(left_openvr_hand_skeleton)
+                        .flatten()
+                        .map(tracking::to_ffi_skeleton);
+                    let ffi_right_hand_skeleton = enable_skeleton
+                        .then_some(right_openvr_hand_skeleton)
+                        .flatten()
+                        .map(tracking::to_ffi_skeleton);
+
+                    let ffi_motions = tracking
+                        .device_motions
+                        .iter()
+                        .map(|(id, motion)| tracking::to_ffi_motion(*id, *motion))
+                        .collect::<Vec<_>>();
+
+                    let ffi_body_trackers =
+                        tracking::to_ffi_body_trackers(&tracking.device_motions, track_body);
+
+                    unsafe {
+                        crate::SetTracking(
+                            tracking.target_timestamp.as_nanos() as _,
+                            controllers_pose_time_offset.as_secs_f32(),
+                            ffi_motions.as_ptr(),
+                            ffi_motions.len() as _,
+                            if let Some(skeleton) = &ffi_left_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(skeleton) = &ffi_right_hand_skeleton {
+                                skeleton
+                            } else {
+                                ptr::null()
+                            },
+                            track_controllers.into(),
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.as_ptr()
+                            } else {
+                                ptr::null()
+                            },
+                            if let Some(body_trackers) = &ffi_body_trackers {
+                                body_trackers.len() as _
+                            } else {
+                                0
+                            },
+                        )
+                    };
+                }
                 ServerCoreEvent::Buttons(entries) => {
                     for entry in entries {
                         let value = match entry.value {

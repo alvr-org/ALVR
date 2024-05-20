@@ -54,7 +54,7 @@ pub struct GraphStatistics {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TrackingEvent {
     pub device_motions: Vec<(String, DeviceMotion)>,
-    pub hand_skeletons: [Option<[Pose; 31]>; 2],
+    pub hand_skeletons: [Option<[Pose; 26]>; 2],
     pub eye_gazes: [Option<Pose>; 2],
     pub fb_face_expression: Option<Vec<f32>>,
     pub htc_eye_expression: Option<Vec<f32>>,

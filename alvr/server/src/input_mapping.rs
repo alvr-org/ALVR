@@ -592,6 +592,9 @@ impl ButtonMappingManager {
             if value == *val_ref {
                 return vec![];
             }
+
+            // NB: Update value
+            *val_ref = value;
         }
 
         let mut destination_buttons = vec![];

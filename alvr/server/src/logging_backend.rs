@@ -7,7 +7,7 @@ use std::fs;
 use tokio::sync::broadcast;
 
 static CHANNEL_CAPACITY: usize = 256;
-pub static EVENTS_SENDER: Lazy<broadcast::Sender<Event>> =
+pub static LOGGING_EVENTS_SENDER: Lazy<broadcast::Sender<Event>> =
     Lazy::new(|| broadcast::channel(CHANNEL_CAPACITY).0);
 
 pub fn init_logging() {
@@ -30,7 +30,7 @@ pub fn init_logging() {
             };
             out.finish(format_args!("{}", serde_json::to_string(&event).unwrap()));
 
-            EVENTS_SENDER.send(event).ok();
+            LOGGING_EVENTS_SENDER.send(event).ok();
         });
 
     if cfg!(debug_assertions) {

@@ -7,25 +7,23 @@ use crate::{
     sockets::WelcomeSocket,
     statistics::StatisticsManager,
     tracking::{self, TrackingManager},
-    ServerCoreEvent, ViewsConfig, BITRATE_MANAGER, DECODER_CONFIG, EVENTS_QUEUE, LIFECYCLE_STATE,
-    SERVER_DATA_MANAGER, STATISTICS_MANAGER, VIDEO_RECORDING_FILE,
+    ConnectionContext, ServerCoreEvent, ViewsConfig, SERVER_DATA_MANAGER,
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
-    once_cell::sync::Lazy,
-    parking_lot::{Condvar, Mutex},
+    parking_lot::{Condvar, Mutex, RwLock},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, OptLazy, Pose,
+    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
     BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
     QUEST_CONTROLLER_PROFILE_PATH,
 };
 use alvr_events::{ButtonEvent, EventType, TrackingEvent};
 use alvr_packets::{
     BatteryInfo, ClientConnectionResult, ClientControlPacket, ClientListAction, ClientStatistics,
-    Haptics, NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
+    NegotiatedStreamingConfig, ReservedClientControlPacket, ServerControlPacket, Tracking,
     VideoPacketHeader, AUDIO, HAPTICS, STATISTICS, TRACKING, VIDEO,
 };
 use alvr_session::{
@@ -33,18 +31,14 @@ use alvr_session::{
     H264Profile, OpenvrConfig, SessionConfig,
 };
 use alvr_sockets::{
-    PeerType, ProtoControlSocket, StreamSender, StreamSocketBuilder, KEEPALIVE_INTERVAL,
-    KEEPALIVE_TIMEOUT,
+    PeerType, ProtoControlSocket, StreamSocketBuilder, KEEPALIVE_INTERVAL, KEEPALIVE_TIMEOUT,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     net::IpAddr,
     process::Command,
-    sync::{
-        mpsc::{RecvTimeoutError, SyncSender},
-        Arc,
-    },
-    thread::{self, JoinHandle},
+    sync::{mpsc::RecvTimeoutError, Arc},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -58,12 +52,6 @@ pub struct VideoPacket {
     pub header: VideoPacketHeader,
     pub payload: Vec<u8>,
 }
-
-static CONNECTION_THREADS: Lazy<Mutex<Vec<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(vec![]));
-pub static CLIENTS_TO_BE_REMOVED: Lazy<Mutex<HashSet<String>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
-pub static VIDEO_CHANNEL_SENDER: OptLazy<SyncSender<VideoPacket>> = alvr_common::lazy_mut_none();
-pub static HAPTICS_SENDER: OptLazy<StreamSender<Haptics>> = alvr_common::lazy_mut_none();
 
 fn align32(value: f32) -> u32 {
     ((value / 32.).floor() * 32.) as u32
@@ -234,7 +222,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
-pub fn handshake_loop() {
+pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
     let mut welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
         Err(e) => {
@@ -243,7 +231,7 @@ pub fn handshake_loop() {
         }
     };
 
-    while *LIFECYCLE_STATE.write() != LifecycleState::ShuttingDown {
+    while *lifecycle_state.read() != LifecycleState::ShuttingDown {
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
             for (hostname, connection_info) in SERVER_DATA_MANAGER
@@ -260,7 +248,12 @@ pub fn handshake_loop() {
         };
 
         if !available_manual_client_ips.is_empty()
-            && try_connect(available_manual_client_ips).is_ok()
+            && try_connect(
+                Arc::clone(&ctx),
+                Arc::clone(&lifecycle_state),
+                available_manual_client_ips,
+            )
+            .is_ok()
         {
             thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
             continue;
@@ -321,9 +314,11 @@ pub fn handshake_loop() {
                         .map(|c| c.connection_state == ConnectionState::Disconnected)
                         .unwrap_or(false)
                 {
-                    if let Err(e) =
-                        try_connect([(client_ip, client_hostname.clone())].into_iter().collect())
-                    {
+                    if let Err(e) = try_connect(
+                        Arc::clone(&ctx),
+                        Arc::clone(&lifecycle_state),
+                        [(client_ip, client_hostname.clone())].into_iter().collect(),
+                    ) {
                         error!("Could not initiate connection for {client_hostname}: {e}");
                     }
                 }
@@ -336,12 +331,16 @@ pub fn handshake_loop() {
     }
 
     // At this point, LIFECYCLE_STATE == ShuttingDown, so all threads are already terminating
-    for thread in CONNECTION_THREADS.lock().drain(..) {
+    for thread in ctx.connection_threads.lock().drain(..) {
         thread.join().ok();
     }
 }
 
-fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
+fn try_connect(
+    ctx: Arc<ConnectionContext>,
+    lifecycle_state: Arc<RwLock<LifecycleState>>,
+    mut client_ips: HashMap<IpAddr, String>,
+) -> ConResult {
     let (proto_socket, client_ip) = ProtoControlSocket::connect_to(
         Duration::from_secs(1),
         PeerType::AnyClient(client_ips.keys().cloned().collect()),
@@ -351,29 +350,40 @@ fn try_connect(mut client_ips: HashMap<IpAddr, String>) -> ConResult {
         con_bail!("unreachable");
     };
 
-    CONNECTION_THREADS.lock().push(thread::spawn(move || {
-        if let Err(e) = connection_pipeline(proto_socket, client_hostname.clone(), client_ip) {
-            error!("Handshake error for {client_hostname}: {e}");
+    ctx.connection_threads.lock().push(thread::spawn({
+        let ctx = Arc::clone(&ctx);
+        move || {
+            if let Err(e) = connection_pipeline(
+                Arc::clone(&ctx),
+                lifecycle_state,
+                proto_socket,
+                client_hostname.clone(),
+                client_ip,
+            ) {
+                error!("Handshake error for {client_hostname}: {e}");
+            }
+
+            let mut clients_to_be_removed = ctx.clients_to_be_removed.lock();
+
+            let action = if clients_to_be_removed.contains(&client_hostname) {
+                clients_to_be_removed.remove(&client_hostname);
+
+                ClientListAction::RemoveEntry
+            } else {
+                ClientListAction::SetConnectionState(ConnectionState::Disconnected)
+            };
+            SERVER_DATA_MANAGER
+                .write()
+                .update_client_list(client_hostname, action);
         }
-
-        let mut clients_to_be_removed = CLIENTS_TO_BE_REMOVED.lock();
-
-        let action = if clients_to_be_removed.contains(&client_hostname) {
-            clients_to_be_removed.remove(&client_hostname);
-
-            ClientListAction::RemoveEntry
-        } else {
-            ClientListAction::SetConnectionState(ConnectionState::Disconnected)
-        };
-        SERVER_DATA_MANAGER
-            .write()
-            .update_client_list(client_hostname, action);
     }));
 
     Ok(())
 }
 
 fn connection_pipeline(
+    ctx: Arc<ConnectionContext>,
+    lifecycle_state: Arc<RwLock<LifecycleState>>,
     mut proto_socket: ProtoControlSocket,
     client_hostname: String,
     client_ip: IpAddr,
@@ -613,7 +623,7 @@ fn connection_pipeline(
     if !matches!(signal, ClientControlPacket::StreamReady) {
         con_bail!("Got unexpected packet waiting for stream ack");
     }
-    *STATISTICS_MANAGER.lock() = Some(StatisticsManager::new(
+    *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / fps),
         if let Switch::Enabled(config) = &settings.headset.controllers {
@@ -623,7 +633,7 @@ fn connection_pipeline(
         },
     ));
 
-    *BITRATE_MANAGER.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
+    *ctx.bitrate_manager.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
     let mut stream_socket = StreamSocketBuilder::connect_to_client(
         HANDSHAKE_ACTION_TIMEOUT,
@@ -647,8 +657,8 @@ fn connection_pipeline(
 
     let (video_channel_sender, video_channel_receiver) =
         std::sync::mpsc::sync_channel(settings.connection.max_queued_server_video_frames);
-    *VIDEO_CHANNEL_SENDER.lock() = Some(video_channel_sender);
-    *HAPTICS_SENDER.lock() = Some(haptics_sender);
+    *ctx.video_channel_sender.lock() = Some(video_channel_sender);
+    *ctx.haptics_sender.lock() = Some(haptics_sender);
 
     let video_send_thread = thread::spawn({
         let client_hostname = client_hostname.clone();
@@ -672,6 +682,9 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
+        #[cfg(windows)]
+        let ctx = Arc::clone(&ctx);
+
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
             while is_streaming(&client_hostname) {
@@ -689,7 +702,7 @@ fn connection_pipeline(
 
                 #[cfg(windows)]
                 if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                    EVENTS_QUEUE
+                    ctx.events_queue
                         .lock()
                         .push_back(ServerCoreEvent::SetOpenvrProperty {
                             device_id: *alvr_common::HEAD_ID,
@@ -716,7 +729,7 @@ fn connection_pipeline(
                 if let Ok(id) = AudioDevice::new_output(None, None)
                     .and_then(|d| alvr_audio::get_windows_device_id(&d))
                 {
-                    EVENTS_QUEUE
+                    ctx.events_queue
                         .lock()
                         .push_back(ServerCoreEvent::SetOpenvrProperty {
                             device_id: *alvr_common::HEAD_ID,
@@ -739,7 +752,7 @@ fn connection_pipeline(
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            EVENTS_QUEUE
+            ctx.events_queue
                 .lock()
                 .push_back(ServerCoreEvent::SetOpenvrProperty {
                     device_id: *alvr_common::HEAD_ID,
@@ -769,6 +782,7 @@ fn connection_pipeline(
     let hand_gesture_manager = Arc::new(Mutex::new(HandGestureManager::new()));
 
     let tracking_receive_thread = thread::spawn({
+        let ctx = Arc::clone(&ctx);
         let tracking_manager = Arc::clone(&tracking_manager);
         let hand_gesture_manager = Arc::clone(&hand_gesture_manager);
 
@@ -903,7 +917,7 @@ fn connection_pipeline(
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
                     if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Buttons(
+                        ctx.events_queue.lock().push_back(ServerCoreEvent::Buttons(
                             trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
@@ -917,7 +931,7 @@ fn connection_pipeline(
                         ));
                     }
                     if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Buttons(
+                        ctx.events_queue.lock().push_back(ServerCoreEvent::Buttons(
                             trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
@@ -932,32 +946,35 @@ fn connection_pipeline(
                     }
                 }
 
-                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::Tracking {
-                        tracking: Box::new(Tracking {
-                            target_timestamp: tracking.target_timestamp,
-                            device_motions: motions,
-                            hand_skeletons: if controllers_config
-                                .as_ref()
-                                .map(|c| c.enable_skeleton)
-                                .unwrap_or(false)
-                            {
-                                hand_skeletons
-                            } else {
-                                [None, None]
-                            },
-                            face_data: tracking.face_data,
-                        }),
-                        controllers_pose_time_offset: stats.tracker_pose_time_offset(),
-                    });
+                    ctx.events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::Tracking {
+                            tracking: Box::new(Tracking {
+                                target_timestamp: tracking.target_timestamp,
+                                device_motions: motions,
+                                hand_skeletons: if controllers_config
+                                    .as_ref()
+                                    .map(|c| c.enable_skeleton)
+                                    .unwrap_or(false)
+                                {
+                                    hand_skeletons
+                                } else {
+                                    [None, None]
+                                },
+                                face_data: tracking.face_data,
+                            }),
+                            controllers_pose_time_offset: stats.tracker_pose_time_offset(),
+                        });
                 }
             }
         }
     });
 
     let statistics_thread = thread::spawn({
+        let ctx = Arc::clone(&ctx);
         let client_hostname = client_hostname.clone();
         move || {
             while is_streaming(&client_hostname) {
@@ -970,17 +987,17 @@ fn connection_pipeline(
                     return;
                 };
 
-                if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                     let timestamp = client_stats.target_timestamp;
                     let decoder_latency = client_stats.video_decode;
                     let (network_latency, game_latency) = stats.report_statistics(client_stats);
 
-                    EVENTS_QUEUE
+                    ctx.events_queue
                         .lock()
                         .push_back(ServerCoreEvent::GameRenderLatencyFeedback(game_latency));
 
                     let server_data_lock = SERVER_DATA_MANAGER.read();
-                    BITRATE_MANAGER.lock().report_frame_latencies(
+                    ctx.bitrate_manager.lock().report_frame_latencies(
                         &server_data_lock.settings().video.bitrate.mode,
                         timestamp,
                         network_latency,
@@ -1013,6 +1030,7 @@ fn connection_pipeline(
     });
 
     let control_receive_thread = thread::spawn({
+        let ctx = Arc::clone(&ctx);
         let mut controller_button_mapping_manager = server_data_lock
             .settings()
             .headset
@@ -1068,35 +1086,39 @@ fn connection_pipeline(
                             let wh = area.x * area.y;
                             if wh.is_finite() && wh > 0.0 {
                                 info!("Received new playspace with size: {}", area);
-                                EVENTS_QUEUE
+                                ctx.events_queue
                                     .lock()
                                     .push_back(ServerCoreEvent::PlayspaceSync(area));
                             } else {
                                 warn!("Received invalid playspace size: {}", area);
-                                EVENTS_QUEUE
+                                ctx.events_queue
                                     .lock()
                                     .push_back(ServerCoreEvent::PlayspaceSync(Vec2::new(2.0, 2.0)));
                             }
                         }
                     }
                     ClientControlPacket::RequestIdr => {
-                        if let Some(config) = DECODER_CONFIG.lock().clone() {
+                        if let Some(config) = ctx.decoder_config.lock().clone() {
                             control_sender
                                 .lock()
                                 .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
-                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
+                        ctx.events_queue
+                            .lock()
+                            .push_back(ServerCoreEvent::RequestIDR);
                     }
                     ClientControlPacket::VideoErrorReport => {
                         // legacy endpoint. todo: remove
-                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                             stats.report_packet_loss();
                         }
-                        EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR)
+                        ctx.events_queue
+                            .lock()
+                            .push_back(ServerCoreEvent::RequestIDR)
                     }
                     ClientControlPacket::ViewsConfig(config) => {
-                        EVENTS_QUEUE
+                        ctx.events_queue
                             .lock()
                             .push_back(ServerCoreEvent::ViewsConfig(ViewsConfig {
                                 local_view_transforms: [
@@ -1113,7 +1135,7 @@ fn connection_pipeline(
                             }));
                     }
                     ClientControlPacket::Battery(packet) => {
-                        EVENTS_QUEUE
+                        ctx.events_queue
                             .lock()
                             .push_back(ServerCoreEvent::Battery(BatteryInfo {
                                 device_id: packet.device_id,
@@ -1121,7 +1143,7 @@ fn connection_pipeline(
                                 is_plugged: packet.is_plugged,
                             }));
 
-                        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+                        if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                             stats.report_battery(
                                 packet.device_id,
                                 packet.gauge_value,
@@ -1162,7 +1184,7 @@ fn connection_pipeline(
                                 .collect::<Vec<_>>();
 
                             if !button_entries.is_empty() {
-                                EVENTS_QUEUE
+                                ctx.events_queue
                                     .lock()
                                     .push_back(ServerCoreEvent::Buttons(button_entries));
                             }
@@ -1263,7 +1285,7 @@ fn connection_pipeline(
                 .get(&client_hostname)
                 .map(|c| c.connection_state == ConnectionState::Streaming)
                 .unwrap_or(false)
-                && *LIFECYCLE_STATE.read() == LifecycleState::Resumed
+                && *lifecycle_state.read() == LifecycleState::Resumed
             {
                 thread::sleep(STREAMING_RECV_TIMEOUT);
             }
@@ -1287,7 +1309,7 @@ fn connection_pipeline(
     }
 
     if settings.extra.capture.startup_video_recording {
-        crate::create_recording_file(server_data_lock.settings());
+        crate::create_recording_file(&ctx, server_data_lock.settings());
     }
 
     server_data_lock.update_client_list(
@@ -1295,17 +1317,17 @@ fn connection_pipeline(
         ClientListAction::SetConnectionState(ConnectionState::Streaming),
     );
 
-    EVENTS_QUEUE
+    ctx.events_queue
         .lock()
         .push_back(ServerCoreEvent::ClientConnected);
 
     alvr_common::wait_rwlock(&disconnect_notif, &mut server_data_lock);
 
     // This requests shutdown from threads
-    *VIDEO_CHANNEL_SENDER.lock() = None;
-    *HAPTICS_SENDER.lock() = None;
+    *ctx.video_channel_sender.lock() = None;
+    *ctx.haptics_sender.lock() = None;
 
-    *VIDEO_RECORDING_FILE.lock() = None;
+    *ctx.video_recording_file.lock() = None;
 
     server_data_lock.update_client_list(
         client_hostname.clone(),
@@ -1341,7 +1363,7 @@ fn connection_pipeline(
     keepalive_thread.join().ok();
     lifecycle_check_thread.join().ok();
 
-    EVENTS_QUEUE
+    ctx.events_queue
         .lock()
         .push_back(ServerCoreEvent::ClientDisconnected);
 

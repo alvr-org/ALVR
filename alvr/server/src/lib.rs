@@ -24,15 +24,17 @@ mod web_server;
 mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
+use alvr_sockets::StreamSender;
 use bindings::*;
 
+use crate::connection::VideoPacket;
 use alvr_common::{
     error,
     glam::Vec2,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, ConnectionState, Fov, LifecycleState, OptLazy, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
+    warn, ConnectionState, Fov, LifecycleState, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
 use alvr_filesystem::{self as afs, Layout};
@@ -45,14 +47,15 @@ use alvr_session::{CodecType, OpenvrProperty, Settings};
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     env,
     ffi::CString,
     fs::File,
     io::Write,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::TrySendError,
+        mpsc::{SyncSender, TrySendError},
+        Arc,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -60,7 +63,14 @@ use std::{
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
-use crate::connection::{VideoPacket, VIDEO_CHANNEL_SENDER};
+static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
+    afs::filesystem_layout_from_openvr_driver_root_dir(
+        &alvr_server_io::get_driver_dir_from_registered().unwrap(),
+    )
+});
+// NB: this must remain a global because only one instance should exist at a time
+static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
+    Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
 
 // todo: use this as the network packet
 pub struct ViewsConfig {
@@ -90,31 +100,20 @@ pub enum ServerCoreEvent {
     RestartPending,
 }
 
-pub static EVENTS_QUEUE: Mutex<VecDeque<ServerCoreEvent>> = Mutex::new(VecDeque::new());
+pub struct ConnectionContext {
+    events_queue: Mutex<VecDeque<ServerCoreEvent>>,
+    statistics_manager: Mutex<Option<StatisticsManager>>,
+    bitrate_manager: Mutex<BitrateManager>,
+    decoder_config: Mutex<Option<DecoderInitializationConfig>>,
+    video_mirror_sender: Mutex<Option<broadcast::Sender<Vec<u8>>>>,
+    video_recording_file: Mutex<Option<File>>,
+    connection_threads: Mutex<Vec<JoinHandle<()>>>,
+    clients_to_be_removed: Mutex<HashSet<String>>,
+    video_channel_sender: Mutex<Option<SyncSender<VideoPacket>>>,
+    haptics_sender: Mutex<Option<StreamSender<Haptics>>>,
+}
 
-pub static LIFECYCLE_STATE: RwLock<LifecycleState> = RwLock::new(LifecycleState::StartingUp);
-pub static IS_RESTARTING: RelaxedAtomic = RelaxedAtomic::new(false);
-static CONNECTION_THREAD: RwLock<Option<JoinHandle<()>>> = RwLock::new(None);
-
-static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
-    afs::filesystem_layout_from_openvr_driver_root_dir(
-        &alvr_server_io::get_driver_dir_from_registered().unwrap(),
-    )
-});
-static SERVER_DATA_MANAGER: Lazy<RwLock<ServerDataManager>> =
-    Lazy::new(|| RwLock::new(ServerDataManager::new(&FILESYSTEM_LAYOUT.session())));
-static WEBSERVER_RUNTIME: OptLazy<Runtime> = Lazy::new(|| Mutex::new(Runtime::new().ok()));
-
-static STATISTICS_MANAGER: OptLazy<StatisticsManager> = alvr_common::lazy_mut_none();
-static BITRATE_MANAGER: Lazy<Mutex<BitrateManager>> =
-    Lazy::new(|| Mutex::new(BitrateManager::new(256, 60.0)));
-
-static VIDEO_MIRROR_SENDER: OptLazy<broadcast::Sender<Vec<u8>>> = alvr_common::lazy_mut_none();
-static VIDEO_RECORDING_FILE: OptLazy<File> = alvr_common::lazy_mut_none();
-
-static DECODER_CONFIG: OptLazy<DecoderInitializationConfig> = alvr_common::lazy_mut_none();
-
-pub fn create_recording_file(settings: &Settings) {
+pub fn create_recording_file(connection_context: &ConnectionContext, settings: &Settings) {
     let codec = settings.video.preferred_codec;
     let ext = match codec {
         CodecType::H264 => "h264",
@@ -129,11 +128,11 @@ pub fn create_recording_file(settings: &Settings) {
 
     match File::create(path) {
         Ok(mut file) => {
-            if let Some(config) = &*DECODER_CONFIG.lock() {
+            if let Some(config) = &*connection_context.decoder_config.lock() {
                 file.write_all(&config.config_buffer).ok();
             }
 
-            *VIDEO_RECORDING_FILE.lock() = Some(file);
+            *connection_context.video_recording_file.lock() = Some(file);
 
             unsafe { RequestIDR() };
         }
@@ -160,7 +159,13 @@ pub fn notify_restart_driver() {
     }
 }
 
-struct ServerCoreContext {}
+struct ServerCoreContext {
+    lifecycle_state: Arc<RwLock<LifecycleState>>,
+    is_restarting: RelaxedAtomic,
+    connection_context: Arc<ConnectionContext>,
+    connection_thread: Arc<RwLock<Option<JoinHandle<()>>>>,
+    webserver_runtime: Option<Runtime>,
+}
 
 impl ServerCoreContext {
     fn new() -> Self {
@@ -176,9 +181,24 @@ impl ServerCoreContext {
 
         SERVER_DATA_MANAGER.write().clean_client_list();
 
-        if let Some(runtime) = WEBSERVER_RUNTIME.lock().as_mut() {
-            runtime.spawn(async { alvr_common::show_err(web_server::web_server().await) });
-        }
+        let connection_context = Arc::new(ConnectionContext {
+            events_queue: Mutex::new(VecDeque::new()),
+            statistics_manager: Mutex::new(None),
+            bitrate_manager: Mutex::new(BitrateManager::new(256, 60.0)),
+            decoder_config: Mutex::new(None),
+            video_mirror_sender: Mutex::new(None),
+            video_recording_file: Mutex::new(None),
+            connection_threads: Mutex::new(Vec::new()),
+            clients_to_be_removed: Mutex::new(HashSet::new()),
+            video_channel_sender: Mutex::new(None),
+            haptics_sender: Mutex::new(None),
+        });
+
+        let webserver_runtime = Runtime::new().unwrap();
+        webserver_runtime.spawn({
+            let connection_context = Arc::clone(&connection_context);
+            async move { alvr_common::show_err(web_server::web_server(connection_context).await) }
+        });
 
         unsafe {
             g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
@@ -207,20 +227,28 @@ impl ServerCoreContext {
             CppInit();
         }
 
-        Self {}
+        Self {
+            lifecycle_state: Arc::new(RwLock::new(LifecycleState::StartingUp)),
+            is_restarting: RelaxedAtomic::new(false),
+            connection_context,
+            connection_thread: Arc::new(RwLock::new(None)),
+            webserver_runtime: Some(webserver_runtime),
+        }
     }
 
     fn start_connection(&self) {
         // Note: Idle state is not used on the server side
-        *LIFECYCLE_STATE.write() = LifecycleState::Resumed;
+        *self.lifecycle_state.write() = LifecycleState::Resumed;
 
-        thread::spawn(move || {
-            connection::handshake_loop();
-        });
+        let connection_context = Arc::clone(&self.connection_context);
+        let lifecycle_state = Arc::clone(&self.lifecycle_state);
+        *self.connection_thread.write() = Some(thread::spawn(move || {
+            connection::handshake_loop(connection_context, lifecycle_state);
+        }));
     }
 
     fn poll_event(&self) -> Option<ServerCoreEvent> {
-        EVENTS_QUEUE.lock().pop_front()
+        self.connection_context.events_queue.lock().pop_front()
     }
 
     fn send_haptics(&self, haptics: Haptics) {
@@ -247,9 +275,10 @@ impl ServerCoreContext {
                 .and_then(|c| c.haptics.as_option().cloned())
         };
 
-        if let (Some(config), Some(sender)) =
-            (haptics_config, &mut *connection::HAPTICS_SENDER.lock())
-        {
+        if let (Some(config), Some(sender)) = (
+            haptics_config,
+            &mut *self.connection_context.haptics_sender.lock(),
+        ) {
             sender
                 .send_header(&haptics::map_haptics(&config, haptics))
                 .ok();
@@ -257,15 +286,15 @@ impl ServerCoreContext {
     }
 
     fn set_video_config_nals(&self, config_buffer: Vec<u8>, codec: CodecType) {
-        if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+        if let Some(sender) = &*self.connection_context.video_mirror_sender.lock() {
             sender.send(config_buffer.clone()).ok();
         }
 
-        if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+        if let Some(file) = &mut *self.connection_context.video_recording_file.lock() {
             file.write_all(&config_buffer).ok();
         }
 
-        *DECODER_CONFIG.lock() = Some(DecoderInitializationConfig {
+        *self.connection_context.decoder_config.lock() = Some(DecoderInitializationConfig {
             codec,
             config_buffer,
         });
@@ -276,7 +305,7 @@ impl ServerCoreContext {
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
         static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 
-        if let Some(sender) = &*VIDEO_CHANNEL_SENDER.lock() {
+        if let Some(sender) = &*self.connection_context.video_channel_sender.lock() {
             let buffer_size = nal_buffer.len();
 
             if is_idr {
@@ -293,10 +322,16 @@ impl ServerCoreContext {
                 if Instant::now()
                     > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s)
                 {
-                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
+                    self.connection_context
+                        .events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::RequestIDR);
 
                     if is_idr {
-                        crate::create_recording_file(SERVER_DATA_MANAGER.read().settings());
+                        create_recording_file(
+                            &self.connection_context,
+                            SERVER_DATA_MANAGER.read().settings(),
+                        );
                         *LAST_IDR_INSTANT.lock() = Instant::now();
                     }
                 }
@@ -309,11 +344,11 @@ impl ServerCoreContext {
                     .connection
                     .avoid_video_glitching
             {
-                if let Some(sender) = &*VIDEO_MIRROR_SENDER.lock() {
+                if let Some(sender) = &*self.connection_context.video_mirror_sender.lock() {
                     sender.send(nal_buffer.clone()).ok();
                 }
 
-                if let Some(file) = &mut *VIDEO_RECORDING_FILE.lock() {
+                if let Some(file) = &mut *self.connection_context.video_recording_file.lock() {
                     file.write_all(&nal_buffer).ok();
                 }
 
@@ -328,21 +363,23 @@ impl ServerCoreContext {
                     Err(TrySendError::Full(_))
                 ) {
                     STREAM_CORRUPTED.store(true, Ordering::SeqCst);
-                    EVENTS_QUEUE.lock().push_back(ServerCoreEvent::RequestIDR);
+                    self.connection_context
+                        .events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::RequestIDR);
                     warn!("Dropping video packet. Reason: Can't push to network");
                 }
             } else {
                 warn!("Dropping video packet. Reason: Waiting for IDR frame");
             }
 
-            if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+            if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
                 let encoder_latency = stats.report_frame_encoded(target_timestamp, buffer_size);
 
-                BITRATE_MANAGER.lock().report_frame_encoded(
-                    target_timestamp,
-                    encoder_latency,
-                    buffer_size,
-                );
+                self.connection_context
+                    .bitrate_manager
+                    .lock()
+                    .report_frame_encoded(target_timestamp, encoder_latency, buffer_size);
             }
         }
     }
@@ -350,13 +387,14 @@ impl ServerCoreContext {
     fn get_dynamic_encoder_params(&self) -> Option<DynamicEncoderParams> {
         let pair = {
             let server_data_lock = SERVER_DATA_MANAGER.read();
-            BITRATE_MANAGER
+            self.connection_context
+                .bitrate_manager
                 .lock()
                 .get_encoder_params(&server_data_lock.settings().video.bitrate)
         };
 
         if let Some((params, stats)) = pair {
-            if let Some(stats_manager) = &mut *STATISTICS_MANAGER.lock() {
+            if let Some(stats_manager) = &mut *self.connection_context.statistics_manager.lock() {
                 stats_manager.report_nominal_bitrate_stats(stats);
             }
 
@@ -367,31 +405,33 @@ impl ServerCoreContext {
     }
 
     fn report_composed(&self, target_timestamp: Duration, offset: Duration) {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_frame_composed(target_timestamp, offset);
         }
     }
 
     fn report_present(&self, target_timestamp: Duration, offset: Duration) {
-        if let Some(stats) = &mut *STATISTICS_MANAGER.lock() {
+        if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_frame_present(target_timestamp, offset);
         }
 
         let server_data_lock = SERVER_DATA_MANAGER.read();
-        BITRATE_MANAGER
+        self.connection_context
+            .bitrate_manager
             .lock()
             .report_frame_present(&server_data_lock.settings().video.bitrate.adapt_to_framerate);
     }
 
     fn duration_until_next_vsync(&self) -> Option<Duration> {
-        STATISTICS_MANAGER
+        self.connection_context
+            .statistics_manager
             .lock()
             .as_mut()
             .map(|stats| stats.duration_until_next_vsync())
     }
 
     fn restart(self) {
-        IS_RESTARTING.set(true);
+        self.is_restarting.set(true);
 
         // drop is called here for self
     }
@@ -400,7 +440,7 @@ impl ServerCoreContext {
 impl Drop for ServerCoreContext {
     fn drop(&mut self) {
         // Invoke connection runtimes shutdown
-        *LIFECYCLE_STATE.write() = LifecycleState::ShuttingDown;
+        *self.lifecycle_state.write() = LifecycleState::ShuttingDown;
 
         {
             let mut data_manager_lock = SERVER_DATA_MANAGER.write();
@@ -425,7 +465,7 @@ impl Drop for ServerCoreContext {
             }
         }
 
-        if let Some(thread) = CONNECTION_THREAD.write().take() {
+        if let Some(thread) = self.connection_thread.write().take() {
             thread.join().ok();
         }
 
@@ -455,7 +495,9 @@ impl Drop for ServerCoreContext {
             thread::sleep(Duration::from_millis(100));
         }
 
-        #[cfg(target_os = "windows")]
-        WEBSERVER_RUNTIME.lock().take();
+        // Dropping the webserver runtime is bugged on linux and will prevent StemVR shutdown
+        if !cfg!(target_os = "linux") {
+            self.webserver_runtime.take();
+        }
     }
 }

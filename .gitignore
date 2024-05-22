@@ -71,3 +71,5 @@ ALVR-Launcher
 #allows adding CMake files for some IDEs to parse C++ files correctly
 CMakeLists.txt
 cmake-build-debug/
+
+*.jks

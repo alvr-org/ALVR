@@ -372,7 +372,13 @@ pub fn build_android_client(profile: Profile) {
     sh.create_dir(&build_dir).unwrap();
 
     // Create debug keystore (signing will be overwritten by CI)
-    if matches!(profile, Profile::Release | Profile::Distribution) {
+    if env::var(format!(
+        "CARGO_APK_{}_KEYSTORE",
+        profile.to_string().to_uppercase()
+    ))
+    .is_err()
+        && matches!(profile, Profile::Release | Profile::Distribution)
+    {
         let keystore_path = build_dir.join("debug.keystore");
         if !keystore_path.exists() {
             let keytool = PathBuf::from(env::var("JAVA_HOME").unwrap())

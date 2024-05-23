@@ -287,14 +287,14 @@ fn get_android_openxr_loaders() {
         command::download_and_extract_zip(url, &temp_dir).unwrap();
         fs::copy(
             temp_dir.join(source_dir).join("libopenxr_loader.so"),
-            destination_dir.join(format!("libopenxr_loader_{name}.so")),
+            destination_dir.join(format!("libopenxr_loader{name}.so")),
         )
         .unwrap();
         fs::remove_dir_all(&temp_dir).ok();
     }
 
     get_openxr_loader(
-        "generic",
+        "",
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
             "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
@@ -303,25 +303,25 @@ fn get_android_openxr_loaders() {
     );
 
     get_openxr_loader(
-        "quest",
+        "_quest",
         "https://securecdn.oculus.com/binaries/download/?id=7092833820755144", // version 60
         "OpenXR/Libs/Android/arm64-v8a/Release",
     );
 
     get_openxr_loader(
-        "pico",
+        "_pico",
         "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
         "libs/android.arm64-v8a",
     );
 
     get_openxr_loader(
-        "yvr",
+        "_yvr",
         "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
         "yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a",
     );
 
     get_openxr_loader(
-        "lynx",
+        "_lynx",
         "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
         "jni/arm64-v8a",
     );
@@ -346,9 +346,13 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add i686-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "cargo install cargo-apk cargo-ndk cbindgen")
-        .run()
-        .unwrap();
+    cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
+    cmd!(
+        sh,
+        "cargo install --git https://github.com/zarik5/cargo-apk cargo-apk"
+    )
+    .run()
+    .unwrap();
 
     get_android_openxr_loaders();
 }

@@ -122,14 +122,14 @@ pub fn entry_point() {
         | Platform::Quest2
         | Platform::Quest3
         | Platform::QuestPro
-        | Platform::QuestUnknown => "quest",
-        Platform::PicoNeo3 | Platform::Pico4 => "pico",
-        Platform::Yvr => "yvr",
-        Platform::Lynx => "lynx",
-        _ => "generic",
+        | Platform::QuestUnknown => "_quest",
+        Platform::PicoNeo3 | Platform::Pico4 => "_pico",
+        Platform::Yvr => "_yvr",
+        Platform::Lynx => "_lynx",
+        _ => "",
     };
     let xr_entry = unsafe {
-        xr::Entry::load_from(Path::new(&format!("libopenxr_loader_{loader_suffix}.so"))).unwrap()
+        xr::Entry::load_from(Path::new(&format!("libopenxr_loader{loader_suffix}.so"))).unwrap()
     };
 
     #[cfg(target_os = "android")]

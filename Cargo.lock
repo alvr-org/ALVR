@@ -407,6 +407,7 @@ name = "alvr_session"
 version = "20.8.1"
 dependencies = [
  "alvr_common",
+ "alvr_filesystem",
  "bytemuck",
  "regex",
  "serde",

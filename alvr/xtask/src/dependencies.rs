@@ -3,6 +3,14 @@ use alvr_filesystem as afs;
 use std::{fs, path::Path};
 use xshell::{cmd, Shell};
 
+pub fn update_submodules(sh: &Shell) {
+    let dir = sh.push_dir(afs::workspace_dir());
+    cmd!(sh, "git submodule update --init --recursive")
+        .run()
+        .unwrap();
+    std::mem::drop(dir);
+}
+
 pub fn choco_install(sh: &Shell, packages: &[&str]) -> Result<(), xshell::Error> {
     cmd!(
         sh,
@@ -71,6 +79,8 @@ pub fn prepare_ffmpeg_windows(deps_path: &Path) {
 pub fn prepare_windows_deps(skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
 
+    update_submodules(&sh);
+
     let deps_path = afs::deps_dir().join("windows");
     sh.remove_path(&deps_path).ok();
     sh.create_dir(&deps_path).unwrap();
@@ -96,6 +106,8 @@ pub fn prepare_windows_deps(skip_admin_priv: bool) {
 
 pub fn prepare_linux_deps(nvenc_flag: bool) {
     let sh = Shell::new().unwrap();
+
+    update_submodules(&sh);
 
     let deps_path = afs::deps_dir().join("linux");
     sh.remove_path(&deps_path).ok();
@@ -275,6 +287,12 @@ pub fn build_ffmpeg_linux(nvenc_flag: bool, deps_path: &Path) {
     cmd!(sh, "make install").run().unwrap();
 }
 
+pub fn prepare_macos_deps() {
+    let sh = Shell::new().unwrap();
+
+    update_submodules(&sh);
+}
+
 fn get_android_openxr_loaders() {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
         let sh = Shell::new().unwrap();
@@ -329,6 +347,8 @@ fn get_android_openxr_loaders() {
 
 pub fn build_android_deps(skip_admin_priv: bool) {
     let sh = Shell::new().unwrap();
+
+    update_submodules(&sh);
 
     if cfg!(windows) && !skip_admin_priv {
         choco_install(&sh, &["unzip", "llvm"]).unwrap();

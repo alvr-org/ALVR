@@ -16,12 +16,6 @@ jobs:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -29,6 +23,8 @@ jobs:
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
+
+      - run: cargo xtask prepare-deps --platform windows
 
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
@@ -38,12 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -69,12 +59,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -82,6 +66,8 @@ jobs:
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
+
+      - run: cargo xtask prepare-deps --platform macos
 
       - uses: actions-rs/clippy-check@v1
         with:
@@ -91,12 +77,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -130,31 +110,32 @@ jobs:
         # Create folder without content to make the build succeed
       - run: |
           mkdir -p deps/android_openxr/arm64-v8a
+          cargo xtask prepare-deps --platform android
 
       - name: Build client
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         working-directory: ./alvr/client_openxr
         run:
-          cargo apk build
+          cargo xtask build-client
 
   tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
       - uses: Swatinem/rust-cache@v1
 
-      - run: sudo apt update && sudo apt install libgtk-3-dev
+      - name: Build and install dependencies
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          sudo apt update
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev
+          cargo xtask prepare-deps --platform linux --no-nvidia
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -166,12 +147,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - name: submodules recursively
-        run: git submodule update --init --recursive
-
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal

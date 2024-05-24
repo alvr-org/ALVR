@@ -189,6 +189,14 @@ pub fn build_streamer(
         )
         .unwrap();
 
+        // Bring along the c++ runtime
+        command::copy_recursive(
+            &sh,
+            &afs::crate_dir("server").join("cpp/bin/windows"),
+            &build_layout.openvr_driver_lib_dir(),
+        )
+        .unwrap();
+
         // copy ffmpeg binaries
         if gpl {
             let bin_dir = &build_layout.openvr_driver_lib_dir();

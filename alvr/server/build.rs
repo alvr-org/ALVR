@@ -24,7 +24,6 @@ fn get_linux_x264_path() -> PathBuf {
 fn main() {
     let platform_name = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("cpp");
 
     let platform_subpath = match platform_name.as_str() {
         "windows" => "cpp/platform/win32",
@@ -63,9 +62,8 @@ fn main() {
     build
         .cpp(true)
         .files(source_files_paths)
-        .flag_if_supported("-isystemcpp/openvr/headers") // silences many warnings from openvr headers
         .flag_if_supported("-std=c++17")
-        .include("cpp/openvr/headers")
+        .include(alvr_filesystem::workspace_dir().join("openvr/headers"))
         .include("cpp");
 
     if platform_name == "windows" {
@@ -180,10 +178,20 @@ fn main() {
         .write_to_file(out_dir.join("bindings.rs"))
         .unwrap();
 
-    if platform_name != "macos" {
+    if platform_name == "linux" {
         println!(
             "cargo:rustc-link-search=native={}",
-            cpp_dir.join("openvr/lib").to_string_lossy()
+            alvr_filesystem::workspace_dir()
+                .join("openvr/lib/linux64")
+                .to_string_lossy()
+        );
+        println!("cargo:rustc-link-lib=openvr_api");
+    } else if platform_name == "windows" {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            alvr_filesystem::workspace_dir()
+                .join("openvr/lib/win64")
+                .to_string_lossy()
         );
         println!("cargo:rustc-link-lib=openvr_api");
     }

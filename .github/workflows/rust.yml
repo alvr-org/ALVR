@@ -24,6 +24,8 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v1
 
+      - run: cargo xtask prepare-deps --platform windows
+
       - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -64,6 +66,8 @@ jobs:
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
+
+      - run: cargo xtask prepare-deps --platform macos
 
       - uses: actions-rs/clippy-check@v1
         with:
@@ -106,13 +110,14 @@ jobs:
         # Create folder without content to make the build succeed
       - run: |
           mkdir -p deps/android_openxr/arm64-v8a
+          cargo xtask prepare-deps --platform android
 
       - name: Build client
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         working-directory: ./alvr/client_openxr
         run:
-          cargo apk build
+          cargo xtask build-client
 
   tests:
     runs-on: ubuntu-latest
@@ -124,7 +129,13 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v1
 
-      - run: sudo apt update && sudo apt install libgtk-3-dev
+      - name: Build and install dependencies
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          sudo apt update
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev
+          cargo xtask prepare-deps --platform linux --no-nvidia
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -142,6 +153,7 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt
+
       - uses: actions-rs/cargo@v1
         with:
           command: fmt

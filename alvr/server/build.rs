@@ -62,7 +62,6 @@ fn main() {
     build
         .cpp(true)
         .files(source_files_paths)
-        .flag_if_supported("-isystemcpp/openvr/headers") // silences many warnings from openvr headers
         .flag_if_supported("-std=c++17")
         .include(alvr_filesystem::workspace_dir().join("openvr/headers"))
         .include("cpp");

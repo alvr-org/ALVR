@@ -3,7 +3,7 @@ resolver = "2"
 members = ["alvr/*"]
 
 [workspace.package]
-version = "20.8.1"
+version = "20.8.2"
 edition = "2021"
 rust-version = "1.70"
 authors = ["alvr-org"]

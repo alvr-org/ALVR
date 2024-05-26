@@ -64,6 +64,10 @@ name = "android.permission.CHANGE_WIFI_MULTICAST_STATE"
 name = "android.permission.INTERNET"
 [[package.metadata.android.uses_permission]]
 name = "android.permission.RECORD_AUDIO"
+# WAKE_LOCK is needed for proper wifi locking
+# https://developer.android.com/reference/android/net/wifi/WifiManager.WifiLock
+[[package.metadata.android.uses_permission]]
+name = "android.permission.WAKE_LOCK"
 [[package.metadata.android.uses_permission]]
 name = "org.khronos.openxr.permission.OPENXR"
 [[package.metadata.android.uses_permission]]

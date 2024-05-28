@@ -10,13 +10,12 @@ license.workspace = true
 crate_type = ["cdylib"]
 
 [dependencies]
-alvr_common.workspace = true
 alvr_client_core.workspace = true
+alvr_common.workspace = true
+alvr_graphics.workspace = true
 alvr_packets.workspace = true
 alvr_session.workspace = true
 
-glow = "0.13"
-khronos-egl = { version = "6", features = ["dynamic"] }
 openxr = { git = "https://github.com/alvr-org/openxrs", rev = "f1f47ff" }
 # openxr = { path = "../../../../openxrs/openxr" }
 

@@ -6,10 +6,12 @@ use crate::{
 };
 use alvr_client_core::{ClientCoreContext, DecodedFrame, Platform};
 use alvr_common::{
+    anyhow::Result,
     error,
     glam::{UVec2, Vec2, Vec3},
     RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
 };
+use alvr_graphics::{ClientStreamRenderer, GraphicsContext, VulkanBackend};
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, ViewParams};
 use alvr_session::{
     BodyTrackingSourcesConfig, ClientsideFoveationConfig, ClientsideFoveationMode, EncoderConfig,
@@ -65,8 +67,9 @@ pub struct StreamContext {
     core_context: Arc<ClientCoreContext>,
     xr_context: XrContext,
     interaction_context: Arc<InteractionContext>,
+    renderer: ClientStreamRenderer<VulkanBackend>,
     reference_space: Arc<xr::Space>,
-    swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
+    swapchain: xr::Swapchain<xr::Vulkan>,
     view_resolution: UVec2,
     refresh_rate: f32,
     last_good_view_params: [ViewParams; 2],
@@ -77,11 +80,12 @@ pub struct StreamContext {
 impl StreamContext {
     pub fn new(
         core_ctx: Arc<ClientCoreContext>,
+        graphics_ctx: GraphicsContext<VulkanBackend>,
         xr_ctx: XrContext,
         interaction_ctx: Arc<InteractionContext>,
         platform: Platform,
         config: &StreamConfig,
-    ) -> StreamContext {
+    ) -> Result<Self> {
         if xr_ctx.instance.exts().fb_display_refresh_rate.is_some() {
             xr_ctx
                 .session
@@ -164,7 +168,8 @@ impl StreamContext {
             ),
         ];
 
-        alvr_client_core::opengl::start_stream(
+        let wgpu_swapchain = graphics_ctx.create_vulkan_swapchain_external(
+            &swapchain.enumerate_images().unwrap(),
             config.view_resolution,
             [
                 swapchains[0]
@@ -187,6 +192,13 @@ impl StreamContext {
             !config.encoder_config.enable_hdr,
             config.encoder_config.encoding_gamma,
         );
+        let renderer = ClientStreamRenderer::new(
+            graphics_ctx,
+            3,
+            wgpu_swapchain,
+            config.view_resolution,
+            platform == Platform::Lynx,
+        )?;
 
         core_ctx.send_playspace(
             xr_ctx
@@ -228,18 +240,19 @@ impl StreamContext {
             }
         });
 
-        StreamContext {
+        Ok(StreamContext {
             core_context: core_ctx,
             xr_context: xr_ctx,
             interaction_context: interaction_ctx,
+            renderer,
             reference_space,
-            swapchains,
+            swapchain,
             view_resolution: config.view_resolution,
             refresh_rate: config.refresh_rate_hint,
             last_good_view_params: [ViewParams::default(); 2],
             input_thread: Some(input_thread),
             input_thread_running,
-        }
+        })
     }
 
     pub fn update_reference_space(&mut self) {
@@ -303,23 +316,16 @@ impl StreamContext {
             buffer_ptr = std::ptr::null_mut();
         }
 
-        let left_swapchain_idx = self.swapchains[0].acquire_image().unwrap();
-        let right_swapchain_idx = self.swapchains[1].acquire_image().unwrap();
+        let swapchain_idx = self.swapchain.acquire_image().unwrap() as usize;
 
-        self.swapchains[0]
-            .wait_image(xr::Duration::INFINITE)
-            .unwrap();
-        self.swapchains[1]
-            .wait_image(xr::Duration::INFINITE)
-            .unwrap();
+        self.swapchain.wait_image(xr::Duration::INFINITE).unwrap();
 
-        alvr_client_core::opengl::render_stream(
-            buffer_ptr,
-            [left_swapchain_idx, right_swapchain_idx],
-        );
+        unsafe {
+            self.renderer
+                .render_from_android_buffer(buffer_ptr, 0, swapchain_idx)
+        };
 
-        self.swapchains[0].release_image().unwrap();
-        self.swapchains[1].release_image().unwrap();
+        self.swapchain.release_image().unwrap();
 
         if !buffer_ptr.is_null() {
             if let Some(now) = crate::xr_runtime_now(&self.xr_context.instance) {
@@ -344,7 +350,7 @@ impl StreamContext {
                     .fov(to_xr_fov(view_params[0].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
-                            .swapchain(&self.swapchains[0])
+                            .swapchain(&self.swapchain)
                             .image_array_index(0)
                             .image_rect(rect),
                     ),
@@ -353,8 +359,8 @@ impl StreamContext {
                     .fov(to_xr_fov(view_params[1].fov))
                     .sub_image(
                         xr::SwapchainSubImage::new()
-                            .swapchain(&self.swapchains[1])
-                            .image_array_index(0)
+                            .swapchain(&self.swapchain)
+                            .image_array_index(1)
                             .image_rect(rect),
                     ),
             ],

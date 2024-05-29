@@ -207,7 +207,10 @@ impl StreamContext {
 
         let input_thread_running = Arc::new(RelaxedAtomic::new(true));
 
-        let reference_space = Arc::new(interaction::get_stage_reference_space(&xr_ctx.session));
+        let reference_space = Arc::new(interaction::get_reference_space(
+            &xr_ctx.session,
+            xr::ReferenceSpaceType::STAGE,
+        ));
 
         let input_thread = thread::spawn({
             let core_ctx = Arc::clone(&core_ctx);
@@ -245,8 +248,9 @@ impl StreamContext {
     pub fn update_reference_space(&mut self) {
         self.input_thread_running.set(false);
 
-        self.reference_space = Arc::new(interaction::get_stage_reference_space(
+        self.reference_space = Arc::new(interaction::get_reference_space(
             &self.xr_context.session,
+            xr::ReferenceSpaceType::STAGE,
         ));
 
         self.core_context.send_playspace(

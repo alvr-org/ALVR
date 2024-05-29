@@ -16,7 +16,8 @@ pub struct Lobby {
 
 impl Lobby {
     pub fn new(xr_session: xr::Session<xr::OpenGlEs>, view_resolution: UVec2) -> Self {
-        let reference_space = interaction::get_stage_reference_space(&xr_session);
+        let reference_space =
+            interaction::get_reference_space(&xr_session, xr::ReferenceSpaceType::LOCAL_FLOOR_EXT);
 
         let swapchains = [
             graphics::create_swapchain(&xr_session, view_resolution, None, false),
@@ -51,7 +52,10 @@ impl Lobby {
     }
 
     pub fn update_reference_space(&mut self) {
-        self.reference_space = interaction::get_stage_reference_space(&self.xr_session);
+        self.reference_space = interaction::get_reference_space(
+            &self.xr_session,
+            xr::ReferenceSpaceType::LOCAL_FLOOR_EXT,
+        );
     }
 
     pub fn render(&mut self, predicted_display_time: xr::Time) -> CompositionLayerBuilder {

@@ -358,9 +358,12 @@ pub fn initialize_interaction(
     }
 }
 
-pub fn get_stage_reference_space(xr_session: &xr::Session<xr::OpenGlEs>) -> xr::Space {
+pub fn get_reference_space(
+    xr_session: &xr::Session<xr::OpenGlEs>,
+    ty: xr::ReferenceSpaceType,
+) -> xr::Space {
     xr_session
-        .create_reference_space(xr::ReferenceSpaceType::STAGE, xr::Posef::IDENTITY)
+        .create_reference_space(ty, xr::Posef::IDENTITY)
         .unwrap()
 }
 

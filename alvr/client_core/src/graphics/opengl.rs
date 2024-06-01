@@ -1,11 +1,13 @@
 #![allow(unused_variables)]
 
-use alvr_common::{glam::UVec2, Fov, Pose};
+use crate::RenderViewInput;
+use alvr_common::glam::UVec2;
 use alvr_session::FoveatedEncodingConfig;
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
+use khronos_egl::{self as egl, EGL1_4};
 
 #[cfg(target_os = "android")]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -14,17 +16,77 @@ const HUD_TEXTURE_WIDTH: usize = 1280;
 const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
 
-pub struct RenderViewInput {
-    pub pose: Pose,
-    pub fov: Fov,
-    pub swapchain_index: u32,
+#[allow(unused)]
+pub struct EglContext {
+    instance: egl::DynamicInstance<EGL1_4>,
+    pub display: egl::Display,
+    pub config: egl::Config,
+    pub context: egl::Context,
+    dummy_surface: egl::Surface,
 }
 
-pub fn initialize() {
+#[allow(unused_variables)]
+pub fn initialize() -> EglContext {
+    let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
+
+    let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
+
+    let version = instance.initialize(display).unwrap();
+
+    let mut configs = Vec::with_capacity(instance.get_config_count(display).unwrap());
+    instance.get_configs(display, &mut configs).unwrap();
+
+    const CONFIG_ATTRIBS: [i32; 19] = [
+        egl::RED_SIZE,
+        8,
+        egl::GREEN_SIZE,
+        8,
+        egl::BLUE_SIZE,
+        8,
+        egl::ALPHA_SIZE,
+        8,
+        egl::DEPTH_SIZE,
+        0,
+        egl::STENCIL_SIZE,
+        0,
+        egl::SAMPLES,
+        0,
+        egl::SURFACE_TYPE,
+        egl::PBUFFER_BIT,
+        egl::RENDERABLE_TYPE,
+        egl::OPENGL_ES3_BIT,
+        egl::NONE,
+    ];
+    let config = instance
+        .choose_first_config(display, &CONFIG_ATTRIBS)
+        .unwrap()
+        .unwrap();
+
+    instance.bind_api(egl::OPENGL_ES_API).unwrap();
+
+    const CONTEXT_ATTRIBS: [i32; 3] = [egl::CONTEXT_CLIENT_VERSION, 3, egl::NONE];
+    let context = instance
+        .create_context(display, config, None, &CONTEXT_ATTRIBS)
+        .unwrap();
+
+    const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
+    let dummy_surface = instance
+        .create_pbuffer_surface(display, config, &PBUFFER_ATTRIBS)
+        .unwrap();
+
+    instance
+        .make_current(
+            display,
+            Some(dummy_surface),
+            Some(dummy_surface),
+            Some(context),
+        )
+        .unwrap();
+
     #[cfg(target_os = "android")]
     unsafe {
-        pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../resources/loading.gltf");
-        pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../resources/buffer.bin");
+        pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../../resources/loading.gltf");
+        pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../../resources/buffer.bin");
 
         LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
         LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
@@ -33,6 +95,14 @@ pub fn initialize() {
 
         initGraphicsNative();
     }
+
+    EglContext {
+        instance,
+        display,
+        config,
+        context,
+        dummy_surface,
+    }
 }
 
 pub fn destroy() {
@@ -40,6 +110,36 @@ pub fn destroy() {
     unsafe {
         destroyGraphicsNative();
     }
+}
+
+pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32 {
+    // Priority-sorted list of swapchain formats we'll accept--
+    let mut app_supported_swapchain_formats = vec![
+        glow::SRGB8_ALPHA8,
+        glow::SRGB8,
+        glow::RGBA8,
+        glow::BGRA,
+        glow::RGB8,
+        glow::BGR,
+    ];
+
+    // float16 is required for HDR output. However, float16 swapchains
+    // have a high perf cost, so only use these if HDR is enabled.
+    if enable_hdr {
+        app_supported_swapchain_formats.insert(0, glow::RGB16F);
+        app_supported_swapchain_formats.insert(0, glow::RGBA16F);
+    }
+
+    if let Some(supported_formats) = formats {
+        for format in app_supported_swapchain_formats {
+            if supported_formats.contains(&format) {
+                return format;
+            }
+        }
+    }
+
+    // If we can't enumerate, default to a required format (SRGBA8)
+    glow::SRGB8_ALPHA8
 }
 
 pub fn initialize_lobby(
@@ -126,7 +226,7 @@ pub fn start_stream(
 
 pub fn update_hud_message(message: &str) {
     let ubuntu_font =
-        FontRef::try_from_slice(include_bytes!("../resources/Ubuntu-Medium.ttf")).unwrap();
+        FontRef::try_from_slice(include_bytes!("../../resources/Ubuntu-Medium.ttf")).unwrap();
 
     let section_glyphs = Layout::default()
         .h_align(HorizontalAlign::Center)

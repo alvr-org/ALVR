@@ -2,7 +2,7 @@ use crate::{
     graphics::{self, CompositionLayerBuilder},
     interaction,
 };
-use alvr_client_core::opengl::RenderViewInput;
+use alvr_client_core::RenderViewInput;
 use alvr_common::glam::UVec2;
 use openxr as xr;
 

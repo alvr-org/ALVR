@@ -1,96 +1,19 @@
+use alvr_client_core::opengl::{self, EglContext};
 use alvr_common::glam::UVec2;
-use khronos_egl::{self as egl, EGL1_4};
 use openxr as xr;
 
 #[allow(unused)]
-pub struct EglContext {
-    instance: egl::DynamicInstance<EGL1_4>,
-    display: egl::Display,
-    config: egl::Config,
-    context: egl::Context,
-    dummy_surface: egl::Surface,
-}
-
-impl EglContext {
-    pub fn session_create_info(&self) -> xr::opengles::SessionCreateInfo {
-        #[cfg(target_os = "android")]
-        {
-            xr::opengles::SessionCreateInfo::Android {
-                display: self.display.as_ptr(),
-                config: self.config.as_ptr(),
-                context: self.context.as_ptr(),
-            }
+pub fn session_create_info(egl_context: &EglContext) -> xr::opengles::SessionCreateInfo {
+    #[cfg(target_os = "android")]
+    {
+        xr::opengles::SessionCreateInfo::Android {
+            display: egl_context.display.as_ptr(),
+            config: egl_context.config.as_ptr(),
+            context: egl_context.context.as_ptr(),
         }
-        #[cfg(not(target_os = "android"))]
-        unimplemented!()
     }
-}
-
-#[allow(unused_variables)]
-pub fn init_egl() -> EglContext {
-    let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
-
-    let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
-
-    let version = instance.initialize(display).unwrap();
-
-    let mut configs = Vec::with_capacity(instance.get_config_count(display).unwrap());
-    instance.get_configs(display, &mut configs).unwrap();
-
-    const CONFIG_ATTRIBS: [i32; 19] = [
-        egl::RED_SIZE,
-        8,
-        egl::GREEN_SIZE,
-        8,
-        egl::BLUE_SIZE,
-        8,
-        egl::ALPHA_SIZE,
-        8,
-        egl::DEPTH_SIZE,
-        0,
-        egl::STENCIL_SIZE,
-        0,
-        egl::SAMPLES,
-        0,
-        egl::SURFACE_TYPE,
-        egl::PBUFFER_BIT,
-        egl::RENDERABLE_TYPE,
-        egl::OPENGL_ES3_BIT,
-        egl::NONE,
-    ];
-    let config = instance
-        .choose_first_config(display, &CONFIG_ATTRIBS)
-        .unwrap()
-        .unwrap();
-
-    instance.bind_api(egl::OPENGL_ES_API).unwrap();
-
-    const CONTEXT_ATTRIBS: [i32; 3] = [egl::CONTEXT_CLIENT_VERSION, 3, egl::NONE];
-    let context = instance
-        .create_context(display, config, None, &CONTEXT_ATTRIBS)
-        .unwrap();
-
-    const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
-    let dummy_surface = instance
-        .create_pbuffer_surface(display, config, &PBUFFER_ATTRIBS)
-        .unwrap();
-
-    instance
-        .make_current(
-            display,
-            Some(dummy_surface),
-            Some(dummy_surface),
-            Some(context),
-        )
-        .unwrap();
-
-    EglContext {
-        instance,
-        display,
-        config,
-        context,
-        dummy_surface,
-    }
+    #[cfg(not(target_os = "android"))]
+    unimplemented!()
 }
 
 pub fn create_swapchain(
@@ -99,38 +22,15 @@ pub fn create_swapchain(
     foveation: Option<&xr::FoveationProfileFB>,
     enable_hdr: bool,
 ) -> xr::Swapchain<xr::OpenGlEs> {
-    // Priority-sorted list of swapchain formats we'll accept--
-    let mut app_supported_swapchain_formats = vec![
-        glow::SRGB8_ALPHA8,
-        glow::SRGB8,
-        glow::RGBA8,
-        glow::BGRA,
-        glow::RGB8,
-        glow::BGR,
-    ];
-
-    // float16 is required for HDR output. However, float16 swapchains
-    // have a high perf cost, so only use these if HDR is enabled.
-    if enable_hdr {
-        app_supported_swapchain_formats.insert(0, glow::RGB16F);
-        app_supported_swapchain_formats.insert(0, glow::RGBA16F);
-    }
-
-    // If we can't enumerate, default to a required format (SRGBA8)
-    let mut swapchain_format = glow::SRGB8_ALPHA8;
-    if let Ok(supported_formats) = session.enumerate_swapchain_formats() {
-        for f in app_supported_swapchain_formats {
-            if supported_formats.contains(&f) {
-                swapchain_format = f;
-                break;
-            }
-        }
-    }
+    let format = opengl::choose_swapchain_format(
+        session.enumerate_swapchain_formats().ok().as_deref(),
+        enable_hdr,
+    );
 
     let swapchain_info = xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,
         usage_flags: xr::SwapchainUsageFlags::COLOR_ATTACHMENT | xr::SwapchainUsageFlags::SAMPLED,
-        format: swapchain_format,
+        format,
         sample_count: 1,
         width: resolution.x,
         height: resolution.y,

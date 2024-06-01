@@ -176,7 +176,7 @@ pub fn entry_point() {
         )
         .unwrap();
 
-    let egl_context = graphics::init_egl();
+    let egl_context = alvr_client_core::opengl::initialize();
 
     let mut last_lobby_message = String::new();
     let mut stream_config = None::<StreamConfig>;
@@ -193,7 +193,7 @@ pub fn entry_point() {
 
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) = unsafe {
             xr_instance
-                .create_session(xr_system, &egl_context.session_create_info())
+                .create_session(xr_system, &graphics::session_create_info(&egl_context))
                 .unwrap()
         };
 
@@ -237,7 +237,6 @@ pub fn entry_point() {
         };
         let core_context = Arc::new(ClientCoreContext::new(capabilities));
 
-        alvr_client_core::opengl::initialize();
         alvr_client_core::opengl::update_hud_message(&last_lobby_message);
 
         let interaction_context = Arc::new(interaction::initialize_interaction(
@@ -462,8 +461,9 @@ pub fn entry_point() {
         }
 
         alvr_client_core::opengl::pause();
-        alvr_client_core::opengl::destroy();
     }
+
+    alvr_client_core::opengl::destroy();
 }
 
 #[allow(unused)]

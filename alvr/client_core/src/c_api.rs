@@ -1,6 +1,6 @@
 use crate::{
-    opengl::{self, RenderViewInput},
-    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
+    graphics::opengl, storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
+    RenderViewInput,
 };
 use alvr_common::{
     debug, error,

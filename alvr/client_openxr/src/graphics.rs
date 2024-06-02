@@ -1,4 +1,4 @@
-use alvr_client_core::{opengl, GraphicsContext};
+use alvr_client_core::graphics::{self, GraphicsContext};
 use alvr_common::glam::UVec2;
 use openxr as xr;
 
@@ -22,7 +22,7 @@ pub fn create_swapchain(
     foveation: Option<&xr::FoveationProfileFB>,
     enable_hdr: bool,
 ) -> xr::Swapchain<xr::OpenGlEs> {
-    let format = opengl::choose_swapchain_format(
+    let format = graphics::choose_swapchain_format(
         session.enumerate_swapchain_formats().ok().as_deref(),
         enable_hdr,
     );

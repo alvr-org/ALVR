@@ -35,13 +35,13 @@ extern "C" unsigned int LOBBY_ROOM_BIN_LEN;
 
 // graphics.h
 extern "C" void initGraphicsNative();
-extern "C" void destroyGraphicsNative();
 extern "C" void prepareLobbyRoom(int viewWidth,
                                  int viewHeight,
                                  const unsigned int *swapchainTextures[2],
                                  int swapchainLength,
                                  bool enable_srgb_correction);
-extern "C" void destroyRenderers();
+extern "C" void destroyLobby();
+extern "C" void destroyStream();
 extern "C" void streamStartNative(FfiStreamConfig config);
 extern "C" void updateLobbyHudTexture(const unsigned char *data);
 extern "C" void renderLobbyNative(const FfiViewInput eyeInputs[2]);

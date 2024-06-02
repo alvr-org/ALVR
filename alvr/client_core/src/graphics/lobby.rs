@@ -1,4 +1,4 @@
-use crate::{GraphicsContext, RenderViewInput};
+use super::{GraphicsContext, RenderViewInput};
 use alvr_common::glam::UVec2;
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
@@ -31,7 +31,7 @@ impl LobbyRenderer {
                 swapchain_textures[1].as_ptr(),
             ];
 
-            crate::opengl::prepareLobbyRoom(
+            super::opengl::prepareLobbyRoom(
                 preferred_view_resolution.x as _,
                 preferred_view_resolution.y as _,
                 swapchain_textures.as_mut_ptr(),
@@ -87,7 +87,7 @@ impl LobbyRenderer {
 
         #[cfg(target_os = "android")]
         unsafe {
-            crate::opengl::updateLobbyHudTexture(buffer.as_ptr());
+            super::opengl::updateLobbyHudTexture(buffer.as_ptr());
         }
     }
 
@@ -96,7 +96,7 @@ impl LobbyRenderer {
         #[cfg(target_os = "android")]
         unsafe {
             let eye_inputs = [
-                crate::opengl::FfiViewInput {
+                super::opengl::FfiViewInput {
                     position: view_inputs[0].pose.position.to_array(),
                     orientation: view_inputs[0].pose.orientation.to_array(),
                     fovLeft: view_inputs[0].fov.left,
@@ -105,7 +105,7 @@ impl LobbyRenderer {
                     fovDown: view_inputs[0].fov.down,
                     swapchainIndex: view_inputs[0].swapchain_index as _,
                 },
-                crate::opengl::FfiViewInput {
+                super::opengl::FfiViewInput {
                     position: view_inputs[1].pose.position.to_array(),
                     orientation: view_inputs[1].pose.orientation.to_array(),
                     fovLeft: view_inputs[1].fov.left,
@@ -116,7 +116,7 @@ impl LobbyRenderer {
                 },
             ];
 
-            crate::opengl::renderLobbyNative(eye_inputs.as_ptr());
+            super::opengl::renderLobbyNative(eye_inputs.as_ptr());
         }
     }
 }
@@ -125,7 +125,7 @@ impl Drop for LobbyRenderer {
     fn drop(&mut self) {
         #[cfg(target_os = "android")]
         unsafe {
-            crate::opengl::destroyLobby();
+            super::opengl::destroyLobby();
         }
     }
 }

@@ -4,7 +4,10 @@ use crate::{
     interaction::{self, InteractionContext},
     to_xr_fov, to_xr_pose, XrContext,
 };
-use alvr_client_core::{ClientCoreContext, DecodedFrame, Platform};
+use alvr_client_core::{
+    graphics::{GraphicsContext, StreamRenderer},
+    ClientCoreContext, DecodedFrame, Platform,
+};
 use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
@@ -17,6 +20,7 @@ use alvr_session::{
 };
 use openxr as xr;
 use std::{
+    rc::Rc,
     sync::Arc,
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -72,12 +76,14 @@ pub struct StreamContext {
     last_good_view_params: [ViewParams; 2],
     input_thread: Option<JoinHandle<()>>,
     input_thread_running: Arc<RelaxedAtomic>,
+    renderer: StreamRenderer,
 }
 
 impl StreamContext {
     pub fn new(
         core_ctx: Arc<ClientCoreContext>,
         xr_ctx: XrContext,
+        gfx_ctx: Rc<GraphicsContext>,
         interaction_ctx: Arc<InteractionContext>,
         platform: Platform,
         config: &StreamConfig,
@@ -164,7 +170,8 @@ impl StreamContext {
             ),
         ];
 
-        alvr_client_core::opengl::start_stream(
+        let renderer = StreamRenderer::new(
+            gfx_ctx,
             config.view_resolution,
             [
                 swapchains[0]
@@ -242,6 +249,7 @@ impl StreamContext {
             last_good_view_params: [ViewParams::default(); 2],
             input_thread: Some(input_thread),
             input_thread_running,
+            renderer,
         }
     }
 
@@ -317,10 +325,8 @@ impl StreamContext {
             .wait_image(xr::Duration::INFINITE)
             .unwrap();
 
-        alvr_client_core::opengl::render_stream(
-            buffer_ptr,
-            [left_swapchain_idx, right_swapchain_idx],
-        );
+        self.renderer
+            .render(buffer_ptr, [left_swapchain_idx, right_swapchain_idx]);
 
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();

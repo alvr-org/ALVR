@@ -227,6 +227,7 @@ fn main() {
                 "clean" => clean(),
                 "bump" => version::bump_version(version, is_nightly),
                 "clippy" => clippy(),
+                "check-msrv" => version::check_msrv(),
                 "kill-oculus" => kill_oculus_processes(),
                 _ => {
                     println!("\nUnrecognized subcommand.");

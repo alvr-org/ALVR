@@ -1,6 +1,6 @@
 use crate::{
     graphics::{self, CompositionLayerBuilder},
-    interaction,
+    interaction, XrContext,
 };
 use alvr_client_core::RenderViewInput;
 use alvr_common::glam::UVec2;
@@ -12,16 +12,25 @@ pub struct Lobby {
     reference_space: xr::Space,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
     view_resolution: UVec2,
+    reference_space_type: xr::ReferenceSpaceType,
 }
 
 impl Lobby {
-    pub fn new(xr_session: xr::Session<xr::OpenGlEs>, view_resolution: UVec2) -> Self {
+    pub fn new(xr_ctx: &XrContext, view_resolution: UVec2) -> Self {
+        let reference_space_type = if xr_ctx.instance.exts().ext_local_floor.is_some() {
+            xr::ReferenceSpaceType::LOCAL_FLOOR_EXT
+        } else {
+            // The Quest 1 doesn't support LOCAL_FLOOR_EXT, recentering is required for AppLab, but
+            // the Quest 1 is excluded from AppLab anyway.
+            xr::ReferenceSpaceType::STAGE
+        };
+
         let reference_space =
-            interaction::get_reference_space(&xr_session, xr::ReferenceSpaceType::LOCAL_FLOOR_EXT);
+            interaction::get_reference_space(&xr_ctx.session, reference_space_type);
 
         let swapchains = [
-            graphics::create_swapchain(&xr_session, view_resolution, None, false),
-            graphics::create_swapchain(&xr_session, view_resolution, None, false),
+            graphics::create_swapchain(&xr_ctx.session, view_resolution, None, false),
+            graphics::create_swapchain(&xr_ctx.session, view_resolution, None, false),
         ];
 
         alvr_client_core::opengl::initialize_lobby(
@@ -44,18 +53,17 @@ impl Lobby {
         );
 
         Self {
-            xr_session,
+            xr_session: xr_ctx.session.clone(),
             reference_space,
             swapchains,
             view_resolution,
+            reference_space_type,
         }
     }
 
     pub fn update_reference_space(&mut self) {
-        self.reference_space = interaction::get_reference_space(
-            &self.xr_session,
-            xr::ReferenceSpaceType::LOCAL_FLOOR_EXT,
-        );
+        self.reference_space =
+            interaction::get_reference_space(&self.xr_session, self.reference_space_type);
     }
 
     pub fn render(&mut self, predicted_display_time: xr::Time) -> CompositionLayerBuilder {

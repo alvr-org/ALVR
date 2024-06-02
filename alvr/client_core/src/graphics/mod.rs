@@ -1,4 +1,7 @@
+mod lobby;
 pub mod opengl;
+
+pub use lobby::*;
 
 use alvr_common::{Fov, Pose};
 use khronos_egl::{self as egl, EGL1_4};

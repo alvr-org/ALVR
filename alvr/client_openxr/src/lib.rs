@@ -17,6 +17,7 @@ use lobby::Lobby;
 use openxr as xr;
 use std::{
     path::Path,
+    rc::Rc,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -179,7 +180,7 @@ pub fn entry_point() {
         )
         .unwrap();
 
-    let graphics_context = GraphicsContext::new();
+    let graphics_context = Rc::new(GraphicsContext::new());
 
     let mut last_lobby_message = String::new();
     let mut stream_config = None::<StreamConfig>;
@@ -240,8 +241,6 @@ pub fn entry_point() {
         };
         let core_context = Arc::new(ClientCoreContext::new(capabilities));
 
-        alvr_client_core::opengl::update_hud_message(&last_lobby_message);
-
         let interaction_context = Arc::new(interaction::initialize_interaction(
             &xr_context,
             platform,
@@ -253,7 +252,12 @@ pub fn entry_point() {
                 .and_then(|c| c.body_sources_config.clone()),
         ));
 
-        let mut lobby = Lobby::new(&xr_context, default_view_resolution);
+        let mut lobby = Lobby::new(
+            &xr_context,
+            Rc::clone(&graphics_context),
+            default_view_resolution,
+            &last_lobby_message,
+        );
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
 
@@ -326,7 +330,7 @@ pub fn entry_point() {
                 match event {
                     ClientCoreEvent::UpdateHudMessage(message) => {
                         last_lobby_message.clone_from(&message);
-                        alvr_client_core::opengl::update_hud_message(&message);
+                        lobby.update_hud_message(&message);
                     }
                     ClientCoreEvent::StreamingStarted {
                         settings,
@@ -464,7 +468,6 @@ pub fn entry_point() {
             }
         }
 
-        alvr_client_core::opengl::destroy_lobby();
         alvr_client_core::opengl::destroy_stream();
     }
 

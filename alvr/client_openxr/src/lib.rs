@@ -146,6 +146,7 @@ pub fn entry_point() {
     exts.bd_controller_interaction = available_extensions.bd_controller_interaction;
     exts.ext_eye_gaze_interaction = available_extensions.ext_eye_gaze_interaction;
     exts.ext_hand_tracking = available_extensions.ext_hand_tracking;
+    exts.ext_local_floor = available_extensions.ext_local_floor;
     exts.fb_color_space = available_extensions.fb_color_space;
     exts.fb_display_refresh_rate = available_extensions.fb_display_refresh_rate;
     exts.fb_eye_tracking_social = available_extensions.fb_eye_tracking_social;
@@ -252,7 +253,7 @@ pub fn entry_point() {
                 .and_then(|c| c.body_sources_config.clone()),
         ));
 
-        let mut lobby = Lobby::new(xr_session.clone(), default_view_resolution);
+        let mut lobby = Lobby::new(&xr_context, default_view_resolution);
         let mut session_running = false;
         let mut stream_context = None::<StreamContext>;
 

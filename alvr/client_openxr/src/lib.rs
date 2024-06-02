@@ -5,7 +5,9 @@ mod lobby;
 mod stream;
 
 use crate::stream::StreamConfig;
-use alvr_client_core::{ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform};
+use alvr_client_core::{
+    ClientCapabilities, ClientCoreContext, ClientCoreEvent, GraphicsContext, Platform,
+};
 use alvr_common::{
     error,
     glam::{Quat, UVec2, Vec3},
@@ -176,7 +178,7 @@ pub fn entry_point() {
         )
         .unwrap();
 
-    let egl_context = alvr_client_core::opengl::initialize();
+    let graphics_context = GraphicsContext::new();
 
     let mut last_lobby_message = String::new();
     let mut stream_config = None::<StreamConfig>;
@@ -193,7 +195,7 @@ pub fn entry_point() {
 
         let (xr_session, mut xr_frame_waiter, mut xr_frame_stream) = unsafe {
             xr_instance
-                .create_session(xr_system, &graphics::session_create_info(&egl_context))
+                .create_session(xr_system, &graphics::session_create_info(&graphics_context))
                 .unwrap()
         };
 
@@ -463,7 +465,7 @@ pub fn entry_point() {
         alvr_client_core::opengl::pause();
     }
 
-    alvr_client_core::opengl::destroy();
+    // grapics_context is dropped here
 }
 
 #[allow(unused)]

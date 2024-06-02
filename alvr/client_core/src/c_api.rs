@@ -1,6 +1,6 @@
 use crate::{
     graphics::opengl, storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
-    GraphicsContext, RenderViewInput,
+    GraphicsContext, LobbyRenderer, RenderViewInput,
 };
 use alvr_common::{
     debug, error,
@@ -16,7 +16,9 @@ use std::{
     cell::RefCell,
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
-    ptr, slice,
+    ptr,
+    rc::Rc,
+    slice,
     time::{Duration, Instant},
 };
 
@@ -667,7 +669,8 @@ pub unsafe extern "C" fn alvr_get_frame(
 // OpenGL-related interface
 
 thread_local! {
-    static GRAPHICS_CONTEXT: RefCell<Option<GraphicsContext>> = const { RefCell::new(None) };
+    static GRAPHICS_CONTEXT: RefCell<Option<Rc<GraphicsContext>>> = const { RefCell::new(None) };
+    static LOBBY_RENDERER: RefCell<Option<LobbyRenderer>> = const { RefCell::new(None) };
 }
 
 #[repr(C)]
@@ -694,7 +697,7 @@ pub struct AlvrStreamConfig {
 
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
-    GRAPHICS_CONTEXT.set(Some(GraphicsContext::new()));
+    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new())));
 }
 
 #[no_mangle]
@@ -731,22 +734,28 @@ pub unsafe extern "C" fn alvr_resume_opengl(
     swapchain_length: u32,
     enable_srgb_correction: bool,
 ) {
-    opengl::initialize_lobby(
+    LOBBY_RENDERER.set(Some(LobbyRenderer::new(
+        GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         UVec2::new(preferred_view_width, preferred_view_height),
         convert_swapchain_array(swapchain_textures, swapchain_length),
         enable_srgb_correction,
-    );
+        "",
+    )));
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_pause_opengl() {
     opengl::destroy_stream();
-    opengl::destroy_lobby();
+    LOBBY_RENDERER.set(None)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_update_hud_message_opengl(message: *const c_char) {
-    opengl::update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+    LOBBY_RENDERER.with_borrow(|renderer| {
+        if let Some(renderer) = renderer {
+            renderer.update_hud_message(CStr::from_ptr(message).to_str().unwrap());
+        }
+    });
 }
 
 #[no_mangle]
@@ -789,7 +798,11 @@ pub unsafe extern "C" fn alvr_render_lobby_opengl(view_inputs: *const AlvrViewIn
         },
     ];
 
-    opengl::render_lobby(view_inputs);
+    LOBBY_RENDERER.with_borrow(|renderer| {
+        if let Some(renderer) = renderer {
+            renderer.render(view_inputs);
+        }
+    });
 }
 
 #[no_mangle]

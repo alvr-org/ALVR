@@ -68,10 +68,17 @@ pub fn initialize_lobby(
     }
 }
 
-pub fn pause() {
+pub fn destroy_lobby() {
     #[cfg(target_os = "android")]
     unsafe {
-        destroyRenderers();
+        destroyLobby();
+    }
+}
+
+pub fn destroy_stream() {
+    #[cfg(target_os = "android")]
+    unsafe {
+        destroyStream();
     }
 }
 

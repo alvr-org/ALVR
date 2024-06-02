@@ -588,13 +588,17 @@ void ovrRenderer_Create(ovrRenderer *renderer,
         renderer->enableFFE = ffrData.enabled;
         if (renderer->enableFFE) {
             FoveationVars fv = CalculateFoveationVars(ffrData);
-            renderer->srgbCorrectionPass->Initialize(
-                fv.optimizedEyeWidth, fv.optimizedEyeHeight, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
+            renderer->srgbCorrectionPass->Initialize(fv.optimizedEyeWidth,
+                                                     fv.optimizedEyeHeight,
+                                                     !enableSrgbCorrection,
+                                                     fixLimitedRange,
+                                                     encodingGamma);
             renderer->ffr = std::make_unique<FFR>(renderer->srgbCorrectionPass->GetOutputTexture());
             renderer->ffr->Initialize(fv);
             renderer->streamRenderTexture = renderer->ffr->GetOutputTexture()->GetGLTexture();
         } else {
-            renderer->srgbCorrectionPass->Initialize(width, height, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
+            renderer->srgbCorrectionPass->Initialize(
+                width, height, !enableSrgbCorrection, fixLimitedRange, encodingGamma);
             renderer->streamRenderTexture =
                 renderer->srgbCorrectionPass->GetOutputTexture()->GetGLTexture();
         }
@@ -765,10 +769,6 @@ void initGraphicsNative() {
     glEGLImageTargetTexture2DOES =
         (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 
-    g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
-    g_ctx.hudTexture = std::make_unique<Texture>(
-        false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
-
     const GLubyte *sVendor, *sRenderer, *sVersion, *sExts;
 
     GL(sVendor = glGetString(GL_VENDOR));
@@ -780,23 +780,14 @@ void initGraphicsNative() {
     LOGI("glExts : %s", sExts);
 }
 
-void destroyGraphicsNative() {
-    LOGV("Resetting stream texture and hud texture %p, %p",
-         g_ctx.streamTexture.get(),
-         g_ctx.hudTexture.get());
-    g_ctx.streamTexture.reset();
-    g_ctx.hudTexture.reset();
-    LOGV("Resetted stream texture and hud texture to %p, %p",
-         g_ctx.streamTexture.get(),
-         g_ctx.hudTexture.get());
-}
-
 // on resume
 void prepareLobbyRoom(int viewWidth,
                       int viewHeight,
                       const unsigned int *swapchainTextures[2],
                       int swapchainLength,
                       bool enable_srgb_correction) {
+    g_ctx.hudTexture = std::make_unique<Texture>(
+        false, 0, false, 1280, 720, GL_RGBA8, GL_RGBA, std::vector<uint8_t>(1280 * 720 * 4, 0));
     for (int eye = 0; eye < 2; eye++) {
         g_ctx.lobbySwapchainTextures[eye].clear();
 
@@ -819,19 +810,24 @@ void prepareLobbyRoom(int viewWidth,
                        1.0);
 }
 
-// on pause
-void destroyRenderers() {
-    if (g_ctx.streamRenderer) {
-        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
-        g_ctx.streamRenderer.reset();
-    }
+void destroyLobby() {
     if (g_ctx.lobbyRenderer) {
         ovrRenderer_Destroy(g_ctx.lobbyRenderer.get());
         g_ctx.lobbyRenderer.reset();
     }
+    g_ctx.hudTexture.reset();
+}
+
+void destroyStream() {
+    if (g_ctx.streamRenderer) {
+        ovrRenderer_Destroy(g_ctx.streamRenderer.get());
+        g_ctx.streamRenderer.reset();
+    }
+    g_ctx.streamTexture.reset();
 }
 
 void streamStartNative(FfiStreamConfig config) {
+    g_ctx.streamTexture = std::make_unique<Texture>(false, 0, true);
     if (g_ctx.streamRenderer) {
         ovrRenderer_Destroy(g_ctx.streamRenderer.get());
         g_ctx.streamRenderer.reset();

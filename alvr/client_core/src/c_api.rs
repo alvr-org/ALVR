@@ -1,6 +1,6 @@
 use crate::{
     graphics::opengl, storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
-    RenderViewInput,
+    GraphicsContext, RenderViewInput,
 };
 use alvr_common::{
     debug, error,
@@ -13,6 +13,7 @@ use alvr_common::{
 use alvr_packets::{ButtonEntry, ButtonValue, FaceData, ViewParams};
 use alvr_session::{CodecType, FoveatedEncodingConfig};
 use std::{
+    cell::RefCell,
     collections::VecDeque,
     ffi::{c_char, c_void, CStr, CString},
     ptr, slice,
@@ -665,6 +666,10 @@ pub unsafe extern "C" fn alvr_get_frame(
 
 // OpenGL-related interface
 
+thread_local! {
+    static GRAPHICS_CONTEXT: RefCell<Option<GraphicsContext>> = RefCell::new(None);
+}
+
 #[repr(C)]
 pub struct AlvrViewInput {
     pose: AlvrPose,
@@ -689,12 +694,12 @@ pub struct AlvrStreamConfig {
 
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
-    opengl::initialize();
+    GRAPHICS_CONTEXT.set(Some(GraphicsContext::new()));
 }
 
 #[no_mangle]
 pub extern "C" fn alvr_destroy_opengl() {
-    opengl::destroy();
+    GRAPHICS_CONTEXT.set(None);
 }
 
 unsafe fn convert_swapchain_array(

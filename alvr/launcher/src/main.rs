@@ -6,36 +6,36 @@ use ico::IconDir;
 use std::{collections::BTreeMap, io::Cursor, sync::mpsc, thread};
 use ui::Launcher;
 
-#[derive(Clone)]
-struct ReleaseInfo {
-    version: String,
-    assets: BTreeMap<String, String>,
+pub struct ReleaseChannelsInfo {
+    stable: Vec<ReleaseInfo>,
+    nightly: Vec<ReleaseInfo>,
 }
 
-struct Progress {
+pub struct Progress {
     message: String,
     progress: f32,
 }
 
-enum WorkerMessage {
+pub enum WorkerMessage {
     ReleaseChannelsInfo(ReleaseChannelsInfo),
     ProgressUpdate(Progress),
     Done,
     Error(String),
 }
 
-enum UiMessage {
+#[derive(Clone)]
+pub struct ReleaseInfo {
+    version: String,
+    assets: BTreeMap<String, String>,
+}
+
+pub enum UiMessage {
     InstallServer(ReleaseInfo),
     InstallClient(ReleaseInfo),
     Quit,
 }
 
-struct ReleaseChannelsInfo {
-    stable: Vec<ReleaseInfo>,
-    nightly: Vec<ReleaseInfo>,
-}
-
-struct InstallationInfo {
+pub struct InstallationInfo {
     pub version: String,
     is_apk_downloaded: bool,
 }

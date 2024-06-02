@@ -158,3 +158,41 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  check-msrv-windows:
+    runs-on: windows-2019
+    env:
+      LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
+
+      - run: |
+          cargo xtask prepare-deps --platform windows
+          cargo xtask check-msrv
+
+  check-msrv-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Build and install dependencies
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          sudo apt update
+          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev
+          cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo xtask check-msrv

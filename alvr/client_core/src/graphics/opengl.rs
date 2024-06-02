@@ -7,7 +7,6 @@ use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
-use khronos_egl::{self as egl, EGL1_4};
 
 #[cfg(target_os = "android")]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -15,102 +14,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 const HUD_TEXTURE_WIDTH: usize = 1280;
 const HUD_TEXTURE_HEIGHT: usize = 720;
 const FONT_SIZE: f32 = 50_f32;
-
-#[allow(unused)]
-pub struct EglContext {
-    instance: egl::DynamicInstance<EGL1_4>,
-    pub display: egl::Display,
-    pub config: egl::Config,
-    pub context: egl::Context,
-    dummy_surface: egl::Surface,
-}
-
-#[allow(unused_variables)]
-pub fn initialize() -> EglContext {
-    let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
-
-    let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
-
-    let version = instance.initialize(display).unwrap();
-
-    let mut configs = Vec::with_capacity(instance.get_config_count(display).unwrap());
-    instance.get_configs(display, &mut configs).unwrap();
-
-    const CONFIG_ATTRIBS: [i32; 19] = [
-        egl::RED_SIZE,
-        8,
-        egl::GREEN_SIZE,
-        8,
-        egl::BLUE_SIZE,
-        8,
-        egl::ALPHA_SIZE,
-        8,
-        egl::DEPTH_SIZE,
-        0,
-        egl::STENCIL_SIZE,
-        0,
-        egl::SAMPLES,
-        0,
-        egl::SURFACE_TYPE,
-        egl::PBUFFER_BIT,
-        egl::RENDERABLE_TYPE,
-        egl::OPENGL_ES3_BIT,
-        egl::NONE,
-    ];
-    let config = instance
-        .choose_first_config(display, &CONFIG_ATTRIBS)
-        .unwrap()
-        .unwrap();
-
-    instance.bind_api(egl::OPENGL_ES_API).unwrap();
-
-    const CONTEXT_ATTRIBS: [i32; 3] = [egl::CONTEXT_CLIENT_VERSION, 3, egl::NONE];
-    let context = instance
-        .create_context(display, config, None, &CONTEXT_ATTRIBS)
-        .unwrap();
-
-    const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
-    let dummy_surface = instance
-        .create_pbuffer_surface(display, config, &PBUFFER_ATTRIBS)
-        .unwrap();
-
-    instance
-        .make_current(
-            display,
-            Some(dummy_surface),
-            Some(dummy_surface),
-            Some(context),
-        )
-        .unwrap();
-
-    #[cfg(target_os = "android")]
-    unsafe {
-        pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../../resources/loading.gltf");
-        pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../../resources/buffer.bin");
-
-        LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
-        LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
-        LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
-        LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
-
-        initGraphicsNative();
-    }
-
-    EglContext {
-        instance,
-        display,
-        config,
-        context,
-        dummy_surface,
-    }
-}
-
-pub fn destroy() {
-    #[cfg(target_os = "android")]
-    unsafe {
-        destroyGraphicsNative();
-    }
-}
 
 pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32 {
     // Priority-sorted list of swapchain formats we'll accept--

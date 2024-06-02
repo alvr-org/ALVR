@@ -1,15 +1,15 @@
-use alvr_client_core::opengl::{self, EglContext};
+use alvr_client_core::{opengl, GraphicsContext};
 use alvr_common::glam::UVec2;
 use openxr as xr;
 
 #[allow(unused)]
-pub fn session_create_info(egl_context: &EglContext) -> xr::opengles::SessionCreateInfo {
+pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreateInfo {
     #[cfg(target_os = "android")]
     {
         xr::opengles::SessionCreateInfo::Android {
-            display: egl_context.display.as_ptr(),
-            config: egl_context.config.as_ptr(),
-            context: egl_context.context.as_ptr(),
+            display: ctx.display.as_ptr(),
+            config: ctx.config.as_ptr(),
+            context: ctx.context.as_ptr(),
         }
     }
     #[cfg(not(target_os = "android"))]

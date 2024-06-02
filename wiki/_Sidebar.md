@@ -26,6 +26,8 @@
 
 * [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
 
+* [Linux Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Linux-Troubleshooting)
+
 * [ALVR Checklist before posting a new Issue](https://github.com/alvr-org/ALVR/wiki/ALVR-Checklist)
 
 * [Controller latency](https://github.com/alvr-org/ALVR/wiki/Controller-latency)

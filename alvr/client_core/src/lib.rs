@@ -14,11 +14,10 @@ mod sockets;
 mod statistics;
 mod storage;
 
-mod graphics;
-pub use graphics::*;
-
 #[cfg(target_os = "android")]
 mod audio;
+
+pub mod graphics;
 
 use alvr_common::{
     error,

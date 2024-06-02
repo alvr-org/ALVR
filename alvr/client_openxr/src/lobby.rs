@@ -2,7 +2,7 @@ use crate::{
     graphics::{self, CompositionLayerBuilder},
     interaction, XrContext,
 };
-use alvr_client_core::{GraphicsContext, LobbyRenderer, RenderViewInput};
+use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, RenderViewInput};
 use alvr_common::glam::UVec2;
 use openxr as xr;
 use std::rc::Rc;

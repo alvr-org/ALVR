@@ -1,6 +1,6 @@
 use crate::{
-    graphics::opengl, storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
-    GraphicsContext, LobbyRenderer, RenderViewInput,
+    graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, StreamRenderer},
+    storage, ClientCapabilities, ClientCoreContext, ClientCoreEvent,
 };
 use alvr_common::{
     debug, error,
@@ -671,6 +671,7 @@ pub unsafe extern "C" fn alvr_get_frame(
 thread_local! {
     static GRAPHICS_CONTEXT: RefCell<Option<Rc<GraphicsContext>>> = const { RefCell::new(None) };
     static LOBBY_RENDERER: RefCell<Option<LobbyRenderer>> = const { RefCell::new(None) };
+    static STREAM_RENDERER: RefCell<Option<StreamRenderer>> = const { RefCell::new(None) };
 }
 
 #[repr(C)]
@@ -745,7 +746,7 @@ pub unsafe extern "C" fn alvr_resume_opengl(
 
 #[no_mangle]
 pub extern "C" fn alvr_pause_opengl() {
-    opengl::destroy_stream();
+    STREAM_RENDERER.set(None);
     LOBBY_RENDERER.set(None)
 }
 
@@ -773,14 +774,15 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         edge_ratio_y: config.foveation_edge_ratio_y,
     });
 
-    opengl::start_stream(
+    STREAM_RENDERER.set(Some(StreamRenderer::new(
+        GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
         swapchain_textures,
         foveated_encoding,
         true,
         false, // TODO: limited range fix config
         1.0,   // TODO: encoding gamma config
-    );
+    )));
 }
 
 #[no_mangle]
@@ -810,8 +812,12 @@ pub unsafe extern "C" fn alvr_render_stream_opengl(
     hardware_buffer: *mut c_void,
     swapchain_indices: *const u32,
 ) {
-    opengl::render_stream(
-        hardware_buffer,
-        [*swapchain_indices, *swapchain_indices.offset(1)],
-    );
+    STREAM_RENDERER.with_borrow(|renderer| {
+        if let Some(renderer) = renderer {
+            renderer.render(
+                hardware_buffer,
+                [*swapchain_indices, *swapchain_indices.offset(1)],
+            );
+        }
+    });
 }

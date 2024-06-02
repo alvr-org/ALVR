@@ -1,7 +1,10 @@
 mod lobby;
-pub mod opengl;
+mod opengl;
+mod stream;
 
 pub use lobby::*;
+pub use opengl::choose_swapchain_format;
+pub use stream::*;
 
 use alvr_common::{Fov, Pose};
 use khronos_egl::{self as egl, EGL1_4};

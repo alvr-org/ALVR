@@ -6,7 +6,7 @@ mod stream;
 
 use crate::stream::StreamConfig;
 use alvr_client_core::{
-    ClientCapabilities, ClientCoreContext, ClientCoreEvent, GraphicsContext, Platform,
+    graphics::GraphicsContext, ClientCapabilities, ClientCoreContext, ClientCoreEvent, Platform,
 };
 use alvr_common::{
     error,
@@ -356,6 +356,7 @@ pub fn entry_point() {
                         stream_context = Some(StreamContext::new(
                             Arc::clone(&core_context),
                             xr_context.clone(),
+                            Rc::clone(&graphics_context),
                             Arc::clone(&interaction_context),
                             platform,
                             &new_config,
@@ -364,7 +365,6 @@ pub fn entry_point() {
                         stream_config = Some(new_config);
                     }
                     ClientCoreEvent::StreamingStopped => {
-                        alvr_client_core::opengl::destroy_stream();
                         stream_context = None;
                     }
                     ClientCoreEvent::Haptics {
@@ -467,8 +467,6 @@ pub fn entry_point() {
                     .unwrap();
             }
         }
-
-        alvr_client_core::opengl::destroy_stream();
     }
 
     // grapics_context is dropped here

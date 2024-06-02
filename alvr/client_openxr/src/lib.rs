@@ -359,6 +359,7 @@ pub fn entry_point() {
                         stream_config = Some(new_config);
                     }
                     ClientCoreEvent::StreamingStopped => {
+                        alvr_client_core::opengl::destroy_stream();
                         stream_context = None;
                     }
                     ClientCoreEvent::Haptics {
@@ -462,7 +463,8 @@ pub fn entry_point() {
             }
         }
 
-        alvr_client_core::opengl::pause();
+        alvr_client_core::opengl::destroy_lobby();
+        alvr_client_core::opengl::destroy_stream();
     }
 
     // grapics_context is dropped here

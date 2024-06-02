@@ -667,7 +667,7 @@ pub unsafe extern "C" fn alvr_get_frame(
 // OpenGL-related interface
 
 thread_local! {
-    static GRAPHICS_CONTEXT: RefCell<Option<GraphicsContext>> = RefCell::new(None);
+    static GRAPHICS_CONTEXT: RefCell<Option<GraphicsContext>> = const { RefCell::new(None) };
 }
 
 #[repr(C)]
@@ -740,7 +740,8 @@ pub unsafe extern "C" fn alvr_resume_opengl(
 
 #[no_mangle]
 pub extern "C" fn alvr_pause_opengl() {
-    opengl::pause();
+    opengl::destroy_stream();
+    opengl::destroy_lobby();
 }
 
 #[no_mangle]

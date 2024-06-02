@@ -10,11 +10,11 @@ pub struct RenderViewInput {
 }
 
 pub struct GraphicsContext {
-    instance: egl::DynamicInstance<EGL1_4>,
+    _instance: egl::DynamicInstance<EGL1_4>,
     pub display: egl::Display,
     pub config: egl::Config,
     pub context: egl::Context,
-    dummy_surface: egl::Surface,
+    _dummy_surface: egl::Surface,
 }
 
 impl GraphicsContext {
@@ -89,11 +89,11 @@ impl GraphicsContext {
         }
 
         Self {
-            instance,
+            _instance: instance,
             display,
             config,
             context,
-            dummy_surface,
+            _dummy_surface: dummy_surface,
         }
     }
 }
@@ -101,14 +101,5 @@ impl GraphicsContext {
 impl Default for GraphicsContext {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Drop for GraphicsContext {
-    fn drop(&mut self) {
-        #[cfg(target_os = "android")]
-        unsafe {
-            opengl::destroyGraphicsNative();
-        }
     }
 }

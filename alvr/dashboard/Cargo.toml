@@ -28,7 +28,7 @@ statrs = "0.16"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 alvr_server_io.workspace = true
 sysinfo = { version = "0.30", default-features = false }
-tungstenite = "0.21"
+tungstenite = "0.23"
 ureq = { version = "2", features = ["json"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

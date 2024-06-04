@@ -3,8 +3,8 @@ use alvr_events::{GraphStatistics, StatisticsSummary};
 use alvr_gui_common::theme;
 use eframe::{
     egui::{
-        popup, pos2, vec2, Align2, Color32, FontId, Frame, Id, Painter, Rect, RichText, Rounding,
-        ScrollArea, Shape, Stroke, Ui,
+        popup, pos2, vec2, Align2, Color32, FontId, Frame, Grid, Id, Painter, Rect, RichText,
+        Rounding, ScrollArea, Shape, Stroke, Ui,
     },
     emath::RectTransform,
     epaint::Pos2,
@@ -133,14 +133,14 @@ impl StatisticsTab {
                     let stats = &self.history[i];
                     let mut offset = 0.0;
                     for (value, color) in &[
-                        (stats.game_time_s, graph_colors::RENDER_VARIANT),
+                        (stats.game_time_s, graph_colors::RENDER_EXTERNAL),
                         (stats.server_compositor_s, graph_colors::RENDER),
                         (stats.encoder_s, graph_colors::TRANSCODE),
                         (stats.network_s, graph_colors::NETWORK),
                         (stats.decoder_s, graph_colors::TRANSCODE),
                         (stats.decoder_queue_s, graph_colors::IDLE),
                         (stats.client_compositor_s, graph_colors::RENDER),
-                        (stats.vsync_queue_s, graph_colors::IDLE),
+                        (stats.vsync_queue_s, graph_colors::RENDER_EXTERNAL),
                     ] {
                         painter.rect_filled(
                             Rect {
@@ -157,24 +157,51 @@ impl StatisticsTab {
             |ui, stats| {
                 use graph_colors::*;
 
-                fn label(ui: &mut Ui, text: &str, value_s: f32, color: Color32) {
-                    ui.colored_label(color, &format!("{text}: {:.2}ms", value_s * 1000.0));
-                }
+                Grid::new("latency_tooltip").num_columns(2).show(ui, |ui| {
+                    fn label(ui: &mut Ui, text: &str, value_s: f32, color: Color32) {
+                        ui.colored_label(color, text);
+                        ui.colored_label(color, &format!("{:.2}ms", value_s * 1000.0));
+                        ui.end_row();
+                    }
 
-                label(
-                    ui,
-                    "Total latency",
-                    stats.total_pipeline_latency_s,
-                    theme::FG,
-                );
-                label(ui, "Client VSync", stats.vsync_queue_s, IDLE);
-                label(ui, "Client compositor", stats.client_compositor_s, RENDER);
-                label(ui, "Decoder queue", stats.decoder_queue_s, IDLE);
-                label(ui, "Decode", stats.decoder_s, TRANSCODE);
-                label(ui, "Network", stats.network_s, NETWORK);
-                label(ui, "Encode", stats.encoder_s, TRANSCODE);
-                label(ui, "Streamer compositor", stats.server_compositor_s, RENDER);
-                label(ui, "Game render", stats.game_time_s, RENDER_VARIANT);
+                    let transmission_total_latency_s = stats.server_compositor_s
+                        + stats.encoder_s
+                        + stats.network_s
+                        + stats.decoder_s
+                        + stats.decoder_queue_s
+                        + stats.client_compositor_s;
+
+                    label(
+                        ui,
+                        "Motion to Photon Latency",
+                        stats.total_pipeline_latency_s,
+                        theme::FG,
+                    );
+                    label(ui, "ALVR Latency", transmission_total_latency_s, theme::FG);
+                    label(
+                        ui,
+                        "Client System (not ALVR latency)",
+                        stats.vsync_queue_s,
+                        RENDER_EXTERNAL_LABEL,
+                    );
+                    label(
+                        ui,
+                        "Client App Compositor",
+                        stats.client_compositor_s,
+                        RENDER,
+                    );
+                    label(ui, "Frame Buffering", stats.decoder_queue_s, IDLE);
+                    label(ui, "Decode", stats.decoder_s, TRANSCODE);
+                    label(ui, "Network", stats.network_s, NETWORK);
+                    label(ui, "Encode", stats.encoder_s, TRANSCODE);
+                    label(ui, "Streamer Compositor", stats.server_compositor_s, RENDER);
+                    label(
+                        ui,
+                        "Game Render (not ALVR latency)",
+                        stats.game_time_s,
+                        RENDER_EXTERNAL_LABEL,
+                    );
+                });
             },
         );
     }
@@ -192,7 +219,7 @@ impl StatisticsTab {
         let lower_quantile = data.quantile(1.0 - UPPER_QUANTILE);
 
         let max = upper_quantile + (upper_quantile - lower_quantile);
-        let min = lower_quantile - (upper_quantile - lower_quantile);
+        let min = f64::max(0.0, lower_quantile - (upper_quantile - lower_quantile));
 
         self.draw_graph(
             ui,

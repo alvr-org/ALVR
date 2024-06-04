@@ -25,11 +25,14 @@ pub mod log_colors {
 pub mod graph_colors {
     use egui::Color32;
 
+    // Colors taken from https://colorhunt.co/palette/ff6b6bffd93d6bcb774d96ff
+    pub const RENDER_EXTERNAL: Color32 = Color32::from_rgb(64, 64, 64);
+    pub const RENDER_EXTERNAL_LABEL: Color32 = Color32::GRAY;
     pub const RENDER: Color32 = Color32::RED;
-    pub const RENDER_VARIANT: Color32 = Color32::from_rgb(255, 50, 0);
-    pub const NETWORK: Color32 = Color32::DARK_GRAY;
-    pub const TRANSCODE: Color32 = Color32::LIGHT_BLUE;
-    pub const IDLE: Color32 = Color32::YELLOW;
+    pub const IDLE: Color32 = Color32::from_rgb(255, 217, 61);
+    pub const TRANSCODE: Color32 = Color32::from_rgb(107, 203, 119);
+    pub const NETWORK: Color32 = Color32::from_rgb(77, 150, 255);
+
     pub const SERVER_FPS: Color32 = Color32::LIGHT_BLUE;
     pub const CLIENT_FPS: Color32 = Color32::KHAKI;
 }

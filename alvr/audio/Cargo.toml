@@ -12,7 +12,7 @@ alvr_session.workspace = true
 alvr_sockets.workspace = true
 
 cpal = { version = "0.15", features = ["jack"] }
-rodio = "0.17"
+rodio = "0.18"
 serde = "1"
 
 [target.'cfg(windows)'.dependencies]

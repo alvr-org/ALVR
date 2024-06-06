@@ -31,25 +31,6 @@ typedef struct {
 } ovrFramebuffer;
 
 typedef struct {
-    GLuint Index;
-    GLint Size;
-    GLenum Type;
-    GLboolean Normalized;
-    GLsizei Stride;
-    const GLvoid *Pointer;
-} ovrVertexAttribPointer;
-
-typedef struct {
-    GLuint VertexBuffer;
-    GLuint IndexBuffer;
-    GLuint VertexArrayObject;
-    GLuint VertexUVBuffer;
-    int VertexCount;
-    int IndexCount;
-    ovrVertexAttribPointer VertexAttribs[MAX_VERTEX_ATTRIB_POINTERS];
-} ovrGeometry;
-
-typedef struct {
     GLuint streamProgram;
     GLuint VertexShader;
     GLuint FragmentShader;
@@ -70,7 +51,6 @@ typedef struct {
     bool SceneCreated;
     ovrProgram streamProgram;
     ovrProgram lobbyProgram;
-    ovrGeometry Panel;
     gl_render_utils::Texture *streamTexture;
     GLuint hudTexture;
     GltfModel *lobbyScene;
@@ -82,10 +62,7 @@ typedef struct {
 
 enum VertexAttributeLocation {
     VERTEX_ATTRIBUTE_LOCATION_POSITION,
-    VERTEX_ATTRIBUTE_LOCATION_COLOR,
     VERTEX_ATTRIBUTE_LOCATION_UV,
-    VERTEX_ATTRIBUTE_LOCATION_TRANSFORM,
-    VERTEX_ATTRIBUTE_LOCATION_NORMAL
 };
 
 typedef struct {
@@ -96,24 +73,14 @@ typedef struct {
 
 ovrVertexAttribute ProgramVertexAttributes[] = {
     {VERTEX_ATTRIBUTE_LOCATION_POSITION, "vertexPosition", {true, true}},
-    {VERTEX_ATTRIBUTE_LOCATION_COLOR, "vertexColor", {true, false}},
     {VERTEX_ATTRIBUTE_LOCATION_UV, "vertexUv", {true, true}},
-    {VERTEX_ATTRIBUTE_LOCATION_TRANSFORM, "vertexTransform", {false, false}},
-    {VERTEX_ATTRIBUTE_LOCATION_NORMAL, "vertexNormal", {false, true}}};
-
-enum E1test {
-    UNIFORM_VIEW_ID,
-    UNIFORM_MVP_MATRIX,
-    UNIFORM_ALPHA,
-    UNIFORM_COLOR,
-    UNIFORM_M_MATRIX,
-    UNIFORM_MODE
 };
+
+enum E1test { UNIFORM_VIEW_ID, UNIFORM_MVP_MATRIX, UNIFORM_M_MATRIX, UNIFORM_MODE };
 enum E2test {
     UNIFORM_TYPE_VECTOR4,
     UNIFORM_TYPE_MATRIX4X4,
     UNIFORM_TYPE_INT,
-    UNIFORM_TYPE_BUFFER,
     UNIFORM_TYPE_FLOAT,
 };
 typedef struct {
@@ -125,8 +92,6 @@ typedef struct {
 static ovrUniform ProgramUniforms[] = {
     {UNIFORM_VIEW_ID, UNIFORM_TYPE_INT, "ViewID"},
     {UNIFORM_MVP_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mvpMatrix"},
-    {UNIFORM_ALPHA, UNIFORM_TYPE_FLOAT, "alpha"},
-    {UNIFORM_COLOR, UNIFORM_TYPE_VECTOR4, "Color"},
     {UNIFORM_M_MATRIX, UNIFORM_TYPE_MATRIX4X4, "mMatrix"},
     {UNIFORM_MODE, UNIFORM_TYPE_INT, "Mode"},
 };
@@ -155,40 +120,21 @@ GraphicsContext g_ctx;
 } // namespace
 
 static const char VERTEX_SHADER[] = R"glsl(
-#ifndef DISABLE_MULTIVIEW
-    #define DISABLE_MULTIVIEW 0
-#endif
-#define NUM_VIEWS 2
-#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW
-    #extension GL_OVR_multiview2 : enable
-    layout(num_views=NUM_VIEWS) in;
-    #define VIEW_ID gl_ViewID_OVR
-#else
-    uniform lowp int ViewID;
-    #define VIEW_ID ViewID
-#endif
-in vec3 vertexPosition;
-in vec4 vertexColor;
-in mat4 vertexTransform;
-in vec2 vertexUv;
-uniform mat4 mvpMatrix[NUM_VIEWS];
-out vec4 fragmentColor;
+uniform lowp int ViewID;
 out vec2 uv;
 void main()
 {
-    gl_Position = mvpMatrix[VIEW_ID] * vec4( vertexPosition, 1.0 );
-    if(uint(VIEW_ID) == uint(0)){
-        uv = vec2(vertexUv.x, vertexUv.y);
-    }else{
-        uv = vec2(vertexUv.x + 0.5, vertexUv.y);
-    }
-    fragmentColor = vertexColor;
+    gl_Position = vec4(
+        2.0 * float(gl_VertexID & 1) - 1.0,
+        1.0 - 2.0 * float(gl_VertexID >> 1),
+        0.0,
+        1.0);
+    uv = vec2(float((gl_VertexID & 1) + ViewID) / 2.0, float(gl_VertexID >> 1));
 }
 )glsl";
 
 static const char FRAGMENT_SHADER[] = R"glsl(
 in lowp vec2 uv;
-in lowp vec4 fragmentColor;
 out lowp vec4 outColor;
 uniform sampler2D Texture0;
 void main()
@@ -198,53 +144,23 @@ void main()
 )glsl";
 
 static const char LOBBY_VERTEX_SHADER[] = R"glsl(
-#ifndef DISABLE_MULTIVIEW
-    #define DISABLE_MULTIVIEW 0
-#endif
-#define NUM_VIEWS 2
-#if defined( GL_OVR_multiview2 ) && ! DISABLE_MULTIVIEW
-    #extension GL_OVR_multiview2 : enable
-    layout(num_views=NUM_VIEWS) in;
-    #define VIEW_ID gl_ViewID_OVR
-#else
-    uniform lowp int ViewID;
-    #define VIEW_ID ViewID
-#endif
 in vec3 vertexPosition;
-in vec4 vertexColor;
-in mat4 vertexTransform;
 in vec2 vertexUv;
-in vec3 vertexNormal;
-uniform mat4 mvpMatrix[NUM_VIEWS];
-uniform lowp vec4 Color;
+uniform mat4 mvpMatrix;
 uniform mat4 mMatrix;
-out vec4 fragmentColor;
 out vec2 uv;
-out lowp float fragmentLight;
-out lowp vec3 lightPoint;
-out lowp vec3 normal;
 out lowp vec3 position;
 void main()
 {
     lowp vec4 position4 = mMatrix * vec4( vertexPosition, 1.0 );
-    gl_Position = mvpMatrix[VIEW_ID] * position4;
+    gl_Position = mvpMatrix * position4;
     uv = vertexUv;
     position = position4.xyz / position4.w;
-    lowp vec4 lightPoint4 = mvpMatrix[VIEW_ID] * vec4(100.0, 10000.0, 100.0, 1.0);
-    lightPoint = lightPoint4.xyz / lightPoint4.w;
-    normal = normalize((mvpMatrix[VIEW_ID] * mMatrix * vec4(vertexNormal, 1.0)).xyz);
-    lowp float light = clamp(dot(normal, normalize(vec3(0.3, 1.0, 0.3))), 0.3, 1.0);
-    fragmentLight = light;
-    fragmentColor = Color;
 }
 )glsl";
 
 static const char LOBBY_FRAGMENT_SHADER[] = R"glsl(
 in lowp vec2 uv;
-in lowp vec4 fragmentColor;
-in lowp float fragmentLight;
-in lowp vec3 lightPoint;
-in lowp vec3 normal;
 in lowp vec3 position;
 out lowp vec4 outColor;
 uniform sampler2D sTexture;
@@ -314,138 +230,6 @@ void main()
     }
 }
 )glsl";
-
-void ovrFramebuffer_Create(ovrFramebuffer *frameBuffer,
-                           std::vector<GLuint> textures,
-                           const int width,
-                           const int height) {
-    for (int i = 0; i < textures.size(); i++) {
-        auto glRenderTarget = textures[i];
-        frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
-            true, glRenderTarget, false, width, height, GL_RGBA16F, GL_RGBA));
-        frameBuffer->renderStates.push_back(
-            std::make_unique<gl_render_utils::RenderState>(frameBuffer->renderTargets[i].get()));
-    }
-}
-
-void ovrFramebuffer_Destroy(ovrFramebuffer *frameBuffer) {
-    frameBuffer->renderStates.clear();
-    frameBuffer->renderTargets.clear();
-}
-
-void ovrFramebuffer_SetCurrent(ovrFramebuffer *frameBuffer, int index) {
-    GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->renderStates[index]->GetFrameBuffer()));
-}
-
-void ovrFramebuffer_SetNone() { GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)); }
-
-void ovrFramebuffer_Resolve() {
-    // Discard the depth buffer, so the tiler won't need to write it back out to memory.
-    const GLenum depthAttachment[1] = {GL_DEPTH_ATTACHMENT};
-    glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, depthAttachment);
-
-    // Flush this frame worth of commands.
-    glFlush();
-}
-
-void ovrGeometry_Clear(ovrGeometry *geometry) {
-    geometry->VertexBuffer = 0;
-    geometry->IndexBuffer = 0;
-    geometry->VertexArrayObject = 0;
-    geometry->VertexCount = 0;
-    geometry->IndexCount = 0;
-    for (int i = 0; i < MAX_VERTEX_ATTRIB_POINTERS; i++) {
-        memset(&geometry->VertexAttribs[i], 0, sizeof(geometry->VertexAttribs[i]));
-        geometry->VertexAttribs[i].Index = -1;
-    }
-}
-
-void ovrGeometry_CreatePanel(ovrGeometry *geometry) {
-    typedef struct {
-        float positions[4][4];
-        float uv[4][2];
-    } ovrCubeVertices;
-
-    static const ovrCubeVertices cubeVertices = {
-        // positions
-        {{-1, -1, 0, 1}, {1, 1, 0, 1}, {1, -1, 0, 1}, {-1, 1, 0, 1}},
-        // uv
-        {{0, 1}, {0.5, 0}, {0.5, 1}, {0, 0}}};
-
-    static const unsigned short cubeIndices[6] = {
-        0,
-        2,
-        1,
-        0,
-        1,
-        3,
-    };
-
-    geometry->VertexCount = 4;
-    geometry->IndexCount = 6;
-
-    geometry->VertexAttribs[0].Index = VERTEX_ATTRIBUTE_LOCATION_POSITION;
-    geometry->VertexAttribs[0].Size = 4;
-    geometry->VertexAttribs[0].Type = GL_FLOAT;
-    geometry->VertexAttribs[0].Normalized = true;
-    geometry->VertexAttribs[0].Stride = sizeof(cubeVertices.positions[0]);
-    geometry->VertexAttribs[0].Pointer = (const GLvoid *)offsetof(ovrCubeVertices, positions);
-
-    geometry->VertexAttribs[1].Index = VERTEX_ATTRIBUTE_LOCATION_UV;
-    geometry->VertexAttribs[1].Size = 2;
-    geometry->VertexAttribs[1].Type = GL_FLOAT;
-    geometry->VertexAttribs[1].Normalized = true;
-    geometry->VertexAttribs[1].Stride = 8;
-    geometry->VertexAttribs[1].Pointer = (const GLvoid *)offsetof(ovrCubeVertices, uv);
-
-    geometry->VertexAttribs[2].Index = -1;
-    geometry->VertexAttribs[3].Index = -1;
-    geometry->VertexAttribs[4].Index = -1;
-
-    GL(glGenBuffers(1, &geometry->VertexBuffer));
-    GL(glBindBuffer(GL_ARRAY_BUFFER, geometry->VertexBuffer));
-    GL(glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), &cubeVertices, GL_STATIC_DRAW));
-    GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
-
-    GL(glGenBuffers(1, &geometry->IndexBuffer));
-    GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->IndexBuffer));
-    GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cubeIndices), cubeIndices, GL_STATIC_DRAW));
-    GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
-}
-
-void ovrGeometry_Destroy(ovrGeometry *geometry) {
-    GL(glDeleteBuffers(1, &geometry->IndexBuffer));
-    GL(glDeleteBuffers(1, &geometry->VertexBuffer));
-
-    ovrGeometry_Clear(geometry);
-}
-
-void ovrGeometry_CreateVAO(ovrGeometry *geometry) {
-    GL(glGenVertexArrays(1, &geometry->VertexArrayObject));
-    GL(glBindVertexArray(geometry->VertexArrayObject));
-
-    GL(glBindBuffer(GL_ARRAY_BUFFER, geometry->VertexBuffer));
-
-    for (int i = 0; i < MAX_VERTEX_ATTRIB_POINTERS; i++) {
-        if ((int)geometry->VertexAttribs[i].Index != -1) {
-            GL(glEnableVertexAttribArray(geometry->VertexAttribs[i].Index));
-            GL(glVertexAttribPointer(geometry->VertexAttribs[i].Index,
-                                     geometry->VertexAttribs[i].Size,
-                                     geometry->VertexAttribs[i].Type,
-                                     geometry->VertexAttribs[i].Normalized,
-                                     geometry->VertexAttribs[i].Stride,
-                                     geometry->VertexAttribs[i].Pointer));
-        }
-    }
-
-    GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->IndexBuffer));
-
-    GL(glBindVertexArray(0));
-}
-
-void ovrGeometry_DestroyVAO(ovrGeometry *geometry) {
-    GL(glDeleteVertexArrays(1, &geometry->VertexArrayObject));
-}
 
 static const char *programVersion = "#version 300 es\n";
 
@@ -525,18 +309,10 @@ bool ovrProgram_Create(ovrProgram *program,
     memset(program->UniformLocation, -1, sizeof(program->UniformLocation));
     for (unsigned long i = 0; i < sizeof(ProgramUniforms) / sizeof(ProgramUniforms[0]); i++) {
         const int uniformIndex = ProgramUniforms[i].index;
-        if (ProgramUniforms[i].type == UNIFORM_TYPE_BUFFER) {
-            GL(program->UniformLocation[uniformIndex] =
-                   glGetUniformBlockIndex(program->streamProgram, ProgramUniforms[i].name));
-            program->UniformBinding[uniformIndex] = numBufferBindings++;
-            GL(glUniformBlockBinding(program->streamProgram,
-                                     program->UniformLocation[uniformIndex],
-                                     program->UniformBinding[uniformIndex]));
-        } else {
-            GL(program->UniformLocation[uniformIndex] =
-                   glGetUniformLocation(program->streamProgram, ProgramUniforms[i].name));
-            program->UniformBinding[uniformIndex] = program->UniformLocation[uniformIndex];
-        }
+
+        GL(program->UniformLocation[uniformIndex] =
+               glGetUniformLocation(program->streamProgram, ProgramUniforms[i].name));
+        program->UniformBinding[uniformIndex] = program->UniformLocation[uniformIndex];
     }
 
     GL(glUseProgram(program->streamProgram));
@@ -606,7 +382,15 @@ void ovrRenderer_Create(ovrRenderer *renderer,
 
     // Create the frame buffers.
     for (int eye = 0; eye < 2; eye++) {
-        ovrFramebuffer_Create(&renderer->FrameBuffer[eye], textures[eye], width, height);
+        ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
+
+        for (int i = 0; i < textures[eye].size(); i++) {
+            auto glRenderTarget = textures[eye][i];
+            frameBuffer->renderTargets.push_back(std::make_unique<gl_render_utils::Texture>(
+                true, glRenderTarget, false, width, height, GL_RGBA16F, GL_RGBA));
+            frameBuffer->renderStates.push_back(std::make_unique<gl_render_utils::RenderState>(
+                frameBuffer->renderTargets[i].get()));
+        }
     }
 
     renderer->streamTexture = streamTexture;
@@ -620,51 +404,30 @@ void ovrRenderer_Create(ovrRenderer *renderer,
     ovrProgram_Create(
         &renderer->lobbyProgram, LOBBY_VERTEX_SHADER, LOBBY_FRAGMENT_SHADER, LOBBY_PROG);
 
-    ovrGeometry_CreatePanel(&renderer->Panel);
-    ovrGeometry_CreateVAO(&renderer->Panel);
     renderer->SceneCreated = true;
 }
 
 void ovrRenderer_Destroy(ovrRenderer *renderer) {
     ovrProgram_Destroy(&renderer->streamProgram);
     ovrProgram_Destroy(&renderer->lobbyProgram);
-    ovrGeometry_DestroyVAO(&renderer->Panel);
-    ovrGeometry_Destroy(&renderer->Panel);
 
     for (int eye = 0; eye < 2; eye++) {
-        ovrFramebuffer_Destroy(&renderer->FrameBuffer[eye]);
+        ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
+        frameBuffer->renderStates.clear();
+        frameBuffer->renderTargets.clear();
     }
 }
 
-void renderEye(
-    int eye, glm::mat4 mvpMatrix[2], Recti *viewport, ovrRenderer *renderer, bool isLobby) {
+void renderEye(int eye, glm::mat4 mvpMatrix, Recti *viewport, ovrRenderer *renderer, bool isLobby) {
     if (isLobby) {
         GL(glUseProgram(renderer->lobbyProgram.streamProgram));
-        if (renderer->lobbyProgram.UniformLocation[UNIFORM_VIEW_ID] >=
-            0) // NOTE: will not be present when multiview path is enabled.
-        {
-            GL(glUniform1i(renderer->lobbyProgram.UniformLocation[UNIFORM_VIEW_ID], eye));
-        }
-    } else {
-        GL(glUseProgram(renderer->streamProgram.streamProgram));
-        if (renderer->streamProgram.UniformLocation[UNIFORM_VIEW_ID] >=
-            0) // NOTE: will not be present when multiview path is enabled.
-        {
-            GL(glUniform1i(renderer->streamProgram.UniformLocation[UNIFORM_VIEW_ID], eye));
-        }
-    }
-    GL(glEnable(GL_SCISSOR_TEST));
-    GL(glDepthMask(GL_TRUE));
-    GL(glEnable(GL_DEPTH_TEST));
-    GL(glDepthFunc(GL_LEQUAL));
-    GL(glEnable(GL_CULL_FACE));
-    GL(glCullFace(GL_BACK));
-    GL(glViewport(viewport->x, viewport->y, viewport->width, viewport->height));
-    GL(glScissor(viewport->x, viewport->y, viewport->width, viewport->height));
 
-    if (isLobby) {
-        // For drawing back frace of the sphere in gltf
+        GL(glDisable(GL_SCISSOR_TEST));
+        GL(glEnable(GL_DEPTH_TEST));
+        GL(glDepthFunc(GL_LEQUAL));
         GL(glDisable(GL_CULL_FACE));
+        GL(glViewport(viewport->x, viewport->y, viewport->width, viewport->height));
+
         GL(glClearColor(0.88f, 0.95f, 0.95f, 1.0f));
         GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
@@ -672,45 +435,34 @@ void renderEye(
         GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
         GL(glUniformMatrix4fv(renderer->lobbyProgram.UniformLocation[UNIFORM_MVP_MATRIX],
-                              2,
+                              1,
                               true,
-                              (float *)mvpMatrix));
-        GL(glActiveTexture(GL_TEXTURE0));
+                              (float *)&mvpMatrix));
 
+        GL(glActiveTexture(GL_TEXTURE0));
         GL(glBindTexture(GL_TEXTURE_2D, renderer->hudTexture));
+
         renderer->lobbyScene->drawScene(VERTEX_ATTRIBUTE_LOCATION_POSITION,
                                         VERTEX_ATTRIBUTE_LOCATION_UV,
-                                        VERTEX_ATTRIBUTE_LOCATION_NORMAL,
-                                        renderer->lobbyProgram.UniformLocation[UNIFORM_COLOR],
                                         renderer->lobbyProgram.UniformLocation[UNIFORM_M_MATRIX],
                                         renderer->lobbyProgram.UniformLocation[UNIFORM_MODE]);
         GL(glBindVertexArray(0));
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     } else {
-        GL(glClear(GL_DEPTH_BUFFER_BIT));
+        GL(glUseProgram(renderer->streamProgram.streamProgram));
 
-        GL(glBindVertexArray(renderer->Panel.VertexArrayObject));
+        GL(glDisable(GL_SCISSOR_TEST));
+        GL(glDisable(GL_DEPTH_TEST));
+        GL(glDisable(GL_CULL_FACE));
+        GL(glViewport(viewport->x, viewport->y, viewport->width, viewport->height));
 
-        GL(glUniformMatrix4fv(renderer->streamProgram.UniformLocation[UNIFORM_MVP_MATRIX],
-                              2,
-                              true,
-                              (float *)mvpMatrix));
+        GL(glUniform1i(renderer->streamProgram.UniformLocation[UNIFORM_VIEW_ID], eye));
 
-        GL(glUniform1f(renderer->streamProgram.UniformLocation[UNIFORM_ALPHA], 2.0f));
         GL(glActiveTexture(GL_TEXTURE0));
         GL(glBindTexture(GL_TEXTURE_2D, renderer->streamRenderTexture));
 
-        GL(glDrawElements(GL_TRIANGLES, renderer->Panel.IndexCount, GL_UNSIGNED_SHORT, NULL));
-
-        GL(glBindVertexArray(0));
-
-        GL(glActiveTexture(GL_TEXTURE0));
-        GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0));
-        GL(glActiveTexture(GL_TEXTURE1));
-        GL(glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0));
+        GL(glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
     }
-
-    GL(glUseProgram(0));
 }
 
 void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2], bool isLobby) {
@@ -745,19 +497,26 @@ void ovrRenderer_RenderFrame(ovrRenderer *renderer, const FfiViewInput input[2],
     // Render the eye images.
     for (int eye = 0; eye < 2; eye++) {
         ovrFramebuffer *frameBuffer = &renderer->FrameBuffer[eye];
-        ovrFramebuffer_SetCurrent(frameBuffer, input[eye].swapchainIndex);
+        GL(glBindFramebuffer(
+            GL_DRAW_FRAMEBUFFER,
+            frameBuffer->renderStates[input[eye].swapchainIndex]->GetFrameBuffer()));
 
         Recti viewport = {0,
                           0,
                           (int)frameBuffer->renderTargets[0]->GetWidth(),
                           (int)frameBuffer->renderTargets[0]->GetHeight()};
 
-        renderEye(eye, mvpMatrix, &viewport, renderer, isLobby);
+        renderEye(eye, mvpMatrix[eye], &viewport, renderer, isLobby);
 
-        ovrFramebuffer_Resolve();
+        // Discard the depth buffer, so the tiler won't need to write it back out to memory.
+        const GLenum depthAttachment[1] = {GL_DEPTH_ATTACHMENT};
+        glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, depthAttachment);
+
+        // Flush this frame worth of commands.
+        glFlush();
     }
 
-    ovrFramebuffer_SetNone();
+    GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
 }
 
 void initGraphicsNative() {

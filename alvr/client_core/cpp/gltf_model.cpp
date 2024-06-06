@@ -12,32 +12,31 @@ unsigned int LOBBY_ROOM_GLTF_LEN;
 const unsigned char *LOBBY_ROOM_BIN_PTR;
 unsigned int LOBBY_ROOM_BIN_LEN;
 
-bool AssetFileExists(const std::string &abs_filename, void *) {
-    return true;
-}
+bool AssetFileExists(const std::string &abs_filename, void *) { return true; }
 
-std::string AssetExpandFilePath(const std::string &path, void *) {
-    return path;
-}
+std::string AssetExpandFilePath(const std::string &path, void *) { return path; }
 
 bool AssetReadWholeFile(std::vector<unsigned char> *out,
-                               std::string *, const std::string &path,
-                               void *) {
+                        std::string *,
+                        const std::string &path,
+                        void *) {
     out->resize(LOBBY_ROOM_BIN_LEN);
     memcpy(&(*out)[0], LOBBY_ROOM_BIN_PTR, LOBBY_ROOM_BIN_LEN);
 
     return true;
 }
 
-bool AssetWriteWholeFile(std::string *, const std::string &,
-                        const std::vector<unsigned char> &, void *) {
+bool AssetWriteWholeFile(std::string *,
+                         const std::string &,
+                         const std::vector<unsigned char> &,
+                         void *) {
     return false;
 }
 
-tinygltf::FsCallbacks gAssetFsCallbacks {.FileExists=AssetFileExists,
-        .ExpandFilePath=AssetExpandFilePath,
-        .ReadWholeFile=AssetReadWholeFile,
-        .WriteWholeFile=AssetWriteWholeFile};
+tinygltf::FsCallbacks gAssetFsCallbacks{.FileExists = AssetFileExists,
+                                        .ExpandFilePath = AssetExpandFilePath,
+                                        .ReadWholeFile = AssetReadWholeFile,
+                                        .WriteWholeFile = AssetWriteWholeFile};
 
 void GltfModel::load() {
     tinygltf::TinyGLTF loader;
@@ -47,9 +46,15 @@ void GltfModel::load() {
 
     auto buffer = std::vector<unsigned char>(LOBBY_ROOM_GLTF_LEN);
     memcpy(&buffer[0], LOBBY_ROOM_GLTF_PTR, LOBBY_ROOM_GLTF_LEN);
-    bool ret = loader.LoadASCIIFromString(&m_model, &err, &warn, (char *) &buffer[0], buffer.size(), "");
+    bool ret =
+        loader.LoadASCIIFromString(&m_model, &err, &warn, (char *)&buffer[0], buffer.size(), "");
 
-    LOGI("GltfModel loaded. ret=%d scenes=%lu defaultScene=%d err=%s.\nwarn=%s", ret, m_model.scenes.size(), m_model.defaultScene, err.c_str(), warn.c_str());
+    LOGI("GltfModel loaded. ret=%d scenes=%lu defaultScene=%d err=%s.\nwarn=%s",
+         ret,
+         m_model.scenes.size(),
+         m_model.defaultScene,
+         err.c_str(),
+         warn.c_str());
 
     m_vbs.resize(m_model.bufferViews.size());
 
@@ -62,25 +67,24 @@ void GltfModel::load() {
 
         glGenBuffers(1, &m_vbs[accessor.bufferView]);
         glBindBuffer(bufferView.target, m_vbs[accessor.bufferView]);
-        glBufferData(bufferView.target, bufferView.byteLength,
-                     &buffer.data.at(0) + bufferView.byteOffset, GL_STATIC_DRAW);
+        glBufferData(bufferView.target,
+                     bufferView.byteLength,
+                     &buffer.data.at(0) + bufferView.byteOffset,
+                     GL_STATIC_DRAW);
         glBindBuffer(bufferView.target, 0);
     }
 
     GL(glBindVertexArray(0));
 }
 
-void GltfModel::drawScene(int position, int uv,
-                          int normal, GLint color, GLint mMatrix, GLint mode) {
-    if(m_model.scenes.size() == 0) {
+void GltfModel::drawScene(int position, int uv, GLint mMatrix, GLint mode) {
+    if (m_model.scenes.size() == 0) {
         return;
     }
     auto &scene = m_model.scenes[m_model.defaultScene];
 
     m_position = position;
     m_uv = uv;
-    m_normal = normal;
-    m_color = color;
     m_mMatrix = mMatrix;
     m_mode = mode;
 
@@ -144,18 +148,17 @@ void GltfModel::drawNode(int node_i, const ovrMatrix4f &transform) {
                 index = m_position;
             } else if (name == "TEXCOORD_0") {
                 index = m_uv;
-            } else if (name == "NORMAL") {
-                index = m_normal;
             }
+
             if (index != -1) {
                 // Compute byteStride from Accessor + BufferView combination.
-                int byteStride = accessor.ByteStride(
-                        m_model.bufferViews[accessor.bufferView]);
-                GL(glVertexAttribPointer(index, size,
+                int byteStride = accessor.ByteStride(m_model.bufferViews[accessor.bufferView]);
+                GL(glVertexAttribPointer(index,
+                                         size,
                                          accessor.componentType,
                                          accessor.normalized ? GL_TRUE : GL_FALSE,
                                          byteStride,
-                                         (void *) accessor.byteOffset));
+                                         (void *)accessor.byteOffset));
                 GL(glEnableVertexAttribArray(index));
             }
         }
@@ -168,15 +171,14 @@ void GltfModel::drawNode(int node_i, const ovrMatrix4f &transform) {
         if (it != material.values.end()) {
             colorValue = it->second.ColorFactor();
         }
-        GL(glUniform4f(m_color, colorValue[0], colorValue[1], colorValue[2], colorValue[3]));
 
-        GL(glUniformMatrix4fv(m_mMatrix, 1, true, (float *) &transform));
+        GL(glUniformMatrix4fv(m_mMatrix, 1, true, (float *)&transform));
 
-        if(material.name == "Plane") {
+        if (material.name == "Plane") {
             GL(glUniform1i(m_mode, 0));
-        }else if(material.name == "Message") {
+        } else if (material.name == "Message") {
             GL(glUniform1i(m_mode, 1));
-        }else{
+        } else {
             GL(glUniform1i(m_mode, 2));
         }
 
@@ -203,20 +205,23 @@ void GltfModel::drawNode(int node_i, const ovrMatrix4f &transform) {
             continue;
         }
 
-        GL(glDrawElements(mode, indexAccessor.count, indexAccessor.componentType,
-                          (void *) indexAccessor.byteOffset));
+        GL(glDrawElements(mode,
+                          indexAccessor.count,
+                          indexAccessor.componentType,
+                          (void *)indexAccessor.byteOffset));
         GL(glDisableVertexAttribArray(m_position));
     }
 }
 
-ovrMatrix4f
-GltfModel::createNodeTransform(const ovrMatrix4f &baseTransform, const tinygltf::Node &node) {
+ovrMatrix4f GltfModel::createNodeTransform(const ovrMatrix4f &baseTransform,
+                                           const tinygltf::Node &node) {
     ovrMatrix4f nodeTransform = baseTransform;
-    if(node.translation.size() == 3) {
-        ovrMatrix4f translation = ovrMatrix4f_CreateTranslation(node.translation[0], node.translation[1], node.translation[2]);
+    if (node.translation.size() == 3) {
+        ovrMatrix4f translation = ovrMatrix4f_CreateTranslation(
+            node.translation[0], node.translation[1], node.translation[2]);
         nodeTransform = ovrMatrix4f_Multiply(&nodeTransform, &translation);
     }
-    if(node.rotation.size() == 4) {
+    if (node.rotation.size() == 4) {
         ovrQuatf q;
         q.x = node.rotation[0];
         q.y = node.rotation[1];
@@ -225,7 +230,7 @@ GltfModel::createNodeTransform(const ovrMatrix4f &baseTransform, const tinygltf:
         ovrMatrix4f rotation = ovrMatrix4f_CreateFromQuaternion(&q);
         nodeTransform = ovrMatrix4f_Multiply(&nodeTransform, &rotation);
     }
-    if(node.scale.size() == 3) {
+    if (node.scale.size() == 3) {
         ovrMatrix4f scale = ovrMatrix4f_CreateScale(node.scale[0], node.scale[1], node.scale[2]);
         nodeTransform = ovrMatrix4f_Multiply(&nodeTransform, &scale);
     }

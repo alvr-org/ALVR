@@ -1,141 +1,140 @@
 #include "CEncoder.h"
 
+CEncoder::CEncoder()
+    : m_bExiting(false)
+    , m_targetTimestampNs(0) {
+    m_encodeFinished.Set();
+}
 
-		CEncoder::CEncoder()
-			: m_bExiting(false)
-			, m_targetTimestampNs(0)
-		{
-			m_encodeFinished.Set();
-		}
+CEncoder::~CEncoder() {
+    if (m_videoEncoder) {
+        m_videoEncoder->Shutdown();
+        m_videoEncoder.reset();
+    }
+}
 
-		
-			CEncoder::~CEncoder()
-		{
-			if (m_videoEncoder)
-			{
-				m_videoEncoder->Shutdown();
-				m_videoEncoder.reset();
-			}
-		}
+void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
+    m_FrameRender = std::make_shared<FrameRender>(d3dRender);
+    m_FrameRender->Startup();
+    uint32_t encoderWidth, encoderHeight;
+    m_FrameRender->GetEncodingResolution(&encoderWidth, &encoderHeight);
 
-		void CEncoder::Initialize(std::shared_ptr<CD3DRender> d3dRender) {
-			m_FrameRender = std::make_shared<FrameRender>(d3dRender);
-			m_FrameRender->Startup();
-			uint32_t encoderWidth, encoderHeight;
-			m_FrameRender->GetEncodingResolution(&encoderWidth, &encoderHeight);
-
-			Exception vceException;
-			Exception nvencException;
+    Exception vceException;
+    Exception nvencException;
 #ifdef ALVR_GPL
-			Exception swException;
-			if (Settings::Instance().m_force_sw_encoding) {
-				try {
-					Debug("Try to use VideoEncoderSW.\n");
-					m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
-					m_videoEncoder->Initialize();
-					return;
-				}
-				catch (Exception e) {
-					swException = e;
-				}
-			}
+    Exception swException;
+    if (Settings::Instance().m_force_sw_encoding) {
+        try {
+            Debug("Try to use VideoEncoderSW.\n");
+            m_videoEncoder
+                = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
+            m_videoEncoder->Initialize();
+            return;
+        } catch (Exception e) {
+            swException = e;
+        }
+    }
 #endif
-			
-			try {
-				Debug("Try to use VideoEncoderAMF.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderAMF>(d3dRender, encoderWidth, encoderHeight);
-				m_videoEncoder->Initialize();
-				return;
-			}
-			catch (Exception e) {
-				vceException = e;
-			}
-			try {
-				Debug("Try to use VideoEncoderNVENC.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderNVENC>(d3dRender, encoderWidth, encoderHeight);
-				m_videoEncoder->Initialize();
-				return;
-			}
-			catch (Exception e) {
-				nvencException = e;
-			}
+
+    try {
+        Debug("Try to use VideoEncoderAMF.\n");
+        m_videoEncoder = std::make_shared<VideoEncoderAMF>(d3dRender, encoderWidth, encoderHeight);
+        m_videoEncoder->Initialize();
+        return;
+    } catch (Exception e) {
+        vceException = e;
+    }
+    try {
+        Debug("Try to use VideoEncoderNVENC.\n");
+        m_videoEncoder
+            = std::make_shared<VideoEncoderNVENC>(d3dRender, encoderWidth, encoderHeight);
+        m_videoEncoder->Initialize();
+        return;
+    } catch (Exception e) {
+        nvencException = e;
+    }
 #ifdef ALVR_GPL
-			try {
-				Debug("Try to use VideoEncoderSW.\n");
-				m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
-				m_videoEncoder->Initialize();
-				return;
-			}
-			catch (Exception e) {
-				swException = e;
-			}
-			throw MakeException("All VideoEncoder are not available. VCE: %s, NVENC: %s, SW: %s", vceException.what(), nvencException.what(), swException.what());
+    try {
+        Debug("Try to use VideoEncoderSW.\n");
+        m_videoEncoder = std::make_shared<VideoEncoderSW>(d3dRender, encoderWidth, encoderHeight);
+        m_videoEncoder->Initialize();
+        return;
+    } catch (Exception e) {
+        swException = e;
+    }
+    throw MakeException(
+        "All VideoEncoder are not available. VCE: %s, NVENC: %s, SW: %s",
+        vceException.what(),
+        nvencException.what(),
+        swException.what()
+    );
 #else
-			throw MakeException("All VideoEncoder are not available. VCE: %s, NVENC: %s", vceException.what(), nvencException.what());
+    throw MakeException(
+        "All VideoEncoder are not available. VCE: %s, NVENC: %s",
+        vceException.what(),
+        nvencException.what()
+    );
 #endif
-		}
+}
 
-		bool CEncoder::CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
-			, uint64_t presentationTime, uint64_t targetTimestampNs, const std::string& message, const std::string& debugText)
-		{
-			m_presentationTime = presentationTime;
-			m_targetTimestampNs = targetTimestampNs;
-			m_FrameRender->Startup();
+bool CEncoder::CopyToStaging(
+    ID3D11Texture2D* pTexture[][2],
+    vr::VRTextureBounds_t bounds[][2],
+    int layerCount,
+    bool recentering,
+    uint64_t presentationTime,
+    uint64_t targetTimestampNs,
+    const std::string& message,
+    const std::string& debugText
+) {
+    m_presentationTime = presentationTime;
+    m_targetTimestampNs = targetTimestampNs;
+    m_FrameRender->Startup();
 
-			m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText);
-			return true;
-		}
+    m_FrameRender->RenderFrame(pTexture, bounds, layerCount, recentering, message, debugText);
+    return true;
+}
 
-		void CEncoder::Run()
-		{
-			Debug("CEncoder: Start thread. Id=%d\n", GetCurrentThreadId());
-			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT);
+void CEncoder::Run() {
+    Debug("CEncoder: Start thread. Id=%d\n", GetCurrentThreadId());
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_MOST_URGENT);
 
-			while (!m_bExiting)
-			{
-				m_newFrameReady.Wait();
-				if (m_bExiting)
-					break;
+    while (!m_bExiting) {
+        m_newFrameReady.Wait();
+        if (m_bExiting)
+            break;
 
-				if (m_FrameRender->GetTexture())
-				{
-					m_videoEncoder->Transmit(m_FrameRender->GetTexture().Get(), m_presentationTime, m_targetTimestampNs, m_scheduler.CheckIDRInsertion());
-				}
+        if (m_FrameRender->GetTexture()) {
+            m_videoEncoder->Transmit(
+                m_FrameRender->GetTexture().Get(),
+                m_presentationTime,
+                m_targetTimestampNs,
+                m_scheduler.CheckIDRInsertion()
+            );
+        }
 
-				m_encodeFinished.Set();
-			}
-		}
+        m_encodeFinished.Set();
+    }
+}
 
-		void CEncoder::Stop()
-		{
-			m_bExiting = true;
-			m_newFrameReady.Set();
-			Join();
-			m_FrameRender.reset();
-		}
+void CEncoder::Stop() {
+    m_bExiting = true;
+    m_newFrameReady.Set();
+    Join();
+    m_FrameRender.reset();
+}
 
-		void CEncoder::NewFrameReady()
-		{
-			m_encodeFinished.Reset();
-			m_newFrameReady.Set();
-		}
+void CEncoder::NewFrameReady() {
+    m_encodeFinished.Reset();
+    m_newFrameReady.Set();
+}
 
-		void CEncoder::WaitForEncode()
-		{
-			m_encodeFinished.Wait();
-		}
+void CEncoder::WaitForEncode() { m_encodeFinished.Wait(); }
 
-		void CEncoder::OnStreamStart() {
-			m_scheduler.OnStreamStart();
-		}
+void CEncoder::OnStreamStart() { m_scheduler.OnStreamStart(); }
 
-		void CEncoder::OnPacketLoss() {
-			m_scheduler.OnPacketLoss();
-		}
+void CEncoder::OnPacketLoss() { m_scheduler.OnPacketLoss(); }
 
-		void CEncoder::InsertIDR() {
-			m_scheduler.InsertIDR();
-		}
+void CEncoder::InsertIDR() { m_scheduler.InsertIDR(); }
 
-		void CEncoder::CaptureFrame() {
-		}
+void CEncoder::CaptureFrame() { }

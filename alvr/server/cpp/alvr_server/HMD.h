@@ -19,16 +19,16 @@ class CD3DRender;
 class PoseHistory;
 
 class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVRDisplayComponent {
-  public:
+public:
     Hmd();
 
     virtual ~Hmd();
 
     virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId);
     virtual void Deactivate();
-    virtual void EnterStandby() {}
-    void *GetComponent(const char *pchComponentNameAndVersion);
-    virtual void DebugRequest(const char *, char *, uint32_t) {}
+    virtual void EnterStandby() { }
+    void* GetComponent(const char* pchComponentNameAndVersion);
+    virtual void DebugRequest(const char*, char*, uint32_t) { }
     virtual vr::DriverPose_t GetPose();
 
     void OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion);
@@ -45,14 +45,15 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
 
     // IVRDisplayComponent
 
-    virtual void GetWindowBounds(int32_t *x, int32_t *y, uint32_t *width, uint32_t *height);
+    virtual void GetWindowBounds(int32_t* x, int32_t* y, uint32_t* width, uint32_t* height);
     virtual bool IsDisplayOnDesktop() { return false; }
     virtual bool IsDisplayRealDisplay();
-    virtual void GetRecommendedRenderTargetSize(uint32_t *width, uint32_t *height);
+    virtual void GetRecommendedRenderTargetSize(uint32_t* width, uint32_t* height);
     virtual void GetEyeOutputViewport(
-        vr::EVREye eye, uint32_t *x, uint32_t *y, uint32_t *width, uint32_t *height);
+        vr::EVREye eye, uint32_t* x, uint32_t* y, uint32_t* width, uint32_t* height
+    );
     virtual void
-    GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom);
+    GetProjectionRaw(vr::EVREye eEye, float* pfLeft, float* pfRight, float* pfTop, float* pfBottom);
     virtual vr::DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU, float fV);
 
     vr::VRInputComponentHandle_t m_proximity;
@@ -60,7 +61,7 @@ class Hmd : public TrackedDevice, public vr::ITrackedDeviceServerDriver, vr::IVR
     std::shared_ptr<CEncoder> m_encoder;
     std::shared_ptr<PoseHistory> m_poseHistory;
 
-  private:
+private:
     FfiViewsConfig views_config;
 
     bool m_baseComponentsInitialized;

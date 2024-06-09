@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <map>
+#include <vector>
 
 #include "openvr_driver.h"
 
@@ -17,7 +17,7 @@ enum class ButtonType {
 };
 
 struct ButtonInfo {
-    std::vector<const char *> steamvr_paths;
+    std::vector<const char*> steamvr_paths;
     ButtonType type;
 };
 

@@ -10,9 +10,9 @@ class Settings {
     Settings();
     virtual ~Settings();
 
-  public:
+public:
     void Load();
-    static Settings &Instance() { return m_Instance; }
+    static Settings& Instance() { return m_Instance; }
 
     bool IsLoaded() { return m_loaded; }
 

@@ -1,14 +1,11 @@
 #include "FormatConverter.h"
 #include "alvr_server/bindings.h"
 
-FormatConverter::FormatConverter(Renderer *render)
-    : r(render)
-{
-}
+FormatConverter::FormatConverter(Renderer* render)
+    : r(render) { }
 
-FormatConverter::~FormatConverter()
-{
-    for (const OutputImage &image : m_images) {
+FormatConverter::~FormatConverter() {
+    for (const OutputImage& image : m_images) {
         vkUnmapMemory(r->m_dev, image.memory);
         vkDestroyImageView(r->m_dev, image.view, nullptr);
         vkDestroyImage(r->m_dev, image.image, nullptr);
@@ -25,8 +22,14 @@ FormatConverter::~FormatConverter()
     vkDestroyPipelineLayout(r->m_dev, m_pipelineLayout, nullptr);
 }
 
-void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkSemaphore semaphore, int count, const unsigned char *shaderData, unsigned shaderLen)
-{
+void FormatConverter::init(
+    VkImage image,
+    VkImageCreateInfo imageCreateInfo,
+    VkSemaphore semaphore,
+    int count,
+    const unsigned char* shaderData,
+    unsigned shaderLen
+) {
     m_images.resize(count);
     m_semaphore = semaphore;
 
@@ -63,7 +66,9 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     descriptorSetLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
     descriptorSetLayoutInfo.bindingCount = 2;
     descriptorSetLayoutInfo.pBindings = descriptorBindings;
-    VK_CHECK(vkCreateDescriptorSetLayout(r->m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout));
+    VK_CHECK(vkCreateDescriptorSetLayout(
+        r->m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout
+    ));
 
     // Input image
     VkImageViewCreateInfo viewInfo = {};
@@ -106,7 +111,8 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
         vkGetImageMemoryRequirements(r->m_dev, m_images[i].image, &memReqs);
         memAllocInfo.allocationSize = memReqs.size;
 
-        VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+            | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         memAllocInfo.memoryTypeIndex = r->memoryTypeIndex(memType, memReqs.memoryTypeBits);
         VK_CHECK(vkAllocateMemory(r->m_dev, &memAllocInfo, nullptr, &m_images[i].memory));
         VK_CHECK(vkBindImageMemory(r->m_dev, m_images[i].image, m_images[i].memory, 0));
@@ -140,7 +146,18 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
         imageBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 
         r->commandBufferBegin();
-        vkCmdPipelineBarrier(r->m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
+        vkCmdPipelineBarrier(
+            r->m_commandBuffer,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &imageBarrier
+        );
         r->commandBufferSubmit();
 
         VkImageSubresource subresource = {};
@@ -149,7 +166,14 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
         vkGetImageSubresourceLayout(r->m_dev, m_images[i].image, &subresource, &layout);
 
         m_images[i].linesize = layout.rowPitch;
-        VK_CHECK(vkMapMemory(r->m_dev, m_images[i].memory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void**>(&m_images[i].mapped)));
+        VK_CHECK(vkMapMemory(
+            r->m_dev,
+            m_images[i].memory,
+            0,
+            VK_WHOLE_SIZE,
+            0,
+            reinterpret_cast<void**>(&m_images[i].mapped)
+        ));
     }
 
     VkSemaphoreCreateInfo semInfo = {};
@@ -186,8 +210,7 @@ void FormatConverter::init(VkImage image, VkImageCreateInfo imageCreateInfo, VkS
     m_groupCountY = (imageCreateInfo.extent.height + 7) / 8;
 }
 
-void FormatConverter::Convert(uint8_t **data, int *linesize)
-{
+void FormatConverter::Convert(uint8_t** data, int* linesize) {
     VkCommandBufferBeginInfo commandBufferBegin = {};
     commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
@@ -222,7 +245,14 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
         descriptorWriteSets.push_back(descriptorWriteSet);
     }
 
-    r->d.vkCmdPushDescriptorSetKHR(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, descriptorWriteSets.size(), descriptorWriteSets.data());
+    r->d.vkCmdPushDescriptorSetKHR(
+        m_commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_pipelineLayout,
+        0,
+        descriptorWriteSets.size(),
+        descriptorWriteSets.data()
+    );
 
     vkCmdDispatch(m_commandBuffer, m_groupCountX, m_groupCountY, 1);
 
@@ -249,8 +279,7 @@ void FormatConverter::Convert(uint8_t **data, int *linesize)
     }
 }
 
-void FormatConverter::Sync()
-{
+void FormatConverter::Sync() {
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
     VkSubmitInfo submitInfo = {};
@@ -264,15 +293,31 @@ void FormatConverter::Sync()
     VK_CHECK(vkResetFences(r->m_dev, 1, &r->m_fence));
 }
 
-uint64_t FormatConverter::GetTimestamp()
-{
+uint64_t FormatConverter::GetTimestamp() {
     uint64_t query;
-    VK_CHECK(vkGetQueryPoolResults(r->m_dev, m_queryPool, 0, 1, sizeof(uint64_t), &query, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+    VK_CHECK(vkGetQueryPoolResults(
+        r->m_dev,
+        m_queryPool,
+        0,
+        1,
+        sizeof(uint64_t),
+        &query,
+        sizeof(uint64_t),
+        VK_QUERY_RESULT_64_BIT
+    ));
     return query * r->m_timestampPeriod;
 }
 
-RgbToYuv420::RgbToYuv420(Renderer *render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore)
-    : FormatConverter(render)
-{
-    init(image, imageInfo, semaphore, 3, RGBTOYUV420_SHADER_COMP_SPV_PTR, RGBTOYUV420_SHADER_COMP_SPV_LEN);
+RgbToYuv420::RgbToYuv420(
+    Renderer* render, VkImage image, VkImageCreateInfo imageInfo, VkSemaphore semaphore
+)
+    : FormatConverter(render) {
+    init(
+        image,
+        imageInfo,
+        semaphore,
+        3,
+        RGBTOYUV420_SHADER_COMP_SPV_PTR,
+        RGBTOYUV420_SHADER_COMP_SPV_LEN
+    );
 }

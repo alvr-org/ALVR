@@ -3,66 +3,71 @@
 
 #include "shared/threadtools.h"
 
-#include <d3d11.h>
-#include <wrl.h>
-#include <map>
-#include <d3d11_1.h>
-#include <wincodec.h>
-#include <wincodecsdk.h>
-#include "alvr_server/Utils.h"
 #include "FrameRender.h"
 #include "VideoEncoder.h"
-#include "VideoEncoderNVENC.h"
 #include "VideoEncoderAMF.h"
+#include "VideoEncoderNVENC.h"
+#include "alvr_server/Utils.h"
+#include <d3d11.h>
+#include <d3d11_1.h>
+#include <map>
+#include <wincodec.h>
+#include <wincodecsdk.h>
+#include <wrl.h>
 #ifdef ALVR_GPL
-	#include "VideoEncoderSW.h"
+#include "VideoEncoderSW.h"
 #endif
 #include "alvr_server/IDRScheduler.h"
 
+using Microsoft::WRL::ComPtr;
 
-	using Microsoft::WRL::ComPtr;
+//----------------------------------------------------------------------------
+// Blocks on reading backbuffer from gpu, so WaitForPresent can return
+// as soon as we know rendering made it this frame.  This step of the pipeline
+// should run about 3ms per frame.
+//----------------------------------------------------------------------------
+class CEncoder : public CThread {
+public:
+    CEncoder();
+    ~CEncoder();
 
-	//----------------------------------------------------------------------------
-	// Blocks on reading backbuffer from gpu, so WaitForPresent can return
-	// as soon as we know rendering made it this frame.  This step of the pipeline
-	// should run about 3ms per frame.
-	//----------------------------------------------------------------------------
-	class CEncoder : public CThread
-	{
-	public:
-		CEncoder();
-		~CEncoder();
+    void Initialize(std::shared_ptr<CD3DRender> d3dRender);
 
-		void Initialize(std::shared_ptr<CD3DRender> d3dRender);
+    bool CopyToStaging(
+        ID3D11Texture2D* pTexture[][2],
+        vr::VRTextureBounds_t bounds[][2],
+        int layerCount,
+        bool recentering,
+        uint64_t presentationTime,
+        uint64_t targetTimestampNs,
+        const std::string& message,
+        const std::string& debugText
+    );
 
-		bool CopyToStaging(ID3D11Texture2D *pTexture[][2], vr::VRTextureBounds_t bounds[][2], int layerCount, bool recentering
-			, uint64_t presentationTime, uint64_t targetTimestampNs, const std::string& message, const std::string& debugText);
+    virtual void Run();
 
-		virtual void Run();
+    virtual void Stop();
 
-		virtual void Stop();
+    void NewFrameReady();
 
-		void NewFrameReady();
+    void WaitForEncode();
 
-		void WaitForEncode();
+    void OnStreamStart();
 
-		void OnStreamStart();
+    void OnPacketLoss();
 
-		void OnPacketLoss();
+    void InsertIDR();
 
-		void InsertIDR();
+    void CaptureFrame();
 
-		void CaptureFrame();
+private:
+    CThreadEvent m_newFrameReady, m_encodeFinished;
+    std::shared_ptr<VideoEncoder> m_videoEncoder;
+    bool m_bExiting;
+    uint64_t m_presentationTime;
+    uint64_t m_targetTimestampNs;
 
-	private:
-		CThreadEvent m_newFrameReady, m_encodeFinished;
-		std::shared_ptr<VideoEncoder> m_videoEncoder;
-		bool m_bExiting;
-		uint64_t m_presentationTime;
-		uint64_t m_targetTimestampNs;
+    std::shared_ptr<FrameRender> m_FrameRender;
 
-		std::shared_ptr<FrameRender> m_FrameRender;
-
-		IDRScheduler m_scheduler;
-	};
-
+    IDRScheduler m_scheduler;
+};

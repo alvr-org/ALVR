@@ -6,12 +6,14 @@
 #include <memory>
 
 class VideoEncoder {
-  public:
+public:
     virtual void Initialize() = 0;
     virtual void Shutdown() = 0;
 
-    virtual void Transmit(ID3D11Texture2D *pTexture,
-                          uint64_t presentationTime,
-                          uint64_t targetTimestampNs,
-                          bool insertIDR) = 0;
+    virtual void Transmit(
+        ID3D11Texture2D* pTexture,
+        uint64_t presentationTime,
+        uint64_t targetTimestampNs,
+        bool insertIDR
+    ) = 0;
 };

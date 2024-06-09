@@ -1,7 +1,7 @@
 #include "EncodePipelineNvEnc.h"
 #include "ALVR-common/packet_types.h"
-#include "alvr_server/Settings.h"
 #include "alvr_server/Logger.h"
+#include "alvr_server/Settings.h"
 #include "ffmpeg_helper.h"
 #include <chrono>
 
@@ -12,7 +12,7 @@ extern "C" {
 
 namespace {
 
-const char *encoder(ALVR_CODEC codec) {
+const char* encoder(ALVR_CODEC codec) {
     switch (codec) {
     case ALVR_CODEC_H264:
         return "h264_nvenc";
@@ -24,50 +24,51 @@ const char *encoder(ALVR_CODEC codec) {
     throw std::runtime_error("invalid codec " + std::to_string(codec));
 }
 
-void set_hwframe_ctx(AVCodecContext *ctx, AVBufferRef *hw_device_ctx)
-{
-  AVBufferRef *hw_frames_ref;
-  AVHWFramesContext *frames_ctx = NULL;
-  int err = 0;
+void set_hwframe_ctx(AVCodecContext* ctx, AVBufferRef* hw_device_ctx) {
+    AVBufferRef* hw_frames_ref;
+    AVHWFramesContext* frames_ctx = NULL;
+    int err = 0;
 
-  if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
-    throw std::runtime_error("Failed to create CUDA frame context.");
-  }
-  frames_ctx = (AVHWFramesContext *)(hw_frames_ref->data);
-  frames_ctx->format = AV_PIX_FMT_CUDA;
-  /**
-   * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
-   * as SW format when we get it from HW.
-   * But NVEnc support only BGR0 format and we easy can just to force it
-   * Because:
-   * AV_PIX_FMT_BGRA - 28  ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
-   * AV_PIX_FMT_BGR0 - 123 ///< packed BGR 8:8:8,    32bpp, BGRXBGRX...   X=unused/undefined
-   *
-   * We just to ignore the alpha channel and it's done
-   */
-  frames_ctx->sw_format = AV_PIX_FMT_BGR0;
-  frames_ctx->width = ctx->width;
-  frames_ctx->height = ctx->height;
-  if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+    if (!(hw_frames_ref = av_hwframe_ctx_alloc(hw_device_ctx))) {
+        throw std::runtime_error("Failed to create CUDA frame context.");
+    }
+    frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
+    frames_ctx->format = AV_PIX_FMT_CUDA;
+    /**
+     * We will recieve a frame from HW as AV_PIX_FMT_VULKAN which will converted to AV_PIX_FMT_BGRA
+     * as SW format when we get it from HW.
+     * But NVEnc support only BGR0 format and we easy can just to force it
+     * Because:
+     * AV_PIX_FMT_BGRA - 28  ///< packed BGRA 8:8:8:8, 32bpp, BGRABGRA...
+     * AV_PIX_FMT_BGR0 - 123 ///< packed BGR 8:8:8,    32bpp, BGRXBGRX...   X=unused/undefined
+     *
+     * We just to ignore the alpha channel and it's done
+     */
+    frames_ctx->sw_format = AV_PIX_FMT_BGR0;
+    frames_ctx->width = ctx->width;
+    frames_ctx->height = ctx->height;
+    if ((err = av_hwframe_ctx_init(hw_frames_ref)) < 0) {
+        av_buffer_unref(&hw_frames_ref);
+        throw alvr::AvException("Failed to initialize CUDA frame context:", err);
+    }
+    ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
+    if (!ctx->hw_frames_ctx)
+        err = AVERROR(ENOMEM);
+
     av_buffer_unref(&hw_frames_ref);
-    throw alvr::AvException("Failed to initialize CUDA frame context:", err);
-  }
-  ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
-  if (!ctx->hw_frames_ctx)
-    err = AVERROR(ENOMEM);
-
-  av_buffer_unref(&hw_frames_ref);
 }
 
 } // namespace
-alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
-                                               VkContext &vk_ctx,
-                                               VkFrame &input_frame,
-                                               VkFrameCtx &vk_frame_ctx,
-                                               uint32_t width,
-                                               uint32_t height) {
+alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
+    Renderer* render,
+    VkContext& vk_ctx,
+    VkFrame& input_frame,
+    VkFrameCtx& vk_frame_ctx,
+    uint32_t width,
+    uint32_t height
+) {
     r = render;
-    auto input_frame_ctx = (AVHWFramesContext *)vk_frame_ctx.ctx->data;
+    auto input_frame_ctx = (AVHWFramesContext*)vk_frame_ctx.ctx->data;
     assert(input_frame_ctx->sw_format == AV_PIX_FMT_BGRA);
 
     int err;
@@ -78,11 +79,11 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
         throw alvr::AvException("Failed to create a CUDA device:", err);
     }
 
-    const auto &settings = Settings::Instance();
+    const auto& settings = Settings::Instance();
 
     auto codec_id = ALVR_CODEC(settings.m_codec);
-    const char *encoder_name = encoder(codec_id);
-    const AVCodec *codec = avcodec_find_encoder_by_name(encoder_name);
+    const char* encoder_name = encoder(codec_id);
+    const AVCodec* codec = avcodec_find_encoder_by_name(encoder_name);
     if (codec == nullptr) {
         throw std::runtime_error(std::string("Failed to find encoder ") + encoder_name);
     }
@@ -157,12 +158,13 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(Renderer *render,
     encoder_ctx->pix_fmt = AV_PIX_FMT_CUDA;
     encoder_ctx->width = width;
     encoder_ctx->height = height;
-    encoder_ctx->time_base = {1, (int)1e9};
-    encoder_ctx->framerate = AVRational{settings.m_refreshRate, 1};
-    encoder_ctx->sample_aspect_ratio = AVRational{1, 1};
+    encoder_ctx->time_base = { 1, (int)1e9 };
+    encoder_ctx->framerate = AVRational { settings.m_refreshRate, 1 };
+    encoder_ctx->sample_aspect_ratio = AVRational { 1, 1 };
     encoder_ctx->max_b_frames = 0;
     encoder_ctx->gop_size = INT16_MAX;
-    encoder_ctx->color_range = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
+    encoder_ctx->color_range
+        = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
     auto params = FfiDynamicEncoderParams {};
     params.updated = true;
     params.bitrate_bps = 30'000'000;
@@ -185,7 +187,7 @@ alvr::EncodePipelineNvEnc::~EncodePipelineNvEnc() {
 }
 
 void alvr::EncodePipelineNvEnc::PushFrame(uint64_t targetTimestampNs, bool idr) {
-    AVVkFrame *vkf = reinterpret_cast<AVVkFrame*>(vk_frame->data[0]);
+    AVVkFrame* vkf = reinterpret_cast<AVVkFrame*>(vk_frame->data[0]);
     vkf->sem_value[0]++;
 
     VkTimelineSemaphoreSubmitInfo timelineInfo = {};

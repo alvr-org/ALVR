@@ -6,10 +6,10 @@
 #include <map>
 
 class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
-  public:
+public:
     Controller(uint64_t deviceID);
 
-    virtual ~Controller(){};
+    virtual ~Controller() {};
 
     //
     // ITrackedDeviceServerDriver
@@ -21,13 +21,13 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 
     virtual void EnterStandby();
 
-    void *GetComponent(const char *pchComponentNameAndVersion);
+    void* GetComponent(const char* pchComponentNameAndVersion);
 
-    virtual void PowerOff(){};
+    virtual void PowerOff() {};
 
     /** debug request from a client */
     virtual void
-    DebugRequest(const char *pchRequest, char *pchResponseBuffer, uint32_t unResponseBufferSize);
+    DebugRequest(const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize);
 
     virtual vr::DriverPose_t GetPose();
 
@@ -37,16 +37,18 @@ class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 
     void SetButton(uint64_t id, FfiButtonValue value);
 
-    bool onPoseUpdate(float predictionS,
-                      FfiDeviceMotion motion,
-                      const FfiHandSkeleton *hand,
-                      unsigned int controllersTracked);
+    bool onPoseUpdate(
+        float predictionS,
+        FfiDeviceMotion motion,
+        const FfiHandSkeleton* hand,
+        unsigned int controllersTracked
+    );
 
     void GetBoneTransform(bool withController, vr::VRBoneTransform_t outBoneTransform[]);
 
     vr::ETrackedDeviceClass getControllerDeviceClass();
 
-  private:
+private:
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
 

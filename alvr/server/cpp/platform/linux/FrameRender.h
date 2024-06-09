@@ -4,10 +4,9 @@
 #include "ffmpeg_helper.h"
 #include "protocol.h"
 
-class FrameRender : public Renderer
-{
+class FrameRender : public Renderer {
 public:
-    explicit FrameRender(alvr::VkContext &ctx, init_packet &init, int fds[]);
+    explicit FrameRender(alvr::VkContext& ctx, init_packet& init, int fds[]);
     ~FrameRender();
 
     Output CreateOutput();
@@ -38,7 +37,7 @@ private:
 
     void setupColorCorrection();
     void setupFoveatedRendering();
-    void setupCustomShaders(const std::string &stage);
+    void setupCustomShaders(const std::string& stage);
 
     uint32_t m_width;
     uint32_t m_height;

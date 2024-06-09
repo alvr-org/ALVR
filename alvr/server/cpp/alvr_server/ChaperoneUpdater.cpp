@@ -1,8 +1,8 @@
 #include "ALVR-common/packet_types.h"
 #include "Logger.h"
 #include "bindings.h"
-#include <mutex>
 #include <memory>
+#include <mutex>
 
 #ifndef __APPLE__
 // Workaround symbol clash in openvr.h / openvr_driver.h
@@ -49,16 +49,14 @@ void ShutdownOpenvrClient() {
 #endif
 }
 
-bool IsOpenvrClientReady() {
-    return isOpenvrInit;
-}
+bool IsOpenvrClientReady() { return isOpenvrInit; }
 
 void _SetChaperoneArea(float areaWidth, float areaHeight) {
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
-    const vr::HmdMatrix34_t MATRIX_IDENTITY = {
-        {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
+    const vr::HmdMatrix34_t MATRIX_IDENTITY
+        = { { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 } } };
 
     float perimeterPoints[4][2];
 
@@ -73,10 +71,10 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 
     auto setup = vr::VRChaperoneSetup();
 
-    if (setup != nullptr)
-    {
+    if (setup != nullptr) {
         vr::VRChaperoneSetup()->SetWorkingPerimeter(
-            reinterpret_cast<vr::HmdVector2_t *>(perimeterPoints), 4);
+            reinterpret_cast<vr::HmdVector2_t*>(perimeterPoints), 4
+        );
         vr::VRChaperoneSetup()->SetWorkingStandingZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
         vr::VRChaperoneSetup()->SetWorkingSeatedZeroPoseToRawTrackingPose(&MATRIX_IDENTITY);
         vr::VRChaperoneSetup()->SetWorkingPlayAreaSize(areaWidth, areaHeight);
@@ -85,11 +83,11 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 
     auto settings = vr::VRSettings();
 
-    if (settings != nullptr)
-    {
+    if (settings != nullptr) {
         // Hide SteamVR Chaperone
         vr::VRSettings()->SetFloat(
-            vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f);
+            vr::k_pch_CollisionBounds_Section, vr::k_pch_CollisionBounds_FadeDistance_Float, 0.0f
+        );
     }
 
 #endif
@@ -98,16 +96,14 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 #ifdef __linux__
 std::unique_ptr<vr::HmdMatrix34_t> GetInvZeroPose() {
     std::unique_lock<std::mutex> lock(chaperone_mutex);
-    if (!isOpenvrInit)
-    {
+    if (!isOpenvrInit) {
         return nullptr;
     }
     auto mat = std::make_unique<vr::HmdMatrix34_t>();
     // revert pulls live into working copy
     vr::VRChaperoneSetup()->RevertWorkingCopy();
     auto compositor = vr::VRCompositor();
-    if (compositor == nullptr)
-    {
+    if (compositor == nullptr) {
         return nullptr;
     }
     if (compositor->GetTrackingSpace() == vr::TrackingUniverseStanding) {

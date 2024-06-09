@@ -84,71 +84,71 @@ struct FfiDynamicEncoderParams {
     float framerate;
 };
 
-extern "C" const unsigned char *FRAME_RENDER_VS_CSO_PTR;
+extern "C" const unsigned char* FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
-extern "C" const unsigned char *FRAME_RENDER_PS_CSO_PTR;
+extern "C" const unsigned char* FRAME_RENDER_PS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_PS_CSO_LEN;
-extern "C" const unsigned char *QUAD_SHADER_CSO_PTR;
+extern "C" const unsigned char* QUAD_SHADER_CSO_PTR;
 extern "C" unsigned int QUAD_SHADER_CSO_LEN;
-extern "C" const unsigned char *COMPRESS_AXIS_ALIGNED_CSO_PTR;
+extern "C" const unsigned char* COMPRESS_AXIS_ALIGNED_CSO_PTR;
 extern "C" unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
-extern "C" const unsigned char *COLOR_CORRECTION_CSO_PTR;
+extern "C" const unsigned char* COLOR_CORRECTION_CSO_PTR;
 extern "C" unsigned int COLOR_CORRECTION_CSO_LEN;
-extern "C" const unsigned char *RGBTOYUV420_CSO_PTR;
+extern "C" const unsigned char* RGBTOYUV420_CSO_PTR;
 extern "C" unsigned int RGBTOYUV420_CSO_LEN;
 
-extern "C" const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
+extern "C" const unsigned char* QUAD_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int QUAD_SHADER_COMP_SPV_LEN;
-extern "C" const unsigned char *COLOR_SHADER_COMP_SPV_PTR;
+extern "C" const unsigned char* COLOR_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int COLOR_SHADER_COMP_SPV_LEN;
-extern "C" const unsigned char *FFR_SHADER_COMP_SPV_PTR;
+extern "C" const unsigned char* FFR_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int FFR_SHADER_COMP_SPV_LEN;
-extern "C" const unsigned char *RGBTOYUV420_SHADER_COMP_SPV_PTR;
+extern "C" const unsigned char* RGBTOYUV420_SHADER_COMP_SPV_PTR;
 extern "C" unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 
-extern "C" const char *g_sessionPath;
-extern "C" const char *g_driverRootDir;
+extern "C" const char* g_sessionPath;
+extern "C" const char* g_driverRootDir;
 
-extern "C" void (*LogError)(const char *stringPtr);
-extern "C" void (*LogWarn)(const char *stringPtr);
-extern "C" void (*LogInfo)(const char *stringPtr);
-extern "C" void (*LogDebug)(const char *stringPtr);
-extern "C" void (*LogPeriodically)(const char *tag, const char *stringPtr);
+extern "C" void (*LogError)(const char* stringPtr);
+extern "C" void (*LogWarn)(const char* stringPtr);
+extern "C" void (*LogInfo)(const char* stringPtr);
+extern "C" void (*LogDebug)(const char* stringPtr);
+extern "C" void (*LogPeriodically)(const char* tag, const char* stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
-extern "C" void (*SetVideoConfigNals)(const unsigned char *configBuffer, int len, int codec);
-extern "C" void (*VideoSend)(unsigned long long targetTimestampNs,
-                             unsigned char *buf,
-                             int len,
-                             bool isIdr);
-extern "C" void (*HapticsSend)(unsigned long long path,
-                               float duration_s,
-                               float frequency,
-                               float amplitude);
+extern "C" void (*SetVideoConfigNals)(const unsigned char* configBuffer, int len, int codec);
+extern "C" void (*VideoSend)(
+    unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr
+);
+extern "C" void (*HapticsSend)(
+    unsigned long long path, float duration_s, float frequency, float amplitude
+);
 extern "C" void (*ShutdownRuntime)();
-extern "C" unsigned long long (*PathStringToHash)(const char *path);
+extern "C" unsigned long long (*PathStringToHash)(const char* path);
 extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
-extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
+extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
 extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
 extern "C" void (*RegisterButtons)(unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
 
 extern "C" void CppInit();
-extern "C" void *CppOpenvrEntryPoint(const char *pInterfaceName, int *pReturnCode);
+extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);
 extern "C" void InitializeStreaming();
 extern "C" void DeinitializeStreaming();
 extern "C" void SendVSync();
 extern "C" void RequestIDR();
-extern "C" void SetTracking(unsigned long long targetTimestampNs,
-                            float controllerPoseTimeOffsetS,
-                            const FfiDeviceMotion *deviceMotions,
-                            int motionsCount,
-                            const FfiHandSkeleton *leftHand,
-                            const FfiHandSkeleton *rightHand,
-                            unsigned int controllersTracked,
-                            const FfiBodyTracker *bodyTrackers,
-                            int bodyTrackersCount);
+extern "C" void SetTracking(
+    unsigned long long targetTimestampNs,
+    float controllerPoseTimeOffsetS,
+    const FfiDeviceMotion* deviceMotions,
+    int motionsCount,
+    const FfiHandSkeleton* leftHand,
+    const FfiHandSkeleton* rightHand,
+    unsigned int controllersTracked,
+    const FfiBodyTracker* bodyTrackers,
+    int bodyTrackersCount
+);
 extern "C" void VideoErrorReportReceive();
 extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
@@ -167,7 +167,8 @@ extern "C" void CaptureFrame();
 
 // NalParsing.cpp
 void ParseFrameNals(
-    int codec, unsigned char *buf, int len, unsigned long long targetTimestampNs, bool isIdr);
+    int codec, unsigned char* buf, int len, unsigned long long targetTimestampNs, bool isIdr
+);
 
 // CrashHandler.cpp
 void HookCrashHandler();

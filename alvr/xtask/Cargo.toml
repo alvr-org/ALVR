@@ -11,6 +11,7 @@ alvr_filesystem.workspace = true
 
 pico-args = "0.5"
 xshell = "0.2"
+walkdir = "2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 pkg-config = "0.3"

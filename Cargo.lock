@@ -457,6 +457,7 @@ dependencies = [
  "alvr_filesystem",
  "pico-args",
  "pkg-config",
+ "walkdir",
  "xshell",
 ]
 

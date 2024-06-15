@@ -73,9 +73,8 @@ pub struct ConnectionContext {
 
 fn set_hud_message(event_queue: &Mutex<VecDeque<ClientCoreEvent>>, message: &str) {
     let message = format!(
-        "ALVR v{}\nHMD {}\nhostname: {}\nIP: {}\n\n{message}",
+        "ALVR v{}\nhostname: {}\nIP: {}\n\n{message}",
         *ALVR_VERSION,
-        platform::platform().to_string(),
         Config::load().hostname,
         platform::local_ip(),
     );

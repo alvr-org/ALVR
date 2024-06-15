@@ -104,8 +104,8 @@ impl StreamContext {
             }
             if config.combined_eye_gaze
                 && matches!(
-                platform,
-                Platform::Pico4 | Platform::PicoNeo3 | Platform::PicoNeo3Link
+                    platform,
+                    Platform::Pico4 | Platform::PicoNeo3 | Platform::PicoNeo3Link
                 )
             {
                 alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")

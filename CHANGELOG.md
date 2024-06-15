@@ -1,5 +1,10 @@
 # Changelog
 
+## v20.8.1
+
+* Fix controller detection for Pico Neo3 Link
+* Show HMD model in app
+
 ## v20.8.0
 
 * Bring back settings tabs (by @Meister1593 #2076)

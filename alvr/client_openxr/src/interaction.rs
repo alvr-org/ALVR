@@ -66,8 +66,7 @@ pub fn initialize_interaction(
         | Platform::Quest3
         | Platform::QuestPro
         | Platform::QuestUnknown => QUEST_CONTROLLER_PROFILE_PATH, // todo: create new controller profile for quest pro and 3
-        Platform::PicoNeo3
-        | Platform::PicoNeo3Link => PICO_NEO3_CONTROLLER_PROFILE_PATH,
+        Platform::PicoNeo3 | Platform::PicoNeo3Link => PICO_NEO3_CONTROLLER_PROFILE_PATH,
         Platform::Pico4 => PICO4_CONTROLLER_PROFILE_PATH,
         Platform::Focus3 | Platform::XRElite | Platform::ViveUnknown => {
             FOCUS3_CONTROLLER_PROFILE_PATH

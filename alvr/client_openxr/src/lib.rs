@@ -126,7 +126,7 @@ pub fn entry_point() {
         | Platform::Quest3
         | Platform::QuestPro
         | Platform::QuestUnknown => "_quest",
-        Platform::PicoNeo3 | Platform::Pico4 => "_pico",
+        Platform::PicoNeo3 | Platform::PicoNeo3Link | Platform::Pico4 => "_pico",
         Platform::Yvr => "_yvr",
         Platform::Lynx => "_lynx",
         _ => "",

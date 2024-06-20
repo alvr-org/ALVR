@@ -13,6 +13,7 @@ use std::{
     ptr, thread,
     time::{Duration, Instant},
 };
+use tracking::{to_ffi_fov, to_ffi_pose};
 
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
     logging_backend::init_logging();
@@ -69,23 +70,11 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 },
                 ServerCoreEvent::ViewsConfig(config) => unsafe {
                     crate::SetViewsConfig(FfiViewsConfig {
-                        fov: [
-                            FfiFov {
-                                left: config.fov[0].left,
-                                right: config.fov[0].right,
-                                up: config.fov[0].up,
-                                down: config.fov[0].down,
-                            },
-                            FfiFov {
-                                left: config.fov[1].left,
-                                right: config.fov[1].right,
-                                up: config.fov[1].up,
-                                down: config.fov[1].down,
-                            },
+                        fov: [to_ffi_fov(config.fov[0]), to_ffi_fov(config.fov[1])],
+                        local_view_transforms: [
+                            to_ffi_pose(config.local_view_transforms[0]),
+                            to_ffi_pose(config.local_view_transforms[1]),
                         ],
-                        // todo: send full matrix to steamvr
-                        ipd_m: config.local_view_transforms[1].position.x
-                            - config.local_view_transforms[0].position.x,
                     });
                 },
                 ServerCoreEvent::Tracking {

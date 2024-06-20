@@ -179,7 +179,7 @@ pub enum ServerControlPacket {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ViewsConfig {
     // Note: the head-to-eye transform is always a translation along the x axis
-    pub ipd_m: f32,
+    pub local_view_transforms: [Pose; 2],
     pub fov: [Fov; 2],
 }
 

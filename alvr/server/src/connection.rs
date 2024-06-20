@@ -12,12 +12,12 @@ use crate::{
 use alvr_audio::AudioDevice;
 use alvr_common::{
     con_bail, debug, error,
-    glam::{Quat, UVec2, Vec2, Vec3},
+    glam::{UVec2, Vec2},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
     settings_schema::Switch,
-    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, Pose,
-    BUTTON_INFO, CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
+    warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState, BUTTON_INFO,
+    CONTROLLER_PROFILE_INFO, DEVICE_ID_TO_PATH, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
     QUEST_CONTROLLER_PROFILE_PATH,
 };
 use alvr_events::{ButtonEvent, EventType, TrackingEvent};
@@ -1121,16 +1121,7 @@ fn connection_pipeline(
                         ctx.events_queue
                             .lock()
                             .push_back(ServerCoreEvent::ViewsConfig(ViewsConfig {
-                                local_view_transforms: [
-                                    Pose {
-                                        position: Vec3::new(-config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                    Pose {
-                                        position: Vec3::new(config.ipd_m / 2., 0., 0.),
-                                        orientation: Quat::IDENTITY,
-                                    },
-                                ],
+                                local_view_transforms: config.local_view_transforms,
                                 fov: config.fov,
                             }));
                     }

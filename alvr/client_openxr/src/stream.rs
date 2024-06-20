@@ -11,7 +11,7 @@ use alvr_client_core::{
 use alvr_common::{
     error,
     glam::{UVec2, Vec2, Vec3},
-    RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID,
+    RelaxedAtomic, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID,
 };
 use alvr_packets::{FaceData, NegotiatedStreamingConfig, ViewParams};
 use alvr_session::{
@@ -70,6 +70,7 @@ pub struct StreamContext {
     xr_context: XrContext,
     interaction_context: Arc<InteractionContext>,
     reference_space: Arc<xr::Space>,
+    view_reference_space: Arc<xr::Space>,
     swapchains: [xr::Swapchain<xr::OpenGlEs>; 2],
     view_resolution: UVec2,
     refresh_rate: f32,
@@ -224,12 +225,17 @@ impl StreamContext {
             &xr_ctx.session,
             xr::ReferenceSpaceType::STAGE,
         ));
+        let view_reference_space = Arc::new(interaction::get_reference_space(
+            &xr_ctx.session,
+            xr::ReferenceSpaceType::VIEW,
+        ));
 
         let input_thread = thread::spawn({
             let core_ctx = Arc::clone(&core_ctx);
             let xr_ctx = xr_ctx.clone();
             let interaction_ctx = Arc::clone(&interaction_ctx);
             let reference_space = Arc::clone(&reference_space);
+            let view_reference_space = Arc::clone(&view_reference_space);
             let refresh_rate = config.refresh_rate_hint;
             let running = Arc::clone(&input_thread_running);
             move || {
@@ -238,6 +244,7 @@ impl StreamContext {
                     xr_ctx,
                     &interaction_ctx,
                     Arc::clone(&reference_space),
+                    Arc::clone(&view_reference_space),
                     refresh_rate,
                     running,
                 )
@@ -249,6 +256,7 @@ impl StreamContext {
             xr_context: xr_ctx,
             interaction_context: interaction_ctx,
             reference_space,
+            view_reference_space,
             swapchains,
             view_resolution: config.view_resolution,
             refresh_rate: config.refresh_rate_hint,
@@ -286,6 +294,7 @@ impl StreamContext {
             let xr_ctx = self.xr_context.clone();
             let interaction_ctx = Arc::clone(&self.interaction_context);
             let reference_space = Arc::clone(&self.reference_space);
+            let view_reference_space = Arc::clone(&self.view_reference_space);
             let refresh_rate = self.refresh_rate;
             let running = Arc::clone(&self.input_thread_running);
             move || {
@@ -294,6 +303,7 @@ impl StreamContext {
                     xr_ctx,
                     &interaction_ctx,
                     Arc::clone(&reference_space),
+                    Arc::clone(&view_reference_space),
                     refresh_rate,
                     running,
                 )
@@ -390,6 +400,7 @@ fn stream_input_loop(
     xr_ctx: XrContext,
     interaction_ctx: &InteractionContext,
     reference_space: Arc<xr::Space>,
+    view_reference_space: Arc<xr::Space>,
     refresh_rate: f32,
     running: Arc<RelaxedAtomic>,
 ) {
@@ -468,6 +479,13 @@ fn stream_input_loop(
         }
         if let Some(motion) = right_hand_motion {
             device_motions.push((*HAND_RIGHT_ID, motion));
+        }
+        if let Some(motion) = crate::interaction::get_head_motion(
+            &view_reference_space,
+            &reference_space,
+            crate::to_xr_time(target_timestamp),
+        ) {
+            device_motions.push((*HEAD_ID, motion));
         }
 
         let face_data = FaceData {

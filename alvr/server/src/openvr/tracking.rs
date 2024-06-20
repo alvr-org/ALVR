@@ -1,8 +1,8 @@
-use crate::{tracking, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::{tracking, FfiBodyTracker, FfiDeviceMotion, FfiFov, FfiHandSkeleton, FfiPose, FfiQuat};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
-    DeviceMotion, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
+    DeviceMotion, Fov, Pose, BODY_CHEST_ID, BODY_HIPS_ID, BODY_LEFT_ELBOW_ID, BODY_LEFT_FOOT_ID,
     BODY_LEFT_KNEE_ID, BODY_RIGHT_ELBOW_ID, BODY_RIGHT_FOOT_ID, BODY_RIGHT_KNEE_ID, HAND_LEFT_ID,
 };
 use alvr_session::HeadsetConfig;
@@ -17,6 +17,22 @@ fn to_ffi_quat(quat: Quat) -> FfiQuat {
         y: quat.y,
         z: quat.z,
         w: quat.w,
+    }
+}
+
+pub fn to_ffi_pose(pose: Pose) -> FfiPose {
+    FfiPose {
+        orientation: to_ffi_quat(pose.orientation),
+        position: pose.position.to_array(),
+    }
+}
+
+pub fn to_ffi_fov(fov: Fov) -> FfiFov {
+    FfiFov {
+        left: fov.left,
+        right: fov.right,
+        up: fov.up,
+        down: fov.down,
     }
 }
 

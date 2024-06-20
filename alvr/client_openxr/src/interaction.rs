@@ -367,6 +367,21 @@ pub fn get_reference_space(
         .unwrap()
 }
 
+pub fn get_head_motion(
+    view_reference_space: &xr::Space,
+    reference_space: &xr::Space,
+    time: xr::Time,
+) -> Option<DeviceMotion> {
+    if let Ok((location, velocity)) = view_reference_space.relate(reference_space, time) {
+        return Some(DeviceMotion {
+            pose: from_xr_pose(location.pose),
+            linear_velocity: from_xr_vec3(velocity.linear_velocity),
+            angular_velocity: from_xr_vec3(velocity.angular_velocity),
+        });
+    }
+    None
+}
+
 pub fn get_hand_motion(
     xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,

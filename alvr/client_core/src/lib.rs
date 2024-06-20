@@ -21,7 +21,7 @@ pub mod graphics;
 
 use alvr_common::{
     error,
-    glam::{UVec2, Vec2, Vec3},
+    glam::{Mat4, Quat, UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
 };
@@ -215,7 +215,7 @@ impl ClientCoreContext {
         &self,
         target_timestamp: Duration,
         views: [ViewParams; 2],
-        mut device_motions: Vec<(u64, DeviceMotion)>,
+        device_motions: Vec<(u64, DeviceMotion)>,
         hand_skeletons: [Option<[Pose; 26]>; 2],
         face_data: FaceData,
     ) {
@@ -240,11 +240,54 @@ impl ClientCoreContext {
         {
             let ipd = (views[0].pose.position - views[1].pose.position).length();
             if f32::abs(last_ipd - ipd) > IPD_CHANGE_EPS {
+                let (head_to_left_eye, head_to_right_eye) = if let Some((_, headMotion)) =
+                    device_motions.iter().find(|(id, _)| *id == *HEAD_ID)
+                {
+                    let head_mat = Mat4::from_rotation_translation(
+                        headMotion.pose.orientation,
+                        headMotion.pose.position,
+                    );
+                    let left_eye_mat = Mat4::from_rotation_translation(
+                        views[0].pose.orientation,
+                        views[0].pose.position,
+                    );
+                    let right_eye_mat = Mat4::from_rotation_translation(
+                        views[1].pose.orientation,
+                        views[1].pose.position,
+                    );
+                    let head_to_left_eye = head_mat.inverse() * left_eye_mat;
+                    let (_, left_rotation, left_translation) =
+                        head_to_left_eye.to_scale_rotation_translation();
+                    let head_to_right_eye = head_mat.inverse() * right_eye_mat;
+                    let (_, right_rotation, right_translation) =
+                        head_to_right_eye.to_scale_rotation_translation();
+                    (
+                        Pose {
+                            orientation: left_rotation,
+                            position: left_translation,
+                        },
+                        Pose {
+                            orientation: right_rotation,
+                            position: right_translation,
+                        },
+                    )
+                } else {
+                    (
+                        Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::new(-ipd / 2.0, 0.0, 0.0),
+                        },
+                        Pose {
+                            orientation: Quat::IDENTITY,
+                            position: Vec3::new(ipd / 2.0, 0.0, 0.0),
+                        },
+                    )
+                };
                 if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
                     sender
                         .send(&ClientControlPacket::ViewsConfig(ViewsConfig {
                             fov: [views[0].fov, views[1].fov],
-                            ipd_m: ipd,
+                            local_view_transforms: [head_to_left_eye, head_to_right_eye],
                         }))
                         .ok();
                 }
@@ -252,19 +295,6 @@ impl ClientCoreContext {
         }
 
         if let Some(sender) = &mut *self.connection_context.tracking_sender.lock() {
-            device_motions.push((
-                *HEAD_ID,
-                DeviceMotion {
-                    pose: Pose {
-                        orientation: views[0].pose.orientation,
-                        position: views[0].pose.position
-                            + (views[1].pose.position - views[0].pose.position) / 2.0,
-                    },
-                    linear_velocity: Vec3::ZERO,
-                    angular_velocity: Vec3::ZERO,
-                },
-            ));
-
             sender
                 .send_header(&Tracking {
                     target_timestamp,

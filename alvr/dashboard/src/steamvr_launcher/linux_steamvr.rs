@@ -16,44 +16,6 @@ pub fn terminate_process(process: &Process) {
     process.kill_with(sysinfo::Signal::Term);
 }
 
-pub fn maybe_wrap_vrcompositor_launcher() -> alvr_common::anyhow::Result<()> {
-    let steamvr_bin_dir = alvr_server_io::steamvr_root_dir()?
-        .join("bin")
-        .join("linux64");
-    let steamvr_vrserver_path = steamvr_bin_dir.join("vrserver");
-    debug!(
-        "File path used to check for linux files: {}",
-        steamvr_vrserver_path.display().to_string()
-    );
-    match steamvr_vrserver_path.try_exists() {
-        Ok(exists) => {
-            if !exists {
-                bail!(
-                    "SteamVR linux files missing, aborting startup, please re-check compatibility tools for SteamVR or verify integrity of files for SteamVR."
-                );
-            }
-        }
-        Err(e) => {
-            return Err(e.into());
-        }
-    };
-
-    let launcher_path = steamvr_bin_dir.join("vrcompositor");
-    // In case of SteamVR update, vrcompositor will be restored
-    if fs::read_link(&launcher_path).is_ok() {
-        fs::remove_file(&launcher_path)?; // recreate the link
-    } else {
-        fs::rename(&launcher_path, steamvr_bin_dir.join("vrcompositor.real"))?;
-    }
-
-    std::os::unix::fs::symlink(
-        alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
-            .vrcompositor_wrapper(),
-        &launcher_path,
-    )?;
-
-    Ok(())
-}
 #[derive(PartialEq)]
 enum DeviceInfo {
     Nvidia,

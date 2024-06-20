@@ -429,28 +429,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alvr_vrcompositor_wrapper"
-version = "21.0.0-dev01"
-dependencies = [
- "alvr_common",
- "alvr_filesystem",
- "exec",
- "xshell",
-]
-
-[[package]]
-name = "alvr_vulkan_layer"
-version = "21.0.0-dev01"
-dependencies = [
- "alvr_common",
- "alvr_filesystem",
- "bindgen",
- "cc",
- "pkg-config",
- "walkdir",
-]
-
-[[package]]
 name = "alvr_xtask"
 version = "21.0.0-dev01"
 dependencies = [
@@ -2011,16 +1989,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "errno-dragonfly"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "error-code"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2077,16 +2045,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "exec"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "886b70328cba8871bfc025858e1de4be16b1d5088f2ba50b57816f4210672615"
-dependencies = [
- "errno 0.2.8",
- "libc",
 ]
 
 [[package]]

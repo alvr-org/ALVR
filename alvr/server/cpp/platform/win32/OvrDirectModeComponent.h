@@ -36,7 +36,7 @@ public:
 	virtual void Present(vr::SharedTextureHandle_t syncTexture);
 	
 	/** Called after Present to allow driver to take more time until vsync after they've successfully acquired the sync texture in Present.*/
-	virtual void PostPresent();
+	virtual void PostPresent(const Throttling_t *pThrottling);
 
 	void CopyTexture(uint32_t layerCount);
 

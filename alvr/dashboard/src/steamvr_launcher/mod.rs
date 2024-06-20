@@ -107,15 +107,6 @@ impl Launcher {
             });
         }
 
-        #[cfg(target_os = "linux")]
-        {
-            let vrcompositor_wrap_result = linux_steamvr::maybe_wrap_vrcompositor_launcher();
-            alvr_common::show_err(linux_steamvr::maybe_wrap_vrcompositor_launcher());
-            if vrcompositor_wrap_result.is_err() {
-                return;
-            }
-        }
-
         if !is_steamvr_running() {
             debug!("SteamVR is dead. Launching...");
 

@@ -2,7 +2,7 @@ mod props;
 mod tracking;
 
 use crate::{
-    input_mapping, logging_backend, FfiButtonValue, FfiDynamicEncoderParams, FfiFov,
+    input_mapping, logging_backend, FfiButtonValue, FfiDynamicEncoderParams,
     FfiViewsConfig, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
 };
 use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn, HAND_LEFT_ID, HAND_RIGHT_ID};

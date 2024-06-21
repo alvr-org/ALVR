@@ -15,82 +15,65 @@ jobs:
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
           components: clippy
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
-      - run: cargo xtask prepare-deps --platform windows
-
-      - uses: ErichDonGubler/clippy-check@fix-windows-lf-breaking-reports
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  check-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: clippy
-      - uses: Swatinem/rust-cache@v1
-
-      - name: Build and install dependencies
+      - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows
+
+      - run: cargo clippy
+
+  check-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
-          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
-          cargo xtask prepare-deps --platform linux --no-nvidia
 
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --features gpl
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run:  cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - run: cargo clippy
 
   check-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: clippy
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
 
       - run: cargo xtask prepare-deps --platform macos
 
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: cargo clippy
 
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: aarch64-linux-android
-          override: true
-      - uses: Swatinem/rust-cache@v1
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-java@v2
         with:
           distribution: 'temurin'
@@ -104,11 +87,9 @@ jobs:
           ndk-version: r26b
 
       - name: Install deps
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-apk
+        run: cargo install cargo-apk
 
+        # TODO: Do we still need this?
         # Create folder without content to make the build succeed
       - run: |
           mkdir -p deps/android_openxr/arm64-v8a
@@ -122,40 +103,33 @@ jobs:
           cargo xtask build-client
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
         with:
-          toolchain: stable
-          override: true
-      - uses: Swatinem/rust-cache@v1
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Build and install dependencies
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
-          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
-          sudo apt update
-          sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
-          cargo xtask prepare-deps --platform linux --no-nvidia
+      # - name: Install dependencies
+      #   run: |
+      #     sudo apt update
+      #     sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
+
+      # - name: Prepare deps
+      #   env:
+      #     RUST_BACKTRACE: 1
+      #   run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: -p alvr_session
+        run: cargo test -p alvr_session
 
   check-format:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt
 
       - run: cargo xtask check-format
@@ -165,37 +139,39 @@ jobs:
     env:
       LIBCLANG_PATH: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Tools\Llvm\x64\bin'
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: Swatinem/rust-cache@v1
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
 
-      - run: |
-          cargo xtask prepare-deps --platform windows
-          cargo xtask check-msrv
+      # Fix actions rust install and msrv both being stupid
+      - run: rustup update --no-self-update
 
-  check-msrv-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: Swatinem/rust-cache@v1
-
-      - name: Build and install dependencies
+      - name: Prepare deps
         env:
           RUST_BACKTRACE: 1
+        run: cargo xtask prepare-deps --platform windows
+
+      - run: cargo xtask check-msrv
+
+  check-msrv-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install dependencies
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 25088A0359807596
-          echo "deb http://ppa.launchpad.net/pipewire-debian/pipewire-upstream/ubuntu $(lsb_release -cs) main" | sudo tee -a /etc/apt/sources.list.d/pipewire-upstream.list
           sudo apt update
           sudo apt install build-essential pkg-config nasm libva-dev libdrm-dev libvulkan-dev libx264-dev libx265-dev cmake libasound2-dev libjack-jackd2-dev libxrandr-dev libunwind-dev libgtk-3-dev libpipewire-0.3-dev libspa-0.2-dev
-          cargo xtask prepare-deps --platform linux --no-nvidia
+
+      - name: Prepare deps
+        env:
+          RUST_BACKTRACE: 1
+        run:  cargo xtask prepare-deps --platform linux --no-nvidia
 
       - run: cargo xtask check-msrv

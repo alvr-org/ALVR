@@ -1,64 +1,57 @@
 {
-    "id": "com.valvesoftware.Steam.Utility.alvr",
-    "branch": "stable",
-    "sdk": "org.freedesktop.Sdk//23.08",
-    "sdk-extensions": [
-        "org.freedesktop.Sdk.Extension.llvm16",
-        "org.freedesktop.Sdk.Extension.rust-stable"
-    ],
-    "runtime": "com.valvesoftware.Steam",
-    "runtime-version": "stable",
-    "build-extension": true,
-    "appstream-compose": false,
-    "separate-locales": false,
-    "build-options": {
-        "prefix": "/app/utils/alvr",
-        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin",
-        "prepend-ld-library-path": "/app/utils/alvr/lib",
-        "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
-        "strip": true,
+  "id": "com.valvesoftware.Steam.Utility.alvr",
+  "branch": "stable",
+  "sdk": "org.freedesktop.Sdk//23.08",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.llvm16",
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
+  "runtime": "com.valvesoftware.Steam",
+  "runtime-version": "stable",
+  "build-extension": true,
+  "appstream-compose": false,
+  "separate-locales": false,
+  "build-options": {
+    "prefix": "/app/utils/alvr",
+    "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin:/run/build/alvr/cuda/bin",
+    "prepend-ld-library-path": "/app/utils/alvr/lib",
+    "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
+    "strip": true,
+    "env": { "PREFIX": "/app/utils/alvr" },
+    "build-args": [ "--share=network", "--filesystem=xdg-data" ]
+  },
+  "cleanup": [
+    "/lib/*.a",
+    "/lib/*.la",
+    "/share/doc",
+    "/share/man"
+  ],
+  "modules": [
+    {
+      "name": "alvr",
+      "buildsystem": "simple",
+      "build-options": {
         "env": {
-            "PREFIX": "/app/utils/alvr"
-        },
-        "build-args": [
-            "--share=network",
-            "--filesystem=xdg-data"
-        ]
-    },
-    "cleanup": [
-        "/lib/*.a",
-        "/lib/*.la",
-        "/share/doc",
-        "/share/man"
-    ],
-    "modules": [
-        {
-            "name": "alvr",
-            "buildsystem": "simple",
-            "build-options": {
-                "env": {
-                    "RUST_BACKTRACE": "full",
-                    "CURL_HOME": "/run/build/alvr",
-                    "CPATH": "/app/utils/alvr/include"
-                }
-            },
-            "build-commands": [
-                "echo 'insecure' >> .curlrc",
-                "cargo xtask prepare-deps --platform linux --no-nvidia",
-                "cargo xtask build-streamer --gpl --release",
-                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
-                "cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
-            ],
-            "modules": [
-                "modules/yasm/yasm.json",
-                "modules/vulkan-headers/vulkan-headers.json"
-            ],
-            "sources": [
-                {
-                    "type": "dir",
-                    "path": "../../../"
-                }
-            ]
+          "RUST_BACKTRACE": "full",
+          "CURL_HOME": "/run/build/alvr",
+          "CPATH": "/app/utils/alvr/include",
+          "LD_LIBRARY_PATH": "/run/build/alvr/cuda/lib",
+          "CUDA_HOME": "/run/build/alvr/cuda/",
+          "NVCC_PREPEND_FLAGS": "-I /run/build/alvr/cuda/include -L /run/build/alvr/cuda/lib"
         }
-    ]
+      },
+      "build-commands": [
+        "echo 'insecure' >> .curlrc",
+        "ls -Ral /app/utils/alvr/lib/",
+        "mkdir -p /app/utils/alvr/lib/pkgconfig/",
+        "cp /run/build/alvr/alvr/xtask/flatpak/cuda.pc /app/utils/alvr/lib/pkgconfig/",
+        "cargo xtask prepare-deps --platform linux",
+        "cargo xtask build-streamer --gpl --release",
+        "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
+        "echo this line does not work - cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
+      ],
+      "modules": [ "modules/yasm/yasm.json", "modules/vulkan-headers/vulkan-headers.json" ],
+      "sources": [ { "type": "dir", "path": "../../../" }, { "type": "dir", "path": "/opt/cuda/", "dest": "cuda" } ]
+    }
+  ]
 }

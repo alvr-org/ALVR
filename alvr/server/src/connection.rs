@@ -569,9 +569,13 @@ fn connection_pipeline(
                     microphone_desc.devices.clone(),
                 )
                 .to_con()?;
-                match &settings.audio.microphone.as_option().map(|config: &alvr_session::MicrophoneConfig| {
-                    config.devices.clone()
-                }).unwrap(){
+                match &settings
+                    .audio
+                    .microphone
+                    .as_option()
+                    .map(|config: &alvr_session::MicrophoneConfig| config.devices.clone())
+                    .unwrap()
+                {
                     alvr_session::MicrophoneDevicesConfig::VBCable => {
                         // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
                         // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.

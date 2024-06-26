@@ -14,9 +14,9 @@ pub enum FrameSize {
     Scale(#[schema(gui(slider(min = 0.25, max = 2.0, step = 0.01)))] f32),
 
     Absolute {
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32)))]
+        #[schema(gui(slider(min = 32, max = 8192, step = 32)))]
         width: u32,
-        #[schema(gui(slider(min = 32, max = 0x2000, step = 32)))]
+        #[schema(gui(slider(min = 32, max = 8192, step = 32)))]
         height: Option<u32>,
     },
 }

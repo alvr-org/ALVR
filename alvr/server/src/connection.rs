@@ -563,14 +563,14 @@ fn connection_pipeline(
             .to_con()?;
 
             #[cfg(not(target_os = "linux"))]
-            if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
+            if let Switch::Enabled(microphone_config) = &settings.audio.microphone {
                 let (sink, source) = AudioDevice::new_virtual_microphone_pair(
                     Some(settings.audio.linux_backend),
-                    microphone_desc.devices.clone(),
+                    microphone_config.devices.clone(),
                 )
                 .to_con()?;
                 if matches!(
-                    microphone_desc.devices,
+                    microphone_config.devices,
                     alvr_session::MicrophoneDevicesConfig::VBCable
                 ) {
                     // VoiceMeeter and Custom devices may have arbitrary internal routing.

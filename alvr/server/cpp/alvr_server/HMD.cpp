@@ -18,11 +18,11 @@
 #include "platform/linux/CEncoder.h"
 #endif
 
-const vr::HmdMatrix34_t MATRIX_IDENTITY = {
-    {{1.0, 0.0, 0.0, 0.0}, {0.0, 1.0, 0.0, 0.0}, {0.0, 0.0, 1.0, 0.0}}};
+const vr::HmdMatrix34_t MATRIX_IDENTITY
+    = { { { 1.0, 0.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0, 0.0 }, { 0.0, 0.0, 1.0, 0.0 } } };
 
 vr::HmdRect2_t fov_to_projection(FfiFov fov) {
-    auto proj_bounds = vr::HmdRect2_t{};
+    auto proj_bounds = vr::HmdRect2_t {};
     proj_bounds.vTopLeft.v[0] = tanf(fov.left);
     proj_bounds.vBottomRight.v[0] = tanf(fov.right);
     proj_bounds.vTopLeft.v[1] = tanf(fov.down);
@@ -32,16 +32,17 @@ vr::HmdRect2_t fov_to_projection(FfiFov fov) {
 }
 
 Hmd::Hmd()
-    : TrackedDevice(HEAD_ID), m_baseComponentsInitialized(false),
-      m_streamComponentsInitialized(false) {
-    auto dummy_fov = FfiFov{-1.0, 1.0, 1.0, -1.0};
+    : TrackedDevice(HEAD_ID)
+    , m_baseComponentsInitialized(false)
+    , m_streamComponentsInitialized(false) {
+    auto dummy_fov = FfiFov { -1.0, 1.0, 1.0, -1.0 };
 
-    this->views_config = FfiViewsConfig{};
+    this->views_config = FfiViewsConfig {};
     this->views_config.ipd_m = 0.063;
     this->views_config.fov[0] = dummy_fov;
     this->views_config.fov[1] = dummy_fov;
 
-    m_pose = vr::DriverPose_t{};
+    m_pose = vr::DriverPose_t {};
     m_pose.poseIsValid = true;
     m_pose.result = vr::TrackingResult_Running_OK;
     m_pose.deviceIsConnected = true;
@@ -52,14 +53,16 @@ Hmd::Hmd()
     m_poseHistory = std::make_shared<PoseHistory>();
 
     m_deviceClass = Settings::Instance().m_TrackingRefOnly
-                        ? vr::TrackedDeviceClass_TrackingReference
-                        : vr::TrackedDeviceClass_HMD;
+        ? vr::TrackedDeviceClass_TrackingReference
+        : vr::TrackedDeviceClass_HMD;
 
     if (Settings::Instance().m_enableViveTrackerProxy) {
         m_viveTrackerProxy = std::make_unique<ViveTrackerProxy>(*this);
-        if (!vr::VRServerDriverHost()->TrackedDeviceAdded(m_viveTrackerProxy->GetSerialNumber(),
-                                                          vr::TrackedDeviceClass_GenericTracker,
-                                                          m_viveTrackerProxy.get())) {
+        if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                m_viveTrackerProxy->GetSerialNumber(),
+                vr::TrackedDeviceClass_GenericTracker,
+                m_viveTrackerProxy.get()
+            )) {
             Warn("Failed to register Vive tracker");
         }
     }
@@ -68,7 +71,7 @@ Hmd::Hmd()
 }
 
 Hmd::~Hmd() {
-    //ShutdownRuntime();
+    // ShutdownRuntime();
 
     if (m_encoder) {
         Debug("Hmd::~Hmd(): Stopping encoder...\n");
@@ -94,15 +97,17 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
     SetOpenvrProps(this->device_id);
 
-    vr_properties->SetFloatProperty(this->prop_container,
-                                    vr::Prop_DisplayFrequency_Float,
-                                    static_cast<float>(Settings::Instance().m_refreshRate));
+    vr_properties->SetFloatProperty(
+        this->prop_container,
+        vr::Prop_DisplayFrequency_Float,
+        static_cast<float>(Settings::Instance().m_refreshRate)
+    );
 
     vr::VRDriverInput()->CreateBooleanComponent(this->prop_container, "/proximity", &m_proximity);
 
 #ifdef _WIN32
-    float originalIPD =
-        vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
+    float originalIPD
+        = vr::VRSettings()->GetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float);
     vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_IPD_Float, 0.063);
 #endif
 
@@ -113,10 +118,16 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 // which never applies reprojection
 // Also Disable async reprojection on vulkan
 #ifndef _WIN32
-    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
-        Settings::Instance().m_enableLinuxVulkanAsyncCompute);
-    vr::VRSettings()->SetBool(vr::k_pch_SteamVR_Section, vr::k_pch_SteamVR_DisableAsyncReprojection_Bool,
-        !Settings::Instance().m_enableLinuxAsyncReprojection);
+    vr::VRSettings()->SetBool(
+        vr::k_pch_SteamVR_Section,
+        vr::k_pch_SteamVR_EnableLinuxVulkanAsync_Bool,
+        Settings::Instance().m_enableLinuxVulkanAsyncCompute
+    );
+    vr::VRSettings()->SetBool(
+        vr::k_pch_SteamVR_Section,
+        vr::k_pch_SteamVR_DisableAsyncReprojection_Bool,
+        !Settings::Instance().m_enableLinuxAsyncReprojection
+    );
 #endif
 
     if (!m_baseComponentsInitialized) {
@@ -134,9 +145,11 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             // mode driver. So we can't specify an adapter for vrcompositor. m_nAdapterIndex is set
             // 0 on the dashboard.
             if (!m_D3DRender->Initialize(Settings::Instance().m_nAdapterIndex)) {
-                Error("Could not create graphics device for adapter %d.  Requires a minimum of two "
-                      "graphics cards.\n",
-                      Settings::Instance().m_nAdapterIndex);
+                Error(
+                    "Could not create graphics device for adapter %d.  Requires a minimum of two "
+                    "graphics cards.\n",
+                    Settings::Instance().m_nAdapterIndex
+                );
                 return vr::VRInitError_Driver_Failed;
             }
 
@@ -149,8 +162,8 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             Info("Using %ls as primary graphics adapter.\n", m_adapterName.c_str());
             Info("OSVer: %ls\n", GetWindowsOSVersion().c_str());
 
-            m_directModeComponent =
-                std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
+            m_directModeComponent
+                = std::make_shared<OvrDirectModeComponent>(m_D3DRender, m_poseHistory);
 #endif
         }
 
@@ -159,9 +172,10 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 
     if (IsHMD()) {
         vr::VREvent_Data_t eventData;
-        eventData.ipd = {0.063};
+        eventData.ipd = { 0.063 };
         vr::VRServerDriverHost()->VendorSpecificEvent(
-            this->object_id, vr::VREvent_IpdChanged, eventData, 0);
+            this->object_id, vr::VREvent_IpdChanged, eventData, 0
+        );
     }
 
     return vr::VRInitError_None;
@@ -172,12 +186,12 @@ void Hmd::Deactivate() {
     this->prop_container = vr::k_ulInvalidPropertyContainer;
 }
 
-void *Hmd::GetComponent(const char *component_name_and_version) {
+void* Hmd::GetComponent(const char* component_name_and_version) {
     // NB: "this" pointer needs to be statically cast to point to the correct vtable
 
     auto name_and_vers = std::string(component_name_and_version);
     if (name_and_vers == vr::IVRDisplayComponent_Version) {
-        return (vr::IVRDisplayComponent *)this;
+        return (vr::IVRDisplayComponent*)this;
     }
 
 #ifdef _WIN32
@@ -195,7 +209,7 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     if (this->object_id == vr::k_unTrackedDeviceIndexInvalid) {
         return;
     }
-    auto pose = vr::DriverPose_t{};
+    auto pose = vr::DriverPose_t {};
     pose.poseIsValid = true;
     pose.result = vr::TrackingResult_Running_OK;
     pose.deviceIsConnected = true;
@@ -204,7 +218,8 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
     pose.qRotation = HmdQuaternion_Init(
-        motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z);
+        motion.orientation.w, motion.orientation.x, motion.orientation.y, motion.orientation.z
+    );
 
     pose.vecPosition[0] = motion.position[0];
     pose.vecPosition[1] = motion.position[1];
@@ -215,7 +230,8 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
     m_poseHistory->OnPoseUpdated(targetTimestampNs, motion);
 
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t));
+        this->object_id, pose, sizeof(vr::DriverPose_t)
+    );
 
     if (m_viveTrackerProxy)
         m_viveTrackerProxy->update();
@@ -228,7 +244,8 @@ void Hmd::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion motion) {
         vr::VRProperties()->SetFloatProperty(
             this->prop_container,
             vr::Prop_DisplayFrequency_Float,
-            static_cast<float>(Settings::Instance().m_refreshRate));
+            static_cast<float>(Settings::Instance().m_refreshRate)
+        );
     }
 #endif
 }
@@ -247,11 +264,13 @@ void Hmd::StartStreaming() {
         try {
             m_encoder->Initialize(m_D3DRender);
         } catch (Exception e) {
-            Error("Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
-                  "If you get this error after changing some settings, you can revert them by",
-                  "deleting the file \"session.json\" in the installation folder.",
-                  "Failed to initialize CEncoder:",
-                  e.what());
+            Error(
+                "Your GPU does not meet the requirements for video encoding. %s %s\n%s %s\n",
+                "If you get this error after changing some settings, you can revert them by",
+                "deleting the file \"session.json\" in the installation folder.",
+                "Failed to initialize CEncoder:",
+                e.what()
+            );
         }
         m_encoder->Start();
 
@@ -287,15 +306,18 @@ void Hmd::SetViewsConfig(FfiViewsConfig config) {
 
     // todo: check if this is still needed
     vr::VRServerDriverHost()->VendorSpecificEvent(
-        object_id, vr::VREvent_LensDistortionChanged, {}, 0);
+        object_id, vr::VREvent_LensDistortionChanged, {}, 0
+    );
 }
 
-void Hmd::GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) {
-    Debug("GetWindowBounds %dx%d - %dx%d\n",
-          0,
-          0,
-          Settings::Instance().m_renderWidth,
-          Settings::Instance().m_renderHeight);
+void Hmd::GetWindowBounds(int32_t* pnX, int32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight) {
+    Debug(
+        "GetWindowBounds %dx%d - %dx%d\n",
+        0,
+        0,
+        Settings::Instance().m_renderWidth,
+        Settings::Instance().m_renderHeight
+    );
     *pnX = 0;
     *pnY = 0;
     *pnWidth = Settings::Instance().m_renderWidth;
@@ -310,14 +332,15 @@ bool Hmd::IsDisplayRealDisplay() {
 #endif
 }
 
-void Hmd::GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight) {
+void Hmd::GetRecommendedRenderTargetSize(uint32_t* pnWidth, uint32_t* pnHeight) {
     *pnWidth = Settings::Instance().m_recommendedTargetWidth / 2;
     *pnHeight = Settings::Instance().m_recommendedTargetHeight;
     Debug("GetRecommendedRenderTargetSize %dx%d\n", *pnWidth, *pnHeight);
 }
 
 void Hmd::GetEyeOutputViewport(
-    vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY, uint32_t *pnWidth, uint32_t *pnHeight) {
+    vr::EVREye eEye, uint32_t* pnX, uint32_t* pnY, uint32_t* pnWidth, uint32_t* pnHeight
+) {
     *pnY = 0;
     *pnWidth = Settings::Instance().m_renderWidth / 2;
     *pnHeight = Settings::Instance().m_renderHeight;
@@ -330,7 +353,7 @@ void Hmd::GetEyeOutputViewport(
     Debug("GetEyeOutputViewport Eye=%d %dx%d %dx%d\n", eEye, *pnX, *pnY, *pnWidth, *pnHeight);
 }
 
-void Hmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top, float *bottom) {
+void Hmd::GetProjectionRaw(vr::EVREye eye, float* left, float* right, float* top, float* bottom) {
     auto proj = fov_to_projection(this->views_config.fov[eye]);
     *left = proj.vTopLeft.v[0];
     *right = proj.vBottomRight.v[0];
@@ -339,5 +362,5 @@ void Hmd::GetProjectionRaw(vr::EVREye eye, float *left, float *right, float *top
 }
 
 vr::DistortionCoordinates_t Hmd::ComputeDistortion(vr::EVREye, float u, float v) {
-    return {{u, v}, {u, v}, {u, v}};
+    return { { u, v }, { u, v }, { u, v } };
 }

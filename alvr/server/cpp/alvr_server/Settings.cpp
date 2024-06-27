@@ -16,16 +16,18 @@ extern uint64_t g_DriverTestMode;
 
 Settings Settings::m_Instance;
 
-Settings::Settings() : m_loaded(false) {}
+Settings::Settings()
+    : m_loaded(false) { }
 
-Settings::~Settings() {}
+Settings::~Settings() { }
 
 void Settings::Load() {
     try {
         auto sessionFile = std::ifstream(g_sessionPath);
 
-        auto json = std::string(std::istreambuf_iterator<char>(sessionFile),
-                                std::istreambuf_iterator<char>());
+        auto json = std::string(
+            std::istreambuf_iterator<char>(sessionFile), std::istreambuf_iterator<char>()
+        );
 
         picojson::value v;
         std::string err = picojson::parse(v, json);
@@ -76,8 +78,8 @@ void Settings::Load() {
         m_usePreproc = config.get("use_preproc").get<bool>();
         m_preProcSigma = (uint32_t)config.get("preproc_sigma").get<int64_t>();
         m_preProcTor = (uint32_t)config.get("preproc_tor").get<int64_t>();
-        m_amdEncoderQualityPreset =
-            (uint32_t)config.get("amd_encoder_quality_preset").get<int64_t>();
+        m_amdEncoderQualityPreset
+            = (uint32_t)config.get("amd_encoder_quality_preset").get<int64_t>();
         m_amdBitrateCorruptionFix = (bool)config.get("amd_bitrate_corruption_fix").get<bool>();
         m_nvencQualityPreset = (uint32_t)config.get("nvenc_quality_preset").get<int64_t>();
         m_force_sw_encoding = config.get("force_sw_encoding").get<bool>();
@@ -85,8 +87,8 @@ void Settings::Load() {
 
         m_nvencTuningPreset = (uint32_t)config.get("nvenc_tuning_preset").get<int64_t>();
         m_nvencMultiPass = (uint32_t)config.get("nvenc_multi_pass").get<int64_t>();
-        m_nvencAdaptiveQuantizationMode =
-            (uint32_t)config.get("nvenc_adaptive_quantization_mode").get<int64_t>();
+        m_nvencAdaptiveQuantizationMode
+            = (uint32_t)config.get("nvenc_adaptive_quantization_mode").get<int64_t>();
         m_nvencLowDelayKeyFrameScale = config.get("nvenc_low_delay_key_frame_scale").get<int64_t>();
         m_nvencRefreshRate = config.get("nvenc_refresh_rate").get<int64_t>();
         m_nvencEnableIntraRefresh = config.get("enable_intra_refresh").get<bool>();
@@ -100,8 +102,8 @@ void Settings::Load() {
         m_nvencRcInitialDelay = config.get("rc_initial_delay").get<int64_t>();
         m_nvencRcMaxBitrate = config.get("rc_max_bitrate").get<int64_t>();
         m_nvencRcAverageBitrate = config.get("rc_average_bitrate").get<int64_t>();
-        m_nvencEnableWeightedPrediction =
-            config.get("nvenc_enable_weighted_prediction").get<bool>();
+        m_nvencEnableWeightedPrediction
+            = config.get("nvenc_enable_weighted_prediction").get<bool>();
 
         m_aggressiveKeyframeResend = config.get("aggressive_keyframe_resend").get<bool>();
 
@@ -119,7 +121,7 @@ void Settings::Load() {
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;
-    } catch (std::exception &e) {
+    } catch (std::exception& e) {
         Error("Exception on parsing session config (%s): %hs\n", g_sessionPath, e.what());
     }
 }

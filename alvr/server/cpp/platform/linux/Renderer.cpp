@@ -1,16 +1,16 @@
 #include "Renderer.h"
 
+#include <algorithm>
 #include <array>
-#include <fstream>
-#include <iostream>
 #include <cassert>
 #include <cstring>
-#include <algorithm>
+#include <fstream>
+#include <iostream>
 
 #ifndef DRM_FORMAT_INVALID
 #define DRM_FORMAT_INVALID 0
-#define fourcc_code(a, b, c, d) ((uint32_t)(a) | ((uint32_t)(b) << 8) | \
-        ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
+#define fourcc_code(a, b, c, d)                                                                    \
+    ((uint32_t)(a) | ((uint32_t)(b) << 8) | ((uint32_t)(c) << 16) | ((uint32_t)(d) << 24))
 #define DRM_FORMAT_ARGB8888 fourcc_code('A', 'R', '2', '4')
 #define DRM_FORMAT_ABGR8888 fourcc_code('A', 'B', '2', '4')
 #define fourcc_mod_code(vendor, val) ((((uint64_t)vendor) << 56) | ((val) & 0x00ffffffffffffffULL))
@@ -20,15 +20,15 @@
 #define AMD_FMT_MOD_DCC_SHIFT 13
 #define AMD_FMT_MOD_DCC_MASK 0x1
 #define IS_AMD_FMT_MOD(val) (((val) >> 56) == DRM_FORMAT_MOD_VENDOR_AMD)
-#define AMD_FMT_MOD_GET(field, value) (((value) >> AMD_FMT_MOD_##field##_SHIFT) & AMD_FMT_MOD_##field##_MASK)
+#define AMD_FMT_MOD_GET(field, value)                                                              \
+    (((value) >> AMD_FMT_MOD_##field##_SHIFT) & AMD_FMT_MOD_##field##_MASK)
 #endif
 
 struct Vertex {
     float position[2];
 };
 
-static uint32_t to_drm_format(VkFormat format)
-{
+static uint32_t to_drm_format(VkFormat format) {
     switch (format) {
     case VK_FORMAT_B8G8R8A8_UNORM:
         return DRM_FORMAT_ARGB8888;
@@ -40,8 +40,7 @@ static uint32_t to_drm_format(VkFormat format)
     }
 }
 
-static bool filter_modifier(uint64_t modifier)
-{
+static bool filter_modifier(uint64_t modifier) {
     if (IS_AMD_FMT_MOD(modifier)) {
         // DCC not supported as encode input
         if (AMD_FMT_MOD_GET(DCC, modifier)) {
@@ -51,24 +50,35 @@ static bool filter_modifier(uint64_t modifier)
     return true;
 }
 
-Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysicalDevice &physDev, uint32_t queueIdx, const std::vector<const char*> &devExtensions)
+Renderer::Renderer(
+    const VkInstance& inst,
+    const VkDevice& dev,
+    const VkPhysicalDevice& physDev,
+    uint32_t queueIdx,
+    const std::vector<const char*>& devExtensions
+)
     : m_inst(inst)
     , m_dev(dev)
     , m_physDev(physDev)
-    , m_queueFamilyIndex(queueIdx)
-{
-    auto checkExtension = [devExtensions](const char *name) {
-        return std::find_if(devExtensions.begin(), devExtensions.end(), [name](const char *ext) { return strcmp(ext, name) == 0; }) != devExtensions.end();
+    , m_queueFamilyIndex(queueIdx) {
+    auto checkExtension = [devExtensions](const char* name) {
+        return std::find_if(
+                   devExtensions.begin(),
+                   devExtensions.end(),
+                   [name](const char* ext) { return strcmp(ext, name) == 0; }
+               )
+            != devExtensions.end();
     };
     d.haveDmaBuf = checkExtension(VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME);
     d.haveDrmModifiers = checkExtension(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME);
     d.haveCalibratedTimestamps = checkExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
 
     if (!checkExtension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
-        throw std::runtime_error("Vulkan: Required extension " VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME " not available");
+        throw std::runtime_error("Vulkan: Required extension " VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME
+                                 " not available");
     }
 
-#define VK_LOAD_PFN(name) d.name = (PFN_##name) vkGetInstanceProcAddr(m_inst, #name)
+#define VK_LOAD_PFN(name) d.name = (PFN_##name)vkGetInstanceProcAddr(m_inst, #name)
     VK_LOAD_PFN(vkImportSemaphoreFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdKHR);
     VK_LOAD_PFN(vkGetMemoryFdPropertiesKHR);
@@ -82,18 +92,17 @@ Renderer::Renderer(const VkInstance &inst, const VkDevice &dev, const VkPhysical
     m_timestampPeriod = props.limits.timestampPeriod;
 }
 
-Renderer::~Renderer()
-{
+Renderer::~Renderer() {
     vkDeviceWaitIdle(m_dev);
 
-    for (const InputImage &image : m_images) {
+    for (const InputImage& image : m_images) {
         vkDestroyImageView(m_dev, image.view, nullptr);
         vkDestroyImage(m_dev, image.image, nullptr);
         vkFreeMemory(m_dev, image.memory, nullptr);
         vkDestroySemaphore(m_dev, image.semaphore, nullptr);
     }
 
-    for (const StagingImage &image : m_stagingImages) {
+    for (const StagingImage& image : m_stagingImages) {
         vkDestroyImageView(m_dev, image.view, nullptr);
         vkDestroyImage(m_dev, image.image, nullptr);
         vkFreeMemory(m_dev, image.memory, nullptr);
@@ -111,8 +120,7 @@ Renderer::~Renderer()
     vkDestroyFence(m_dev, m_fence, nullptr);
 }
 
-void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
-{
+void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format) {
     m_format = format;
     m_imageSize.width = width;
     m_imageSize.height = height;
@@ -171,7 +179,9 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
     descriptorSetLayoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
     descriptorSetLayoutInfo.bindingCount = 2;
     descriptorSetLayoutInfo.pBindings = descriptorBindings;
-    VK_CHECK(vkCreateDescriptorSetLayout(m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout));
+    VK_CHECK(
+        vkCreateDescriptorSetLayout(m_dev, &descriptorSetLayoutInfo, nullptr, &m_descriptorLayout)
+    );
 
     // Fence
     VkFenceCreateInfo fenceInfo = {};
@@ -179,8 +189,9 @@ void Renderer::Startup(uint32_t width, uint32_t height, VkFormat format)
     VK_CHECK(vkCreateFence(m_dev, &fenceInfo, nullptr, &m_fence));
 }
 
-void Renderer::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int imageFd, int semaphoreFd)
-{
+void Renderer::AddImage(
+    VkImageCreateInfo imageInfo, size_t memoryIndex, int imageFd, int semaphoreFd
+) {
     VkExternalMemoryImageCreateInfo extMemImageInfo = {};
     extMemImageInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
     extMemImageInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
@@ -247,11 +258,10 @@ void Renderer::AddImage(VkImageCreateInfo imageInfo, size_t memoryIndex, int ima
     VkImageView view;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &view));
 
-    m_images.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view});
+    m_images.push_back({ image, VK_IMAGE_LAYOUT_UNDEFINED, mem, semaphore, view });
 }
 
-void Renderer::AddPipeline(RenderPipeline *pipeline)
-{
+void Renderer::AddPipeline(RenderPipeline* pipeline) {
     pipeline->Build();
     m_pipelines.push_back(pipeline);
 
@@ -260,8 +270,7 @@ void Renderer::AddPipeline(RenderPipeline *pipeline)
     }
 }
 
-void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle handle)
-{
+void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle handle) {
     m_output.imageInfo = {};
     m_output.imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     m_output.imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -302,8 +311,9 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
 
         std::vector<uint64_t> imageModifiers;
         std::cout << "Available modifiers:" << std::endl;
-        for (const VkDrmFormatModifierPropertiesEXT &prop : modifierProps) {
-            std::cout << "modifier: " << prop.drmFormatModifier << " planes: " << prop.drmFormatModifierPlaneCount << std::endl;
+        for (const VkDrmFormatModifierPropertiesEXT& prop : modifierProps) {
+            std::cout << "modifier: " << prop.drmFormatModifier
+                      << " planes: " << prop.drmFormatModifierPlaneCount << std::endl;
             if (!filter_modifier(prop.drmFormatModifier)) {
                 std::cout << " filtered" << std::endl;
                 continue;
@@ -329,7 +339,9 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
             imageFormatProps.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
             imageFormatProps.pNext = NULL;
 
-            VkResult r = vkGetPhysicalDeviceImageFormatProperties2(m_physDev, &formatInfo, &imageFormatProps);
+            VkResult r = vkGetPhysicalDeviceImageFormatProperties2(
+                m_physDev, &formatInfo, &imageFormatProps
+            );
             if (r == VK_SUCCESS) {
                 imageModifiers.push_back(prop.drmFormatModifier);
             }
@@ -386,7 +398,9 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
     memi.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memi.pNext = &memory_dedicated_info;
     memi.allocationSize = memoryReqs.memoryRequirements.size;
-    memi.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits);
+    memi.memoryTypeIndex = memoryTypeIndex(
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits
+    );
     VK_CHECK(vkAllocateMemory(m_dev, &memi, nullptr, &m_output.memory));
 
     VkBindImageMemoryInfo bimi = {};
@@ -411,7 +425,8 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
                 imageDrmProps.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
                 d.vkGetImageDrmFormatModifierPropertiesEXT(m_dev, m_output.image, &imageDrmProps);
                 if (res != VK_SUCCESS) {
-                    std::cout << "vkGetImageDrmFormatModifierPropertiesEXT " << result_to_str(res) << std::endl;
+                    std::cout << "vkGetImageDrmFormatModifierPropertiesEXT " << result_to_str(res)
+                              << std::endl;
                 } else {
                     m_output.drm.modifier = imageDrmProps.drmFormatModifier;
                     for (VkDrmFormatModifierPropertiesEXT prop : modifierProps) {
@@ -463,8 +478,7 @@ void Renderer::CreateOutput(uint32_t width, uint32_t height, ExternalHandle hand
     VK_CHECK(vkCreateSemaphore(m_dev, &semInfo, nullptr, &m_output.semaphore));
 }
 
-void Renderer::ImportOutput(const DrmImage &drm)
-{
+void Renderer::ImportOutput(const DrmImage& drm) {
     vkDestroyImageView(m_dev, m_output.view, nullptr);
     vkDestroyImage(m_dev, m_output.image, nullptr);
     vkFreeMemory(m_dev, m_output.memory, nullptr);
@@ -493,7 +507,9 @@ void Renderer::ImportOutput(const DrmImage &drm)
 
     VkMemoryFdPropertiesKHR fdProps = {};
     fdProps.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
-    VK_CHECK(d.vkGetMemoryFdPropertiesKHR(m_dev, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, drm.fd, &fdProps));
+    VK_CHECK(d.vkGetMemoryFdPropertiesKHR(
+        m_dev, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, drm.fd, &fdProps
+    ));
 
     VkImageMemoryRequirementsInfo2 memoryReqsInfo = {};
     memoryReqsInfo.image = m_output.image;
@@ -506,7 +522,9 @@ void Renderer::ImportOutput(const DrmImage &drm)
     VkMemoryAllocateInfo memoryAllocInfo = {};
     memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocInfo.allocationSize = memoryReqs.memoryRequirements.size;
-    memoryAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits);
+    memoryAllocInfo.memoryTypeIndex = memoryTypeIndex(
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryRequirements.memoryTypeBits
+    );
 
     VkImportMemoryFdInfoKHR importMemInfo = {};
     importMemInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
@@ -546,8 +564,7 @@ void Renderer::ImportOutput(const DrmImage &drm)
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &m_output.view));
 }
 
-void Renderer::Render(uint32_t index, uint64_t waitValue)
-{
+void Renderer::Render(uint32_t index, uint64_t waitValue) {
     if (!m_inputImageCapture.empty()) {
         VkSemaphoreWaitInfo waitInfo = {};
         waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
@@ -556,7 +573,14 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         waitInfo.pValues = &waitValue;
         VK_CHECK(vkWaitSemaphores(m_dev, &waitInfo, UINT64_MAX));
 
-        dumpImage(m_images[index].image, m_images[index].view, m_images[index].layout, m_imageSize.width, m_imageSize.height, m_inputImageCapture);
+        dumpImage(
+            m_images[index].image,
+            m_images[index].view,
+            m_images[index].layout,
+            m_imageSize.width,
+            m_imageSize.height,
+            m_inputImageCapture
+        );
         m_inputImageCapture.clear();
     }
 
@@ -571,17 +595,17 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
         VkRect2D rect = {};
         VkImage in = VK_NULL_HANDLE;
         VkImageView inView = VK_NULL_HANDLE;
-        VkImageLayout *inLayout = nullptr;
+        VkImageLayout* inLayout = nullptr;
         VkImage out = VK_NULL_HANDLE;
         VkImageView outView = VK_NULL_HANDLE;
-        VkImageLayout *outLayout = nullptr;
+        VkImageLayout* outLayout = nullptr;
         if (i == 0) {
-            auto &img = m_images[index];
+            auto& img = m_images[index];
             in = img.image;
             inView = img.view;
             inLayout = &img.layout;
         } else {
-            auto &img = m_stagingImages[(i - 1) % m_stagingImages.size()];
+            auto& img = m_stagingImages[(i - 1) % m_stagingImages.size()];
             in = img.image;
             inView = img.view;
             inLayout = &img.layout;
@@ -593,7 +617,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
             rect.extent.width = m_output.imageInfo.extent.width;
             rect.extent.height = m_output.imageInfo.extent.height;
         } else {
-            auto &img = m_stagingImages[i % m_stagingImages.size()];
+            auto& img = m_stagingImages[i % m_stagingImages.size()];
             out = img.image;
             outView = img.view;
             outLayout = &img.layout;
@@ -624,7 +648,18 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
             imageBarriers.push_back(imageBarrier);
         }
         if (imageBarriers.size()) {
-            vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarriers.size(), imageBarriers.data());
+            vkCmdPipelineBarrier(
+                m_commandBuffer,
+                VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                imageBarriers.size(),
+                imageBarriers.data()
+            );
         }
         m_pipelines[i]->Render(inView, outView, rect);
     }
@@ -653,8 +688,7 @@ void Renderer::Render(uint32_t index, uint64_t waitValue)
     VK_CHECK(vkQueueSubmit(m_queue, 1, &submitInfo, nullptr));
 }
 
-void Renderer::Sync()
-{
+void Renderer::Sync() {
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
     VkSubmitInfo submitInfo = {};
@@ -668,19 +702,24 @@ void Renderer::Sync()
     VK_CHECK(vkResetFences(m_dev, 1, &m_fence));
 }
 
-Renderer::Output &Renderer::GetOutput()
-{
-    return m_output;
-}
+Renderer::Output& Renderer::GetOutput() { return m_output; }
 
-Renderer::Timestamps Renderer::GetTimestamps()
-{
+Renderer::Timestamps Renderer::GetTimestamps() {
     if (!d.haveCalibratedTimestamps) {
-        return {0, 0, 0};
+        return { 0, 0, 0 };
     }
 
     uint64_t queries[2];
-    VK_CHECK(vkGetQueryPoolResults(m_dev, m_queryPool, 0, 2, 2 * sizeof(uint64_t), queries, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+    VK_CHECK(vkGetQueryPoolResults(
+        m_dev,
+        m_queryPool,
+        0,
+        2,
+        2 * sizeof(uint64_t),
+        queries,
+        sizeof(uint64_t),
+        VK_QUERY_RESULT_64_BIT
+    ));
     queries[0] *= m_timestampPeriod;
     queries[1] *= m_timestampPeriod;
 
@@ -693,71 +732,72 @@ Renderer::Timestamps Renderer::GetTimestamps()
     timestamp *= m_timestampPeriod;
 
     if (!m_outputImageCapture.empty()) {
-        dumpImage(m_output.image, m_output.view, m_output.layout, m_output.imageInfo.extent.width, m_output.imageInfo.extent.height, m_outputImageCapture);
+        dumpImage(
+            m_output.image,
+            m_output.view,
+            m_output.layout,
+            m_output.imageInfo.extent.width,
+            m_output.imageInfo.extent.height,
+            m_outputImageCapture
+        );
         m_outputImageCapture.clear();
     }
 
-    return {timestamp, queries[0], queries[1]};
+    return { timestamp, queries[0], queries[1] };
 }
 
-void Renderer::CaptureInputFrame(const std::string &filename)
-{
-    m_inputImageCapture = filename;
-}
+void Renderer::CaptureInputFrame(const std::string& filename) { m_inputImageCapture = filename; }
 
-void Renderer::CaptureOutputFrame(const std::string &filename)
-{
-    m_outputImageCapture = filename;
-}
+void Renderer::CaptureOutputFrame(const std::string& filename) { m_outputImageCapture = filename; }
 
-std::string Renderer::result_to_str(VkResult result)
-{
+std::string Renderer::result_to_str(VkResult result) {
     switch (result) {
-#define VAL(x) case x: return #x
-    VAL(VK_SUCCESS);
-    VAL(VK_NOT_READY);
-    VAL(VK_TIMEOUT);
-    VAL(VK_EVENT_SET);
-    VAL(VK_EVENT_RESET);
-    VAL(VK_INCOMPLETE);
-    VAL(VK_ERROR_OUT_OF_HOST_MEMORY);
-    VAL(VK_ERROR_OUT_OF_DEVICE_MEMORY);
-    VAL(VK_ERROR_INITIALIZATION_FAILED);
-    VAL(VK_ERROR_DEVICE_LOST);
-    VAL(VK_ERROR_MEMORY_MAP_FAILED);
-    VAL(VK_ERROR_LAYER_NOT_PRESENT);
-    VAL(VK_ERROR_EXTENSION_NOT_PRESENT);
-    VAL(VK_ERROR_FEATURE_NOT_PRESENT);
-    VAL(VK_ERROR_INCOMPATIBLE_DRIVER);
-    VAL(VK_ERROR_TOO_MANY_OBJECTS);
-    VAL(VK_ERROR_FORMAT_NOT_SUPPORTED);
-    VAL(VK_ERROR_FRAGMENTED_POOL);
-    VAL(VK_ERROR_OUT_OF_POOL_MEMORY);
-    VAL(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-    VAL(VK_ERROR_SURFACE_LOST_KHR);
-    VAL(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
-    VAL(VK_SUBOPTIMAL_KHR);
-    VAL(VK_ERROR_OUT_OF_DATE_KHR);
-    VAL(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
-    VAL(VK_ERROR_VALIDATION_FAILED_EXT);
-    VAL(VK_ERROR_INVALID_SHADER_NV);
-    VAL(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
-    VAL(VK_ERROR_NOT_PERMITTED_EXT);
-    VAL(VK_RESULT_MAX_ENUM);
+#define VAL(x)                                                                                     \
+    case x:                                                                                        \
+        return #x
+        VAL(VK_SUCCESS);
+        VAL(VK_NOT_READY);
+        VAL(VK_TIMEOUT);
+        VAL(VK_EVENT_SET);
+        VAL(VK_EVENT_RESET);
+        VAL(VK_INCOMPLETE);
+        VAL(VK_ERROR_OUT_OF_HOST_MEMORY);
+        VAL(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+        VAL(VK_ERROR_INITIALIZATION_FAILED);
+        VAL(VK_ERROR_DEVICE_LOST);
+        VAL(VK_ERROR_MEMORY_MAP_FAILED);
+        VAL(VK_ERROR_LAYER_NOT_PRESENT);
+        VAL(VK_ERROR_EXTENSION_NOT_PRESENT);
+        VAL(VK_ERROR_FEATURE_NOT_PRESENT);
+        VAL(VK_ERROR_INCOMPATIBLE_DRIVER);
+        VAL(VK_ERROR_TOO_MANY_OBJECTS);
+        VAL(VK_ERROR_FORMAT_NOT_SUPPORTED);
+        VAL(VK_ERROR_FRAGMENTED_POOL);
+        VAL(VK_ERROR_OUT_OF_POOL_MEMORY);
+        VAL(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+        VAL(VK_ERROR_SURFACE_LOST_KHR);
+        VAL(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
+        VAL(VK_SUBOPTIMAL_KHR);
+        VAL(VK_ERROR_OUT_OF_DATE_KHR);
+        VAL(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
+        VAL(VK_ERROR_VALIDATION_FAILED_EXT);
+        VAL(VK_ERROR_INVALID_SHADER_NV);
+        VAL(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
+        VAL(VK_ERROR_NOT_PERMITTED_EXT);
+        VAL(VK_RESULT_MAX_ENUM);
 #undef VAL
-    default: return "Unknown VkResult";
+    default:
+        return "Unknown VkResult";
     }
 }
 
-void Renderer::commandBufferBegin()
-{
+void Renderer::commandBufferBegin() {
     VkCommandBufferBeginInfo commandBufferBegin = {};
     commandBufferBegin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     VK_CHECK(vkBeginCommandBuffer(m_commandBuffer, &commandBufferBegin));
 }
 
-void Renderer::commandBufferSubmit()
-{
+void Renderer::commandBufferSubmit() {
     VK_CHECK(vkEndCommandBuffer(m_commandBuffer));
 
     VkSubmitInfo submitInfo = {};
@@ -773,8 +813,7 @@ void Renderer::commandBufferSubmit()
     vkDestroyFence(m_dev, fence, nullptr);
 }
 
-void Renderer::addStagingImage(uint32_t width, uint32_t height)
-{
+void Renderer::addStagingImage(uint32_t width, uint32_t height) {
     VkImageCreateInfo imageInfo = {};
     imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -798,7 +837,8 @@ void Renderer::addStagingImage(uint32_t width, uint32_t height)
     VkMemoryAllocateInfo memoryAllocInfo = {};
     memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocInfo.allocationSize = memoryReqs.size;
-    memoryAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryTypeBits);
+    memoryAllocInfo.memoryTypeIndex
+        = memoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryReqs.memoryTypeBits);
     VkDeviceMemory memory;
     VK_CHECK(vkAllocateMemory(m_dev, &memoryAllocInfo, nullptr, &memory));
     VK_CHECK(vkBindImageMemory(m_dev, image, memory, 0));
@@ -821,11 +861,17 @@ void Renderer::addStagingImage(uint32_t width, uint32_t height)
     VkImageView view;
     VK_CHECK(vkCreateImageView(m_dev, &viewInfo, nullptr, &view));
 
-    m_stagingImages.push_back({image, VK_IMAGE_LAYOUT_UNDEFINED, memory, view});
+    m_stagingImages.push_back({ image, VK_IMAGE_LAYOUT_UNDEFINED, memory, view });
 }
 
-void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout imageLayout, uint32_t width, uint32_t height, const std::string &filename)
-{
+void Renderer::dumpImage(
+    VkImage image,
+    VkImageView imageView,
+    VkImageLayout imageLayout,
+    uint32_t width,
+    uint32_t height,
+    const std::string& filename
+) {
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -847,7 +893,11 @@ void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout ima
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     vkGetImageMemoryRequirements(m_dev, dstImage, &memReqs);
     memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = memoryTypeIndex(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, memReqs.memoryTypeBits);
+    memAllocInfo.memoryTypeIndex = memoryTypeIndex(
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+            | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        memReqs.memoryTypeBits
+    );
     VkDeviceMemory dstMemory;
     VK_CHECK(vkAllocateMemory(m_dev, &memAllocInfo, nullptr, &dstMemory));
     VK_CHECK(vkBindImageMemory(m_dev, dstImage, dstMemory, 0));
@@ -967,11 +1017,42 @@ void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout ima
     descriptorWriteSets.push_back(descriptorWriteSet);
 
     commandBufferBegin();
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierIn.size(), imageBarrierIn.data());
+    vkCmdPipelineBarrier(
+        m_commandBuffer,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        imageBarrierIn.size(),
+        imageBarrierIn.data()
+    );
     vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-    d.vkCmdPushDescriptorSetKHR(m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, descriptorWriteSets.size(), descriptorWriteSets.data());
-    vkCmdDispatch(m_commandBuffer, (imageInfo.extent.width + 7) / 8, (imageInfo.extent.height + 7) / 8, 1);
-    vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, imageBarrierOut.size(), imageBarrierOut.data());
+    d.vkCmdPushDescriptorSetKHR(
+        m_commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        pipelineLayout,
+        0,
+        descriptorWriteSets.size(),
+        descriptorWriteSets.data()
+    );
+    vkCmdDispatch(
+        m_commandBuffer, (imageInfo.extent.width + 7) / 8, (imageInfo.extent.height + 7) / 8, 1
+    );
+    vkCmdPipelineBarrier(
+        m_commandBuffer,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        0,
+        nullptr,
+        0,
+        nullptr,
+        imageBarrierOut.size(),
+        imageBarrierOut.data()
+    );
     commandBufferSubmit();
 
     VkImageSubresource subresource = {};
@@ -979,7 +1060,7 @@ void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout ima
     VkSubresourceLayout layout;
     vkGetImageSubresourceLayout(m_dev, dstImage, &subresource, &layout);
 
-    const char *imageData;
+    const char* imageData;
     VK_CHECK(vkMapMemory(m_dev, dstMemory, 0, VK_WHOLE_SIZE, 0, (void**)&imageData));
     imageData += layout.offset;
 
@@ -990,7 +1071,7 @@ void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout ima
 
     // PPM binary pixel data
     for (uint32_t y = 0; y < height; y++) {
-        uint32_t *row = (uint32_t*)imageData;
+        uint32_t* row = (uint32_t*)imageData;
         for (uint32_t x = 0; x < width; x++) {
             file.write((char*)row++, 3);
         }
@@ -1009,8 +1090,7 @@ void Renderer::dumpImage(VkImage image, VkImageView imageView, VkImageLayout ima
     vkDestroyPipelineLayout(m_dev, pipelineLayout, nullptr);
 }
 
-uint32_t Renderer::memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const
-{
+uint32_t Renderer::memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t typeBits) const {
     VkPhysicalDeviceMemoryProperties prop;
     vkGetPhysicalDeviceMemoryProperties(m_physDev, &prop);
     for (uint32_t i = 0; i < prop.memoryTypeCount; i++) {
@@ -1022,20 +1102,16 @@ uint32_t Renderer::memoryTypeIndex(VkMemoryPropertyFlags properties, uint32_t ty
 }
 
 // RenderPipeline
-RenderPipeline::RenderPipeline(Renderer *render)
-    : r(render)
-{
-}
+RenderPipeline::RenderPipeline(Renderer* render)
+    : r(render) { }
 
-RenderPipeline::~RenderPipeline()
-{
+RenderPipeline::~RenderPipeline() {
     vkDestroyShaderModule(r->m_dev, m_shader, nullptr);
     vkDestroyPipeline(r->m_dev, m_pipeline, nullptr);
     vkDestroyPipelineLayout(r->m_dev, m_pipelineLayout, nullptr);
 }
 
-void RenderPipeline::SetShader(const char *filename)
-{
+void RenderPipeline::SetShader(const char* filename) {
     std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
     if (!is.is_open()) {
         std::cerr << "Failed to open shader file: " << filename << std::endl;
@@ -1048,8 +1124,7 @@ void RenderPipeline::SetShader(const char *filename)
     SetShader((unsigned char*)data.data(), size);
 }
 
-void RenderPipeline::SetShader(const unsigned char *data, unsigned len)
-{
+void RenderPipeline::SetShader(const unsigned char* data, unsigned len) {
     VkShaderModuleCreateInfo moduleInfo = {};
     moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     moduleInfo.codeSize = len;
@@ -1057,8 +1132,7 @@ void RenderPipeline::SetShader(const unsigned char *data, unsigned len)
     VK_CHECK(vkCreateShaderModule(r->m_dev, &moduleInfo, nullptr, &m_shader));
 }
 
-void RenderPipeline::Build()
-{
+void RenderPipeline::Build() {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
@@ -1087,8 +1161,7 @@ void RenderPipeline::Build()
     VK_CHECK(vkCreateComputePipelines(r->m_dev, nullptr, 1, &pipelineInfo, nullptr, &m_pipeline));
 }
 
-void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize)
-{
+void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize) {
     vkCmdBindPipeline(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
 
     VkDescriptorImageInfo descriptorImageInfoIn = {};
@@ -1110,7 +1183,16 @@ void RenderPipeline::Render(VkImageView in, VkImageView out, VkRect2D outSize)
     descriptorWriteSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorWriteSets[1].pImageInfo = &descriptorImageInfoOut;
     descriptorWriteSets[1].dstBinding = 1;
-    r->d.vkCmdPushDescriptorSetKHR(r->m_commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 2, descriptorWriteSets);
+    r->d.vkCmdPushDescriptorSetKHR(
+        r->m_commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_pipelineLayout,
+        0,
+        2,
+        descriptorWriteSets
+    );
 
-    vkCmdDispatch(r->m_commandBuffer, (outSize.extent.width + 7) / 8, (outSize.extent.height + 7) / 8, 1);
+    vkCmdDispatch(
+        r->m_commandBuffer, (outSize.extent.width + 7) / 8, (outSize.extent.height + 7) / 8, 1
+    );
 }

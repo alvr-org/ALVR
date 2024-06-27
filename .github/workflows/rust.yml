@@ -143,8 +143,8 @@ jobs:
           command: test
           args: -p alvr_session
 
-  rustfmt:
-    runs-on: ubuntu-latest
+  check-format:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -154,10 +154,7 @@ jobs:
           override: true
           components: rustfmt
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo xtask check-format
 
   check-msrv-windows:
     runs-on: windows-2019

@@ -39,8 +39,8 @@ bool IsOpenvrClientReady();
 #endif
 void _SetChaperoneArea(float areaWidth, float areaHeight);
 
-vr::EVREventType VendorEvent_ALVRDriverResync =
-    (vr::EVREventType)(vr::VREvent_VendorSpecific_Reserved_Start + ((vr::EVREventType)0xC0));
+vr::EVREventType VendorEvent_ALVRDriverResync
+    = (vr::EVREventType)(vr::VREvent_VendorSpecific_Reserved_Start + ((vr::EVREventType)0xC0));
 
 static void load_debug_privilege(void) {
 #ifdef _WIN32
@@ -78,23 +78,23 @@ static void load_debug_privilege(void) {
 }
 
 class DriverProvider : public vr::IServerTrackedDeviceProvider {
-  public:
+public:
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
     std::vector<std::unique_ptr<FakeViveTracker>> generic_trackers;
     bool shutdown_called = false;
 
-    std::map<uint64_t, TrackedDevice *> tracked_devices;
+    std::map<uint64_t, TrackedDevice*> tracked_devices;
 
-    virtual vr::EVRInitError Init(vr::IVRDriverContext *pContext) override {
+    virtual vr::EVRInitError Init(vr::IVRDriverContext* pContext) override {
         VR_INIT_SERVER_DRIVER_CONTEXT(pContext);
         InitDriverLog(vr::VRDriverLog());
 
         this->hmd = std::make_unique<Hmd>();
-        this->tracked_devices.insert({HEAD_ID, (TrackedDevice *)this->hmd.get()});
-        if (vr::VRServerDriverHost()->TrackedDeviceAdded(this->hmd->get_serial_number().c_str(),
-                                                         this->hmd->GetDeviceClass(),
-                                                         this->hmd.get())) {
+        this->tracked_devices.insert({ HEAD_ID, (TrackedDevice*)this->hmd.get() });
+        if (vr::VRServerDriverHost()->TrackedDeviceAdded(
+                this->hmd->get_serial_number().c_str(), this->hmd->GetDeviceClass(), this->hmd.get()
+            )) {
         } else {
             Warn("Failed to register HMD device");
         }
@@ -103,54 +103,64 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
             this->left_controller = std::make_unique<Controller>(HAND_LEFT_ID);
             this->right_controller = std::make_unique<Controller>(HAND_RIGHT_ID);
 
-            this->tracked_devices.insert(
-                {HAND_LEFT_ID, (TrackedDevice *)this->left_controller.get()});
-            this->tracked_devices.insert(
-                {HAND_RIGHT_ID, (TrackedDevice *)this->right_controller.get()});
+            this->tracked_devices.insert({ HAND_LEFT_ID,
+                                           (TrackedDevice*)this->left_controller.get() });
+            this->tracked_devices.insert({ HAND_RIGHT_ID,
+                                           (TrackedDevice*)this->right_controller.get() });
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                     this->left_controller->get_serial_number().c_str(),
                     this->left_controller->getControllerDeviceClass(),
-                    this->left_controller.get())) {
+                    this->left_controller.get()
+                )) {
                 Warn("Failed to register left controller");
             }
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                     this->right_controller->get_serial_number().c_str(),
                     this->right_controller->getControllerDeviceClass(),
-                    this->right_controller.get())) {
+                    this->right_controller.get()
+                )) {
                 Warn("Failed to register right controller");
             }
         }
 
         if (Settings::Instance().m_enableBodyTrackingFakeVive) {
             auto waistTracker = std::make_unique<FakeViveTracker>("waist");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(waistTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              waistTracker.get())) {
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    waistTracker->GetSerialNumber(),
+                    vr::TrackedDeviceClass_GenericTracker,
+                    waistTracker.get()
+                )) {
                 Warn("Failed to register Vive tracker (waist)");
             }
             generic_trackers.push_back(std::move(waistTracker));
 
             auto chestTracker = std::make_unique<FakeViveTracker>("chest");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(chestTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              chestTracker.get())) {
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    chestTracker->GetSerialNumber(),
+                    vr::TrackedDeviceClass_GenericTracker,
+                    chestTracker.get()
+                )) {
                 Warn("Failed to register Vive tracker (chest)");
             }
             generic_trackers.push_back(std::move(chestTracker));
 
             auto leftElbowTracker = std::make_unique<FakeViveTracker>("left_elbow");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(leftElbowTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              leftElbowTracker.get())) {
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    leftElbowTracker->GetSerialNumber(),
+                    vr::TrackedDeviceClass_GenericTracker,
+                    leftElbowTracker.get()
+                )) {
                 Warn("Failed to register Vive tracker (left_elbow)");
             }
             generic_trackers.push_back(std::move(leftElbowTracker));
 
             auto rightElbowTracker = std::make_unique<FakeViveTracker>("right_elbow");
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(rightElbowTracker->GetSerialNumber(),
-                                                              vr::TrackedDeviceClass_GenericTracker,
-                                                              rightElbowTracker.get())) {
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    rightElbowTracker->GetSerialNumber(),
+                    vr::TrackedDeviceClass_GenericTracker,
+                    rightElbowTracker.get()
+                )) {
                 Warn("Failed to register Vive tracker (right_elbow)");
             }
             generic_trackers.push_back(std::move(rightElbowTracker));
@@ -160,7 +170,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                         leftKneeTracker->GetSerialNumber(),
                         vr::TrackedDeviceClass_GenericTracker,
-                        leftKneeTracker.get())) {
+                        leftKneeTracker.get()
+                    )) {
                     Warn("Failed to register Vive tracker (left_knee)");
                 }
                 generic_trackers.push_back(std::move(leftKneeTracker));
@@ -169,7 +180,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                         leftFootTracker->GetSerialNumber(),
                         vr::TrackedDeviceClass_GenericTracker,
-                        leftFootTracker.get())) {
+                        leftFootTracker.get()
+                    )) {
                     Warn("Failed to register Vive tracker (left_foot)");
                 }
                 generic_trackers.push_back(std::move(leftFootTracker));
@@ -178,7 +190,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                         rightKneeTracker->GetSerialNumber(),
                         vr::TrackedDeviceClass_GenericTracker,
-                        rightKneeTracker.get())) {
+                        rightKneeTracker.get()
+                    )) {
                     Warn("Failed to register Vive tracker (right_knee)");
                 }
                 generic_trackers.push_back(std::move(rightKneeTracker));
@@ -187,7 +200,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                         rightFootTracker->GetSerialNumber(),
                         vr::TrackedDeviceClass_GenericTracker,
-                        rightFootTracker.get())) {
+                        rightFootTracker.get()
+                    )) {
                     Warn("Failed to register Vive tracker (right_foot)");
                 }
                 generic_trackers.push_back(std::move(rightFootTracker));
@@ -205,8 +219,8 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 
         VR_CLEANUP_SERVER_DRIVER_CONTEXT();
     }
-    virtual const char *const *GetInterfaceVersions() override { return vr::k_InterfaceVersions; }
-    virtual const char *GetTrackedDeviceDriverVersion() {
+    virtual const char* const* GetInterfaceVersions() override { return vr::k_InterfaceVersions; }
+    virtual const char* GetTrackedDeviceDriverVersion() {
         return vr::ITrackedDeviceServerDriver_Version;
     }
     virtual void RunFrame() override {
@@ -216,25 +230,25 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
                 vr::VREvent_HapticVibration_t haptics = event.data.hapticVibration;
 
                 uint64_t id = 0;
-                if (this->left_controller &&
-                    haptics.containerHandle == this->left_controller->prop_container) {
+                if (this->left_controller
+                    && haptics.containerHandle == this->left_controller->prop_container) {
                     id = HAND_LEFT_ID;
-                } else if (this->right_controller &&
-                           haptics.containerHandle == this->right_controller->prop_container) {
+                } else if (this->right_controller
+                           && haptics.containerHandle == this->right_controller->prop_container) {
                     id = HAND_RIGHT_ID;
                 }
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
 #ifdef __linux__
-            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged ||
-                     event.eventType == vr::VREvent_ChaperoneRoomSetupFinished ||
-                     event.eventType == vr::VREvent_ChaperoneFlushCache ||
-                     event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged ||
-                     event.eventType == vr::VREvent_SeatedZeroPoseReset ||
-                     event.eventType == vr::VREvent_StandingZeroPoseReset ||
-                     event.eventType == vr::VREvent_SceneApplicationChanged ||
-                     event.eventType == VendorEvent_ALVRDriverResync) {
+            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
+                     || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
+                     || event.eventType == vr::VREvent_ChaperoneFlushCache
+                     || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
+                     || event.eventType == vr::VREvent_SeatedZeroPoseReset
+                     || event.eventType == vr::VREvent_StandingZeroPoseReset
+                     || event.eventType == vr::VREvent_SceneApplicationChanged
+                     || event.eventType == VendorEvent_ALVRDriverResync) {
                 if (hmd && hmd->m_poseHistory) {
                     auto rawZeroPose = GetRawZeroPose();
                     if (rawZeroPose != nullptr) {
@@ -250,52 +264,52 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
         }
     }
     virtual bool ShouldBlockStandbyMode() override { return false; }
-    virtual void EnterStandby() override {}
-    virtual void LeaveStandby() override {}
+    virtual void EnterStandby() override { }
+    virtual void LeaveStandby() override { }
 } g_driver_provider;
 
 // bindigs for Rust
 
-const unsigned char *FRAME_RENDER_VS_CSO_PTR;
+const unsigned char* FRAME_RENDER_VS_CSO_PTR;
 unsigned int FRAME_RENDER_VS_CSO_LEN;
-const unsigned char *FRAME_RENDER_PS_CSO_PTR;
+const unsigned char* FRAME_RENDER_PS_CSO_PTR;
 unsigned int FRAME_RENDER_PS_CSO_LEN;
-const unsigned char *QUAD_SHADER_CSO_PTR;
+const unsigned char* QUAD_SHADER_CSO_PTR;
 unsigned int QUAD_SHADER_CSO_LEN;
-const unsigned char *COMPRESS_AXIS_ALIGNED_CSO_PTR;
+const unsigned char* COMPRESS_AXIS_ALIGNED_CSO_PTR;
 unsigned int COMPRESS_AXIS_ALIGNED_CSO_LEN;
-const unsigned char *COLOR_CORRECTION_CSO_PTR;
+const unsigned char* COLOR_CORRECTION_CSO_PTR;
 unsigned int COLOR_CORRECTION_CSO_LEN;
-const unsigned char *RGBTOYUV420_CSO_PTR;
+const unsigned char* RGBTOYUV420_CSO_PTR;
 unsigned int RGBTOYUV420_CSO_LEN;
 
-const unsigned char *QUAD_SHADER_COMP_SPV_PTR;
+const unsigned char* QUAD_SHADER_COMP_SPV_PTR;
 unsigned int QUAD_SHADER_COMP_SPV_LEN;
-const unsigned char *COLOR_SHADER_COMP_SPV_PTR;
+const unsigned char* COLOR_SHADER_COMP_SPV_PTR;
 unsigned int COLOR_SHADER_COMP_SPV_LEN;
-const unsigned char *FFR_SHADER_COMP_SPV_PTR;
+const unsigned char* FFR_SHADER_COMP_SPV_PTR;
 unsigned int FFR_SHADER_COMP_SPV_LEN;
-const unsigned char *RGBTOYUV420_SHADER_COMP_SPV_PTR;
+const unsigned char* RGBTOYUV420_SHADER_COMP_SPV_PTR;
 unsigned int RGBTOYUV420_SHADER_COMP_SPV_LEN;
 
-const char *g_sessionPath;
-const char *g_driverRootDir;
+const char* g_sessionPath;
+const char* g_driverRootDir;
 
-void (*LogError)(const char *stringPtr);
-void (*LogWarn)(const char *stringPtr);
-void (*LogInfo)(const char *stringPtr);
-void (*LogDebug)(const char *stringPtr);
-void (*LogPeriodically)(const char *tag, const char *stringPtr);
+void (*LogError)(const char* stringPtr);
+void (*LogWarn)(const char* stringPtr);
+void (*LogInfo)(const char* stringPtr);
+void (*LogDebug)(const char* stringPtr);
+void (*LogPeriodically)(const char* tag, const char* stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
-void (*SetVideoConfigNals)(const unsigned char *configBuffer, int len, int codec);
-void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char *buf, int len, bool isIdr);
+void (*SetVideoConfigNals)(const unsigned char* configBuffer, int len, int codec);
+void (*VideoSend)(unsigned long long targetTimestampNs, unsigned char* buf, int len, bool isIdr);
 void (*HapticsSend)(unsigned long long path, float duration_s, float frequency, float amplitude);
 void (*ShutdownRuntime)();
-unsigned long long (*PathStringToHash)(const char *path);
+unsigned long long (*PathStringToHash)(const char* path);
 void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
-unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char *outString);
+unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
 void (*SetOpenvrProps)(unsigned long long deviceID);
 void (*RegisterButtons)(unsigned long long deviceID);
 void (*WaitForVSync)();
@@ -311,7 +325,7 @@ void CppInit() {
     load_debug_privilege();
 }
 
-void *CppOpenvrEntryPoint(const char *interface_name, int *return_code) {
+void* CppOpenvrEntryPoint(const char* interface_name, int* return_code) {
     if (std::string(interface_name) == vr::IServerTrackedDeviceProvider_Version) {
         *return_code = vr::VRInitError_None;
         return &g_driver_provider;
@@ -343,26 +357,30 @@ void RequestIDR() {
     }
 }
 
-void SetTracking(unsigned long long targetTimestampNs,
-                 float controllerPoseTimeOffsetS,
-                 const FfiDeviceMotion *deviceMotions,
-                 int motionsCount,
-                 const FfiHandSkeleton *leftHand,
-                 const FfiHandSkeleton *rightHand,
-                 unsigned int controllersTracked,
-                 const FfiBodyTracker *bodyTrackers,
-                 int bodyTrackersCount) {
+void SetTracking(
+    unsigned long long targetTimestampNs,
+    float controllerPoseTimeOffsetS,
+    const FfiDeviceMotion* deviceMotions,
+    int motionsCount,
+    const FfiHandSkeleton* leftHand,
+    const FfiHandSkeleton* rightHand,
+    unsigned int controllersTracked,
+    const FfiBodyTracker* bodyTrackers,
+    int bodyTrackersCount
+) {
     for (int i = 0; i < motionsCount; i++) {
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
             if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked);
-            } else if (g_driver_provider.right_controller &&
-                       deviceMotions[i].deviceID == HAND_RIGHT_ID) {
+                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked
+                );
+            } else if (g_driver_provider.right_controller
+                       && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked);
+                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked
+                );
             }
         }
     }
@@ -383,14 +401,16 @@ void VideoErrorReportReceive() {
 void RequestDriverResync() {
     if (g_driver_provider.hmd) {
         vr::VRServerDriverHost()->VendorSpecificEvent(
-            g_driver_provider.hmd->object_id, VendorEvent_ALVRDriverResync, {}, 0);
+            g_driver_provider.hmd->object_id, VendorEvent_ALVRDriverResync, {}, 0
+        );
     }
 }
 
 void ShutdownSteamvr() {
     if (g_driver_provider.hmd) {
         vr::VRServerDriverHost()->VendorSpecificEvent(
-            g_driver_provider.hmd->object_id, vr::VREvent_DriverRequestedQuit, {}, 0);
+            g_driver_provider.hmd->object_id, vr::VREvent_DriverRequestedQuit, {}, 0
+        );
     }
 }
 
@@ -403,12 +423,12 @@ void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop) {
 }
 
 void RegisterButton(unsigned long long buttonID) {
-    if (g_driver_provider.left_controller &&
-        LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
+    if (g_driver_provider.left_controller
+        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.left_controller->RegisterButton(buttonID);
-    } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+    } else if (g_driver_provider.right_controller
+               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->RegisterButton(buttonID);
     }
 }
@@ -424,19 +444,21 @@ void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged)
 
     if (device_it != g_driver_provider.tracked_devices.end()) {
         vr::VRProperties()->SetFloatProperty(
-            device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value);
+            device_it->second->prop_container, vr::Prop_DeviceBatteryPercentage_Float, gauge_value
+        );
         vr::VRProperties()->SetBoolProperty(
-            device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged);
+            device_it->second->prop_container, vr::Prop_DeviceIsCharging_Bool, is_plugged
+        );
     }
 }
 
 void SetButton(unsigned long long buttonID, FfiButtonValue value) {
-    if (g_driver_provider.left_controller &&
-        LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
+    if (g_driver_provider.left_controller
+        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.left_controller->SetButton(buttonID, value);
-    } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+    } else if (g_driver_provider.right_controller
+               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->SetButton(buttonID, value);
     }
 }

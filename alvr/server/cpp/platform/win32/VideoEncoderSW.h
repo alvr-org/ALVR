@@ -9,9 +9,9 @@
 #include "shared/d3drender.h"
 
 extern "C" {
-#include <libavutil/avutil.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
 #include <libswscale/swscale.h>
 }
 

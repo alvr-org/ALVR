@@ -233,22 +233,22 @@ public:
                 if (this->left_controller
                     && haptics.containerHandle == this->left_controller->prop_container) {
                     id = HAND_LEFT_ID;
-                } else if (this->right_controller &&
-                           haptics.containerHandle == this->right_controller->prop_container) {
+                } else if (this->right_controller
+                           && haptics.containerHandle == this->right_controller->prop_container) {
                     id = HAND_RIGHT_ID;
                 }
 
                 HapticsSend(id, haptics.fDurationSeconds, haptics.fFrequency, haptics.fAmplitude);
             }
 #ifdef __linux__
-            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged ||
-                     event.eventType == vr::VREvent_ChaperoneRoomSetupFinished ||
-                     event.eventType == vr::VREvent_ChaperoneFlushCache ||
-                     event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged ||
-                     event.eventType == vr::VREvent_SeatedZeroPoseReset ||
-                     event.eventType == vr::VREvent_StandingZeroPoseReset ||
-                     event.eventType == vr::VREvent_SceneApplicationChanged ||
-                     event.eventType == VendorEvent_ALVRDriverResync) {
+            else if (event.eventType == vr::VREvent_ChaperoneUniverseHasChanged
+                     || event.eventType == vr::VREvent_ChaperoneRoomSetupFinished
+                     || event.eventType == vr::VREvent_ChaperoneFlushCache
+                     || event.eventType == vr::VREvent_ChaperoneSettingsHaveChanged
+                     || event.eventType == vr::VREvent_SeatedZeroPoseReset
+                     || event.eventType == vr::VREvent_StandingZeroPoseReset
+                     || event.eventType == vr::VREvent_SceneApplicationChanged
+                     || event.eventType == VendorEvent_ALVRDriverResync) {
                 if (hmd && hmd->m_poseHistory) {
                     auto rawZeroPose = GetRawZeroPose();
                     if (rawZeroPose != nullptr) {
@@ -376,7 +376,8 @@ void SetTracking(
                 g_driver_provider.left_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked
                 );
-            } else if (g_driver_provider.right_controller && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
+            } else if (g_driver_provider.right_controller
+                       && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked
                 );
@@ -425,9 +426,9 @@ void RegisterButton(unsigned long long buttonID) {
     if (g_driver_provider.left_controller
         && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.left_controller->RegisterButton(buttonID);
-    } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+    } else if (g_driver_provider.right_controller
+               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->RegisterButton(buttonID);
     }
 }
@@ -455,9 +456,9 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
     if (g_driver_provider.left_controller
         && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.left_controller->SetButton(buttonID, value);
-    } else if (g_driver_provider.right_controller &&
-               RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID) !=
-                   RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+    } else if (g_driver_provider.right_controller
+               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->SetButton(buttonID, value);
     }
 }

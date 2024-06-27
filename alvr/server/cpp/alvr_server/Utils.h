@@ -5,19 +5,19 @@
 #pragma warning(disable : 4005)
 #include <WinSock2.h>
 #pragma warning(default : 4005)
-#include <WinInet.h>
 #include <WS2tcpip.h>
+#include <WinInet.h>
 #include <Windows.h>
+#include <d3d11.h>
 #include <delayimp.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include <d3d11.h>
 #define _USE_MATH_DEFINES
 #include <VersionHelpers.h>
 #else
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <string.h>
 #endif
 

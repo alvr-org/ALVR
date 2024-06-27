@@ -45,6 +45,7 @@
         "ls -Ral /app/utils/alvr/lib/",
         "mkdir -p /app/utils/alvr/lib/pkgconfig/",
         "cp /run/build/alvr/alvr/xtask/flatpak/cuda.pc /app/utils/alvr/lib/pkgconfig/",
+        "wget https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run",
         "cargo xtask prepare-deps --platform linux",
         "cargo xtask build-streamer --gpl --release",
         "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",

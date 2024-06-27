@@ -183,8 +183,8 @@ pub fn build_streamer(
     // copy dependencies
     if cfg!(windows) {
         sh.copy_file(
-            &afs::workspace_dir().join("openvr/bin/win64/openvr_api.dll"),
-            &build_layout.openvr_driver_lib_dir(),
+            afs::workspace_dir().join("openvr/bin/win64/openvr_api.dll"),
+            build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();
 
@@ -246,8 +246,8 @@ pub fn build_streamer(
         .unwrap();
 
         sh.copy_file(
-            &afs::workspace_dir().join("openvr/bin/linux64/libopenvr_api.so"),
-            &build_layout.openvr_driver_lib_dir(),
+            afs::workspace_dir().join("openvr/bin/linux64/libopenvr_api.so"),
+            build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();
 

@@ -563,17 +563,27 @@ fn connection_pipeline(
             .to_con()?;
 
             #[cfg(not(target_os = "linux"))]
-            if let Switch::Enabled(microphone_desc) = &settings.audio.microphone {
+            if let Switch::Enabled(microphone_config) = &settings.audio.microphone {
                 let (sink, source) = AudioDevice::new_virtual_microphone_pair(
                     Some(settings.audio.linux_backend),
-                    microphone_desc.devices.clone(),
+                    microphone_config.devices.clone(),
                 )
                 .to_con()?;
-                if alvr_audio::is_same_device(&game_audio_device, &sink)
-                    || alvr_audio::is_same_device(&game_audio_device, &source)
-                {
-                    con_bail!("Game audio and microphone cannot point to the same device!");
+                if matches!(
+                    microphone_config.devices,
+                    alvr_session::MicrophoneDevicesConfig::VBCable
+                ) {
+                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                    // Therefore, we cannot detect the loopback issue without knowing the routing.
+                    if alvr_audio::is_same_device(&game_audio_device, &sink)
+                        || alvr_audio::is_same_device(&game_audio_device, &source)
+                    {
+                        con_bail!("Game audio and microphone cannot point to the same device!");
+                    }
                 }
+                // else:
+                // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
+                // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
             }
 
             game_audio_device.input_sample_rate().to_con()?

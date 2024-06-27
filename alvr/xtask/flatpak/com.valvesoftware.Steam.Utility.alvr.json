@@ -13,7 +13,7 @@
   "separate-locales": false,
   "build-options": {
     "prefix": "/app/utils/alvr",
-    "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin:/run/build/alvr/cuda/bin",
+    "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin:/run/build/alvr/cuda/cuda_nvcc/bin",
     "prepend-ld-library-path": "/app/utils/alvr/lib",
     "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
     "strip": true,
@@ -35,24 +35,23 @@
           "RUST_BACKTRACE": "full",
           "CURL_HOME": "/run/build/alvr",
           "CPATH": "/app/utils/alvr/include",
-          "LD_LIBRARY_PATH": "/run/build/alvr/cuda/lib",
           "CUDA_HOME": "/run/build/alvr/cuda/",
-          "NVCC_PREPEND_FLAGS": "-I /run/build/alvr/cuda/include -L /run/build/alvr/cuda/lib"
+          "NVCC_PREPEND_FLAGS": "-I /run/build/alvr/cuda/cuda_nvcc/include -I /run/build/alvr/cuda/cuda_cudart/include -L /run/build/alvr/cuda/cuda_nvcc/lib64 -L /run/build/alvr/cuda/cuda_rt/lib64"
         }
       },
       "build-commands": [
         "echo 'insecure' >> .curlrc",
-        "ls -Ral /app/utils/alvr/lib/",
         "mkdir -p /app/utils/alvr/lib/pkgconfig/",
         "cp /run/build/alvr/alvr/xtask/flatpak/cuda.pc /app/utils/alvr/lib/pkgconfig/",
-        "wget https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run",
+        "wget --progress=bar https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run -O /run/build/alvr/cuda.run",
+        "sh /run/build/alvr/cuda.run --silent --extract=/run/build/alvr/cuda",
         "cargo xtask prepare-deps --platform linux",
         "cargo xtask build-streamer --gpl --release",
         "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
         "echo this line does not work - cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
       ],
       "modules": [ "modules/yasm/yasm.json", "modules/vulkan-headers/vulkan-headers.json" ],
-      "sources": [ { "type": "dir", "path": "../../../" }, { "type": "dir", "path": "/opt/cuda/", "dest": "cuda" } ]
+      "sources": [ { "type": "dir", "path": "../../../" } ]
     }
   ]
 }

@@ -1,9 +1,14 @@
-prefix=/run/build/alvr/cuda
-includedir=${prefix}/include
-libdir=${prefix}/lib64
+prefix=/run/build/alvr/cuda/
+
+npp_prefix=${prefix}/libnpp
+cudart_prefix=${prefix}/cuda_cudart   
+nvcc_prefix=${prefix}/cuda_nvcc
+
+include_dirs=-I${npp_prefix}/include -I${cudart_prefix}/include -I${nvcc_prefix}/include
+stub_dirs=-L${npp_prefix}/lib64/stubs -L${cudart_prefix}/lib64/stubs       
 
 Name: cuda
-Description: CUDA Driver Library
+Description: CUDA Driver Library (raw extract)
 Version: 0.0.0
-Libs: -L${libdir}/stubs -lcuda
-Cflags: -I${includedir}
+Libs: ${stub_dirs} -lcuda
+Cflags: ${include_dirs}

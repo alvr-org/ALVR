@@ -8,12 +8,12 @@
 
 FrameRender::FrameRender(alvr::VkContext& ctx, init_packet& init, int fds[])
     : Renderer(
-        ctx.get_vk_instance(),
-        ctx.get_vk_device(),
-        ctx.get_vk_phys_device(),
-        ctx.get_vk_queue_family_index(),
-        ctx.get_vk_device_extensions()
-    ) {
+          ctx.get_vk_instance(),
+          ctx.get_vk_device(),
+          ctx.get_vk_phys_device(),
+          ctx.get_vk_queue_family_index(),
+          ctx.get_vk_device_extensions()
+      ) {
     m_quadShaderSize = QUAD_SHADER_COMP_SPV_LEN;
     m_quadShaderCode = reinterpret_cast<const uint32_t*>(QUAD_SHADER_COMP_SPV_PTR);
 

@@ -40,17 +40,16 @@
         }
       },
       "build-commands": [
+        "mv /run/build/alvr/cuda_extract /run/build/alvr/cuda",
         "echo 'insecure' >> .curlrc",
         "mkdir -p /app/utils/alvr/lib/pkgconfig/",
         "cp /run/build/alvr/alvr/xtask/flatpak/cuda.pc /app/utils/alvr/lib/pkgconfig/",
-        "wget --progress=bar https://developer.download.nvidia.com/compute/cuda/12.4.1/local_installers/cuda_12.4.1_550.54.15_linux.run -O /run/build/alvr/cuda.run",
-        "sh /run/build/alvr/cuda.run --silent --extract=/run/build/alvr/cuda",
         "cargo xtask prepare-deps --platform linux",
         "cargo xtask build-streamer --gpl --release",
         "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
         "echo this line does not work - cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
       ],
-      "modules": [ "modules/yasm/yasm.json", "modules/vulkan-headers/vulkan-headers.json" ],
+      "modules": [ "modules/yasm/yasm.json", "modules/vulkan-headers/vulkan-headers.json", "modules/cuda/cuda.json" ],
       "sources": [ { "type": "dir", "path": "../../../" } ]
     }
   ]

@@ -171,6 +171,8 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
         throw std::runtime_error("failed to allocate VAAPI encoder");
     }
 
+    encoder_ctx->gop_size = INT_MAX;
+
     switch (codec_id) {
     case ALVR_CODEC_H264:
         switch (settings.m_h264Profile) {
@@ -199,6 +201,7 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     case ALVR_CODEC_HEVC:
         encoder_ctx->profile = Settings::Instance().m_use10bitEncoder ? FF_PROFILE_HEVC_MAIN_10
                                                                       : FF_PROFILE_HEVC_MAIN;
+        encoder_ctx->gop_size = INT16_MAX;
         break;
     case ALVR_CODEC_AV1:
         encoder_ctx->profile = FF_PROFILE_AV1_MAIN;
@@ -223,7 +226,6 @@ alvr::EncodePipelineVAAPI::EncodePipelineVAAPI(
     encoder_ctx->sample_aspect_ratio = AVRational { 1, 1 };
     encoder_ctx->pix_fmt = AV_PIX_FMT_VAAPI;
     encoder_ctx->max_b_frames = 0;
-    encoder_ctx->gop_size = INT_MAX;
     encoder_ctx->color_range
         = Settings::Instance().m_useFullRangeEncoding ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
 

@@ -1,52 +1,41 @@
 use alvr_filesystem as afs;
 use std::fs;
 use std::mem;
-use walkdir::{DirEntry, FilterEntry, WalkDir};
+use std::path::PathBuf;
+use walkdir::WalkDir;
 use xshell::{cmd, Shell};
 
-fn should_format(entry: &DirEntry) -> bool {
-    if entry.file_type().is_dir() {
-        match entry.path().file_name().unwrap().to_str().unwrap() {
-            "shared" | "include" => false,
-            _ => true,
-        }
-    } else {
-        let is_cpp_file = entry
-            .path()
-            .extension()
-            .is_some_and(|ext| matches!(ext.to_str().unwrap(), "c" | "cpp" | "h" | "hpp"));
-
-        let should_skip = entry
-            .path()
-            .strip_prefix(afs::workspace_dir().join("alvr"))
-            .unwrap()
-            .to_str()
-            .is_some_and(|name| {
-                matches!(
-                    name,
-                    "server/cpp/platform/win32/NvCodecUtils.h"
-                        | "server/cpp/platform/win32/NvEncoder.cpp"
-                        | "server/cpp/platform/win32/NvEncoder.h"
-                        | "server/cpp/platform/win32/NvEncoderD3D11.cpp"
-                        | "server/cpp/platform/win32/NvEncoderD3D11.h"
-                        | "server/cpp/alvr_server/nvEncodeAPI.h"
-                )
-            });
-
-        is_cpp_file && !should_skip
-    }
-}
-
-fn get_files() -> std::iter::Filter<
-    FilterEntry<walkdir::IntoIter, impl FnMut(&DirEntry) -> bool>,
-    impl FnMut(&Result<DirEntry, walkdir::Error>) -> bool,
-> {
-    let cpp_dir = afs::crate_dir("server").join("cpp/");
+fn files_to_format_paths() -> Vec<PathBuf> {
+    let cpp_dir = afs::crate_dir("server").join("cpp");
 
     WalkDir::new(cpp_dir)
         .into_iter()
-        .filter_entry(|e| should_format(e))
-        .filter(|e| !e.as_ref().unwrap().file_type().is_dir())
+        .filter_entry(|entry| {
+            let included = entry.path().is_dir()
+                || entry
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| matches!(ext.to_str().unwrap(), "c" | "cpp" | "h" | "hpp"));
+
+            let excluded = matches!(
+                entry.file_name().to_str().unwrap(),
+                "shared"
+                    | "include"
+                    | "NvCodecUtils.h"
+                    | "NvEncoder.cpp"
+                    | "NvEncoder.h"
+                    | "NvEncoderD3D11.cpp"
+                    | "NvEncoderD3D11.h"
+                    | "nvEncodeAPI.h"
+            );
+
+            included && !excluded
+        })
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            entry.file_type().is_file().then(|| entry.path().to_owned())
+        })
+        .collect()
 }
 
 pub fn format() {
@@ -55,8 +44,7 @@ pub fn format() {
 
     cmd!(sh, "cargo fmt --all").run().unwrap();
 
-    for file in get_files() {
-        let path = file.as_ref().unwrap().path();
+    for path in files_to_format_paths() {
         cmd!(sh, "clang-format -i {path}").run().unwrap();
     }
 
@@ -71,12 +59,11 @@ pub fn check_format() {
         .run()
         .expect("cargo fmt check failed");
 
-    for file in get_files() {
-        let path = file.as_ref().unwrap().path();
-        let content = fs::read_to_string(path).unwrap();
+    for path in files_to_format_paths() {
+        let content = fs::read_to_string(&path).unwrap();
         let mut output = cmd!(sh, "clang-format {path}").read().unwrap();
 
-        if content.chars().last().unwrap() != '\n' {
+        if !content.ends_with('\n') {
             panic!("file {} missing final newline", path.display());
         }
         output.push('\n');

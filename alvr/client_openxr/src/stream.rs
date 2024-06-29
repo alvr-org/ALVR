@@ -102,11 +102,7 @@ impl StreamContext {
             {
                 alvr_client_core::try_get_permission("com.oculus.permission.EYE_TRACKING")
             }
-            if config.combined_eye_gaze
-                && matches!(
-                    platform,
-                    Platform::Pico4 | Platform::PicoNeo3 | Platform::PicoNeo3Link
-                )
+            if config.combined_eye_gaze && matches!(platform, Platform::Pico4 | Platform::PicoNeo3)
             {
                 alvr_client_core::try_get_permission("com.picovr.permission.EYE_TRACKING")
             }
@@ -193,9 +189,7 @@ impl StreamContext {
             ],
             config.foveated_encoding_config.clone(),
             platform != Platform::Lynx
-                && !((platform == Platform::Pico4
-                    || platform == Platform::PicoNeo3
-                    || platform == Platform::PicoNeo3Link)
+                && !((platform == Platform::Pico4 || platform == Platform::PicoNeo3)
                     && config.encoder_config.enable_hdr),
             !config.encoder_config.enable_hdr,
             config.encoder_config.encoding_gamma,

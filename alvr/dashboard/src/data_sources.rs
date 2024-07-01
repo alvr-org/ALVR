@@ -126,6 +126,7 @@ impl DataSources {
                                     report_session_local(&context, &events_sender, data_manager);
                                 }
                                 ServerRequest::GetAudioDevices => {
+                                    #[cfg(not(target_os = "linux"))]
                                     if let Ok(list) = data_manager.get_audio_devices_list() {
                                         report_event_local(
                                             &context,
@@ -231,7 +232,7 @@ impl DataSources {
                         match ws.read() {
                             Ok(tungstenite::Message::Text(json_string)) => {
                                 if let Ok(event) = serde_json::from_str(&json_string) {
-                                    debug!("Server event received: {:?}", event);
+                                    // debug!("Server event received: {:?}", event);
                                     events_sender
                                         .send(PolledEvent {
                                             inner: event,

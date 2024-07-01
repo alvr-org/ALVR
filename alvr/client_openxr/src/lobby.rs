@@ -57,7 +57,6 @@ impl Lobby {
                     .map(|i| *i as _)
                     .collect(),
             ],
-            false, // TODO: correct lobby sRGB for some headsets
             initial_hud_message,
         );
 

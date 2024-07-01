@@ -136,7 +136,7 @@ fn connection_pipeline(
                 return Ok(());
             }
 
-            announcer_socket.announce().to_con()?;
+            announcer_socket.announce().ok();
 
             if let Ok(pair) = ProtoControlSocket::connect_to(
                 SOCKET_INIT_RETRY_INTERVAL,

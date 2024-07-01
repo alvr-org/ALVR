@@ -7,9 +7,9 @@ pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreate
     #[cfg(target_os = "android")]
     {
         xr::opengles::SessionCreateInfo::Android {
-            display: ctx.display.as_ptr(),
-            config: ctx.config.as_ptr(),
-            context: ctx.context.as_ptr(),
+            display: ctx.egl_display.as_ptr(),
+            config: ctx.egl_config.as_ptr(),
+            context: ctx.egl_context.as_ptr(),
         }
     }
     #[cfg(not(target_os = "android"))]

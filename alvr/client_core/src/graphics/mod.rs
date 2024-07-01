@@ -2,12 +2,148 @@ mod lobby;
 mod opengl;
 mod stream;
 
+use std::rc::Rc;
+
 pub use lobby::*;
 pub use opengl::choose_swapchain_format;
 pub use stream::*;
 
-use alvr_common::{Fov, Pose};
+use alvr_common::{glam::UVec2, Fov, Pose};
+use glow::{self as gl, HasContext};
 use khronos_egl::{self as egl, EGL1_4};
+
+macro_rules! ck {
+    ($gl_ctx:ident.$($gl_cmd:tt)*) => {{
+        let res = $gl_ctx.$($gl_cmd)*;
+
+        #[cfg(debug_assertions)]
+        {
+            let err = $gl_ctx.get_error();
+            if err != glow::NO_ERROR {
+                alvr_common::error!("gl error at {}:{}: {} -> {err}", file!(), line!(), stringify!($($gl_cmd)*));
+                std::process::abort();
+            }
+        }
+
+        res
+    }};
+}
+pub(crate) use ck;
+
+fn create_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
+    unsafe {
+        let texture = gl.create_texture().unwrap();
+        ck!(gl.bind_texture(gl::TEXTURE_2D, Some(texture)));
+
+        ck!(gl.tex_image_2d(
+            gl::TEXTURE_2D,
+            0,
+            internal_format as i32,
+            resolution.x as i32,
+            resolution.y as i32,
+            0,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            Some(&vec![255; 4 * (resolution.x * resolution.y) as usize]),
+        ));
+        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
+        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+
+        texture
+    }
+}
+
+fn create_program(
+    gl: &gl::Context,
+    vertex_shader_source: &str,
+    fragment_shader_source: &str,
+) -> gl::Program {
+    unsafe {
+        let vertex_shader = ck!(gl.create_shader(gl::VERTEX_SHADER).unwrap());
+        ck!(gl.shader_source(vertex_shader, vertex_shader_source));
+        ck!(gl.compile_shader(vertex_shader));
+        if !gl.get_shader_compile_status(vertex_shader) {
+            panic!(
+                "Failed to compile vertex shader: {}",
+                gl.get_shader_info_log(vertex_shader)
+            );
+        }
+
+        let fragment_shader = ck!(gl.create_shader(gl::FRAGMENT_SHADER).unwrap());
+        ck!(gl.shader_source(fragment_shader, fragment_shader_source));
+        ck!(gl.compile_shader(fragment_shader));
+        if !gl.get_shader_compile_status(fragment_shader) {
+            panic!(
+                "Failed to compile fragment shader: {}",
+                gl.get_shader_info_log(fragment_shader)
+            );
+        }
+
+        let program = ck!(gl.create_program().unwrap());
+        ck!(gl.attach_shader(program, vertex_shader));
+        ck!(gl.attach_shader(program, fragment_shader));
+        ck!(gl.link_program(program));
+        if !gl.get_program_link_status(program) {
+            panic!(
+                "Failed to link program: {}",
+                gl.get_program_info_log(program)
+            );
+        }
+
+        ck!(gl.delete_shader(vertex_shader));
+        ck!(gl.delete_shader(fragment_shader));
+
+        program
+    }
+}
+
+struct RenderTarget {
+    graphics_context: Rc<GraphicsContext>,
+    framebuffer: gl::Framebuffer,
+}
+
+impl RenderTarget {
+    fn new(context: Rc<GraphicsContext>, texture: gl::Texture) -> Self {
+        let gl = &context.gl_context;
+        unsafe {
+            let framebuffer = ck!(gl.create_framebuffer().unwrap());
+            ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(framebuffer)));
+            ck!(gl.framebuffer_texture_2d(
+                gl::DRAW_FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                Some(texture),
+                0,
+            ));
+            ck!(gl.bind_framebuffer(gl::FRAMEBUFFER, None));
+
+            Self {
+                graphics_context: context,
+                framebuffer,
+            }
+        }
+    }
+
+    fn bind(&self) {
+        unsafe {
+            self.graphics_context
+                .gl_context
+                .bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(self.framebuffer));
+        }
+    }
+}
+
+impl Drop for RenderTarget {
+    fn drop(&mut self) {
+        unsafe {
+            self.graphics_context
+                .gl_context
+                .delete_framebuffer(self.framebuffer);
+        }
+    }
+}
 
 pub struct RenderViewInput {
     pub pose: Pose,
@@ -17,10 +153,11 @@ pub struct RenderViewInput {
 
 pub struct GraphicsContext {
     _instance: egl::DynamicInstance<EGL1_4>,
-    pub display: egl::Display,
-    pub config: egl::Config,
-    pub context: egl::Context,
+    pub egl_display: egl::Display,
+    pub egl_config: egl::Config,
+    pub egl_context: egl::Context,
     _dummy_surface: egl::Surface,
+    pub gl_context: gl::Context,
 }
 
 impl GraphicsContext {
@@ -63,7 +200,7 @@ impl GraphicsContext {
         instance.bind_api(egl::OPENGL_ES_API).unwrap();
 
         const CONTEXT_ATTRIBS: [i32; 3] = [egl::CONTEXT_CLIENT_VERSION, 3, egl::NONE];
-        let context = instance
+        let egl_context = instance
             .create_context(display, config, None, &CONTEXT_ATTRIBS)
             .unwrap();
 
@@ -77,29 +214,31 @@ impl GraphicsContext {
                 display,
                 Some(dummy_surface),
                 Some(dummy_surface),
-                Some(context),
+                Some(egl_context),
             )
             .unwrap();
 
         #[cfg(target_os = "android")]
         unsafe {
-            pub static LOBBY_ROOM_GLTF: &[u8] = include_bytes!("../../resources/loading.gltf");
-            pub static LOBBY_ROOM_BIN: &[u8] = include_bytes!("../../resources/buffer.bin");
-
-            opengl::LOBBY_ROOM_GLTF_PTR = LOBBY_ROOM_GLTF.as_ptr();
-            opengl::LOBBY_ROOM_GLTF_LEN = LOBBY_ROOM_GLTF.len() as _;
-            opengl::LOBBY_ROOM_BIN_PTR = LOBBY_ROOM_BIN.as_ptr();
-            opengl::LOBBY_ROOM_BIN_LEN = LOBBY_ROOM_BIN.len() as _;
-
             opengl::initGraphicsNative();
         }
 
+        let gl_context = unsafe {
+            gl::Context::from_loader_function(|s| {
+                instance
+                    .get_proc_address(s)
+                    .map(|f| f as *const _)
+                    .unwrap_or(std::ptr::null())
+            })
+        };
+
         Self {
             _instance: instance,
-            display,
-            config,
-            context,
+            egl_display: display,
+            egl_config: config,
+            egl_context,
             _dummy_surface: dummy_surface,
+            gl_context,
         }
     }
 }

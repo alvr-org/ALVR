@@ -202,7 +202,6 @@ dependencies = [
  "ndk 0.9.0",
  "ndk-context",
  "ndk-sys 0.6.0+11769913",
- "oboe",
  "rand",
  "serde",
  "serde_json",

@@ -14,9 +14,6 @@ mod sockets;
 mod statistics;
 mod storage;
 
-#[cfg(target_os = "android")]
-mod audio;
-
 pub mod graphics;
 
 use alvr_common::{

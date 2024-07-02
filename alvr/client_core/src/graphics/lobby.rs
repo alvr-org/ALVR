@@ -1,7 +1,7 @@
 use super::{ck, GraphicsContext, RenderTarget, RenderViewInput};
 use alvr_common::{
     glam::{IVec2, Mat4, UVec2, Vec3, Vec4},
-    Fov,
+    Fov, Pose,
 };
 use glow::{self as gl, HasContext, PixelUnpackData};
 use glyph_brush_layout::{
@@ -14,6 +14,33 @@ const HUD_DIST: f32 = 5.0;
 const HUD_SIDE: f32 = 3.5;
 const HUD_TEXTURE_SIDE: usize = 2048;
 const FONT_SIZE: f32 = 100.0;
+
+const HAND_SKELETON_BONES: [(usize, usize); 19] = [
+    // Thumb
+    (2, 3),
+    (3, 4),
+    (4, 5),
+    // Index
+    (6, 7),
+    (7, 8),
+    (8, 9),
+    (9, 10),
+    // Middle
+    (11, 12),
+    (12, 13),
+    (13, 14),
+    (14, 15),
+    // Ring
+    (16, 17),
+    (17, 18),
+    (18, 19),
+    (19, 20),
+    // Pinky
+    (21, 22),
+    (22, 23),
+    (23, 24),
+    (24, 25),
+];
 
 fn projection_from_fov(fov: Fov) -> Mat4 {
     const NEAR: f32 = 0.1;
@@ -41,7 +68,6 @@ pub struct LobbyRenderer {
     program: gl::Program,
     object_type_uloc: gl::UniformLocation,
     transform_uloc: gl::UniformLocation,
-    squeeze_amount_uloc: gl::UniformLocation,
     hud_texture: gl::Texture,
     targets: [Vec<RenderTarget>; 2],
     viewport_size: IVec2,
@@ -92,15 +118,12 @@ impl LobbyRenderer {
         let this = unsafe {
             let object_type_uloc = ck!(gl.get_uniform_location(program, "object_type").unwrap());
             let transform_uloc = ck!(gl.get_uniform_location(program, "transform").unwrap());
-            let squeeze_amount_uloc =
-                ck!(gl.get_uniform_location(program, "squeeze_amount").unwrap());
 
             Self {
                 context,
                 program,
                 object_type_uloc,
                 transform_uloc,
-                squeeze_amount_uloc,
                 hud_texture,
                 targets: render_targets,
                 viewport_size: view_resolution.as_ivec2(),
@@ -169,8 +192,11 @@ impl LobbyRenderer {
         }
     }
 
-    #[allow(unused_variables)]
-    pub fn render(&self, view_inputs: [RenderViewInput; 2]) {
+    pub fn render(
+        &self,
+        view_inputs: [RenderViewInput; 2],
+        hand_poses: [(Option<Pose>, Option<[Pose; 26]>); 2],
+    ) {
         let gl = &self.context.gl_context;
 
         for (view_idx, view_input) in view_inputs.iter().enumerate() {
@@ -201,10 +227,6 @@ impl LobbyRenderer {
 
                 // Draw the following geometry in the correct order (depth buffer is disabled)
 
-                // // Render sky
-                // gl.uniform_1_i32(Some(&self.object_type_uloc), 2);
-                // gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
-
                 // Render ground
                 ck!(gl.uniform_1_i32(Some(&self.object_type_uloc), 0));
                 ck!(gl.uniform_matrix_4_f32_slice(
@@ -220,20 +242,64 @@ impl LobbyRenderer {
                 ck!(gl.active_texture(gl::TEXTURE0));
                 ck!(gl.bind_texture(gl::TEXTURE_2D, Some(self.hud_texture)));
                 for i in 0..4 {
-                    let panel_pos = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
+                    let panel_transform = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
                         * Mat4::from_translation(Vec3::new(0.0, HUD_SIDE / 2.0, -HUD_DIST))
                         * Mat4::from_scale(Vec3::ONE * HUD_SIDE);
                     ck!(gl.uniform_matrix_4_f32_slice(
                         Some(&self.transform_uloc),
                         false,
-                        &(view_proj * panel_pos).to_cols_array(),
+                        &(view_proj * panel_transform).to_cols_array(),
                     ));
                     ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
                 }
 
-                // // Render hands
-                // gl.uniform_1_i32(Some(&self.object_type_uloc), 3);
-                // gl.draw_arrays(gl::LINES, 0, 16);
+                // Render hands
+                gl.uniform_1_i32(Some(&self.object_type_uloc), 2);
+                for (maybe_pose, maybe_skeleton) in &hand_poses {
+                    if let Some(skeleton) = maybe_skeleton {
+                        for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
+                            let j1_pose = skeleton[joint1_idx];
+                            let j2_pose = skeleton[joint2_idx];
+
+                            let bone_transform = Mat4::from_scale_rotation_translation(
+                                Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),
+                                j1_pose.orientation,
+                                j1_pose.position,
+                            );
+                            ck!(gl.uniform_matrix_4_f32_slice(
+                                Some(&self.transform_uloc),
+                                false,
+                                &(view_proj * bone_transform).to_cols_array(),
+                            ));
+                            ck!(gl.draw_arrays(gl::LINES, 0, 2));
+                        }
+                    } else if let Some(pose) = maybe_pose {
+                        let hand_transform = Mat4::from_scale_rotation_translation(
+                            Vec3::ONE * 0.2,
+                            pose.orientation,
+                            pose.position,
+                        );
+
+                        let segment_rotations = [
+                            Mat4::IDENTITY,
+                            Mat4::from_rotation_y(FRAC_PI_2),
+                            Mat4::from_rotation_x(FRAC_PI_2),
+                        ];
+                        for rot in &segment_rotations {
+                            let segment_transform = hand_transform
+                                * *rot
+                                * Mat4::from_scale(Vec3::ONE * 0.5)
+                                * Mat4::from_translation(Vec3::Z * 0.5);
+
+                            ck!(gl.uniform_matrix_4_f32_slice(
+                                Some(&self.transform_uloc),
+                                false,
+                                &(view_proj * segment_transform).to_cols_array(),
+                            ));
+                            ck!(gl.draw_arrays(gl::LINES, 0, 2));
+                        }
+                    }
+                }
             }
         }
     }

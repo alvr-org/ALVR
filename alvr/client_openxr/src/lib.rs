@@ -255,6 +255,7 @@ pub fn entry_point() {
         let mut lobby = Lobby::new(
             &xr_context,
             Rc::clone(&graphics_context),
+            Arc::clone(&interaction_context),
             default_view_resolution,
             &last_lobby_message,
         );

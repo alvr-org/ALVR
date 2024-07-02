@@ -55,23 +55,7 @@ void main() {
 
         out_color.rgb = textColor;
         out_color.a = texture(hud_texture, uv).a;
-    } else if(object_type == 2) { // Sky
-        lowp vec3 skyUpColor = vec3(0.0f, 0.0f, 0.0f);
-        lowp vec3 skyHorizonColor = vec3(0.0f, 0.0f, 0.02f);
-
-        lowp float coef = 1.0f;
-        if(position.y < 50.0f) {
-            coef = position.y / 100.0f;
-        } else if(position.y < 100.0f) {
-            coef = (position.y - 50.0f) / 50.0f * 0.3f + 0.5f;
-        } else {
-            coef = (position.y - 100.0f) / 150.0f * 0.2f + 0.8f;
-        }
-        out_color.a = 1.0f;
-        out_color.rgb = skyUpColor * coef + skyHorizonColor * (1.0f - coef);
-
-        // out_color.a = texture(hud_texture, uv).a;
-    } else if(object_type == 3) { // Hands
+    } else if(object_type == 2) { // Hands
         out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
     }
 }

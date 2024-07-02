@@ -442,14 +442,14 @@ fn stream_input_loop(
             now + Duration::min(core_ctx.get_tracker_prediction_offset(), MAX_PREDICTION),
         );
 
-        let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_motion(
+        let (left_hand_motion, left_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,
             &reference_space,
             tracker_time,
             &interaction_ctx.hands_interaction[0],
             &mut last_hand_positions[0],
         );
-        let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_motion(
+        let (right_hand_motion, right_hand_skeleton) = crate::interaction::get_hand_data(
             &xr_ctx.session,
             &reference_space,
             tracker_time,

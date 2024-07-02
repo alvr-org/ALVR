@@ -367,7 +367,7 @@ pub fn get_reference_space(
         .unwrap()
 }
 
-pub fn get_hand_motion(
+pub fn get_hand_data(
     xr_session: &xr::Session<xr::OpenGlEs>,
     reference_space: &xr::Space,
     time: xr::Time,

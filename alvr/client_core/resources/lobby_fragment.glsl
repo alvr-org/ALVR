@@ -25,10 +25,12 @@ void main() {
         lowp float distance = length(position.xz);
 
         // Pick a coordinate to visualize in a grid
-        lowp vec2 coord = position.xz / 2.0f;
+        lowp float cellSize = 2.0f;
+        lowp vec2 coord = position.xz / cellSize;
 
         // Compute anti-aliased world-space grid lines
-        lowp vec2 grid = abs(fract(coord - 0.5f) - 0.5f) / fwidth(coord);
+        lowp vec2 screenSpaceLineWidth = 5.0f * fwidth(coord); // todo: make resolution agnostic?
+        lowp vec2 grid = abs(fract(coord - 0.5f) - 0.5f) / screenSpaceLineWidth;
 
         // Create mask for grid lines and fade over distance
         lowp float line = clamp(1.0f - min(grid.x, grid.y), 0.0f, 1.0f);

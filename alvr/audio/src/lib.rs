@@ -90,9 +90,7 @@ pub struct AudioDevice {
 
 #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
 impl AudioDevice {
-    pub fn new_output(
-        config: Option<&CustomAudioDeviceConfig>,
-    ) -> Result<Self> {
+    pub fn new_output(config: Option<&CustomAudioDeviceConfig>) -> Result<Self> {
         let host = cpal::default_host();
 
         let device = match config {
@@ -125,9 +123,7 @@ impl AudioDevice {
     }
 
     // returns (sink, source)
-    pub fn new_virtual_microphone_pair(
-        config: MicrophoneDevicesConfig,
-    ) -> Result<(Self, Self)> {
+    pub fn new_virtual_microphone_pair(config: MicrophoneDevicesConfig) -> Result<(Self, Self)> {
         let host = cpal::default_host();
 
         let (sink, source) = match config {

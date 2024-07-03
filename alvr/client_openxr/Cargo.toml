@@ -25,18 +25,18 @@ libc = "0.2"
 ndk-context = "0.1"
 
 [package.metadata.android]
-package = "org.meumeu.wivrn1"
+package = "alvr.client"
 install_location = "auto"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"
 
 [package.metadata.android.signing.release]
-path = "/home/plyshka/.android/debug.keystore"
-keystore_password = "android"
+path = "../../build/alvr_client_android/debug.keystore"
+keystore_password = "alvrclient"
 
 [package.metadata.android.signing.distribution]
-path = "/home/plyshka/.android/debug.keystore"
-keystore_password = "android"
+path = "../../build/alvr_client_android/debug.keystore"
+keystore_password = "alvrclient"
 
 [package.metadata.android.sdk]
 min_sdk_version = 26

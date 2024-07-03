@@ -770,7 +770,7 @@ fn connection_pipeline(
         #[allow(unused_variables)]
         let (sink, source) = AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
             ctx.events_queue
                 .lock()

@@ -655,7 +655,7 @@ fn connection_pipeline(
     )?;
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
-    let game_audio_sender: alvr_sockets::StreamSender<_> = stream_socket.request_stream(AUDIO);
+    let game_audio_sender = stream_socket.request_stream(AUDIO);
     let mut microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let mut tracking_receiver =
         stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
@@ -709,51 +709,48 @@ fn connection_pipeline(
                 }
 
                 #[cfg(windows)]
-                {
-                    let device = match AudioDevice::new_output(config.device.as_ref()) {
-                        Ok(data) => data,
-                        Err(e) => {
-                            warn!("New audio device failed: {e:?}");
-                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                            continue;
-                        }
-                    };
-                    if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::SetOpenvrProperty {
-                                device_id: *alvr_common::HEAD_ID,
-                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
-                                    id,
-                                ),
-                            })
-                    } else {
+                let device = match AudioDevice::new_output(config.device.as_ref()) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        warn!("New audio device failed: {e:?}");
+                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
                         continue;
-                    };
-                    if let Err(e) = alvr_audio::record_audio_blocking(
-                        Arc::new({
-                            let client_hostname = client_hostname.clone();
-                            move || is_streaming(&client_hostname)
-                        }),
-                        game_audio_sender.clone(),
-                        &device,
-                        2,
-                        config.mute_when_streaming,
-                    ) {
-                        error!("Audio record error: {e:?}");
                     }
-                    if let Ok(id) = AudioDevice::new_output(None)
-                        .and_then(|d| alvr_audio::get_windows_device_id(&d))
-                    {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::SetOpenvrProperty {
-                                device_id: *alvr_common::HEAD_ID,
-                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
-                                    id,
-                                ),
-                            })
-                    }
+                };
+                #[cfg(windows)]
+                if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
+                    ctx.events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                        })
+                } else {
+                    continue;
+                };
+                #[cfg(windows)]
+                if let Err(e) = alvr_audio::record_audio_blocking(
+                    Arc::new({
+                        let client_hostname = client_hostname.clone();
+                        move || is_streaming(&client_hostname)
+                    }),
+                    game_audio_sender.clone(),
+                    &device,
+                    2,
+                    config.mute_when_streaming,
+                ) {
+                    error!("Audio record error: {e:?}");
+                }
+                #[cfg(windows)]
+                if let Ok(id) = AudioDevice::new_output(None)
+                    .and_then(|d| alvr_audio::get_windows_device_id(&d))
+                {
+                    ctx.events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::SetOpenvrProperty {
+                            device_id: *alvr_common::HEAD_ID,
+                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
+                        })
                 }
             }
         })

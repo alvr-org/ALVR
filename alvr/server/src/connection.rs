@@ -710,7 +710,7 @@ fn connection_pipeline(
                     error!("Audio record error: {e:?}");
                 }
 
-                #[cfg(windows)]
+                #[cfg(not(target_os = "linux"))]
                 {
                     let device = match AudioDevice::new_output(config.device.as_ref()) {
                         Ok(data) => data,
@@ -720,6 +720,7 @@ fn connection_pipeline(
                             continue;
                         }
                     };
+                    #[cfg(windows)]
                     if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
                         ctx.events_queue
                             .lock()
@@ -744,6 +745,7 @@ fn connection_pipeline(
                     ) {
                         error!("Audio record error: {e:?}");
                     }
+                    #[cfg(windows)]
                     if let Ok(id) = AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))
                     {
@@ -764,11 +766,11 @@ fn connection_pipeline(
     };
 
     let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
-        #[cfg(windows)]
+        #[cfg(not(target_os = "linux"))]
         #[allow(unused_variables)]
         let (sink, source) = AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
 
-        #[cfg(windows)]
+        #[cfg(not(target_os = "linux"))]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
             ctx.events_queue
                 .lock()
@@ -780,7 +782,7 @@ fn connection_pipeline(
 
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
-            #[cfg(windows)]
+            #[cfg(not(target_os = "linux"))]
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 {
                     let client_hostname = client_hostname.clone();

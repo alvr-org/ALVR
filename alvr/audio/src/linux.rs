@@ -96,7 +96,7 @@ fn pw_microphone_loop(
     pw_receiver: pw::channel::Receiver<Terminate>,
     sample_buffer: Arc<Mutex<VecDeque<f32>>>,
 ) -> Result<(), pw::Error> {
-    debug!("Staring microphone pw-thread");
+    debug!("Starting microphone pw-thread");
     let mainloop = pw::main_loop::MainLoop::new(None)?;
 
     let _receiver = pw_receiver.attach(mainloop.as_ref(), {
@@ -132,10 +132,9 @@ fn pw_microphone_loop(
         })
         .process(move |stream, _| match stream.dequeue_buffer() {
             None => {
-                debug!("No pw buffer received");
+                // Nothing is connected to stream, continue
             }
             Some(mut pw_buffer) => {
-                debug!("Starting pw buffer");
                 let requested_buffer_size = pw_buffer.requested();
 
                 let datas = pw_buffer.datas_mut();
@@ -175,7 +174,6 @@ fn pw_microphone_loop(
                 *chunk.offset_mut() = 0;
                 *chunk.stride_mut() = stride as i32;
                 *chunk.size_mut() = size;
-                debug!("Enqueued {} bytes to pw", size);
             }
         })
         .register()?;
@@ -215,6 +213,7 @@ pub fn record_audio_blocking_pipewire(
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
     sender: StreamSender<()>,
     channels_count: u16,
+    sample_rate: u32,
 ) -> Result<(), ()> {
     let (pw_sender, pw_receiver) = pw::channel::channel();
     let is_running_clone_for_pw_terminate: Arc<dyn Fn() -> bool + Send + Sync> =
@@ -230,7 +229,13 @@ pub fn record_audio_blocking_pipewire(
         }
     });
     let is_running_clone_for_pw = Arc::clone(&is_running);
-    match pw_audio_loop(channels_count, pw_receiver, sender, is_running_clone_for_pw) {
+    match pw_audio_loop(
+        sample_rate,
+        channels_count,
+        pw_receiver,
+        sender,
+        is_running_clone_for_pw,
+    ) {
         Ok(_) => {
             debug!("Pipewire loop exiting");
         }
@@ -240,12 +245,13 @@ pub fn record_audio_blocking_pipewire(
 }
 
 fn pw_audio_loop(
+    sample_rate: u32,
     channels_count: u16,
     pw_receiver: pw::channel::Receiver<Terminate>,
     mut sender: StreamSender<()>,
     is_running: Arc<dyn Fn() -> bool + Send + Sync>,
 ) -> Result<(), pw::Error> {
-    debug!("Staring audio pw-thread");
+    debug!("Starting audio pw-thread");
 
     let mainloop = pw::main_loop::MainLoop::new(None)?;
 
@@ -276,12 +282,9 @@ fn pw_audio_loop(
         .add_local_listener()
         .process(move |stream, _| match stream.dequeue_buffer() {
             None => {
-                // Consume value for now because nothing is connected to stream
-                debug!("No pw buffer received")
+                // Nothing is connected to stream, continue
             }
             Some(mut pw_buffer) => {
-                debug!("Starting pw buffer");
-
                 let datas = pw_buffer.datas_mut();
                 if datas.is_empty() {
                     debug!("Pw buffer empty, skipping process");
@@ -291,10 +294,8 @@ fn pw_audio_loop(
                 let pw_data = &mut datas[0];
                 let stride = chan_size * channels_count as usize;
                 let n_frames = (pw_data.chunk().size() / stride as u32) as usize;
-                debug!("n_frames: {}", n_frames);
                 let mut final_buffer: Vec<u8> = Vec::with_capacity(n_frames);
                 if let Some(slice) = pw_data.data() {
-                    debug!("Pw buffer available");
                     for n_frame in 0..n_frames {
                         for n_channel in 0..channels_count {
                             let start = n_frame * stride + (n_channel as usize * chan_size);
@@ -311,7 +312,6 @@ fn pw_audio_loop(
                     buffer
                         .get_range_mut(0, final_buffer.len())
                         .copy_from_slice(&final_buffer);
-                    debug!("Sending buffer with length of {}", buffer.len());
                     sender.send(buffer).ok();
                 }
             }
@@ -320,7 +320,7 @@ fn pw_audio_loop(
 
     let mut audio_info = AudioInfoRaw::new();
     audio_info.set_format(AudioFormat::S16LE);
-    audio_info.set_rate(44100);
+    audio_info.set_rate(sample_rate);
     audio_info.set_channels(channels_count.into());
 
     let values: Vec<u8> = PodSerializer::serialize(

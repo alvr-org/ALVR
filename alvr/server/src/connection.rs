@@ -710,7 +710,7 @@ fn connection_pipeline(
                     error!("Audio record error: {e:?}");
                 }
 
-                #[cfg(not(target_os = "linux"))]
+                #[cfg(windows)]
                 {
                     let device = match AudioDevice::new_output(config.device.as_ref()) {
                         Ok(data) => data,

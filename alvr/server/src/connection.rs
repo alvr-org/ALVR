@@ -561,11 +561,9 @@ fn connection_pipeline(
                 let game_audio_device =
                     AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
                 if let Switch::Enabled(microphone_config) = &settings.audio.microphone {
-                    let (sink, source) = AudioDevice::new_virtual_microphone_pair(
-                        Some(settings.audio.linux_backend),
-                        microphone_config.devices.clone(),
-                    )
-                    .to_con()?;
+                    let (sink, source) =
+                        AudioDevice::new_virtual_microphone_pair(microphone_config.devices.clone())
+                            .to_con()?;
                     if matches!(
                         microphone_config.devices,
                         alvr_session::MicrophoneDevicesConfig::VBCable
@@ -744,7 +742,7 @@ fn connection_pipeline(
                     ) {
                         error!("Audio record error: {e:?}");
                     }
-                    if let Ok(id) = AudioDevice::new_output(None, None)
+                    if let Ok(id) = AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))
                     {
                         ctx.events_queue

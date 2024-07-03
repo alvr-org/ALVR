@@ -655,8 +655,9 @@ fn connection_pipeline(
     )?;
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
-    let game_audio_sender: alvr_sockets::StreamSender<_> = stream_socket.request_stream(AUDIO);
-    let mut microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+    let game_audio_sender: alvr_sockets::StreamSender<()> = stream_socket.request_stream(AUDIO);
+    let mut microphone_receiver: alvr_sockets::StreamReceiver<()> =
+        stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let mut tracking_receiver =
         stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
@@ -708,6 +709,7 @@ fn connection_pipeline(
                     error!("Audio record error: {e:?}");
                 }
 
+                #[cfg(windows)]
                 let device = match AudioDevice::new_output(config.device.as_ref()) {
                     Ok(data) => data,
                     Err(e) => {
@@ -727,6 +729,7 @@ fn connection_pipeline(
                 } else {
                     continue;
                 };
+                #[cfg(windows)]
                 if let Err(e) = alvr_audio::record_audio_blocking(
                     Arc::new({
                         let client_hostname = client_hostname.clone();

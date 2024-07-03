@@ -75,7 +75,7 @@ pub fn play_microphone_loop_pipewire(
     if let Err(_) = pw_sender.send(Terminate) {
         error!(
             "Couldn't send pipewire termination signal, deinitializing forcefully.
-            Restart VR app to re-initialize pipewire."
+            Restart VR app to reinitialize pipewire."
         );
         unsafe { pw::deinit() };
     }
@@ -223,7 +223,7 @@ pub fn record_audio_blocking_pipewire(
         if let Err(_) = pw_sender.send(Terminate) {
             error!(
                 "Couldn't send pipewire termination signal, deinitializing forcefully.
-                Restart VR app to re-initialize pipewire."
+                Restart VR app to reinitialize pipewire."
             );
             unsafe { pw::deinit() };
         }

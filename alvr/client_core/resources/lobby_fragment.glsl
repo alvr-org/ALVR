@@ -29,7 +29,7 @@ void main() {
         lowp vec2 coord = position.xz / cellSize;
 
         // Compute anti-aliased world-space grid lines
-        lowp vec2 screenSpaceLineWidth = 5.0f * fwidth(coord); // todo: make resolution agnostic?
+        lowp vec2 screenSpaceLineWidth = 1.0f * fwidth(coord); // todo: make resolution agnostic?
         lowp vec2 grid = abs(fract(coord - 0.5f) - 0.5f) / screenSpaceLineWidth;
 
         // Create mask for grid lines and fade over distance

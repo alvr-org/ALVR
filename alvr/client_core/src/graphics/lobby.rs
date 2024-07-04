@@ -12,8 +12,8 @@ use std::{f32::consts::FRAC_PI_2, num::NonZeroU32, rc::Rc};
 
 const HUD_DIST: f32 = 5.0;
 const HUD_SIDE: f32 = 3.5;
-const HUD_TEXTURE_SIDE: usize = 2048;
-const FONT_SIZE: f32 = 100.0;
+const HUD_TEXTURE_SIDE: usize = 1024;
+const FONT_SIZE: f32 = 50.0;
 
 const HAND_SKELETON_BONES: [(usize, usize); 19] = [
     // Thumb

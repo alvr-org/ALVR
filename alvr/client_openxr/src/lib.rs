@@ -256,10 +256,7 @@ pub fn entry_point() {
             &xr_context,
             Rc::clone(&graphics_context),
             Arc::clone(&interaction_context),
-            UVec2::new(
-                views_config[0].max_image_rect_width,
-                views_config[0].max_image_rect_height,
-            ),
+            default_view_resolution,
             &last_lobby_message,
         );
         let mut session_running = false;

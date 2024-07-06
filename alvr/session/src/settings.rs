@@ -1438,7 +1438,7 @@ pub fn session_settings_default() -> SettingsDefault {
         },
         audio: AudioConfigDefault {
             game_audio: SwitchDefault {
-                enabled: !cfg!(target_os = "linux"),
+                enabled: true,
                 content: GameAudioConfigDefault {
                     gui_collapsed: true,
                     device: OptionalDefault {
@@ -1454,7 +1454,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             microphone: SwitchDefault {
-                enabled: false,
+                enabled: cfg!(target_os = "linux"),
                 content: MicrophoneConfigDefault {
                     gui_collapsed: true,
                     devices: MicrophoneDevicesConfigDefault {

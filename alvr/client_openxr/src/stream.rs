@@ -325,8 +325,10 @@ impl StreamContext {
             .wait_image(xr::Duration::INFINITE)
             .unwrap();
 
-        self.renderer
-            .render(buffer_ptr, [left_swapchain_idx, right_swapchain_idx]);
+        unsafe {
+            self.renderer
+                .render(buffer_ptr, [left_swapchain_idx, right_swapchain_idx])
+        };
 
         self.swapchains[0].release_image().unwrap();
         self.swapchains[1].release_image().unwrap();

@@ -1,34 +1,85 @@
 mod lobby;
 mod opengl;
+mod staging;
 mod stream;
 
-use std::rc::Rc;
+use std::{ffi::c_void, mem, ptr, rc::Rc};
 
 pub use lobby::*;
-pub use opengl::choose_swapchain_format;
 pub use stream::*;
 
 use alvr_common::{glam::UVec2, Fov, Pose};
 use glow::{self as gl, HasContext};
 use khronos_egl::{self as egl, EGL1_4};
 
+pub const GL_TEXTURE_EXTERNAL_OES: u32 = 0x8D65;
+const EGL_NATIVE_BUFFER_ANDROID: u32 = 0x3140;
+
+const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
+const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";
+const GET_NATIVE_CLIENT_BUFFER_FN_STR: &str = "eglGetNativeClientBufferANDROID";
+const IMAGE_TARGET_TEXTURE_2D_FN_STR: &str = "glEGLImageTargetTexture2DOES";
+
+type CreateImageFn = unsafe extern "C" fn(
+    egl::EGLDisplay,
+    egl::EGLContext,
+    egl::Enum,
+    egl::EGLClientBuffer,
+    *const egl::Int,
+) -> egl::EGLImage;
+type DestroyImageFn = unsafe extern "C" fn(egl::EGLDisplay, egl::EGLImage) -> egl::Boolean;
+type GetNativeClientBufferFn = unsafe extern "C" fn(*const c_void) -> egl::EGLClientBuffer;
+type ImageTargetTexture2DFn = unsafe extern "C" fn(egl::Enum, egl::EGLImage);
+
+pub fn check_error(gl: &gl::Context, message_context: &str) {
+    let err = unsafe { gl.get_error() };
+    if err != glow::NO_ERROR {
+        alvr_common::error!("gl error {message_context} -> {err}");
+        std::process::abort();
+    }
+}
+
 macro_rules! ck {
     ($gl_ctx:ident.$($gl_cmd:tt)*) => {{
         let res = $gl_ctx.$($gl_cmd)*;
 
         #[cfg(debug_assertions)]
-        {
-            let err = $gl_ctx.get_error();
-            if err != glow::NO_ERROR {
-                alvr_common::error!("gl error at {}:{}: {} -> {err}", file!(), line!(), stringify!($($gl_cmd)*));
-                std::process::abort();
-            }
-        }
+        crate::graphics::check_error(&$gl_ctx, &format!("{}:{}: {}", file!(), line!(), stringify!($($gl_cmd)*)));
 
         res
     }};
 }
 pub(crate) use ck;
+
+pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32 {
+    // Priority-sorted list of swapchain formats we'll accept--
+    let mut app_supported_swapchain_formats = vec![
+        gl::SRGB8_ALPHA8,
+        gl::SRGB8,
+        gl::RGBA8,
+        gl::BGRA,
+        gl::RGB8,
+        gl::BGR,
+    ];
+
+    // float16 is required for HDR output. However, float16 swapchains
+    // have a high perf cost, so only use these if HDR is enabled.
+    if enable_hdr {
+        app_supported_swapchain_formats.insert(0, gl::RGB16F);
+        app_supported_swapchain_formats.insert(0, gl::RGBA16F);
+    }
+
+    if let Some(supported_formats) = formats {
+        for format in app_supported_swapchain_formats {
+            if supported_formats.contains(&format) {
+                return format;
+            }
+        }
+    }
+
+    // If we can't enumerate, default to a required format (SRGBA8)
+    gl::SRGB8_ALPHA8
+}
 
 fn create_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
     unsafe {
@@ -44,7 +95,7 @@ fn create_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> 
             0,
             gl::RGBA,
             gl::UNSIGNED_BYTE,
-            Some(&vec![255; 4 * (resolution.x * resolution.y) as usize]),
+            Some(&vec![0; 4 * (resolution.x * resolution.y) as usize]),
         ));
         ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
         ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
@@ -158,6 +209,10 @@ pub struct GraphicsContext {
     pub egl_context: egl::Context,
     _dummy_surface: egl::Surface,
     pub gl_context: gl::Context,
+    create_image: CreateImageFn,
+    destroy_image: DestroyImageFn,
+    get_native_client_buffer: GetNativeClientBufferFn,
+    image_target_texture_2d: ImageTargetTexture2DFn,
 }
 
 impl GraphicsContext {
@@ -218,19 +273,29 @@ impl GraphicsContext {
             )
             .unwrap();
 
-        #[cfg(target_os = "android")]
+        #[cfg(all(target_os = "android", feature = "use-cpp"))]
         unsafe {
             opengl::initGraphicsNative();
         }
 
-        let gl_context = unsafe {
-            gl::Context::from_loader_function(|s| {
-                instance
-                    .get_proc_address(s)
-                    .map(|f| f as *const _)
-                    .unwrap_or(std::ptr::null())
-            })
-        };
+        fn get_fn_ptr(instance: &egl::DynamicInstance<EGL1_4>, fn_name: &str) -> *const c_void {
+            instance
+                .get_proc_address(fn_name)
+                .map(|f| f as *const _)
+                .unwrap_or(std::ptr::null())
+        }
+
+        let gl_context =
+            unsafe { gl::Context::from_loader_function(|fn_name| get_fn_ptr(&instance, fn_name)) };
+
+        let create_image: CreateImageFn =
+            unsafe { mem::transmute(get_fn_ptr(&instance, CREATE_IMAGE_FN_STR)) };
+        let destroy_image: DestroyImageFn =
+            unsafe { mem::transmute(get_fn_ptr(&instance, DESTROY_IMAGE_FN_STR)) };
+        let get_native_client_buffer: GetNativeClientBufferFn =
+            unsafe { mem::transmute(get_fn_ptr(&instance, GET_NATIVE_CLIENT_BUFFER_FN_STR)) };
+        let image_target_texture_2d: ImageTargetTexture2DFn =
+            unsafe { mem::transmute(get_fn_ptr(&instance, IMAGE_TARGET_TEXTURE_2D_FN_STR)) };
 
         Self {
             _instance: instance,
@@ -239,6 +304,46 @@ impl GraphicsContext {
             egl_context,
             _dummy_surface: dummy_surface,
             gl_context,
+            create_image,
+            destroy_image,
+            get_native_client_buffer,
+            image_target_texture_2d,
+        }
+    }
+
+    /// # Safety
+    /// `buffer` must be a valid AHardwareBuffer.
+    /// `texture` must be a valid GL texture.
+    pub unsafe fn render_ahardwarebuffer_using_texture(
+        &self,
+        buffer: *const c_void,
+        texture: gl::Texture,
+        render_cb: impl FnOnce(),
+    ) {
+        if !buffer.is_null() {
+            let client_buffer = (self.get_native_client_buffer)(buffer);
+            check_error(&self.gl_context, "get_native_client_buffer");
+
+            let image = (self.create_image)(
+                self.egl_display.as_ptr(),
+                egl::NO_CONTEXT,
+                EGL_NATIVE_BUFFER_ANDROID,
+                client_buffer,
+                ptr::null(),
+            );
+            check_error(&self.gl_context, "create_image");
+
+            self.gl_context
+                .bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(texture));
+            check_error(&self.gl_context, "bind texture OES");
+
+            (self.image_target_texture_2d)(GL_TEXTURE_EXTERNAL_OES, image);
+            check_error(&self.gl_context, "image_target_texture_2d");
+
+            render_cb();
+
+            (self.destroy_image)(self.egl_display.as_ptr(), image);
+            check_error(&self.gl_context, "destroy_image");
         }
     }
 }

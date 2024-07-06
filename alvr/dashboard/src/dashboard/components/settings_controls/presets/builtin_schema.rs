@@ -142,6 +142,55 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn foveated_encodings_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "foveated_encoding".into(),
+        strings: [("display_name".into(), "Foveated Encoding".into())]
+            .into_iter()
+            .collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    false,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Light".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    true,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Medium".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    false,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Heavy".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    false,
+                )],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
+
 pub fn linux_game_audio_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "game_audio".into(),

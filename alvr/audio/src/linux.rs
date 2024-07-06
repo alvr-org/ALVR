@@ -127,8 +127,7 @@ fn pw_microphone_loop(
     let stride = chan_size * default_channels_count;
     let _listener: StreamListener<f32> = stream
         .add_local_listener()
-        .state_changed(move |_, _, old_state, new_state| {
-            debug!("state changed, old: {:?}, new: {:?}", old_state, new_state);
+        .state_changed(move |_, _, _, new_state| {
             *pw_stream_state.lock() = new_state;
         })
         .process(move |stream, _| match stream.dequeue_buffer() {

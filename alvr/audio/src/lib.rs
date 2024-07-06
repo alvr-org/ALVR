@@ -14,9 +14,7 @@ use alvr_common::{
     parking_lot::Mutex,
     ConnectionError, ToAny,
 };
-use alvr_session::{
-    AudioBufferingConfig, CustomAudioDeviceConfig, LinuxAudioBackend, MicrophoneDevicesConfig,
-};
+use alvr_session::{AudioBufferingConfig, CustomAudioDeviceConfig, MicrophoneDevicesConfig};
 use alvr_sockets::{StreamReceiver, StreamSender};
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},

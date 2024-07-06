@@ -289,8 +289,6 @@ impl ServerDataManager {
         }
     }
 
-    #[cfg(not(target_os = "linux"))]
-    #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
     pub fn get_audio_devices_list(&self) -> Result<AudioDevicesList> {
         let host = cpal::default_host();
 

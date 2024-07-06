@@ -142,12 +142,11 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
     })
 }
 
-pub fn linux_game_audio_schema() -> PresetSchemaNode {
+#[cfg(target_os = "linux")]
+pub fn game_audio_schema(_: Vec<String>) -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "game_audio".into(),
-        strings: [("display_name".into(), "Game audio".into())]
-            .into_iter()
-            .collect(),
+        name: "Headset speaker".into(),
+        strings: HashMap::new(),
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
@@ -174,12 +173,11 @@ pub fn linux_game_audio_schema() -> PresetSchemaNode {
     })
 }
 
-pub fn linux_microphone_schema() -> PresetSchemaNode {
+#[cfg(target_os = "linux")]
+pub fn microphone_schema(_: Vec<String>) -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "microphone".into(),
-        strings: [("display_name".into(), "Microphone".into())]
-            .into_iter()
-            .collect(),
+        name: "Headset microphone".into(),
+        strings: HashMap::new(),
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {
@@ -206,6 +204,7 @@ pub fn linux_microphone_schema() -> PresetSchemaNode {
     })
 }
 
+#[cfg(not(target_os = "linux"))]
 pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut game_audio_options = vec![
         HigherOrderChoiceOption {
@@ -249,7 +248,7 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     }
 
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "game_audio".into(),
+        name: "Headset speaker".into(),
         strings: [(
             "help".into(),
             "You should keep this as default. Change the default audio device from the global OS settings".into(),
@@ -263,6 +262,7 @@ pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     })
 }
 
+#[cfg(not(target_os = "linux"))]
 pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut microhone_options = vec![HigherOrderChoiceOption {
         display_name: "Disabled".to_owned(),
@@ -310,7 +310,7 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     };
 
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "microphone".into(),
+        name: "Headset microphone".into(),
         strings: HashMap::new(),
         flags: HashSet::new(),
         options: microhone_options.into_iter().collect(),

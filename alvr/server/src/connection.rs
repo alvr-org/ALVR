@@ -556,37 +556,35 @@ fn connection_pipeline(
 
     let game_audio_sample_rate =
         if let Switch::Enabled(game_audio_config) = &settings.audio.game_audio {
-            let game_audio_device = AudioDevice::new_output(
-                Some(settings.audio.linux_backend),
-                game_audio_config.device.as_ref(),
-            )
-            .to_con()?;
-
             #[cfg(not(target_os = "linux"))]
-            if let Switch::Enabled(microphone_config) = &settings.audio.microphone {
-                let (sink, source) = AudioDevice::new_virtual_microphone_pair(
-                    Some(settings.audio.linux_backend),
-                    microphone_config.devices.clone(),
-                )
-                .to_con()?;
-                if matches!(
-                    microphone_config.devices,
-                    alvr_session::MicrophoneDevicesConfig::VBCable
-                ) {
-                    // VoiceMeeter and Custom devices may have arbitrary internal routing.
-                    // Therefore, we cannot detect the loopback issue without knowing the routing.
-                    if alvr_audio::is_same_device(&game_audio_device, &sink)
-                        || alvr_audio::is_same_device(&game_audio_device, &source)
-                    {
-                        con_bail!("Game audio and microphone cannot point to the same device!");
+            {
+                let game_audio_device =
+                    AudioDevice::new_output(game_audio_config.device.as_ref()).to_con()?;
+                if let Switch::Enabled(microphone_config) = &settings.audio.microphone {
+                    let (sink, source) =
+                        AudioDevice::new_virtual_microphone_pair(microphone_config.devices.clone())
+                            .to_con()?;
+                    if matches!(
+                        microphone_config.devices,
+                        alvr_session::MicrophoneDevicesConfig::VBCable
+                    ) {
+                        // VoiceMeeter and Custom devices may have arbitrary internal routing.
+                        // Therefore, we cannot detect the loopback issue without knowing the routing.
+                        if alvr_audio::is_same_device(&game_audio_device, &sink)
+                            || alvr_audio::is_same_device(&game_audio_device, &source)
+                        {
+                            con_bail!("Game audio and microphone cannot point to the same device!");
+                        }
                     }
+                    // else:
+                    // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
+                    // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
                 }
-                // else:
-                // Stream played via VA-CABLE-X will be directly routed to VA-CABLE-X's virtual microphone.
-                // Game audio will loop back to the game microphone if they are set to the same VA-CABLE-X device.
-            }
 
-            game_audio_device.input_sample_rate().to_con()?
+                game_audio_device.input_sample_rate().to_con()?
+            }
+            #[cfg(target_os = "linux")]
+            44100
         } else {
             0
         };
@@ -657,8 +655,9 @@ fn connection_pipeline(
     )?;
 
     let mut video_sender = stream_socket.request_stream(VIDEO);
-    let game_audio_sender = stream_socket.request_stream(AUDIO);
-    let mut microphone_receiver = stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
+    let game_audio_sender: alvr_sockets::StreamSender<()> = stream_socket.request_stream(AUDIO);
+    let mut microphone_receiver: alvr_sockets::StreamReceiver<()> =
+        stream_socket.subscribe_to_stream(AUDIO, MAX_UNREAD_PACKETS);
     let mut tracking_receiver =
         stream_socket.subscribe_to_stream::<Tracking>(TRACKING, MAX_UNREAD_PACKETS);
     let haptics_sender = stream_socket.request_stream(HAPTICS);
@@ -698,53 +697,70 @@ fn connection_pipeline(
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
             while is_streaming(&client_hostname) {
-                let device = match AudioDevice::new_output(
-                    Some(settings.audio.linux_backend),
-                    config.device.as_ref(),
-                ) {
-                    Ok(data) => data,
-                    Err(e) => {
-                        warn!("New audio device failed: {e:?}");
-                        thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
-                        continue;
-                    }
-                };
-
-                #[cfg(windows)]
-                if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                    ctx.events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::SetOpenvrProperty {
-                            device_id: *alvr_common::HEAD_ID,
-                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
-                        })
-                } else {
-                    continue;
-                };
-
-                if let Err(e) = alvr_audio::record_audio_blocking(
+                #[cfg(target_os = "linux")]
+                if let Err(e) = alvr_audio::linux::record_audio_blocking_pipewire(
                     Arc::new({
                         let client_hostname = client_hostname.clone();
                         move || is_streaming(&client_hostname)
                     }),
                     game_audio_sender.clone(),
-                    &device,
                     2,
-                    config.mute_when_streaming,
+                    game_audio_sample_rate,
                 ) {
                     error!("Audio record error: {e:?}");
                 }
 
-                #[cfg(windows)]
-                if let Ok(id) = AudioDevice::new_output(None, None)
-                    .and_then(|d| alvr_audio::get_windows_device_id(&d))
+                #[cfg(not(target_os = "linux"))]
                 {
-                    ctx.events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::SetOpenvrProperty {
-                            device_id: *alvr_common::HEAD_ID,
-                            prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(id),
-                        })
+                    let device = match AudioDevice::new_output(config.device.as_ref()) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            warn!("New audio device failed: {e:?}");
+                            thread::sleep(RETRY_CONNECT_MIN_INTERVAL);
+                            continue;
+                        }
+                    };
+
+                    #[cfg(windows)]
+                    if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
+                        ctx.events_queue
+                            .lock()
+                            .push_back(ServerCoreEvent::SetOpenvrProperty {
+                                device_id: *alvr_common::HEAD_ID,
+                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
+                                    id,
+                                ),
+                            })
+                    } else {
+                        continue;
+                    };
+
+                    if let Err(e) = alvr_audio::record_audio_blocking(
+                        Arc::new({
+                            let client_hostname = client_hostname.clone();
+                            move || is_streaming(&client_hostname)
+                        }),
+                        game_audio_sender.clone(),
+                        &device,
+                        2,
+                        config.mute_when_streaming,
+                    ) {
+                        error!("Audio record error: {e:?}");
+                    }
+
+                    #[cfg(windows)]
+                    if let Ok(id) = AudioDevice::new_output(None)
+                        .and_then(|d| alvr_audio::get_windows_device_id(&d))
+                    {
+                        ctx.events_queue
+                            .lock()
+                            .push_back(ServerCoreEvent::SetOpenvrProperty {
+                                device_id: *alvr_common::HEAD_ID,
+                                prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
+                                    id,
+                                ),
+                            })
+                    }
                 }
             }
         })
@@ -753,12 +769,9 @@ fn connection_pipeline(
     };
 
     let microphone_thread = if let Switch::Enabled(config) = settings.audio.microphone {
+        #[cfg(not(target_os = "linux"))]
         #[allow(unused_variables)]
-        let (sink, source) = AudioDevice::new_virtual_microphone_pair(
-            Some(settings.audio.linux_backend),
-            config.devices,
-        )
-        .to_con()?;
+        let (sink, source) = AudioDevice::new_virtual_microphone_pair(config.devices).to_con()?;
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
@@ -772,12 +785,24 @@ fn connection_pipeline(
 
         let client_hostname = client_hostname.clone();
         thread::spawn(move || {
+            #[cfg(not(target_os = "linux"))]
             alvr_common::show_err(alvr_audio::play_audio_loop(
                 {
                     let client_hostname = client_hostname.clone();
                     move || is_streaming(&client_hostname)
                 },
                 &sink,
+                1,
+                streaming_caps.microphone_sample_rate,
+                config.buffering,
+                &mut microphone_receiver,
+            ));
+            #[cfg(target_os = "linux")]
+            alvr_common::show_err(alvr_audio::linux::play_microphone_loop_pipewire(
+                {
+                    let client_hostname = client_hostname.clone();
+                    move || is_streaming(&client_hostname)
+                },
                 1,
                 streaming_caps.microphone_sample_rate,
                 config.buffering,

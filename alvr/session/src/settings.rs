@@ -644,9 +644,6 @@ pub struct AudioConfig {
 
     #[schema(strings(display_name = "Headset microphone"))]
     pub microphone: Switch<MicrophoneConfig>,
-
-    #[schema(strings(help = "ALSA is recommended for most PulseAudio or PipeWire-based setups"))]
-    pub linux_backend: LinuxAudioBackend,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1440,11 +1437,8 @@ pub fn session_settings_default() -> SettingsDefault {
             },
         },
         audio: AudioConfigDefault {
-            linux_backend: LinuxAudioBackendDefault {
-                variant: LinuxAudioBackendDefaultVariant::Alsa,
-            },
             game_audio: SwitchDefault {
-                enabled: !cfg!(target_os = "linux"),
+                enabled: true,
                 content: GameAudioConfigDefault {
                     gui_collapsed: true,
                     device: OptionalDefault {
@@ -1460,7 +1454,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
             },
             microphone: SwitchDefault {
-                enabled: false,
+                enabled: cfg!(target_os = "linux"),
                 content: MicrophoneConfigDefault {
                     gui_collapsed: true,
                     devices: MicrophoneDevicesConfigDefault {

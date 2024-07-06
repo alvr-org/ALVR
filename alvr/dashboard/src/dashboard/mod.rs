@@ -80,6 +80,7 @@ impl Dashboard {
 
         // Audio devices need to be queried early to mitigate buggy/slow hardware queries on Linux.
         data_sources.request(ServerRequest::GetSession);
+        #[cfg(not(target_os = "linux"))]
         data_sources.request(ServerRequest::GetAudioDevices);
 
         Self {

@@ -1,14 +1,15 @@
-use crate::receive_samples_loop;
 use alvr_common::{anyhow::Result, debug, error, parking_lot::Mutex};
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
 use pipewire::{self as pw, stream::StreamState};
-use pw::spa::{
-    self,
-    param::audio::{AudioFormat, AudioInfoRaw},
-    pod::{self, serialize::PodSerializer, Pod},
+use pw::{
+    spa::{
+        self,
+        param::audio::{AudioFormat, AudioInfoRaw},
+        pod::{self, serialize::PodSerializer, Pod},
+    },
+    stream::{StreamFlags, StreamListener},
 };
-use pw::stream::{StreamFlags, StreamListener};
 use std::{cmp, collections::VecDeque, sync::Arc, thread};
 struct Terminate;
 
@@ -61,7 +62,7 @@ pub fn play_microphone_loop_pipewire(
             }
         };
         let receive_samples_buffer_arc = Arc::clone(&receive_samples_buffer_arc);
-        receive_samples_loop(
+        crate::receive_samples_loop(
             stream_audio,
             receiver,
             receive_samples_buffer_arc,
@@ -139,7 +140,6 @@ fn pw_microphone_loop(
 
                 let datas = pw_buffer.datas_mut();
                 if datas.is_empty() {
-                    debug!("Pw buffer empty, skipping process");
                     return;
                 }
 
@@ -287,7 +287,6 @@ fn pw_audio_loop(
             Some(mut pw_buffer) => {
                 let datas = pw_buffer.datas_mut();
                 if datas.is_empty() {
-                    debug!("Pw buffer empty, skipping process");
                     return;
                 }
 

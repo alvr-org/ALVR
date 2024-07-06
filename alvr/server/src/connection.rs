@@ -720,6 +720,7 @@ fn connection_pipeline(
                             continue;
                         }
                     };
+
                     #[cfg(windows)]
                     if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
                         ctx.events_queue
@@ -733,6 +734,7 @@ fn connection_pipeline(
                     } else {
                         continue;
                     };
+
                     if let Err(e) = alvr_audio::record_audio_blocking(
                         Arc::new({
                             let client_hostname = client_hostname.clone();
@@ -745,6 +747,7 @@ fn connection_pipeline(
                     ) {
                         error!("Audio record error: {e:?}");
                     }
+
                     #[cfg(windows)]
                     if let Ok(id) = AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))

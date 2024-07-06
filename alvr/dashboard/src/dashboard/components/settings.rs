@@ -69,16 +69,12 @@ impl SettingsTab {
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
-            game_audio_preset: if cfg!(target_os = "linux") {
-                Some(PresetControl::new(builtin_schema::linux_game_audio_schema()))
-            } else {
-                None
-            },
-            microphone_preset: if cfg!(target_os = "linux") {
-                Some(PresetControl::new(builtin_schema::linux_microphone_schema()))
-            } else {
-                None
-            },
+            game_audio_preset: cfg!(target_os = "linux")
+                .then(|| PresetControl::new(builtin_schema::linux_game_audio_schema()))
+                .or_else(|| None),
+            microphone_preset: cfg!(target_os = "linux")
+                .then(|| PresetControl::new(builtin_schema::linux_microphone_schema()))
+                .or_else(|| None),
             eye_face_tracking_preset: PresetControl::new(builtin_schema::eye_face_tracking_schema()),
             top_level_entries,
             session_settings_json: None,

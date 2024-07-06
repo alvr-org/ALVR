@@ -1,20 +1,22 @@
 #pragma once
-#include "CEncoder.h"
 #include "alvr_server/PoseHistory.h"
 #include "alvr_server/Utils.h"
 #include "openvr_driver.h"
 
 #include "alvr_server/Settings.h"
 
+#include <map>
 #include <mutex>
+
+#include "Encoder.hpp"
 
 class OvrDirectModeComponent : public vr::IVRDriverDirectModeComponent {
 public:
     OvrDirectModeComponent(
-        std::shared_ptr<CD3DRender> pD3DRender, std::shared_ptr<PoseHistory> poseHistory
+        /* std::shared_ptr<Renderer> pVKRender,  */ std::shared_ptr<PoseHistory> poseHistory
     );
 
-    void SetEncoder(std::shared_ptr<CEncoder> pEncoder);
+    void RequestIdr() { enc.requestIdr(); }
 
     /** Specific to Oculus compositor support, textures supplied must be created using this method.
      */
@@ -48,20 +50,17 @@ public:
      * successfully acquired the sync texture in Present.*/
     virtual void PostPresent(const Throttling_t* pThrottling);
 
-    void CopyTexture(uint32_t layerCount);
-
 private:
-    std::shared_ptr<CD3DRender> m_pD3DRender;
-    std::shared_ptr<CEncoder> m_pEncoder;
     std::shared_ptr<PoseHistory> m_poseHistory;
 
     // Resource for each process
     struct ProcessResource {
-        ComPtr<ID3D11Texture2D> textures[3];
-        HANDLE sharedHandles[3];
+        vr::SharedTextureHandle_t sharedHandles[3];
+        int fds[3];
+        SwapTextureSetDesc_t textDesc;
         uint32_t pid;
     };
-    std::map<HANDLE, std::pair<ProcessResource*, int>> m_handleMap;
+    std::map<vr::SharedTextureHandle_t, std::pair<ProcessResource*, int>> m_handleMap;
 
     static const int MAX_LAYERS = 10;
     int m_submitLayer;
@@ -70,6 +69,10 @@ private:
     vr::HmdQuaternion_t m_framePoseRotation;
     uint64_t m_targetTimestampNs;
     uint64_t m_prevTargetTimestampNs;
+
+    std::array<vr::SharedTextureHandle_t, 6> layer0Texts;
+
+    alvr::Encoder enc;
 
     std::mutex m_presentMutex;
 };

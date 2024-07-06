@@ -5,7 +5,6 @@ uniform sampler2D hud_texture;
 
 in vec2 uv;
 in vec3 position;
-
 out vec4 out_color;
 
 void main() {

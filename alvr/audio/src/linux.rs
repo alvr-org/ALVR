@@ -1,14 +1,14 @@
 use alvr_common::{anyhow::Result, debug, error, parking_lot::Mutex};
 use alvr_session::AudioBufferingConfig;
 use alvr_sockets::{StreamReceiver, StreamSender};
-use pipewire::{self as pw, stream::StreamState};
-use pw::{
+use pipewire::{
+    self as pw,
     spa::{
         self,
         param::audio::{AudioFormat, AudioInfoRaw},
         pod::{self, serialize::PodSerializer, Pod},
     },
-    stream::{StreamFlags, StreamListener},
+    stream::{StreamFlags, StreamListener, StreamState},
 };
 use std::{cmp, collections::VecDeque, sync::Arc, thread};
 struct Terminate;

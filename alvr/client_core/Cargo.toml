@@ -11,7 +11,8 @@ crate_type = ["rlib", "staticlib", "cdylib"]
 
 [features]
 link-stdcpp-shared = []
-default = ["link-stdcpp-shared"]
+use-cpp = []
+default = ["link-stdcpp-shared", "use-cpp"]
 
 [dependencies]
 alvr_audio.workspace = true

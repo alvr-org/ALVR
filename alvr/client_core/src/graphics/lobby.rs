@@ -69,7 +69,7 @@ pub struct LobbyRenderer {
     object_type_uloc: gl::UniformLocation,
     transform_uloc: gl::UniformLocation,
     hud_texture: gl::Texture,
-    targets: [Vec<RenderTarget>; 2],
+    render_targets: [Vec<RenderTarget>; 2],
     viewport_size: IVec2,
 }
 
@@ -125,7 +125,7 @@ impl LobbyRenderer {
                 object_type_uloc,
                 transform_uloc,
                 hud_texture,
-                targets: render_targets,
+                render_targets,
                 viewport_size: view_resolution.as_ivec2(),
             }
         };
@@ -199,31 +199,29 @@ impl LobbyRenderer {
     ) {
         let gl = &self.context.gl_context;
 
-        for (view_idx, view_input) in view_inputs.iter().enumerate() {
-            self.targets[view_idx][view_input.swapchain_index as usize].bind();
+        unsafe {
+            ck!(gl.use_program(Some(self.program)));
 
-            let view = Mat4::from_rotation_translation(
-                view_input.pose.orientation,
-                view_input.pose.position,
-            )
-            .inverse();
-            let view_proj = projection_from_fov(view_input.fov) * view;
+            ck!(gl.disable(gl::SCISSOR_TEST));
+            ck!(gl.disable(gl::DEPTH_TEST));
+            ck!(gl.disable(gl::CULL_FACE));
+            ck!(gl.enable(gl::BLEND));
+            ck!(gl.blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
 
-            unsafe {
-                ck!(gl.use_program(Some(self.program)));
+            ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
 
-                ck!(gl.disable(gl::SCISSOR_TEST));
-                ck!(gl.disable(gl::DEPTH_TEST));
-                ck!(gl.disable(gl::CULL_FACE));
+            for (view_idx, view_input) in view_inputs.iter().enumerate() {
+                self.render_targets[view_idx][view_input.swapchain_index as usize].bind();
 
-                // gl.clear_color(0.88, 0.95, 0.95, 1.0);
+                let view = Mat4::from_rotation_translation(
+                    view_input.pose.orientation,
+                    view_input.pose.position,
+                )
+                .inverse();
+                let view_proj = projection_from_fov(view_input.fov) * view;
+
+                ck!(gl.clear(gl::COLOR_BUFFER_BIT));
                 ck!(gl.clear_color(0.0, 0.0, 0.02, 1.0));
-                ck!(gl.clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
-
-                ck!(gl.enable(gl::BLEND));
-                ck!(gl.blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
-
-                ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
 
                 // Draw the following geometry in the correct order (depth buffer is disabled)
 

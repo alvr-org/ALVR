@@ -350,7 +350,7 @@ fn connection_pipeline(
     });
 
     let game_audio_thread = if let Switch::Enabled(config) = settings.audio.game_audio {
-        let device = AudioDevice::new_output(None, None).to_con()?;
+        let device = AudioDevice::new_output(None).to_con()?;
         thread::spawn({
             let ctx = Arc::clone(&ctx);
             move || {

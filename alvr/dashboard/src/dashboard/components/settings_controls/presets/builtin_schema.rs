@@ -142,6 +142,70 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
     })
 }
 
+pub fn linux_game_audio_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "game_audio".into(),
+        strings: [("display_name".into(), "Game audio".into())]
+            .into_iter()
+            .collect(),
+        flags: HashSet::new(),
+        options: [
+            HigherOrderChoiceOption {
+                display_name: "Enable".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.game_audio.enabled",
+                    true,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Disable".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.game_audio.enabled",
+                    false,
+                )],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
+pub fn linux_microphone_schema() -> PresetSchemaNode {
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "microphone".into(),
+        strings: [("display_name".into(), "Microphone".into())]
+            .into_iter()
+            .collect(),
+        flags: HashSet::new(),
+        options: [
+            HigherOrderChoiceOption {
+                display_name: "Enable".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    true,
+                )],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Disable".into(),
+                modifiers: vec![bool_modifier(
+                    "session_settings.audio.microphone.enabled",
+                    false,
+                )],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+        default_option_index: 0,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn game_audio_schema(devices: Vec<String>) -> PresetSchemaNode {
     let mut game_audio_options = vec![
         HigherOrderChoiceOption {

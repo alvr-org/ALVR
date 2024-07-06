@@ -15,6 +15,7 @@ struct Entry {
     id: DisplayString,
     help: Option<String>,
     // notice: Option<String>,
+    hidden: bool,
     steamvr_restart_flag: bool,
     real_time_flag: bool,
     control: SettingControl,
@@ -41,6 +42,7 @@ impl Control {
                 let display = super::get_display_name(&id, &entry.strings);
                 let help = entry.strings.get("help").cloned();
                 // let notice = entry.strings.get("notice").cloned();
+                let hidden = entry.flags.contains("hidden");
                 let steamvr_restart_flag = entry.flags.contains("steamvr-restart");
                 let real_time_flag = entry.flags.contains("real-time");
 
@@ -51,6 +53,7 @@ impl Control {
                     id: DisplayString { id, display },
                     help,
                     // notice,
+                    hidden,
                     steamvr_restart_flag,
                     real_time_flag,
                     control: SettingControl::new(nesting_info, entry.content),
@@ -100,6 +103,10 @@ impl Control {
 
         if !collapsed {
             for (i, entry) in self.entries.iter_mut().enumerate() {
+                if entry.hidden {
+                    continue;
+                }
+
                 ui.horizontal(|ui| {
                     ui.add_space(INDENTATION_STEP * self.nesting_info.indentation_level as f32);
                     let label_res = ui.label(&entry.id.display);

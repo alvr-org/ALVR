@@ -568,15 +568,6 @@ pub struct VideoConfig {
     pub clientside_foveation: Switch<ClientsideFoveationConfig>,
 }
 
-#[derive(SettingsSchema, Serialize, Deserialize, Clone, Copy)]
-#[schema(gui = "button_group")]
-pub enum LinuxAudioBackend {
-    #[schema(strings(display_name = "ALSA"))]
-    Alsa,
-
-    Jack,
-}
-
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(gui = "button_group")]
 pub enum CustomAudioDeviceConfig {
@@ -601,8 +592,10 @@ pub struct AudioBufferingConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct GameAudioConfig {
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub device: Option<CustomAudioDeviceConfig>,
 
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     #[schema(strings(display_name = "Mute desktop audio when streaming"))]
     pub mute_when_streaming: bool,
 
@@ -633,7 +626,9 @@ pub enum MicrophoneDevicesConfig {
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 #[schema(collapsible)]
 pub struct MicrophoneConfig {
+    #[cfg_attr(target_os = "linux", schema(flag = "hidden"))]
     pub devices: MicrophoneDevicesConfig,
+
     pub buffering: AudioBufferingConfig,
 }
 

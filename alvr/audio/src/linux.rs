@@ -73,7 +73,7 @@ pub fn play_microphone_loop_pipewire(
         .ok();
     }
 
-    if let Err(_) = pw_sender.send(Terminate) {
+    if pw_sender.send(Terminate).is_err() {
         error!(
             "Couldn't send pipewire termination signal, deinitializing forcefully.
             Restart VR app to reinitialize pipewire."
@@ -219,7 +219,7 @@ pub fn record_audio_blocking_pipewire(
         Arc::clone(&is_running);
     thread::spawn(move || {
         while is_running_clone_for_pw_terminate() {}
-        if let Err(_) = pw_sender.send(Terminate) {
+        if pw_sender.send(Terminate).is_err() {
             error!(
                 "Couldn't send pipewire termination signal, deinitializing forcefully.
                 Restart VR app to reinitialize pipewire."

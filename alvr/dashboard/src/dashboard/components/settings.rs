@@ -27,6 +27,7 @@ pub struct SettingsTab {
     resolution_preset: PresetControl,
     framerate_preset: PresetControl,
     encoder_preset: PresetControl,
+    foveated_encoding_preset: PresetControl,
     game_audio_preset: Option<PresetControl>,
     microphone_preset: Option<PresetControl>,
     eye_face_tracking_preset: PresetControl,
@@ -69,6 +70,9 @@ impl SettingsTab {
             resolution_preset: PresetControl::new(builtin_schema::resolution_schema()),
             framerate_preset: PresetControl::new(builtin_schema::framerate_schema()),
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
+            foveated_encoding_preset: PresetControl::new(
+                builtin_schema::foveated_encoding_preset_schema(),
+            ),
             game_audio_preset: cfg!(target_os = "linux")
                 .then(|| PresetControl::new(builtin_schema::linux_game_audio_schema())),
             microphone_preset: cfg!(target_os = "linux")
@@ -88,6 +92,8 @@ impl SettingsTab {
         self.framerate_preset
             .update_session_settings(&settings_json);
         self.encoder_preset.update_session_settings(&settings_json);
+        self.foveated_encoding_preset
+            .update_session_settings(&settings_json);
         if let Some(preset) = self.game_audio_preset.as_mut() {
             preset.update_session_settings(&settings_json)
         }
@@ -172,6 +178,10 @@ impl SettingsTab {
 
                             ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
+                            ui.end_row();
+
+                            ui.add_space(INDENTATION_STEP);
+                            path_value_pairs.extend(self.foveated_encoding_preset.ui(ui));
                             ui.end_row();
 
                             if let Some(preset) = &mut self.game_audio_preset {

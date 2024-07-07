@@ -142,42 +142,101 @@ pub fn encoder_preset_schema() -> PresetSchemaNode {
     })
 }
 
-pub fn foveated_encodings_schema() -> PresetSchemaNode {
+pub fn foveated_encoding_preset_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "foveated_encoding".into(),
-        strings: [("display_name".into(), "Foveated Encoding".into())]
-            .into_iter()
-            .collect(),
+        name: "foveated_encoding_preset".into(),
+        strings: [
+            ("display_name".into(), "Foveated Encoding".into()),
+            (
+                "help".into(),
+                "Select Heavy if you want higher quality image in centre at the cost of reduced quality on the edges,\
+                  or select Light for least noticeable pixelation on edges.\
+                  Selecting Disabled might introduce unwanted shutters.".into(),
+            ),
+        ]
+        .into_iter()
+        .collect(),
         flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
             HigherOrderChoiceOption {
-                display_name: "Disabled".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    false,
-                )],
-                content: None,
-            },
-            HigherOrderChoiceOption {
                 display_name: "Light".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    true,
-                )],
+                modifiers: [
+                    bool_modifier("session_settings.video.foveated_encoding.enabled", true),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_x",
+                        "0.85",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_y",
+                        "0.8",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_x",
+                        "6.0",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_y",
+                        "6.0",
+                    ),
+                ]
+                .into_iter()
+                .collect(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 display_name: "Medium".into(),
-                modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
-                    false,
-                )],
+                modifiers: [
+                    bool_modifier("session_settings.video.foveated_encoding.enabled", true),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_x",
+                        "0.65",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_y",
+                        "0.6",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_x",
+                        "6.0",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_y",
+                        "6.0",
+                    ),
+                ]
+                .into_iter()
+                .collect(),
                 content: None,
             },
             HigherOrderChoiceOption {
                 display_name: "Heavy".into(),
+                modifiers: [
+                    bool_modifier("session_settings.video.foveated_encoding.enabled", true),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_x",
+                        "0.45",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.center_size_y",
+                        "0.4",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_x",
+                        "4.0",
+                    ),
+                    num_modifier(
+                        "session_settings.video.foveated_encoding.content.edge_ratio_y",
+                        "5.0",
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
                 modifiers: vec![bool_modifier(
-                    "session_settings.audio.microphone.enabled",
+                    "session_settings.video.foveated_encoding.enabled",
                     false,
                 )],
                 content: None,
@@ -185,11 +244,10 @@ pub fn foveated_encodings_schema() -> PresetSchemaNode {
         ]
         .into_iter()
         .collect(),
-        default_option_index: 0,
+        default_option_index: 1,
         gui: ChoiceControlType::ButtonGroup,
     })
 }
-
 
 pub fn linux_game_audio_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {

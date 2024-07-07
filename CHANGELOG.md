@@ -1,5 +1,28 @@
 # Changelog
 
+### v20.9.1
+
+* Fix performance issues on lobby room.
+
+## v20.9.0
+
+* Display license inside the dashboard (by @zarik5 #2117)
+* Add GPU checks for Linux (by @Meister1593 #2110)
+* Reorder settings (by @zarik5 #2119)
+* Shallow rename "client" -> "device" (by @zarik5 #2120)
+* Update manifest for AppLab (by @zarik5 #2146)
+* Allow recentering in the lobby (by @zarik5 #2155)
+* Tweak graph labels and colors (by @zarik5 #2176)
+* Fix controller detection on Pico Neo 3 Link (by @HoLo85 #2192)
+* Loosen restrictions on device selection with VoiceMeeter (by @xuan25 #2209)
+* Fix HEVC black screen on Linux/VAAPI (by @Nibor62 #2203)
+* Show hands and controllers in the lobby (by @zarik5 #2218)
+* Add PipeWire support on Linux (by @Meister1593 #1973)
+
+### v20.8.1
+
+* Fix crash on Linux (by @SniperJoe #2108)
+
 ## v20.8.0
 
 * Bring back settings tabs (by @Meister1593 #2076)

@@ -1,4 +1,4 @@
-**Start here**
+#### Start here
 
 * [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide)
 
@@ -8,7 +8,7 @@
 
 ***
 
-**Configuration**
+#### Configuration
 
 * [Settings tutorial](https://github.com/alvr-org/ALVR/wiki/Settings-tutorial)
 
@@ -22,7 +22,7 @@
 
 ***
 
-**Troubleshooting**
+#### Troubleshooting
 
 * [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
 
@@ -38,7 +38,7 @@
 
 ***
 
-**Development**
+#### Development
 
 * [Roadmap](https://github.com/alvr-org/ALVR/wiki/Roadmap)
 

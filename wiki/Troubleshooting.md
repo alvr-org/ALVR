@@ -25,14 +25,14 @@ Trouble starting ALVR
 
 ALVR needs a working graphics driver to be installed in order to work.
 
-**On linux**, you also need to make sure you have `x264` for base software encoding to work and either `vaapi` on AMD or `cuda` on NVIDIA for hardware encoders to work.
+**On linux**, you also need to make sure you have either `vaapi` on AMD or `cuda` on NVIDIA for hardware encoders to work.
 
 ALVR starts launching, but gets stuck on "ALVR is not responding..."
 ===
 
 With ALVR versions >= 20.0, some antivirus software can prevent ALVR from launching SteamVR. Try disabling any antivirus other than Windows Defender (McAfee, Norton, etc.), reboot, then try again. If the issue persists, make sure you don't have an instance of ALVR or SteamVR running in the background (check in Task Manager). If you continue having issues, hop in the [ALVR Discord server](https://discord.gg/KbKk3UM), and we'll do our best to help you get it sorted out.
 
-ALVR starts fine, but...
+ALVR starts fine, but
 ===
 
 This section has some advice for when ALVR shows an error (or sometimes warning) pop-up. This could be either a yellow pop-up in the setup window (`ALVR Dashboard.exe`) or a separate pop-up when you connect with a headset.
@@ -46,7 +46,7 @@ The latest release can be found [here](https://github.com/alvr-org/ALVR/releases
 
 The version of ALVR available on the SideQuest store is compatible with the latest release on GitHub (the previous link). Keep in mind that the version on SideQuest might take us a while to update after a new version is released on GitHub.
 
-Failed to initialize CEncoder.
+Failed to initialize CEncoder
 ---
 
 ALVR currently needs a recent AMD or Nvidia GPU to run, since it utilizes hardware video encoding (see [requirements](https://github.com/alvr-org/ALVR#requirements)). If you get an error saying something like
@@ -83,7 +83,7 @@ ALVR client list is empty
 
 ![Empty ALVR client list](images/ALVRexe-no-clients.png)
 
-Check that the PC app and the headset app run on the latest version of ALVR. At the time of writing, the latest version is v20.4.3. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is https://github.com/alvr-org/ALVR.
+Check that the PC app and the headset app run on the latest version of ALVR. If your version is v2.3.1 or v2.4.0-alpha5 then you downloaded ALVR from the wrong link. The correct link is <https://github.com/alvr-org/ALVR>.
 
 Make sure ALVR is running both on the PC and on the headset. To be visible in the client list, ALVR on the headset sends broadcast packets which the PC application listens for. These can be blocked by your firewall or possibly your router, if both headset and PC are connected wirelessly, having AP isolation enabled on the router will cause this.
 
@@ -112,7 +112,7 @@ Check that SteamVR isn't blocking ALVR (see SteamVR settings, enable advanced se
 
 If you're still getting this message (or otherwise not getting a headset icon in the SteamVR window), a SteamVR log (vrserver.txt) will have some information on why the driver isn't loading. You can find it where you installed Steam, in `Steam\logs\vrserver.txt`.
 
-#### Some lines to look for and tips for them:
+### Some lines to look for and tips for them
 
 `Unable to load driver alvr_server because of error VRInitError_Init_FileNotFound(103). Skipping.` - This usually means a library that ALVR needs is missing. Make sure you followed installation instructions carefully, installed the latest Visual C++ Redistributable x64 package and no files are missing where you extracted ALVR (especially in the bin\win64 directory).
 

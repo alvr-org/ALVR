@@ -29,22 +29,19 @@ If you are on Linux, install these additional packages:
   * `dev-lang/rust >= 1.72`
   * `media-video/pipewire [jacksdk]`
 
-* **Nix(OS)**
-  
-  * Use the `shell.nix` in `packaging/nix`.
-
 * **Debian 12 / Ubuntu 20.04 / Pop!\_OS 20.04**
   
   ```bash
   sudo apt install pulseaudio-utils build-essential pkg-config libclang-dev libssl-dev libasound2-dev libjack-dev libgtk-3-dev libvulkan-dev libunwind-dev gcc yasm nasm curl libx264-dev libx265-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libdrm-dev libva-dev libvulkan-dev vulkan-headers libpipewire-0.3-dev libspa-0.3-dev git
   ```
-  * Note: Libpipewire/libspa must be at least 0.3.49 version - make sure to use upstream pipewire https://github.com/pipewire-debian/pipewire-debian
+
+  * Note: Libpipewire/libspa must be at least 0.3.49 version - make sure to use upstream pipewire <https://github.com/pipewire-debian/pipewire-debian>
 
 * **Fedora**
   
   ```bash
   sudo dnf groupinstall 'Development Tools' | For c++ and build tools
-  sudo dnf install nasm yasm libdrm-devel vulkan-headers pipewire-jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang openssl-devel alsa-lib-devel libva-devel pipewire-devel
+  sudo dnf install nasm yasm libdrm-devel vulkan-headers pipewire-jack-audio-connection-kit-devel atk-devel gdk-pixbuf2-devel cairo-devel rust-gdk0.15-devel x264-devel vulkan-devel libunwind-devel clang openssl-devel alsa-lib-devel libva-devel pipewire-devel git
   ```
   
   If you are using Nvidia, see [Fedora cuda installation](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#fedora-cuda-installation)
@@ -109,7 +106,7 @@ export PATH=/usr/local/cuda-12.3/bin${PATH:+:${PATH}}
 
 If your cuda version is different, change it to the version that is installed. You can check installed versions by doing ```ls /usr/local/ | grep "cuda"``` in your terminal
 
-**Comments**
+#### Note about Nvidia's CUDA
 
 * Disabling the nvidia-driver doesn't disable Nvidia drivers but prevents nvidia dkms from installing over the akmod driver
 
@@ -128,7 +125,7 @@ Then install gcc11
 brew install gcc@11
 ```
 
-**Comments**
+#### Notes on installing gcc11 with homebrew
 
 * If brew is not found in your path, run the following separately to add brew to your path:
   
@@ -161,13 +158,13 @@ For the client you need install:
 On Linux, the specific package names for the android tools can differ from distro to distro, see up on the wiki for more information:
 
 * Gentoo:
-  * https://wiki.gentoo.org/wiki/Android
+  * <https://wiki.gentoo.org/wiki/Android>
 * Arch:
-  * https://wiki.archlinux.org/title/Android
+  * <https://wiki.archlinux.org/title/Android>
 * Debian:
-  * https://wiki.debian.org/AndroidStudio
+  * <https://wiki.debian.org/AndroidStudio>
 * Ubuntu:
-  * https://help.ubuntu.com/community/AndroidSDK
+  * <https://help.ubuntu.com/community/AndroidSDK>
 * Pop!\_OS:
   * N/A
 
@@ -188,7 +185,7 @@ For Debian, it requires to have the `non-free` repository to be enabled:
   sudo apt install android-sdk-platform-tools-common sdkmanager google-android-ndk-r26b-installer
   ```
   
-  ## 2. Setting environment variables
+## 2. Setting environment variables
 
 For Windows, set the environment variables:
 
@@ -202,9 +199,9 @@ For Windows, set the environment variables:
 For Linux, the correct directories for the environment variables can greatly differ depending on the type of install. See the wiki page of your distro for more information:
 
 * Gentoo:
-  * https://wiki.gentoo.org/wiki/Android
+  * <https://wiki.gentoo.org/wiki/Android>
 * Ubuntu:
-  * https://help.ubuntu.com/community/AndroidSDK#Post-Installation_Configuration
+  * <https://help.ubuntu.com/community/AndroidSDK#Post-Installation_Configuration>
 
 Distro wikis that weren't listed above does not mention of environment variables, although generally they would be as:
 
@@ -235,6 +232,7 @@ Before building the client, Android has to have us to agree to the licenses othe
   cd "%ANDROID_SDK_ROOT%\tools\bin"
   sdkmanager.bat --licenses
   ```
+
 * Linux:
   
   ```bash

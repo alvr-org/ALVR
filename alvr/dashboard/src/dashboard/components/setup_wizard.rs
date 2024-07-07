@@ -75,7 +75,7 @@ impl SetupWizard {
 
         ui.horizontal(|ui| {
             ui.add_space(60.0);
-            ui.vertical(|ui: &mut Ui| {
+            ui.vertical(|ui| {
                 ui.add_space(30.0);
                 ui.heading(RichText::new("Welcome to ALVR").size(30.0));
                 ui.add_space(5.0);

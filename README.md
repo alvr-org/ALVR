@@ -9,31 +9,30 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|      VR Headset       |                                Support                                 |
-| :-------------------: | :--------------------------------------------------------------------: |
-|    Quest 1/2/3/Pro    |                           :heavy_check_mark:                           |
-|     Pico 4/Neo 3      |                           :heavy_check_mark:                           |
-| Vive Focus 3/XR Elite |                           :heavy_check_mark:                           |
-|        YVR 1/2        |                           :heavy_check_mark:                           |
-|        Lynx R1        |                           :heavy_check_mark:                           |
-|   Apple Vision Pro    |                           :heavy_check_mark:                           |
-|   Smartphone/Monado   |                              :warning: *                               |
-|   Google Cardboard    | :warning: * ([PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR)) |
-|        GearVR         |                         :construction: (maybe)                         |
-|       Oculus Go       |                                 :x: **                                 |
+|      VR Headset       |                                       Support                                        |
+| :-------------------: | :----------------------------------------------------------------------------------: |
+|    Quest 1/2/3/Pro    | :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715)) |
+|     Pico 4/Neo 3      |                                  :heavy_check_mark:                                  |
+| Vive Focus 3/XR Elite |                                  :heavy_check_mark:                                  |
+|        YVR 1/2        |                                  :heavy_check_mark:                                  |
+|        Lynx R1        |                                  :heavy_check_mark:                                  |
+|   Apple Vision Pro    |   :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))    |
+|   Smartphone/Monado   |                                     :warning: *                                      |
+|   Google Cardboard    |        :warning: * ([PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR))        |
+|        GearVR         |                                :construction: (maybe)                                |
+|       Oculus Go       |                                        :x: **                                        |
 
 \* : Only works on some smartphones, not enough testing.  
 \** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
 
-|        PC OS        |       Support       |
-| :-----------------: | :-----------------: |
-|   Windows 8/10/11   | :heavy_check_mark:  |
-|    Windows 7/XP     |         :x:         |
-|     Ubuntu/Arch     |    :warning: ***    |
-| Other linux distros | :grey_question: *** |
-|        macOS        |         :x:         |
+|     PC OS      |        Support        |
+| :------------: | :-------------------: |
+| Windows 10/11  |  :heavy_check_mark:   |
+| Windows XP/7/8 |          :x:          |
+|     Linux      | :heavy_check_mark:*** |
+|     macOS      |          :x:          |
 
-\*** : Linux support is still in beta. To be able to make audio work or run ALVR at all you may need advanced knowledge of your distro for debugging or building from source.
+\*** : Please check the wiki for compatibility info
 
 ## Requirements
 
@@ -78,8 +77,6 @@ ALVR apps do not directly collect any kind of data.
 ## Donate
 
 If you want to support this project you can make a donation to our [Open Source Collective account](https://opencollective.com/alvr).
-
-You can also donate to the original author of ALVR using Paypal (polygraphene@gmail.com) or with bitcoin (1FCbmFVSjsmpnAj6oLx2EhnzQzzhyxTLEv).
 
 [badge-discord]: https://img.shields.io/discord/720612397580025886?style=for-the-badge&logo=discord&color=5865F2 "Join us on Discord"
 [link-discord]: https://discord.gg/ALVR

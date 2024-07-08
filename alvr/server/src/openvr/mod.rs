@@ -1,34 +1,84 @@
+mod graphics;
 mod props;
 mod tracking;
 
+#[allow(
+    non_camel_case_types,
+    non_upper_case_globals,
+    dead_code,
+    non_snake_case,
+    clippy::unseparated_literal_suffix
+)]
+mod bindings {
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+use bindings::*;
+
 use crate::{
-    input_mapping, logging_backend, FfiButtonValue, FfiDynamicEncoderParams, FfiFov,
-    FfiViewsConfig, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER,
+    input_mapping::REGISTERED_BUTTON_SET, logging_backend, ServerCoreContext, ServerCoreEvent,
+    SERVER_DATA_MANAGER,
 };
-use alvr_common::{once_cell::sync::Lazy, parking_lot::RwLock, warn, HAND_LEFT_ID, HAND_RIGHT_ID};
+use alvr_common::{
+    error, once_cell::sync::Lazy, parking_lot::RwLock, warn, BUTTON_INFO, HAND_LEFT_ID,
+    HAND_RIGHT_ID,
+};
+use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_session::CodecType;
 use std::{
-    ffi::{c_char, c_void},
+    ffi::{c_char, c_void, CString},
     ptr, thread,
     time::{Duration, Instant},
 };
 
+static FILESYSTEM_LAYOUT: Lazy<afs::Layout> = Lazy::new(|| {
+    afs::filesystem_layout_from_openvr_driver_root_dir(
+        &alvr_server_io::get_driver_dir_from_registered().unwrap(),
+    )
+});
+
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
     logging_backend::init_logging();
+
+    unsafe {
+        g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+            .unwrap()
+            .into_raw();
+        g_driverRootDir = CString::new(
+            FILESYSTEM_LAYOUT
+                .openvr_driver_root_dir
+                .to_string_lossy()
+                .to_string(),
+        )
+        .unwrap()
+        .into_raw();
+    };
+
+    graphics::initialize_shaders();
+
+    unsafe {
+        LogError = Some(crate::c_api::alvr_log_error);
+        LogWarn = Some(crate::c_api::alvr_log_warn);
+        LogInfo = Some(crate::c_api::alvr_log_info);
+        LogDebug = Some(crate::c_api::alvr_log_debug);
+        LogPeriodically = Some(crate::c_api::alvr_log_periodically);
+        PathStringToHash = Some(crate::c_api::alvr_path_to_id);
+
+        CppInit();
+    }
 
     RwLock::new(Some(ServerCoreContext::new()))
 });
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
     thread::spawn(move || {
-        unsafe { crate::InitOpenvrClient() };
+        unsafe { InitOpenvrClient() };
 
         if set_default_chap {
             // call this when inside a new thread. Calling this on the parent thread will crash
             // SteamVR
             unsafe {
-                crate::SetChaperoneArea(2.0, 2.0);
+                SetChaperoneArea(2.0, 2.0);
             }
         }
 
@@ -52,23 +102,23 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 
             match event {
                 ServerCoreEvent::SetOpenvrProperty { device_id, prop } => unsafe {
-                    crate::SetOpenvrProperty(device_id, props::to_ffi_openvr_prop(prop))
+                    SetOpenvrProperty(device_id, props::to_ffi_openvr_prop(prop))
                 },
                 ServerCoreEvent::ClientConnected => {
                     unsafe {
-                        crate::InitializeStreaming();
-                        crate::RequestDriverResync();
+                        InitializeStreaming();
+                        RequestDriverResync();
                     };
                 }
-                ServerCoreEvent::ClientDisconnected => unsafe { crate::DeinitializeStreaming() },
+                ServerCoreEvent::ClientDisconnected => unsafe { DeinitializeStreaming() },
                 ServerCoreEvent::Battery(info) => unsafe {
-                    crate::SetBattery(info.device_id, info.gauge_value, info.is_plugged)
+                    SetBattery(info.device_id, info.gauge_value, info.is_plugged)
                 },
                 ServerCoreEvent::PlayspaceSync(bounds) => unsafe {
-                    crate::SetChaperoneArea(bounds.x, bounds.y)
+                    SetChaperoneArea(bounds.x, bounds.y)
                 },
                 ServerCoreEvent::ViewsConfig(config) => unsafe {
-                    crate::SetViewsConfig(FfiViewsConfig {
+                    SetViewsConfig(FfiViewsConfig {
                         fov: [
                             FfiFov {
                                 left: config.fov[0].left,
@@ -144,7 +194,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         tracking::to_ffi_body_trackers(&tracking.device_motions, track_body);
 
                     unsafe {
-                        crate::SetTracking(
+                        SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
                             controllers_pose_time_offset.as_secs_f32(),
                             ffi_motions.as_ptr(),
@@ -177,23 +227,22 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     for entry in entries {
                         let value = match entry.value {
                             ButtonValue::Binary(value) => FfiButtonValue {
-                                type_: crate::FfiButtonType_BUTTON_TYPE_BINARY,
-                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
+                                type_: FfiButtonType_BUTTON_TYPE_BINARY,
+                                __bindgen_anon_1: FfiButtonValue__bindgen_ty_1 {
                                     binary: value.into(),
                                 },
                             },
 
                             ButtonValue::Scalar(value) => FfiButtonValue {
-                                type_: crate::FfiButtonType_BUTTON_TYPE_SCALAR,
-                                __bindgen_anon_1: crate::FfiButtonValue__bindgen_ty_1 {
-                                    scalar: value,
-                                },
+                                type_: FfiButtonType_BUTTON_TYPE_SCALAR,
+                                __bindgen_anon_1: FfiButtonValue__bindgen_ty_1 { scalar: value },
                             },
                         };
-                        unsafe { crate::SetButton(entry.path_id, value) };
+                        unsafe { SetButton(entry.path_id, value) };
                     }
                 }
-                ServerCoreEvent::RequestIDR => unsafe { crate::RequestIDR() },
+                ServerCoreEvent::RequestIDR => unsafe { RequestIDR() },
+                ServerCoreEvent::CaptureFrame => unsafe { CaptureFrame() },
                 ServerCoreEvent::GameRenderLatencyFeedback(game_latency) => {
                     if cfg!(target_os = "linux") && game_latency.as_secs_f32() > 0.25 {
                         let now = Instant::now();
@@ -201,7 +250,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             last_resync = now;
                             warn!("Desync detected. Attempting recovery.");
                             unsafe {
-                                crate::RequestDriverResync();
+                                RequestDriverResync();
                             }
                         }
                     }
@@ -209,20 +258,32 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                 ServerCoreEvent::ShutdownPending => {
                     SERVER_CORE_CONTEXT.write().take();
 
-                    unsafe { crate::ShutdownSteamvr() };
+                    unsafe { ShutdownSteamvr() };
                 }
                 ServerCoreEvent::RestartPending => {
                     if let Some(context) = SERVER_CORE_CONTEXT.write().take() {
                         context.restart();
                     }
 
-                    unsafe { crate::ShutdownSteamvr() };
+                    unsafe { ShutdownSteamvr() };
                 }
             }
         }
 
-        unsafe { crate::ShutdownOpenvrClient() };
+        unsafe { ShutdownOpenvrClient() };
     });
+}
+
+pub extern "C" fn register_buttons(device_id: u64) {
+    for id in &*REGISTERED_BUTTON_SET {
+        if let Some(info) = BUTTON_INFO.get(id) {
+            if info.device_id == device_id {
+                unsafe { RegisterButton(*id) };
+            }
+        } else {
+            error!("Cannot register unrecognized button ID {id}");
+        }
+    }
 }
 
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
@@ -332,18 +393,18 @@ pub unsafe extern "C" fn HmdDriverFactory(
     // Make sure the context is initialized, and initialize logging
     SERVER_CORE_CONTEXT.read().as_ref();
 
-    crate::GetSerialNumber = Some(props::get_serial_number);
-    crate::SetOpenvrProps = Some(props::set_device_openvr_props);
-    crate::RegisterButtons = Some(input_mapping::register_buttons);
-    crate::DriverReadyIdle = Some(driver_ready_idle);
-    crate::HapticsSend = Some(send_haptics);
-    crate::SetVideoConfigNals = Some(set_video_config_nals);
-    crate::VideoSend = Some(send_video);
-    crate::GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-    crate::ReportComposed = Some(report_composed);
-    crate::ReportPresent = Some(report_present);
-    crate::WaitForVSync = Some(wait_for_vsync);
-    crate::ShutdownRuntime = Some(shutdown_driver);
+    GetSerialNumber = Some(props::get_serial_number);
+    SetOpenvrProps = Some(props::set_device_openvr_props);
+    RegisterButtons = Some(register_buttons);
+    DriverReadyIdle = Some(driver_ready_idle);
+    HapticsSend = Some(send_haptics);
+    SetVideoConfigNals = Some(set_video_config_nals);
+    VideoSend = Some(send_video);
+    GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
+    ReportComposed = Some(report_composed);
+    ReportPresent = Some(report_present);
+    WaitForVSync = Some(wait_for_vsync);
+    ShutdownRuntime = Some(shutdown_driver);
 
-    crate::CppOpenvrEntryPoint(interface_name, return_code)
+    CppOpenvrEntryPoint(interface_name, return_code)
 }

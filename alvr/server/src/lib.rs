@@ -3,7 +3,6 @@ mod body_tracking;
 mod c_api;
 mod connection;
 mod face_tracking;
-mod graphics;
 mod hand_gestures;
 mod haptics;
 mod input_mapping;
@@ -13,19 +12,6 @@ mod sockets;
 mod statistics;
 mod tracking;
 mod web_server;
-
-#[allow(
-    non_camel_case_types,
-    non_upper_case_globals,
-    dead_code,
-    non_snake_case,
-    clippy::unseparated_literal_suffix
-)]
-mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
-use alvr_sockets::StreamSender;
-use bindings::*;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
@@ -37,19 +23,19 @@ use alvr_common::{
     warn, ConnectionState, Fov, LifecycleState, Pose, RelaxedAtomic, DEVICE_ID_TO_PATH,
 };
 use alvr_events::{EventType, HapticsEvent};
-use alvr_filesystem::{self as afs, Layout};
+use alvr_filesystem as afs;
 use alvr_packets::{
     BatteryInfo, ButtonEntry, ClientListAction, DecoderInitializationConfig, Haptics, Tracking,
     VideoPacketHeader,
 };
 use alvr_server_io::ServerDataManager;
 use alvr_session::{CodecType, OpenvrProperty, Settings};
+use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
 use std::{
     collections::{HashSet, VecDeque},
     env,
-    ffi::CString,
     fs::File,
     io::Write,
     sync::{
@@ -63,7 +49,7 @@ use std::{
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 use tokio::{runtime::Runtime, sync::broadcast};
 
-static FILESYSTEM_LAYOUT: Lazy<Layout> = Lazy::new(|| {
+static FILESYSTEM_LAYOUT: Lazy<afs::Layout> = Lazy::new(|| {
     afs::filesystem_layout_from_openvr_driver_root_dir(
         &alvr_server_io::get_driver_dir_from_registered().unwrap(),
     )
@@ -95,6 +81,7 @@ pub enum ServerCoreEvent {
     },
     Buttons(Vec<ButtonEntry>), // Note: this is after mapping
     RequestIDR,
+    CaptureFrame,
     GameRenderLatencyFeedback(Duration), // only used for SteamVR
     ShutdownPending,
     RestartPending,
@@ -134,7 +121,10 @@ pub fn create_recording_file(connection_context: &ConnectionContext, settings: &
 
             *connection_context.video_recording_file.lock() = Some(file);
 
-            unsafe { RequestIDR() };
+            connection_context
+                .events_queue
+                .lock()
+                .push_back(ServerCoreEvent::RequestIDR);
         }
         Err(e) => {
             error!("Failed to record video on disk: {e}");
@@ -157,6 +147,10 @@ pub fn notify_restart_driver() {
     } else {
         error!("Cannot restart SteamVR. No dashboard process found on local device.");
     }
+}
+
+pub fn settings() -> Settings {
+    SERVER_DATA_MANAGER.read().settings().clone()
 }
 
 struct ServerCoreContext {
@@ -199,33 +193,6 @@ impl ServerCoreContext {
             let connection_context = Arc::clone(&connection_context);
             async move { alvr_common::show_err(web_server::web_server(connection_context).await) }
         });
-
-        unsafe {
-            g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
-                .unwrap()
-                .into_raw();
-            g_driverRootDir = CString::new(
-                FILESYSTEM_LAYOUT
-                    .openvr_driver_root_dir
-                    .to_string_lossy()
-                    .to_string(),
-            )
-            .unwrap()
-            .into_raw();
-        };
-
-        graphics::initialize_shaders();
-
-        unsafe {
-            LogError = Some(c_api::alvr_log_error);
-            LogWarn = Some(c_api::alvr_log_warn);
-            LogInfo = Some(c_api::alvr_log_info);
-            LogDebug = Some(c_api::alvr_log_debug);
-            LogPeriodically = Some(c_api::alvr_log_periodically);
-            PathStringToHash = Some(c_api::alvr_path_to_id);
-
-            CppInit();
-        }
 
         Self {
             lifecycle_state: Arc::new(RwLock::new(LifecycleState::StartingUp)),

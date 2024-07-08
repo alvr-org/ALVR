@@ -2,7 +2,12 @@
 // todo: fill out more properties for headset and controllers
 // todo: add more emulation modes
 
-use crate::{FfiOpenvrProperty, FfiOpenvrPropertyValue, SERVER_DATA_MANAGER};
+use crate::openvr::{
+    FfiOpenvrProperty, FfiOpenvrPropertyType_Bool, FfiOpenvrPropertyType_Double,
+    FfiOpenvrPropertyType_Float, FfiOpenvrPropertyType_Int32, FfiOpenvrPropertyType_String,
+    FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
+};
+use crate::SERVER_DATA_MANAGER;
 use alvr_common::{info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
@@ -16,13 +21,13 @@ pub fn to_ffi_openvr_prop(prop: OpenvrProperty) -> FfiOpenvrProperty {
     let (key, value) = prop.into_key_value();
 
     let type_ = match value {
-        OpenvrPropValue::Bool(_) => crate::FfiOpenvrPropertyType_Bool,
-        OpenvrPropValue::Float(_) => crate::FfiOpenvrPropertyType_Float,
-        OpenvrPropValue::Int32(_) => crate::FfiOpenvrPropertyType_Int32,
-        OpenvrPropValue::Uint64(_) => crate::FfiOpenvrPropertyType_Uint64,
-        OpenvrPropValue::Vector3(_) => crate::FfiOpenvrPropertyType_Vector3,
-        OpenvrPropValue::Double(_) => crate::FfiOpenvrPropertyType_Double,
-        OpenvrPropValue::String(_) => crate::FfiOpenvrPropertyType_String,
+        OpenvrPropValue::Bool(_) => FfiOpenvrPropertyType_Bool,
+        OpenvrPropValue::Float(_) => FfiOpenvrPropertyType_Float,
+        OpenvrPropValue::Int32(_) => FfiOpenvrPropertyType_Int32,
+        OpenvrPropValue::Uint64(_) => FfiOpenvrPropertyType_Uint64,
+        OpenvrPropValue::Vector3(_) => FfiOpenvrPropertyType_Vector3,
+        OpenvrPropValue::Double(_) => FfiOpenvrPropertyType_Double,
+        OpenvrPropValue::String(_) => FfiOpenvrPropertyType_String,
     };
 
     let value = match value {
@@ -115,7 +120,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         fn set_prop(prop: OpenvrProperty) {
             info!("Setting head OpenVR prop: {prop:?}");
             unsafe {
-                crate::SetOpenvrProperty(*HEAD_ID, to_ffi_openvr_prop(prop));
+                crate::openvr::SetOpenvrProperty(*HEAD_ID, to_ffi_openvr_prop(prop));
             }
         }
 
@@ -233,7 +238,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                 );
                 unsafe {
-                    crate::SetOpenvrProperty(device_id, to_ffi_openvr_prop(prop));
+                    crate::openvr::SetOpenvrProperty(device_id, to_ffi_openvr_prop(prop));
                 }
             };
 

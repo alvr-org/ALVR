@@ -525,18 +525,6 @@ pub fn automatic_bindings(
     bindings
 }
 
-pub extern "C" fn register_buttons(device_id: u64) {
-    for id in &*REGISTERED_BUTTON_SET {
-        if let Some(info) = BUTTON_INFO.get(id) {
-            if info.device_id == device_id {
-                unsafe { crate::RegisterButton(*id) };
-            }
-        } else {
-            error!("Cannot register unrecognized button ID {id}");
-        }
-    }
-}
-
 pub struct ButtonMappingManager {
     mappings: HashMap<u64, Vec<BindingTarget>>,
     binary_source_states: HashMap<u64, bool>,

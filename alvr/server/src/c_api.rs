@@ -122,6 +122,7 @@ pub enum AlvrEvent {
     },
     ButtonsUpdated,
     RequestIDR,
+    CaptureFrame,
     RestartPending,
     ShutdownPending,
 }
@@ -239,10 +240,7 @@ pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_p
 
 #[no_mangle]
 pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
-    string_to_c_str(
-        buffer,
-        &serde_json::to_string(&SERVER_DATA_MANAGER.read().settings()).unwrap(),
-    )
+    string_to_c_str(buffer, &serde_json::to_string(&crate::settings()).unwrap())
 }
 
 #[no_mangle]
@@ -314,6 +312,7 @@ pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
                     *out_event = AlvrEvent::ButtonsUpdated;
                 }
                 ServerCoreEvent::RequestIDR => *out_event = AlvrEvent::RequestIDR,
+                ServerCoreEvent::CaptureFrame => *out_event = AlvrEvent::CaptureFrame,
                 ServerCoreEvent::GameRenderLatencyFeedback(_) => {} // implementation not needed
                 ServerCoreEvent::RestartPending => {
                     *out_event = AlvrEvent::RestartPending;

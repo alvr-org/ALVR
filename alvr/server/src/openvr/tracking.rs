@@ -1,4 +1,5 @@
-use crate::{tracking, FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::openvr::{FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
+use crate::tracking;
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,

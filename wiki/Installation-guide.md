@@ -6,7 +6,7 @@ Launcher will allow you to manage old, current and new installations of ALVR str
 
 ### Installation
 
-* Download `alvr_launcher_windows.zip` on windows or `alvr_launcher_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest) and extract into a path that contains only ASCII characters (english only) and has edit permissions without administrator or root rights.
+* Download `alvr_launcher_windows.zip` (on Windows) or `alvr_launcher_linux.tar.gz` (on Linux) from the release [download page](https://github.com/alvr-org/ALVR/releases/latest) and extract into a path that contains only ASCII characters (english only) and has edit permissions without administrator or root rights.
 * Run `ALVR Launcher.exe` (on Windows) or `alvr_launcher_linux/ALVR Launcher` (on Linux)
 * Press `Add version` button
 * For default installation keep channel and version as is and press `Install`
@@ -16,7 +16,7 @@ Launcher will allow you to manage old, current and new installations of ALVR str
 
 ### Usage
 
-* Before launching SteamVR through ALVR, please install it and run at least once without ALVR and close it.
+* Before launching SteamVR through ALVR, please install it. First time launch will result in steamvr being blank and alvr will not work - close it and start again. It will have registered driver and should work.
 * Launch ALVR client on your headset. While the headset screen is on, click `Trust` next to the client entry (in the ALVR streamer app on PC, in the `Devices` tab) to start streaming.
 * You can change settings on the PC in the `Settings` tab. Most of the settings require to restart SteamVR to be applied. Use the apposite button on the bottom right corner.
 
@@ -77,7 +77,11 @@ By default ALVR disables other SteamVR drivers before starting. Among these driv
 
 ### Launch ALVR together with SteamVR
 
-You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR. Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
+You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR.
+
+**Note:** You can only do that while SteamVR is not already running. Otherwise driver might be unregistered on shutdown.
+
+Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
 
 ### Connect headset to PC via a USB Cable
 

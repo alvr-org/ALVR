@@ -138,8 +138,14 @@ async fn http_api(
                             alvr_events::send_event(EventType::AudioDevices(list));
                         }
                     }
-                    ServerRequest::CaptureFrame => unsafe { crate::CaptureFrame() },
-                    ServerRequest::InsertIdr => unsafe { crate::RequestIDR() },
+                    ServerRequest::CaptureFrame => connection_context
+                        .events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::CaptureFrame),
+                    ServerRequest::InsertIdr => connection_context
+                        .events_queue
+                        .lock()
+                        .push_back(ServerCoreEvent::RequestIDR),
                     ServerRequest::StartRecording => crate::create_recording_file(
                         connection_context,
                         SERVER_DATA_MANAGER.read().settings(),
@@ -217,7 +223,10 @@ async fn http_api(
 
             let res = websocket(request, sender, protocol::Message::Binary).await?;
 
-            unsafe { crate::RequestIDR() };
+            connection_context
+                .events_queue
+                .lock()
+                .push_back(ServerCoreEvent::RequestIDR);
 
             res
         }

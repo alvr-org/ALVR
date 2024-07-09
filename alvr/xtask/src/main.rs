@@ -197,7 +197,7 @@ fn main() {
                     build::build_streamer(profile, true, gpl, None, false, profiling, keep_config)
                 }
                 "build-launcher" => build::build_launcher(profile, true, false),
-                "build-server-lib" => build::build_server_lib(profile, true, gpl, None, false),
+                "build-server-lib" => build::build_server_lib(profile, true, None, false),
                 "build-client" => build::build_android_client(profile),
                 "build-client-lib" => build::build_android_client_core_lib(profile, link_stdcpp),
                 "build-client-xr-lib" => {

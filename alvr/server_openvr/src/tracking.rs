@@ -1,5 +1,4 @@
-use crate::openvr::{FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
-use crate::tracking;
+use crate::{FfiBodyTracker, FfiDeviceMotion, FfiHandSkeleton, FfiQuat};
 use alvr_common::{
     glam::{EulerRot, Quat, Vec3},
     once_cell::sync::Lazy,
@@ -27,7 +26,7 @@ pub fn to_openvr_hand_skeleton(
     hand_skeleton: [Pose; 26],
 ) -> [Pose; 31] {
     let (left_hand_skeleton_offset, right_hand_skeleton_offset) =
-        tracking::get_hand_skeleton_offsets(config);
+        alvr_server_core::get_hand_skeleton_offsets(config);
     let id = device_id;
 
     // global joints

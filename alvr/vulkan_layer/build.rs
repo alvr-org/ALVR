@@ -5,7 +5,7 @@ fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let cpp_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let server_cpp_dir =
-        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../server/cpp");
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../server_openvr/cpp");
 
     let vulkan = pkg_config::Config::new().probe("vulkan").unwrap();
     let libunwind = pkg_config::Config::new().probe("libunwind").unwrap();

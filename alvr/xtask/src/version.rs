@@ -63,13 +63,25 @@ pub fn check_msrv() {
     .unwrap();
     cmd!(
         sh,
-        "cargo msrv verify --output-format json --path alvr/server"
+        "cargo msrv verify --output-format json --path alvr/server_openvr"
     )
     .run()
     .unwrap();
     cmd!(
         sh,
         "cargo msrv verify --output-format json --path alvr/dashboard"
+    )
+    .run()
+    .unwrap();
+    cmd!(
+        sh,
+        "cargo msrv verify --output-format json --path alvr/launcher"
+    )
+    .run()
+    .unwrap();
+    cmd!(
+        sh,
+        "cargo msrv verify --output-format json --path alvr/client_openxr"
     )
     .run()
     .unwrap();

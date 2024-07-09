@@ -14,16 +14,13 @@ mod bindings {
 }
 use bindings::*;
 
-use crate::{
-    input_mapping::REGISTERED_BUTTON_SET, logging_backend, ServerCoreContext, ServerCoreEvent,
-    SERVER_DATA_MANAGER,
-};
 use alvr_common::{
     error, once_cell::sync::Lazy, parking_lot::RwLock, warn, BUTTON_INFO, HAND_LEFT_ID,
     HAND_RIGHT_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
+use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET};
 use alvr_session::CodecType;
 use std::{
     ffi::{c_char, c_void, CString},
@@ -38,7 +35,7 @@ static FILESYSTEM_LAYOUT: Lazy<afs::Layout> = Lazy::new(|| {
 });
 
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
-    logging_backend::init_logging();
+    alvr_server_core::init_logging();
 
     unsafe {
         g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
@@ -57,12 +54,12 @@ static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(
     graphics::initialize_shaders();
 
     unsafe {
-        LogError = Some(crate::c_api::alvr_log_error);
-        LogWarn = Some(crate::c_api::alvr_log_warn);
-        LogInfo = Some(crate::c_api::alvr_log_info);
-        LogDebug = Some(crate::c_api::alvr_log_debug);
-        LogPeriodically = Some(crate::c_api::alvr_log_periodically);
-        PathStringToHash = Some(crate::c_api::alvr_path_to_id);
+        LogError = Some(alvr_server_core::alvr_log_error);
+        LogWarn = Some(alvr_server_core::alvr_log_warn);
+        LogInfo = Some(alvr_server_core::alvr_log_info);
+        LogDebug = Some(alvr_server_core::alvr_log_debug);
+        LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
+        PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
 
         CppInit();
     }
@@ -145,8 +142,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let controllers_config;
                     let track_body;
                     {
-                        let data_lock = SERVER_DATA_MANAGER.read();
-                        let headset_config = &data_lock.settings().headset;
+                        let headset_config = &alvr_server_core::settings().headset;
 
                         controllers_config = headset_config.controllers.clone().into_option();
                         track_body = headset_config.body_tracking.enabled();
@@ -160,8 +156,7 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let left_openvr_hand_skeleton;
                     let right_openvr_hand_skeleton;
                     {
-                        let data_manager_lock = SERVER_DATA_MANAGER.read();
-                        let headset_config = &data_manager_lock.settings().headset;
+                        let headset_config = &alvr_server_core::settings().headset;
 
                         left_openvr_hand_skeleton = tracking.hand_skeletons[0].map(|s| {
                             tracking::to_openvr_hand_skeleton(headset_config, *HAND_LEFT_ID, s)
@@ -360,9 +355,7 @@ extern "C" fn report_present(timestamp_ns: u64, offset_ns: u64) {
 
 extern "C" fn wait_for_vsync() {
     // NB: don't sleep while locking SERVER_DATA_MANAGER or SERVER_CORE_CONTEXT
-    let sleep_duration = if SERVER_DATA_MANAGER
-        .read()
-        .settings()
+    let sleep_duration = if alvr_server_core::settings()
         .video
         .optimize_game_render_latency
     {

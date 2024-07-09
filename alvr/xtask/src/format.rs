@@ -6,7 +6,7 @@ use walkdir::WalkDir;
 use xshell::{cmd, Shell};
 
 fn files_to_format_paths() -> Vec<PathBuf> {
-    let cpp_dir = afs::crate_dir("server").join("cpp");
+    let cpp_dir = afs::crate_dir("server_openvr").join("cpp");
 
     WalkDir::new(cpp_dir)
         .into_iter()

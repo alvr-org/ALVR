@@ -7,11 +7,15 @@ mod hand_gestures;
 mod haptics;
 mod input_mapping;
 mod logging_backend;
-mod openvr;
 mod sockets;
 mod statistics;
 mod tracking;
 mod web_server;
+
+pub use c_api::*;
+pub use input_mapping::REGISTERED_BUTTON_SET;
+pub use logging_backend::init_logging;
+pub use tracking::get_hand_skeleton_offsets;
 
 use crate::connection::VideoPacket;
 use alvr_common::{
@@ -153,7 +157,7 @@ pub fn settings() -> Settings {
     SERVER_DATA_MANAGER.read().settings().clone()
 }
 
-struct ServerCoreContext {
+pub struct ServerCoreContext {
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     is_restarting: RelaxedAtomic,
     connection_context: Arc<ConnectionContext>,
@@ -162,7 +166,7 @@ struct ServerCoreContext {
 }
 
 impl ServerCoreContext {
-    fn new() -> Self {
+    pub fn new() -> Self {
         if SERVER_DATA_MANAGER
             .read()
             .settings()
@@ -203,7 +207,7 @@ impl ServerCoreContext {
         }
     }
 
-    fn start_connection(&self) {
+    pub fn start_connection(&self) {
         // Note: Idle state is not used on the server side
         *self.lifecycle_state.write() = LifecycleState::Resumed;
 
@@ -214,11 +218,11 @@ impl ServerCoreContext {
         }));
     }
 
-    fn poll_event(&self) -> Option<ServerCoreEvent> {
+    pub fn poll_event(&self) -> Option<ServerCoreEvent> {
         self.connection_context.events_queue.lock().pop_front()
     }
 
-    fn send_haptics(&self, haptics: Haptics) {
+    pub fn send_haptics(&self, haptics: Haptics) {
         let haptics_config = {
             let data_manager_lock = SERVER_DATA_MANAGER.read();
 
@@ -252,7 +256,7 @@ impl ServerCoreContext {
         }
     }
 
-    fn set_video_config_nals(&self, config_buffer: Vec<u8>, codec: CodecType) {
+    pub fn set_video_config_nals(&self, config_buffer: Vec<u8>, codec: CodecType) {
         if let Some(sender) = &*self.connection_context.video_mirror_sender.lock() {
             sender.send(config_buffer.clone()).ok();
         }
@@ -267,7 +271,7 @@ impl ServerCoreContext {
         });
     }
 
-    fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
+    pub fn send_video_nal(&self, target_timestamp: Duration, nal_buffer: Vec<u8>, is_idr: bool) {
         // start in the corrupts state, the client didn't receive the initial IDR yet.
         static STREAM_CORRUPTED: AtomicBool = AtomicBool::new(true);
         static LAST_IDR_INSTANT: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
@@ -351,7 +355,7 @@ impl ServerCoreContext {
         }
     }
 
-    fn get_dynamic_encoder_params(&self) -> Option<DynamicEncoderParams> {
+    pub fn get_dynamic_encoder_params(&self) -> Option<DynamicEncoderParams> {
         let pair = {
             let server_data_lock = SERVER_DATA_MANAGER.read();
             self.connection_context
@@ -371,13 +375,13 @@ impl ServerCoreContext {
         }
     }
 
-    fn report_composed(&self, target_timestamp: Duration, offset: Duration) {
+    pub fn report_composed(&self, target_timestamp: Duration, offset: Duration) {
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_frame_composed(target_timestamp, offset);
         }
     }
 
-    fn report_present(&self, target_timestamp: Duration, offset: Duration) {
+    pub fn report_present(&self, target_timestamp: Duration, offset: Duration) {
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_frame_present(target_timestamp, offset);
         }
@@ -389,7 +393,7 @@ impl ServerCoreContext {
             .report_frame_present(&server_data_lock.settings().video.bitrate.adapt_to_framerate);
     }
 
-    fn duration_until_next_vsync(&self) -> Option<Duration> {
+    pub fn duration_until_next_vsync(&self) -> Option<Duration> {
         self.connection_context
             .statistics_manager
             .lock()
@@ -397,10 +401,16 @@ impl ServerCoreContext {
             .map(|stats| stats.duration_until_next_vsync())
     }
 
-    fn restart(self) {
+    pub fn restart(self) {
         self.is_restarting.set(true);
 
         // drop is called here for self
+    }
+}
+
+impl Default for ServerCoreContext {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

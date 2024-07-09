@@ -2,12 +2,11 @@
 // todo: fill out more properties for headset and controllers
 // todo: add more emulation modes
 
-use crate::openvr::{
+use crate::{
     FfiOpenvrProperty, FfiOpenvrPropertyType_Bool, FfiOpenvrPropertyType_Double,
     FfiOpenvrPropertyType_Float, FfiOpenvrPropertyType_Int32, FfiOpenvrPropertyType_String,
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
-use crate::SERVER_DATA_MANAGER;
 use alvr_common::{info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
@@ -59,8 +58,7 @@ pub fn to_ffi_openvr_prop(prop: OpenvrProperty) -> FfiOpenvrProperty {
 }
 
 fn serial_number(device_id: u64) -> String {
-    let data_manager_lock = SERVER_DATA_MANAGER.read();
-    let settings = data_manager_lock.settings();
+    let settings = alvr_server_core::settings();
 
     if device_id == *HEAD_ID {
         match &settings.headset.emulation_mode {
@@ -113,14 +111,13 @@ pub extern "C" fn get_serial_number(device_id: u64, out_str: *mut c_char) -> u64
 pub extern "C" fn set_device_openvr_props(device_id: u64) {
     use OpenvrProperty::*;
 
-    let data_manager_lock = SERVER_DATA_MANAGER.read();
-    let settings = data_manager_lock.settings();
+    let settings = alvr_server_core::settings();
 
     if device_id == *HEAD_ID {
         fn set_prop(prop: OpenvrProperty) {
             info!("Setting head OpenVR prop: {prop:?}");
             unsafe {
-                crate::openvr::SetOpenvrProperty(*HEAD_ID, to_ffi_openvr_prop(prop));
+                crate::SetOpenvrProperty(*HEAD_ID, to_ffi_openvr_prop(prop));
             }
         }
 
@@ -238,7 +235,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     }
                 );
                 unsafe {
-                    crate::openvr::SetOpenvrProperty(device_id, to_ffi_openvr_prop(prop));
+                    crate::SetOpenvrProperty(device_id, to_ffi_openvr_prop(prop));
                 }
             };
 

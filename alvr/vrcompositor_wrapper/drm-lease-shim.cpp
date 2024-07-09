@@ -10,7 +10,7 @@
 #include <filesystem>
 
 #define PICOJSON_USE_INT64
-#include "../server/cpp/alvr_server/include/picojson.h"
+#include "../server_openvr/cpp/alvr_server/include/picojson.h"
 
 #define LOAD_FN(f) \
     if (!real_##f) { \

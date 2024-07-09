@@ -1,4 +1,5 @@
 #![allow(dead_code, unused_variables)]
+#![allow(clippy::missing_safety_doc)]
 
 use crate::{logging_backend, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER};
 use alvr_common::{
@@ -198,22 +199,22 @@ pub unsafe extern "C" fn alvr_log_error(string_ptr: *const c_char) {
     alvr_common::show_e(CStr::from_ptr(string_ptr).to_string_lossy());
 }
 
-pub fn log(level: log::Level, string_ptr: *const c_char) {
-    unsafe { log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy()) };
+pub unsafe fn log(level: log::Level, string_ptr: *const c_char) {
+    log::log!(level, "{}", CStr::from_ptr(string_ptr).to_string_lossy());
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_log_warn(string_ptr: *const c_char) {
+pub unsafe extern "C" fn alvr_log_warn(string_ptr: *const c_char) {
     log(log::Level::Warn, string_ptr);
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_log_info(string_ptr: *const c_char) {
+pub unsafe extern "C" fn alvr_log_info(string_ptr: *const c_char) {
     log(log::Level::Info, string_ptr);
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_log_debug(string_ptr: *const c_char) {
+pub unsafe extern "C" fn alvr_log_debug(string_ptr: *const c_char) {
     log(log::Level::Debug, string_ptr);
 }
 
@@ -403,7 +404,7 @@ pub extern "C" fn alvr_advance_tracking_queue() {
 /// Call with null out_entries to get the buffer length
 /// call with non-null out_entries to get the buttons and advanced the internal queue
 #[no_mangle]
-pub extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
+pub unsafe extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
     let entries_count = BUTTONS_QUEUE.lock().front().map(|e| e.len()).unwrap_or(0) as u64;
 
     if out_entries.is_null() {
@@ -412,13 +413,11 @@ pub extern "C" fn alvr_get_buttons(out_entries: *mut AlvrButtonEntry) -> u64 {
 
     if let Some(button_entries) = BUTTONS_QUEUE.lock().pop_front() {
         for (i, entry) in button_entries.into_iter().enumerate() {
-            unsafe {
-                let out_entry = &mut (*out_entries.add(i));
-                out_entry.id = entry.path_id;
-                match entry.value {
-                    ButtonValue::Binary(value) => out_entry.value.scalar = value,
-                    ButtonValue::Scalar(value) => out_entry.value.float = value,
-                }
+            let out_entry = &mut (*out_entries.add(i));
+            out_entry.id = entry.path_id;
+            match entry.value {
+                ButtonValue::Binary(value) => out_entry.value.scalar = value,
+                ButtonValue::Scalar(value) => out_entry.value.float = value,
             }
         }
 
@@ -446,7 +445,7 @@ pub extern "C" fn alvr_send_haptics(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_set_video_config_nals(
+pub unsafe extern "C" fn alvr_set_video_config_nals(
     codec: AlvrCodecType,
     buffer_ptr: *const u8,
     len: i32,
@@ -459,7 +458,7 @@ pub extern "C" fn alvr_set_video_config_nals(
 
     let mut config_buffer = vec![0; len as usize];
 
-    unsafe { ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize) };
+    ptr::copy_nonoverlapping(buffer_ptr, config_buffer.as_mut_ptr(), len as usize);
 
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         context.set_video_config_nals(config_buffer, codec);
@@ -467,19 +466,19 @@ pub extern "C" fn alvr_set_video_config_nals(
 }
 
 #[no_mangle]
-pub extern "C" fn alvr_send_video_nal(
+pub unsafe extern "C" fn alvr_send_video_nal(
     timestamp_ns: u64,
     buffer_ptr: *mut u8,
     len: i32,
     is_idr: bool,
 ) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        let buffer = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+        let buffer = std::slice::from_raw_parts(buffer_ptr, len as usize);
         context.send_video_nal(Duration::from_nanos(timestamp_ns), buffer.to_vec(), is_idr);
     }
 }
 
-// Returns true if updated
+/// Returns true if updated
 #[no_mangle]
 pub unsafe extern "C" fn alvr_get_dynamic_encoder_params(
     out_params: *mut AlvrDynamicEncoderParams,
@@ -520,10 +519,10 @@ pub extern "C" fn alvr_report_present(timestamp_ns: u64, offset_ns: u64) {
 
 /// Retrun true if a valid value is provided
 #[no_mangle]
-pub extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
+pub unsafe extern "C" fn alvr_duration_until_next_vsync(out_ns: *mut u64) -> bool {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         if let Some(duration) = context.duration_until_next_vsync() {
-            unsafe { *out_ns = duration.as_nanos() as u64 };
+            *out_ns = duration.as_nanos() as u64;
             true
         } else {
             false
@@ -544,114 +543,3 @@ pub unsafe extern "C" fn alvr_restart() {
 pub unsafe extern "C" fn alvr_shutdown() {
     SERVER_CORE_CONTEXT.write().take();
 }
-
-// // Device API:
-
-// // Use the two-call pattern to first get the array length then the array data.
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_get_devices(out_device_configs: *mut AlvrDeviceConfig) -> u64 {
-//     todo!()
-// }
-
-// // After this call, previous button and tracking data is discarded
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_update_inputs(device_id: u64) {
-//     todo!()
-// }
-
-// // Use the two-call pattern to first get the array length then the array data.
-// // Data is updated after a call to alvr_update_inputs.
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_get_inputs(
-//     device_id: u64,
-//     out_inputs_arr: *mut AlvrInput,
-//     out_timestamp_ns: u64,
-// ) -> u64 {
-//     todo!()
-// }
-
-// // pose_id is something like /user/hand/left/input/grip/pose
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_get_tracked_pose(
-//     pose_id: u64,
-//     timestamp_ns: u64,
-//     out_relation: *mut AlvrSpaceRelation,
-// ) {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_get_hand_tracking(
-//     device_id: u64,
-//     timestamp_ns: u64,
-//     out_joint_set: *mut AlvrJointSet,
-// ) {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_view_poses(
-//     out_head_relation: *mut AlvrSpaceRelation,
-//     out_fov_arr: *mut AlvrFov,            // 2 elements
-//     out_relative_pose_arr: *mut AlvrPose, // 2 elements
-// ) {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_destroy_device(device_id: u64) {
-//     todo!()
-// }
-
-// // Compositor target API:
-
-// This should reflect the client current framerate
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_get_framerate() -> f32 {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_pre_vulkan() {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_post_vulkan() {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_create_vk_target_swapchain(
-//     width: u32,
-//     height: u32,
-//     vk_color_format: i32,
-//     vk_color_space: i32,
-//     vk_image_usage: u32,
-//     vk_present_mode: i32,
-//     image_count: u64,
-// ) {
-//     todo!()
-// }
-
-// // returns vkResult
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_acquire_image(out_swapchain_index: u64) -> i32 {
-//     todo!()
-// }
-
-// // returns vkResult
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_present(
-//     vk_queue: u64,
-//     swapchain_index: u64,
-//     timeline_semaphore_value: u64,
-//     timestamp_ns: u64,
-// ) -> i32 {
-//     todo!()
-// }
-
-// #[no_mangle]
-// pub unsafe extern "C" fn alvr_destroy_vk_target_swapchain() {
-//     todo!()
-// }

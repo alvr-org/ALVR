@@ -123,7 +123,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
     )
     .unwrap();
     sh.copy_file(
-        afs::crate_dir("server").join("LICENSE-Valve"),
+        afs::crate_dir("server_openvr").join("LICENSE-Valve"),
         licenses_dir.join("Valve.txt"),
     )
     .unwrap();

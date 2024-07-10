@@ -7,7 +7,7 @@ as well as give you some pointers to troubleshoot common configuration issues.
 
 ## Prerequisites
 
-* You have installed the ALVR streamer on your PC, and the ALVR client on your HMD.
+* You have installed the ALVR streamer on your PC, and the ALVR app on your HMD.
 * You can launch up to the SteamVR void (or up to the SteamVR home) and are able to launch games.
 
 ## Step 1: choose resolution, refresh rate, codec
@@ -42,7 +42,7 @@ Slowly increase bitrate until one of two things happen:
 
 ## Step 4: tweak frame buffering
 
-If you notice micro-stuttering in the client, especially in busy scenes with fast motion, slowly increase maxBufferingFrames until the playback is smooth.
+If you notice micro-stuttering on the headset, especially in busy scenes with fast motion, slowly increase maxBufferingFrames until the playback is smooth.
 
 Keep in mind that increasing maxBufferingFrames will linearly increase latency;
 if the value that gives a smooth playback results in too high of a latency for

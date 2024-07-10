@@ -70,7 +70,7 @@ If you want to edit and rebuild the code, you can skip the `prepare-deps` comman
 
 ## Fedora CUDA installation
 
-If you are here for CUDA installation on Fedora you're at the right place! Else continue down to [Client Building](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#client-building)
+If you are here for CUDA installation on Fedora you're at the right place! Else continue down to [Android App Building](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#android-app-building)
 
 ### 1. Install Nvidia drivers and Fedora CUDA driver
 
@@ -145,11 +145,11 @@ From the ALVR directory edit the ./alvr/xtask/src/dependencies.rs, and change tw
 
 You should be good to go! Refer to [Streamer Building](https://github.com/alvr-org/ALVR/wiki/Building-From-Source#streamer-building) for the commands to build ALVR
 
-# Client Building
+# Android App Building
 
 ## 1. Installing necessary packages
 
-For the client you need install:
+For the app you need install:
 
 * [Android Studio](https://developer.android.com/studio) or the [sdkmanager](https://developer.android.com/studio/command-line/sdkmanager)
 * Android SDK Platform-Tools 29 (Android 10)
@@ -224,7 +224,7 @@ Move to the root directory of the project, then run this command:
 cargo xtask prepare-deps --platform android
 ```
 
-Before building the client, Android has to have us to agree to the licenses otherwise building the client will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
+Before building the app, Android has to have us to agree to the licenses otherwise building the app will halt and fail. To accept the agreements, follow the instructions for your corresponding OS:
 
 * Windows:
   
@@ -240,7 +240,7 @@ Before building the client, Android has to have us to agree to the licenses othe
   sdkmanager --licenses
   ```
 
-Next up is the proper build of the client. Run the following:
+Next up is the proper build of the app. Run the following:
 
 ```bash
 cargo xtask build-client --release

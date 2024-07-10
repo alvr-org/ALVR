@@ -3,7 +3,7 @@
 ## SteamVR
 
 The steam runtimes SteamVR runs in break the alvr driver loaded by SteamVR.
-This causes the screen to stay black on the client or an error to be reported that the pipewire device is missing or can even result in SteamVR crashing.
+This causes the screen to stay black on the headset or an error to be reported that the pipewire device is missing or can even result in SteamVR crashing.
 
 ### Fix
 

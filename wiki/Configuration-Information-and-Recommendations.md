@@ -47,7 +47,7 @@
 
 ## Routing / Switching / Firewalling / General Info
 
-- Ideally client and streamer should exist on the same logical (layer 2) network and subnet - this allows for no routing overhead, and the correct function of client discovery via [mDNS](https://en.wikipedia.org/wiki/Multicast_DNS)
+- Ideally the headset and streamer should exist on the same logical (layer 2) network and subnet - this allows for no routing overhead, and the correct function of device discovery via [mDNS](https://en.wikipedia.org/wiki/Multicast_DNS)
 - Twisted pair (normal copper ethernet cables) should never be run alongside power cables - this can cause signal noise and result in frame loss and lowered auto-negotiation speeds
 - High quality CAT5E or higher (ideally CAT6A or CAT7) gigabit+ cabling should be used for modern networks
 - In some cases firewall, anti-virus, malware, or EDR (enhanced detection and response) software may interfere with network traffic - Windows Defender and Sophos Endpoint Protection are reported to work without issue

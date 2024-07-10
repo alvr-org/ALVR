@@ -2,7 +2,7 @@
 
 ## Launcher (BETA)
 
-Launcher will allow you to manage old, current and new installations of ALVR streamer and allow to automatically install and upgrade to specific ALVR client version on headset
+Launcher will allow you to manage old, current and new installations of ALVR streamer and allow to automatically install and upgrade to specific ALVR app version on headset
 
 ### Installation
 
@@ -11,13 +11,13 @@ Launcher will allow you to manage old, current and new installations of ALVR str
 * Press `Add version` button
 * For default installation keep channel and version as is and press `Install`
 * Wait until it finishes downloading, installing (depends on your connection)
-* To install ALVR client on headset, use button `Install APK`
+* To install ALVR app on headset, use button `Install APK`
 * In the list, to open streamer app (PC) press `Launch`. You will be greeted with a setup wizard. Follow the setup to set the firewall rules and other settings.
 
 ### Usage
 
 * Before launching SteamVR through ALVR, please install it. First time launch will result in steamvr being blank and alvr will not work - close it and start again. It will have registered driver and should work.
-* Launch ALVR client on your headset. While the headset screen is on, click `Trust` next to the client entry (in the ALVR streamer app on PC, in the `Devices` tab) to start streaming.
+* Launch ALVR app on your headset. While the headset screen is on, click `Trust` next to the device entry (in the ALVR streamer app on PC, in the `Devices` tab) to start streaming.
 * You can change settings on the PC in the `Settings` tab. Most of the settings require to restart SteamVR to be applied. Use the apposite button on the bottom right corner.
 
 For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
@@ -30,7 +30,7 @@ Then you can enable the microphone in the ALVR setting, leave "Virtual microphon
 
 ## Advanced installation
 
-### Installing client using Sidequest
+### Installing app using Sidequest
 
 * Install SideQuest on your PC and enable developer mode on the headset. You can follow [this guide](https://sidequestvr.com/setup-howto).
 * Connect your headset to Sidequest. If you have Quest, Pico, and other compatible device download the ALVR app [here](https://sidequestvr.com/app/9)

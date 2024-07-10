@@ -6,9 +6,9 @@ Here are explained two methods to connect PC and headset remotely, port-forwardi
 
 ## Important notes on security
 
-* ALVR protocol does not have any encryption or authentication (apart from ALVR client IP address shown in ALVR streamer and the requirement to add client on ALVR streamer).
-* It is recommended to run ALVR via encrypted tunnel (VPN) over the internet. In case VPN is not an option, access to ALVR streamer (UDP ports 9943 and 9944) should be restricted by Windows Firewall (only connections from known IP addresses of ALVR clients should be allowed) and ALVR streamer should not be left running unattended.
-* **Warning!** SteamVR allows to control desktop from VR headset (i.e. a **malicious ALVR client could take over the PC**).
+* ALVR protocol does not have any encryption or authentication (apart from ALVR device IP address shown in ALVR streamer and the requirement to add devices on ALVR streamer).
+* It is recommended to run ALVR via encrypted tunnel (VPN) over the internet. In case VPN is not an option, access to ALVR streamer (UDP ports 9943 and 9944) should be restricted by Windows Firewall (only connections from known IP addresses of ALVR devices should be allowed) and ALVR streamer should not be left running unattended.
+* **Warning!** SteamVR allows to control desktop from VR headset (i.e. a **malicious ALVR device could take over the PC**).
 * As the license states ALVR IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND (see the file `LICENSE` in this GitHub repository for legal text/definition). You are on your own (especially if you run ALVR over the Internet without VPN).
 
 ## Port-forwarding
@@ -23,7 +23,7 @@ Port-forwarding allows to connect devices that are behind different NATs, i.e. l
 
 You can now use ALVR to connect to your remote PC.
 
-**Note**: The public IP can change often. Every time you want to use ALVR you need to check that your current public IP is the same as the last time. If the IP changed, you can update it using the "Configure client" interface, accessed with the `Configure` button next to your headset name on the streamer.
+**Note**: The public IP can change often. Every time you want to use ALVR you need to check that your current public IP is the same as the last time. If the IP changed, you can update it using the "Edit connection" interface, accessed with the `Edit` button next to your headset name on the streamer.
 
 ## ZeroTier
 

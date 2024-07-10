@@ -230,7 +230,7 @@ impl eframe::App for Dashboard {
                         .inner_margin(Margin::same(7.0))
                         .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                 )
-                .exact_width(150.0)
+                .exact_width(160.0)
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);

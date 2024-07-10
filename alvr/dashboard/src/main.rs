@@ -109,7 +109,7 @@ fn main() {
                     server_events_receiver,
                 );
 
-                Box::new(Dashboard::new(creation_context, data_source))
+                Ok(Box::new(Dashboard::new(creation_context, data_source)))
             })
         },
     )

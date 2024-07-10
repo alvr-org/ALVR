@@ -1,6 +1,6 @@
 use super::{
     presets::{builtin_schema, PresetControl},
-    NestingInfo, SettingControl, INDENTATION_STEP,
+    NestingInfo, SettingControl,
 };
 use crate::dashboard::{DisplayString, ServerRequest};
 use alvr_gui_common::theme;
@@ -160,31 +160,25 @@ impl SettingsTab {
                         .striped(true)
                         .num_columns(2)
                         .show(ui, |ui| {
-                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.resolution_preset.ui(ui));
                             ui.end_row();
 
-                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.framerate_preset.ui(ui));
                             ui.end_row();
 
-                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.encoder_preset.ui(ui));
                             ui.end_row();
 
                             if let Some(preset) = &mut self.game_audio_preset {
-                                ui.add_space(INDENTATION_STEP);
                                 path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
                             }
 
                             if let Some(preset) = &mut self.microphone_preset {
-                                ui.add_space(INDENTATION_STEP);
                                 path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
                             }
 
-                            ui.add_space(INDENTATION_STEP);
                             path_value_pairs.extend(self.eye_face_tracking_preset.ui(ui));
                             ui.end_row();
                         })

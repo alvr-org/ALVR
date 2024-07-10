@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
-use crate::dashboard::components::{self, NestingInfo, SettingControl};
+use crate::dashboard::components::{self, NestingInfo, SettingControl, INDENTATION_STEP};
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,
@@ -139,16 +139,23 @@ impl Control {
         let mut response = None;
 
         ui.horizontal(|ui| {
+            ui.add_space(INDENTATION_STEP);
             ui.label(&self.name);
 
             if let Some(string) = &self.help {
                 if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                    popup::show_tooltip_text(ui.ctx(), egui::Id::new(POPUP_ID), string);
+                    popup::show_tooltip_text(
+                        ui.ctx(),
+                        ui.layer_id(),
+                        egui::Id::new(POPUP_ID),
+                        string,
+                    );
                 }
             }
             if self.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered() {
                 popup::show_tooltip_text(
                     ui.ctx(),
+                    ui.layer_id(),
                     egui::Id::new(POPUP_ID),
                     format!(
                         "Changing this setting will make SteamVR restart!\n{}",
@@ -161,6 +168,7 @@ impl Control {
             if self.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
                 popup::show_tooltip_text(
                     ui.ctx(),
+                    ui.layer_id(),
                     egui::Id::new(POPUP_ID),
                     "This setting can be changed in real-time during streaming!",
                 );
@@ -170,8 +178,6 @@ impl Control {
             .control
             .ui(ui, &mut self.preset_json, true)
             .or(response);
-
-        // ui.end_row();
 
         if let Some(desc) = response {
             // todo: handle children requests

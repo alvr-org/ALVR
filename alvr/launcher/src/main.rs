@@ -66,11 +66,11 @@ fn main() {
             ..Default::default()
         },
         Box::new(move |cc| {
-            Box::new(Launcher::new(
+            Ok(Box::new(Launcher::new(
                 cc,
                 worker_message_receiver,
                 ui_message_sender,
-            ))
+            )))
         }),
     )
     .expect("Failed to run eframe");

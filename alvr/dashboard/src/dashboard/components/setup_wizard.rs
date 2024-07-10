@@ -49,7 +49,7 @@ fn page_content(
             ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                 ui.add_space(15.0);
                 ui.heading(RichText::new(subtitle).size(20.0));
-                ui.add(Label::new(RichText::new(paragraph).size(14.0)).wrap(true));
+                ui.add(Label::new(RichText::new(paragraph).size(14.0)).wrap());
                 ui.add_space(30.0);
                 ui.vertical_centered(interactible_content);
             });

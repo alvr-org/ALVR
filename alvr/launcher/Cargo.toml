@@ -11,7 +11,7 @@ alvr_common.workspace = true
 alvr_gui_common.workspace = true
 
 anyhow = "1"
-eframe = "0.27"
+eframe = "0.28"
 flate2 = "1.0.18"
 futures-util = "0.3.28"
 ico = "0.3"

@@ -25,7 +25,7 @@ libc = "0.2"
 ndk-context = "0.1"
 
 [package.metadata.android]
-package = "alvr.client"
+package = "alvr.client.dev"
 install_location = "auto"
 build_targets = ["aarch64-linux-android"]
 runtime_libs = "../../deps/android_openxr"

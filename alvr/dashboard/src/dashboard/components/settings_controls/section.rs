@@ -116,13 +116,19 @@ impl Control {
 
                     if let Some(string) = &entry.help {
                         if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                            popup::show_tooltip_text(ui.ctx(), egui::Id::new(POPUP_ID), string);
+                            popup::show_tooltip_text(
+                                ui.ctx(),
+                                ui.layer_id(),
+                                egui::Id::new(POPUP_ID),
+                                string,
+                            );
                         }
                     }
                     if entry.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered()
                     {
                         popup::show_tooltip_text(
                             ui.ctx(),
+                            ui.layer_id(),
                             egui::Id::new(POPUP_ID),
                             format!(
                                 "Changing this setting will make SteamVR restart!\n{}",
@@ -135,6 +141,7 @@ impl Control {
                     if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
                         popup::show_tooltip_text(
                             ui.ctx(),
+                            ui.layer_id(),
                             egui::Id::new(POPUP_ID),
                             "This setting can be changed in real-time during streaming!",
                         );

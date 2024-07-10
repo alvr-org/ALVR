@@ -7,7 +7,7 @@ pub fn switch(ui: &mut Ui, on: &mut bool) -> Response {
         *on = !*on;
         response.mark_changed();
     }
-    response.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, *on, ""));
+    response.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, true, *on, ""));
 
     let how_on = ui.ctx().animate_bool(response.id, *on);
     let visuals = ui.style().interact_selectable(&response, *on);

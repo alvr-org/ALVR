@@ -89,8 +89,9 @@ jobs:
         run: |
           cargo xtask prepare-deps --platform windows --ci
           cargo xtask package-streamer --gpl
+          cargo xtask package-launcher
 
-      - name: Upload portable streamer for Windows
+      - name: Upload streamer
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,6 +99,15 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/alvr_streamer_windows.zip
           asset_name: alvr_streamer_windows.zip
+          asset_content_type: application/zip
+      - name: Upload launcher
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_launcher_windows.zip
+          asset_name: alvr_launcher_windows.zip
           asset_content_type: application/zip
 
   build_linux_streamer:
@@ -128,9 +138,11 @@ jobs:
         id: build
         env:
           RUST_BACKTRACE: 1
-        run: cargo xtask package-streamer --gpl
+        run: |
+          cargo xtask package-streamer --gpl
+          cargo xtask package-launcher
 
-      - name: Upload streamer for Linux
+      - name: Upload streamer (tar.gz)
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,6 +150,15 @@ jobs:
           upload_url: ${{ needs.prepare_release.outputs.upload_url }}
           asset_path: ./build/alvr_streamer_linux.tar.gz
           asset_name: alvr_streamer_linux.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload launcher
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare_release.outputs.upload_url }}
+          asset_path: ./build/alvr_launcher_linux.tar.gz
+          asset_name: alvr_launcher_linux.tar.gz
           asset_content_type: application/gzip
 
   build_flatpak_bundle:

@@ -1,10 +1,10 @@
-## Installing ALVR and using SteamVR on Linux through Flatpak
+# Installing ALVR and using SteamVR on Linux through Flatpak
 
 ## Disclaimer
 
 1. This is not a fully-featured version of ALVR! It lacks Nvidia support and has bugs related to Flatpak sandboxing
 
-2. Nvidia GPUs are currently not supported
+2. Nvidia GPUs are currently not supported (but might be supported with [this PR](https://github.com/alvr-org/ALVR/pull/2207))
 
 3. Native Linux SteamVR utility applications such as OpenVRAS are not supported nor tested, use at your own risk
 
@@ -16,11 +16,11 @@
 
 7. The ALVR Dashboard is not available in the Applications menu. To run the dashboard, run the following command to run `alvr_dashboard` in the Steam Flatpak environment:
 
-```
+```sh
 flatpak run --command=alvr_dashboard com.valvesoftware.Steam
 ```
 
-8. This only works with the Steam Flatpak. For non-Flatpak Steam, use the AppImage instead
+8. This only works with the Steam Flatpak. For non-Flatpak Steam, use the launcher or tar.gz
 
 ## Dependencies
 
@@ -35,7 +35,7 @@ Once Flatpak is installed, the flatpak dependencies must also be installed. They
 
 These can be installed like so:
 
-```
+```sh
 flatpak install flathub org.freedesktop.Sdk//23.08 \
     org.freedesktop.Sdk.Extension.llvm16//23.08 \
     org.freedesktop.Sdk.Extension.rust-stable//23.08 \
@@ -44,7 +44,7 @@ flatpak install flathub org.freedesktop.Sdk//23.08 \
 
 AMD users may need to install the appropriate Mesa codec extensions as well:
 
-```
+```sh
 flatpak install flathub org.freedesktop.Platform.GL.default//23.08-extra \
    org.freedesktop.Platform.GL32.default//23.08-extra
 ```
@@ -53,7 +53,7 @@ flatpak install flathub org.freedesktop.Platform.GL.default//23.08-extra \
 
 Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
 
-```
+```sh
 sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
 ```
 
@@ -63,7 +63,7 @@ This command is normally run by SteamVR, but due to the lack of sudo access with
 
 Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from one of the latest [nightly](https://github.com/alvr-org/ALVR-nightly/releases) that contains flatpak bundle and install like so:
 
-```
+```sh
 flatpak --user install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak
 ```
 
@@ -75,26 +75,26 @@ Alternatively, if the file is not available or a newer version is needed, the fl
 
 First, the dependencies from above must be fulfilled. Then, install `flatpak-builder` like so:
 
-```
+```sh
 flatpak install flathub org.flatpak.Builder
 ```
 
 Once the dependencies are fulfilled, clone and enter the repository.
 
-```
+```sh
 git clone https://github.com/alvr-org/ALVR.git
 cd ALVR
 ```
 
 Once inside the repository, simply run the following command to build and install the Flatpak.
 
-```
+```sh
 flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
 If ALVR is not cloned under the home directory, permission to access the directory may need to be given to the build command. An example of this is given below.
 
-```
+```sh
 flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
 ```
 
@@ -104,27 +104,11 @@ flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-c
 
 To run the ALVR Dashboard, run the following command:
 
-```
+```sh
 flatpak run --command=alvr_dashboard com.valvesoftware.Steam
 ```
 
 A desktop file named `com.valvesoftware.Steam.Utility.alvr.desktop` is supplied within the `alvr/xtask/flatpak` directory. Move this to where other desktop files are located on your system in order to run the dashboard without the terminal.
-
-### Automatic Audio & Microphone setup
-
-Currently the game audio and microphone to and from the headset isn't routed automatically. The setup of this script will therefore run every time the headset connects or disconnects to the ALVR dashboard. This is based on [the steps](Installation-guide.md#automatic-audio--microphone-setup) in the installation guide, modified for the Flatpak.
-
-1. In the ALVR Dashboard under All Settings (Advanced) > Audio, enable Game Audio and Microphone.
-
-2. In the same place under Microphone, click Expand and set Devices to custom. Enter `default` for the name for both Sink and Source.
-
-3. Download the [audio-flatpak-setup.sh](../alvr/xtask/flatpak/audio-flatpak-setup.sh) script and place it into the Flatpak app data directory located at `~/.var/app/com.valvesoftware.Steam/`. Make sure it has execute permissions (e.g. `chmod +x audio-flatpak-setup.sh`).
-
-5. In the ALVR Dashboard, under All Settings (Advanced) > Connection, set the On connect script and On disconnect script to the absolute path of the script (relative to the Flatpak environment), e.g. `/home/$USER/.var/app/com.valvesoftware.Steam/audio-flatpak-setup.sh`.
-
-6. In a terminal, run `flatpak override --user --filesystem=xdg-run/pipewire-0 com.valvesoftware.Steam` to allow the script to set and map your headset's microphone
-
-7. Restart both Steam and the ALVR Dashboard
 
 ### Other Applications
 

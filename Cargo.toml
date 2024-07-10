@@ -5,7 +5,7 @@ members = ["alvr/*"]
 [workspace.package]
 version = "20.9.1"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.76"
 authors = ["alvr-org"]
 license = "MIT"
 

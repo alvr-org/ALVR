@@ -28,6 +28,8 @@ impl StreamRenderer {
         fix_limited_range: bool,
         encoding_gamma: f32,
     ) -> Self {
+        context.make_current();
+
         // if ffe is enabled, use old c++ code until it is rewritten
         #[allow(unused_variables)]
         if let Some(fe) = &foveated_encoding {
@@ -63,7 +65,7 @@ impl StreamRenderer {
         } else {
             let gl = &context.gl_context;
 
-            let staging_texture = super::create_texture(gl, view_resolution, gl::RGBA8);
+            let staging_texture = super::create_gl_texture(gl, view_resolution, gl::RGBA8);
 
             let render_targets = [
                 swapchain_textures[0]
@@ -138,6 +140,8 @@ impl StreamRenderer {
 
     #[allow(unused_variables)]
     pub unsafe fn render(&self, hardware_buffer: *mut c_void, swapchain_indices: [u32; 2]) {
+        self.context.make_current();
+
         if let Some(gl_objects) = &self.gl_objects {
             let gl = &self.context.gl_context;
 

@@ -180,7 +180,7 @@ pub fn entry_point() {
         )
         .unwrap();
 
-    let graphics_context = Rc::new(GraphicsContext::new());
+    let graphics_context = Rc::new(GraphicsContext::new_gl());
 
     let mut last_lobby_message = String::new();
     let mut stream_config = None::<StreamConfig>;

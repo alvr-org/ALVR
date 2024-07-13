@@ -205,10 +205,13 @@ dependencies = [
  "ndk-context",
  "ndk-sys 0.6.0+11769913",
  "oboe",
+ "pollster",
  "rand",
  "serde",
  "serde_json",
  "walkdir",
+ "wgpu",
+ "wgpu-core",
  "whoami",
 ]
 

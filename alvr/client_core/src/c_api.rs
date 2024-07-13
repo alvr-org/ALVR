@@ -698,7 +698,7 @@ pub struct AlvrStreamConfig {
 
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
-    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new())));
+    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new_gl())));
 }
 
 #[no_mangle]

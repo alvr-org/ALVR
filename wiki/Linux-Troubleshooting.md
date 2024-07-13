@@ -21,6 +21,17 @@ If you have Amdvlk installed on your system, it overrides other vulkan drivers a
 
 Check if Amdvlk is installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep amd_icd` shows anything. If so, uninstall Amdvlk from your system.
 
+## Failed to create VAAPI encoder
+
+Blocky or crashing streams of gameplay and then an error window on your desktop saying:
+> Failed to create VAAPI encoder: Cannot open video encoder codec: Function not implemented. Please make sure you have installed VAAPI runtime.
+
+This seems to be an issue for fedora 39+ users.
+
+### Fix
+
+Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so.](https://fostips.com/hardware-acceleration-video-fedora/) Then reboot your machine.
+
 ## Nvidia
 
 Alvr requires at least driver version 535 and CUDA version 12.1. If this is not the case SteamVR or the encoder might not work.

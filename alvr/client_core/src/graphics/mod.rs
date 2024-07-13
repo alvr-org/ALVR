@@ -3,22 +3,20 @@ mod opengl;
 mod staging;
 mod stream;
 
-use std::{ffi::c_void, mem, ptr, rc::Rc};
-
 pub use lobby::*;
 pub use stream::*;
 
 use alvr_common::{glam::UVec2, Fov, Pose};
 use glow::{self as gl, HasContext};
-use khronos_egl::{self as egl, EGL1_4};
+use khronos_egl as egl;
+use std::{ffi::c_void, mem, num::NonZeroU32, ptr, rc::Rc};
+use wgpu::{
+    hal::{self, api, MemoryFlags, TextureUses},
+    Device, Extent3d, InstanceDescriptor, InstanceFlags, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages,
+};
 
 pub const GL_TEXTURE_EXTERNAL_OES: u32 = 0x8D65;
-const EGL_NATIVE_BUFFER_ANDROID: u32 = 0x3140;
-
-const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
-const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";
-const GET_NATIVE_CLIENT_BUFFER_FN_STR: &str = "eglGetNativeClientBufferANDROID";
-const IMAGE_TARGET_TEXTURE_2D_FN_STR: &str = "glEGLImageTargetTexture2DOES";
 
 type CreateImageFn = unsafe extern "C" fn(
     egl::EGLDisplay,
@@ -81,7 +79,7 @@ pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32
     gl::SRGB8_ALPHA8
 }
 
-fn create_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
+fn create_gl_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
     unsafe {
         let texture = gl.create_texture().unwrap();
         ck!(gl.bind_texture(gl::TEXTURE_2D, Some(texture)));
@@ -203,12 +201,15 @@ pub struct RenderViewInput {
 }
 
 pub struct GraphicsContext {
-    _instance: egl::DynamicInstance<EGL1_4>,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     pub egl_display: egl::Display,
     pub egl_config: egl::Config,
     pub egl_context: egl::Context,
-    _dummy_surface: egl::Surface,
     pub gl_context: gl::Context,
+    dummy_surface: egl::Surface,
     create_image: CreateImageFn,
     destroy_image: DestroyImageFn,
     get_native_client_buffer: GetNativeClientBufferFn,
@@ -216,99 +217,152 @@ pub struct GraphicsContext {
 }
 
 impl GraphicsContext {
-    pub fn new() -> Self {
-        let instance = unsafe { egl::DynamicInstance::<EGL1_4>::load_required().unwrap() };
+    #[cfg(not(windows))]
+    pub fn new_gl() -> Self {
+        const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
+        const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";
+        const GET_NATIVE_CLIENT_BUFFER_FN_STR: &str = "eglGetNativeClientBufferANDROID";
+        const IMAGE_TARGET_TEXTURE_2D_FN_STR: &str = "glEGLImageTargetTexture2DOES";
 
-        let display = unsafe { instance.get_display(egl::DEFAULT_DISPLAY).unwrap() };
+        let flags = if cfg!(debug_assertions) {
+            InstanceFlags::DEBUG | InstanceFlags::VALIDATION
+        } else {
+            InstanceFlags::empty()
+        };
 
-        let _ = instance.initialize(display).unwrap();
+        let instance = wgpu::Instance::new(InstanceDescriptor {
+            backends: wgpu::Backends::GL,
+            flags,
+            dx12_shader_compiler: Default::default(),
+            gles_minor_version: Default::default(),
+        });
 
-        let mut configs = Vec::with_capacity(instance.get_config_count(display).unwrap());
-        instance.get_configs(display, &mut configs).unwrap();
+        let adapter = instance.enumerate_adapters(wgpu::Backends::GL).remove(0);
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None))
+                .unwrap();
 
-        const CONFIG_ATTRIBS: [i32; 19] = [
-            egl::RED_SIZE,
-            8,
-            egl::GREEN_SIZE,
-            8,
-            egl::BLUE_SIZE,
-            8,
-            egl::ALPHA_SIZE,
-            8,
-            egl::DEPTH_SIZE,
-            0,
-            egl::STENCIL_SIZE,
-            0,
-            egl::SAMPLES,
-            0,
-            egl::SURFACE_TYPE,
-            egl::PBUFFER_BIT,
-            egl::RENDERABLE_TYPE,
-            egl::OPENGL_ES3_BIT,
-            egl::NONE,
-        ];
-        let config = instance
-            .choose_first_config(display, &CONFIG_ATTRIBS)
-            .unwrap()
-            .unwrap();
+        let raw_instance = unsafe { instance.as_hal::<api::Gles>() }.unwrap();
 
-        instance.bind_api(egl::OPENGL_ES_API).unwrap();
+        let egl_display = raw_instance.raw_display();
+        let egl_config = raw_instance.egl_config();
 
-        const CONTEXT_ATTRIBS: [i32; 3] = [egl::CONTEXT_CLIENT_VERSION, 3, egl::NONE];
-        let egl_context = instance
-            .create_context(display, config, None, &CONTEXT_ATTRIBS)
-            .unwrap();
+        let (
+            egl_context,
+            gl_context,
+            dummy_surface,
+            create_image,
+            destroy_image,
+            get_native_client_buffer,
+            image_target_texture_2d,
+        ) = unsafe {
+            adapter.as_hal::<api::Gles, _, _>(|raw_adapter| {
+                let adapter_context = raw_adapter.unwrap().adapter_context();
+                let egl_instance = adapter_context.egl_instance().unwrap();
 
-        const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
-        let dummy_surface = instance
-            .create_pbuffer_surface(display, config, &PBUFFER_ATTRIBS)
-            .unwrap();
+                let egl_context = egl::Context::from_ptr(adapter_context.raw_context());
 
-        instance
-            .make_current(
-                display,
-                Some(dummy_surface),
-                Some(dummy_surface),
-                Some(egl_context),
-            )
-            .unwrap();
+                const PBUFFER_ATTRIBS: [i32; 5] = [egl::WIDTH, 16, egl::HEIGHT, 16, egl::NONE];
+                let dummy_surface = egl_instance
+                    .create_pbuffer_surface(egl_display, egl_config, &PBUFFER_ATTRIBS)
+                    .unwrap();
+
+                egl_instance
+                    .make_current(
+                        egl_display,
+                        Some(dummy_surface),
+                        Some(dummy_surface),
+                        Some(egl_context),
+                    )
+                    .unwrap();
+
+                let gl_context = gl::Context::from_loader_function(|fn_name| {
+                    egl_instance
+                        .get_proc_address(fn_name)
+                        .map(|f| {
+                            alvr_common::error!("{fn_name} loaded");
+                            f as *const _
+                        })
+                        .unwrap_or_else(|| {
+                            alvr_common::error!("{fn_name} not loaded");
+                            ptr::null()
+                        })
+                });
+
+                let get_fn_ptr = |fn_name| {
+                    egl_instance
+                        .get_proc_address(fn_name)
+                        .map(|f| f as *const c_void)
+                        .unwrap_or(ptr::null())
+                };
+
+                let create_image: CreateImageFn = mem::transmute(get_fn_ptr(CREATE_IMAGE_FN_STR));
+                let destroy_image: DestroyImageFn =
+                    mem::transmute(get_fn_ptr(DESTROY_IMAGE_FN_STR));
+                let get_native_client_buffer: GetNativeClientBufferFn =
+                    mem::transmute(get_fn_ptr(GET_NATIVE_CLIENT_BUFFER_FN_STR));
+                let image_target_texture_2d: ImageTargetTexture2DFn =
+                    mem::transmute(get_fn_ptr(IMAGE_TARGET_TEXTURE_2D_FN_STR));
+
+                (
+                    egl_context,
+                    gl_context,
+                    dummy_surface,
+                    create_image,
+                    destroy_image,
+                    get_native_client_buffer,
+                    image_target_texture_2d,
+                )
+            })
+        };
 
         #[cfg(all(target_os = "android", feature = "use-cpp"))]
         unsafe {
             opengl::initGraphicsNative();
         }
 
-        fn get_fn_ptr(instance: &egl::DynamicInstance<EGL1_4>, fn_name: &str) -> *const c_void {
-            instance
-                .get_proc_address(fn_name)
-                .map(|f| f as *const _)
-                .unwrap_or(std::ptr::null())
-        }
-
-        let gl_context =
-            unsafe { gl::Context::from_loader_function(|fn_name| get_fn_ptr(&instance, fn_name)) };
-
-        let create_image: CreateImageFn =
-            unsafe { mem::transmute(get_fn_ptr(&instance, CREATE_IMAGE_FN_STR)) };
-        let destroy_image: DestroyImageFn =
-            unsafe { mem::transmute(get_fn_ptr(&instance, DESTROY_IMAGE_FN_STR)) };
-        let get_native_client_buffer: GetNativeClientBufferFn =
-            unsafe { mem::transmute(get_fn_ptr(&instance, GET_NATIVE_CLIENT_BUFFER_FN_STR)) };
-        let image_target_texture_2d: ImageTargetTexture2DFn =
-            unsafe { mem::transmute(get_fn_ptr(&instance, IMAGE_TARGET_TEXTURE_2D_FN_STR)) };
-
         Self {
-            _instance: instance,
-            egl_display: display,
-            egl_config: config,
+            instance,
+            adapter,
+            device,
+            queue,
+            egl_display,
+            egl_config,
             egl_context,
-            _dummy_surface: dummy_surface,
             gl_context,
+            dummy_surface,
             create_image,
             destroy_image,
             get_native_client_buffer,
             image_target_texture_2d,
         }
+    }
+
+    #[cfg(windows)]
+    pub fn new_gl() -> Self {
+        unimplemented!()
+    }
+
+    pub fn make_current(&self) {
+        #[cfg(not(windows))]
+        unsafe {
+            self.adapter.as_hal::<api::Gles, _, _>(|raw_adapter| {
+                let egl_instance = raw_adapter
+                    .unwrap()
+                    .adapter_context()
+                    .egl_instance()
+                    .unwrap();
+
+                egl_instance
+                    .make_current(
+                        self.egl_display,
+                        Some(self.dummy_surface),
+                        Some(self.dummy_surface),
+                        Some(self.egl_context),
+                    )
+                    .unwrap();
+            })
+        };
     }
 
     /// # Safety
@@ -320,6 +374,8 @@ impl GraphicsContext {
         texture: gl::Texture,
         render_cb: impl FnOnce(),
     ) {
+        const EGL_NATIVE_BUFFER_ANDROID: u32 = 0x3140;
+
         if !buffer.is_null() {
             let client_buffer = (self.get_native_client_buffer)(buffer);
             check_error(&self.gl_context, "get_native_client_buffer");
@@ -348,8 +404,81 @@ impl GraphicsContext {
     }
 }
 
+#[cfg(not(windows))]
 impl Default for GraphicsContext {
     fn default() -> Self {
-        Self::new()
+        Self::new_gl()
     }
+}
+
+pub fn create_texture(device: &Device, resolution: UVec2) -> Texture {
+    device.create_texture(&TextureDescriptor {
+        label: None,
+        size: Extent3d {
+            width: resolution.x,
+            height: resolution.y,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: TextureDimension::D2,
+        format: TextureFormat::Rgba8UnormSrgb,
+        usage: TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    })
+}
+
+// This is used to convert OpenXR swapchains to wgpu
+// textures should be arrays of depth 2, RGBA8UnormSrgb
+pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2) -> Texture {
+    unsafe {
+        let hal_texture = device
+            .as_hal::<api::Gles, _, _>(|device| {
+                device.unwrap().texture_from_raw_renderbuffer(
+                    NonZeroU32::new(texture).unwrap(),
+                    &hal::TextureDescriptor {
+                        label: None,
+                        size: Extent3d {
+                            width: resolution.x,
+                            height: resolution.y,
+                            depth_or_array_layers: 2,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: TextureDimension::D2,
+                        format: TextureFormat::Rgba8UnormSrgb,
+                        usage: TextureUses::COLOR_TARGET,
+                        memory_flags: MemoryFlags::empty(),
+                        view_formats: vec![],
+                    },
+                    Some(Box::new(())),
+                )
+            })
+            .unwrap();
+
+        device.create_texture_from_hal::<api::Gles>(
+            hal_texture,
+            &TextureDescriptor {
+                label: None,
+                size: Extent3d {
+                    width: resolution.x,
+                    height: resolution.y,
+                    depth_or_array_layers: 2,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            },
+        )
+    }
+}
+
+pub fn create_gl_swapchain(device: &Device, textures: Vec<u32>, resolution: UVec2) -> Vec<Texture> {
+    textures
+        .into_iter()
+        .map(|texture| create_texture_from_gles(device, texture, resolution))
+        .collect()
 }

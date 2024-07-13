@@ -26,7 +26,7 @@ Check if Amdvlk is installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep am
 Blocky or crashing streams of gameplay and then an error window on your desktop saying:
 > Failed to create VAAPI encoder: Cannot open video encoder codec: Function not implemented. Please make sure you have installed VAAPI runtime.
 
-This seems to be an issue for fedora 39+ users.
+This seems to be an issue for AMD GPU fedora 39+ users, but maybe others.
 
 ### Fix
 

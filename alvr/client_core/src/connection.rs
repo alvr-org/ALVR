@@ -33,11 +33,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[cfg(target_os = "android")]
-use crate::audio;
-#[cfg(not(target_os = "android"))]
-use alvr_audio as audio;
-
 const INITIAL_MESSAGE: &str = concat!(
     "Searching for streamer...\n",
     "Open ALVR on your PC then click \"Trust\"\n",
@@ -329,7 +324,7 @@ fn connection_pipeline(
             let ctx = Arc::clone(&ctx);
             move || {
                 while is_streaming(&ctx) {
-                    alvr_common::show_err(audio::play_audio_loop(
+                    alvr_common::show_err(alvr_audio::play_audio_loop(
                         || is_streaming(&ctx),
                         &device,
                         2,
@@ -354,7 +349,7 @@ fn connection_pipeline(
             move || {
                 while is_streaming(&ctx) {
                     let ctx = Arc::clone(&ctx);
-                    match audio::record_audio_blocking(
+                    match alvr_audio::record_audio_blocking(
                         Arc::new(move || is_streaming(&ctx)),
                         microphone_sender.clone(),
                         &device,

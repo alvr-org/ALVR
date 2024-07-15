@@ -1,4 +1,4 @@
-prefix=/run/build/alvr/cuda/
+prefix=/app/utils/alvr/tmp/cuda/
 
 npp_prefix=${prefix}/libnpp
 cudart_prefix=${prefix}/cuda_cudart   

@@ -2,61 +2,31 @@
   "id": "com.valvesoftware.Steam.Utility.alvr",
   "branch": "stable",
   "sdk": "org.freedesktop.Sdk//23.08",
-  "sdk-extensions": [
-    "org.freedesktop.Sdk.Extension.llvm16",
-    "org.freedesktop.Sdk.Extension.rust-stable"
-  ],
   "runtime": "com.valvesoftware.Steam",
   "runtime-version": "stable",
-  "build-extension": true,
   "appstream-compose": false,
   "separate-locales": false,
+  "build-extension": true,
   "build-options": {
-    "prefix": "/app/utils/alvr",
-    "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin:/app/utils/alvr/tmp/cuda/cuda_nvcc/bin",
-    "prepend-ld-library-path": "/app/utils/alvr/lib",
-    "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
-    "strip": true,
-    "env": { "PREFIX": "/app/utils/alvr" },
     "build-args": [ "--share=network", "--filesystem=xdg-data" ]
   },
-  "cleanup": [
-    "/tmp",
-    "/lib/*.a",
-    "/lib/*.la",
-    "/share/doc",
-    "/share/man"
-  ],
   "modules": [
     {
       "name": "alvr",
       "buildsystem": "simple",
-      "build-options": {
-        "env": {
-          "RUST_BACKTRACE": "full",
-          "CURL_HOME": "/run/build/alvr",
-          "CPATH": "/app/utils/alvr/include",
-          "CUDA_HOME": "/app/utils/alvr/tmp/cuda/",
-          "NVCC_PREPEND_FLAGS": "-I /app/utils/alvr/tmp/cuda/cuda_nvcc/include -I /app/utils/alvr/tmp/cuda/cuda_cudart/include -L /app/utils/alvr/tmp/cuda/cuda_nvcc/lib64 -L /app/utils/alvr/tmp/cuda/cuda_rt/lib64"
-        }
-      },
       "build-commands": [
-        "ls -al /app/utils/alvr/tmp/cuda",
-        "echo 'insecure' >> .curlrc",
-        "mkdir -p /app/utils/alvr/lib/pkgconfig/",
-        "cp /run/build/alvr/alvr/xtask/flatpak/cuda.pc /app/utils/alvr/lib/pkgconfig/",
-        "cargo xtask prepare-deps --platform linux",
-        "cargo xtask build-streamer --gpl --release",
-        "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
-        "mv '/app/utils/alvr/tmp/alvr_launcher_linux/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher"
+        "mkdir -p /app/utils/alvr/bin",
+        "mv '/run/build/alvr/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
+        "ls -al /app/utils/alvr/bin"
       ],
-      "modules": [
-        "modules/yasm/yasm.json",
-        "modules/vulkan-headers/vulkan-headers.json",
-        "modules/cuda/cuda.json",
-        "modules/launcher/launcher.json"
-      ],
-      "sources": [ { "type": "dir", "path": "../../../" } ]
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/alvr-org/ALVR/releases/download/v20.9.1/alvr_launcher_linux.tar.gz",
+          "sha256": "736201b3fb52d42bdfdb43e0f3d24eda36ea345e45f0a3ec466652d3f8670e2a"
+        },
+        { "type": "file", "path": "com.valvesoftware.Steam.Utility.alvr.desktop" }
+      ]
     }
   ]
 }

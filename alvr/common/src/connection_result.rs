@@ -65,7 +65,9 @@ pub trait HandleTryAgain<T> {
 impl<T> HandleTryAgain<T> for io::Result<T> {
     fn handle_try_again(self) -> ConResult<T> {
         self.map_err(|e| {
-            if e.kind() == io::ErrorKind::TimedOut || e.kind() == io::ErrorKind::WouldBlock || e.kind() == io::ErrorKind::Interrupted {
+            if e.kind() == io::ErrorKind::TimedOut 
+                || e.kind() == io::ErrorKind::WouldBlock 
+                || e.kind() == io::ErrorKind::Interrupted {
                 ConnectionError::TryAgain(e.into())
             } else {
                 ConnectionError::Other(e.into())

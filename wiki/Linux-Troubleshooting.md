@@ -21,7 +21,7 @@ If you have Amdvlk installed on your system, it overrides other vulkan drivers a
 
 Check if Amdvlk is installed by seeing if `ls /usr/share/vulkan/icd.d/ | grep amd_icd` shows anything. If so, uninstall Amdvlk from your system.
 
-## Failed to create VAAPI encoder
+## Failed to create VAAPI encoder (fedora)
 
 Blocky or crashing streams of gameplay and then an error window on your desktop saying:
 > Failed to create VAAPI encoder: Cannot open video encoder codec: Function not implemented. Please make sure you have installed VAAPI runtime.

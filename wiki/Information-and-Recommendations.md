@@ -1,5 +1,3 @@
-# Information and Recommendations
-
 ## PC
 
 - A high-end PC is a requirement; ALVR is not a cheap alternative to a PCVR HMD

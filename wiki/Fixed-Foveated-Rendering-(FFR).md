@@ -1,5 +1,3 @@
-# Fixed Foveated Rendering (FFR)
-
 ## What is it, why do I need it
 
 In short: The human eye can only see sharp in a very small area (the fovea). That's why we move our eyes constantly to get the feeling that our whole view is a sharp image.

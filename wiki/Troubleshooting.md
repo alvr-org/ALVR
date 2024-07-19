@@ -1,5 +1,3 @@
-# Troubleshooting
-
 For ALVR 20.0.0 and later
 ===
 

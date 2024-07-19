@@ -1,5 +1,3 @@
-# Linux Troubleshooting
-
 ## Black screen even when SteamVR shows movement
 
 The steam runtimes SteamVR runs in break the alvr driver loaded by SteamVR.

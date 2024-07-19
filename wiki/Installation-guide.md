@@ -1,5 +1,3 @@
-# Installation guide
-
 ## Launcher (BETA)
 
 Launcher will allow you to manage old, current and new installations of ALVR streamer and allow to automatically install and upgrade to specific ALVR app version on headset

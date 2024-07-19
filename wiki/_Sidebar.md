@@ -14,7 +14,7 @@
 
 * [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
 
-* [ALVR headset and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-streamer-on-separate-networks)
+* [ALVR headset and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/Headset-and-ALVR-streamer-on-separate-networks)
 
 * [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 
@@ -34,7 +34,7 @@
 
 * [My game is not working properly! Help](https://github.com/alvr-org/ALVR/wiki/My-game-is-not-working-properly!-Help!)
 
-* [Hardware Video Encoding](https://github.com/alvr-org/ALVR/wiki/Hardware-Video-Encoding)
+* [Hardware Video Encoding Testing](https://github.com/alvr-org/ALVR/wiki/FFmpeg-Hardware-Encoding-Testing)
 
 ***
 

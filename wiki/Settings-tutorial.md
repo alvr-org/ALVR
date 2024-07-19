@@ -1,5 +1,3 @@
-# Settings tutorial
-
 Applicable to ALVR v20.
 
 This tutorial will help you find optimal settings for your hardware and network

@@ -1,5 +1,3 @@
-# Controller latency
-
 Controller tracking will always be difficult. There are so many factors that influence the latency and the motion prediction. Its not something like "100ms" constantly, but depends on your movements and even the movement of the headset.
 
 There are many parameters that influence the movement that can be changed:

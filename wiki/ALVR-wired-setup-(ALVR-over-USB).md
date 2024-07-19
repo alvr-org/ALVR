@@ -1,5 +1,3 @@
-# ALVR wired setup (ALVR over USB)
-
 ## ALVR Streamer (PC) Configuration
 
 * **Switch the connection streaming protocol to TCP** in Settings > Connection.

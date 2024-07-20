@@ -33,7 +33,9 @@ impl AudioScriptCheck {
                 ui.add_space(60.0);
                 ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
                     ui.add_space(15.0);
-                    ui.heading("To reset outdated On connect / On disconnect scripts press button bellow");
+                    ui.heading(
+                        "To reset outdated On connect / On disconnect scripts press button bellow",
+                    );
                     ui.add_space(30.0);
                     ui.vertical_centered(|ui| {
                         if ui.button("Reset scripts").clicked() {

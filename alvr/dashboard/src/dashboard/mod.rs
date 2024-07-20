@@ -17,7 +17,6 @@ use std::{
     ops::Deref,
     sync::{atomic::AtomicUsize, Arc},
 };
-use tungstenite::http::request;
 
 #[derive(Clone)]
 pub struct DisplayString {

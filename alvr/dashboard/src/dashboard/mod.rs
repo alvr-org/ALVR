@@ -2,7 +2,8 @@ mod basic_components;
 mod components;
 
 use self::components::{
-    DevicesTab, LogsTab, NotificationBar, SettingsTab, SetupWizard, SetupWizardRequest,
+    AudioScriptCheck, AudioScriptCheckRequest, DevicesTab, LogsTab, NotificationBar, SettingsTab,
+    SetupWizard, SetupWizardRequest,
 };
 use crate::{dashboard::components::StatisticsTab, DataSources};
 use alvr_common::parking_lot::{Condvar, Mutex};
@@ -16,6 +17,7 @@ use std::{
     ops::Deref,
     sync::{atomic::AtomicUsize, Arc},
 };
+use tungstenite::http::request;
 
 #[derive(Clone)]
 pub struct DisplayString {
@@ -71,6 +73,8 @@ pub struct Dashboard {
     notification_bar: NotificationBar,
     setup_wizard: SetupWizard,
     setup_wizard_open: bool,
+    audio_script_check: AudioScriptCheck,
+    audio_script_check_open: bool,
     session: Option<SessionConfig>,
 }
 
@@ -109,6 +113,8 @@ impl Dashboard {
             notification_bar: NotificationBar::new(),
             setup_wizard: SetupWizard::new(),
             setup_wizard_open: false,
+            audio_script_check: AudioScriptCheck::new(),
+            audio_script_check_open: false,
             session: None,
         }
     }
@@ -171,6 +177,9 @@ impl eframe::App for Dashboard {
                         if settings.extra.open_setup_wizard {
                             self.setup_wizard_open = true;
                         }
+                        if settings.extra.open_audio_script_check {
+                            self.audio_script_check_open = true;
+                        }
 
                         self.just_opened = false;
                     }
@@ -199,7 +208,43 @@ impl eframe::App for Dashboard {
 
         self.notification_bar.ui(context);
 
-        if self.setup_wizard_open {
+        if self.audio_script_check_open {
+            if let Some(some) = &self.session {
+                if some
+                    .to_settings()
+                    .connection
+                    .on_connect_script
+                    .ends_with(".config/alvr/audio-setup.sh")
+                {
+                    CentralPanel::default().show(context, |ui| {
+                        if let Some(request) = self.audio_script_check.ui(ui) {
+                            match request {
+                                AudioScriptCheckRequest::ServerRequest(request) => {
+                                    requests.push(request);
+                                }
+                            }
+                            requests.push(ServerRequest::SetValues(vec![PathValuePair {
+                                path: alvr_packets::parse_path(
+                                    "session_settings.extra.open_audio_script_check",
+                                ),
+                                value: serde_json::Value::Bool(false),
+                            }]));
+
+                            self.audio_script_check_open = false;
+                        }
+                    });
+                } else {
+                    requests.push(ServerRequest::SetValues(vec![PathValuePair {
+                        path: alvr_packets::parse_path(
+                            "session_settings.extra.open_audio_script_check",
+                        ),
+                        value: serde_json::Value::Bool(false),
+                    }]));
+
+                    self.audio_script_check_open = false;
+                }
+            }
+        } else if self.setup_wizard_open {
             CentralPanel::default().show(context, |ui| {
                 if let Some(request) = self.setup_wizard.ui(ui) {
                     match request {

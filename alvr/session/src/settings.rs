@@ -1201,6 +1201,7 @@ pub struct ExtraConfig {
     pub logging: LoggingConfig,
     pub patches: Patches,
     pub open_setup_wizard: bool,
+    pub open_audio_script_check: bool,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1721,6 +1722,7 @@ pub fn session_settings_default() -> SettingsDefault {
                 linux_async_reprojection: false,
             },
             open_setup_wizard: alvr_common::is_stable() || alvr_common::is_nightly(),
+            open_audio_script_check: true,
         },
     }
 }

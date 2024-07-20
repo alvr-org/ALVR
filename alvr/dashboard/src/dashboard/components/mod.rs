@@ -6,6 +6,7 @@ mod notifications;
 mod settings;
 mod settings_controls;
 mod setup_wizard;
+mod audio_script_check;
 mod statistics;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -19,6 +20,7 @@ pub use notifications::*;
 pub use settings::*;
 pub use settings_controls::*;
 pub use setup_wizard::*;
+pub use audio_script_check::*;
 pub use statistics::*;
 
 #[cfg(not(target_arch = "wasm32"))]

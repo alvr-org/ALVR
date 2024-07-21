@@ -12,8 +12,8 @@ use khronos_egl as egl;
 use std::{ffi::c_void, mem, num::NonZeroU32, ptr, rc::Rc};
 use wgpu::{
     hal::{self, api, MemoryFlags, TextureUses},
-    Adapter, Device, Extent3d, Instance, InstanceDescriptor, InstanceFlags, Queue, Texture,
-    TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
+    Device, Extent3d, InstanceDescriptor, InstanceFlags, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureUsages,
 };
 
 pub const GL_TEXTURE_EXTERNAL_OES: u32 = 0x8D65;
@@ -77,82 +77,6 @@ pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32
 
     // If we can't enumerate, default to a required format (SRGBA8)
     gl::SRGB8_ALPHA8
-}
-
-pub fn create_texture(device: &Device, resolution: UVec2) -> Texture {
-    device.create_texture(&TextureDescriptor {
-        label: None,
-        size: Extent3d {
-            width: resolution.x,
-            height: resolution.y,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba8Unorm,
-        usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    })
-}
-
-// This is used to convert OpenXR swapchains to wgpu
-// textures should be arrays of depth 2, RGBA8UnormSrgb
-pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2) -> Texture {
-    let size = Extent3d {
-        width: resolution.x,
-        height: resolution.y,
-        depth_or_array_layers: 1,
-    };
-
-    unsafe {
-        let hal_texture = device
-            .as_hal::<api::Gles, _, _>(|device| {
-                device.unwrap().texture_from_raw(
-                    NonZeroU32::new(texture).unwrap(),
-                    &hal::TextureDescriptor {
-                        label: None,
-                        size,
-                        mip_level_count: 1,
-                        sample_count: 1,
-                        dimension: TextureDimension::D2,
-                        format: TextureFormat::Rgba8Unorm,
-                        usage: TextureUses::COLOR_TARGET,
-                        memory_flags: MemoryFlags::empty(),
-                        view_formats: vec![],
-                    },
-                    Some(Box::new(())),
-                )
-            })
-            .unwrap();
-
-        device.create_texture_from_hal::<api::Gles>(
-            hal_texture,
-            &TextureDescriptor {
-                label: None,
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Rgba8Unorm,
-                usage: TextureUsages::RENDER_ATTACHMENT,
-                view_formats: &[],
-            },
-        )
-    }
-}
-
-pub fn create_gl_swapchain(
-    device: &Device,
-    gl_textures: &[u32],
-    resolution: UVec2,
-) -> Vec<TextureView> {
-    gl_textures
-        .iter()
-        .map(|gl_tex| {
-            create_texture_from_gles(device, *gl_tex, resolution).create_view(&Default::default())
-        })
-        .collect()
 }
 
 fn create_gl_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
@@ -277,10 +201,10 @@ pub struct RenderViewInput {
 }
 
 pub struct GraphicsContext {
-    _instance: Instance,
-    adapter: Adapter,
-    device: Device,
-    queue: Queue,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     pub egl_display: egl::Display,
     pub egl_config: egl::Config,
     pub egl_context: egl::Context,
@@ -295,8 +219,6 @@ pub struct GraphicsContext {
 impl GraphicsContext {
     #[cfg(not(windows))]
     pub fn new_gl() -> Self {
-        use wgpu::{Backends, DeviceDescriptor, Features, Limits};
-
         const CREATE_IMAGE_FN_STR: &str = "eglCreateImageKHR";
         const DESTROY_IMAGE_FN_STR: &str = "eglDestroyImageKHR";
         const GET_NATIVE_CLIENT_BUFFER_FN_STR: &str = "eglGetNativeClientBufferANDROID";
@@ -308,26 +230,17 @@ impl GraphicsContext {
             InstanceFlags::empty()
         };
 
-        let instance = Instance::new(InstanceDescriptor {
-            backends: Backends::GL,
+        let instance = wgpu::Instance::new(InstanceDescriptor {
+            backends: wgpu::Backends::GL,
             flags,
             dx12_shader_compiler: Default::default(),
             gles_minor_version: Default::default(),
         });
 
-        let adapter = instance.enumerate_adapters(Backends::GL).remove(0);
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &DeviceDescriptor {
-                label: None,
-                required_features: Features::PUSH_CONSTANTS,
-                required_limits: Limits {
-                    max_push_constant_size: 72,
-                    ..Default::default()
-                },
-            },
-            None,
-        ))
-        .unwrap();
+        let adapter = instance.enumerate_adapters(wgpu::Backends::GL).remove(0);
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None))
+                .unwrap();
 
         let raw_instance = unsafe { instance.as_hal::<api::Gles>() }.unwrap();
 
@@ -366,8 +279,14 @@ impl GraphicsContext {
                 let gl_context = gl::Context::from_loader_function(|fn_name| {
                     egl_instance
                         .get_proc_address(fn_name)
-                        .map(|f| f as *const c_void)
-                        .unwrap_or(ptr::null())
+                        .map(|f| {
+                            alvr_common::error!("{fn_name} loaded");
+                            f as *const _
+                        })
+                        .unwrap_or_else(|| {
+                            alvr_common::error!("{fn_name} not loaded");
+                            ptr::null()
+                        })
                 });
 
                 let get_fn_ptr = |fn_name| {
@@ -403,7 +322,7 @@ impl GraphicsContext {
         }
 
         Self {
-            _instance: instance,
+            instance,
             adapter,
             device,
             queue,
@@ -490,4 +409,76 @@ impl Default for GraphicsContext {
     fn default() -> Self {
         Self::new_gl()
     }
+}
+
+pub fn create_texture(device: &Device, resolution: UVec2) -> Texture {
+    device.create_texture(&TextureDescriptor {
+        label: None,
+        size: Extent3d {
+            width: resolution.x,
+            height: resolution.y,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: TextureDimension::D2,
+        format: TextureFormat::Rgba8UnormSrgb,
+        usage: TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    })
+}
+
+// This is used to convert OpenXR swapchains to wgpu
+// textures should be arrays of depth 2, RGBA8UnormSrgb
+pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2) -> Texture {
+    unsafe {
+        let hal_texture = device
+            .as_hal::<api::Gles, _, _>(|device| {
+                device.unwrap().texture_from_raw_renderbuffer(
+                    NonZeroU32::new(texture).unwrap(),
+                    &hal::TextureDescriptor {
+                        label: None,
+                        size: Extent3d {
+                            width: resolution.x,
+                            height: resolution.y,
+                            depth_or_array_layers: 2,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: TextureDimension::D2,
+                        format: TextureFormat::Rgba8UnormSrgb,
+                        usage: TextureUses::COLOR_TARGET,
+                        memory_flags: MemoryFlags::empty(),
+                        view_formats: vec![],
+                    },
+                    Some(Box::new(())),
+                )
+            })
+            .unwrap();
+
+        device.create_texture_from_hal::<api::Gles>(
+            hal_texture,
+            &TextureDescriptor {
+                label: None,
+                size: Extent3d {
+                    width: resolution.x,
+                    height: resolution.y,
+                    depth_or_array_layers: 2,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8UnormSrgb,
+                usage: TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            },
+        )
+    }
+}
+
+pub fn create_gl_swapchain(device: &Device, textures: Vec<u32>, resolution: UVec2) -> Vec<Texture> {
+    textures
+        .into_iter()
+        .map(|texture| create_texture_from_gles(device, texture, resolution))
+        .collect()
 }

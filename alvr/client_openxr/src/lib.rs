@@ -449,6 +449,7 @@ pub fn entry_point() {
                 (layer, vsync_time)
             };
 
+            graphics_context.make_current();
             let res = xr_frame_stream.end(
                 to_xr_time(display_time),
                 xr::EnvironmentBlendMode::OPAQUE,

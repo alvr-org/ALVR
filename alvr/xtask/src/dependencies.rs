@@ -315,7 +315,7 @@ fn get_android_openxr_loaders() {
         "",
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
-            "release-1.1.38/openxr_loader_for_android-1.1.38.aar",
+            "release-1.0.34/openxr_loader_for_android-1.0.34.aar",
         ),
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );

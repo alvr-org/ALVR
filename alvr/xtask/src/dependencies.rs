@@ -315,14 +315,14 @@ fn get_android_openxr_loaders() {
         "",
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
-            "release-1.1.38/openxr_loader_for_android-1.1.38.aar",
+            "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
         ),
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );
 
     get_openxr_loader(
-        "_quest1",
-        "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
+        "_quest",
+        "https://securecdn.oculus.com/binaries/download/?id=7092833820755144", // version 60
         "OpenXR/Libs/Android/arm64-v8a/Release",
     );
 
@@ -334,8 +334,8 @@ fn get_android_openxr_loaders() {
 
     get_openxr_loader(
         "_yvr",
-        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
-        "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
+        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
+        "yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a",
     );
 
     get_openxr_loader(

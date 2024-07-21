@@ -121,7 +121,11 @@ pub fn entry_point() {
     let platform = alvr_client_core::platform();
 
     let loader_suffix = match platform {
-        Platform::Quest1 => "_quest1",
+        Platform::Quest1
+        | Platform::Quest2
+        | Platform::Quest3
+        | Platform::QuestPro
+        | Platform::QuestUnknown => "_quest",
         Platform::PicoNeo3 | Platform::Pico4 => "_pico",
         Platform::Yvr => "_yvr",
         Platform::Lynx => "_lynx",
@@ -135,7 +139,6 @@ pub fn entry_point() {
     xr_entry.initialize_android_loader().unwrap();
 
     let available_extensions = xr_entry.enumerate_extensions().unwrap();
-    alvr_common::info!("OpenXR available extensions: {available_extensions:#?}");
 
     // todo: switch to vulkan
     assert!(available_extensions.khr_opengl_es_enable);
@@ -163,9 +166,6 @@ pub fn entry_point() {
     }
     exts.khr_convert_timespec_time = true;
     exts.khr_opengl_es_enable = true;
-
-    let available_layers = xr_entry.enumerate_layers().unwrap();
-    alvr_common::info!("OpenXR available layers: {available_layers:#?}");
 
     let xr_instance = xr_entry
         .create_instance(

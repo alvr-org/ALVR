@@ -18,10 +18,13 @@ pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreate
 
 pub fn create_swapchain(
     session: &xr::Session<xr::OpenGlEs>,
+    gfx_ctx: &GraphicsContext,
     resolution: UVec2,
     foveation: Option<&xr::FoveationProfileFB>,
     enable_hdr: bool,
 ) -> xr::Swapchain<xr::OpenGlEs> {
+    gfx_ctx.make_current();
+
     let format = graphics::choose_swapchain_format(
         session.enumerate_swapchain_formats().ok().as_deref(),
         enable_hdr,

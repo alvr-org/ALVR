@@ -38,7 +38,7 @@ This seems to be an issue for AMD GPU fedora 39+ users, but maybe others.
 
 ### Fix
 
-Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so.](https://fostips.com/hardware-acceleration-video-fedora/) Then reboot your machine.
+Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so](https://fostips.com/hardware-acceleration-video-fedora/) or [the RPM docs](https://rpmfusion.org/Howto/Multimedia). Then reboot your machine.
 
 ## Nvidia driver version requirements
 

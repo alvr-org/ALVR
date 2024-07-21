@@ -80,8 +80,6 @@ impl LobbyRenderer {
         swapchain_textures: [Vec<u32>; 2],
         initial_hud_message: &str,
     ) -> Self {
-        context.make_current();
-
         let gl = &context.gl_context;
 
         let render_targets = [
@@ -105,7 +103,7 @@ impl LobbyRenderer {
                 .collect(),
         ];
 
-        let hud_texture = super::create_gl_texture(
+        let hud_texture = super::create_texture(
             gl,
             UVec2::new(HUD_TEXTURE_SIDE as u32, HUD_TEXTURE_SIDE as u32),
             gl::RGBA8,

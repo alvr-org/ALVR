@@ -1,5 +1,3 @@
-# Roadmap
-
 This post will continue to evolve during ALVR development.
 
 ## Long-term goal

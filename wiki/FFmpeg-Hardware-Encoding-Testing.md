@@ -1,5 +1,3 @@
-# FFmpeg Hardware Encoding Testing
-
 FFmpeg hardware video offloading test commands to validate hardware encoding offloading is working.
 
 Learn more at: <https://trac.ffmpeg.org/wiki/HWAccelIntro>

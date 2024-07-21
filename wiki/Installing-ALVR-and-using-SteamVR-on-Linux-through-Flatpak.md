@@ -1,5 +1,3 @@
-# Installing ALVR and using SteamVR on Linux through Flatpak
-
 ## Disclaimer
 
 1. This is not a fully-featured version of ALVR! It lacks Nvidia support and has bugs related to Flatpak sandboxing

@@ -1,6 +1,4 @@
-# Linux Troubleshooting
-
-## SteamVR
+## Black screen even when SteamVR shows movement
 
 The steam runtimes SteamVR runs in break the alvr driver loaded by SteamVR.
 This causes the screen to stay black on the headset or an error to be reported that the pipewire device is missing or can even result in SteamVR crashing.
@@ -13,7 +11,17 @@ This path might differ based on your Steam installation, in that case SteamVR wi
 Then pick the storage location with the star emoji (⭐) and take the path directly above the usage statistics. Prepend this path to `steamapps/common/SteamVR/bin/vrmonitor.sh`.
 Finally put this entire path into the SteamVR commandline options instead of the other one.
 
-## Amdvlk/AMD
+### Hyprland/Sway/Wlroots Fix
+
+If you're on hyprland, sway, or other wlroots-based wayland compositor, you might have to prepend `QT_QPA_PLATFORM=xcb` before commandline, which results in full commandline for steamvr being something like this:
+`QT_QPA_PLATFORM=xcb ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%`.
+
+Related issue:
+[[BUG] No SteamVR UI on wlroots-based wayland compositors (sway, hyprland, ...) with workaround](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/637).
+
+## Artifacting, no SteamVR Overlay or graphical glitches in streaming view
+
+Could be related to AMD amdvlk driver being present on your system.
 
 If you have Amdvlk installed on your system, it overrides other vulkan drivers and causes SteamVR to break. Use the `vulkan-radeon` driver (aka radv) instead.
 
@@ -32,7 +40,7 @@ This seems to be an issue for AMD GPU fedora 39+ users, but maybe others.
 
 Switch from `mesa-va-drivers` to `mesa-va-drivers-freeworld`. [Guide on how to do so.](https://fostips.com/hardware-acceleration-video-fedora/) Then reboot your machine.
 
-## Nvidia
+## Nvidia driver version requirements
 
 Alvr requires at least driver version 535 and CUDA version 12.1. If this is not the case SteamVR or the encoder might not work.
 
@@ -42,7 +50,12 @@ Install at least the required versions of the driver and ensure you have CUDA in
 
 If an error saying CUDA was not detected persists, try using the latest alvr nightly release.
 
-## Hybrid graphics
+## Hybrid graphics advices
+
+### General advise
+
+If you have PC and can disable your integrated gpu from BIOS/UEFI, it's highly advised to do so to avoid multiple problems of handling hybrid graphics.
+If you're on laptop and it doesn't allow disabling integrated graphics (in most cases) you have to resort to methods bellow.
 
 ### Amd/Intel integrated gpu + Amd/Intel discrete gpu
 
@@ -56,9 +69,9 @@ Put `__NV_PRIME_RENDER_OFFLOAD=1 __VK_LAYER_NV_optimus=NVIDIA_only __GLX_VENDOR_
 
 When using hyprland or Gnome Wayland you need to put `WAYLAND_DISPLAY='' %command%` into the SteamVR commandline options to force XWayland.
 
-## SlimeVR
+## The view shakes
 
-The view shakes.
+SlimeVR related, will be fixed in future updates of ALVR
 
 ### Fix
 
@@ -81,13 +94,13 @@ Even though audio or microphone are enabled in presets, neither seems to appear 
 Check if you have `pipewire` installed and it's at least version `0.3.49` by using command `pipewire --version`
 For older (<=22.04 or debian <=11) ubuntu or debian based distributions you can check [pipewire-upstream](https://github.com/pipewire-debian/pipewire-debian) page for installing newer pipewire version
 
-## Arch AUR
+## The alvr driver doesn't get detected by SteamVR
 
-The alvr driver doesn't get detected by SteamVR.
+Could be related to Arch AUR package.
 
 ### Fix
 
-Try using a portable .tar.gz release from the Releases page.
+Try using a launcher or portable .tar.gz release from the Releases page.
 
 ## Low AMDGPU performance and shutters
 

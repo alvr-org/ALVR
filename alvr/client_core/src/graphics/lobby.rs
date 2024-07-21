@@ -1,15 +1,26 @@
-use super::{ck, GraphicsContext, RenderTarget, RenderViewInput};
+use super::{GraphicsContext, RenderViewInput};
 use alvr_common::{
-    glam::{IVec2, Mat4, UVec2, Vec3, Vec4},
+    glam::{Mat4, UVec2, Vec3, Vec4},
     Fov, Pose,
 };
-use glow::{self as gl, HasContext, PixelUnpackData};
 use glyph_brush_layout::{
     ab_glyph::{Font, FontRef, ScaleFont},
     FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry, SectionText, VerticalAlign,
 };
-use std::{f32::consts::FRAC_PI_2, num::NonZeroU32, rc::Rc};
+use std::{f32::consts::FRAC_PI_2, rc::Rc};
+use wgpu::{
+    include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
+    BlendFactor, BlendOperation, BlendState, Color, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, Device, Extent3d, FilterMode, FragmentState, ImageCopyTexture,
+    ImageDataLayout, LoadOp, Operations, Origin3d, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
+    SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp, Texture, TextureAspect,
+    TextureFormat, TextureSampleType, TextureView, TextureViewDimension, VertexState,
+};
 
+const FLOOR_SIDE: f32 = 300.0;
 const HUD_DIST: f32 = 5.0;
 const HUD_SIDE: f32 = 3.5;
 const HUD_TEXTURE_SIDE: usize = 1024;
@@ -54,23 +65,81 @@ fn projection_from_fov(fov: Fov) -> Mat4 {
     let c = (tanr + tanl) / (tanr - tanl);
     let d = (tanu + tand) / (tanu - tand);
 
+    // note: for wgpu compatibility, the b and d components should be flipped. Maybe a bug in the
+    // viewport handling in wgpu?
     Mat4::from_cols(
         Vec4::new(a, 0.0, c, 0.0),
-        Vec4::new(0.0, b, d, 0.0),
-        Vec4::new(0.0, 0.0, -1.0, -2.0 * NEAR),
+        Vec4::new(0.0, -b, -d, 0.0),
+        Vec4::new(0.0, 0.0, -1.0, -NEAR),
         Vec4::new(0.0, 0.0, -1.0, 0.0),
     )
     .transpose()
 }
 
+fn pipeline(
+    device: &Device,
+    label: &str,
+    bind_group_layouts: &[&BindGroupLayout],
+    push_constants_len: u32,
+    shader: ShaderModuleDescriptor,
+    topology: PrimitiveTopology,
+) -> RenderPipeline {
+    let shader_module = device.create_shader_module(shader);
+    device.create_render_pipeline(&RenderPipelineDescriptor {
+        label: Some(label),
+        // Note: Layout cannot be inferred because of a bug with push constants
+        layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some(label),
+            bind_group_layouts,
+            push_constant_ranges: &[PushConstantRange {
+                stages: ShaderStages::VERTEX_FRAGMENT,
+                range: 0..push_constants_len,
+            }],
+        })),
+        vertex: VertexState {
+            module: &shader_module,
+            entry_point: "vertex_main",
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: PrimitiveState {
+            topology,
+            ..Default::default()
+        },
+        depth_stencil: None,
+        multisample: Default::default(),
+        fragment: Some(FragmentState {
+            module: &shader_module,
+            entry_point: "fragment_main",
+            compilation_options: Default::default(),
+            targets: &[Some(ColorTargetState {
+                format: TextureFormat::Rgba8Unorm,
+                blend: Some(BlendState {
+                    color: BlendComponent {
+                        src_factor: BlendFactor::SrcAlpha,
+                        dst_factor: BlendFactor::OneMinusSrcAlpha,
+                        operation: BlendOperation::Add,
+                    },
+                    alpha: BlendComponent {
+                        src_factor: BlendFactor::One,
+                        dst_factor: BlendFactor::OneMinusSrcAlpha,
+                        operation: BlendOperation::Add,
+                    },
+                }),
+                write_mask: ColorWrites::ALL,
+            })],
+        }),
+        multiview: None,
+    })
+}
+
 pub struct LobbyRenderer {
     context: Rc<GraphicsContext>,
-    program: gl::Program,
-    object_type_uloc: gl::UniformLocation,
-    transform_uloc: gl::UniformLocation,
-    hud_texture: gl::Texture,
-    render_targets: [Vec<RenderTarget>; 2],
-    viewport_size: IVec2,
+    quad_pipeline: RenderPipeline,
+    line_pipeline: RenderPipeline,
+    hud_texture: Texture,
+    bind_group: BindGroup,
+    render_targets: [Vec<TextureView>; 2],
 }
 
 impl LobbyRenderer {
@@ -80,54 +149,85 @@ impl LobbyRenderer {
         swapchain_textures: [Vec<u32>; 2],
         initial_hud_message: &str,
     ) -> Self {
-        let gl = &context.gl_context;
+        let device = &context.device;
+
+        let hud_texture = super::create_texture(device, UVec2::ONE * HUD_TEXTURE_SIDE as u32);
+
+        let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        let quad_pipeline = pipeline(
+            device,
+            "lobby_quad",
+            &[&bind_group_layout],
+            72,
+            include_wgsl!("../../resources/lobby_quad.wgsl"),
+            PrimitiveTopology::TriangleStrip,
+        );
+
+        let line_pipeline = pipeline(
+            device,
+            "lobby_line",
+            &[],
+            64,
+            include_wgsl!("../../resources/lobby_line.wgsl"),
+            PrimitiveTopology::LineList,
+        );
+
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: None,
+            layout: &bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(
+                        &hud_texture.create_view(&Default::default()),
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&device.create_sampler(
+                        &SamplerDescriptor {
+                            mag_filter: FilterMode::Linear,
+                            min_filter: FilterMode::Linear,
+                            ..Default::default()
+                        },
+                    )),
+                },
+            ],
+        });
 
         let render_targets = [
-            swapchain_textures[0]
-                .iter()
-                .map(|tex| {
-                    RenderTarget::new(
-                        Rc::clone(&context),
-                        gl::NativeTexture(NonZeroU32::new(*tex).unwrap()),
-                    )
-                })
-                .collect(),
-            swapchain_textures[1]
-                .iter()
-                .map(|tex| {
-                    RenderTarget::new(
-                        Rc::clone(&context),
-                        gl::NativeTexture(NonZeroU32::new(*tex).unwrap()),
-                    )
-                })
-                .collect(),
+            super::create_gl_swapchain(device, &swapchain_textures[0], view_resolution),
+            super::create_gl_swapchain(device, &swapchain_textures[1], view_resolution),
         ];
 
-        let hud_texture = super::create_texture(
-            gl,
-            UVec2::new(HUD_TEXTURE_SIDE as u32, HUD_TEXTURE_SIDE as u32),
-            gl::RGBA8,
-        );
-
-        let program = super::create_program(
-            gl,
-            include_str!("../../resources/lobby_vertex.glsl"),
-            include_str!("../../resources/lobby_fragment.glsl"),
-        );
-
-        let this = unsafe {
-            let object_type_uloc = ck!(gl.get_uniform_location(program, "object_type").unwrap());
-            let transform_uloc = ck!(gl.get_uniform_location(program, "transform").unwrap());
-
-            Self {
-                context,
-                program,
-                object_type_uloc,
-                transform_uloc,
-                hud_texture,
-                render_targets,
-                viewport_size: view_resolution.as_ivec2(),
-            }
+        let this = Self {
+            context,
+            quad_pipeline,
+            line_pipeline,
+            hud_texture,
+            bind_group,
+            render_targets,
         };
 
         this.update_hud_message(initial_hud_message);
@@ -175,21 +275,25 @@ impl LobbyRenderer {
             }
         }
 
-        let gl = &self.context.gl_context;
-        unsafe {
-            ck!(gl.bind_texture(gl::TEXTURE_2D, Some(self.hud_texture)));
-            ck!(gl.tex_sub_image_2d(
-                gl::TEXTURE_2D,
-                0,
-                0,
-                0,
-                HUD_TEXTURE_SIDE as i32,
-                HUD_TEXTURE_SIDE as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                PixelUnpackData::Slice(&buffer),
-            ));
-        }
+        self.context.queue.write_texture(
+            ImageCopyTexture {
+                texture: &self.hud_texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            &buffer,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(HUD_TEXTURE_SIDE as u32 * 4),
+                rows_per_image: Some(HUD_TEXTURE_SIDE as u32),
+            },
+            Extent3d {
+                width: HUD_TEXTURE_SIDE as u32,
+                height: HUD_TEXTURE_SIDE as u32,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 
     pub fn render(
@@ -197,119 +301,110 @@ impl LobbyRenderer {
         view_inputs: [RenderViewInput; 2],
         hand_poses: [(Option<Pose>, Option<[Pose; 26]>); 2],
     ) {
-        let gl = &self.context.gl_context;
+        let mut encoder = self
+            .context
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("lobby_command_encoder"),
+            });
 
-        unsafe {
-            ck!(gl.use_program(Some(self.program)));
+        for (view_idx, view_input) in view_inputs.iter().enumerate() {
+            let view = Mat4::from_rotation_translation(
+                view_input.pose.orientation,
+                view_input.pose.position,
+            )
+            .inverse();
+            let view_proj = projection_from_fov(view_input.fov) * view;
 
-            ck!(gl.disable(gl::SCISSOR_TEST));
-            ck!(gl.disable(gl::DEPTH_TEST));
-            ck!(gl.disable(gl::CULL_FACE));
-            ck!(gl.enable(gl::BLEND));
-            ck!(gl.blend_func(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
+            let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some(&format!("lobby_view_{}", view_idx)),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &self.render_targets[view_idx][view_input.swapchain_index as usize],
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.02,
+                            a: 1.0,
+                        }),
+                        store: StoreOp::Store,
+                    },
+                })],
+                ..Default::default()
+            });
 
-            ck!(gl.viewport(0, 0, self.viewport_size.x, self.viewport_size.y));
+            fn transform_draw(pass: &mut RenderPass, transform: Mat4, vertices_count: u32) {
+                let data = transform
+                    .to_cols_array()
+                    .iter()
+                    .flat_map(|v| v.to_le_bytes())
+                    .collect::<Vec<u8>>();
+                pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 0, &data);
+                pass.draw(0..vertices_count, 0..1);
+            }
 
-            for (view_idx, view_input) in view_inputs.iter().enumerate() {
-                self.render_targets[view_idx][view_input.swapchain_index as usize].bind();
+            // Draw the following geometry in the correct order (depth buffer is disabled)
 
-                let view = Mat4::from_rotation_translation(
-                    view_input.pose.orientation,
-                    view_input.pose.position,
-                )
-                .inverse();
-                let view_proj = projection_from_fov(view_input.fov) * view;
+            // Bind quad pipeline
+            pass.set_pipeline(&self.quad_pipeline);
+            pass.set_bind_group(0, &self.bind_group, &[]);
 
-                ck!(gl.clear(gl::COLOR_BUFFER_BIT));
-                ck!(gl.clear_color(0.0, 0.0, 0.02, 1.0));
+            // Render ground
+            pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &0_u32.to_le_bytes());
+            pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 68, &FLOOR_SIDE.to_le_bytes());
+            let transform = view_proj
+                * Mat4::from_rotation_x(-FRAC_PI_2)
+                * Mat4::from_scale(Vec3::ONE * FLOOR_SIDE);
+            transform_draw(&mut pass, transform, 4);
 
-                // Draw the following geometry in the correct order (depth buffer is disabled)
+            // Render HUD
+            pass.set_push_constants(ShaderStages::VERTEX_FRAGMENT, 64, &1_u32.to_le_bytes());
+            for i in 0..4 {
+                let transform = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
+                    * Mat4::from_translation(Vec3::new(0.0, HUD_SIDE / 2.0, -HUD_DIST))
+                    * Mat4::from_scale(Vec3::ONE * HUD_SIDE);
+                transform_draw(&mut pass, view_proj * transform, 4);
+            }
 
-                // Render ground
-                ck!(gl.uniform_1_i32(Some(&self.object_type_uloc), 0));
-                ck!(gl.uniform_matrix_4_f32_slice(
-                    Some(&self.transform_uloc),
-                    false,
-                    &view_proj.to_cols_array(),
-                ));
-                ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
+            // Bind line pipeline and render hands
+            pass.set_pipeline(&self.line_pipeline);
+            for (maybe_pose, maybe_skeleton) in &hand_poses {
+                if let Some(skeleton) = maybe_skeleton {
+                    for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
+                        let j1_pose = skeleton[joint1_idx];
+                        let j2_pose = skeleton[joint2_idx];
 
-                // Render HUD
-                // todo: draw only one HUD panel and implement lazy follow
-                ck!(gl.uniform_1_i32(Some(&self.object_type_uloc), 1));
-                ck!(gl.active_texture(gl::TEXTURE0));
-                ck!(gl.bind_texture(gl::TEXTURE_2D, Some(self.hud_texture)));
-                for i in 0..4 {
-                    let panel_transform = Mat4::from_rotation_y(FRAC_PI_2 * i as f32)
-                        * Mat4::from_translation(Vec3::new(0.0, HUD_SIDE / 2.0, -HUD_DIST))
-                        * Mat4::from_scale(Vec3::ONE * HUD_SIDE);
-                    ck!(gl.uniform_matrix_4_f32_slice(
-                        Some(&self.transform_uloc),
-                        false,
-                        &(view_proj * panel_transform).to_cols_array(),
-                    ));
-                    ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
-                }
-
-                // Render hands
-                gl.uniform_1_i32(Some(&self.object_type_uloc), 2);
-                for (maybe_pose, maybe_skeleton) in &hand_poses {
-                    if let Some(skeleton) = maybe_skeleton {
-                        for (joint1_idx, joint2_idx) in HAND_SKELETON_BONES {
-                            let j1_pose = skeleton[joint1_idx];
-                            let j2_pose = skeleton[joint2_idx];
-
-                            let bone_transform = Mat4::from_scale_rotation_translation(
-                                Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),
-                                j1_pose.orientation,
-                                j1_pose.position,
-                            );
-                            ck!(gl.uniform_matrix_4_f32_slice(
-                                Some(&self.transform_uloc),
-                                false,
-                                &(view_proj * bone_transform).to_cols_array(),
-                            ));
-                            ck!(gl.draw_arrays(gl::LINES, 0, 2));
-                        }
-                    } else if let Some(pose) = maybe_pose {
-                        let hand_transform = Mat4::from_scale_rotation_translation(
-                            Vec3::ONE * 0.2,
-                            pose.orientation,
-                            pose.position,
+                        let transform = Mat4::from_scale_rotation_translation(
+                            Vec3::ONE * Vec3::distance(j1_pose.position, j2_pose.position),
+                            j1_pose.orientation,
+                            j1_pose.position,
                         );
+                        transform_draw(&mut pass, view_proj * transform, 2);
+                    }
+                } else if let Some(pose) = maybe_pose {
+                    let hand_transform = Mat4::from_scale_rotation_translation(
+                        Vec3::ONE * 0.2,
+                        pose.orientation,
+                        pose.position,
+                    );
 
-                        let segment_rotations = [
-                            Mat4::IDENTITY,
-                            Mat4::from_rotation_y(FRAC_PI_2),
-                            Mat4::from_rotation_x(FRAC_PI_2),
-                        ];
-                        for rot in &segment_rotations {
-                            let segment_transform = hand_transform
-                                * *rot
-                                * Mat4::from_scale(Vec3::ONE * 0.5)
-                                * Mat4::from_translation(Vec3::Z * 0.5);
-
-                            ck!(gl.uniform_matrix_4_f32_slice(
-                                Some(&self.transform_uloc),
-                                false,
-                                &(view_proj * segment_transform).to_cols_array(),
-                            ));
-                            ck!(gl.draw_arrays(gl::LINES, 0, 2));
-                        }
+                    let segment_rotations = [
+                        Mat4::IDENTITY,
+                        Mat4::from_rotation_y(FRAC_PI_2),
+                        Mat4::from_rotation_x(FRAC_PI_2),
+                    ];
+                    for rot in &segment_rotations {
+                        let transform = hand_transform
+                            * *rot
+                            * Mat4::from_scale(Vec3::ONE * 0.5)
+                            * Mat4::from_translation(Vec3::Z * 0.5);
+                        transform_draw(&mut pass, view_proj * transform, 2);
                     }
                 }
             }
         }
-    }
-}
 
-impl Drop for LobbyRenderer {
-    fn drop(&mut self) {
-        let gl = &self.context.gl_context;
-
-        unsafe {
-            ck!(gl.delete_texture(self.hud_texture));
-            ck!(gl.delete_program(self.program));
-        }
+        self.context.queue.submit(Some(encoder.finish()));
     }
 }

@@ -158,12 +158,14 @@ impl StreamContext {
         let swapchains = [
             graphics::create_swapchain(
                 &xr_ctx.session,
+                &gfx_ctx,
                 config.view_resolution,
                 foveation_profile.as_ref(),
                 config.encoder_config.enable_hdr,
             ),
             graphics::create_swapchain(
                 &xr_ctx.session,
+                &gfx_ctx,
                 config.view_resolution,
                 foveation_profile.as_ref(),
                 config.encoder_config.enable_hdr,

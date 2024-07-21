@@ -39,8 +39,8 @@ impl Lobby {
             interaction::get_reference_space(&xr_ctx.session, reference_space_type);
 
         let swapchains = [
-            graphics::create_swapchain(&xr_ctx.session, view_resolution, None, false),
-            graphics::create_swapchain(&xr_ctx.session, view_resolution, None, false),
+            graphics::create_swapchain(&xr_ctx.session, &gfx_ctx, view_resolution, None, false),
+            graphics::create_swapchain(&xr_ctx.session, &gfx_ctx, view_resolution, None, false),
         ];
 
         let renderer = LobbyRenderer::new(

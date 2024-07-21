@@ -322,7 +322,7 @@ impl GraphicsContext {
                 required_features: Features::PUSH_CONSTANTS,
                 required_limits: Limits {
                     max_push_constant_size: 72,
-                    ..Default::default()
+                    ..adapter.limits()
                 },
             },
             None,

@@ -455,11 +455,11 @@ pub struct FoveatedEncodingConfig {
 #[repr(C)]
 #[derive(SettingsSchema, Clone, Copy, Serialize, Deserialize, Pod, Zeroable)]
 pub struct ColorCorrectionConfig {
-    #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
+    #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.001)))]
     #[schema(flag = "steamvr-restart")]
     pub brightness: f32,
 
-    #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.01)))]
+    #[schema(gui(slider(min = -1.0, max = 1.0, step = 0.001)))]
     #[schema(flag = "steamvr-restart")]
     pub contrast: f32,
 

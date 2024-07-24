@@ -305,22 +305,14 @@ pub fn build_launcher(profile: Profile, enable_messagebox: bool, reproducible: b
     .unwrap();
 }
 
-fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool) {
+fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
-    let ndk_flags = &[
-        "-t",
-        "arm64-v8a",
-        "-t",
-        "armeabi-v7a",
-        "-t",
-        "x86_64",
-        "-t",
-        "x86",
-        "-p",
-        "26",
-        "--no-strip",
-    ];
+    let mut ndk_flags = vec!["--no-strip", "-p", "26", "-t", "arm64-v8a"];
+
+    if all_targets {
+        ndk_flags.extend(["-t", "armeabi-v7a", "-t", "x86_64", "-t", "x86"]);
+    }
 
     let mut rust_flags = vec![];
     match profile {
@@ -351,12 +343,12 @@ fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_android_client_core_lib(profile: Profile, link_stdcpp: bool) {
-    build_android_lib_impl("client_core", profile, link_stdcpp)
+pub fn build_android_client_core_lib(profile: Profile, link_stdcpp: bool, all_targets: bool) {
+    build_android_lib_impl("client_core", profile, link_stdcpp, all_targets)
 }
 
 pub fn build_android_client_openxr_lib(profile: Profile, link_stdcpp: bool) {
-    build_android_lib_impl("client_openxr", profile, link_stdcpp)
+    build_android_lib_impl("client_openxr", profile, link_stdcpp, false)
 }
 
 pub fn build_android_client(profile: Profile) {

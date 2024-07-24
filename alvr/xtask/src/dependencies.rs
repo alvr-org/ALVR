@@ -345,7 +345,7 @@ fn get_android_openxr_loaders() {
     );
 }
 
-pub fn build_android_deps(skip_admin_priv: bool) {
+pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
     update_submodules(&sh);
@@ -357,15 +357,17 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add aarch64-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "rustup target add armv7-linux-androideabi")
-        .run()
-        .unwrap();
-    cmd!(sh, "rustup target add x86_64-linux-android")
-        .run()
-        .unwrap();
-    cmd!(sh, "rustup target add i686-linux-android")
-        .run()
-        .unwrap();
+    if all_targets {
+        cmd!(sh, "rustup target add armv7-linux-androideabi")
+            .run()
+            .unwrap();
+        cmd!(sh, "rustup target add x86_64-linux-android")
+            .run()
+            .unwrap();
+        cmd!(sh, "rustup target add i686-linux-android")
+            .run()
+            .unwrap();
+    }
     cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
     cmd!(
         sh,

@@ -52,6 +52,7 @@ FLAGS:
     --no-rebuild        Do not rebuild the streamer with run-streamer
     --ci                Do some CI related tweaks. Depends on the other flags and subcommand
     --no-stdcpp         Disable linking to libc++_shared with build-client-lib
+    --all-targets       For prepare-deps and build-client-lib subcommand, will build for all android supported ABI targets
 
 ARGS:
     --platform <NAME>   Name of the platform (operative system or hardware name). snake_case
@@ -167,6 +168,7 @@ fn main() {
         let appimage = args.contains("--appimage");
         let zsync = args.contains("--zsync");
         let link_stdcpp = !args.contains("--no-stdcpp");
+        let all_targets = args.contains("--all-targets");
 
         let platform: Option<String> = args.opt_value_from_str("--platform").unwrap();
         let version: Option<String> = args.opt_value_from_str("--version").unwrap();
@@ -180,7 +182,7 @@ fn main() {
                             "windows" => dependencies::prepare_windows_deps(for_ci),
                             "linux" => dependencies::prepare_linux_deps(!no_nvidia),
                             "macos" => dependencies::prepare_macos_deps(),
-                            "android" => dependencies::build_android_deps(for_ci),
+                            "android" => dependencies::build_android_deps(for_ci, all_targets),
                             _ => panic!("Unrecognized platform."),
                         }
                     } else {
@@ -190,7 +192,7 @@ fn main() {
                             dependencies::prepare_linux_deps(!no_nvidia);
                         }
 
-                        dependencies::build_android_deps(for_ci);
+                        dependencies::build_android_deps(for_ci, all_targets);
                     }
                 }
                 "build-streamer" => {
@@ -199,7 +201,9 @@ fn main() {
                 "build-launcher" => build::build_launcher(profile, true, false),
                 "build-server-lib" => build::build_server_lib(profile, true, None, false),
                 "build-client" => build::build_android_client(profile),
-                "build-client-lib" => build::build_android_client_core_lib(profile, link_stdcpp),
+                "build-client-lib" => {
+                    build::build_android_client_core_lib(profile, link_stdcpp, all_targets)
+                }
                 "build-client-xr-lib" => {
                     build::build_android_client_openxr_lib(profile, link_stdcpp)
                 }
@@ -226,7 +230,7 @@ fn main() {
                 "package-streamer" => packaging::package_streamer(gpl, root, appimage, zsync),
                 "package-launcher" => packaging::package_launcher(appimage),
                 "package-client" => build::build_android_client(Profile::Distribution),
-                "package-client-lib" => packaging::package_client_lib(link_stdcpp),
+                "package-client-lib" => packaging::package_client_lib(link_stdcpp, all_targets),
                 "format" => format::format(),
                 "check-format" => format::check_format(),
                 "clean" => clean(),

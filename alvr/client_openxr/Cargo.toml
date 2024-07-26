@@ -123,7 +123,9 @@ name = "com.oculus.intent.category.VR"
 value = "vr_only"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.supportedDevices"
-value = "quest|quest2|questpro"
+value = "all"
+# Use this for applab releases
+# value = "quest2|questpro|quest3"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"

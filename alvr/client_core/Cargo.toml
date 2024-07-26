@@ -23,7 +23,7 @@ alvr_sockets.workspace = true
 
 app_dirs2 = "2"
 bincode = "1"
-glow = "0.14"
+glow = "0.13"
 glyph_brush_layout = "0.2"
 jni = "0.21"
 khronos-egl = { version = "6", features = ["dynamic"] }
@@ -33,8 +33,8 @@ pollster = "0.3"
 rand = "0.8"
 serde = "1"
 serde_json = "1"
-wgpu = "22"
-wgpu-core = { version = "22", features = ["gles"] }
+wgpu = "0.20"
+wgpu-core = { version = "0.21", features = ["gles"] }
 whoami = "1"
 
 [target.'cfg(target_os = "android")'.dependencies]

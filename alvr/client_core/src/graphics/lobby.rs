@@ -130,7 +130,6 @@ fn pipeline(
             })],
         }),
         multiview: None,
-        cache: None,
     })
 }
 

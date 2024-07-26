@@ -138,14 +138,18 @@ async fn http_api(
                             alvr_events::send_event(EventType::AudioDevices(list));
                         }
                     }
-                    ServerRequest::CaptureFrame => connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::CaptureFrame),
-                    ServerRequest::InsertIdr => connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::RequestIDR),
+                    ServerRequest::CaptureFrame => {
+                        connection_context
+                            .events_sender
+                            .send(ServerCoreEvent::CaptureFrame)
+                            .ok();
+                    }
+                    ServerRequest::InsertIdr => {
+                        connection_context
+                            .events_sender
+                            .send(ServerCoreEvent::RequestIDR)
+                            .ok();
+                    }
                     ServerRequest::StartRecording => crate::create_recording_file(
                         connection_context,
                         SERVER_DATA_MANAGER.read().settings(),
@@ -183,14 +187,18 @@ async fn http_api(
                             alvr_events::send_event(EventType::DriversList(list));
                         }
                     }
-                    ServerRequest::RestartSteamvr => connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::RestartPending),
-                    ServerRequest::ShutdownSteamvr => connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::ShutdownPending),
+                    ServerRequest::RestartSteamvr => {
+                        connection_context
+                            .events_sender
+                            .send(ServerCoreEvent::RestartPending)
+                            .ok();
+                    }
+                    ServerRequest::ShutdownSteamvr => {
+                        connection_context
+                            .events_sender
+                            .send(ServerCoreEvent::ShutdownPending)
+                            .ok();
+                    }
                 }
 
                 reply(StatusCode::OK)?
@@ -224,9 +232,9 @@ async fn http_api(
             let res = websocket(request, sender, protocol::Message::Binary).await?;
 
             connection_context
-                .events_queue
-                .lock()
-                .push_back(ServerCoreEvent::RequestIDR);
+                .events_sender
+                .send(ServerCoreEvent::RequestIDR)
+                .ok();
 
             res
         }
@@ -241,9 +249,9 @@ async fn http_api(
                 .collect();
 
             connection_context
-                .events_queue
-                .lock()
-                .push_back(ServerCoreEvent::Buttons(button_entries));
+                .events_sender
+                .send(ServerCoreEvent::Buttons(button_entries))
+                .ok();
 
             reply(StatusCode::OK)?
         }

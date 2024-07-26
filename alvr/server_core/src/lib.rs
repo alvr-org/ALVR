@@ -38,13 +38,13 @@ use alvr_sockets::StreamSender;
 use bitrate::{BitrateManager, DynamicEncoderParams};
 use statistics::StatisticsManager;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::HashSet,
     env,
     fs::File,
     io::Write,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{SyncSender, TrySendError},
+        mpsc::{self, SyncSender, TrySendError},
         Arc,
     },
     thread::{self, JoinHandle},
@@ -92,7 +92,7 @@ pub enum ServerCoreEvent {
 }
 
 pub struct ConnectionContext {
-    events_queue: Mutex<VecDeque<ServerCoreEvent>>,
+    events_sender: mpsc::Sender<ServerCoreEvent>,
     statistics_manager: Mutex<Option<StatisticsManager>>,
     bitrate_manager: Mutex<BitrateManager>,
     decoder_config: Mutex<Option<DecoderInitializationConfig>>,
@@ -126,9 +126,9 @@ pub fn create_recording_file(connection_context: &ConnectionContext, settings: &
             *connection_context.video_recording_file.lock() = Some(file);
 
             connection_context
-                .events_queue
-                .lock()
-                .push_back(ServerCoreEvent::RequestIDR);
+                .events_sender
+                .send(ServerCoreEvent::RequestIDR)
+                .ok();
         }
         Err(e) => {
             error!("Failed to record video on disk: {e}");
@@ -166,7 +166,7 @@ pub struct ServerCoreContext {
 }
 
 impl ServerCoreContext {
-    pub fn new() -> Self {
+    pub fn new() -> (Self, mpsc::Receiver<ServerCoreEvent>) {
         if SERVER_DATA_MANAGER
             .read()
             .settings()
@@ -179,8 +179,10 @@ impl ServerCoreContext {
 
         SERVER_DATA_MANAGER.write().clean_client_list();
 
+        let (events_sender, events_receiver) = mpsc::channel();
+
         let connection_context = Arc::new(ConnectionContext {
-            events_queue: Mutex::new(VecDeque::new()),
+            events_sender,
             statistics_manager: Mutex::new(None),
             bitrate_manager: Mutex::new(BitrateManager::new(256, 60.0)),
             decoder_config: Mutex::new(None),
@@ -198,13 +200,17 @@ impl ServerCoreContext {
             async move { alvr_common::show_err(web_server::web_server(connection_context).await) }
         });
 
-        Self {
-            lifecycle_state: Arc::new(RwLock::new(LifecycleState::StartingUp)),
-            is_restarting: RelaxedAtomic::new(false),
-            connection_context,
-            connection_thread: Arc::new(RwLock::new(None)),
-            webserver_runtime: Some(webserver_runtime),
-        }
+        (
+            Self {
+                lifecycle_state: Arc::new(RwLock::new(LifecycleState::StartingUp)),
+                is_restarting: RelaxedAtomic::new(false),
+                connection_context,
+
+                connection_thread: Arc::new(RwLock::new(None)),
+                webserver_runtime: Some(webserver_runtime),
+            },
+            events_receiver,
+        )
     }
 
     pub fn start_connection(&self) {
@@ -216,10 +222,6 @@ impl ServerCoreContext {
         *self.connection_thread.write() = Some(thread::spawn(move || {
             connection::handshake_loop(connection_context, lifecycle_state);
         }));
-    }
-
-    pub fn poll_event(&self) -> Option<ServerCoreEvent> {
-        self.connection_context.events_queue.lock().pop_front()
     }
 
     pub fn send_haptics(&self, haptics: Haptics) {
@@ -294,9 +296,9 @@ impl ServerCoreContext {
                     > *LAST_IDR_INSTANT.lock() + Duration::from_secs(config.duration_s)
                 {
                     self.connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::RequestIDR);
+                        .events_sender
+                        .send(ServerCoreEvent::RequestIDR)
+                        .ok();
 
                     if is_idr {
                         create_recording_file(
@@ -335,9 +337,9 @@ impl ServerCoreContext {
                 ) {
                     STREAM_CORRUPTED.store(true, Ordering::SeqCst);
                     self.connection_context
-                        .events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::RequestIDR);
+                        .events_sender
+                        .send(ServerCoreEvent::RequestIDR)
+                        .ok();
                     warn!("Dropping video packet. Reason: Can't push to network");
                 }
             } else {
@@ -405,12 +407,6 @@ impl ServerCoreContext {
         self.is_restarting.set(true);
 
         // drop is called here for self
-    }
-}
-
-impl Default for ServerCoreContext {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

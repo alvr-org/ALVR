@@ -15,8 +15,10 @@ mod bindings {
 use bindings::*;
 
 use alvr_common::{
-    error, once_cell::sync::Lazy, parking_lot::RwLock, warn, BUTTON_INFO, HAND_LEFT_ID,
-    HAND_RIGHT_ID,
+    error,
+    once_cell::sync::Lazy,
+    parking_lot::{Mutex, RwLock},
+    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -24,7 +26,9 @@ use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET
 use alvr_session::CodecType;
 use std::{
     ffi::{c_char, c_void, CString},
-    ptr, thread,
+    ptr,
+    sync::{mpsc, Once},
+    thread,
     time::{Duration, Instant},
 };
 
@@ -34,41 +38,15 @@ static FILESYSTEM_LAYOUT: Lazy<afs::Layout> = Lazy::new(|| {
     )
 });
 
-static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> = Lazy::new(|| {
-    alvr_server_core::init_logging();
-
-    unsafe {
-        g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
-            .unwrap()
-            .into_raw();
-        g_driverRootDir = CString::new(
-            FILESYSTEM_LAYOUT
-                .openvr_driver_root_dir
-                .to_string_lossy()
-                .to_string(),
-        )
-        .unwrap()
-        .into_raw();
-    };
-
-    graphics::initialize_shaders();
-
-    unsafe {
-        LogError = Some(alvr_server_core::alvr_log_error);
-        LogWarn = Some(alvr_server_core::alvr_log_warn);
-        LogInfo = Some(alvr_server_core::alvr_log_info);
-        LogDebug = Some(alvr_server_core::alvr_log_debug);
-        LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
-        PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
-
-        CppInit();
-    }
-
-    RwLock::new(Some(ServerCoreContext::new()))
-});
+static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
+    Lazy::new(|| RwLock::new(None));
+static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
+    Lazy::new(|| Mutex::new(None));
 
 extern "C" fn driver_ready_idle(set_default_chap: bool) {
     thread::spawn(move || {
+        let events_receiver = EVENTS_RECEIVER.lock().take().unwrap();
+
         unsafe { InitOpenvrClient() };
 
         if set_default_chap {
@@ -85,16 +63,10 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 
         let mut last_resync = Instant::now();
         loop {
-            let event = if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-                match context.poll_event() {
-                    Some(event) => event,
-                    None => {
-                        thread::sleep(Duration::from_millis(5));
-                        continue;
-                    }
-                }
-            } else {
-                break;
+            let event = match events_receiver.recv_timeout(Duration::from_millis(5)) {
+                Ok(event) => event,
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
             };
 
             match event {
@@ -383,21 +355,54 @@ pub unsafe extern "C" fn HmdDriverFactory(
     interface_name: *const c_char,
     return_code: *mut i32,
 ) -> *mut c_void {
-    // Make sure the context is initialized, and initialize logging
-    SERVER_CORE_CONTEXT.read().as_ref();
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        alvr_server_core::init_logging();
 
-    GetSerialNumber = Some(props::get_serial_number);
-    SetOpenvrProps = Some(props::set_device_openvr_props);
-    RegisterButtons = Some(register_buttons);
-    DriverReadyIdle = Some(driver_ready_idle);
-    HapticsSend = Some(send_haptics);
-    SetVideoConfigNals = Some(set_video_config_nals);
-    VideoSend = Some(send_video);
-    GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
-    ReportComposed = Some(report_composed);
-    ReportPresent = Some(report_present);
-    WaitForVSync = Some(wait_for_vsync);
-    ShutdownRuntime = Some(shutdown_driver);
+        unsafe {
+            g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())
+                .unwrap()
+                .into_raw();
+            g_driverRootDir = CString::new(
+                FILESYSTEM_LAYOUT
+                    .openvr_driver_root_dir
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .unwrap()
+            .into_raw();
+        };
+
+        graphics::initialize_shaders();
+
+        unsafe {
+            LogError = Some(alvr_server_core::alvr_log_error);
+            LogWarn = Some(alvr_server_core::alvr_log_warn);
+            LogInfo = Some(alvr_server_core::alvr_log_info);
+            LogDebug = Some(alvr_server_core::alvr_log_debug);
+            LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
+            PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
+            GetSerialNumber = Some(props::get_serial_number);
+            SetOpenvrProps = Some(props::set_device_openvr_props);
+            RegisterButtons = Some(register_buttons);
+            DriverReadyIdle = Some(driver_ready_idle);
+            HapticsSend = Some(send_haptics);
+            SetVideoConfigNals = Some(set_video_config_nals);
+            VideoSend = Some(send_video);
+            GetDynamicEncoderParams = Some(get_dynamic_encoder_params);
+            ReportComposed = Some(report_composed);
+            ReportPresent = Some(report_present);
+            WaitForVSync = Some(wait_for_vsync);
+            ShutdownRuntime = Some(shutdown_driver);
+
+            CppInit();
+        }
+
+        let (context, events_receiver) = ServerCoreContext::new();
+
+        *SERVER_CORE_CONTEXT.write() = Some(context);
+        *EVENTS_RECEIVER.lock() = Some(events_receiver);
+    });
 
     CppOpenvrEntryPoint(interface_name, return_code)
 }

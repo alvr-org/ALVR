@@ -14,11 +14,14 @@ use std::{
     collections::{HashMap, VecDeque},
     ffi::{c_char, CStr, CString},
     ptr,
+    sync::mpsc,
     time::{Duration, Instant},
 };
 
 static SERVER_CORE_CONTEXT: Lazy<RwLock<Option<ServerCoreContext>>> =
     Lazy::new(|| RwLock::new(None));
+static EVENTS_RECEIVER: Lazy<Mutex<Option<mpsc::Receiver<ServerCoreEvent>>>> =
+    Lazy::new(|| Mutex::new(None));
 static TRACKING_QUEUE: Lazy<Mutex<VecDeque<Tracking>>> = Lazy::new(|| Mutex::new(VecDeque::new()));
 static BUTTONS_QUEUE: Lazy<Mutex<VecDeque<Vec<ButtonEntry>>>> =
     Lazy::new(|| Mutex::new(VecDeque::new()));
@@ -251,7 +254,9 @@ pub extern "C" fn alvr_initialize_logging() {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_initialize() -> AlvrTargetConfig {
-    *SERVER_CORE_CONTEXT.write() = Some(ServerCoreContext::new());
+    let (context, receiver) = ServerCoreContext::new();
+    *SERVER_CORE_CONTEXT.write() = Some(context);
+    *EVENTS_RECEIVER.lock() = Some(receiver);
 
     let data_manager_lock = SERVER_DATA_MANAGER.read();
     let restart_settings = &data_manager_lock.session().openvr_config;
@@ -272,9 +277,9 @@ pub unsafe extern "C" fn alvr_start_connection() {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent) -> bool {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        if let Some(event) = context.poll_event() {
+pub unsafe extern "C" fn alvr_poll_event(out_event: *mut AlvrEvent, timeout_ns: u64) -> bool {
+    if let Some(receiver) = &*EVENTS_RECEIVER.lock() {
+        if let Ok(event) = receiver.recv_timeout(Duration::from_nanos(timeout_ns)) {
             match event {
                 ServerCoreEvent::SetOpenvrProperty { .. } => {} // implementation not needed
                 ServerCoreEvent::ClientConnected => {

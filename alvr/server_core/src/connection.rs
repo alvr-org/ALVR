@@ -723,14 +723,14 @@ fn connection_pipeline(
 
                     #[cfg(windows)]
                     if let Ok(id) = alvr_audio::get_windows_device_id(&device) {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::SetOpenvrProperty {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::SetOpenvrProperty {
                                 device_id: *alvr_common::HEAD_ID,
                                 prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
                                     id,
                                 ),
                             })
+                            .ok();
                     } else {
                         continue;
                     };
@@ -752,14 +752,14 @@ fn connection_pipeline(
                     if let Ok(id) = AudioDevice::new_output(None)
                         .and_then(|d| alvr_audio::get_windows_device_id(&d))
                     {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::SetOpenvrProperty {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::SetOpenvrProperty {
                                 device_id: *alvr_common::HEAD_ID,
                                 prop: alvr_session::OpenvrProperty::AudioDefaultPlaybackDeviceId(
                                     id,
                                 ),
                             })
+                            .ok();
                     }
                 }
             }
@@ -775,12 +775,12 @@ fn connection_pipeline(
 
         #[cfg(windows)]
         if let Ok(id) = alvr_audio::get_windows_device_id(&source) {
-            ctx.events_queue
-                .lock()
-                .push_back(ServerCoreEvent::SetOpenvrProperty {
+            ctx.events_sender
+                .send(ServerCoreEvent::SetOpenvrProperty {
                     device_id: *alvr_common::HEAD_ID,
                     prop: alvr_session::OpenvrProperty::AudioDefaultRecordingDeviceId(id),
                 })
+                .ok();
         }
 
         let client_hostname = client_hostname.clone();
@@ -952,8 +952,8 @@ fn connection_pipeline(
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();
 
                     if let Some(hand_skeleton) = tracking.hand_skeletons[0] {
-                        ctx.events_queue.lock().push_back(ServerCoreEvent::Buttons(
-                            trigger_hand_gesture_actions(
+                        ctx.events_sender
+                            .send(ServerCoreEvent::Buttons(trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_LEFT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
@@ -962,12 +962,12 @@ fn connection_pipeline(
                                     *HAND_LEFT_ID,
                                 ),
                                 gestures_config.only_touch,
-                            ),
-                        ));
+                            )))
+                            .ok();
                     }
                     if let Some(hand_skeleton) = tracking.hand_skeletons[1] {
-                        ctx.events_queue.lock().push_back(ServerCoreEvent::Buttons(
-                            trigger_hand_gesture_actions(
+                        ctx.events_sender
+                            .send(ServerCoreEvent::Buttons(trigger_hand_gesture_actions(
                                 gestures_button_mapping_manager,
                                 *HAND_RIGHT_ID,
                                 &hand_gesture_manager_lock.get_active_gestures(
@@ -976,17 +976,16 @@ fn connection_pipeline(
                                     *HAND_RIGHT_ID,
                                 ),
                                 gestures_config.only_touch,
-                            ),
-                        ));
+                            )))
+                            .ok();
                     }
                 }
 
                 if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                     stats.report_tracking_received(tracking.target_timestamp);
 
-                    ctx.events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::Tracking {
+                    ctx.events_sender
+                        .send(ServerCoreEvent::Tracking {
                             tracking: Box::new(Tracking {
                                 target_timestamp: tracking.target_timestamp,
                                 device_motions: motions,
@@ -1002,7 +1001,8 @@ fn connection_pipeline(
                                 face_data: tracking.face_data,
                             }),
                             controllers_pose_time_offset: stats.tracker_pose_time_offset(),
-                        });
+                        })
+                        .ok();
                 }
             }
         }
@@ -1027,9 +1027,9 @@ fn connection_pipeline(
                     let decoder_latency = client_stats.video_decode;
                     let (network_latency, game_latency) = stats.report_statistics(client_stats);
 
-                    ctx.events_queue
-                        .lock()
-                        .push_back(ServerCoreEvent::GameRenderLatencyFeedback(game_latency));
+                    ctx.events_sender
+                        .send(ServerCoreEvent::GameRenderLatencyFeedback(game_latency))
+                        .ok();
 
                     let server_data_lock = SERVER_DATA_MANAGER.read();
                     ctx.bitrate_manager.lock().report_frame_latencies(
@@ -1121,14 +1121,14 @@ fn connection_pipeline(
                             let wh = area.x * area.y;
                             if wh.is_finite() && wh > 0.0 {
                                 info!("Received new playspace with size: {}", area);
-                                ctx.events_queue
-                                    .lock()
-                                    .push_back(ServerCoreEvent::PlayspaceSync(area));
+                                ctx.events_sender
+                                    .send(ServerCoreEvent::PlayspaceSync(area))
+                                    .ok();
                             } else {
                                 warn!("Received invalid playspace size: {}", area);
-                                ctx.events_queue
-                                    .lock()
-                                    .push_back(ServerCoreEvent::PlayspaceSync(Vec2::new(2.0, 2.0)));
+                                ctx.events_sender
+                                    .send(ServerCoreEvent::PlayspaceSync(Vec2::new(2.0, 2.0)))
+                                    .ok();
                             }
                         }
                     }
@@ -1139,23 +1139,18 @@ fn connection_pipeline(
                                 .send(&ServerControlPacket::DecoderConfig(config))
                                 .ok();
                         }
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::RequestIDR);
+                        ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
                     ClientControlPacket::VideoErrorReport => {
                         // legacy endpoint. todo: remove
                         if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                             stats.report_packet_loss();
                         }
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::RequestIDR)
+                        ctx.events_sender.send(ServerCoreEvent::RequestIDR).ok();
                     }
                     ClientControlPacket::ViewsConfig(config) => {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::ViewsConfig(ViewsConfig {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::ViewsConfig(ViewsConfig {
                                 local_view_transforms: [
                                     Pose {
                                         position: Vec3::new(-config.ipd_m / 2., 0., 0.),
@@ -1167,16 +1162,17 @@ fn connection_pipeline(
                                     },
                                 ],
                                 fov: config.fov,
-                            }));
+                            }))
+                            .ok();
                     }
                     ClientControlPacket::Battery(packet) => {
-                        ctx.events_queue
-                            .lock()
-                            .push_back(ServerCoreEvent::Battery(BatteryInfo {
+                        ctx.events_sender
+                            .send(ServerCoreEvent::Battery(BatteryInfo {
                                 device_id: packet.device_id,
                                 gauge_value: packet.gauge_value,
                                 is_plugged: packet.is_plugged,
-                            }));
+                            }))
+                            .ok();
 
                         if let Some(stats) = &mut *ctx.statistics_manager.lock() {
                             stats.report_battery(
@@ -1219,9 +1215,9 @@ fn connection_pipeline(
                                 .collect::<Vec<_>>();
 
                             if !button_entries.is_empty() {
-                                ctx.events_queue
-                                    .lock()
-                                    .push_back(ServerCoreEvent::Buttons(button_entries));
+                                ctx.events_sender
+                                    .send(ServerCoreEvent::Buttons(button_entries))
+                                    .ok();
                             }
                         };
                     }
@@ -1352,9 +1348,9 @@ fn connection_pipeline(
         ClientListAction::SetConnectionState(ConnectionState::Streaming),
     );
 
-    ctx.events_queue
-        .lock()
-        .push_back(ServerCoreEvent::ClientConnected);
+    ctx.events_sender
+        .send(ServerCoreEvent::ClientConnected)
+        .ok();
 
     alvr_common::wait_rwlock(&disconnect_notif, &mut server_data_lock);
 
@@ -1398,9 +1394,9 @@ fn connection_pipeline(
     keepalive_thread.join().ok();
     lifecycle_check_thread.join().ok();
 
-    ctx.events_queue
-        .lock()
-        .push_back(ServerCoreEvent::ClientDisconnected);
+    ctx.events_sender
+        .send(ServerCoreEvent::ClientDisconnected)
+        .ok();
 
     Ok(())
 }

@@ -877,7 +877,11 @@ pub struct ControllersConfig {
         help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
     ))]
     pub enable_skeleton: bool,
-
+    #[schema(flag = "real-time")]
+    #[schema(strings(
+        help = "Enabling this will switch the skeletal tracking level to full controller."
+    ))]
+    pub enable_full_skeleton_level: bool,
     #[schema(flag = "real-time")]
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
@@ -1520,6 +1524,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     gui_collapsed: false,
                     tracked: true,
                     enable_skeleton: true,
+                    enable_full_skeleton_level: false,
                     emulation_mode: ControllersEmulationModeDefault {
                         Custom: ControllersEmulationModeCustomDefault {
                             serial_number: "ALVR Controller".into(),

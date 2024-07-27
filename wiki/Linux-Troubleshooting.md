@@ -109,3 +109,19 @@ This might be caused by [[PERF] Subpar GPU performance due to wrong power profil
 ### Fix
 
 Using CoreCtrl is highly advised (install it using your distribution package management) and in settings set your GPU to VR profile, as well as cpu to performance profile (if it's old Ryzen cpu).
+
+## OVR Advanced Settings
+
+Disable the OVR Advanced Settings driver and don't use it with ALVR.
+It's incompatible and will produce ladder-like latency graph with very bad shifting vision.
+
+
+## Bindings not working/high cpu usage due to bindings ui
+
+Steamvr can't properly update bindings, open menus, and possibly eats too much cpu.
+
+This issue is caused by SteamVR's webserver spamming requests that stall the chromium ui and causes it to use a lot of cpu.
+
+### Fix
+
+Apply the following patch: `https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/blob/main/patch_bindings_spam.sh`

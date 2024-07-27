@@ -26,7 +26,7 @@ use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET
 use alvr_session::CodecType;
 use std::{
     ffi::{c_char, c_void, CString},
-    ptr,
+    mem, ptr, thread,
     sync::{mpsc, Once},
     thread,
     time::{Duration, Instant},
@@ -253,6 +253,53 @@ pub extern "C" fn register_buttons(device_id: u64) {
     }
 }
 
+pub unsafe extern "C" fn get_register_buttons(
+    device_type: DEVICE_DESCRIPTION_TYPE,
+    button_id_len: *mut std::os::raw::c_int,
+) -> *mut u64 {
+    let device_id = if device_type == DEVICE_DESCRIPTION_TYPE_LEFT_HAND {
+        *HAND_LEFT_ID
+    } else {
+        *HAND_RIGHT_ID
+    };
+    let mut button_id_vec: Vec<u64> = REGISTERED_BUTTON_SET
+        .iter()
+        .filter_map(|id| {
+            if let Some(info) = BUTTON_INFO.get(id) {
+                if info.device_id == device_id {
+                    Some(*id)
+                } else {
+                    None
+                }
+            } else {
+                error!("Cannot register unrecognized button ID {id}");
+                None
+            }
+        })
+        .collect();
+
+    button_id_vec.shrink_to_fit();
+    assert!(button_id_vec.len() == button_id_vec.capacity());
+
+    let len = button_id_vec.len();
+    let ptr = button_id_vec.as_mut_ptr();
+
+    mem::forget(button_id_vec);
+    ptr::write(button_id_len, len as std::os::raw::c_int);
+
+    ptr
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_register_button_array(
+    button_id_array: *mut u64,
+    id_len: std::os::raw::c_int,
+) {
+    let len = id_len as usize;
+    let vec = Vec::from_raw_parts(button_id_array, len, len);
+    mem::drop(vec);
+}
+
 extern "C" fn send_haptics(device_id: u64, duration_s: f32, frequency: f32, amplitude: f32) {
     if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
         let haptics = Haptics {
@@ -383,8 +430,10 @@ pub unsafe extern "C" fn HmdDriverFactory(
             LogPeriodically = Some(alvr_server_core::alvr_log_periodically);
             PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
             GetSerialNumber = Some(props::get_serial_number);
-            SetOpenvrProps = Some(props::set_device_openvr_props);
-            RegisterButtons = Some(register_buttons);
+            GetOpenVrProps = Some(props::get_device_openvr_props);
+            FreePropArray = Some(props::free_prop_array);        
+            GetRegisterButtons = Some(get_register_buttons);
+            FreeRegisterButtonArray = Some(free_register_button_array);
             DriverReadyIdle = Some(driver_ready_idle);
             HapticsSend = Some(send_haptics);
             SetVideoConfigNals = Some(set_video_config_nals);

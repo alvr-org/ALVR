@@ -100,8 +100,10 @@ public:
         }
 
         if (Settings::Instance().m_enableControllers) {
-            this->left_controller = std::make_unique<Controller>(HAND_LEFT_ID);
-            this->right_controller = std::make_unique<Controller>(HAND_RIGHT_ID);
+            this->left_controller
+                = std::make_unique<Controller>(HAND_LEFT_ID, DEVICE_DESCRIPTION_TYPE::LEFT_HAND);
+            this->right_controller
+                = std::make_unique<Controller>(HAND_RIGHT_ID, DEVICE_DESCRIPTION_TYPE::RIGHT_HAND);
 
             this->tracked_devices.insert({ HAND_LEFT_ID,
                                            (TrackedDevice*)this->left_controller.get() });
@@ -310,9 +312,13 @@ void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long long offset
 void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
-void (*SetOpenvrProps)(unsigned long long deviceID);
-void (*RegisterButtons)(unsigned long long deviceID);
 void (*WaitForVSync)();
+
+FfiOpenvrProperty* (*GetOpenVrProps)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+void (*FreePropArray)(FfiOpenvrProperty* ptr, int count);
+
+uint64_t* (*GetRegisterButtons)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+void (*FreeRegisterButtonArray)(uint64_t* ptr, int count);
 
 void CppInit() {
     HookCrashHandler();

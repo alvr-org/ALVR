@@ -84,6 +84,13 @@ struct FfiDynamicEncoderParams {
     float framerate;
 };
 
+enum DEVICE_DESCRIPTION_TYPE {
+    HMD,
+    LEFT_HAND,
+    RIGHT_HAND,
+    OTHER,
+};
+
 extern "C" const unsigned char* FRAME_RENDER_VS_CSO_PTR;
 extern "C" unsigned int FRAME_RENDER_VS_CSO_LEN;
 extern "C" const unsigned char* FRAME_RENDER_PS_CSO_PTR;
@@ -128,9 +135,13 @@ extern "C" void (*ReportPresent)(unsigned long long timestamp_ns, unsigned long 
 extern "C" void (*ReportComposed)(unsigned long long timestamp_ns, unsigned long long offset_ns);
 extern "C" FfiDynamicEncoderParams (*GetDynamicEncoderParams)();
 extern "C" unsigned long long (*GetSerialNumber)(unsigned long long deviceID, char* outString);
-extern "C" void (*SetOpenvrProps)(unsigned long long deviceID);
-extern "C" void (*RegisterButtons)(unsigned long long deviceID);
 extern "C" void (*WaitForVSync)();
+
+extern "C" void (*FreePropArray)(FfiOpenvrProperty* ptr, int count);
+extern "C" FfiOpenvrProperty* (*GetOpenVrProps)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+
+extern "C" unsigned long long* (*GetRegisterButtons)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+extern "C" void (*FreeRegisterButtonArray)(unsigned long long* ptr, int count);
 
 extern "C" void CppInit();
 extern "C" void* CppOpenvrEntryPoint(const char* pInterfaceName, int* pReturnCode);

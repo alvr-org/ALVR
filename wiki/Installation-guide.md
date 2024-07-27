@@ -65,7 +65,7 @@ Since nightly releases can be unstable, always use matching versions for PC and 
 
 ### Flatpak
 
-For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Flatpak)
+For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Installing-ALVR-and-using-SteamVR-on-Linux-through-Flatpak)
 
 ## Advanced usage
 

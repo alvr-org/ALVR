@@ -28,7 +28,6 @@ use std::{
     ffi::{c_char, c_void, CString},
     mem, ptr, thread,
     sync::{mpsc, Once},
-    thread,
     time::{Duration, Instant},
 };
 
@@ -437,7 +436,7 @@ pub unsafe extern "C" fn HmdDriverFactory(
             PathStringToHash = Some(alvr_server_core::alvr_path_to_id);
             GetSerialNumber = Some(props::get_serial_number);
             GetOpenVrProps = Some(props::get_device_openvr_props);
-            FreePropArray = Some(props::free_prop_array);        
+            FreePropArray = Some(props::free_prop_array);
             GetRegisterButtons = Some(get_register_buttons);
             FreeRegisterButtonArray = Some(free_register_button_array);
             DriverReadyIdle = Some(driver_ready_idle);

@@ -354,8 +354,8 @@ void (*WaitForVSync)();
 FfiOpenvrProperty* (*GetOpenVrProps)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
 void (*FreePropArray)(FfiOpenvrProperty* ptr, int count);
 
-uint64_t* (*GetRegisterButtons)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
-void (*FreeRegisterButtonArray)(uint64_t* ptr, int count);
+unsigned long long* (*GetRegisterButtons)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+void (*FreeRegisterButtonArray)(unsigned long long* ptr, int count);
 
 void CppInit() {
     HookCrashHandler();

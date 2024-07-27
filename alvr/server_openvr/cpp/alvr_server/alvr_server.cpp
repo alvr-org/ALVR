@@ -418,18 +418,30 @@ void SetTracking(
         } else {
             if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked && !isFullSkeletal
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    leftHand,
+                    controllersTracked && !isFullSkeletal
                 );
                 g_driver_provider.left_controller_full_skeletal->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked && isFullSkeletal
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    leftHand,
+                    controllersTracked && isFullSkeletal
                 );
             } else if (g_driver_provider.right_controller
                        && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked && !isFullSkeletal
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    rightHand,
+                    controllersTracked && !isFullSkeletal
                 );
                 g_driver_provider.right_controller_full_skeletal->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked && isFullSkeletal
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    rightHand,
+                    controllersTracked && isFullSkeletal
                 );
             }
         }

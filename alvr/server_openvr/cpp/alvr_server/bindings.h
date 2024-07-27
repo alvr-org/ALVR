@@ -140,7 +140,9 @@ extern "C" void (*WaitForVSync)();
 extern "C" void (*FreePropArray)(FfiOpenvrProperty* ptr, int count);
 extern "C" FfiOpenvrProperty* (*GetOpenVrProps)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
 
-extern "C" unsigned long long* (*GetRegisterButtons)(DEVICE_DESCRIPTION_TYPE deviceType, int* count);
+extern "C" unsigned long long* (*GetRegisterButtons)(
+    DEVICE_DESCRIPTION_TYPE deviceType, int* count
+);
 extern "C" void (*FreeRegisterButtonArray)(unsigned long long* ptr, int count);
 
 extern "C" void CppInit();

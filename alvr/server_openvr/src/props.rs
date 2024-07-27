@@ -3,10 +3,11 @@
 // todo: add more emulation modes
 
 use crate::{
-    DEVICE_DESCRIPTION_TYPE, DEVICE_DESCRIPTION_TYPE_HMD, DEVICE_DESCRIPTION_TYPE_LEFT_HAND, DEVICE_DESCRIPTION_TYPE_RIGHT_HAND, FfiOpenvrProperty,
-    FfiOpenvrPropertyType_Bool, FfiOpenvrPropertyType_Double, FfiOpenvrPropertyType_Float,
-    FfiOpenvrPropertyType_Int32, FfiOpenvrPropertyType_String, FfiOpenvrPropertyType_Uint64,
-    FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
+    FfiOpenvrProperty, FfiOpenvrPropertyType_Bool, FfiOpenvrPropertyType_Double,
+    FfiOpenvrPropertyType_Float, FfiOpenvrPropertyType_Int32, FfiOpenvrPropertyType_String,
+    FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
+    DEVICE_DESCRIPTION_TYPE, DEVICE_DESCRIPTION_TYPE_HMD, DEVICE_DESCRIPTION_TYPE_LEFT_HAND,
+    DEVICE_DESCRIPTION_TYPE_RIGHT_HAND,
 };
 use alvr_common::{info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID};
 use alvr_session::{
@@ -139,7 +140,6 @@ pub unsafe extern "C" fn free_prop_array(prop_array: *mut FfiOpenvrProperty, pro
     let vec = Vec::from_raw_parts(prop_array, len, len);
     mem::drop(vec);
 }
-
 
 fn get_hmd_openvr_prop() -> Vec<FfiOpenvrProperty> {
     use OpenvrProperty::*;

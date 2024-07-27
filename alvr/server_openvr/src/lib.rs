@@ -26,8 +26,9 @@ use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET
 use alvr_session::CodecType;
 use std::{
     ffi::{c_char, c_void, CString},
-    mem, ptr, thread,
+    mem, ptr,
     sync::{mpsc, Once},
+    thread,
     time::{Duration, Instant},
 };
 

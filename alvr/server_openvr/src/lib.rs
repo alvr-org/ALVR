@@ -177,7 +177,8 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             controllers_pose_time_offset.as_secs_f32(),
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
-                            should_enable_full_skeleton_level && tracking.hand_skeletons[hand_skeleton_index].is_some(),
+                            should_enable_full_skeleton_level
+                                && tracking.hand_skeletons[hand_skeleton_index].is_some(),
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
                                 skeleton
                             } else {

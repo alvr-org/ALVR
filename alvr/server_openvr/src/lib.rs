@@ -165,12 +165,6 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let ffi_body_trackers =
                         tracking::to_ffi_body_trackers(&tracking.device_motions, track_body);
 
-                    let hand_skeleton_index = if ffi_left_hand_skeleton.is_some() {
-                        0
-                    } else {
-                        1
-                    };
-
                     unsafe {
                         SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
@@ -178,7 +172,9 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
                             should_enable_full_skeleton_level
-                                && tracking.hand_skeletons[hand_skeleton_index].is_some(),
+                                && tracking.hand_skeletons[0].is_some(),
+                            should_enable_full_skeleton_level
+                                && tracking.hand_skeletons[1].is_some(),
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
                                 skeleton
                             } else {

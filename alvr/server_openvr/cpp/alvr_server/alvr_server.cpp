@@ -405,7 +405,8 @@ void SetTracking(
     float controllerPoseTimeOffsetS,
     const FfiDeviceMotion* deviceMotions,
     int motionsCount,
-    bool isFullSkeletal,
+    bool leftHandIsFullSkeletal,
+    bool rightHandIsFullSkeletal,
     const FfiHandSkeleton* leftHand,
     const FfiHandSkeleton* rightHand,
     unsigned int controllersTracked,
@@ -421,13 +422,13 @@ void SetTracking(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
                     leftHand,
-                    controllersTracked && !isFullSkeletal
+                    controllersTracked && !leftHandIsFullSkeletal
                 );
                 g_driver_provider.left_controller_full_skeletal->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
                     leftHand,
-                    controllersTracked && isFullSkeletal
+                    controllersTracked && leftHandIsFullSkeletal
                 );
             } else if (g_driver_provider.right_controller
                        && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
@@ -435,13 +436,13 @@ void SetTracking(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
                     rightHand,
-                    controllersTracked && !isFullSkeletal
+                    controllersTracked && !rightHandIsFullSkeletal
                 );
                 g_driver_provider.right_controller_full_skeletal->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
                     rightHand,
-                    controllersTracked && isFullSkeletal
+                    controllersTracked && rightHandIsFullSkeletal
                 );
             }
         }

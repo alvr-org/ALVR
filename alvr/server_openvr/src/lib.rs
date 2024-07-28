@@ -18,12 +18,13 @@ use alvr_common::{
     error,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
+    settings_schema::Switch,
     warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET};
-use alvr_session::CodecType;
+use alvr_session::{CodecType, ControllersConfig};
 use std::{
     ffi::{c_char, c_void, CString},
     ptr,
@@ -138,23 +139,23 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         });
                     }
 
-                    let enable_skeleton = controllers_config
-                        .as_ref()
-                        .map(|c| c.enable_skeleton)
-                        .unwrap_or(false);
-                    let ffi_left_hand_skeleton = enable_skeleton
-                        .then_some(left_openvr_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
-                    let ffi_right_hand_skeleton = enable_skeleton
-                        .then_some(right_openvr_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
-
-                    let should_enable_full_skeleton_level = controllers_config
-                        .as_ref()
-                        .map(|c| c.should_enable_full_skeleton_level)
-                        .unwrap_or(false);
+                    let (
+                        use_separate_hand_trackers,
+                        ffi_left_hand_skeleton,
+                        ffi_right_hand_skeleton,
+                    ) = if let Some(ControllersConfig {
+                        hand_skeleton: Switch::Enabled(hand_skeleton_config),
+                        ..
+                    }) = controllers_config
+                    {
+                        (
+                            hand_skeleton_config.use_separate_trackers,
+                            left_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
+                            right_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
+                        )
+                    } else {
+                        (false, None, None)
+                    };
 
                     let ffi_motions = tracking
                         .device_motions
@@ -171,10 +172,9 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             controllers_pose_time_offset.as_secs_f32(),
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
-                            should_enable_full_skeleton_level
-                                && tracking.hand_skeletons[0].is_some(),
-                            should_enable_full_skeleton_level
-                                && tracking.hand_skeletons[1].is_some(),
+                            track_controllers.into(),
+                            use_separate_hand_trackers && tracking.hand_skeletons[0].is_some(),
+                            use_separate_hand_trackers && tracking.hand_skeletons[1].is_some(),
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
                                 skeleton
                             } else {
@@ -185,7 +185,6 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             } else {
                                 ptr::null()
                             },
-                            track_controllers.into(),
                             if let Some(body_trackers) = &ffi_body_trackers {
                                 body_trackers.as_ptr()
                             } else {

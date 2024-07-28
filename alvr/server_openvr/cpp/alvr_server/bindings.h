@@ -143,11 +143,11 @@ extern "C" void SetTracking(
     float controllerPoseTimeOffsetS,
     const FfiDeviceMotion* deviceMotions,
     int motionsCount,
-    bool leftHandIsFullSkeletal,
-    bool rightHandIsFullSkeletal,
+    unsigned int controllersTracked,
+    bool useLeftHandTracker,
+    bool useRightHandTracker,
     const FfiHandSkeleton* leftHand,
     const FfiHandSkeleton* rightHand,
-    unsigned int controllersTracked,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 );

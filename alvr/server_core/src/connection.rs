@@ -991,7 +991,7 @@ fn connection_pipeline(
                                 device_motions: motions,
                                 hand_skeletons: if controllers_config
                                     .as_ref()
-                                    .map(|c| c.enable_skeleton)
+                                    .map(|c| c.hand_skeleton.enabled())
                                     .unwrap_or(false)
                                 {
                                     hand_skeletons

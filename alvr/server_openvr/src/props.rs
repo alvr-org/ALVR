@@ -8,8 +8,8 @@ use crate::{
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
 use alvr_common::{
-    info, settings_schema::Switch, HAND_LEFT_FULL_SKELETAL_ID, HAND_LEFT_ID,
-    HAND_RIGHT_FULL_SKELETAL_ID, HAND_RIGHT_ID, HEAD_ID,
+    info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID,
+    HAND_TRACKER_RIGHT_ID, HEAD_ID,
 };
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
@@ -90,10 +90,9 @@ fn serial_number(device_id: u64) -> String {
         } else {
             "Unknown".into()
         }
-    } else if device_id == *HAND_LEFT_FULL_SKELETAL_ID || device_id == *HAND_RIGHT_FULL_SKELETAL_ID
-    {
+    } else if device_id == *HAND_TRACKER_LEFT_ID || device_id == *HAND_TRACKER_RIGHT_ID {
         if let Switch::Enabled(_) = &settings.headset.controllers {
-            if device_id == *HAND_LEFT_FULL_SKELETAL_ID {
+            if device_id == *HAND_TRACKER_LEFT_ID {
                 "ALVR_Left_Hand_Full_Skeletal".into()
             } else {
                 "ALVR_Right_Hand_Full_Skeletal".into()
@@ -239,11 +238,11 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         }
     } else if device_id == *HAND_LEFT_ID
         || device_id == *HAND_RIGHT_ID
-        || device_id == *HAND_LEFT_FULL_SKELETAL_ID
-        || device_id == *HAND_RIGHT_FULL_SKELETAL_ID
+        || device_id == *HAND_TRACKER_LEFT_ID
+        || device_id == *HAND_TRACKER_RIGHT_ID
     {
-        let left_hand = device_id == *HAND_LEFT_ID || device_id == *HAND_LEFT_FULL_SKELETAL_ID;
-        let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_RIGHT_FULL_SKELETAL_ID;
+        let left_hand = device_id == *HAND_LEFT_ID || device_id == *HAND_TRACKER_LEFT_ID;
+        let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_TRACKER_RIGHT_ID;
         if let Switch::Enabled(config) = &settings.headset.controllers {
             let set_prop = |prop| {
                 info!(

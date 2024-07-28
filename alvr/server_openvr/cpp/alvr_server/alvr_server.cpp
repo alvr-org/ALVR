@@ -81,8 +81,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 public:
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
-    std::unique_ptr<Controller> left_controller_full_skeletal, right_controller_full_skeletal;
-
+    std::unique_ptr<Controller> left_hand_tracker, right_hand_tracker;
     std::vector<std::unique_ptr<FakeViveTracker>> generic_trackers;
     bool shutdown_called = false;
 
@@ -125,29 +124,25 @@ public:
                 Warn("Failed to register right controller");
             }
 
-            this->left_controller_full_skeletal
-                = std::make_unique<Controller>(HAND_LEFT_FULL_SKELETAL_ID);
-            this->right_controller_full_skeletal
-                = std::make_unique<Controller>(HAND_RIGHT_FULL_SKELETAL_ID);
+            this->left_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_LEFT_ID);
+            this->right_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_RIGHT_ID);
 
-            this->tracked_devices.insert({ HAND_LEFT_FULL_SKELETAL_ID,
-                                           (TrackedDevice*)this->left_controller_full_skeletal.get(
-                                           ) });
-            this->tracked_devices.insert({ HAND_RIGHT_FULL_SKELETAL_ID,
-                                           (TrackedDevice*)this->right_controller_full_skeletal.get(
-                                           ) });
+            this->tracked_devices.insert({ HAND_TRACKER_LEFT_ID,
+                                           (TrackedDevice*)this->left_hand_tracker.get() });
+            this->tracked_devices.insert({ HAND_TRACKER_RIGHT_ID,
+                                           (TrackedDevice*)this->right_hand_tracker.get() });
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->left_controller_full_skeletal->get_serial_number().c_str(),
-                    this->left_controller_full_skeletal->getControllerDeviceClass(),
-                    this->left_controller_full_skeletal.get()
+                    this->left_hand_tracker->get_serial_number().c_str(),
+                    this->left_hand_tracker->getControllerDeviceClass(),
+                    this->left_hand_tracker.get()
                 )) {
                 Warn("Failed to register left full skeletal controller");
             }
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->right_controller_full_skeletal->get_serial_number().c_str(),
-                    this->right_controller_full_skeletal->getControllerDeviceClass(),
-                    this->right_controller_full_skeletal.get()
+                    this->right_hand_tracker->get_serial_number().c_str(),
+                    this->right_hand_tracker->getControllerDeviceClass(),
+                    this->right_hand_tracker.get()
                 )) {
                 Warn("Failed to register right full skeletal controller");
             }
@@ -240,8 +235,8 @@ public:
         return vr::VRInitError_None;
     }
     virtual void Cleanup() override {
-        this->left_controller_full_skeletal.reset();
-        this->right_controller_full_skeletal.reset();
+        this->left_hand_tracker.reset();
+        this->right_hand_tracker.reset();
         this->left_controller.reset();
         this->right_controller.reset();
         this->hmd.reset();
@@ -393,11 +388,11 @@ void SetTracking(
     float controllerPoseTimeOffsetS,
     const FfiDeviceMotion* deviceMotions,
     int motionsCount,
-    bool leftHandIsFullSkeletal,
-    bool rightHandIsFullSkeletal,
-    const FfiHandSkeleton* leftHand,
-    const FfiHandSkeleton* rightHand,
     unsigned int controllersTracked,
+    bool useLeftHandTracker,
+    bool useRightHandTracker,
+    const FfiHandSkeleton* leftHandSkeleton,
+    const FfiHandSkeleton* rightHandSkeleton,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 ) {
@@ -409,28 +404,28 @@ void SetTracking(
                 g_driver_provider.left_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
-                    leftHand,
-                    controllersTracked && !leftHandIsFullSkeletal
+                    leftHandSkeleton,
+                    controllersTracked && !useLeftHandTracker
                 );
-                g_driver_provider.left_controller_full_skeletal->onPoseUpdate(
+                g_driver_provider.left_hand_tracker->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
-                    leftHand,
-                    controllersTracked && leftHandIsFullSkeletal
+                    leftHandSkeleton,
+                    controllersTracked && useLeftHandTracker
                 );
             } else if (g_driver_provider.right_controller
                        && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
-                    rightHand,
-                    controllersTracked && !rightHandIsFullSkeletal
+                    rightHandSkeleton,
+                    controllersTracked && !useRightHandTracker
                 );
-                g_driver_provider.right_controller_full_skeletal->onPoseUpdate(
+                g_driver_provider.right_hand_tracker->onPoseUpdate(
                     controllerPoseTimeOffsetS,
                     deviceMotions[i],
-                    rightHand,
-                    controllersTracked && rightHandIsFullSkeletal
+                    rightHandSkeleton,
+                    controllersTracked && useRightHandTracker
                 );
             }
         }

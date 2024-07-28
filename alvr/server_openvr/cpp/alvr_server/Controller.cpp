@@ -74,7 +74,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRScalarUnits_NormalizedOneSided
     );
 
-    if (this->device_id == HAND_LEFT_ID || this->device_id == HAND_LEFT_FULL_SKELETAL_ID) {
+    if (this->device_id == HAND_LEFT_ID || this->device_id == HAND_TRACKER_LEFT_ID) {
         vr_driver_input->CreateSkeletonComponent(
             this->prop_container,
             "/input/skeleton/left",

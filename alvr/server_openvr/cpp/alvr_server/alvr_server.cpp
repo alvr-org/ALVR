@@ -124,32 +124,24 @@ public:
                 )) {
                 Warn("Failed to register right controller");
             }
-            this->left_controller_full_skeletal = std::make_unique<Controller>(
-                HAND_LEFT_ID, DEVICE_DESCRIPTION_TYPE::LEFT_HAND, true
-            );
-            this->right_controller_full_skeletal = std::make_unique<Controller>(
-                HAND_RIGHT_ID, DEVICE_DESCRIPTION_TYPE::RIGHT_HAND, true
-            );
 
-            // TODO : should tracked_devices to register? if so, what is ID ?
-            // this->tracked_devices.insert(
-            //     { HAND_LEFT_ID, (TrackedDevice*)this->left_controller_full_skeletal.get() }
-            // );
-            // this->tracked_devices.insert({ HAND_RIGHT_ID,
-            //                                (TrackedDevice*)this->right_controller_full_skeletal.get(
-            //                                ) });
+            this->left_controller_full_skeletal = std::make_unique<Controller>(HAND_LEFT_FULL_SKELETAL_ID);
+            this->right_controller_full_skeletal = std::make_unique<Controller>(HAND_RIGHT_FULL_SKELETAL_ID);
+
+            this->tracked_devices.insert({ HAND_LEFT_FULL_SKELETAL_ID,
+                                           (TrackedDevice*)this->left_controller_full_skeletal.get() });
+            this->tracked_devices.insert({ HAND_RIGHT_FULL_SKELETAL_ID,
+                                           (TrackedDevice*)this->right_controller_full_skeletal.get() });
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    (this->left_controller_full_skeletal->get_serial_number() + "Skeletal_Full")
-                        .c_str(),
+                    this->left_controller_full_skeletal->get_serial_number().c_str(),
                     this->left_controller_full_skeletal->getControllerDeviceClass(),
                     this->left_controller_full_skeletal.get()
                 )) {
                 Warn("Failed to register left full skeletal controller");
             }
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    (this->right_controller_full_skeletal->get_serial_number() + "Skeletal_Full")
-                        .c_str(),
+                    this->right_controller_full_skeletal->get_serial_number().c_str(),
                     this->right_controller_full_skeletal->getControllerDeviceClass(),
                     this->right_controller_full_skeletal.get()
                 )) {
@@ -511,12 +503,10 @@ void SetButton(unsigned long long buttonID, FfiButtonValue value) {
     if (g_driver_provider.left_controller
         && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.left_controller->SetButton(buttonID, value);
-        g_driver_provider.left_controller_full_skeletal->SetButton(buttonID, value);
     } else if (g_driver_provider.right_controller
                && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
                    != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
         g_driver_provider.right_controller->SetButton(buttonID, value);
-        g_driver_provider.right_controller_full_skeletal->SetButton(buttonID, value);
     }
 }
 

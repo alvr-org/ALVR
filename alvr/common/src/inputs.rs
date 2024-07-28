@@ -44,6 +44,8 @@ devices! {
     (HEAD, "/user/head"),
     (HAND_LEFT, "/user/hand/left"),
     (HAND_RIGHT, "/user/hand/right"),
+    (HAND_LEFT_FULL_SKELETAL,"/user/hand/virtual/left"),
+    (HAND_RIGHT_FULL_SKELETAL, "/user/hand/virtual/right"),
     (BODY_CHEST, "/user/body/chest"),
     (BODY_HIPS, "/user/body/waist"),
     (BODY_LEFT_ELBOW, "/user/body/left_elbow"),
@@ -95,6 +97,22 @@ macro_rules! controller_inputs {
                             path: [<RIGHT_ $inputs _PATH>],
                             button_type: ButtonType::$ty,
                             device_id: *HAND_RIGHT_ID,
+                        },
+                    ),
+                    (
+                        *[<LEFT_ $inputs _ID>],
+                        ButtonInfo {
+                            path: [<LEFT_ $inputs _PATH>],
+                            button_type: ButtonType::$ty,
+                            device_id: *HAND_LEFT_FULL_SKELETAL_ID,
+                        },
+                    ),
+                    (
+                        *[<LEFT_ $inputs _ID>],
+                        ButtonInfo {
+                            path: [<LEFT_ $inputs _PATH>],
+                            button_type: ButtonType::$ty,
+                            device_id: *HAND_RIGHT_FULL_SKELETAL_ID,
                         },
                     ),)*
                 ]

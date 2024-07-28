@@ -74,13 +74,15 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRScalarUnits_NormalizedOneSided
     );
 
-    if (this->device_id == HAND_LEFT_ID) {
+    if (this->device_id == HAND_LEFT_ID || this->device_id == HAND_LEFT_FULL_SKELETAL_ID) {
         vr_driver_input->CreateSkeletonComponent(
             this->prop_container,
             "/input/skeleton/left",
             "/skeleton/hand/left",
             "/pose/raw",
-            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            this->device_id == HAND_LEFT_ID
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,
             &m_compSkeleton
@@ -91,7 +93,9 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/right",
             "/skeleton/hand/right",
             "/pose/raw",
-            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            this->device_id == HAND_RIGHT_ID
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,
             &m_compSkeleton

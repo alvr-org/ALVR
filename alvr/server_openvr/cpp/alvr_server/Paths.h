@@ -10,6 +10,9 @@ extern uint64_t HEAD_ID;
 extern uint64_t HAND_LEFT_ID;
 extern uint64_t HAND_RIGHT_ID;
 
+extern uint64_t HAND_LEFT_FULL_SKELETAL_ID;
+extern uint64_t HAND_RIGHT_FULL_SKELETAL_ID;
+
 enum class ButtonType {
     Binary,
     ScalarOneSided,

@@ -7,7 +7,10 @@ use crate::{
     FfiOpenvrPropertyType_Float, FfiOpenvrPropertyType_Int32, FfiOpenvrPropertyType_String,
     FfiOpenvrPropertyType_Uint64, FfiOpenvrPropertyType_Vector3, FfiOpenvrPropertyValue,
 };
-use alvr_common::{info, settings_schema::Switch, HAND_LEFT_ID, HAND_RIGHT_ID, HEAD_ID};
+use alvr_common::{
+    info, settings_schema::Switch, HAND_LEFT_FULL_SKELETAL_ID, HAND_LEFT_ID,
+    HAND_RIGHT_FULL_SKELETAL_ID, HAND_RIGHT_ID, HEAD_ID,
+};
 use alvr_session::{
     ControllersEmulationMode, HeadsetEmulationMode, OpenvrPropValue, OpenvrProperty,
 };
@@ -83,6 +86,17 @@ fn serial_number(device_id: u64) -> String {
                 format!("{serial_number}_Left")
             } else {
                 format!("{serial_number}_Right")
+            }
+        } else {
+            "Unknown".into()
+        }
+    } else if device_id == *HAND_LEFT_FULL_SKELETAL_ID || device_id == *HAND_RIGHT_FULL_SKELETAL_ID
+    {
+        if let Switch::Enabled(_) = &settings.headset.controllers {
+            if device_id == *HAND_LEFT_FULL_SKELETAL_ID {
+                "ALVR_Left_Hand_Full_Skeletal".into()
+            } else {
+                "ALVR_Right_Hand_Full_Skeletal".into()
             }
         } else {
             "Unknown".into()
@@ -223,16 +237,18 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
         for prop in &settings.headset.extra_openvr_props {
             set_prop(prop.clone());
         }
-    } else if device_id == *HAND_LEFT_ID || device_id == *HAND_RIGHT_ID {
+    } else if device_id == *HAND_LEFT_ID
+        || device_id == *HAND_RIGHT_ID
+        || device_id == *HAND_LEFT_FULL_SKELETAL_ID
+        || device_id == *HAND_RIGHT_FULL_SKELETAL_ID
+    {
+        let left_hand = device_id == *HAND_LEFT_ID || device_id == *HAND_LEFT_FULL_SKELETAL_ID;
+        let right_hand = device_id == *HAND_RIGHT_ID || device_id == *HAND_RIGHT_FULL_SKELETAL_ID;
         if let Switch::Enabled(config) = &settings.headset.controllers {
             let set_prop = |prop| {
                 info!(
                     "Setting {} controller OpenVR prop: {prop:?}",
-                    if device_id == *HAND_LEFT_ID {
-                        "left"
-                    } else {
-                        "right"
-                    }
+                    if left_hand { "left" } else { "right" }
                 );
                 unsafe {
                     crate::SetOpenvrProperty(device_id, to_ffi_openvr_prop(prop));
@@ -243,13 +259,13 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::Quest2Touch => {
                     set_prop(TrackingSystemName("oculus".into()));
                     set_prop(ManufacturerName("Oculus".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber("Miramar (Left Controller)".into()));
                         set_prop(RenderModelName("oculus_quest2_controller_left".into()));
                         set_prop(RegisteredDeviceType(
                             "oculus/1WMHH000X00000_Controller_Left".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber("Miramar (Right Controller)".into()));
                         set_prop(RenderModelName("oculus_quest2_controller_right".into()));
                         set_prop(RegisteredDeviceType(
@@ -259,7 +275,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_prop(ControllerType("oculus_touch".into()));
                     set_prop(InputProfilePath("{oculus}/input/touch_profile.json".into()));
 
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_left_controller_off.png".into(),
                         ));
@@ -278,7 +294,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(NamedIconPathDeviceAlertLow(
                             "{oculus}/icons/rifts_left_controller_ready_low.png".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_right_controller_off.png".into(),
                         ));
@@ -302,13 +318,13 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::Quest3Plus => {
                     set_prop(TrackingSystemName("oculus".into()));
                     set_prop(ManufacturerName("Oculus".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber("Meta Quest 3 (Left Controller)".into()));
                         set_prop(RenderModelName("oculus_quest_plus_controller_left".into()));
                         set_prop(RegisteredDeviceType(
                             "oculus/1WMHH000X00000_Controller_Left".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber("Meta Quest 3 (Right Controller)".into()));
                         set_prop(RenderModelName("oculus_quest_plus_controller_right".into()));
                         set_prop(RegisteredDeviceType(
@@ -318,7 +334,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_prop(ControllerType("oculus_touch".into()));
                     set_prop(InputProfilePath("{oculus}/input/touch_profile.json".into()));
 
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_left_controller_off.png".into(),
                         ));
@@ -337,7 +353,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(NamedIconPathDeviceAlertLow(
                             "{oculus}/icons/rifts_left_controller_ready_low.png".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_right_controller_off.png".into(),
                         ));
@@ -361,13 +377,13 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::RiftSTouch => {
                     set_prop(TrackingSystemName("oculus".into()));
                     set_prop(ManufacturerName("Oculus".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber("Oculus Rift S (Left Controller)".into()));
                         set_prop(RenderModelName("oculus_rifts_controller_left".into()));
                         set_prop(RegisteredDeviceType(
                             "oculus/1WMGH000XX0000_Controller_Left".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber("Oculus Rift S (Right Controller)".into()));
                         set_prop(RenderModelName("oculus_rifts_controller_right".into()));
                         set_prop(RegisteredDeviceType(
@@ -377,7 +393,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_prop(ControllerType("oculus_touch".into()));
                     set_prop(InputProfilePath("{oculus}/input/touch_profile.json".into()));
 
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_left_controller_off.png".into(),
                         ));
@@ -396,7 +412,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(NamedIconPathDeviceAlertLow(
                             "{oculus}/icons/rifts_left_controller_ready_low.png".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(NamedIconPathDeviceOff(
                             "{oculus}/icons/rifts_right_controller_off.png".into(),
                         ));
@@ -420,7 +436,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::ValveIndex => {
                     set_prop(TrackingSystemName("indexcontroller".into()));
                     set_prop(ManufacturerName("Valve".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber("Knuckles (Left Controller)".into()));
                         set_prop(RenderModelName(
                             "{indexcontroller}valve_controller_knu_1_0_left".into(),
@@ -428,7 +444,7 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                         set_prop(RegisteredDeviceType(
                             "valve/index_controllerLHR-E217CD00_Left".into(),
                         ));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber("Knuckles (Right Controller)".into()));
                         set_prop(RenderModelName(
                             "{indexcontroller}valve_controller_knu_1_0_right".into(),
@@ -446,12 +462,12 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                     set_prop(TrackingSystemName("htc".into()));
                     set_prop(ManufacturerName("HTC".into()));
                     set_prop(RenderModelName("vr_controller_vive_1_5".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber(
                             "ALVR Remote Controller (Left Controller)".into(),
                         ));
                         set_prop(RegisteredDeviceType("vive_controller_Left".into()));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber(
                             "ALVR Remote Controller (Right Controller)".into(),
                         ));
@@ -463,11 +479,11 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
                 ControllersEmulationMode::ViveTracker => {
                     set_prop(TrackingSystemName("lighthouse".into()));
                     set_prop(RenderModelName("{htc}vr_tracker_vive_1_0".into()));
-                    if device_id == *HAND_LEFT_ID {
+                    if left_hand {
                         set_prop(ModelNumber("Vive Tracker Pro MV (Left Controller)".into()));
                         set_prop(RegisteredDeviceType("ALVR/tracker/left_foot".into()));
                         set_prop(ControllerType("vive_tracker_left_foot".into()));
-                    } else if device_id == *HAND_RIGHT_ID {
+                    } else if right_hand {
                         set_prop(ModelNumber("Vive Tracker Pro MV (Right Controller)".into()));
                         set_prop(RegisteredDeviceType("ALVR/tracker/right_foot".into()));
                         set_prop(ControllerType("vive_tracker_right_foot".into()));
@@ -564,10 +580,10 @@ pub extern "C" fn set_device_openvr_props(device_id: u64) {
             if matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker) {
                 // TrackedControllerRole_Invalid
                 set_prop(ControllerRoleHint(0));
-            } else if device_id == *HAND_LEFT_ID {
+            } else if left_hand {
                 // TrackedControllerRole_LeftHand
                 set_prop(ControllerRoleHint(1));
-            } else if device_id == *HAND_RIGHT_ID {
+            } else if right_hand {
                 // TrackedControllerRole_RightHand
                 set_prop(ControllerRoleHint(2));
             }

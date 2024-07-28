@@ -5,6 +5,9 @@ uint64_t HEAD_ID;
 uint64_t HAND_LEFT_ID;
 uint64_t HAND_RIGHT_ID;
 
+uint64_t HAND_LEFT_FULL_SKELETAL_ID;
+uint64_t HAND_RIGHT_FULL_SKELETAL_ID;
+
 std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, std::vector<uint64_t>> ALVR_TO_STEAMVR_PATH_IDS;
@@ -36,6 +39,9 @@ void init_paths() {
     HEAD_ID = PathStringToHash("/user/head");
     HAND_LEFT_ID = PathStringToHash("/user/hand/left");
     HAND_RIGHT_ID = PathStringToHash("/user/hand/right");
+
+    HAND_LEFT_FULL_SKELETAL_ID = PathStringToHash("/user/hand/virtual/left");
+    HAND_RIGHT_FULL_SKELETAL_ID = PathStringToHash("/user/hand/virtual/right");
 
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/click"),
                                             { { "/input/system/click" }, ButtonType::Binary } });

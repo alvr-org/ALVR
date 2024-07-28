@@ -774,7 +774,6 @@ pub struct AutomaticButtonMappingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct HandGestureConfig {
     #[schema(flag = "real-time")]
     pub only_touch: bool,
@@ -1591,10 +1590,9 @@ pub fn session_settings_default() -> SettingsDefault {
                         force_threshold: 0.8,
                     },
                     gestures: SwitchDefault {
-                        enabled: true,
+                        enabled: false,
                         content: HandGestureConfigDefault {
-                            gui_collapsed: true,
-                            only_touch: true,
+                            only_touch: false,
                             pinch_touch_distance: 0.0,
                             pinch_trigger_distance: 0.25,
                             curl_touch_distance: 2.0,

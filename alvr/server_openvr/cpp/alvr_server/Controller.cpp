@@ -14,7 +14,7 @@ vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
     return vr::TrackedDeviceClass_Controller;
 }
 
-Controller::Controller(uint64_t deviceID, DEVICE_DESCRIPTION_TYPE deviceType, bool fullSkeletal)
+Controller::Controller(uint64_t deviceID)
     : TrackedDevice(deviceID) {
     m_pose = vr::DriverPose_t {};
     m_pose.poseIsValid = false;
@@ -24,9 +24,6 @@ Controller::Controller(uint64_t deviceID, DEVICE_DESCRIPTION_TYPE deviceType, bo
     m_pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-
-    m_deviceType = deviceType;
-    m_fullSkeletal = fullSkeletal;
 }
 
 //
@@ -42,9 +39,9 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     this->object_id = unObjectId;
     this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
 
-    SetOpenVRProps();
+    SetOpenvrProps(this->device_id);
 
-    RegisterButtonAll();
+    RegisterButtons(this->device_id);
 
     vr_driver_input->CreateHapticComponent(this->prop_container, "/output/haptic", &m_compHaptic);
 
@@ -83,8 +80,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/left",
             "/skeleton/hand/left",
             "/pose/raw",
-            m_fullSkeletal ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full
-                           : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
             nullptr,
             0U,
             &m_compSkeleton
@@ -95,8 +91,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/right",
             "/skeleton/hand/right",
             "/pose/raw",
-            m_fullSkeletal ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full
-                           : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
             nullptr,
             0U,
             &m_compSkeleton
@@ -123,24 +118,6 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     }
 
     return vr::VRInitError_None;
-}
-
-void Controller::RegisterButtonAll() {
-    int buttonLen = 0;
-    auto buttons = GetRegisterButtons(m_deviceType, &buttonLen);
-    for (int i = 0; buttonLen > i; i++) {
-        RegisterButton(buttons[i]);
-    }
-    FreeRegisterButtonArray(buttons, buttonLen);
-}
-
-void Controller::SetOpenVRProps() {
-    int propLen = 0;
-    auto props = GetOpenVrProps(m_deviceType, &propLen);
-    for (int i = 0; propLen > i; i++) {
-        set_prop(props[i]);
-    }
-    FreePropArray(props, propLen);
 }
 
 void Controller::Deactivate() {
@@ -172,7 +149,7 @@ vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHap
 
 void Controller::RegisterButton(uint64_t id) {
     ButtonInfo buttonInfo;
-    if (m_deviceType == DEVICE_DESCRIPTION_TYPE::LEFT_HAND) {
+    if (device_id == HAND_LEFT_ID) {
         buttonInfo = LEFT_CONTROLLER_BUTTON_MAPPING[id];
     } else {
         buttonInfo = RIGHT_CONTROLLER_BUTTON_MAPPING[id];

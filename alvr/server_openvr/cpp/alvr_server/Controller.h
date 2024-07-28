@@ -7,7 +7,7 @@
 
 class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 public:
-    Controller(uint64_t deviceID, DEVICE_DESCRIPTION_TYPE deviceType, bool fullSkeletal);
+    Controller(uint64_t deviceID);
 
     virtual ~Controller() {};
 
@@ -49,9 +49,6 @@ public:
     vr::ETrackedDeviceClass getControllerDeviceClass();
 
 private:
-    void SetOpenVRProps();
-    void RegisterButtonAll();
-
     static const int SKELETON_BONE_COUNT = 31;
     static const int ANIMATION_FRAME_COUNT = 15;
 
@@ -61,9 +58,6 @@ private:
     vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;
 
     vr::DriverPose_t m_pose;
-
-    DEVICE_DESCRIPTION_TYPE m_deviceType;
-    bool m_fullSkeletal;
 
     // These variables are used for controller hand animation
     // todo: move to rust

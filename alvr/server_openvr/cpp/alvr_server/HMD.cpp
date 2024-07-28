@@ -95,7 +95,7 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     this->object_id = unObjectId;
     this->prop_container = vr_properties->TrackedDeviceToPropertyContainer(this->object_id);
 
-    SetOpenVRProps();
+    SetOpenvrProps(this->device_id);
 
     vr_properties->SetFloatProperty(
         this->prop_container,
@@ -179,15 +179,6 @@ vr::EVRInitError Hmd::Activate(vr::TrackedDeviceIndex_t unObjectId) {
     }
 
     return vr::VRInitError_None;
-}
-
-void Hmd::SetOpenVRProps() {
-    int propLen = 0;
-    auto props = GetOpenVrProps(DEVICE_DESCRIPTION_TYPE::HMD, &propLen);
-    for (int i = 0; propLen > i; i++) {
-        set_prop(props[i]);
-    }
-    FreePropArray(props, propLen);
 }
 
 void Hmd::Deactivate() {

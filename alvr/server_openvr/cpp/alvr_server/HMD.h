@@ -62,8 +62,6 @@ public:
     std::shared_ptr<PoseHistory> m_poseHistory;
 
 private:
-    void SetOpenVRProps();
-
     FfiViewsConfig views_config;
 
     bool m_baseComponentsInitialized;

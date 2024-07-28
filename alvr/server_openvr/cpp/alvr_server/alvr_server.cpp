@@ -125,13 +125,17 @@ public:
                 Warn("Failed to register right controller");
             }
 
-            this->left_controller_full_skeletal = std::make_unique<Controller>(HAND_LEFT_FULL_SKELETAL_ID);
-            this->right_controller_full_skeletal = std::make_unique<Controller>(HAND_RIGHT_FULL_SKELETAL_ID);
+            this->left_controller_full_skeletal
+                = std::make_unique<Controller>(HAND_LEFT_FULL_SKELETAL_ID);
+            this->right_controller_full_skeletal
+                = std::make_unique<Controller>(HAND_RIGHT_FULL_SKELETAL_ID);
 
             this->tracked_devices.insert({ HAND_LEFT_FULL_SKELETAL_ID,
-                                           (TrackedDevice*)this->left_controller_full_skeletal.get() });
+                                           (TrackedDevice*)this->left_controller_full_skeletal.get(
+                                           ) });
             this->tracked_devices.insert({ HAND_RIGHT_FULL_SKELETAL_ID,
-                                           (TrackedDevice*)this->right_controller_full_skeletal.get() });
+                                           (TrackedDevice*)this->right_controller_full_skeletal.get(
+                                           ) });
 
             if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
                     this->left_controller_full_skeletal->get_serial_number().c_str(),

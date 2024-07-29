@@ -98,22 +98,6 @@ macro_rules! controller_inputs {
                             button_type: ButtonType::$ty,
                             device_id: *HAND_RIGHT_ID,
                         },
-                    ),
-                    (
-                        *[<LEFT_ $inputs _ID>],
-                        ButtonInfo {
-                            path: [<LEFT_ $inputs _PATH>],
-                            button_type: ButtonType::$ty,
-                            device_id: *HAND_TRACKER_LEFT_ID,
-                        },
-                    ),
-                    (
-                        *[<LEFT_ $inputs _ID>],
-                        ButtonInfo {
-                            path: [<LEFT_ $inputs _PATH>],
-                            button_type: ButtonType::$ty,
-                            device_id: *HAND_TRACKER_RIGHT_ID,
-                        },
                     ),)*
                 ]
                 .into_iter()

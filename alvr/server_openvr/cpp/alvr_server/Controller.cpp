@@ -183,6 +183,10 @@ void Controller::RegisterButton(uint64_t id) {
 }
 
 void Controller::SetButton(uint64_t id, FfiButtonValue value) {
+    if (!this->isEnabled()) {
+        return;
+    }
+
     for (auto id : ALVR_TO_STEAMVR_PATH_IDS[id]) {
         if (value.type == BUTTON_TYPE_BINARY) {
             vr::VRDriverInput()->UpdateBooleanComponent(

@@ -499,13 +499,21 @@ void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged)
 }
 
 void SetButton(unsigned long long buttonID, FfiButtonValue value) {
-    if (g_driver_provider.left_controller
-        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->SetButton(buttonID, value);
-    } else if (g_driver_provider.right_controller
-               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
-                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->SetButton(buttonID, value);
+    if (LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
+        if (g_driver_provider.left_controller) {
+            g_driver_provider.left_controller->SetButton(buttonID, value);
+        }
+        if (g_driver_provider.left_hand_tracker) {
+            g_driver_provider.left_hand_tracker->SetButton(buttonID, value);
+        }
+    } else if (RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+               != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+        if (g_driver_provider.right_controller) {
+            g_driver_provider.right_controller->SetButton(buttonID, value);
+        }
+        if (g_driver_provider.right_hand_tracker) {
+            g_driver_provider.right_hand_tracker->SetButton(buttonID, value);
+        }
     }
 }
 

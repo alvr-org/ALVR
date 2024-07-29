@@ -257,6 +257,15 @@ bool Controller::onPoseUpdate(
 
     m_pose = pose;
 
+    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+        this->object_id, pose, sizeof(vr::DriverPose_t)
+    );
+
+    // Early return to skip updating the skeleton
+    if (!this->isEnabled()) {
+        return false;
+    }
+
     if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
         for (int j = 0; j < 31; j++) {
@@ -397,10 +406,6 @@ bool Controller::onPoseUpdate(
             Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
         }
     }
-
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t)
-    );
 
     return false;
 }

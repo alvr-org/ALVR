@@ -156,7 +156,7 @@ extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
-extern "C" void RegisterButton(unsigned long long buttonID);
+extern "C" void RegisterButton(unsigned long long deviceID, unsigned long long buttonID);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);

@@ -19,7 +19,7 @@ use alvr_common::{
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
     settings_schema::Switch,
-    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID,
+    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
@@ -250,10 +250,18 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 }
 
 pub extern "C" fn register_buttons(device_id: u64) {
+    let mapped_device_id = if device_id == *HAND_TRACKER_LEFT_ID {
+        *HAND_LEFT_ID
+    } else if device_id == *HAND_TRACKER_RIGHT_ID {
+        *HAND_RIGHT_ID
+    } else {
+        device_id
+    };
+
     for id in &*REGISTERED_BUTTON_SET {
         if let Some(info) = BUTTON_INFO.get(id) {
-            if info.device_id == device_id {
-                unsafe { RegisterButton(*id) };
+            if info.device_id == mapped_device_id {
+                unsafe { RegisterButton(device_id, *id) };
             }
         } else {
             error!("Cannot register unrecognized button ID {id}");

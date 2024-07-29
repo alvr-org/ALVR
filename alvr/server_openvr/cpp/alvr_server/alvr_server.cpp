@@ -468,14 +468,11 @@ void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop) {
     }
 }
 
-void RegisterButton(unsigned long long buttonID) {
-    if (g_driver_provider.left_controller
-        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->RegisterButton(buttonID);
-    } else if (g_driver_provider.right_controller
-               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
-                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->RegisterButton(buttonID);
+void RegisterButton(unsigned long long deviceID, unsigned long long buttonID) {
+    auto device_it = g_driver_provider.tracked_devices.find(deviceID);
+    if (device_it != g_driver_provider.tracked_devices.end()) {
+        // Todo: move RegisterButton to generic TrackedDevice interface
+        ((Controller*)device_it->second)->RegisterButton(buttonID);
     }
 }
 

@@ -868,7 +868,8 @@ pub struct HapticsConfig {
 pub struct HandSkeletonConfig {
     #[schema(flag = "real-time")]
     #[schema(strings(
-        help = "Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
+        help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking.
+Although it is marked as real-time, toggling this may break some games."
     ))]
     pub use_separate_trackers: bool,
 }

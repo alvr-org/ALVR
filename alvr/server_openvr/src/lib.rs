@@ -166,6 +166,10 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let ffi_body_trackers =
                         tracking::to_ffi_body_trackers(&tracking.device_motions, track_body);
 
+                    // There are two pairs of controllers/hand tracking devices registered in
+                    // OpenVR, two lefts and two rights. If enabled with use_separate_hand_trackers,
+                    // we select at runtime which device to use (selected for left and right hand
+                    // independently. Selection is done by setting deviceIsConnected.
                     unsafe {
                         SetTracking(
                             tracking.target_timestamp.as_nanos() as _,

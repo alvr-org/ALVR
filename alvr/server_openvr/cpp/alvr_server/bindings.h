@@ -143,9 +143,11 @@ extern "C" void SetTracking(
     float controllerPoseTimeOffsetS,
     const FfiDeviceMotion* deviceMotions,
     int motionsCount,
+    unsigned int controllersTracked,
+    bool useLeftHandTracker,
+    bool useRightHandTracker,
     const FfiHandSkeleton* leftHand,
     const FfiHandSkeleton* rightHand,
-    unsigned int controllersTracked,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 );
@@ -154,7 +156,7 @@ extern "C" void RequestDriverResync();
 extern "C" void ShutdownSteamvr();
 
 extern "C" void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop);
-extern "C" void RegisterButton(unsigned long long buttonID);
+extern "C" void RegisterButton(unsigned long long deviceID, unsigned long long buttonID);
 extern "C" void SetViewsConfig(FfiViewsConfig config);
 extern "C" void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged);
 extern "C" void SetButton(unsigned long long buttonID, FfiButtonValue value);

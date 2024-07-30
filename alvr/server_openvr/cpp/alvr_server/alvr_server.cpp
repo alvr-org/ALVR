@@ -81,6 +81,7 @@ class DriverProvider : public vr::IServerTrackedDeviceProvider {
 public:
     std::unique_ptr<Hmd> hmd;
     std::unique_ptr<Controller> left_controller, right_controller;
+    std::unique_ptr<Controller> left_hand_tracker, right_hand_tracker;
     std::vector<std::unique_ptr<FakeViveTracker>> generic_trackers;
     bool shutdown_called = false;
 
@@ -121,6 +122,29 @@ public:
                     this->right_controller.get()
                 )) {
                 Warn("Failed to register right controller");
+            }
+
+            this->left_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_LEFT_ID);
+            this->right_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_RIGHT_ID);
+
+            this->tracked_devices.insert({ HAND_TRACKER_LEFT_ID,
+                                           (TrackedDevice*)this->left_hand_tracker.get() });
+            this->tracked_devices.insert({ HAND_TRACKER_RIGHT_ID,
+                                           (TrackedDevice*)this->right_hand_tracker.get() });
+
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    this->left_hand_tracker->get_serial_number().c_str(),
+                    this->left_hand_tracker->getControllerDeviceClass(),
+                    this->left_hand_tracker.get()
+                )) {
+                Warn("Failed to register left full skeletal controller");
+            }
+            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    this->right_hand_tracker->get_serial_number().c_str(),
+                    this->right_hand_tracker->getControllerDeviceClass(),
+                    this->right_hand_tracker.get()
+                )) {
+                Warn("Failed to register right full skeletal controller");
             }
         }
 
@@ -211,6 +235,8 @@ public:
         return vr::VRInitError_None;
     }
     virtual void Cleanup() override {
+        this->left_hand_tracker.reset();
+        this->right_hand_tracker.reset();
         this->left_controller.reset();
         this->right_controller.reset();
         this->hmd.reset();
@@ -362,9 +388,11 @@ void SetTracking(
     float controllerPoseTimeOffsetS,
     const FfiDeviceMotion* deviceMotions,
     int motionsCount,
-    const FfiHandSkeleton* leftHand,
-    const FfiHandSkeleton* rightHand,
     unsigned int controllersTracked,
+    bool useLeftHandTracker,
+    bool useRightHandTracker,
+    const FfiHandSkeleton* leftHandSkeleton,
+    const FfiHandSkeleton* rightHandSkeleton,
     const FfiBodyTracker* bodyTrackers,
     int bodyTrackersCount
 ) {
@@ -374,12 +402,30 @@ void SetTracking(
         } else {
             if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
                 g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], leftHand, controllersTracked
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    leftHandSkeleton,
+                    controllersTracked && !useLeftHandTracker
+                );
+                g_driver_provider.left_hand_tracker->onPoseUpdate(
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    leftHandSkeleton,
+                    controllersTracked && useLeftHandTracker
                 );
             } else if (g_driver_provider.right_controller
                        && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
                 g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS, deviceMotions[i], rightHand, controllersTracked
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    rightHandSkeleton,
+                    controllersTracked && !useRightHandTracker
+                );
+                g_driver_provider.right_hand_tracker->onPoseUpdate(
+                    controllerPoseTimeOffsetS,
+                    deviceMotions[i],
+                    rightHandSkeleton,
+                    controllersTracked && useRightHandTracker
                 );
             }
         }
@@ -422,14 +468,11 @@ void SetOpenvrProperty(unsigned long long deviceID, FfiOpenvrProperty prop) {
     }
 }
 
-void RegisterButton(unsigned long long buttonID) {
-    if (g_driver_provider.left_controller
-        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->RegisterButton(buttonID);
-    } else if (g_driver_provider.right_controller
-               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
-                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->RegisterButton(buttonID);
+void RegisterButton(unsigned long long deviceID, unsigned long long buttonID) {
+    auto device_it = g_driver_provider.tracked_devices.find(deviceID);
+    if (device_it != g_driver_provider.tracked_devices.end()) {
+        // Todo: move RegisterButton to generic TrackedDevice interface
+        ((Controller*)device_it->second)->RegisterButton(buttonID);
     }
 }
 
@@ -453,13 +496,21 @@ void SetBattery(unsigned long long deviceID, float gauge_value, bool is_plugged)
 }
 
 void SetButton(unsigned long long buttonID, FfiButtonValue value) {
-    if (g_driver_provider.left_controller
-        && LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.left_controller->SetButton(buttonID, value);
-    } else if (g_driver_provider.right_controller
-               && RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
-                   != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
-        g_driver_provider.right_controller->SetButton(buttonID, value);
+    if (LEFT_CONTROLLER_BUTTON_MAPPING.find(buttonID) != LEFT_CONTROLLER_BUTTON_MAPPING.end()) {
+        if (g_driver_provider.left_controller) {
+            g_driver_provider.left_controller->SetButton(buttonID, value);
+        }
+        if (g_driver_provider.left_hand_tracker) {
+            g_driver_provider.left_hand_tracker->SetButton(buttonID, value);
+        }
+    } else if (RIGHT_CONTROLLER_BUTTON_MAPPING.find(buttonID)
+               != RIGHT_CONTROLLER_BUTTON_MAPPING.end()) {
+        if (g_driver_provider.right_controller) {
+            g_driver_provider.right_controller->SetButton(buttonID, value);
+        }
+        if (g_driver_provider.right_hand_tracker) {
+            g_driver_provider.right_hand_tracker->SetButton(buttonID, value);
+        }
     }
 }
 

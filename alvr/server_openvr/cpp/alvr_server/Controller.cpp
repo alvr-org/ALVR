@@ -74,13 +74,15 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
         vr::VRScalarUnits_NormalizedOneSided
     );
 
-    if (this->device_id == HAND_LEFT_ID) {
+    if (this->device_id == HAND_LEFT_ID || this->device_id == HAND_TRACKER_LEFT_ID) {
         vr_driver_input->CreateSkeletonComponent(
             this->prop_container,
             "/input/skeleton/left",
             "/skeleton/hand/left",
             "/pose/raw",
-            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            this->device_id == HAND_LEFT_ID
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,
             &m_compSkeleton
@@ -91,7 +93,9 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/right",
             "/skeleton/hand/right",
             "/pose/raw",
-            vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial,
+            this->device_id == HAND_RIGHT_ID
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,
             &m_compSkeleton
@@ -179,6 +183,10 @@ void Controller::RegisterButton(uint64_t id) {
 }
 
 void Controller::SetButton(uint64_t id, FfiButtonValue value) {
+    if (!this->isEnabled()) {
+        return;
+    }
+
     for (auto id : ALVR_TO_STEAMVR_PATH_IDS[id]) {
         if (value.type == BUTTON_TYPE_BINARY) {
             vr::VRDriverInput()->UpdateBooleanComponent(
@@ -248,6 +256,15 @@ bool Controller::onPoseUpdate(
     pose.poseTimeOffset = predictionS;
 
     m_pose = pose;
+
+    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+        this->object_id, pose, sizeof(vr::DriverPose_t)
+    );
+
+    // Early return to skip updating the skeleton
+    if (!this->isEnabled()) {
+        return false;
+    }
 
     if (handSkeleton != nullptr) {
         vr::VRBoneTransform_t boneTransform[SKELETON_BONE_COUNT] = {};
@@ -389,10 +406,6 @@ bool Controller::onPoseUpdate(
             Error("UpdateSkeletonComponentfailed.  Error: %i\n", err);
         }
     }
-
-    vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-        this->object_id, pose, sizeof(vr::DriverPose_t)
-    );
 
     return false;
 }

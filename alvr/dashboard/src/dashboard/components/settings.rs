@@ -29,6 +29,7 @@ pub struct SettingsTab {
     encoder_preset: PresetControl,
     game_audio_preset: Option<PresetControl>,
     microphone_preset: Option<PresetControl>,
+    hand_tracking_interaction_preset: PresetControl,
     eye_face_tracking_preset: PresetControl,
     top_level_entries: Vec<TopLevelEntry>,
     session_settings_json: Option<json::Value>,
@@ -71,6 +72,9 @@ impl SettingsTab {
             encoder_preset: PresetControl::new(builtin_schema::encoder_preset_schema()),
             game_audio_preset: None,
             microphone_preset: None,
+            hand_tracking_interaction_preset: PresetControl::new(
+                builtin_schema::hand_tracking_interaction_schema(),
+            ),
             eye_face_tracking_preset: PresetControl::new(builtin_schema::eye_face_tracking_schema()),
             top_level_entries,
             session_settings_json: None,
@@ -92,6 +96,8 @@ impl SettingsTab {
         if let Some(preset) = self.microphone_preset.as_mut() {
             preset.update_session_settings(&settings_json)
         }
+        self.hand_tracking_interaction_preset
+            .update_session_settings(&settings_json);
         self.eye_face_tracking_preset
             .update_session_settings(&settings_json);
 
@@ -178,6 +184,9 @@ impl SettingsTab {
                                 path_value_pairs.extend(preset.ui(ui));
                                 ui.end_row();
                             }
+
+                            path_value_pairs.extend(self.hand_tracking_interaction_preset.ui(ui));
+                            ui.end_row();
 
                             path_value_pairs.extend(self.eye_face_tracking_preset.ui(ui));
                             ui.end_row();

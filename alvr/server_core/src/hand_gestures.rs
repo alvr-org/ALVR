@@ -11,7 +11,7 @@ use alvr_common::{
 };
 
 use alvr_packets::{ButtonEntry, ButtonValue};
-use alvr_session::HandGestureConfig;
+use alvr_session::HandTrackingInteractionConfig;
 
 use crate::input_mapping::ButtonMappingManager;
 
@@ -107,7 +107,7 @@ impl HandGestureManager {
     pub fn get_active_gestures(
         &mut self,
         hand_skeleton: [Pose; 26],
-        config: &HandGestureConfig,
+        config: &HandTrackingInteractionConfig,
         device_id: u64,
     ) -> Vec<HandGesture> {
         // global joints

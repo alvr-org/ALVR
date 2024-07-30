@@ -69,4 +69,6 @@ private:
     bool m_lastTriggerTouch = false;
     float m_triggerValue = 0;
     float m_gripValue = 0;
+
+    bool isEnabled() { return m_pose.deviceIsConnected; }
 };

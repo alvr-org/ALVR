@@ -18,12 +18,13 @@ use alvr_common::{
     error,
     once_cell::sync::Lazy,
     parking_lot::{Mutex, RwLock},
-    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID,
+    settings_schema::Switch,
+    warn, BUTTON_INFO, HAND_LEFT_ID, HAND_RIGHT_ID, HAND_TRACKER_LEFT_ID, HAND_TRACKER_RIGHT_ID,
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
 use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET};
-use alvr_session::CodecType;
+use alvr_session::{CodecType, ControllersConfig};
 use std::{
     ffi::{c_char, c_void, CString},
     ptr,
@@ -138,18 +139,23 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                         });
                     }
 
-                    let enable_skeleton = controllers_config
-                        .as_ref()
-                        .map(|c| c.enable_skeleton)
-                        .unwrap_or(false);
-                    let ffi_left_hand_skeleton = enable_skeleton
-                        .then_some(left_openvr_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
-                    let ffi_right_hand_skeleton = enable_skeleton
-                        .then_some(right_openvr_hand_skeleton)
-                        .flatten()
-                        .map(tracking::to_ffi_skeleton);
+                    let (
+                        use_separate_hand_trackers,
+                        ffi_left_hand_skeleton,
+                        ffi_right_hand_skeleton,
+                    ) = if let Some(ControllersConfig {
+                        hand_skeleton: Switch::Enabled(hand_skeleton_config),
+                        ..
+                    }) = controllers_config
+                    {
+                        (
+                            hand_skeleton_config.use_separate_trackers,
+                            left_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
+                            right_openvr_hand_skeleton.map(tracking::to_ffi_skeleton),
+                        )
+                    } else {
+                        (false, None, None)
+                    };
 
                     let ffi_motions = tracking
                         .device_motions
@@ -160,12 +166,19 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                     let ffi_body_trackers =
                         tracking::to_ffi_body_trackers(&tracking.device_motions, track_body);
 
+                    // There are two pairs of controllers/hand tracking devices registered in
+                    // OpenVR, two lefts and two rights. If enabled with use_separate_hand_trackers,
+                    // we select at runtime which device to use (selected for left and right hand
+                    // independently. Selection is done by setting deviceIsConnected.
                     unsafe {
                         SetTracking(
                             tracking.target_timestamp.as_nanos() as _,
                             controllers_pose_time_offset.as_secs_f32(),
                             ffi_motions.as_ptr(),
                             ffi_motions.len() as _,
+                            track_controllers.into(),
+                            use_separate_hand_trackers && tracking.hand_skeletons[0].is_some(),
+                            use_separate_hand_trackers && tracking.hand_skeletons[1].is_some(),
                             if let Some(skeleton) = &ffi_left_hand_skeleton {
                                 skeleton
                             } else {
@@ -176,7 +189,6 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
                             } else {
                                 ptr::null()
                             },
-                            track_controllers.into(),
                             if let Some(body_trackers) = &ffi_body_trackers {
                                 body_trackers.as_ptr()
                             } else {
@@ -242,10 +254,18 @@ extern "C" fn driver_ready_idle(set_default_chap: bool) {
 }
 
 pub extern "C" fn register_buttons(device_id: u64) {
+    let mapped_device_id = if device_id == *HAND_TRACKER_LEFT_ID {
+        *HAND_LEFT_ID
+    } else if device_id == *HAND_TRACKER_RIGHT_ID {
+        *HAND_RIGHT_ID
+    } else {
+        device_id
+    };
+
     for id in &*REGISTERED_BUTTON_SET {
         if let Some(info) = BUTTON_INFO.get(id) {
-            if info.device_id == device_id {
-                unsafe { RegisterButton(*id) };
+            if info.device_id == mapped_device_id {
+                unsafe { RegisterButton(device_id, *id) };
             }
         } else {
             error!("Cannot register unrecognized button ID {id}");

@@ -4,6 +4,8 @@
 uint64_t HEAD_ID;
 uint64_t HAND_LEFT_ID;
 uint64_t HAND_RIGHT_ID;
+uint64_t HAND_TRACKER_LEFT_ID;
+uint64_t HAND_TRACKER_RIGHT_ID;
 
 std::map<uint64_t, ButtonInfo> LEFT_CONTROLLER_BUTTON_MAPPING;
 std::map<uint64_t, ButtonInfo> RIGHT_CONTROLLER_BUTTON_MAPPING;
@@ -32,10 +34,8 @@ void init_paths() {
     HEAD_ID = PathStringToHash("/user/head");
     HAND_LEFT_ID = PathStringToHash("/user/hand/left");
     HAND_RIGHT_ID = PathStringToHash("/user/hand/right");
-
-    HEAD_ID = PathStringToHash("/user/head");
-    HAND_LEFT_ID = PathStringToHash("/user/hand/left");
-    HAND_RIGHT_ID = PathStringToHash("/user/hand/right");
+    HAND_TRACKER_LEFT_ID = PathStringToHash("/user/hand_tracker/left");
+    HAND_TRACKER_RIGHT_ID = PathStringToHash("/user/hand_tracker/right");
 
     LEFT_CONTROLLER_BUTTON_MAPPING.insert({ PathStringToHash("/user/hand/left/input/system/click"),
                                             { { "/input/system/click" }, ButtonType::Binary } });

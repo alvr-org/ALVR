@@ -774,7 +774,7 @@ pub struct AutomaticButtonMappingConfig {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-pub struct HandGestureConfig {
+pub struct HandTrackingInteractionConfig {
     #[schema(flag = "real-time")]
     pub only_touch: bool,
 
@@ -890,7 +890,7 @@ pub struct ControllersConfig {
     #[schema(strings(
         help = "Enabling this allows using hand gestures to emulate controller inputs."
     ))]
-    pub gestures: Switch<HandGestureConfig>,
+    pub hand_tracking_interaction: Switch<HandTrackingInteractionConfig>,
 
     #[schema(strings(
         display_name = "Prediction",
@@ -1589,9 +1589,9 @@ pub fn session_settings_default() -> SettingsDefault {
                         },
                         force_threshold: 0.8,
                     },
-                    gestures: SwitchDefault {
+                    hand_tracking_interaction: SwitchDefault {
                         enabled: false,
-                        content: HandGestureConfigDefault {
+                        content: HandTrackingInteractionConfigDefault {
                             only_touch: false,
                             pinch_touch_distance: 0.0,
                             pinch_trigger_distance: 0.25,

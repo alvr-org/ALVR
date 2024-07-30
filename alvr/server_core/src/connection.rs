@@ -946,7 +946,7 @@ fn connection_pipeline(
                 if let (Some(gestures_config), Some(gestures_button_mapping_manager)) = (
                     controllers_config
                         .as_ref()
-                        .and_then(|c| c.gestures.as_option()),
+                        .and_then(|c| c.hand_tracking_interaction.as_option()),
                     &mut gestures_button_mapping_manager,
                 ) {
                     let mut hand_gesture_manager_lock = hand_gesture_manager.lock();

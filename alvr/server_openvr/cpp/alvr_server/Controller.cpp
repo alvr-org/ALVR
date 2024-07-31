@@ -81,7 +81,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/skeleton/hand/left",
             "/pose/raw",
             this->device_id == HAND_LEFT_ID
-                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Estimated
                 : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,
@@ -94,7 +94,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/skeleton/hand/right",
             "/pose/raw",
             this->device_id == HAND_RIGHT_ID
-                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
+                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Estimated
                 : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
             nullptr,
             0U,

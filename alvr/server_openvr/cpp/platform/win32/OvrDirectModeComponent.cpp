@@ -37,7 +37,8 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
     }
     SharedTextureDesc.ArraySize = 1;
     SharedTextureDesc.MipLevels = 1;
-    SharedTextureDesc.SampleDesc.Count = pSwapTextureSetDesc->nSampleCount;
+    SharedTextureDesc.SampleDesc.Count
+        = pSwapTextureSetDesc->nSampleCount == 0 ? 1 : pSwapTextureSetDesc->nSampleCount;
     SharedTextureDesc.SampleDesc.Quality = 0;
     SharedTextureDesc.Usage = D3D11_USAGE_DEFAULT;
     SharedTextureDesc.Format = format;

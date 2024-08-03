@@ -176,7 +176,7 @@ impl SessionConfig {
         }
 
         // Note: unwrap is safe because current session is expected to serialize correctly
-        let old_session_json = json::to_value(&self).unwrap();
+        let old_session_json = json::to_value(self.clone()).unwrap();
         let old_session_fields = old_session_json.as_object().unwrap();
 
         let maybe_session_settings_json =

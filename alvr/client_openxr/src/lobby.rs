@@ -3,7 +3,7 @@ use crate::{
     interaction::{self, InteractionContext},
     XrContext,
 };
-use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, RenderViewInput};
+use alvr_client_core::graphics::{GraphicsContext, LobbyRenderer, RenderViewInput, SDR_FORMAT_GL};
 use alvr_common::glam::{UVec2, Vec3};
 use openxr as xr;
 use std::{rc::Rc, sync::Arc};
@@ -39,8 +39,20 @@ impl Lobby {
             interaction::get_reference_space(&xr_ctx.session, reference_space_type);
 
         let swapchains = [
-            graphics::create_swapchain(&xr_ctx.session, &gfx_ctx, view_resolution, None, false),
-            graphics::create_swapchain(&xr_ctx.session, &gfx_ctx, view_resolution, None, false),
+            graphics::create_swapchain(
+                &xr_ctx.session,
+                &gfx_ctx,
+                view_resolution,
+                SDR_FORMAT_GL,
+                None,
+            ),
+            graphics::create_swapchain(
+                &xr_ctx.session,
+                &gfx_ctx,
+                view_resolution,
+                SDR_FORMAT_GL,
+                None,
+            ),
         ];
 
         let renderer = LobbyRenderer::new(

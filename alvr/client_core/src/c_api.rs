@@ -776,6 +776,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
         swapchain_textures,
+        glow::RGBA8,
         foveated_encoding,
         true,
         false, // TODO: limited range fix config

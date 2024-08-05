@@ -1,4 +1,4 @@
-use super::{GraphicsContext, RenderViewInput};
+use super::{GraphicsContext, SDR_FORMAT};
 use alvr_common::{
     glam::{Mat4, UVec2, Vec3, Vec4},
     Fov, Pose,
@@ -17,7 +17,7 @@ use wgpu::{
     PrimitiveTopology, PushConstantRange, RenderPass, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, SamplerBindingType,
     SamplerDescriptor, ShaderModuleDescriptor, ShaderStages, StoreOp, Texture, TextureAspect,
-    TextureFormat, TextureSampleType, TextureView, TextureViewDimension, VertexState,
+    TextureSampleType, TextureView, TextureViewDimension, VertexState,
 };
 
 const FLOOR_SIDE: f32 = 300.0;
@@ -76,7 +76,7 @@ fn projection_from_fov(fov: Fov) -> Mat4 {
     .transpose()
 }
 
-fn pipeline(
+fn create_pipeline(
     device: &Device,
     label: &str,
     bind_group_layouts: &[&BindGroupLayout],
@@ -113,7 +113,7 @@ fn pipeline(
             entry_point: "fragment_main",
             compilation_options: Default::default(),
             targets: &[Some(ColorTargetState {
-                format: TextureFormat::Rgba8Unorm,
+                format: SDR_FORMAT,
                 blend: Some(BlendState {
                     color: BlendComponent {
                         src_factor: BlendFactor::SrcAlpha,
@@ -131,6 +131,12 @@ fn pipeline(
         }),
         multiview: None,
     })
+}
+
+pub struct RenderViewInput {
+    pub pose: Pose,
+    pub fov: Fov,
+    pub swapchain_index: u32,
 }
 
 pub struct LobbyRenderer {
@@ -151,7 +157,8 @@ impl LobbyRenderer {
     ) -> Self {
         let device = &context.device;
 
-        let hud_texture = super::create_texture(device, UVec2::ONE * HUD_TEXTURE_SIDE as u32);
+        let hud_texture =
+            super::create_texture(device, UVec2::ONE * HUD_TEXTURE_SIDE as u32, SDR_FORMAT);
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: None,
@@ -175,7 +182,7 @@ impl LobbyRenderer {
             ],
         });
 
-        let quad_pipeline = pipeline(
+        let quad_pipeline = create_pipeline(
             device,
             "lobby_quad",
             &[&bind_group_layout],
@@ -184,7 +191,7 @@ impl LobbyRenderer {
             PrimitiveTopology::TriangleStrip,
         );
 
-        let line_pipeline = pipeline(
+        let line_pipeline = create_pipeline(
             device,
             "lobby_line",
             &[],
@@ -217,8 +224,8 @@ impl LobbyRenderer {
         });
 
         let render_targets = [
-            super::create_gl_swapchain(device, &swapchain_textures[0], view_resolution),
-            super::create_gl_swapchain(device, &swapchain_textures[1], view_resolution),
+            super::create_gl_swapchain(device, &swapchain_textures[0], view_resolution, SDR_FORMAT),
+            super::create_gl_swapchain(device, &swapchain_textures[1], view_resolution, SDR_FORMAT),
         ];
 
         let this = Self {

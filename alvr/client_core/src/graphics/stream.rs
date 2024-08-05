@@ -1,38 +1,47 @@
-use super::{ck, staging::StagingRenderer, GraphicsContext, RenderTarget};
-use alvr_common::glam::{IVec2, UVec2};
+use super::{staging::StagingRenderer, GraphicsContext};
+use alvr_common::glam::UVec2;
 use alvr_session::FoveatedEncodingConfig;
-use glow::{self as gl, HasContext};
-use std::{ffi::c_void, num::NonZeroU32, rc::Rc};
+use std::{ffi::c_void, iter, rc::Rc};
+use wgpu::{
+    hal::{api, gles},
+    include_wgsl, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, ColorTargetState, ColorWrites,
+    FragmentState, LoadOp, PipelineCompilationOptions, PipelineLayoutDescriptor, PrimitiveState,
+    PrimitiveTopology, PushConstantRange, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, ShaderStages,
+    StoreOp, TextureSampleType, TextureView, TextureViewDescriptor, TextureViewDimension,
+    VertexState,
+};
 
-struct GlObjects {
+struct RenderObjects {
     staging_renderer: StagingRenderer,
-    staging_texture: gl::Texture,
-    render_targets: [Vec<RenderTarget>; 2],
-    program: gl::Program,
-    view_idx_uloc: gl::UniformLocation,
-    viewport_size: IVec2,
+    pipeline: RenderPipeline,
+    bind_group: BindGroup,
+    render_targets: [Vec<TextureView>; 2],
 }
 
 pub struct StreamRenderer {
     context: Rc<GraphicsContext>,
-    gl_objects: Option<GlObjects>,
+    render_objects: Option<RenderObjects>,
 }
 
 impl StreamRenderer {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: Rc<GraphicsContext>,
         view_resolution: UVec2,
         swapchain_textures: [Vec<u32>; 2],
+        target_format: u32,
         foveated_encoding: Option<FoveatedEncodingConfig>,
         enable_srgb_correction: bool,
         fix_limited_range: bool,
         encoding_gamma: f32,
     ) -> Self {
-        context.make_current();
-
         // if ffe is enabled, use old c++ code until it is rewritten
         #[allow(unused_variables)]
         if let Some(fe) = &foveated_encoding {
+            context.make_current();
+
             #[cfg(all(target_os = "android", feature = "use-cpp"))]
             unsafe {
                 let config = super::opengl::FfiStreamConfig {
@@ -60,118 +69,197 @@ impl StreamRenderer {
 
             Self {
                 context,
-                gl_objects: None,
+                render_objects: None,
             }
         } else {
+            let device = &context.device;
             let gl = &context.gl_context;
 
-            let staging_texture = super::create_gl_texture(gl, view_resolution, gl::RGBA8);
+            let target_format = super::gl_format_to_wgpu(target_format);
+
+            let staging_texture = super::create_texture(device, view_resolution, target_format);
+
+            let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+            let shader_module =
+                device.create_shader_module(include_wgsl!("../../resources/stream.wgsl"));
+            let constants = &[
+                (
+                    "ENABLE_SRGB_CORRECTION".into(),
+                    enable_srgb_correction.into(),
+                ),
+                ("FIX_LIMITED_RANGE".into(), fix_limited_range.into()),
+                ("ENCODING_GAMMA".into(), encoding_gamma.into()),
+            ]
+            .into_iter()
+            .collect();
+            let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+                label: None,
+                // Note: Layout cannot be inferred because of a bug with push constants
+                layout: Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                    label: None,
+                    bind_group_layouts: &[&bind_group_layout],
+                    push_constant_ranges: &[PushConstantRange {
+                        stages: ShaderStages::VERTEX_FRAGMENT,
+                        range: 0..4,
+                    }],
+                })),
+                vertex: VertexState {
+                    module: &shader_module,
+                    entry_point: "vertex_main",
+                    compilation_options: PipelineCompilationOptions {
+                        constants,
+                        zero_initialize_workgroup_memory: false,
+                    },
+                    buffers: &[],
+                },
+                primitive: PrimitiveState {
+                    topology: PrimitiveTopology::TriangleStrip,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(FragmentState {
+                    module: &shader_module,
+                    entry_point: "fragment_main",
+                    compilation_options: PipelineCompilationOptions {
+                        constants,
+                        zero_initialize_workgroup_memory: false,
+                    },
+                    targets: &[Some(ColorTargetState {
+                        format: target_format,
+                        blend: None,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+                multiview: None,
+            });
+
+            let bind_group = device.create_bind_group(&BindGroupDescriptor {
+                label: None,
+                layout: &bind_group_layout,
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: BindingResource::TextureView(
+                            &staging_texture.create_view(&TextureViewDescriptor::default()),
+                        ),
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: BindingResource::Sampler(&device.create_sampler(
+                            &SamplerDescriptor {
+                                mag_filter: wgpu::FilterMode::Linear,
+                                min_filter: wgpu::FilterMode::Linear,
+                                ..Default::default()
+                            },
+                        )),
+                    },
+                ],
+            });
 
             let render_targets = [
-                swapchain_textures[0]
-                    .iter()
-                    .map(|tex| {
-                        RenderTarget::new(
-                            Rc::clone(&context),
-                            gl::NativeTexture(NonZeroU32::new(*tex).unwrap()),
-                        )
-                    })
-                    .collect(),
-                swapchain_textures[1]
-                    .iter()
-                    .map(|tex| {
-                        RenderTarget::new(
-                            Rc::clone(&context),
-                            gl::NativeTexture(NonZeroU32::new(*tex).unwrap()),
-                        )
-                    })
-                    .collect(),
+                super::create_gl_swapchain(
+                    device,
+                    &swapchain_textures[0],
+                    view_resolution,
+                    target_format,
+                ),
+                super::create_gl_swapchain(
+                    device,
+                    &swapchain_textures[1],
+                    view_resolution,
+                    target_format,
+                ),
             ];
 
-            let program = super::create_program(
-                gl,
-                include_str!("../../resources/stream_vertex.glsl"),
-                include_str!("../../resources/stream_fragment.glsl"),
-            );
+            let staging_texture_gl = unsafe {
+                staging_texture.as_hal::<api::Gles, _, _>(|tex| {
+                    let gles::TextureInner::Texture { raw, .. } = tex.unwrap().inner else {
+                        panic!("invalid texture type");
+                    };
+                    raw
+                })
+            };
 
             let staging_renderer =
-                StagingRenderer::new(Rc::clone(&context), staging_texture, view_resolution);
+                StagingRenderer::new(Rc::clone(&context), staging_texture_gl, view_resolution);
 
-            unsafe {
-                let view_idx_uloc = ck!(gl.get_uniform_location(program, "view_idx").unwrap());
-
-                let enable_srgb_correction_uloc = ck!(gl
-                    .get_uniform_location(program, "enable_srgb_correction")
-                    .unwrap());
-                let fix_limited_range_uloc = ck!(gl
-                    .get_uniform_location(program, "fix_limited_range")
-                    .unwrap());
-                let encoding_gamma_uloc =
-                    ck!(gl.get_uniform_location(program, "encoding_gamma").unwrap());
-
-                ck!(gl.use_program(Some(program)));
-                ck!(gl.uniform_1_i32(
-                    Some(&enable_srgb_correction_uloc),
-                    enable_srgb_correction as i32
-                ));
-                ck!(gl.uniform_1_i32(Some(&fix_limited_range_uloc), fix_limited_range as i32));
-                ck!(gl.uniform_1_f32(Some(&encoding_gamma_uloc), encoding_gamma));
-
-                Self {
-                    context,
-                    gl_objects: Some(GlObjects {
-                        staging_renderer,
-                        staging_texture,
-                        render_targets,
-                        program,
-                        view_idx_uloc,
-                        viewport_size: view_resolution.as_ivec2(),
-                    }),
-                }
+            Self {
+                context,
+                render_objects: Some(RenderObjects {
+                    staging_renderer,
+                    pipeline,
+                    bind_group,
+                    render_targets,
+                }),
             }
         }
     }
 
-    pub fn staging_texture(&self) -> Option<gl::Texture> {
-        self.gl_objects
-            .as_ref()
-            .map(|gl_objects| gl_objects.staging_texture)
-    }
-
     #[allow(unused_variables)]
     pub unsafe fn render(&self, hardware_buffer: *mut c_void, swapchain_indices: [u32; 2]) {
-        self.context.make_current();
-
-        if let Some(gl_objects) = &self.gl_objects {
-            let gl = &self.context.gl_context;
-
+        if let Some(render_objects) = &self.render_objects {
             // if hardware_buffer is available copy stream to staging texture
             if !hardware_buffer.is_null() {
-                gl_objects.staging_renderer.render(hardware_buffer);
+                render_objects.staging_renderer.render(hardware_buffer);
             }
 
-            unsafe {
-                ck!(gl.use_program(Some(gl_objects.program)));
+            let mut encoder = self
+                .context
+                .device
+                .create_command_encoder(&Default::default());
 
-                ck!(gl.disable(gl::SCISSOR_TEST));
-                ck!(gl.disable(gl::DEPTH_TEST));
-                ck!(gl.disable(gl::CULL_FACE));
-                ck!(gl.disable(gl::BLEND));
+            for (view_idx, swapchain_idx) in swapchain_indices.iter().enumerate() {
+                let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                    label: None,
+                    color_attachments: &[Some(RenderPassColorAttachment {
+                        view: &self.render_objects.as_ref().unwrap().render_targets[view_idx]
+                            [*swapchain_idx as usize],
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: LoadOp::Clear(wgpu::Color::BLACK),
+                            store: StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
 
-                ck!(gl.viewport(0, 0, gl_objects.viewport_size.x, gl_objects.viewport_size.y));
-
-                for (view_idx, swapchain_idx) in swapchain_indices.iter().enumerate() {
-                    gl_objects.render_targets[view_idx][*swapchain_idx as usize].bind();
-
-                    ck!(gl.clear(gl::COLOR_BUFFER_BIT));
-                    ck!(gl.clear_color(0.0, 0.0, 0.0, 1.0));
-
-                    ck!(gl.uniform_1_i32(Some(&gl_objects.view_idx_uloc), view_idx as i32));
-                    ck!(gl.active_texture(gl::TEXTURE0));
-                    ck!(gl.bind_texture(gl::TEXTURE_2D, Some(gl_objects.staging_texture)));
-                    ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
-                }
+                render_pass.set_pipeline(&self.render_objects.as_ref().unwrap().pipeline);
+                render_pass.set_bind_group(
+                    0,
+                    &self.render_objects.as_ref().unwrap().bind_group,
+                    &[],
+                );
+                render_pass.set_push_constants(
+                    ShaderStages::VERTEX_FRAGMENT,
+                    0,
+                    &(view_idx as u32).to_le_bytes(),
+                );
+                render_pass.draw(0..4, 0..1);
             }
+
+            self.context.queue.submit(iter::once(encoder.finish()));
         } else {
             #[cfg(all(target_os = "android", feature = "use-cpp"))]
             super::opengl::renderStreamNative(hardware_buffer, swapchain_indices.as_ptr());
@@ -181,18 +269,9 @@ impl StreamRenderer {
 
 impl Drop for StreamRenderer {
     fn drop(&mut self) {
-        if let Some(gl_objects) = &self.gl_objects {
-            unsafe {
-                let gl = &self.context.gl_context;
-
-                ck!(gl.delete_program(gl_objects.program));
-                ck!(gl.delete_texture(gl_objects.staging_texture));
-            }
-        } else {
-            #[cfg(all(target_os = "android", feature = "use-cpp"))]
-            unsafe {
-                super::opengl::destroyStream();
-            }
+        #[cfg(all(target_os = "android", feature = "use-cpp"))]
+        if self.render_objects.is_none() {
+            unsafe { super::opengl::destroyStream() };
         }
     }
 }

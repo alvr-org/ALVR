@@ -114,6 +114,8 @@ Make sure you have at least one output audio device.",
                 "Software requirements",
                 if cfg!(windows) {
                     r"To stream the headset microphone on Windows you need to install VB-Cable or Voicemeeter."
+                } else if cfg!(target_os = "linux") {
+                    r"You need the PipeWire package to be able to stream audio."
                 } else {
                     r"Unsupported OS"
                 },

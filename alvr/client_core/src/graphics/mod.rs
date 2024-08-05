@@ -6,16 +6,18 @@ mod stream;
 pub use lobby::*;
 pub use stream::*;
 
-use alvr_common::{glam::UVec2, Fov, Pose};
+use alvr_common::glam::UVec2;
 use glow::{self as gl, HasContext};
 use khronos_egl as egl;
-use std::{ffi::c_void, mem, num::NonZeroU32, ptr, rc::Rc};
+use std::{ffi::c_void, mem, num::NonZeroU32, ptr};
 use wgpu::{
     hal::{self, api, MemoryFlags, TextureUses},
     Adapter, Device, Extent3d, Instance, InstanceDescriptor, InstanceFlags, Queue, Texture,
     TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
 
+pub const SDR_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
+pub const SDR_FORMAT_GL: u32 = gl::RGBA8;
 pub const GL_TEXTURE_EXTERNAL_OES: u32 = 0x8D65;
 
 type CreateImageFn = unsafe extern "C" fn(
@@ -49,37 +51,36 @@ macro_rules! ck {
 }
 pub(crate) use ck;
 
-pub fn choose_swapchain_format(formats: Option<&[u32]>, enable_hdr: bool) -> u32 {
+pub fn choose_swapchain_format(supported_formats: &[u32], enable_hdr: bool) -> u32 {
     // Priority-sorted list of swapchain formats we'll accept--
-    let mut app_supported_swapchain_formats = vec![
-        gl::SRGB8_ALPHA8,
-        gl::SRGB8,
-        gl::RGBA8,
-        gl::BGRA,
-        gl::RGB8,
-        gl::BGR,
-    ];
+    let mut app_supported_swapchain_formats = vec![gl::SRGB8_ALPHA8, gl::RGBA8];
 
     // float16 is required for HDR output. However, float16 swapchains
     // have a high perf cost, so only use these if HDR is enabled.
     if enable_hdr {
-        app_supported_swapchain_formats.insert(0, gl::RGB16F);
         app_supported_swapchain_formats.insert(0, gl::RGBA16F);
     }
 
-    if let Some(supported_formats) = formats {
-        for format in app_supported_swapchain_formats {
-            if supported_formats.contains(&format) {
-                return format;
-            }
+    for format in app_supported_swapchain_formats {
+        if supported_formats.contains(&format) {
+            return format;
         }
     }
 
-    // If we can't enumerate, default to a required format (SRGBA8)
-    gl::SRGB8_ALPHA8
+    // If we can't enumerate, default to a required format
+    gl::RGBA8
 }
 
-pub fn create_texture(device: &Device, resolution: UVec2) -> Texture {
+pub fn gl_format_to_wgpu(format: u32) -> TextureFormat {
+    match format {
+        gl::SRGB8_ALPHA8 => TextureFormat::Rgba8UnormSrgb,
+        gl::RGBA8 => TextureFormat::Rgba8Unorm,
+        gl::RGBA16F => TextureFormat::Rgba16Float,
+        _ => panic!("Unsupported GL format: {}", format),
+    }
+}
+
+pub fn create_texture(device: &Device, resolution: UVec2, format: TextureFormat) -> Texture {
     device.create_texture(&TextureDescriptor {
         label: None,
         size: Extent3d {
@@ -90,15 +91,18 @@ pub fn create_texture(device: &Device, resolution: UVec2) -> Texture {
         mip_level_count: 1,
         sample_count: 1,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba8Unorm,
+        format,
         usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     })
 }
 
-// This is used to convert OpenXR swapchains to wgpu
-// textures should be arrays of depth 2, RGBA8UnormSrgb
-pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2) -> Texture {
+fn create_texture_from_gles(
+    device: &Device,
+    texture: u32,
+    resolution: UVec2,
+    format: TextureFormat,
+) -> Texture {
     let size = Extent3d {
         width: resolution.x,
         height: resolution.y,
@@ -116,7 +120,7 @@ pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2
                         mip_level_count: 1,
                         sample_count: 1,
                         dimension: TextureDimension::D2,
-                        format: TextureFormat::Rgba8Unorm,
+                        format,
                         usage: TextureUses::COLOR_TARGET,
                         memory_flags: MemoryFlags::empty(),
                         view_formats: vec![],
@@ -134,7 +138,7 @@ pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: TextureFormat::Rgba8Unorm,
+                format,
                 usage: TextureUsages::RENDER_ATTACHMENT,
                 view_formats: &[],
             },
@@ -142,138 +146,20 @@ pub fn create_texture_from_gles(device: &Device, texture: u32, resolution: UVec2
     }
 }
 
+// This is used to convert OpenXR swapchains to wgpu
 pub fn create_gl_swapchain(
     device: &Device,
     gl_textures: &[u32],
     resolution: UVec2,
+    format: TextureFormat,
 ) -> Vec<TextureView> {
     gl_textures
         .iter()
         .map(|gl_tex| {
-            create_texture_from_gles(device, *gl_tex, resolution).create_view(&Default::default())
+            create_texture_from_gles(device, *gl_tex, resolution, format)
+                .create_view(&Default::default())
         })
         .collect()
-}
-
-fn create_gl_texture(gl: &gl::Context, resolution: UVec2, internal_format: u32) -> gl::Texture {
-    unsafe {
-        let texture = gl.create_texture().unwrap();
-        ck!(gl.bind_texture(gl::TEXTURE_2D, Some(texture)));
-
-        ck!(gl.tex_image_2d(
-            gl::TEXTURE_2D,
-            0,
-            internal_format as i32,
-            resolution.x as i32,
-            resolution.y as i32,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            Some(&vec![0; 4 * (resolution.x * resolution.y) as usize]),
-        ));
-        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
-        ck!(gl.tex_parameter_i32(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
-
-        texture
-    }
-}
-
-fn create_program(
-    gl: &gl::Context,
-    vertex_shader_source: &str,
-    fragment_shader_source: &str,
-) -> gl::Program {
-    unsafe {
-        let vertex_shader = ck!(gl.create_shader(gl::VERTEX_SHADER).unwrap());
-        ck!(gl.shader_source(vertex_shader, vertex_shader_source));
-        ck!(gl.compile_shader(vertex_shader));
-        if !gl.get_shader_compile_status(vertex_shader) {
-            panic!(
-                "Failed to compile vertex shader: {}",
-                gl.get_shader_info_log(vertex_shader)
-            );
-        }
-
-        let fragment_shader = ck!(gl.create_shader(gl::FRAGMENT_SHADER).unwrap());
-        ck!(gl.shader_source(fragment_shader, fragment_shader_source));
-        ck!(gl.compile_shader(fragment_shader));
-        if !gl.get_shader_compile_status(fragment_shader) {
-            panic!(
-                "Failed to compile fragment shader: {}",
-                gl.get_shader_info_log(fragment_shader)
-            );
-        }
-
-        let program = ck!(gl.create_program().unwrap());
-        ck!(gl.attach_shader(program, vertex_shader));
-        ck!(gl.attach_shader(program, fragment_shader));
-        ck!(gl.link_program(program));
-        if !gl.get_program_link_status(program) {
-            panic!(
-                "Failed to link program: {}",
-                gl.get_program_info_log(program)
-            );
-        }
-
-        ck!(gl.delete_shader(vertex_shader));
-        ck!(gl.delete_shader(fragment_shader));
-
-        program
-    }
-}
-
-struct RenderTarget {
-    graphics_context: Rc<GraphicsContext>,
-    framebuffer: gl::Framebuffer,
-}
-
-impl RenderTarget {
-    fn new(context: Rc<GraphicsContext>, texture: gl::Texture) -> Self {
-        let gl = &context.gl_context;
-        unsafe {
-            let framebuffer = ck!(gl.create_framebuffer().unwrap());
-            ck!(gl.bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(framebuffer)));
-            ck!(gl.framebuffer_texture_2d(
-                gl::DRAW_FRAMEBUFFER,
-                gl::COLOR_ATTACHMENT0,
-                gl::TEXTURE_2D,
-                Some(texture),
-                0,
-            ));
-            ck!(gl.bind_framebuffer(gl::FRAMEBUFFER, None));
-
-            Self {
-                graphics_context: context,
-                framebuffer,
-            }
-        }
-    }
-
-    fn bind(&self) {
-        unsafe {
-            self.graphics_context
-                .gl_context
-                .bind_framebuffer(gl::DRAW_FRAMEBUFFER, Some(self.framebuffer));
-        }
-    }
-}
-
-impl Drop for RenderTarget {
-    fn drop(&mut self) {
-        unsafe {
-            self.graphics_context
-                .gl_context
-                .delete_framebuffer(self.framebuffer);
-        }
-    }
-}
-
-pub struct RenderViewInput {
-    pub pose: Pose,
-    pub fov: Fov,
-    pub swapchain_index: u32,
 }
 
 pub struct GraphicsContext {

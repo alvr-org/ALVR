@@ -7,7 +7,7 @@ struct VertexOutput {
 @group(0) @binding(1) var hud_sampler: sampler;
 
 struct PushConstant {
-    transform: mat4x4f, // alignment
+    transform: mat4x4f,
     object_type: u32,
     floor_side: f32,
 }
@@ -28,7 +28,7 @@ fn vertex_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
-    if pc.object_type == 0 {
+    if pc.object_type == 0 { // Ground
         let world_xz = (uv - 0.5) * pc.floor_side;
 
         let ground_center = vec3f(0.0, 0.0, 0.0);
@@ -73,7 +73,7 @@ fn fragment_main(@location(0) uv: vec2f) -> @location(0) vec4f {
         }
 
         return vec4f(out_color, 1.0);
-    } else {
+    } else { // HUD
         let mask = textureSample(hud_texture, hud_sampler, uv).a;
 
         return vec4<f32>(1.0, 1.0, 1.0, mask);

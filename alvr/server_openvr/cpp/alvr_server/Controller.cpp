@@ -14,8 +14,9 @@ vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
     return vr::TrackedDeviceClass_Controller;
 }
 
-Controller::Controller(uint64_t deviceID)
-    : TrackedDevice(deviceID) {
+Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel)
+    : TrackedDevice(deviceID)
+    , m_skeletonLevel(skeletonLevel) {
     m_pose = vr::DriverPose_t {};
     m_pose.poseIsValid = false;
     m_pose.deviceIsConnected = false;
@@ -80,9 +81,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/left",
             "/skeleton/hand/left",
             "/pose/raw",
-            this->device_id == HAND_LEFT_ID
-                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
-                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
+            m_skeletonLevel,
             nullptr,
             0U,
             &m_compSkeleton
@@ -93,9 +92,7 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
             "/input/skeleton/right",
             "/skeleton/hand/right",
             "/pose/raw",
-            this->device_id == HAND_RIGHT_ID
-                ? vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Partial
-                : vr::EVRSkeletalTrackingLevel::VRSkeletalTracking_Full,
+            m_skeletonLevel,
             nullptr,
             0U,
             &m_compSkeleton

@@ -866,10 +866,9 @@ pub struct HapticsConfig {
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
 pub struct HandSkeletonConfig {
-    #[schema(flag = "real-time")]
+    #[schema(flag = "steamvr-restart")]
     #[schema(strings(
-        help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking.
-Although it is marked as real-time, toggling this may break some games."
+        help = r"Enabling this will use separate tracker objects with the full skeletal tracking level when hand tracking is detected. This is required for VRChat hand tracking."
     ))]
     pub use_separate_trackers: bool,
 }
@@ -881,7 +880,7 @@ pub struct ControllersConfig {
     #[schema(flag = "real-time")]
     pub tracked: bool,
 
-    #[schema(flag = "real-time")]
+    #[schema(flag = "steamvr-restart")]
     #[schema(strings(
         help = "Enabling this passes skeletal hand data (finger tracking) to SteamVR."
     ))]

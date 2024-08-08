@@ -72,6 +72,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
 
     let mut controller_is_tracker = false;
     let mut _controller_profile = 0;
+    let mut use_separate_hand_trackers = false;
     let controllers_enabled = if let Switch::Enabled(config) = settings.headset.controllers {
         controller_is_tracker =
             matches!(config.emulation_mode, ControllersEmulationMode::ViveTracker);
@@ -84,6 +85,11 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
             ControllersEmulationMode::ViveTracker => 5,
             ControllersEmulationMode::Custom { .. } => 6,
         };
+        use_separate_hand_trackers = config
+            .hand_skeleton
+            .as_option()
+            .map(|c| c.use_separate_trackers)
+            .unwrap_or(false);
 
         true
     } else {
@@ -216,6 +222,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         nvenc_enable_weighted_prediction: nvenc_overrides.enable_weighted_prediction,
         capture_frame_dir: settings.extra.capture.capture_frame_dir,
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
+        use_separate_hand_trackers,
         _controller_profile,
         ..old_config
     }

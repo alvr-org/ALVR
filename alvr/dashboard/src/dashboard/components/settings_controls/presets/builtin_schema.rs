@@ -330,7 +330,7 @@ ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
         name: "Hand tracking interaction".into(),
         strings: [("help".into(), HELP.into())].into_iter().collect(),
-        flags: HashSet::new(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
         options: [
             HigherOrderChoiceOption {
                 display_name: "Disabled".into(),

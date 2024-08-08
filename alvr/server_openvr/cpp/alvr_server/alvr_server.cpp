@@ -101,8 +101,13 @@ public:
         }
 
         if (Settings::Instance().m_enableControllers) {
-            this->left_controller = std::make_unique<Controller>(HAND_LEFT_ID);
-            this->right_controller = std::make_unique<Controller>(HAND_RIGHT_ID);
+            auto controllerSkeletonLevel = Settings::Instance().m_useSeparateHandTrackers
+                ? vr::VRSkeletalTracking_Estimated
+                : vr::VRSkeletalTracking_Partial;
+            this->left_controller
+                = std::make_unique<Controller>(HAND_LEFT_ID, controllerSkeletonLevel);
+            this->right_controller
+                = std::make_unique<Controller>(HAND_RIGHT_ID, controllerSkeletonLevel);
 
             this->tracked_devices.insert({ HAND_LEFT_ID,
                                            (TrackedDevice*)this->left_controller.get() });
@@ -124,27 +129,33 @@ public:
                 Warn("Failed to register right controller");
             }
 
-            this->left_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_LEFT_ID);
-            this->right_hand_tracker = std::make_unique<Controller>(HAND_TRACKER_RIGHT_ID);
+            if (Settings::Instance().m_useSeparateHandTrackers) {
+                this->left_hand_tracker = std::make_unique<Controller>(
+                    HAND_TRACKER_LEFT_ID, vr::VRSkeletalTracking_Full
+                );
+                this->right_hand_tracker = std::make_unique<Controller>(
+                    HAND_TRACKER_RIGHT_ID, vr::VRSkeletalTracking_Full
+                );
 
-            this->tracked_devices.insert({ HAND_TRACKER_LEFT_ID,
-                                           (TrackedDevice*)this->left_hand_tracker.get() });
-            this->tracked_devices.insert({ HAND_TRACKER_RIGHT_ID,
-                                           (TrackedDevice*)this->right_hand_tracker.get() });
+                this->tracked_devices.insert({ HAND_TRACKER_LEFT_ID,
+                                               (TrackedDevice*)this->left_hand_tracker.get() });
+                this->tracked_devices.insert({ HAND_TRACKER_RIGHT_ID,
+                                               (TrackedDevice*)this->right_hand_tracker.get() });
 
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->left_hand_tracker->get_serial_number().c_str(),
-                    this->left_hand_tracker->getControllerDeviceClass(),
-                    this->left_hand_tracker.get()
-                )) {
-                Warn("Failed to register left full skeletal controller");
-            }
-            if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    this->right_hand_tracker->get_serial_number().c_str(),
-                    this->right_hand_tracker->getControllerDeviceClass(),
-                    this->right_hand_tracker.get()
-                )) {
-                Warn("Failed to register right full skeletal controller");
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        this->left_hand_tracker->get_serial_number().c_str(),
+                        this->left_hand_tracker->getControllerDeviceClass(),
+                        this->left_hand_tracker.get()
+                    )) {
+                    Warn("Failed to register left full skeletal controller");
+                }
+                if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                        this->right_hand_tracker->get_serial_number().c_str(),
+                        this->right_hand_tracker->getControllerDeviceClass(),
+                        this->right_hand_tracker.get()
+                    )) {
+                    Warn("Failed to register right full skeletal controller");
+                }
             }
         }
 

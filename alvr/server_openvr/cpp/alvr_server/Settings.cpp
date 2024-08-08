@@ -118,6 +118,8 @@ void Settings::Load() {
         m_enableBodyTrackingFakeVive = config.get("body_tracking_vive_enabled").get<bool>();
         m_bodyTrackingHasLegs = config.get("body_tracking_has_legs").get<bool>();
 
+        m_useSeparateHandTrackers = config.get("use_separate_hand_trackers").get<bool>();
+
         Info("Render Target: %d %d\n", m_renderWidth, m_renderHeight);
         Info("Refresh Rate: %d\n", m_refreshRate);
         m_loaded = true;

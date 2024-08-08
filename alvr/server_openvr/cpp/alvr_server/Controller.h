@@ -7,7 +7,7 @@
 
 class Controller : public TrackedDevice, public vr::ITrackedDeviceServerDriver {
 public:
-    Controller(uint64_t deviceID);
+    Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel);
 
     virtual ~Controller() {};
 
@@ -56,6 +56,7 @@ private:
 
     vr::VRInputComponentHandle_t m_compHaptic;
     vr::VRInputComponentHandle_t m_compSkeleton = vr::k_ulInvalidInputComponentHandle;
+    vr::EVRSkeletalTrackingLevel m_skeletonLevel;
 
     vr::DriverPose_t m_pose;
 

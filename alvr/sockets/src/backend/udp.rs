@@ -6,7 +6,7 @@ use alvr_session::{DscpTos, SocketBufferSize};
 use socket2::{MaybeUninitSlice, Socket};
 use std::{
     ffi::c_int,
-    mem,
+    mem::{self, MaybeUninit},
     net::{IpAddr, UdpSocket},
     time::Duration,
 };
@@ -50,7 +50,10 @@ impl SocketWriter for UdpSocket {
 
 impl SocketReader for Socket {
     fn recv(&mut self, buffer: &mut [u8]) -> ConResult<usize> {
-        Socket::recv(self, unsafe { mem::transmute(buffer) }).handle_try_again()
+        Socket::recv(self, unsafe {
+            mem::transmute::<&mut [u8], &mut [MaybeUninit<u8>]>(buffer)
+        })
+        .handle_try_again()
     }
 
     fn peek(&self, buffer: &mut [u8]) -> ConResult<usize> {
@@ -59,7 +62,9 @@ impl SocketReader for Socket {
         #[cfg(not(windows))]
         const FLAGS: c_int = 0x02 | 0x20; // MSG_PEEK | MSG_TRUNC
 
-        let buffer = MaybeUninitSlice::new(unsafe { mem::transmute(buffer) });
+        let buffer = MaybeUninitSlice::new(unsafe {
+            mem::transmute::<&mut [u8], &mut [MaybeUninit<u8>]>(buffer)
+        });
         Ok(self
             .recv_vectored_with_flags(&mut [buffer], FLAGS)
             .handle_try_again()?

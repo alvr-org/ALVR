@@ -193,7 +193,7 @@ async fn install_apk(
                     .await?,
                 );
 
-                zip::ZipArchive::new(&mut buffer)?.extract(&data_dir())?;
+                zip::ZipArchive::new(&mut buffer)?.extract(data_dir())?;
             }
 
             worker_message_sender.send(WorkerMessage::ProgressUpdate(Progress {

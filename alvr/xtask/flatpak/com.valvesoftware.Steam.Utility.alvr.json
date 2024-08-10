@@ -3,7 +3,7 @@
   "branch": "stable",
   "sdk": "org.freedesktop.Sdk//23.08",
   "runtime": "com.valvesoftware.Steam",
-  "runtime-version": "stable",
+  "runtime-version": "master",
   "appstream-compose": false,
   "separate-locales": false,
   "build-extension": true,
@@ -15,9 +15,9 @@
       "name": "alvr",
       "buildsystem": "simple",
       "build-commands": [
-        "mkdir -p /app/utils/alvr/bin",
+        "mkdir -p /app/utils/alvr/bin && mkdir -p /app/utils/alvr/share/applications",
         "mv '/run/build/alvr/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
-        "ls -al /app/utils/alvr/bin"
+        "cp com.valvesoftware.Steam.Utility.alvr.desktop /app/utils/alvr/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
       ],
       "sources": [
         {

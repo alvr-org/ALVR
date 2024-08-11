@@ -10,6 +10,13 @@
   "build-options": {
     "build-args": [ "--share=network", "--filesystem=xdg-data" ]
   },
+  "finish-args": [
+    "--share=ipc",
+    "--share=network",
+    "--device=all",
+    "--filesystem=home",
+    "--talk-name=org.freedesktop.Notifications"
+  ],
   "modules": [
     {
       "name": "alvr",

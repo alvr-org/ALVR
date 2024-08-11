@@ -1,6 +1,6 @@
 # ALVR Launcher Flatpak
 
-This is an experimental Flatpak for ALVR Launcher! It is **only** compatible with the Flatpak version of Steam! For all non-Flatpak Steam users, use the AppImage that is already provided.
+This is an experimental Flatpak for ALVR Launcher! It is **only** compatible with the Flatpak version of Steam! For all non-Flatpak Steam users, use the non-flatpak launcher that is already provided.
 
 ## Installation
 
@@ -44,9 +44,36 @@ Flatpak graphics drivers must match host drivers. This is especially problematic
 
 Launching SteamVR from the dashboard will always launch a new instance of Steam. To avoid this, register the ALVR driver with Steam from the dashboard. However, the dashboard will not appear if SteamVR is launched from Steam. If any configuration needs to be made, launch the dashboard like the above. If the visibility of the Steam client does not matter, then simply launch SteamVR from the dashboard. Otherwise, launch SteamVR from inside of Steam after the driver is registered.
 
-From launcher - file browser and APK install buttons do not work yet. For now download apk from github and use sidequest to install. The main functionality of launcher (download and run streamer) does seem to work. 
+From launcher - file browser does not work yet. APK install feature requires additional setup for keys. 
 
 Certain fixes may need to be manually applied - similar to the non-flatpak version of alvr. At this time this means fix for vrmonitor.sh and optionally sudo set cap to stop steamvr complaining. Even with a working setup steamvr may will print errors and have buggy windows - the same as non-flatpak version.
+
+Fix for flatpak steamvr setup error set cap: https://github.com/flathub/com.valvesoftware.Steam/issues/898
+```
+sudo setcap CAP_SYS_NICE+ep ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
+```
+
+### ADB doesnt't work in flatpak: 
+First need to setup adb on host, and enabled usb debugging. Verify that devices shows up when you run "adb devices" and is authorised.
+Script assumes that user has keys in default location ($HOME/.android/adbkey.pub) - change if necessary
+Convenience script is provided: run_with_adb_keys.sh
+```
+export ADB_VENDOR_KEYS=~/.android/adbkey.pub
+flatpak override --user --filesystem=~/.android com.valvesoftware.Steam.Utility.alvr
+flatpak run --env=ADB_VENDOR_KEYS=$ADB_VENDOR_KEYS --command=alvr_launcher com.valvesoftware.Steam
+```
+
+If you get error saying "no devices" exist then check "adb devices" on host. 
+
+
+
+### Wayland variable causes steamvr error:
+Make sure the QT_QPA_PLATFORM var allows x11 option - or steamvr freaks out. Launch from terminal to see errors.
+```
+flatpak run --env=QT_QPA_PLATFORM=xcb --command=alvr_launcher com.valvesoftware.Steam
+```
+This can be a problem if you have modified this variable globally to force usage of wayland for some program like GameScope.
+
 
 ## Additional notes
 

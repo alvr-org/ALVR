@@ -1,8 +1,10 @@
 use super::{collapsible, NestingInfo, SettingControl, INDENTATION_STEP};
-use crate::dashboard::{basic_components, DisplayString};
-use alvr_gui_common::theme::{
-    log_colors::{INFO_LIGHT, WARNING_LIGHT},
-    OK_GREEN,
+use alvr_gui_common::{
+    theme::{
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
+        OK_GREEN,
+    },
+    DisplayString,
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
@@ -114,7 +116,7 @@ impl Control {
 
                     if let Some(string) = &entry.help {
                         if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                            basic_components::tooltip(
+                            alvr_gui_common::tooltip(
                                 ui,
                                 &format!("{}_help_tooltip", entry.id.display),
                                 string,
@@ -123,7 +125,7 @@ impl Control {
                     }
                     if entry.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered()
                     {
-                        basic_components::tooltip(
+                        alvr_gui_common::tooltip(
                             ui,
                             "steamvr_restart_tooltip",
                             &format!(
@@ -135,7 +137,7 @@ impl Control {
 
                     // The emoji is blue but it will be green in the UI
                     if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
-                        basic_components::tooltip(
+                        alvr_gui_common::tooltip(
                             ui,
                             "real_time_tooltip",
                             "This setting can be changed in real-time during streaming!",

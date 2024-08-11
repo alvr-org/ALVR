@@ -3,7 +3,7 @@
   "branch": "stable",
   "sdk": "org.freedesktop.Sdk//23.08",
   "runtime": "com.valvesoftware.Steam",
-  "runtime-version": "master",
+  "runtime-version": "stable",
   "appstream-compose": false,
   "separate-locales": false,
   "build-extension": true,
@@ -17,7 +17,9 @@
       "build-commands": [
         "mkdir -p /app/utils/alvr/bin && mkdir -p /app/utils/alvr/share/applications",
         "mv '/run/build/alvr/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
-        "cp com.valvesoftware.Steam.Utility.alvr.desktop /app/utils/alvr/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
+        " # get read-only errors from following lines - because this is an extension - so leave as comments",
+        " # install -D dashboard.ico /app/share/icons/alvr_launcher.ico",
+        " # install -D com.valvesoftware.Steam.Utility.alvr.desktop /app/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
       ],
       "sources": [
         {
@@ -25,7 +27,8 @@
           "url": "https://github.com/alvr-org/ALVR/releases/download/v20.9.1/alvr_launcher_linux.tar.gz",
           "sha256": "736201b3fb52d42bdfdb43e0f3d24eda36ea345e45f0a3ec466652d3f8670e2a"
         },
-        { "type": "file", "path": "com.valvesoftware.Steam.Utility.alvr.desktop" }
+        { "type": "file", "path": "com.valvesoftware.Steam.Utility.alvr.desktop" },
+        { "type": "file", "path": "../../dashboard/resources/dashboard.ico" }
       ]
     }
   ]

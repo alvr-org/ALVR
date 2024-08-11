@@ -1,5 +1,5 @@
-use crate::dashboard::DisplayString;
-use eframe::egui::Ui;
+use crate::DisplayString;
+use egui::Ui;
 
 // todo: use a custom widget
 pub fn button_group_clicked(

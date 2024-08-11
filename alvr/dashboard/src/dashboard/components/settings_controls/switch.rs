@@ -1,5 +1,4 @@
 use super::{reset, NestingInfo, SettingControl};
-use crate::dashboard::basic_components;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::SchemaNode;
 use eframe::{
@@ -63,7 +62,7 @@ impl Control {
         }
 
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-            if basic_components::switch(ui, enabled_mut).clicked() {
+            if alvr_gui_common::switch(ui, enabled_mut).clicked() {
                 request = get_request(&self.nesting_info, *enabled_mut);
             }
 

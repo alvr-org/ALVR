@@ -1,5 +1,5 @@
 use super::{reset, NestingInfo, SettingControl};
-use crate::dashboard::{basic_components, get_id, DisplayString};
+use alvr_gui_common::DisplayString;
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{ChoiceControlType, SchemaEntry, SchemaNode};
 use eframe::{
@@ -94,7 +94,7 @@ impl Control {
             variant_indices,
             variant_controls,
             gui: gui.unwrap_or(ChoiceControlType::Dropdown),
-            combobox_id: get_id(),
+            combobox_id: alvr_gui_common::get_id(),
         }
     }
 
@@ -122,7 +122,7 @@ impl Control {
         let mut request = None;
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
             if matches!(&self.gui, ChoiceControlType::ButtonGroup) {
-                if basic_components::button_group_clicked(ui, &self.variant_labels, variant_mut) {
+                if alvr_gui_common::button_group_clicked(ui, &self.variant_labels, variant_mut) {
                     request = get_request(&self.nesting_info, variant_mut);
                 }
             } else if let Some(mut index) = self.variant_indices.get(variant_mut).cloned() {

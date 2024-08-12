@@ -385,8 +385,8 @@ pub fn entry_point() {
                                 &xr_session,
                                 xr::Path::NULL,
                                 &xr::HapticVibration::new()
-                                    .amplitude(amplitude)
-                                    .frequency(frequency)
+                                    .amplitude(amplitude.clamp(0.0, 1.0))
+                                    .frequency(frequency.max(0.0))
                                     .duration(xr::Duration::from_nanos(duration.as_nanos() as _)),
                             )
                             .unwrap();

@@ -411,33 +411,40 @@ void SetTracking(
         if (deviceMotions[i].deviceID == HEAD_ID && g_driver_provider.hmd) {
             g_driver_provider.hmd->OnPoseUpdated(targetTimestampNs, deviceMotions[i]);
         } else {
-            if (g_driver_provider.left_controller && deviceMotions[i].deviceID == HAND_LEFT_ID) {
-                g_driver_provider.left_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS,
-                    deviceMotions[i],
-                    leftHandSkeleton,
-                    controllersTracked && !useLeftHandTracker
-                );
-                g_driver_provider.left_hand_tracker->onPoseUpdate(
-                    controllerPoseTimeOffsetS,
-                    deviceMotions[i],
-                    leftHandSkeleton,
-                    controllersTracked && useLeftHandTracker
-                );
-            } else if (g_driver_provider.right_controller
-                       && deviceMotions[i].deviceID == HAND_RIGHT_ID) {
-                g_driver_provider.right_controller->onPoseUpdate(
-                    controllerPoseTimeOffsetS,
-                    deviceMotions[i],
-                    rightHandSkeleton,
-                    controllersTracked && !useRightHandTracker
-                );
-                g_driver_provider.right_hand_tracker->onPoseUpdate(
-                    controllerPoseTimeOffsetS,
-                    deviceMotions[i],
-                    rightHandSkeleton,
-                    controllersTracked && useRightHandTracker
-                );
+            if (deviceMotions[i].deviceID == HAND_LEFT_ID) {
+                if (g_driver_provider.left_controller) {
+                    g_driver_provider.left_controller->onPoseUpdate(
+                        controllerPoseTimeOffsetS,
+                        deviceMotions[i],
+                        leftHandSkeleton,
+                        controllersTracked && !useLeftHandTracker
+                    );
+                }
+                if (g_driver_provider.left_hand_tracker) {
+                    g_driver_provider.left_hand_tracker->onPoseUpdate(
+                        controllerPoseTimeOffsetS,
+                        deviceMotions[i],
+                        leftHandSkeleton,
+                        controllersTracked && useLeftHandTracker
+                    );
+                }
+            } else if (deviceMotions[i].deviceID == HAND_RIGHT_ID) {
+                if (g_driver_provider.right_controller) {
+                    g_driver_provider.right_controller->onPoseUpdate(
+                        controllerPoseTimeOffsetS,
+                        deviceMotions[i],
+                        rightHandSkeleton,
+                        controllersTracked && !useRightHandTracker
+                    );
+                }
+                if (g_driver_provider.right_hand_tracker) {
+                    g_driver_provider.right_hand_tracker->onPoseUpdate(
+                        controllerPoseTimeOffsetS,
+                        deviceMotions[i],
+                        rightHandSkeleton,
+                        controllersTracked && useRightHandTracker
+                    );
+                }
             }
         }
     }

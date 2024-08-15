@@ -58,6 +58,9 @@ Path is slightly different vs native steam, but fix is same - add to steamvr lau
 ```
 ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
+### failed to create pipewire errors
+Use flatseal to add permission in "otherfiles" section for: xdg-run/pipewire-0
+
 
 ### SteamVR does not seem to like HDR being enabled with nvidia gpu
 At the time of writing using a desktop environment with hdr enabled seems to break steamvr when using nvidia. The symptom is steamvr not rendering and showing a popup saying "update your graphics drivers". To fix this disable hdr.

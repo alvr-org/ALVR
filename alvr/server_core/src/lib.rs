@@ -13,7 +13,6 @@ mod tracking;
 mod web_server;
 
 pub use c_api::*;
-pub use input_mapping::REGISTERED_BUTTON_SET;
 pub use logging_backend::init_logging;
 pub use tracking::get_hand_skeleton_offsets;
 
@@ -155,6 +154,15 @@ pub fn notify_restart_driver() {
 
 pub fn settings() -> Settings {
     SERVER_DATA_MANAGER.read().settings().clone()
+}
+
+pub fn registered_button_set() -> HashSet<u64> {
+    let data_manager = SERVER_DATA_MANAGER.read();
+    if let Switch::Enabled(input_mapping) = &data_manager.settings().headset.controllers {
+        input_mapping::registered_button_set(&input_mapping.emulation_mode)
+    } else {
+        HashSet::new()
+    }
 }
 
 pub struct ServerCoreContext {

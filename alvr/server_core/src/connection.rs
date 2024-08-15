@@ -832,6 +832,7 @@ fn connection_pipeline(
             settings.headset.controllers.as_option().map(|config| {
                 ButtonMappingManager::new_automatic(
                     &HAND_GESTURE_BUTTON_SET,
+                    &config.emulation_mode,
                     &config.button_mapping_config,
                 )
             });
@@ -1087,6 +1088,7 @@ fn connection_pipeline(
                             .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
                             .unwrap()
                             .button_set,
+                        &config.emulation_mode,
                         &config.button_mapping_config,
                     )
                 }
@@ -1239,6 +1241,7 @@ fn connection_pipeline(
                                 } else {
                                     Some(ButtonMappingManager::new_automatic(
                                         &profile_info.button_set,
+                                        &config.emulation_mode,
                                         &config.button_mapping_config,
                                     ))
                                 }
@@ -1274,6 +1277,7 @@ fn connection_pipeline(
                                     } else {
                                         Some(ButtonMappingManager::new_automatic(
                                             &input_ids,
+                                            &config.emulation_mode,
                                             &config.button_mapping_config,
                                         ))
                                     }

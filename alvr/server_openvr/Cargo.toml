@@ -1,0 +1,30 @@
+[package]
+name = "alvr_server_openvr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors = ["alvr-org", "Valve Corporation"]
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+gpl = [] # Enable for FFmpeg support on Windows. Always enabled on Linux
+
+[dependencies]
+alvr_common.workspace = true
+alvr_filesystem.workspace = true
+alvr_packets.workspace = true
+alvr_server_core.workspace = true
+alvr_server_io.workspace = true
+alvr_session.workspace = true
+
+[build-dependencies]
+alvr_filesystem = { path = "../filesystem" }
+bindgen = "0.69"
+cc = { version = "1", features = ["parallel"] }
+walkdir = "2"
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+pkg-config = "0.3"

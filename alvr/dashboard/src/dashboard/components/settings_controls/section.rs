@@ -1,15 +1,15 @@
 use super::{collapsible, NestingInfo, SettingControl, INDENTATION_STEP};
-use crate::dashboard::DisplayString;
-use alvr_gui_common::theme::{
-    log_colors::{INFO_LIGHT, WARNING_LIGHT},
-    OK_GREEN,
+use alvr_gui_common::{
+    theme::{
+        log_colors::{INFO_LIGHT, WARNING_LIGHT},
+        OK_GREEN,
+    },
+    DisplayString,
 };
 use alvr_packets::PathValuePair;
 use alvr_session::settings_schema::{SchemaEntry, SchemaNode};
-use eframe::egui::{self, popup, Ui};
+use eframe::egui::Ui;
 use serde_json as json;
-
-const POPUP_ID: &str = "setpopup";
 
 struct Entry {
     id: DisplayString,
@@ -116,15 +116,19 @@ impl Control {
 
                     if let Some(string) = &entry.help {
                         if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                            popup::show_tooltip_text(ui.ctx(), egui::Id::new(POPUP_ID), string);
+                            alvr_gui_common::tooltip(
+                                ui,
+                                &format!("{}_help_tooltip", entry.id.display),
+                                string,
+                            );
                         }
                     }
                     if entry.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered()
                     {
-                        popup::show_tooltip_text(
-                            ui.ctx(),
-                            egui::Id::new(POPUP_ID),
-                            format!(
+                        alvr_gui_common::tooltip(
+                            ui,
+                            "steamvr_restart_tooltip",
+                            &format!(
                                 "Changing this setting will make SteamVR restart!\n{}",
                                 "Please save your in-game progress first"
                             ),
@@ -133,9 +137,9 @@ impl Control {
 
                     // The emoji is blue but it will be green in the UI
                     if entry.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
-                        popup::show_tooltip_text(
-                            ui.ctx(),
-                            egui::Id::new(POPUP_ID),
+                        alvr_gui_common::tooltip(
+                            ui,
+                            "real_time_tooltip",
                             "This setting can be changed in real-time during streaming!",
                         );
                     }

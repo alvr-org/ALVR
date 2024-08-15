@@ -30,7 +30,6 @@ impl Display for Profile {
 pub fn build_server_lib(
     profile: Profile,
     enable_messagebox: bool,
-    gpl: bool,
     root: Option<String>,
     reproducible: bool,
 ) {
@@ -49,10 +48,6 @@ pub fn build_server_lib(
         flags.push("--features");
         flags.push("alvr_common/enable-messagebox");
     }
-    if gpl {
-        flags.push("--features");
-        flags.push("gpl");
-    }
     if reproducible {
         flags.push("--locked");
     }
@@ -67,11 +62,11 @@ pub fn build_server_lib(
         sh.set_var("ALVR_ROOT_DIR", root);
     }
 
-    let _push_guard = sh.push_dir(afs::crate_dir("server"));
+    let _push_guard = sh.push_dir(afs::crate_dir("server_core"));
     cmd!(sh, "cargo build {flags_ref...}").run().unwrap();
 
     sh.copy_file(
-        artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+        artifacts_dir.join(afs::dynlib_fname("alvr_server_core")),
         &build_dir,
     )
     .unwrap();
@@ -140,10 +135,10 @@ pub fn build_streamer(
     {
         let gpl_flag = gpl.then(|| vec!["--features", "gpl"]).unwrap_or_default();
         let profiling_flag = profiling
-            .then(|| vec!["--features", "trace-performance"])
+            .then(|| vec!["--features", "alvr_server_core/trace-performance"])
             .unwrap_or_default();
 
-        let _push_guard = sh.push_dir(afs::crate_dir("server"));
+        let _push_guard = sh.push_dir(afs::crate_dir("server_openvr"));
         cmd!(
             sh,
             "cargo build {common_flags_ref...} {gpl_flag...} {profiling_flag...}"
@@ -152,14 +147,14 @@ pub fn build_streamer(
         .unwrap();
 
         sh.copy_file(
-            artifacts_dir.join(afs::dynlib_fname("alvr_server")),
+            artifacts_dir.join(afs::dynlib_fname("alvr_server_openvr")),
             build_layout.openvr_driver_lib(),
         )
         .unwrap();
 
         if cfg!(windows) {
             sh.copy_file(
-                artifacts_dir.join("alvr_server.pdb"),
+                artifacts_dir.join("alvr_server_openvr.pdb"),
                 build_layout
                     .openvr_driver_lib_dir()
                     .join("driver_alvr_server.pdb"),
@@ -191,7 +186,7 @@ pub fn build_streamer(
         // Bring along the c++ runtime
         command::copy_recursive(
             &sh,
-            &afs::crate_dir("server").join("cpp/bin/windows"),
+            &afs::crate_dir("server_openvr").join("cpp/bin/windows"),
             &build_layout.openvr_driver_lib_dir(),
         )
         .unwrap();
@@ -310,22 +305,14 @@ pub fn build_launcher(profile: Profile, enable_messagebox: bool, reproducible: b
     .unwrap();
 }
 
-fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool) {
+fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
-    let ndk_flags = &[
-        "-t",
-        "arm64-v8a",
-        "-t",
-        "armeabi-v7a",
-        "-t",
-        "x86_64",
-        "-t",
-        "x86",
-        "-p",
-        "26",
-        "--no-strip",
-    ];
+    let mut ndk_flags = vec!["--no-strip", "-p", "26", "-t", "arm64-v8a"];
+
+    if all_targets {
+        ndk_flags.extend(["-t", "armeabi-v7a", "-t", "x86_64", "-t", "x86"]);
+    }
 
     let mut rust_flags = vec![];
     match profile {
@@ -356,15 +343,15 @@ fn build_android_lib_impl(dir_name: &str, profile: Profile, link_stdcpp: bool) {
     cmd!(sh, "cbindgen --output {out}").run().unwrap();
 }
 
-pub fn build_android_client_core_lib(profile: Profile, link_stdcpp: bool) {
-    build_android_lib_impl("client_core", profile, link_stdcpp)
+pub fn build_android_client_core_lib(profile: Profile, link_stdcpp: bool, all_targets: bool) {
+    build_android_lib_impl("client_core", profile, link_stdcpp, all_targets)
 }
 
 pub fn build_android_client_openxr_lib(profile: Profile, link_stdcpp: bool) {
-    build_android_lib_impl("client_openxr", profile, link_stdcpp)
+    build_android_lib_impl("client_openxr", profile, link_stdcpp, false)
 }
 
-pub fn build_android_client(profile: Profile) {
+pub fn build_android_client(profile: Profile, for_meta_store: bool) {
     let sh = Shell::new().unwrap();
 
     let mut flags = vec![];
@@ -421,6 +408,20 @@ pub fn build_android_client(profile: Profile) {
             .run()
             .unwrap();
         }
+    }
+
+    if for_meta_store {
+        let manifest_path = afs::crate_dir("client_openxr").join("Cargo.toml");
+        let mut manifest_string = fs::read_to_string(&manifest_path).unwrap();
+
+        manifest_string = manifest_string.replace(
+            r#"package = "alvr.client.stable""#,
+            r#"package = "alvr.client""#,
+        );
+        manifest_string =
+            manifest_string.replace(r#"value = "all""#, r#"value = "quest2|questpro|quest3""#);
+
+        fs::write(manifest_path, manifest_string).unwrap();
     }
 
     let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));

@@ -1,10 +1,8 @@
-# Roadmap
-
 This post will continue to evolve during ALVR development.
 
 ## Long-term goal
 
-Create a universal bridge between XR devices. 
+Create a universal bridge between XR devices.
 
 ## What is coming next
 

@@ -698,7 +698,7 @@ pub struct AlvrStreamConfig {
 
 #[no_mangle]
 pub extern "C" fn alvr_initialize_opengl() {
-    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new())));
+    GRAPHICS_CONTEXT.set(Some(Rc::new(GraphicsContext::new_gl())));
 }
 
 #[no_mangle]
@@ -776,6 +776,7 @@ pub unsafe extern "C" fn alvr_start_stream_opengl(config: AlvrStreamConfig) {
         GRAPHICS_CONTEXT.with_borrow(|c| c.as_ref().unwrap().clone()),
         view_resolution,
         swapchain_textures,
+        glow::RGBA8,
         foveated_encoding,
         true,
         false, // TODO: limited range fix config

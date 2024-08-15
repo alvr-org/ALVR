@@ -1,49 +1,73 @@
-# Installation guide
+## Launcher (BETA)
 
-## Basic installation
+Launcher will allow you to manage old, current and new installations of ALVR streamer and allow to automatically install and upgrade to specific ALVR app version on headset
 
-PC side:
+### Installation
 
-* Install SteamVR, **launch it once** then close it. This is to make sure it sets the environment correctly for ALVR.
-* Go to the latest release [download page](https://github.com/alvr-org/ALVR/releases/latest). In the "Assets" section at the bottom download the ALVR Installer.
-* Run the installer. If prompted, allow the execution in the SmartScreen popup. You need to give administrator permissions to install ALVR. For best compatibility do not change the installation folder.
-* Once the installation finished, launch ALVR. You are greeted with a setup wizard. Follow the setup to set the firewall rules and presets.
-
-**If you have problems launching ALVR, follow the guide below to use the portable version**
-
-Headset side:
-
-* Install SideQuest on your PC and enable developer mode on the headset. You can follow [this guide](https://sidequestvr.com/setup-howto).
-* Connect your headset to Sidequest. If you have an Oculus Quest 1/2 download the ALVR app [here](https://sidequestvr.com/app/9), if you have an Oculus Go download it [here](https://sidequestvr.com/app/2658)
+* Download `alvr_launcher_windows.zip` (on Windows) or `alvr_launcher_linux.tar.gz` (on Linux) from the release [download page](https://github.com/alvr-org/ALVR/releases/latest) and extract into a path that contains only ASCII characters (english only) and has edit permissions without administrator or root rights.
+* Run `ALVR Launcher.exe` (on Windows) or `alvr_launcher_linux/ALVR Launcher` (on Linux)
+* Press `Add version` button
+* For default installation keep channel and version as is and press `Install`
+* Wait until it finishes downloading, installing (depends on your connection)
+* To install ALVR app on headset, use button `Install APK`
+* In the list, to open streamer app (PC) press `Launch`. You will be greeted with a setup wizard. Follow the setup to set the firewall rules and other settings.
 
 ### Usage
 
-* Launch ALVR on your headset. While the headset screen is on, click `Trust` next to the client entry (on the PC) to start streaming.
+* Before launching SteamVR through ALVR, please install it. First time launch will result in steamvr being blank and alvr will not work - close it and start again. It will have registered driver and should work.
+* Launch ALVR app on your headset. While the headset screen is on, click `Trust` next to the device entry (in the ALVR streamer app on PC, in the `Devices` tab) to start streaming.
 * You can change settings on the PC in the `Settings` tab. Most of the settings require to restart SteamVR to be applied. Use the apposite button on the bottom right corner.
 
 For any problem visit the [Troubleshooting page](https://github.com/alvr-org/ALVR/wiki/Troubleshooting).
 
+### Windows microphone streaming
+
+To use the microphone you need to install the [VB-CABLE driver](https://vb-audio.com/Cable/).
+Set "CABLE Output" as the default microphone.
+Then you can enable the microphone in the ALVR setting, leave "Virtual microphone input" to Default.
+
 ## Advanced installation
 
-### Portable version
+### Installing app using Sidequest
+
+* Install SideQuest on your PC and enable developer mode on the headset. You can follow [this guide](https://sidequestvr.com/setup-howto).
+* Connect your headset to Sidequest. If you have Quest, Pico, and other compatible device download the ALVR app [here](https://sidequestvr.com/app/9)
+
+### Manually installing ALVR streamer
 
 There is also a portable version for the PC that requires more manual steps to make it work.
 
-* Install SteamVR and launch it once.
+#### Windows
+
 * Download `alvr_streamer_windows.zip` from the latest release [download page](https://github.com/alvr-org/ALVR/releases/latest).
 * Unzip into a path that contains only ASCII characters and has edit permissions without administrator rights.
+* Run
 
-### Nightly
+#### Linux
+
+* Download `alvr_streamer_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest), extract it.
+* Run `bin/alvr_dashboard`
+
+#### Nightly
 
 If you want to get new features early or you want to help with testing you can install a nightly version.
 
-Download the latest nightly streamer [here](https://github.com/alvr-org/ALVR-nightly/releases/latest). Download the latest nightly client from Sidequest ([download](https://sidequestvr.com/app/2281)).
+Download the latest nightly streamer [here](https://github.com/alvr-org/ALVR-nightly/releases/latest).
 
 Since nightly releases can be unstable, always use matching versions for PC and headset. They are updated once a day.
 
-### Windows microphone streaming
+### Arch Linux (AUR)
 
-To use the microphone you need to install the [VB-CABLE driver](https://vb-audio.com/Cable/). Set "CABLE Output" as the default microphone. Then you can enable the microphone in the ALVR setting, leave "Virtual microphone input" to Default.
+* Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
+* Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (stable, amdgpu), or [alvr-nvidia](https://aur.archlinux.org/packages/alvr-nvidia)<sup>AUR</sup> (stable, nvidia), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>(nightly, unstable)
+* Install SteamVR, **launch it once** then close it.
+* Run `alvr_dashboard` or ALVR from your DE's application launcher.
+
+### Flatpak
+
+For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Installing-ALVR-and-using-SteamVR-on-Linux-through-Flatpak)
+
+## Advanced usage
 
 ### Use ALVR together with third-party drivers
 
@@ -51,64 +75,12 @@ By default ALVR disables other SteamVR drivers before starting. Among these driv
 
 ### Launch ALVR together with SteamVR
 
-You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR. Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
+You can skip the ALVR Dashboard and open ALVR automatically together with SteamVR.
 
-### Connect headset and PC via a USB Cable
+**Note:** You can only do that while SteamVR is not already running. Otherwise driver might be unregistered on shutdown.
+
+Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
+
+### Connect headset to PC via a USB Cable
 
 Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection).
-
-## Linux
-
-### Arch Linux (AUR)
-
-* Install `rustup` and a rust toolchain, if you don't have it: <https://wiki.archlinux.org/title/Rust#Arch_Linux_package>.
-* Install [alvr](https://aur.archlinux.org/packages/alvr)<sup>AUR</sup> (recommended), or [alvr-git](https://aur.archlinux.org/packages/alvr-git)<sup>AUR</sup>
-* Install SteamVR, **launch it once** then close it.
-* Run `alvr_dashboard` or ALVR from your DE's application launcher.
-
-### Semi-Automatic Distrobox installation and guidance
-
-Notes:
-
-* This should be used in case you can't install or have issues with ALVR on your system. Do note that on Nvidia it uses host drivers and cuda nvenc, so if you're on older distribution like Debian and having older driver and cuda version, it will not work properly either way.
-
-* Guide also contains fixes, tweaks, additional software like desktop overlay to help you run with steamvr better and workaround it's issues.
-
-Installation:
-
-1. Download zip from https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide, unpack it somewhere in your home directory (steam doesn't like long paths) or `git clone https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide.git`.
-   
-   If you want to use nightly (potentially unstable, but fresh) builds, set `IS_NIGHTLY=0` variable in `env.sh` to `IS_NIGHTLY=1`.
-
-2. `cd ALVR-Distrobox-Linux-Guide`
-
-3. Carefully follow the [guide](ALVR-in-distrobox.md).
-
-4. Any issues related to this installer/various tweaks/bugs should be reported as issue [here](https://github.com/alvr-org/ALVR-Distrobox-Linux-Guide/issues)
-
-### Other
-
-#### AppImage
-
-You can get appimage for latest stable version from [here](https://github.com/alvr-org/ALVR/releases/latest).
-
-#### Flatpak
-
-For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Flatpak)
-
-#### Portable tar.gz
-
-* Install FFmpeg with VAAPI/NVENC + DRM + Vulkan + x264/x265 support. You can use this [ppa:savoury1/ffmpeg5](https://launchpad.net/~savoury1/+archive/ubuntu/ffmpeg5) under Ubuntu.
-* Install SteamVR, **launch it once** then close it.
-* Download `alvr_streamer_linux.tar.gz` from the release [download page](https://github.com/alvr-org/ALVR/releases/latest).
-* Run `bin/alvr_dashboard`
-
-### Automatic Audio & Microphone Setup
-
-* Must be on v20.5.0+
-
-* Pipewire required
-
-* Open installation -> Run setup wizard, skip to part with automatic audio setup
-
-* Press the button to automatically download and set it

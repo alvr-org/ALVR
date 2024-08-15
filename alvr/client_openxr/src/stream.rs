@@ -155,18 +155,23 @@ impl StreamContext {
             None
         };
 
+        let format =
+            graphics::swapchain_format(&gfx_ctx, &xr_ctx.session, config.encoder_config.enable_hdr);
+
         let swapchains = [
             graphics::create_swapchain(
                 &xr_ctx.session,
+                &gfx_ctx,
                 config.view_resolution,
+                format,
                 foveation_profile.as_ref(),
-                config.encoder_config.enable_hdr,
             ),
             graphics::create_swapchain(
                 &xr_ctx.session,
+                &gfx_ctx,
                 config.view_resolution,
+                format,
                 foveation_profile.as_ref(),
-                config.encoder_config.enable_hdr,
             ),
         ];
 
@@ -187,6 +192,7 @@ impl StreamContext {
                     .map(|i| *i as _)
                     .collect(),
             ],
+            format,
             config.foveated_encoding_config.clone(),
             platform != Platform::Lynx
                 && !((platform == Platform::Pico4 || platform == Platform::PicoNeo3)

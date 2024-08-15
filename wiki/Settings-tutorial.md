@@ -1,24 +1,24 @@
-# Settings tutorial
-
-Written as of 2023/02, should be applicable to ALVR v19 and v20.
+Applicable to ALVR v20.
 
 This tutorial will help you find optimal settings for your hardware and network
 as well as give you some pointers to troubleshoot common configuration issues.
 
 ## Prerequisites
 
-* You have installed the ALVR streamer on your PC, and the ALVR client on your HMD.
-* You can reach the SteamVR void (or the SteamVR home) and are able to launch games.
+* You have installed the ALVR streamer on your PC, and the ALVR app on your HMD.
+* You can launch up to the SteamVR void (or up to the SteamVR home) and are able to launch games.
 
 ## Step 1: choose resolution, refresh rate, codec
 
-To get a sharp image, the HMD's native resolution should be used. In ALVR, use the "absolute" setting and type in your HMD's native resolution. For example, the Quest 2 has 1832x1920 pixels per eye, so use a width of 3664 and a height of 1920. Individual games can still have their render scale changed from within the SteamVR overlay setting.
+To get a sharp image, you need combination of high resolution, enough sharpening, good bitrate with chosen codec.
+For example, on good wireless router you can use medium resolution preset (default) with 1.0 sharpening (higher than default) with H.264 set at constant 400-500 mbps, or hevc at costant 100-150 mbps. In wired case, you can go all the way to 800-1000 mbps constant bitrate on H.264.
 
 Next, choose a refresh rate. Obviously higher is better, but on weaker/older hardware it's often preferable to use a lower setting that gives consistent results. For the Quest 2, 120 Hz has to be enabled in its settings.
 
 A few notes on codec choices:
 
-* HEVC/H.265 is usually best on AMD hardware, and in bitrate constrained scenarios.
+* AV1 works only on latest gen gpus (Nvidia RTX 4xxx and AMD Radeon RX 7xxx) and on Quest 3 only.
+* HEVC/H.265 is usually best for bitrate cosntained scenarious.
 * AVC/H.264 (with CAVLC) may save a few milliseconds of decode latency, but needs a much higher bitrate to reach similar image quality.
 * Software encoding (x264) can give good results on a beefy high core-count CPU and a very high bitrate. Will require playing with a USB3 cable. The only choice if you don't have a hardware encoder (eg, RX6500).
 
@@ -40,7 +40,7 @@ Slowly increase bitrate until one of two things happen:
 
 ## Step 4: tweak frame buffering
 
-If you notice micro-stuttering in the client, especially in busy scenes with fast motion, slowly increase maxBufferingFrames until the playback is smooth.
+If you notice micro-stuttering on the headset, especially in busy scenes with fast motion, slowly increase maxBufferingFrames until the playback is smooth.
 
 Keep in mind that increasing maxBufferingFrames will linearly increase latency;
 if the value that gives a smooth playback results in too high of a latency for

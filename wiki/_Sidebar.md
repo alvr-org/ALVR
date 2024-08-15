@@ -1,4 +1,4 @@
-**Start here**
+#### Start here
 
 * [Installation guide](https://github.com/alvr-org/ALVR/wiki/Installation-guide)
 
@@ -8,13 +8,13 @@
 
 ***
 
-**Configuration**
+#### Configuration
 
 * [Settings tutorial](https://github.com/alvr-org/ALVR/wiki/Settings-tutorial)
 
 * [Information and Recommendations](https://github.com/alvr-org/ALVR/wiki/Information-and-Recommendations)
 
-* [ALVR client and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/ALVR-client-and-streamer-on-separate-networks)
+* [ALVR headset and streamer on separate networks](https://github.com/alvr-org/ALVR/wiki/Headset-and-ALVR-streamer-on-separate-networks)
 
 * [Fixed Foveated Rendering (FFR)](https://github.com/alvr-org/ALVR/wiki/Fixed-Foveated-Rendering-(FFR))
 
@@ -22,7 +22,7 @@
 
 ***
 
-**Troubleshooting**
+#### Troubleshooting
 
 * [Troubleshooting](https://github.com/alvr-org/ALVR/wiki/Troubleshooting)
 
@@ -34,18 +34,16 @@
 
 * [My game is not working properly! Help](https://github.com/alvr-org/ALVR/wiki/My-game-is-not-working-properly!-Help!)
 
-* [Hardware Video Encoding](https://github.com/alvr-org/ALVR/wiki/Hardware-Video-Encoding)
+* [Hardware Video Encoding Testing](https://github.com/alvr-org/ALVR/wiki/FFmpeg-Hardware-Encoding-Testing)
 
 ***
 
-**Development**
+#### Development
 
 * [Roadmap](https://github.com/alvr-org/ALVR/wiki/Roadmap)
 
 * [Building From Source](https://github.com/alvr-org/ALVR/wiki/Building-From-Source)
 
 * [How ALVR works](https://github.com/alvr-org/ALVR/wiki/How-ALVR-works)
-
-* [Linux support](https://github.com/alvr-org/ALVR/wiki/Linux-Support-development-progress)
 
 * [Real time video upscaling experiments](https://github.com/alvr-org/ALVR/wiki/Real-time-video-upscaling-experiments)

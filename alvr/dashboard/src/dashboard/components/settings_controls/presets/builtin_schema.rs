@@ -319,12 +319,74 @@ pub fn microphone_schema(devices: Vec<String>) -> PresetSchemaNode {
     })
 }
 
+pub fn hand_tracking_interaction_schema() -> PresetSchemaNode {
+    const HELP: &str = r"Disabled: hands cannot emulate buttons. Useful for using Joy-Cons or other non-native controllers.
+Separate trackers: create separate SteamVR devices for hand tracking. This is used for VRChat.
+ALVR bindings: use ALVR hand tracking button bindings. Check the wiki for help.
+";
+
+    const PREFIX: &str = "session_settings.headset.controllers.content";
+
+    PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
+        name: "Hand tracking interaction".into(),
+        strings: [("help".into(), HELP.into())].into_iter().collect(),
+        flags: ["steamvr-restart".into()].into_iter().collect(),
+        options: [
+            HigherOrderChoiceOption {
+                display_name: "Disabled".into(),
+                modifiers: vec![
+                    bool_modifier("session_settings.headset.controllers.enabled", true),
+                    bool_modifier(
+                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        false,
+                    ),
+                    bool_modifier(
+                        &format!("{PREFIX}.hand_tracking_interaction.enabled"),
+                        false,
+                    ),
+                ],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "Separate trackers".into(),
+                modifiers: vec![
+                    bool_modifier("session_settings.headset.controllers.enabled", true),
+                    bool_modifier(&format!("{PREFIX}.hand_skeleton.enabled"), true),
+                    bool_modifier(
+                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        true,
+                    ),
+                    bool_modifier(
+                        &format!("{PREFIX}.hand_tracking_interaction.enabled"),
+                        false,
+                    ),
+                ],
+                content: None,
+            },
+            HigherOrderChoiceOption {
+                display_name: "ALVR bindings".into(),
+                modifiers: vec![
+                    bool_modifier("session_settings.headset.controllers.enabled", true),
+                    bool_modifier(
+                        &format!("{PREFIX}.hand_skeleton.content.use_separate_trackers"),
+                        false,
+                    ),
+                    bool_modifier(&format!("{PREFIX}.hand_tracking_interaction.enabled"), true),
+                ],
+                content: None,
+            },
+        ]
+        .into_iter()
+        .collect(),
+        default_option_index: 1,
+        gui: ChoiceControlType::ButtonGroup,
+    })
+}
+
 pub fn eye_face_tracking_schema() -> PresetSchemaNode {
     PresetSchemaNode::HigherOrderChoice(HigherOrderChoiceSchema {
-        name: "eye_face_tracking".into(),
-        strings: [("display_name".into(), "Eye and face tracking".into())]
-            .into_iter()
-            .collect(),
+        name: "Eye and face tracking".into(),
+        strings: HashMap::new(),
         flags: HashSet::new(),
         options: [
             HigherOrderChoiceOption {

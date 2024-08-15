@@ -44,6 +44,8 @@ devices! {
     (HEAD, "/user/head"),
     (HAND_LEFT, "/user/hand/left"),
     (HAND_RIGHT, "/user/hand/right"),
+    (HAND_TRACKER_LEFT,"/user/hand_tracker/left"),
+    (HAND_TRACKER_RIGHT, "/user/hand_tracker/right"),
     (BODY_CHEST, "/user/body/chest"),
     (BODY_HIPS, "/user/body/waist"),
     (BODY_LEFT_ELBOW, "/user/body/left_elbow"),

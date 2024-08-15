@@ -49,7 +49,7 @@ required = true
 name = "android.hardware.vr.headtracking"
 required = true
 [[package.metadata.android.uses_feature]]
-opengles_version = [3, 1]
+opengles_version = [3, 2]
 required = true
 
 [[package.metadata.android.uses_permission]]
@@ -121,7 +121,9 @@ name = "com.oculus.intent.category.VR"
 value = "vr_only"
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.supportedDevices"
-value = "quest|quest2|questpro"
+# Note: value is changed for the Meta store, which requires an explicit list of platforms.
+# "all" is required to support Quest 1 which doesn't have newer platform names registered.
+value = "all" 
 [[package.metadata.android.application.meta_data]]
 name = "com.oculus.vr.focusaware"
 value = "true"

@@ -1,4 +1,3 @@
-mod basic_components;
 mod components;
 
 use self::components::{
@@ -11,37 +10,7 @@ use alvr_gui_common::theme;
 use alvr_packets::{PathValuePair, ServerRequest};
 use alvr_session::SessionConfig;
 use eframe::egui::{self, Align, CentralPanel, Frame, Layout, Margin, RichText, SidePanel, Stroke};
-use std::{
-    collections::BTreeMap,
-    ops::Deref,
-    sync::{atomic::AtomicUsize, Arc},
-};
-
-#[derive(Clone)]
-pub struct DisplayString {
-    pub id: String,
-    pub display: String,
-}
-
-impl From<(String, String)> for DisplayString {
-    fn from((id, display): (String, String)) -> Self {
-        Self { id, display }
-    }
-}
-
-impl Deref for DisplayString {
-    type Target = String;
-
-    fn deref(&self) -> &String {
-        &self.id
-    }
-}
-
-fn get_id() -> usize {
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-
-    NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-}
+use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Tab {
@@ -230,7 +199,7 @@ impl eframe::App for Dashboard {
                         .inner_margin(Margin::same(7.0))
                         .stroke(Stroke::new(1.0, theme::SEPARATOR_BG)),
                 )
-                .exact_width(150.0)
+                .exact_width(160.0)
                 .show(context, |ui| {
                     ui.with_layout(Layout::top_down_justified(Align::Center), |ui| {
                         ui.add_space(13.0);

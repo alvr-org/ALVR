@@ -315,14 +315,14 @@ fn get_android_openxr_loaders() {
         "",
         &format!(
             "https://github.com/KhronosGroup/OpenXR-SDK-Source/releases/download/{}",
-            "release-1.0.27/openxr_loader_for_android-1.0.27.aar",
+            "release-1.0.34/openxr_loader_for_android-1.0.34.aar",
         ),
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );
 
     get_openxr_loader(
-        "_quest",
-        "https://securecdn.oculus.com/binaries/download/?id=7092833820755144", // version 60
+        "_quest1",
+        "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
         "OpenXR/Libs/Android/arm64-v8a/Release",
     );
 
@@ -334,8 +334,8 @@ fn get_android_openxr_loaders() {
 
     get_openxr_loader(
         "_yvr",
-        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_1.0.0.zip",
-        "yvr_openxr_mobile_sdk_1.0.0/OpenXR/Libs/Android/arm64-v8a",
+        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
+        "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
     );
 
     get_openxr_loader(
@@ -345,7 +345,7 @@ fn get_android_openxr_loaders() {
     );
 }
 
-pub fn build_android_deps(skip_admin_priv: bool) {
+pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
     update_submodules(&sh);
@@ -357,15 +357,17 @@ pub fn build_android_deps(skip_admin_priv: bool) {
     cmd!(sh, "rustup target add aarch64-linux-android")
         .run()
         .unwrap();
-    cmd!(sh, "rustup target add armv7-linux-androideabi")
-        .run()
-        .unwrap();
-    cmd!(sh, "rustup target add x86_64-linux-android")
-        .run()
-        .unwrap();
-    cmd!(sh, "rustup target add i686-linux-android")
-        .run()
-        .unwrap();
+    if all_targets {
+        cmd!(sh, "rustup target add armv7-linux-androideabi")
+            .run()
+            .unwrap();
+        cmd!(sh, "rustup target add x86_64-linux-android")
+            .run()
+            .unwrap();
+        cmd!(sh, "rustup target add i686-linux-android")
+            .run()
+            .unwrap();
+    }
     cmd!(sh, "cargo install cargo-ndk cbindgen").run().unwrap();
     cmd!(
         sh,

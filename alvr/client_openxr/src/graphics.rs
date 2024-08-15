@@ -16,16 +16,25 @@ pub fn session_create_info(ctx: &GraphicsContext) -> xr::opengles::SessionCreate
     unimplemented!()
 }
 
+pub fn swapchain_format(
+    gfx_ctx: &GraphicsContext,
+    session: &xr::Session<xr::OpenGlEs>,
+    enable_hdr: bool,
+) -> u32 {
+    gfx_ctx.make_current();
+
+    let formats = session.enumerate_swapchain_formats().unwrap();
+    graphics::choose_swapchain_format(&formats, enable_hdr)
+}
+
 pub fn create_swapchain(
     session: &xr::Session<xr::OpenGlEs>,
+    gfx_ctx: &GraphicsContext,
     resolution: UVec2,
+    format: u32,
     foveation: Option<&xr::FoveationProfileFB>,
-    enable_hdr: bool,
 ) -> xr::Swapchain<xr::OpenGlEs> {
-    let format = graphics::choose_swapchain_format(
-        session.enumerate_swapchain_formats().ok().as_deref(),
-        enable_hdr,
-    );
+    gfx_ctx.make_current();
 
     let swapchain_info = xr::SwapchainCreateInfo {
         create_flags: xr::SwapchainCreateFlags::EMPTY,

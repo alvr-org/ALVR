@@ -1,17 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
 use super::schema::{HigherOrderChoiceSchema, PresetModifierOperation};
-use crate::dashboard::components::{self, NestingInfo, SettingControl};
+use crate::dashboard::components::{self, NestingInfo, SettingControl, INDENTATION_STEP};
 use alvr_gui_common::theme::{
     log_colors::{INFO_LIGHT, WARNING_LIGHT},
     OK_GREEN,
 };
 use alvr_packets::{PathSegment, PathValuePair};
-use eframe::egui::{self, popup, Ui};
+use eframe::egui::Ui;
 use serde_json as json;
 use settings_schema::{SchemaEntry, SchemaNode};
-
-const POPUP_ID: &str = "setpopup";
 
 pub struct Control {
     name: String,
@@ -139,18 +137,19 @@ impl Control {
         let mut response = None;
 
         ui.horizontal(|ui| {
+            ui.add_space(INDENTATION_STEP);
             ui.label(&self.name);
 
             if let Some(string) = &self.help {
                 if ui.colored_label(INFO_LIGHT, "❓").hovered() {
-                    popup::show_tooltip_text(ui.ctx(), egui::Id::new(POPUP_ID), string);
+                    alvr_gui_common::tooltip(ui, &format!("{}_help_tooltip", self.name), string);
                 }
             }
             if self.steamvr_restart_flag && ui.colored_label(WARNING_LIGHT, "⚠").hovered() {
-                popup::show_tooltip_text(
-                    ui.ctx(),
-                    egui::Id::new(POPUP_ID),
-                    format!(
+                alvr_gui_common::tooltip(
+                    ui,
+                    "steamvr_restart_tooltip",
+                    &format!(
                         "Changing this setting will make SteamVR restart!\n{}",
                         "Please save your in-game progress first"
                     ),
@@ -159,9 +158,9 @@ impl Control {
 
             // The emoji is blue but it will be green in the UI
             if self.real_time_flag && ui.colored_label(OK_GREEN, "🔵").hovered() {
-                popup::show_tooltip_text(
-                    ui.ctx(),
-                    egui::Id::new(POPUP_ID),
+                alvr_gui_common::tooltip(
+                    ui,
+                    "real_time_tooltip",
                     "This setting can be changed in real-time during streaming!",
                 );
             }
@@ -170,8 +169,6 @@ impl Control {
             .control
             .ui(ui, &mut self.preset_json, true)
             .or(response);
-
-        // ui.end_row();
 
         if let Some(desc) = response {
             // todo: handle children requests

@@ -1,4 +1,4 @@
-use crate::{dashboard::theme::graph_colors, dashboard::ServerRequest};
+use crate::dashboard::{theme::graph_colors, ServerRequest};
 use alvr_events::{GraphStatistics, StatisticsSummary};
 use alvr_gui_common::theme;
 use eframe::{
@@ -109,9 +109,12 @@ impl StatisticsTab {
                 RectTransform::from_to(canvas_response.response.rect, canvas_response.inner) * pos;
             let history_index = (graph_pos.x as usize).clamp(0, GRAPH_HISTORY_SIZE - 1);
 
-            popup::show_tooltip(ui.ctx(), Id::new("popup"), |ui| {
-                tooltip_content(ui, &self.history[history_index])
-            });
+            popup::show_tooltip(
+                ui.ctx(),
+                ui.layer_id(),
+                Id::new(format!("{title}_popup")),
+                |ui| tooltip_content(ui, &self.history[history_index]),
+            );
         }
     }
 

@@ -123,7 +123,7 @@ pub fn include_licenses(root_path: &Path, gpl: bool) {
     )
     .unwrap();
     sh.copy_file(
-        afs::crate_dir("server").join("LICENSE-Valve"),
+        afs::crate_dir("server_openvr").join("LICENSE-Valve"),
         licenses_dir.join("Valve.txt"),
     )
     .unwrap();
@@ -193,10 +193,10 @@ pub fn package_launcher(appimage: bool) {
     }
 }
 
-pub fn package_client_lib(link_stdcpp: bool) {
+pub fn package_client_lib(link_stdcpp: bool, all_targets: bool) {
     let sh = Shell::new().unwrap();
 
-    build::build_android_client_core_lib(Profile::Distribution, link_stdcpp);
+    build::build_android_client_core_lib(Profile::Distribution, link_stdcpp, all_targets);
 
     command::zip(&sh, &afs::build_dir().join("alvr_client_core")).unwrap();
 }

@@ -105,6 +105,7 @@ pub struct OpenvrConfig {
     pub nvenc_enable_weighted_prediction: bool,
     pub capture_frame_dir: String,
     pub amd_bitrate_corruption_fix: bool,
+    pub use_separate_hand_trackers: bool,
 
     // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
     // restart
@@ -176,7 +177,7 @@ impl SessionConfig {
         }
 
         // Note: unwrap is safe because current session is expected to serialize correctly
-        let old_session_json = json::to_value(&self).unwrap();
+        let old_session_json = json::to_value(self.clone()).unwrap();
         let old_session_fields = old_session_json.as_object().unwrap();
 
         let maybe_session_settings_json =

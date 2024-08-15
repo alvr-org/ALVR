@@ -353,7 +353,7 @@ fn main() {
             viewport: ViewportBuilder::default().with_inner_size((400.0, 400.0)),
             ..Default::default()
         },
-        Box::new(|_| Box::new(Window::new(input_sender, output_receiver))),
+        Box::new(|_| Ok(Box::new(Window::new(input_sender, output_receiver)))),
     )
     .ok();
 

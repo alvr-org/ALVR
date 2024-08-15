@@ -149,9 +149,7 @@ impl NotificationBar {
                     self.expanded = false;
                 }
                 ui.with_layout(Layout::left_to_right(alignment), |ui| {
-                    ui.add(
-                        Label::new(RichText::new(&self.message).color(fg).size(12.0)).wrap(true),
-                    );
+                    ui.add(Label::new(RichText::new(&self.message).color(fg).size(12.0)).wrap());
                 })
             })
         });

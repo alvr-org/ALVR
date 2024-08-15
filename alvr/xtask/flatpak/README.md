@@ -59,6 +59,11 @@ Path is slightly different vs native steam, but fix is same - add to steamvr lau
 ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
 
+### SteamVR does not seem to like HDR being enabled with nvidia gpu
+At the time of writing using a desktop environment with hdr enabled seems to break steamvr when using nvidia. The symptom is steamvr not rendering and showing a popup saying "update your graphics drivers". To fix this disable hdr.
+This is not reported to be an issue with amd graphics cards.
+
+
 ### ADB doesnt't work in flatpak: 
 First need to setup adb on host, and enable usb debugging on device. Verify that devices shows up when you run "adb devices" and is authorised.
 Script assumes that user has AndroidStudio installed with keys in default location ($HOME/.android/adbkey.pub) - change if necessary
@@ -69,15 +74,17 @@ flatpak override --user --filesystem=~/.android com.valvesoftware.Steam.Utility.
 flatpak run --env=ADB_VENDOR_KEYS=$ADB_VENDOR_KEYS --command=alvr_launcher com.valvesoftware.Steam
 ```
 
-If you get error saying "no devices" exist then check "adb devices" on host. Unplug/replug device and check again. 
+If you get error saying "no devices" exist then check "adb devices" on host. Unplug/replug device and check again. If still stuck reboot then test again (seriously).
 
 ### Wayland variable causes steamvr error:
 Make sure the QT_QPA_PLATFORM var allows x11 option - or steamvr freaks out. Launch from terminal to see errors.
-```
-flatpak run --env=QT_QPA_PLATFORM=xcb --command=alvr_launcher com.valvesoftware.Steam
-```
-This can be a problem if you have modified this variable globally to force usage of wayland for some program like GameScope.
+This can be a problem if you have modified this variable globally to force usage of wayland for some program like GameScope. 
+You can fix this by setting the variable passed to steamvr
 
+Example custom launch options for steamvr - including both QT_QPA_PLATFORM and vrmonitor fixes:
+```
+QT_QPA_PLATFORM=xcb ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
 
 ## Additional notes
 

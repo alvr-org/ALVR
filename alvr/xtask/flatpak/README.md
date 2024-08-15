@@ -53,9 +53,15 @@ Fix for flatpak steamvr setup error set cap: https://github.com/flathub/com.valv
 sudo setcap CAP_SYS_NICE+ep ~/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher
 ```
 
+Fix for flatpak steamvr "vrmonitor.sh" issue:
+Path is slightly different vs native steam, but fix is same - add to steamvr launch options:
+```
+~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
+
 ### ADB doesnt't work in flatpak: 
-First need to setup adb on host, and enabled usb debugging. Verify that devices shows up when you run "adb devices" and is authorised.
-Script assumes that user has keys in default location ($HOME/.android/adbkey.pub) - change if necessary
+First need to setup adb on host, and enable usb debugging on device. Verify that devices shows up when you run "adb devices" and is authorised.
+Script assumes that user has AndroidStudio installed with keys in default location ($HOME/.android/adbkey.pub) - change if necessary
 Convenience script is provided: run_with_adb_keys.sh
 ```
 export ADB_VENDOR_KEYS=~/.android/adbkey.pub
@@ -63,9 +69,7 @@ flatpak override --user --filesystem=~/.android com.valvesoftware.Steam.Utility.
 flatpak run --env=ADB_VENDOR_KEYS=$ADB_VENDOR_KEYS --command=alvr_launcher com.valvesoftware.Steam
 ```
 
-If you get error saying "no devices" exist then check "adb devices" on host. 
-
-
+If you get error saying "no devices" exist then check "adb devices" on host. Unplug/replug device and check again. 
 
 ### Wayland variable causes steamvr error:
 Make sure the QT_QPA_PLATFORM var allows x11 option - or steamvr freaks out. Launch from terminal to see errors.

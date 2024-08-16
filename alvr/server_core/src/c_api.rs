@@ -223,6 +223,16 @@ pub unsafe extern "C" fn alvr_log_debug(string_ptr: *const c_char) {
     log(log::Level::Debug, string_ptr);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn alvr_dbg_server_impl(string_ptr: *const c_char) {
+    alvr_common::dbg_server_impl(CStr::from_ptr(string_ptr).to_str().unwrap());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn alvr_dbg_encoder(string_ptr: *const c_char) {
+    alvr_common::dbg_encoder(CStr::from_ptr(string_ptr).to_str().unwrap());
+}
+
 // Should not be used in production
 #[no_mangle]
 pub unsafe extern "C" fn alvr_log_periodically(tag_ptr: *const c_char, message_ptr: *const c_char) {

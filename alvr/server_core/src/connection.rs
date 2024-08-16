@@ -228,7 +228,7 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
         _server_core_debug: settings.extra.logging.debug_groups.server_core,
         _client_core_debug: settings.extra.logging.debug_groups.client_core,
-        _handshake_debug: settings.extra.logging.debug_groups.handshake,
+        _conncection_debug: settings.extra.logging.debug_groups.connection,
         _sockets_debug: settings.extra.logging.debug_groups.sockets,
         _server_gfx_debug: settings.extra.logging.debug_groups.server_gfx,
         _client_gfx_debug: settings.extra.logging.debug_groups.client_gfx,

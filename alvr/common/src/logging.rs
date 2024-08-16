@@ -8,7 +8,7 @@ pub const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
 pub const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
 pub const SERVER_CORE_DBG_LABEL: &str = "SERVER CORE";
 pub const CLIENT_CORE_DBG_LABEL: &str = "CLIENT CORE";
-pub const HANDSHAKE_DBG_LABEL: &str = "HANDSHAKE";
+pub const CONNECTION_DBG_LABEL: &str = "CONNECTION";
 pub const SOCKETS_DBG_LABEL: &str = "SOCKETS";
 pub const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
 pub const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
@@ -52,9 +52,9 @@ macro_rules! dbg_client_core {
 }
 
 #[macro_export]
-macro_rules! dbg_handshake {
+macro_rules! dbg_connection {
     ($($args:tt)*) => {
-        $crate::_dbg_label!($crate::HANDSHAKE_DBG_LABEL, $($args)*);
+        $crate::_dbg_label!($crate::CONNECTION_DBG_LABEL, $($args)*);
     };
 }
 
@@ -104,7 +104,7 @@ pub struct DebugGroupsConfig {
     #[schema(flag = "steamvr-restart")]
     pub client_core: bool,
     #[schema(flag = "steamvr-restart")]
-    pub handshake: bool,
+    pub connection: bool,
     #[schema(flag = "steamvr-restart")]
     pub sockets: bool,
     #[schema(flag = "steamvr-restart")]
@@ -126,8 +126,8 @@ pub fn filter_debug_groups(message: &str, config: &DebugGroupsConfig) -> bool {
         config.server_core
     } else if message.starts_with(&format!("[{CLIENT_CORE_DBG_LABEL}]")) {
         config.client_core
-    } else if message.starts_with(&format!("[{HANDSHAKE_DBG_LABEL}]")) {
-        config.handshake
+    } else if message.starts_with(&format!("[{CONNECTION_DBG_LABEL}]")) {
+        config.connection
     } else if message.starts_with(&format!("[{SOCKETS_DBG_LABEL}]")) {
         config.sockets
     } else if message.starts_with(&format!("[{SERVER_GFX_DBG_LABEL}]")) {

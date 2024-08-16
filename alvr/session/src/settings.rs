@@ -1721,7 +1721,7 @@ pub fn session_settings_default() -> SettingsDefault {
                     client_impl: false,
                     server_core: false,
                     client_core: false,
-                    handshake: false,
+                    connection: false,
                     sockets: false,
                     server_gfx: false,
                     client_gfx: false,

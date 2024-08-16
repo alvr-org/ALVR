@@ -114,7 +114,7 @@ pub struct OpenvrConfig {
     pub _client_impl_debug: bool,
     pub _server_core_debug: bool,
     pub _client_core_debug: bool,
-    pub _handshake_debug: bool,
+    pub _conncection_debug: bool,
     pub _sockets_debug: bool,
     pub _server_gfx_debug: bool,
     pub _client_gfx_debug: bool,

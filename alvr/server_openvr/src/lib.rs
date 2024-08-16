@@ -23,7 +23,7 @@ use alvr_common::{
 };
 use alvr_filesystem as afs;
 use alvr_packets::{ButtonValue, Haptics};
-use alvr_server_core::{ServerCoreContext, ServerCoreEvent, REGISTERED_BUTTON_SET};
+use alvr_server_core::{ServerCoreContext, ServerCoreEvent};
 use alvr_session::{CodecType, ControllersConfig};
 use std::{
     ffi::{c_char, c_void, CString},
@@ -262,10 +262,10 @@ pub extern "C" fn register_buttons(device_id: u64) {
         device_id
     };
 
-    for id in &*REGISTERED_BUTTON_SET {
-        if let Some(info) = BUTTON_INFO.get(id) {
+    for id in alvr_server_core::registered_button_set() {
+        if let Some(info) = BUTTON_INFO.get(&id) {
             if info.device_id == mapped_device_id {
-                unsafe { RegisterButton(device_id, *id) };
+                unsafe { RegisterButton(device_id, id) };
             }
         } else {
             error!("Cannot register unrecognized button ID {id}");

@@ -1,64 +1,42 @@
 {
-    "id": "com.valvesoftware.Steam.Utility.alvr",
-    "branch": "stable",
-    "sdk": "org.freedesktop.Sdk//23.08",
-    "sdk-extensions": [
-        "org.freedesktop.Sdk.Extension.llvm16",
-        "org.freedesktop.Sdk.Extension.rust-stable"
-    ],
-    "runtime": "com.valvesoftware.Steam",
-    "runtime-version": "stable",
-    "build-extension": true,
-    "appstream-compose": false,
-    "separate-locales": false,
-    "build-options": {
-        "prefix": "/app/utils/alvr",
-        "append-path": "/usr/lib/sdk/llvm16/bin:/usr/lib/sdk/rust-stable/bin:/app/utils/alvr/bin",
-        "prepend-ld-library-path": "/app/utils/alvr/lib",
-        "prepend-pkg-config-path": "/app/utils/alvr/lib/pkgconfig",
-        "strip": true,
-        "env": {
-            "PREFIX": "/app/utils/alvr"
-        },
-        "build-args": [
-            "--share=network",
-            "--filesystem=xdg-data"
-        ]
-    },
-    "cleanup": [
-        "/lib/*.a",
-        "/lib/*.la",
-        "/share/doc",
-        "/share/man"
-    ],
-    "modules": [
+  "id": "com.valvesoftware.Steam.Utility.alvr",
+  "branch": "stable",
+  "sdk": "org.freedesktop.Sdk//23.08",
+  "runtime": "com.valvesoftware.Steam",
+  "runtime-version": "stable",
+  "appstream-compose": false,
+  "separate-locales": false,
+  "build-extension": true,
+  "build-options": {
+    "build-args": [ "--share=network", "--filesystem=xdg-data" ]
+  },
+  "finish-args": [
+    "--share=ipc",
+    "--share=network",
+    "--device=all",
+    "--filesystem=home",
+    "--talk-name=org.freedesktop.Notifications"
+  ],
+  "modules": [
+    {
+      "name": "alvr",
+      "buildsystem": "simple",
+      "build-commands": [
+        "mkdir -p /app/utils/alvr/bin && mkdir -p /app/utils/alvr/share/applications",
+        "mv '/run/build/alvr/ALVR Launcher' /app/utils/alvr/bin/alvr_launcher",
+        " # get read-only errors from following lines - because this is an extension - so leave as comments",
+        " # install -D dashboard.ico /app/share/icons/alvr_launcher.ico",
+        " # install -D com.valvesoftware.Steam.Utility.alvr.desktop /app/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
+      ],
+      "sources": [
         {
-            "name": "alvr",
-            "buildsystem": "simple",
-            "build-options": {
-                "env": {
-                    "RUST_BACKTRACE": "full",
-                    "CURL_HOME": "/run/build/alvr",
-                    "CPATH": "/app/utils/alvr/include"
-                }
-            },
-            "build-commands": [
-                "echo 'insecure' >> .curlrc",
-                "cargo xtask prepare-deps --platform linux --no-nvidia",
-                "cargo xtask build-streamer --gpl --release",
-                "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr",
-                "cp -r /run/build/alvr/alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.desktop ~/.local/share/applications/com.valvesoftware.Steam.Utility.alvr.desktop"
-            ],
-            "modules": [
-                "modules/yasm/yasm.json",
-                "modules/vulkan-headers/vulkan-headers.json"
-            ],
-            "sources": [
-                {
-                    "type": "dir",
-                    "path": "../../../"
-                }
-            ]
-        }
-    ]
+          "type": "archive",
+          "url": "https://github.com/alvr-org/ALVR/releases/download/v20.9.1/alvr_launcher_linux.tar.gz",
+          "sha256": "736201b3fb52d42bdfdb43e0f3d24eda36ea345e45f0a3ec466652d3f8670e2a"
+        },
+        { "type": "file", "path": "com.valvesoftware.Steam.Utility.alvr.desktop" },
+        { "type": "file", "path": "../../dashboard/resources/dashboard.ico" }
+      ]
+    }
+  ]
 }

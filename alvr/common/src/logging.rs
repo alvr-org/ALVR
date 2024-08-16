@@ -60,7 +60,6 @@ pub fn dbg_decoder(message: &str) {
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
-#[schema(collapsible)]
 pub struct DebugGroupsConfig {
     #[schema(flag = "steamvr-restart")]
     pub server_impl: bool,

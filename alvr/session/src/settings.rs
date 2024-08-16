@@ -1150,6 +1150,7 @@ pub struct LoggingConfig {
     #[schema(flag = "real-time")]
     pub log_haptics: bool,
 
+    #[cfg_attr(not(debug_assertions), schema(flag = "hidden"))]
     #[schema(strings(help = "These settings enable extra spammy logs for debugging purposes."))]
     pub debug_groups: DebugGroupsConfig,
 }
@@ -1716,7 +1717,6 @@ pub fn session_settings_default() -> SettingsDefault {
                 prefer_backtrace: false,
                 show_notification_tip: true,
                 debug_groups: DebugGroupsConfigDefault {
-                    gui_collapsed: true,
                     server_impl: false,
                     client_impl: false,
                     server_core: false,

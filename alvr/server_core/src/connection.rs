@@ -832,6 +832,7 @@ fn connection_pipeline(
             settings.headset.controllers.as_option().map(|config| {
                 ButtonMappingManager::new_automatic(
                     &HAND_GESTURE_BUTTON_SET,
+                    &config.emulation_mode,
                     &config.button_mapping_config,
                 )
             });
@@ -1073,24 +1074,24 @@ fn connection_pipeline(
 
     let control_receive_thread = thread::spawn({
         let ctx = Arc::clone(&ctx);
-        let mut controller_button_mapping_manager = server_data_lock
-            .settings()
-            .headset
-            .controllers
-            .as_option()
-            .map(|config| {
-                if let Some(mappings) = &config.button_mappings {
-                    ButtonMappingManager::new_manual(mappings)
-                } else {
-                    ButtonMappingManager::new_automatic(
-                        &CONTROLLER_PROFILE_INFO
-                            .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
-                            .unwrap()
-                            .button_set,
-                        &config.button_mapping_config,
-                    )
-                }
-            });
+
+        let controllers_config = server_data_lock.settings().headset.controllers.as_option();
+        let mut controller_button_mapping_manager = controllers_config.map(|config| {
+            if let Some(mappings) = &config.button_mappings {
+                ButtonMappingManager::new_manual(mappings)
+            } else {
+                ButtonMappingManager::new_automatic(
+                    &CONTROLLER_PROFILE_INFO
+                        .get(&alvr_common::hash_string(QUEST_CONTROLLER_PROFILE_PATH))
+                        .unwrap()
+                        .button_set,
+                    &config.emulation_mode,
+                    &config.button_mapping_config,
+                )
+            }
+        });
+        let controllers_emulation_mode =
+            controllers_config.map(|config| config.emulation_mode.clone());
 
         let disconnect_notif = Arc::clone(&disconnect_notif);
         let control_sender = Arc::clone(&control_sender);
@@ -1229,22 +1230,26 @@ fn connection_pipeline(
                         };
                     }
                     ClientControlPacket::ActiveInteractionProfile { profile_id, .. } => {
-                        controller_button_mapping_manager =
-                            if let (Switch::Enabled(config), Some(profile_info)) = (
-                                &SERVER_DATA_MANAGER.read().settings().headset.controllers,
+                        controller_button_mapping_manager = if let Switch::Enabled(config) =
+                            &SERVER_DATA_MANAGER.read().settings().headset.controllers
+                        {
+                            if let Some(mappings) = &config.button_mappings {
+                                Some(ButtonMappingManager::new_manual(mappings))
+                            } else if let (Some(profile_info), Some(emulation_mode)) = (
                                 CONTROLLER_PROFILE_INFO.get(&profile_id),
+                                &controllers_emulation_mode,
                             ) {
-                                if let Some(mappings) = &config.button_mappings {
-                                    Some(ButtonMappingManager::new_manual(mappings))
-                                } else {
-                                    Some(ButtonMappingManager::new_automatic(
-                                        &profile_info.button_set,
-                                        &config.button_mapping_config,
-                                    ))
-                                }
+                                Some(ButtonMappingManager::new_automatic(
+                                    &profile_info.button_set,
+                                    emulation_mode,
+                                    &config.button_mapping_config,
+                                ))
                             } else {
                                 None
-                            };
+                            }
+                        } else {
+                            None
+                        };
                     }
                     ClientControlPacket::Log { level, message } => {
                         info!("Client {client_hostname}: [{level:?}] {message}")
@@ -1272,10 +1277,13 @@ fn connection_pipeline(
                                     if let Some(mappings) = &config.button_mappings {
                                         Some(ButtonMappingManager::new_manual(mappings))
                                     } else {
-                                        Some(ButtonMappingManager::new_automatic(
-                                            &input_ids,
-                                            &config.button_mapping_config,
-                                        ))
+                                        controllers_emulation_mode.as_ref().map(|emulation_mode| {
+                                            ButtonMappingManager::new_automatic(
+                                                &input_ids,
+                                                emulation_mode,
+                                                &config.button_mapping_config,
+                                            )
+                                        })
                                     }
                                 } else {
                                     None

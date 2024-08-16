@@ -551,6 +551,7 @@ fn connection_pipeline(
         *LOG_CHANNEL_SENDER.lock() = Some(LogMirrorData {
             sender: log_channel_sender,
             filter_level,
+            debug_groups_config: settings.extra.logging.debug_groups,
         });
     }
     event_queue.lock().push_back(streaming_start_event);

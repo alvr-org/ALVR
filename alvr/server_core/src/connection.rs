@@ -224,6 +224,16 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
         _controller_profile,
+        _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
+        _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
+        _server_core_debug: settings.extra.logging.debug_groups.server_core,
+        _client_core_debug: settings.extra.logging.debug_groups.client_core,
+        _handshake_debug: settings.extra.logging.debug_groups.handshake,
+        _sockets_debug: settings.extra.logging.debug_groups.sockets,
+        _server_gfx_debug: settings.extra.logging.debug_groups.server_gfx,
+        _client_gfx_debug: settings.extra.logging.debug_groups.client_gfx,
+        _encoder_debug: settings.extra.logging.debug_groups.encoder,
+        _decoder_debug: settings.extra.logging.debug_groups.decoder,
         ..old_config
     }
 }

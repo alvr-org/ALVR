@@ -4,6 +4,112 @@ use serde::{Deserialize, Serialize};
 use settings_schema::SettingsSchema;
 use std::{error::Error, fmt::Display};
 
+const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
+const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
+const SERVER_CORE_DBG_LABEL: &str = "SERVER CORE";
+const CLIENT_CORE_DBG_LABEL: &str = "CLIENT CORE";
+const HANDSHAKE_DBG_LABEL: &str = "HANDSHAKE";
+const SOCKETS_DBG_LABEL: &str = "SOCKETS";
+const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
+const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
+const ENCODER_DBG_LABEL: &str = "ENCODER";
+const DECODER_DBG_LABEL: &str = "DECODER";
+
+pub fn dbg_label(label: &str, message: &str) {
+    log::debug!("[{label}] {message}");
+}
+
+pub fn dbg_server_impl(message: &str) {
+    dbg_label(SERVER_IMPL_DBG_LABEL, message);
+}
+
+pub fn dbg_client_impl(message: &str) {
+    dbg_label(CLIENT_IMPL_DBG_LABEL, message);
+}
+
+pub fn dbg_server_core(message: &str) {
+    dbg_label(SERVER_CORE_DBG_LABEL, message);
+}
+
+pub fn dbg_client_core(message: &str) {
+    dbg_label(CLIENT_CORE_DBG_LABEL, message);
+}
+
+pub fn dbg_handshake(message: &str) {
+    dbg_label(HANDSHAKE_DBG_LABEL, message);
+}
+
+pub fn dbg_sockets(message: &str) {
+    dbg_label(SOCKETS_DBG_LABEL, message);
+}
+
+pub fn dbg_server_gfx(message: &str) {
+    dbg_label(SERVER_GFX_DBG_LABEL, message);
+}
+
+pub fn dbg_client_gfx(message: &str) {
+    dbg_label(CLIENT_GFX_DBG_LABEL, message);
+}
+
+pub fn dbg_encoder(message: &str) {
+    dbg_label(ENCODER_DBG_LABEL, message);
+}
+
+pub fn dbg_decoder(message: &str) {
+    dbg_label(DECODER_DBG_LABEL, message);
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+#[schema(collapsible)]
+pub struct DebugGroupsConfig {
+    #[schema(flag = "steamvr-restart")]
+    pub server_impl: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_impl: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub server_core: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_core: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub handshake: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub sockets: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub server_gfx: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_gfx: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub encoder: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub decoder: bool,
+}
+
+pub fn filter_debug_groups(message: &str, config: &DebugGroupsConfig) -> bool {
+    if message.starts_with(&format!("[{SERVER_IMPL_DBG_LABEL}]")) {
+        config.server_impl
+    } else if message.starts_with(&format!("[{CLIENT_IMPL_DBG_LABEL}]")) {
+        config.client_impl
+    } else if message.starts_with(&format!("[{SERVER_CORE_DBG_LABEL}]")) {
+        config.server_core
+    } else if message.starts_with(&format!("[{CLIENT_CORE_DBG_LABEL}]")) {
+        config.client_core
+    } else if message.starts_with(&format!("[{HANDSHAKE_DBG_LABEL}]")) {
+        config.handshake
+    } else if message.starts_with(&format!("[{SOCKETS_DBG_LABEL}]")) {
+        config.sockets
+    } else if message.starts_with(&format!("[{SERVER_GFX_DBG_LABEL}]")) {
+        config.server_gfx
+    } else if message.starts_with(&format!("[{CLIENT_GFX_DBG_LABEL}]")) {
+        config.client_gfx
+    } else if message.starts_with(&format!("[{ENCODER_DBG_LABEL}]")) {
+        config.encoder
+    } else if message.starts_with(&format!("[{DECODER_DBG_LABEL}]")) {
+        config.decoder
+    } else {
+        true
+    }
+}
+
 #[derive(
     SettingsSchema, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]

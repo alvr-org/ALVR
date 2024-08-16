@@ -1,4 +1,7 @@
-use alvr_common::{LogSeverity, LogSeverityDefault, LogSeverityDefaultVariant};
+use alvr_common::{
+    DebugGroupsConfig, DebugGroupsConfigDefault, LogSeverity, LogSeverityDefault,
+    LogSeverityDefaultVariant,
+};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use settings_schema::{
@@ -1146,6 +1149,9 @@ pub struct LoggingConfig {
 
     #[schema(flag = "real-time")]
     pub log_haptics: bool,
+
+    #[schema(strings(help = "These settings enable extra spammy logs for debugging purposes."))]
+    pub debug_groups: DebugGroupsConfig,
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]
@@ -1709,6 +1715,19 @@ pub fn session_settings_default() -> SettingsDefault {
                 },
                 prefer_backtrace: false,
                 show_notification_tip: true,
+                debug_groups: DebugGroupsConfigDefault {
+                    gui_collapsed: true,
+                    server_impl: false,
+                    client_impl: false,
+                    server_core: false,
+                    client_core: false,
+                    handshake: false,
+                    sockets: false,
+                    server_gfx: false,
+                    client_gfx: false,
+                    encoder: false,
+                    decoder: false,
+                },
             },
             steamvr_launcher: SteamvrLauncherDefault {
                 driver_launch_action: DriverLaunchActionDefault {

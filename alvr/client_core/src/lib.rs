@@ -20,7 +20,7 @@ mod audio;
 pub mod graphics;
 
 use alvr_common::{
-    error,
+    dbg_client_core, error,
     glam::{UVec2, Vec2, Vec3},
     parking_lot::{Mutex, RwLock},
     warn, ConnectionState, DeviceMotion, LifecycleState, Pose, HEAD_ID,
@@ -105,6 +105,8 @@ pub struct ClientCoreContext {
 
 impl ClientCoreContext {
     pub fn new(capabilities: ClientCapabilities) -> Self {
+        dbg_client_core!("Create");
+
         // Make sure to reset config in case of version compat mismatch.
         if Config::load().protocol_id != alvr_common::protocol_id() {
             // NB: Config::default() sets the current protocol ID
@@ -112,9 +114,11 @@ impl ClientCoreContext {
         }
 
         #[cfg(target_os = "android")]
-        platform::try_get_permission(platform::MICROPHONE_PERMISSION);
-        #[cfg(target_os = "android")]
-        platform::set_wifi_lock(true);
+        {
+            dbg_client_core!("Getting permissions");
+            platform::try_get_permission(platform::MICROPHONE_PERMISSION);
+            platform::set_wifi_lock(true);
+        }
 
         let lifecycle_state = Arc::new(RwLock::new(LifecycleState::Idle));
         let event_queue = Arc::new(Mutex::new(VecDeque::new()));
@@ -142,10 +146,14 @@ impl ClientCoreContext {
     }
 
     pub fn resume(&self) {
+        dbg_client_core!("resume");
+
         *self.lifecycle_state.write() = LifecycleState::Resumed;
     }
 
     pub fn pause(&self) {
+        dbg_client_core!("pause");
+
         let mut connection_state_lock = self.connection_context.state.write();
 
         *self.lifecycle_state.write() = LifecycleState::Idle;
@@ -160,10 +168,14 @@ impl ClientCoreContext {
     }
 
     pub fn poll_event(&self) -> Option<ClientCoreEvent> {
+        dbg_client_core!("poll_event");
+
         self.event_queue.lock().pop_front()
     }
 
     pub fn send_battery(&self, device_id: u64, gauge_value: f32, is_plugged: bool) {
+        dbg_client_core!("send_battery");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&ClientControlPacket::Battery(BatteryInfo {
@@ -176,12 +188,16 @@ impl ClientCoreContext {
     }
 
     pub fn send_playspace(&self, area: Option<Vec2>) {
+        dbg_client_core!("send_playspace");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender.send(&ClientControlPacket::PlayspaceSync(area)).ok();
         }
     }
 
     pub fn send_active_interaction_profile(&self, device_id: u64, profile_id: u64) {
+        dbg_client_core!("send_active_interaction_profile");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&ClientControlPacket::ActiveInteractionProfile {
@@ -193,6 +209,8 @@ impl ClientCoreContext {
     }
 
     pub fn send_custom_interaction_profile(&self, device_id: u64, input_ids: HashSet<u64>) {
+        dbg_client_core!("send_custom_interaction_profile");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender
                 .send(&alvr_packets::encode_reserved_client_control_packet(
@@ -206,6 +224,8 @@ impl ClientCoreContext {
     }
 
     pub fn send_buttons(&self, entries: Vec<ButtonEntry>) {
+        dbg_client_core!("send_buttons");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender.send(&ClientControlPacket::Buttons(entries)).ok();
         }
@@ -219,6 +239,8 @@ impl ClientCoreContext {
         hand_skeletons: [Option<[Pose; 26]>; 2],
         face_data: FaceData,
     ) {
+        dbg_client_core!("send_tracking");
+
         let last_ipd = {
             let mut view_params_queue_lock = self.connection_context.view_params_queue.write();
 
@@ -281,6 +303,8 @@ impl ClientCoreContext {
     }
 
     pub fn get_head_prediction_offset(&self) -> Duration {
+        dbg_client_core!("get_head_prediction_offset");
+
         if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
             stats.average_total_pipeline_latency()
         } else {
@@ -289,6 +313,8 @@ impl ClientCoreContext {
     }
 
     pub fn get_tracker_prediction_offset(&self) -> Duration {
+        dbg_client_core!("get_tracker_prediction_offset");
+
         if let Some(stats) = &*self.connection_context.statistics_manager.lock() {
             stats.tracker_prediction_offset()
         } else {
@@ -297,6 +323,8 @@ impl ClientCoreContext {
     }
 
     pub fn get_frame(&self) -> Option<DecodedFrame> {
+        dbg_client_core!("get_frame");
+
         let mut decoder_source_lock = self.connection_context.decoder_source.lock();
         let decoder_source = decoder_source_lock.as_mut()?;
 
@@ -333,6 +361,8 @@ impl ClientCoreContext {
 
     /// Call only with external decoder
     pub fn request_idr(&self) {
+        dbg_client_core!("request_idr");
+
         if let Some(sender) = &mut *self.connection_context.control_sender.lock() {
             sender.send(&ClientControlPacket::RequestIdr).ok();
         }
@@ -340,6 +370,8 @@ impl ClientCoreContext {
 
     /// Call only with external decoder
     pub fn report_frame_decoded(&self, target_timestamp: Duration) {
+        dbg_client_core!("report_frame_decoded");
+
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_frame_decoded(target_timestamp);
         }
@@ -347,12 +379,16 @@ impl ClientCoreContext {
 
     /// Call only with external decoder
     pub fn report_compositor_start(&self, target_timestamp: Duration) {
+        dbg_client_core!("report_compositor_start");
+
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_compositor_start(target_timestamp);
         }
     }
 
     pub fn report_submit(&self, target_timestamp: Duration, vsync_queue: Duration) {
+        dbg_client_core!("report_submit");
+
         if let Some(stats) = &mut *self.connection_context.statistics_manager.lock() {
             stats.report_submit(target_timestamp, vsync_queue);
 
@@ -369,6 +405,8 @@ impl ClientCoreContext {
 
 impl Drop for ClientCoreContext {
     fn drop(&mut self) {
+        dbg_client_core!("Drop");
+
         *self.lifecycle_state.write() = LifecycleState::ShuttingDown;
 
         if let Some(thread) = self.connection_thread.lock().take() {

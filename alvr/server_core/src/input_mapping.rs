@@ -1,5 +1,4 @@
-use crate::SERVER_DATA_MANAGER;
-use alvr_common::{once_cell::sync::Lazy, settings_schema::Switch, *};
+use alvr_common::*;
 use alvr_packets::{ButtonEntry, ButtonValue};
 use alvr_session::{
     AutomaticButtonMappingConfig, BinaryToScalarStates, ButtonBindingTarget, ButtonMappingType,
@@ -7,14 +6,10 @@ use alvr_session::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
-    let data_manager_lock = SERVER_DATA_MANAGER.read();
-    let Switch::Enabled(controllers_config) = &data_manager_lock.settings().headset.controllers
-    else {
-        return HashSet::new();
-    };
-
-    match &controllers_config.emulation_mode {
+pub fn registered_button_set(
+    controllers_emulation_mode: &ControllersEmulationMode,
+) -> HashSet<u64> {
+    match &controllers_emulation_mode {
         ControllersEmulationMode::RiftSTouch
         | ControllersEmulationMode::Quest2Touch
         | ControllersEmulationMode::Quest3Plus => CONTROLLER_PROFILE_INFO
@@ -38,7 +33,7 @@ pub static REGISTERED_BUTTON_SET: Lazy<HashSet<u64>> = Lazy::new(|| {
             .map(|b| alvr_common::hash_string(b))
             .collect(),
     }
-});
+}
 
 pub struct BindingTarget {
     destination: u64,
@@ -532,9 +527,14 @@ pub struct ButtonMappingManager {
 }
 
 impl ButtonMappingManager {
-    pub fn new_automatic(source: &HashSet<u64>, config: &AutomaticButtonMappingConfig) -> Self {
+    pub fn new_automatic(
+        source: &HashSet<u64>,
+        controllers_emulation_mode: &ControllersEmulationMode,
+        button_mapping_config: &AutomaticButtonMappingConfig,
+    ) -> Self {
+        let button_set = registered_button_set(controllers_emulation_mode);
         Self {
-            mappings: automatic_bindings(source, &REGISTERED_BUTTON_SET, config),
+            mappings: automatic_bindings(source, &button_set, button_mapping_config),
             binary_source_states: HashMap::new(),
             hysteresis_states: HashMap::new(),
         }

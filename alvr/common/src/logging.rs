@@ -4,59 +4,93 @@ use serde::{Deserialize, Serialize};
 use settings_schema::SettingsSchema;
 use std::{error::Error, fmt::Display};
 
-const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
-const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
-const SERVER_CORE_DBG_LABEL: &str = "SERVER CORE";
-const CLIENT_CORE_DBG_LABEL: &str = "CLIENT CORE";
-const HANDSHAKE_DBG_LABEL: &str = "HANDSHAKE";
-const SOCKETS_DBG_LABEL: &str = "SOCKETS";
-const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
-const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
-const ENCODER_DBG_LABEL: &str = "ENCODER";
-const DECODER_DBG_LABEL: &str = "DECODER";
+pub const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
+pub const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
+pub const SERVER_CORE_DBG_LABEL: &str = "SERVER CORE";
+pub const CLIENT_CORE_DBG_LABEL: &str = "CLIENT CORE";
+pub const HANDSHAKE_DBG_LABEL: &str = "HANDSHAKE";
+pub const SOCKETS_DBG_LABEL: &str = "SOCKETS";
+pub const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
+pub const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
+pub const ENCODER_DBG_LABEL: &str = "ENCODER";
+pub const DECODER_DBG_LABEL: &str = "DECODER";
 
-pub fn dbg_label(label: &str, message: &str) {
-    log::debug!("[{label}] {message}");
+#[macro_export]
+macro_rules! _dbg_label {
+    ($label:expr, $($args:tt)*) => {{
+        #[cfg(debug_assertions)]
+        $crate::log::debug!("[{}] {}", $label, format_args!($($args)*));
+    }};
 }
 
-pub fn dbg_server_impl(message: &str) {
-    dbg_label(SERVER_IMPL_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_server_impl {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_IMPL_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_client_impl(message: &str) {
-    dbg_label(CLIENT_IMPL_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_client_impl {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_IMPL_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_server_core(message: &str) {
-    dbg_label(SERVER_CORE_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_server_core {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_CORE_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_client_core(message: &str) {
-    dbg_label(CLIENT_CORE_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_client_core {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_CORE_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_handshake(message: &str) {
-    dbg_label(HANDSHAKE_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_handshake {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::HANDSHAKE_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_sockets(message: &str) {
-    dbg_label(SOCKETS_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_sockets {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SOCKETS_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_server_gfx(message: &str) {
-    dbg_label(SERVER_GFX_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_server_gfx {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_GFX_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_client_gfx(message: &str) {
-    dbg_label(CLIENT_GFX_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_client_gfx {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_GFX_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_encoder(message: &str) {
-    dbg_label(ENCODER_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_encoder {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::ENCODER_DBG_LABEL, $($args)*);
+    };
 }
 
-pub fn dbg_decoder(message: &str) {
-    dbg_label(DECODER_DBG_LABEL, message);
+#[macro_export]
+macro_rules! dbg_decoder {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::DECODER_DBG_LABEL, $($args)*);
+    };
 }
 
 #[derive(SettingsSchema, Serialize, Deserialize, Clone)]

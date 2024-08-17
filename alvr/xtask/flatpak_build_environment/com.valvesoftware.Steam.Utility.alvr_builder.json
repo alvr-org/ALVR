@@ -47,7 +47,7 @@
         "cp /run/build/alvr/alvr/xtask/flatpak_build_environment/cuda.pc /app/utils/alvr_builder/lib/pkgconfig/",
         "cargo xtask prepare-deps --platform linux",
         "cargo xtask build-streamer --gpl --release",
-        "cp -r /run/build/alvr/build/alvr_streamer_linux/* /app/utils/alvr_builder"
+        "cp -r /run/build/alvr/build/alvr_streamer_linux /app/utils/alvr_builder/"
       ],
       "modules": [ "modules/yasm/yasm.json", "modules/vulkan-headers/vulkan-headers.json", "modules/cuda/cuda.json" ],
       "sources": [ { "type": "dir", "path": "../../../" } ]

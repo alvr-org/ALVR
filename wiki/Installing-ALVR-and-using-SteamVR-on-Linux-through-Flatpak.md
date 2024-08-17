@@ -25,7 +25,7 @@ cd ALVR
 3. Build and install the flatpak via the provided script
 
 ```sh
-cd alvr/xtask/flatpak
+cd alvr/xtask/flatpak_launcher
 ./build_and_install.sh  
 ```
 

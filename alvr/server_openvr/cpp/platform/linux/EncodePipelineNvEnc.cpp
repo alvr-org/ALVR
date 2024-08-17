@@ -119,8 +119,8 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         break;
     }
 
-    if (codec_id == ALVR_CODEC_H264) { 
-        switch (settings.m_h264Profile) {           
+    if (codec_id == ALVR_CODEC_H264) {
+        switch (settings.m_h264Profile) {
         case ALVR_H264_PROFILE_BASELINE:
             av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
             break;
@@ -133,7 +133,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
             break;
         }
     }
-    
+
     char preset[] = "p0";
     // replace 0 with preset number
     preset[1] += settings.m_nvencQualityPreset;

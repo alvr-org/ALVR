@@ -119,18 +119,23 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         break;
     }
 
-    switch (settings.m_h264Profile) {
-    case ALVR_H264_PROFILE_BASELINE:
-        av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
-        break;
-    case ALVR_H264_PROFILE_MAIN:
-        av_opt_set(encoder_ctx->priv_data, "profile", "main", 0);
-        break;
-    default:
-    case ALVR_H264_PROFILE_HIGH:
-        av_opt_set(encoder_ctx->priv_data, "profile", "high", 0);
-        break;
+    if (codec_id == ALVR_CODEC_H264) {
+        switch (settings.m_h264Profile) {
+        case ALVR_H264_PROFILE_BASELINE:
+            av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
+            break;
+        case ALVR_H264_PROFILE_MAIN:
+            av_opt_set(encoder_ctx->priv_data, "profile", "main", 0);
+            break;
+        default:
+        case ALVR_H264_PROFILE_HIGH:
+            av_opt_set(encoder_ctx->priv_data, "profile", "high", 0);
+            break;
+        }
     }
+
+    // we have no gui options for hevc profile so just set nothing and it will use the default "main" profile
+    // todo: for future hdr support might want hevc option for "main10" profile
 
     char preset[] = "p0";
     // replace 0 with preset number
@@ -138,7 +143,7 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
     av_opt_set(encoder_ctx->priv_data, "preset", preset, 0);
 
     if (settings.m_nvencAdaptiveQuantizationMode == 1) {
-        av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);
+        av_opt_set_int(encoder_ctx->priv_data, "spatial_aq", 1, 0);         
     } else if (settings.m_nvencAdaptiveQuantizationMode == 2) {
         av_opt_set_int(encoder_ctx->priv_data, "temporal_aq", 1, 0);
     }

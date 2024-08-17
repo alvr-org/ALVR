@@ -94,7 +94,9 @@ You can get appimage for latest stable version from [here](https://github.com/al
 
 #### Flatpak
 
-For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/wiki/Flatpak)
+For Flatpak users, refer to the instructions [here](https://github.com/alvr-org/ALVR/alvr/xtask/flatpak/README.md)
+The instructions are similar compared to the non-flatpak version - but some manual steps are required and paths are slightly different.
+
 
 #### Portable tar.gz
 

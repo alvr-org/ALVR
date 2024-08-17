@@ -10,6 +10,14 @@ On Windows you need also [Chocolatey](https://chocolatey.org/install).
 
 # Streamer Building
 
+* ** Experimental flatpak build environment **
+In the directory alvr/xtask/flatpak_builder there is a self-contained build environment.
+Any modern distro should be able to use this by simply calling the build.sh script in that folder. It should automatically download all the needed dependencies, including CUDA.
+Note that this will build the binary into a flatpak - but you can copy it out and run it natively if so desired. The binary produced should be the same as a native build.
+This method avoids annoyances like different distros installing things like CUDA to different places, and breakage caused by things like Arch having a too-new gcc.
+
+* ** Normal build procedure **
+
 First you need to gather some additional resources in preparation for the build.  
 
 If you are on Linux, install these additional packages:

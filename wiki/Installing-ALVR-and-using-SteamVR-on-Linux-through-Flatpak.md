@@ -1,53 +1,35 @@
-## Disclaimer
+# PREREQUISITES
+Must have both flatpak and flatpak steam already installed. Verify steam is working correctly with flatscreen games before attempting to use ALVR.  
 
-1. This is not a fully-featured version of ALVR! It lacks Nvidia support and has bugs related to Flatpak sandboxing
+# ALVR Launcher Flatpak
 
-2. Nvidia GPUs are currently not supported (but might be supported with [this PR](https://github.com/alvr-org/ALVR/pull/2207))
+This is an experimental Flatpak for ALVR Launcher! It is **only** compatible with the Flatpak version of Steam! For all non-Flatpak Steam users, use the non-flatpak launcher that is already provided.
 
-3. Native Linux SteamVR utility applications such as OpenVRAS are not supported nor tested, use at your own risk
+## Installation
 
-4. Firewall configuration does not work
+Currently, no precompiled builds are available. However, building from source does not take very long, and just requires the usage of the terminal.
 
-5. Any scripts that affect the host will run within the sandbox
-
-6. Sometimes, a new instance of Steam will launch when launching the dashboard. To fix this, close both ALVR and Steam then launch Steam. As soon as Steam opens to the storefront, launch the ALVR dashboard.
-
-7. The ALVR Dashboard is not available in the Applications menu. To run the dashboard, run the following command to run `alvr_dashboard` in the Steam Flatpak environment:
+1. Install the Flatpak dependencies - which is just "flatpak builder" - it will download the other dependencies defined in the json file
 
 ```sh
-flatpak run --command=alvr_dashboard com.valvesoftware.Steam
+flatpak install flathub org.flatpak.Builder
 ```
 
-8. This only works with the Steam Flatpak. For non-Flatpak Steam, use the launcher or tar.gz
-
-## Dependencies
-
-First, flatpak must be installed from your distro's repositories. Refer to [this page](https://flatpak.org/setup/) to find the instructions for your distro.
-
-Once Flatpak is installed, the flatpak dependencies must also be installed. They are:
-
-* Rust
-* LLVM
-* Freedesktop SDK
-* Steam
-
-These can be installed like so:
+2. Clone and enter this repository
 
 ```sh
-flatpak install flathub org.freedesktop.Sdk//23.08 \
-    org.freedesktop.Sdk.Extension.llvm16//23.08 \
-    org.freedesktop.Sdk.Extension.rust-stable//23.08 \
-    com.valvesoftware.Steam
+git clone https://github.com/alvr-org/ALVR.git
+cd ALVR
 ```
 
-AMD users may need to install the appropriate Mesa codec extensions as well:
+3. Build and install the flatpak via the provided script
 
 ```sh
-flatpak install flathub org.freedesktop.Platform.GL.default//23.08-extra \
-   org.freedesktop.Platform.GL32.default//23.08-extra
+cd alvr/xtask/flatpak
+./build_and_install.sh  
 ```
 
-## Setup
+## SteamVR setup
 
 Install SteamVR via the Steam Flatpak. After installing SteamVR, run the following command:
 
@@ -57,56 +39,69 @@ sudo setcap CAP_SYS_NICE+eip ~/.var/app/com.valvesoftware.Steam/data/Steam/steam
 
 This command is normally run by SteamVR, but due to the lack of sudo access within the Flatpak sandbox, it must be run outside of the Flatpak sandbox. After running the command, run SteamVR once then close it.
 
-## Install
-
-Download `com.valvesoftware.Steam.Utility.alvr.flatpak` file from one of the latest [nightly](https://github.com/alvr-org/ALVR-nightly/releases) that contains flatpak bundle and install like so:
-
-```sh
-flatpak --user install --bundle com.valvesoftware.Steam.Utility.alvr.flatpak
+Another manual fix needs to be applied (vrmonitor.sh) - this time as custom steamvr launch options. A similar fix is needed for the non-flatpak version, only the path is diffrent.
+```
+~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
 
-Use apk for headset from the same nightly.
+## Usage
 
-## Build and Install
+Because this is an extension we can't write our xdg shortcut into steams folder - it is read-only.
+Thus the launcher has to be run manually, or the shortcut installed manually. 
+A convenience script ("setup_xdg_shortcut.sh") to copy the shortcut and icon is provided in same directory as above. Note you may need to logoff or otherwise refresh desktop to get the icon to appear.
 
-Alternatively, if the file is not available or a newer version is needed, the flatpak can be built from source and installed.
-
-First, the dependencies from above must be fulfilled. Then, install `flatpak-builder` like so:
-
-```sh
-flatpak install flathub org.flatpak.Builder
-```
-
-Once the dependencies are fulfilled, clone and enter the repository.
+To launch manually, run the following command used in the shortcut:
 
 ```sh
-git clone https://github.com/alvr-org/ALVR.git
-cd ALVR
+flatpak run --command=alvr_launcher com.valvesoftware.Steam
 ```
 
-Once inside the repository, simply run the following command to build and install the Flatpak.
+## Caveats
 
-```sh
-flatpak run org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+Flatpak graphics drivers must match host drivers. This is especially problematic with Nvidia GPU. Remember to always do flatpak update after any major system update. You may then see new graphics packages being downloaded - it should automatically select the appropriate version.
+
+Launching SteamVR from the dashboard will always launch a new instance of Steam. To avoid this, register the ALVR driver with Steam from the dashboard. However, the dashboard will not appear if SteamVR is launched from Steam. If any configuration needs to be made, launch the dashboard like the above. If the visibility of the Steam client does not matter, then simply launch SteamVR from the dashboard. Otherwise, launch SteamVR from inside of Steam after the driver is registered.
+
+From launcher - file browser does not work yet. APK install feature requires additional setup for keys. 
+
+Certain fixes may need to be manually applied - similar to the non-flatpak version of alvr. At this time this means fix for vrmonitor.sh and optionally sudo set cap to stop steamvr complaining. Even with a working setup steamvr may will print errors and have buggy windows - the same as non-flatpak version.
+
+### failed to create pipewire errors
+Use flatseal to add permissions to steam - in Filesystem section - "otherfiles" - add new entry with content: "xdg-run/pipewire-0"
+Should see some other permissions there "xdg-music:ro", "xdg-pictures:ro" and maybe more for other integration (like discord).
+TODO: add nice picture of what exactly this looks like, or shell command to do it
+
+
+### SteamVR does not seem to like HDR being enabled with nvidia gpu
+At the time of writing using a desktop environment with hdr enabled seems to break steamvr when using nvidia. The symptom is steamvr not rendering and showing a popup saying "update your graphics drivers". To fix this disable hdr.
+This is not reported to be an issue with amd graphics cards.
+
+
+### ADB doesnt't work in flatpak: 
+First need to setup adb on host, and enable usb debugging on device. Verify that devices shows up when you run "adb devices" and is authorised.
+Script assumes that user has AndroidStudio installed with keys in default location ($HOME/.android/adbkey.pub) - change if necessary
+Convenience script is provided: run_with_adb_keys.sh
+```
+export ADB_VENDOR_KEYS=~/.android/adbkey.pub
+flatpak override --user --filesystem=~/.android com.valvesoftware.Steam.Utility.alvr
+flatpak run --env=ADB_VENDOR_KEYS=$ADB_VENDOR_KEYS --command=alvr_launcher com.valvesoftware.Steam
 ```
 
-If ALVR is not cloned under the home directory, permission to access the directory may need to be given to the build command. An example of this is given below.
+If you get error saying "no devices" exist then check "adb devices" on host. Unplug/replug device and check again. If still stuck reboot then test again (seriously).
 
-```sh
-flatpak run --filesystem="$(pwd)" org.flatpak.Builder --user --install --force-clean .flatpak-build-dir alvr/xtask/flatpak/com.valvesoftware.Steam.Utility.alvr.json
+### Wayland variable causes steamvr error:
+Make sure the QT_QPA_PLATFORM var allows x11 option - or steamvr freaks out. Launch from terminal to see errors.
+This can be a problem if you have modified this variable globally to force usage of wayland for some program like GameScope. 
+You can fix this by setting the variable passed to steamvr
+
+Example custom launch options for steamvr - including both QT_QPA_PLATFORM and vrmonitor fixes:
+```
+QT_QPA_PLATFORM=xcb ~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
 ```
 
-## Notes
+## Additional notes
 
-### Running the dashboard
-
-To run the ALVR Dashboard, run the following command:
-
-```sh
-flatpak run --command=alvr_dashboard com.valvesoftware.Steam
-```
-
-A desktop file named `com.valvesoftware.Steam.Utility.alvr.desktop` is supplied within the `alvr/xtask/flatpak` directory. Move this to where other desktop files are located on your system in order to run the dashboard without the terminal.
+Previously this flatpak had a portable build environment for ALVR - but now the launcher exists this was not necessary. The build environment is available in a different folder (alvr/xtask/flatpak_build_environment)
 
 ### Other Applications
 

@@ -14,6 +14,13 @@ First you need to gather some additional resources in preparation for the build.
 
 If you are on Linux, install these additional packages:
 
+* **Experimental flatpak build environment (distro agnostic)**
+  To use this just need to have flatpak installed. Many modern desktop environments bundle this as standard - e.g. KDE or GNOME. Note that some distros like Ubuntu do not include flatpak by default - in which case flatpak can be installed by following distro-appropriate instructions here: https://flatpak.org/setup/
+
+  In the directory alvr/xtask/flatpak_builder there is a self-contained build environment - with a convenience script called build.sh. This script should automatically run the flatpak build command which will download all the needed dependencies, including CUDA. 
+
+  Note that this will build the binary into a flatpak - but you can copy it out and run it natively if so desired. The binary produced should be the same as a native build. This method avoids annoyances like different distros installing things like CUDA to different places, and breakage caused by things like gcc version being too old or too new.
+
 * **Arch**
   
   ```bash

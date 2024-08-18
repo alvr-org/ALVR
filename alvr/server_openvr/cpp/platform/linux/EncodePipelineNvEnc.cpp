@@ -119,17 +119,19 @@ alvr::EncodePipelineNvEnc::EncodePipelineNvEnc(
         break;
     }
 
-    switch (settings.m_h264Profile) {
-    case ALVR_H264_PROFILE_BASELINE:
-        av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
-        break;
-    case ALVR_H264_PROFILE_MAIN:
-        av_opt_set(encoder_ctx->priv_data, "profile", "main", 0);
-        break;
-    default:
-    case ALVR_H264_PROFILE_HIGH:
-        av_opt_set(encoder_ctx->priv_data, "profile", "high", 0);
-        break;
+    if (codec_id == ALVR_CODEC_H264) {
+        switch (settings.m_h264Profile) {
+        case ALVR_H264_PROFILE_BASELINE:
+            av_opt_set(encoder_ctx->priv_data, "profile", "baseline", 0);
+            break;
+        case ALVR_H264_PROFILE_MAIN:
+            av_opt_set(encoder_ctx->priv_data, "profile", "main", 0);
+            break;
+        default:
+        case ALVR_H264_PROFILE_HIGH:
+            av_opt_set(encoder_ctx->priv_data, "profile", "high", 0);
+            break;
+        }
     }
 
     char preset[] = "p0";

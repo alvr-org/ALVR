@@ -293,7 +293,7 @@ pub fn prepare_macos_deps() {
     update_submodules(&sh);
 }
 
-fn get_android_openxr_loaders() {
+fn get_android_openxr_loaders(only_khronos_loader: bool) {
     fn get_openxr_loader(name: &str, url: &str, source_dir: &str) {
         let sh = Shell::new().unwrap();
         let temp_dir = afs::build_dir().join("temp_download");
@@ -320,32 +320,34 @@ fn get_android_openxr_loaders() {
         "prefab/modules/openxr_loader/libs/android.arm64-v8a",
     );
 
-    get_openxr_loader(
-        "_quest1",
-        "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
-        "OpenXR/Libs/Android/arm64-v8a/Release",
-    );
+    if !only_khronos_loader {
+        get_openxr_loader(
+            "_quest1",
+            "https://securecdn.oculus.com/binaries/download/?id=7577210995650755", // Version 64
+            "OpenXR/Libs/Android/arm64-v8a/Release",
+        );
 
-    get_openxr_loader(
-        "_pico",
-        "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
-        "libs/android.arm64-v8a",
-    );
+        get_openxr_loader(
+            "_pico",
+            "https://sdk.picovr.com/developer-platform/sdk/PICO_OpenXR_SDK_220.zip",
+            "libs/android.arm64-v8a",
+        );
 
-    get_openxr_loader(
-        "_yvr",
-        "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
-        "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
-    );
+        get_openxr_loader(
+            "_yvr",
+            "https://developer.yvrdream.com/yvrdoc/sdk/openxr/yvr_openxr_mobile_sdk_2.0.0.zip",
+            "yvr_openxr_mobile_sdk_2.0.0/OpenXR/Libs/Android/arm64-v8a",
+        );
 
-    get_openxr_loader(
-        "_lynx",
-        "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
-        "jni/arm64-v8a",
-    );
+        get_openxr_loader(
+            "_lynx",
+            "https://portal.lynx-r.com/downloads/download/16", // version 1.0.0
+            "jni/arm64-v8a",
+        );
+    }
 }
 
-pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool) {
+pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool, only_khronos_loader: bool) {
     let sh = Shell::new().unwrap();
 
     update_submodules(&sh);
@@ -376,5 +378,5 @@ pub fn build_android_deps(skip_admin_priv: bool, all_targets: bool) {
     .run()
     .unwrap();
 
-    get_android_openxr_loaders();
+    get_android_openxr_loaders(only_khronos_loader);
 }

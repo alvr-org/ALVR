@@ -5,6 +5,7 @@ use crate::{
 use alvr_filesystem as afs;
 use std::{
     env::consts::OS,
+    fs,
     path::{Path, PathBuf},
 };
 use xshell::{cmd, Shell};
@@ -191,6 +192,27 @@ pub fn package_launcher(appimage: bool) {
 
         // todo: appimage
     }
+}
+
+pub fn replace_client_openxr_manifest(from_pattern: &str, to: &str) {
+    let manifest_path = afs::crate_dir("client_openxr").join("Cargo.toml");
+    let manifest_string = fs::read_to_string(&manifest_path)
+        .unwrap()
+        .replace(from_pattern, to);
+
+    fs::write(manifest_path, manifest_string).unwrap();
+}
+
+pub fn package_client_openxr(for_meta_store: bool) {
+    if for_meta_store {
+        replace_client_openxr_manifest(
+            r#"package = "alvr.client.stable""#,
+            r#"package = "alvr.client""#,
+        );
+        replace_client_openxr_manifest(r#"value = "all""#, r#"value = "quest2|questpro|quest3""#);
+    }
+
+    build::build_android_client(Profile::Distribution);
 }
 
 pub fn package_client_lib(link_stdcpp: bool, all_targets: bool) {

@@ -351,7 +351,7 @@ pub fn build_android_client_openxr_lib(profile: Profile, link_stdcpp: bool) {
     build_android_lib_impl("client_openxr", profile, link_stdcpp, false)
 }
 
-pub fn build_android_client(profile: Profile, for_meta_store: bool) {
+pub fn build_android_client(profile: Profile) {
     let sh = Shell::new().unwrap();
 
     let mut flags = vec![];
@@ -408,20 +408,6 @@ pub fn build_android_client(profile: Profile, for_meta_store: bool) {
             .run()
             .unwrap();
         }
-    }
-
-    if for_meta_store {
-        let manifest_path = afs::crate_dir("client_openxr").join("Cargo.toml");
-        let mut manifest_string = fs::read_to_string(&manifest_path).unwrap();
-
-        manifest_string = manifest_string.replace(
-            r#"package = "alvr.client.dev""#,
-            r#"package = "alvr.client""#,
-        );
-        manifest_string =
-            manifest_string.replace(r#"value = "all""#, r#"value = "quest2|questpro|quest3""#);
-
-        fs::write(manifest_path, manifest_string).unwrap();
     }
 
     let _push_guard = sh.push_dir(afs::crate_dir("client_openxr"));

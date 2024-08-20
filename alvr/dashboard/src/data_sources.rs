@@ -1,7 +1,7 @@
 use alvr_common::{debug, error, info, parking_lot::Mutex, warn, RelaxedAtomic};
 use alvr_events::{Event, EventType};
 use alvr_packets::ServerRequest;
-use alvr_server_io::ServerDataManager;
+use alvr_server_io::ServerSessionManager;
 use eframe::egui;
 use std::{
     env,
@@ -16,17 +16,17 @@ use tungstenite::http::Uri;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(200);
 
-enum DataSource {
-    Local(Box<ServerDataManager>),
+enum SessionSource {
+    Local(Box<ServerSessionManager>),
     Remote, // Note: the remote (server) is probably living as a separate process in the same PC
 }
 
-pub fn get_local_data_source() -> ServerDataManager {
+pub fn get_local_session_source() -> ServerSessionManager {
     let session_file_path =
         alvr_filesystem::filesystem_layout_from_dashboard_exe(&env::current_exe().unwrap())
             .session();
 
-    ServerDataManager::new(&session_file_path)
+    ServerSessionManager::new(Some(session_file_path))
 }
 
 fn report_event_local(
@@ -49,12 +49,12 @@ fn report_event_local(
 fn report_session_local(
     context: &egui::Context,
     sender: &mpsc::Sender<PolledEvent>,
-    data_manager: &mut ServerDataManager,
+    session_manager: &mut ServerSessionManager,
 ) {
     report_event_local(
         context,
         sender,
-        EventType::Session(Box::new(data_manager.session().clone())),
+        EventType::Session(Box::new(session_manager.session().clone())),
     )
 }
 
@@ -83,14 +83,14 @@ impl DataSources {
         let (requests_sender, requests_receiver) = mpsc::channel();
         let server_connected = Arc::new(RelaxedAtomic::new(false));
 
-        let server_data_manager = get_local_data_source();
-        let port = server_data_manager.settings().connection.web_server_port;
-        let data_source = Arc::new(Mutex::new(DataSource::Local(Box::new(server_data_manager))));
+        let session_manager = get_local_session_source();
+        let port = session_manager.settings().connection.web_server_port;
+        let session_source = Arc::new(Mutex::new(SessionSource::Local(Box::new(session_manager))));
 
         let requests_thread = thread::spawn({
             let running = Arc::clone(&running);
             let context = context.clone();
-            let data_source = Arc::clone(&data_source);
+            let session_source = Arc::clone(&session_source);
             let events_sender = events_sender.clone();
             move || {
                 let uri = format!("http://127.0.0.1:{port}/api/dashboard-request");
@@ -102,31 +102,31 @@ impl DataSources {
                     while let Ok(request) = requests_receiver.try_recv() {
                         debug!("Dashboard request: {request:?}");
 
-                        if let DataSource::Local(data_manager) = &mut *data_source.lock() {
+                        if let SessionSource::Local(session_manager) = &mut *session_source.lock() {
                             match request {
                                 ServerRequest::Log(_) => (),
                                 ServerRequest::GetSession => {
-                                    report_session_local(&context, &events_sender, data_manager);
+                                    report_session_local(&context, &events_sender, session_manager);
                                 }
                                 ServerRequest::UpdateSession(session) => {
-                                    *data_manager.session_mut() = *session;
+                                    *session_manager.session_mut() = *session;
 
-                                    report_session_local(&context, &events_sender, data_manager);
+                                    report_session_local(&context, &events_sender, session_manager);
                                 }
                                 ServerRequest::SetValues(descs) => {
-                                    if let Err(e) = data_manager.set_values(descs) {
+                                    if let Err(e) = session_manager.set_values(descs) {
                                         error!("Failed to set session value: {e}")
                                     }
 
-                                    report_session_local(&context, &events_sender, data_manager);
+                                    report_session_local(&context, &events_sender, session_manager);
                                 }
                                 ServerRequest::UpdateClientList { hostname, action } => {
-                                    data_manager.update_client_list(hostname, action);
+                                    session_manager.update_client_list(hostname, action);
 
-                                    report_session_local(&context, &events_sender, data_manager);
+                                    report_session_local(&context, &events_sender, session_manager);
                                 }
                                 ServerRequest::GetAudioDevices => {
-                                    if let Ok(list) = data_manager.get_audio_devices_list() {
+                                    if let Ok(list) = session_manager.get_audio_devices_list() {
                                         report_event_local(
                                             &context,
                                             &events_sender,
@@ -261,7 +261,7 @@ impl DataSources {
 
         let ping_thread = thread::spawn({
             let running = Arc::clone(&running);
-            let data_source = Arc::clone(&data_source);
+            let data_source = Arc::clone(&session_source);
             let server_connected = Arc::clone(&server_connected);
             move || {
                 const PING_INTERVAL: Duration = Duration::from_secs(1);
@@ -277,13 +277,13 @@ impl DataSources {
 
                     {
                         let mut data_source_lock = data_source.lock();
-                        if connected && matches!(*data_source_lock, DataSource::Local(_)) {
+                        if connected && matches!(*data_source_lock, SessionSource::Local(_)) {
                             info!("Server connected");
-                            *data_source_lock = DataSource::Remote;
-                        } else if !connected && matches!(*data_source_lock, DataSource::Remote) {
+                            *data_source_lock = SessionSource::Remote;
+                        } else if !connected && matches!(*data_source_lock, SessionSource::Remote) {
                             info!("Server disconnected");
                             *data_source_lock =
-                                DataSource::Local(Box::new(get_local_data_source()));
+                                SessionSource::Local(Box::new(get_local_session_source()));
                         }
                     }
 

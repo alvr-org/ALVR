@@ -1,6 +1,6 @@
 use crate::{
     logging_backend::LOGGING_EVENTS_SENDER, ConnectionContext, ServerCoreEvent, FILESYSTEM_LAYOUT,
-    SERVER_DATA_MANAGER,
+    SESSION_MANAGER,
 };
 use alvr_common::{
     anyhow::{self, Result},
@@ -12,7 +12,7 @@ use bytes::Buf;
 use futures::SinkExt;
 use headers::HeaderMapExt;
 use hyper::{
-    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_TYPE},
+    header::{self, HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL},
     service, Body, Request, Response, StatusCode,
 };
 use serde::de::DeserializeOwned;
@@ -20,7 +20,6 @@ use serde_json as json;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio_tungstenite::{tungstenite::protocol, WebSocketStream};
-use tokio_util::codec::{BytesCodec, FramedRead};
 
 pub const WS_BROADCAST_CAPACITY: usize = 256;
 
@@ -102,22 +101,22 @@ async fn http_api(
                     }
                     ServerRequest::GetSession => {
                         alvr_events::send_event(EventType::Session(Box::new(
-                            SERVER_DATA_MANAGER.read().session().clone(),
+                            crate::SESSION_MANAGER.read().session().clone(),
                         )));
                     }
                     ServerRequest::UpdateSession(session) => {
-                        *SERVER_DATA_MANAGER.write().session_mut() = *session
+                        *SESSION_MANAGER.write().session_mut() = *session
                     }
                     ServerRequest::SetValues(descs) => {
-                        SERVER_DATA_MANAGER.write().set_values(descs).ok();
+                        SESSION_MANAGER.write().set_values(descs).ok();
                     }
                     ServerRequest::UpdateClientList {
                         hostname,
                         mut action,
                     } => {
-                        let mut data_manager = SERVER_DATA_MANAGER.write();
+                        let mut session_manager = SESSION_MANAGER.write();
                         if matches!(action, ClientListAction::RemoveEntry) {
-                            if let Some(entry) = data_manager.client_list().get(&hostname) {
+                            if let Some(entry) = session_manager.client_list().get(&hostname) {
                                 if entry.connection_state != ConnectionState::Disconnected {
                                     connection_context
                                         .clients_to_be_removed
@@ -131,10 +130,10 @@ async fn http_api(
                             }
                         }
 
-                        data_manager.update_client_list(hostname, action);
+                        session_manager.update_client_list(hostname, action);
                     }
                     ServerRequest::GetAudioDevices => {
-                        if let Ok(list) = SERVER_DATA_MANAGER.read().get_audio_devices_list() {
+                        if let Ok(list) = crate::SESSION_MANAGER.read().get_audio_devices_list() {
                             alvr_events::send_event(EventType::AudioDevices(list));
                         }
                     }
@@ -152,7 +151,7 @@ async fn http_api(
                     }
                     ServerRequest::StartRecording => crate::create_recording_file(
                         connection_context,
-                        SERVER_DATA_MANAGER.read().settings(),
+                        crate::SESSION_MANAGER.read().settings(),
                     ),
                     ServerRequest::StopRecording => {
                         *connection_context.video_recording_file.lock() = None
@@ -166,7 +165,11 @@ async fn http_api(
                     }
                     ServerRequest::RegisterAlvrDriver => {
                         alvr_server_io::driver_registration(
-                            &[FILESYSTEM_LAYOUT.openvr_driver_root_dir.clone()],
+                            &[FILESYSTEM_LAYOUT
+                                .get()
+                                .unwrap()
+                                .openvr_driver_root_dir
+                                .clone()],
                             true,
                         )
                         .ok();
@@ -267,37 +270,7 @@ async fn http_api(
                 .body(latency.to_string().into())?
         }
         "/api/ping" => reply(StatusCode::OK)?,
-        other_uri => {
-            if other_uri.contains("..") {
-                // Attempted tree traversal
-                reply(StatusCode::FORBIDDEN)?
-            } else {
-                let path_branch = match other_uri {
-                    "/" => "/index.html",
-                    other_path => other_path,
-                };
-
-                let maybe_file = tokio::fs::File::open(format!(
-                    "{}{path_branch}",
-                    FILESYSTEM_LAYOUT.dashboard_dir().to_string_lossy(),
-                ))
-                .await;
-
-                if let Ok(file) = maybe_file {
-                    let mut builder = Response::builder();
-                    if other_uri.ends_with(".js") {
-                        builder = builder.header(CONTENT_TYPE, "text/javascript");
-                    }
-                    if other_uri.ends_with(".wasm") {
-                        builder = builder.header(CONTENT_TYPE, "application/wasm");
-                    }
-
-                    builder.body(Body::wrap_stream(FramedRead::new(file, BytesCodec::new())))?
-                } else {
-                    reply(StatusCode::NOT_FOUND)?
-                }
-            }
-        }
+        _ => reply(StatusCode::NOT_FOUND)?,
     };
 
     response.headers_mut().insert(
@@ -312,7 +285,7 @@ async fn http_api(
 }
 
 pub async fn web_server(connection_context: Arc<ConnectionContext>) -> Result<()> {
-    let web_server_port = SERVER_DATA_MANAGER
+    let web_server_port = crate::SESSION_MANAGER
         .read()
         .settings()
         .connection

@@ -4,6 +4,145 @@ use serde::{Deserialize, Serialize};
 use settings_schema::SettingsSchema;
 use std::{error::Error, fmt::Display};
 
+pub const SERVER_IMPL_DBG_LABEL: &str = "SERVER IMPL";
+pub const CLIENT_IMPL_DBG_LABEL: &str = "CLIENT IMPL";
+pub const SERVER_CORE_DBG_LABEL: &str = "SERVER CORE";
+pub const CLIENT_CORE_DBG_LABEL: &str = "CLIENT CORE";
+pub const CONNECTION_DBG_LABEL: &str = "CONNECTION";
+pub const SOCKETS_DBG_LABEL: &str = "SOCKETS";
+pub const SERVER_GFX_DBG_LABEL: &str = "SERVER GFX";
+pub const CLIENT_GFX_DBG_LABEL: &str = "CLIENT GFX";
+pub const ENCODER_DBG_LABEL: &str = "ENCODER";
+pub const DECODER_DBG_LABEL: &str = "DECODER";
+
+#[macro_export]
+macro_rules! _dbg_label {
+    ($label:expr, $($args:tt)*) => {{
+        #[cfg(debug_assertions)]
+        $crate::log::debug!("[{}] {}", $label, format_args!($($args)*));
+    }};
+}
+
+#[macro_export]
+macro_rules! dbg_server_impl {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_IMPL_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_client_impl {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_IMPL_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_server_core {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_CORE_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_client_core {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_CORE_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_connection {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CONNECTION_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_sockets {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SOCKETS_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_server_gfx {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::SERVER_GFX_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_client_gfx {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::CLIENT_GFX_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_encoder {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::ENCODER_DBG_LABEL, $($args)*);
+    };
+}
+
+#[macro_export]
+macro_rules! dbg_decoder {
+    ($($args:tt)*) => {
+        $crate::_dbg_label!($crate::DECODER_DBG_LABEL, $($args)*);
+    };
+}
+
+#[derive(SettingsSchema, Serialize, Deserialize, Clone)]
+pub struct DebugGroupsConfig {
+    #[schema(flag = "steamvr-restart")]
+    pub server_impl: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_impl: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub server_core: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_core: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub connection: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub sockets: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub server_gfx: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub client_gfx: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub encoder: bool,
+    #[schema(flag = "steamvr-restart")]
+    pub decoder: bool,
+}
+
+pub fn filter_debug_groups(message: &str, config: &DebugGroupsConfig) -> bool {
+    if message.starts_with(&format!("[{SERVER_IMPL_DBG_LABEL}]")) {
+        config.server_impl
+    } else if message.starts_with(&format!("[{CLIENT_IMPL_DBG_LABEL}]")) {
+        config.client_impl
+    } else if message.starts_with(&format!("[{SERVER_CORE_DBG_LABEL}]")) {
+        config.server_core
+    } else if message.starts_with(&format!("[{CLIENT_CORE_DBG_LABEL}]")) {
+        config.client_core
+    } else if message.starts_with(&format!("[{CONNECTION_DBG_LABEL}]")) {
+        config.connection
+    } else if message.starts_with(&format!("[{SOCKETS_DBG_LABEL}]")) {
+        config.sockets
+    } else if message.starts_with(&format!("[{SERVER_GFX_DBG_LABEL}]")) {
+        config.server_gfx
+    } else if message.starts_with(&format!("[{CLIENT_GFX_DBG_LABEL}]")) {
+        config.client_gfx
+    } else if message.starts_with(&format!("[{ENCODER_DBG_LABEL}]")) {
+        config.encoder
+    } else if message.starts_with(&format!("[{DECODER_DBG_LABEL}]")) {
+        config.decoder
+    } else {
+        true
+    }
+}
+
 #[derive(
     SettingsSchema, Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]

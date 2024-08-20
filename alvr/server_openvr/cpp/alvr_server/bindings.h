@@ -113,6 +113,7 @@ extern "C" void (*LogError)(const char* stringPtr);
 extern "C" void (*LogWarn)(const char* stringPtr);
 extern "C" void (*LogInfo)(const char* stringPtr);
 extern "C" void (*LogDebug)(const char* stringPtr);
+extern "C" void (*LogEncoder)(const char* stringPtr);
 extern "C" void (*LogPeriodically)(const char* tag, const char* stringPtr);
 extern "C" void (*DriverReadyIdle)(bool setDefaultChaprone);
 extern "C" void (*SetVideoConfigNals)(const unsigned char* configBuffer, int len, int codec);

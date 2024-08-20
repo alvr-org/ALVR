@@ -377,7 +377,14 @@ pub unsafe extern "C" fn HmdDriverFactory(
 ) -> *mut c_void {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
-        alvr_server_core::init_logging();
+        alvr_server_core::initialize_environment(FILESYSTEM_LAYOUT.clone());
+
+        let log_to_disk = alvr_server_core::settings().extra.logging.log_to_disk;
+
+        alvr_server_core::init_logging(
+            log_to_disk.then(|| FILESYSTEM_LAYOUT.session_log()),
+            Some(FILESYSTEM_LAYOUT.crash_log()),
+        );
 
         unsafe {
             g_sessionPath = CString::new(FILESYSTEM_LAYOUT.session().to_string_lossy().to_string())

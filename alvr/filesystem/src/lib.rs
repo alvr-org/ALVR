@@ -78,7 +78,7 @@ pub fn dashboard_fname() -> &'static str {
 }
 
 // Layout of the ALVR installation. All paths are absolute
-#[derive(Clone)]
+#[derive(Clone, Default, Debug)]
 pub struct Layout {
     // directory containing the dashboard executable
     pub executables_dir: PathBuf,

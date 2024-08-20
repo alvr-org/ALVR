@@ -336,6 +336,7 @@ void (*LogError)(const char* stringPtr);
 void (*LogWarn)(const char* stringPtr);
 void (*LogInfo)(const char* stringPtr);
 void (*LogDebug)(const char* stringPtr);
+void (*LogEncoder)(const char* stringPtr);
 void (*LogPeriodically)(const char* tag, const char* stringPtr);
 void (*DriverReadyIdle)(bool setDefaultChaprone);
 void (*SetVideoConfigNals)(const unsigned char* configBuffer, int len, int codec);

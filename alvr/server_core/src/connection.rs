@@ -11,7 +11,7 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    con_bail, debug, error,
+    con_bail, dbg_connection, debug, error,
     glam::{Quat, UVec2, Vec2, Vec3},
     info,
     parking_lot::{Condvar, Mutex, RwLock},
@@ -224,12 +224,24 @@ pub fn contruct_openvr_config(session: &SessionConfig) -> OpenvrConfig {
         amd_bitrate_corruption_fix: settings.video.bitrate.image_corruption_fix,
         use_separate_hand_trackers,
         _controller_profile,
+        _server_impl_debug: settings.extra.logging.debug_groups.server_impl,
+        _client_impl_debug: settings.extra.logging.debug_groups.client_impl,
+        _server_core_debug: settings.extra.logging.debug_groups.server_core,
+        _client_core_debug: settings.extra.logging.debug_groups.client_core,
+        _conncection_debug: settings.extra.logging.debug_groups.connection,
+        _sockets_debug: settings.extra.logging.debug_groups.sockets,
+        _server_gfx_debug: settings.extra.logging.debug_groups.server_gfx,
+        _client_gfx_debug: settings.extra.logging.debug_groups.client_gfx,
+        _encoder_debug: settings.extra.logging.debug_groups.encoder,
+        _decoder_debug: settings.extra.logging.debug_groups.decoder,
         ..old_config
     }
 }
 
 // Alternate connection trials with manual IPs and clients discovered on the local network
 pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<LifecycleState>>) {
+    dbg_connection!("handshake_loop: Begin");
+
     let mut welcome_socket = match WelcomeSocket::new() {
         Ok(socket) => socket,
         Err(e) => {
@@ -239,6 +251,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
     };
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
+        dbg_connection!("handshake_loop: Try connect to manual IPs");
+
         let available_manual_client_ips = {
             let mut manual_client_ips = HashMap::new();
             for (hostname, connection_info) in SESSION_MANAGER
@@ -273,6 +287,8 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
             .client_discovery
             .clone();
         if let Switch::Enabled(config) = discovery_config {
+            dbg_connection!("handshake_loop: Discovering clients");
+
             let clients = match welcome_socket.recv_all() {
                 Ok(clients) => clients,
                 Err(e) => {
@@ -337,10 +353,14 @@ pub fn handshake_loop(ctx: Arc<ConnectionContext>, lifecycle_state: Arc<RwLock<L
         }
     }
 
+    alvr_common::dbg_connection!("handshake_loop: Joining connection threads");
+
     // At this point, LIFECYCLE_STATE == ShuttingDown, so all threads are already terminating
     for thread in ctx.connection_threads.lock().drain(..) {
         thread.join().ok();
     }
+
+    alvr_common::dbg_connection!("handshake_loop: End");
 }
 
 fn try_connect(
@@ -348,6 +368,8 @@ fn try_connect(
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     mut client_ips: HashMap<IpAddr, String>,
 ) -> ConResult {
+    dbg_connection!("try_connect: Finding client and creating control socket");
+
     let (proto_socket, client_ip) = ProtoControlSocket::connect_to(
         Duration::from_secs(1),
         PeerType::AnyClient(client_ips.keys().cloned().collect()),
@@ -356,6 +378,8 @@ fn try_connect(
     let Some(client_hostname) = client_ips.remove(&client_ip) else {
         con_bail!("unreachable");
     };
+
+    dbg_connection!("try_connect: Pushing new client connection thread");
 
     ctx.connection_threads.lock().push(thread::spawn({
         let ctx = Arc::clone(&ctx);
@@ -395,11 +419,14 @@ fn connection_pipeline(
     client_hostname: String,
     client_ip: IpAddr,
 ) -> ConResult {
+    dbg_connection!("connection_pipeline: Begin");
+
     // This session lock will make sure settings and client list cannot be changed while connecting
     // to thos client, no other client can connect until handshake is finished. It will then be
     // temporarily relocked while shutting down the threads.
     let mut session_manager_lock = SESSION_MANAGER.write();
 
+    dbg_connection!("connection_pipeline: Setting client state in session");
     session_manager_lock.update_client_list(
         client_hostname.clone(),
         ClientListAction::SetConnectionState(ConnectionState::Connecting),
@@ -411,6 +438,7 @@ fn connection_pipeline(
 
     let disconnect_notif = Arc::new(Condvar::new());
 
+    dbg_connection!("connection_pipeline: Getting client status packet");
     let connection_result = match proto_socket.recv(HANDSHAKE_ACTION_TIMEOUT) {
         Ok(r) => r,
         Err(ConnectionError::TryAgain(e)) => {
@@ -454,6 +482,8 @@ fn connection_pipeline(
     } else {
         con_bail!("Only streaming clients are supported for now");
     };
+
+    dbg_connection!("connection_pipeline: setting up negotiated streaming config");
 
     let settings = session_manager_lock.settings().clone();
 
@@ -597,6 +627,7 @@ fn connection_pipeline(
             0
         };
 
+    dbg_connection!("connection_pipeline: send streaming config");
     let stream_config_packet = alvr_packets::encode_stream_config(
         session_manager_lock.session(),
         &NegotiatedStreamingConfig {
@@ -631,6 +662,7 @@ fn connection_pipeline(
         crate::notify_restart_driver();
     }
 
+    dbg_connection!("connection_pipeline: Send StartStream packet");
     control_sender
         .send(&ServerControlPacket::StartStream)
         .to_con()?;
@@ -639,6 +671,8 @@ fn connection_pipeline(
     if !matches!(signal, ClientControlPacket::StreamReady) {
         con_bail!("Got unexpected packet waiting for stream ack");
     }
+    dbg_connection!("connection_pipeline: Got StreamReady packet");
+
     *ctx.statistics_manager.lock() = Some(StatisticsManager::new(
         settings.connection.statistics_history_size,
         Duration::from_secs_f32(1.0 / fps),
@@ -651,6 +685,7 @@ fn connection_pipeline(
 
     *ctx.bitrate_manager.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
+    dbg_connection!("connection_pipeline: StreamSocket connect_to_client");
     let mut stream_socket = StreamSocketBuilder::connect_to_client(
         HANDSHAKE_ACTION_TIMEOUT,
         client_ip,
@@ -1360,6 +1395,7 @@ fn connection_pipeline(
     }
 
     if settings.extra.capture.startup_video_recording {
+        info!("Creating recording file");
         crate::create_recording_file(&ctx, session_manager_lock.settings());
     }
 
@@ -1372,7 +1408,9 @@ fn connection_pipeline(
         .send(ServerCoreEvent::ClientConnected)
         .ok();
 
+    dbg_connection!("connection_pipeline: handshake finished; unlocking streams");
     alvr_common::wait_rwlock(&disconnect_notif, &mut session_manager_lock);
+    dbg_connection!("connection_pipeline: Begin connection shutdown");
 
     // This requests shutdown from threads
     *ctx.video_channel_sender.lock() = None;
@@ -1404,6 +1442,7 @@ fn connection_pipeline(
     drop(session_manager_lock);
 
     // Ensure shutdown of threads
+    dbg_connection!("connection_pipeline: Shutdown threads");
     video_send_thread.join().ok();
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
@@ -1417,6 +1456,8 @@ fn connection_pipeline(
     ctx.events_sender
         .send(ServerCoreEvent::ClientDisconnected)
         .ok();
+
+    dbg_connection!("connection_pipeline: End");
 
     Ok(())
 }

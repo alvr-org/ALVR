@@ -110,6 +110,16 @@ pub struct OpenvrConfig {
     // these settings are not used on the C++ side, but we need them to correctly trigger a SteamVR
     // restart
     pub _controller_profile: i32,
+    pub _server_impl_debug: bool,
+    pub _client_impl_debug: bool,
+    pub _server_core_debug: bool,
+    pub _client_core_debug: bool,
+    pub _conncection_debug: bool,
+    pub _sockets_debug: bool,
+    pub _server_gfx_debug: bool,
+    pub _client_gfx_debug: bool,
+    pub _encoder_debug: bool,
+    pub _decoder_debug: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -11,7 +11,7 @@ use crate::{
 };
 use alvr_audio::AudioDevice;
 use alvr_common::{
-    debug, error, info,
+    dbg_connection, debug, error, info,
     parking_lot::{Condvar, Mutex, RwLock},
     wait_rwlock, warn, AnyhowToCon, ConResult, ConnectionError, ConnectionState, LifecycleState,
     ALVR_VERSION,
@@ -94,6 +94,8 @@ pub fn connection_lifecycle_loop(
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
 ) {
+    dbg_connection!("connection_lifecycle_loop: Begin");
+
     set_hud_message(&event_queue, INITIAL_MESSAGE);
 
     while *lifecycle_state.read() != LifecycleState::ShuttingDown {
@@ -117,6 +119,8 @@ pub fn connection_lifecycle_loop(
 
         thread::sleep(CONNECTION_RETRY_INTERVAL);
     }
+
+    dbg_connection!("connection_lifecycle_loop: End");
 }
 
 fn connection_pipeline(
@@ -125,6 +129,8 @@ fn connection_pipeline(
     lifecycle_state: Arc<RwLock<LifecycleState>>,
     event_queue: Arc<Mutex<VecDeque<ClientCoreEvent>>>,
 ) -> ConResult {
+    dbg_connection!("connection_pipeline: Begin");
+
     let (mut proto_control_socket, server_ip) = {
         let config = Config::load();
         let announcer_socket = AnnouncerSocket::new(&config.hostname).to_con()?;
@@ -158,6 +164,7 @@ fn connection_pipeline(
         .input_sample_rate()
         .to_con()?;
 
+    dbg_connection!("connection_pipeline: Send stream capabilities");
     proto_control_socket
         .send(&ClientConnectionResult::ConnectionAccepted {
             client_protocol_id: alvr_common::protocol_id_u64(),
@@ -179,6 +186,7 @@ fn connection_pipeline(
         .to_con()?;
     let config_packet =
         proto_control_socket.recv::<StreamConfigPacket>(HANDSHAKE_ACTION_TIMEOUT)?;
+    dbg_connection!("connection_pipeline: stream config received");
 
     let (settings, negotiated_config) =
         alvr_packets::decode_stream_config(&config_packet).to_con()?;
@@ -224,6 +232,7 @@ fn connection_pipeline(
         }
     }
 
+    dbg_connection!("connection_pipeline: create StreamSocket");
     let stream_socket_builder = StreamSocketBuilder::listen_for_server(
         Duration::from_secs(1),
         settings.connection.stream_port,
@@ -234,12 +243,14 @@ fn connection_pipeline(
     )
     .to_con()?;
 
+    dbg_connection!("connection_pipeline: Send StreamReady");
     if let Err(e) = control_sender.send(&ClientControlPacket::StreamReady) {
         info!("Server disconnected. Cause: {e:?}");
         set_hud_message(&event_queue, SERVER_DISCONNECTED_MESSAGE);
         return Ok(());
     }
 
+    dbg_connection!("connection_pipeline: accept connection");
     let mut stream_socket = stream_socket_builder.accept_from_server(
         server_ip,
         settings.connection.stream_port,
@@ -551,11 +562,14 @@ fn connection_pipeline(
         *LOG_CHANNEL_SENDER.lock() = Some(LogMirrorData {
             sender: log_channel_sender,
             filter_level,
+            debug_groups_config: settings.extra.logging.debug_groups,
         });
     }
     event_queue.lock().push_back(streaming_start_event);
 
     *connection_state_lock = ConnectionState::Streaming;
+
+    dbg_connection!("connection_pipeline: Unlock streams");
 
     // Make sure IPD and FoV are resent after reconnection
     // todo: send this data as part of the connection handshake
@@ -581,6 +595,8 @@ fn connection_pipeline(
     // Remove lock to allow threads to properly exit:
     drop(connection_state_lock);
 
+    dbg_connection!("connection_pipeline: Destroying streams");
+
     video_receive_thread.join().ok();
     game_audio_thread.join().ok();
     microphone_thread.join().ok();
@@ -588,6 +604,8 @@ fn connection_pipeline(
     control_send_thread.join().ok();
     control_receive_thread.join().ok();
     stream_receive_thread.join().ok();
+
+    dbg_connection!("connection_pipeline: End");
 
     Ok(())
 }

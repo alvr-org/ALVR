@@ -73,7 +73,7 @@ impl Launcher {
         #[cfg(target_os = "linux")]
         linux_steamvr::linux_hardware_checks();
 
-        let mut data_source = data_sources::get_local_data_source();
+        let mut data_source = data_sources::get_local_session_source();
 
         let launch_action = &data_source
             .settings()

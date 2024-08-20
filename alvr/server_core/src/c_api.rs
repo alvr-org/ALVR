@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_variables)]
 #![allow(clippy::missing_safety_doc)]
 
-use crate::{logging_backend, ServerCoreContext, ServerCoreEvent, SERVER_DATA_MANAGER};
+use crate::{logging_backend, ServerCoreContext, ServerCoreEvent, SESSION_MANAGER};
 use alvr_common::{
     log,
     once_cell::sync::Lazy,
@@ -13,7 +13,9 @@ use alvr_session::CodecType;
 use std::{
     collections::{HashMap, VecDeque},
     ffi::{c_char, CStr, CString},
+    path::PathBuf,
     ptr,
+    str::FromStr,
     sync::mpsc,
     time::{Duration, Instant},
 };
@@ -247,9 +249,35 @@ pub extern "C" fn alvr_get_settings_json(buffer: *mut c_char) -> u64 {
     string_to_c_str(buffer, &serde_json::to_string(&crate::settings()).unwrap())
 }
 
+/// This must be called before alvr_initialize()
 #[no_mangle]
-pub extern "C" fn alvr_initialize_logging() {
-    logging_backend::init_logging();
+pub unsafe extern "C" fn alvr_initialize_environment(
+    config_dir: *const c_char,
+    log_dir: *const c_char,
+) {
+    let config_dir = PathBuf::from_str(CStr::from_ptr(config_dir).to_str().unwrap()).unwrap();
+    let log_dir = PathBuf::from_str(CStr::from_ptr(log_dir).to_str().unwrap()).unwrap();
+
+    crate::initialize_environment(alvr_filesystem::Layout {
+        config_dir,
+        log_dir,
+        ..Default::default()
+    });
+}
+
+/// Either session_log_path or crash_log_path can be null, in which case log is outputted to
+/// stdout/stderr on Windows.
+#[no_mangle]
+pub unsafe extern "C" fn alvr_initialize_logging(
+    session_log_path: *const c_char,
+    crash_log_path: *const c_char,
+) {
+    let session_log_path = (!session_log_path.is_null())
+        .then(|| PathBuf::from_str(CStr::from_ptr(session_log_path).to_str().unwrap()).unwrap());
+    let crash_log_path = (!crash_log_path.is_null())
+        .then(|| PathBuf::from_str(CStr::from_ptr(crash_log_path).to_str().unwrap()).unwrap());
+
+    logging_backend::init_logging(session_log_path, crash_log_path);
 }
 
 #[no_mangle]
@@ -258,8 +286,8 @@ pub unsafe extern "C" fn alvr_initialize() -> AlvrTargetConfig {
     *SERVER_CORE_CONTEXT.write() = Some(context);
     *EVENTS_RECEIVER.lock() = Some(receiver);
 
-    let data_manager_lock = SERVER_DATA_MANAGER.read();
-    let restart_settings = &data_manager_lock.session().openvr_config;
+    let session_manager_lock = SESSION_MANAGER.read();
+    let restart_settings = &session_manager_lock.session().openvr_config;
 
     AlvrTargetConfig {
         game_render_width: restart_settings.target_eye_resolution_width,

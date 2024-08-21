@@ -99,6 +99,7 @@ impl StagingRenderer {
     #[allow(unused_variables)]
     pub unsafe fn render(&self, hardware_buffer: *mut c_void) {
         let gl = &self.context.gl_context;
+        self.context.make_current();
 
         self.context.render_ahardwarebuffer_using_texture(
             hardware_buffer,
@@ -112,6 +113,7 @@ impl StagingRenderer {
 
                 ck!(gl.active_texture(gl::TEXTURE0));
                 ck!(gl.bind_texture(GL_TEXTURE_EXTERNAL_OES, Some(self.surface_texture)));
+                ck!(gl.bind_sampler(0, None));
                 ck!(gl.draw_arrays(gl::TRIANGLE_STRIP, 0, 4));
             },
         );
@@ -121,6 +123,8 @@ impl StagingRenderer {
 impl Drop for StagingRenderer {
     fn drop(&mut self) {
         let gl = &self.context.gl_context;
+        self.context.make_current();
+
         unsafe {
             ck!(gl.delete_program(self.program));
             ck!(gl.delete_texture(self.surface_texture));

@@ -261,6 +261,8 @@ impl StreamRenderer {
 
             self.context.queue.submit(iter::once(encoder.finish()));
         } else {
+            self.context.make_current();
+
             #[cfg(all(target_os = "android", feature = "use-cpp"))]
             super::opengl::renderStreamNative(hardware_buffer, swapchain_indices.as_ptr());
         }
@@ -269,6 +271,8 @@ impl StreamRenderer {
 
 impl Drop for StreamRenderer {
     fn drop(&mut self) {
+        self.context.make_current();
+
         #[cfg(all(target_os = "android", feature = "use-cpp"))]
         if self.render_objects.is_none() {
             unsafe { super::opengl::destroyStream() };

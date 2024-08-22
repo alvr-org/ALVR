@@ -21,7 +21,7 @@ pub fn init_logging(event_sender: mpsc::Sender<PolledEvent>) {
             LevelFilter::Info
         })
         .format(move |f, record| {
-            let timestamp = chrono::Local::now().format("%H:%M:%S.%f").to_string();
+            let timestamp = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
 
             event_sender
                 .lock()

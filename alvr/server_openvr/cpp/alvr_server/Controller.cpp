@@ -17,6 +17,8 @@ vr::ETrackedDeviceClass Controller::getControllerDeviceClass() {
 Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonLevel)
     : TrackedDevice(deviceID)
     , m_skeletonLevel(skeletonLevel) {
+    Debug("Controller::constructor");
+
     m_pose = vr::DriverPose_t {};
     m_pose.poseIsValid = false;
     m_pose.deviceIsConnected = false;
@@ -32,7 +34,7 @@ Controller::Controller(uint64_t deviceID, vr::EVRSkeletalTrackingLevel skeletonL
 //
 
 vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    Debug("RemoteController::Activate. objectId=%d\n", unObjectId);
+    Debug("Controller::Activate");
 
     auto vr_properties = vr::VRProperties();
     auto vr_driver_input = vr::VRDriverInput();
@@ -122,14 +124,14 @@ vr::EVRInitError Controller::Activate(vr::TrackedDeviceIndex_t unObjectId) {
 }
 
 void Controller::Deactivate() {
-    Debug("RemoteController::Deactivate\n");
+    Debug("Controller::Deactivate");
     this->object_id = vr::k_unTrackedDeviceIndexInvalid;
 }
 
 void Controller::EnterStandby() { }
 
 void* Controller::GetComponent(const char* pchComponentNameAndVersion) {
-    Debug("RemoteController::GetComponent. Name=%hs\n", pchComponentNameAndVersion);
+    Debug("Controller::GetComponent. Name=%hs", pchComponentNameAndVersion);
 
     return NULL;
 }
@@ -149,6 +151,8 @@ vr::DriverPose_t Controller::GetPose() { return m_pose; }
 vr::VRInputComponentHandle_t Controller::getHapticComponent() { return m_compHaptic; }
 
 void Controller::RegisterButton(uint64_t id) {
+    Debug("Controller::RegisterButton");
+
     ButtonInfo buttonInfo;
     if (device_id == HAND_LEFT_ID) {
         buttonInfo = LEFT_CONTROLLER_BUTTON_MAPPING[id];
@@ -180,6 +184,8 @@ void Controller::RegisterButton(uint64_t id) {
 }
 
 void Controller::SetButton(uint64_t id, FfiButtonValue value) {
+    Debug("Controller::RegisterButton id=%llu", id);
+
     if (!this->isEnabled()) {
         return;
     }

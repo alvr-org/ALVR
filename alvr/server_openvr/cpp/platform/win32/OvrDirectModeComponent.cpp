@@ -18,7 +18,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
     SwapTextureSet_t* pOutSwapTextureSet
 ) {
     Debug(
-        "CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d\n",
+        "OvrDirectModeComponent::CreateSwapTextureSet pid=%d Format=%d %dx%d SampleCount=%d",
         unPid,
         pSwapTextureSetDesc->nFormat,
         pSwapTextureSetDesc->nWidth,
@@ -62,7 +62,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
         );
         // LogDriver("texture%d %p res:%d %s", i, texture[i], hr, GetDxErrorStr(hr).c_str());
         if (FAILED(hr)) {
-            Error("CreateSwapTextureSet CreateTexture2D %p %ls\n", hr, GetErrorStr(hr).c_str());
+            Error("CreateSwapTextureSet CreateTexture2D %p %ls", hr, GetErrorStr(hr).c_str());
             delete processResource;
             break;
         }
@@ -72,7 +72,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
             __uuidof(IDXGIResource), (void**)&pResource
         );
         if (FAILED(hr)) {
-            Error("CreateSwapTextureSet QueryInterface %p %ls\n", hr, GetErrorStr(hr).c_str());
+            Error("CreateSwapTextureSet QueryInterface %p %ls", hr, GetErrorStr(hr).c_str());
             delete processResource;
             break;
         }
@@ -80,7 +80,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 
         hr = pResource->GetSharedHandle(&processResource->sharedHandles[i]);
         if (FAILED(hr)) {
-            Error("CreateSwapTextureSet GetSharedHandle %p %ls\n", hr, GetErrorStr(hr).c_str());
+            Error("CreateSwapTextureSet GetSharedHandle %p %ls", hr, GetErrorStr(hr).c_str());
             delete processResource;
             pResource->Release();
             break;
@@ -97,7 +97,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 
         pResource->Release();
 
-        Debug("Created Texture %d %p\n", i, processResource->sharedHandles[i]);
+        Debug("Created Texture %d %p", i, processResource->sharedHandles[i]);
     }
     // m_processMap.insert(std::pair<uint32_t, ProcessResource *>(unPid, processResource));
 }
@@ -105,7 +105,7 @@ void OvrDirectModeComponent::CreateSwapTextureSet(
 /** Used to textures created using CreateSwapTextureSet.  Only one of the set's handles needs to be
  * used to destroy the entire set. */
 void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sharedTextureHandle) {
-    Debug("DestroySwapTextureSet %p\n", sharedTextureHandle);
+    Debug("OvrDirectModeComponent::DestroySwapTextureSet %p", sharedTextureHandle);
 
     auto it = m_handleMap.find((HANDLE)sharedTextureHandle);
     if (it != m_handleMap.end()) {
@@ -116,13 +116,13 @@ void OvrDirectModeComponent::DestroySwapTextureSet(vr::SharedTextureHandle_t sha
         m_handleMap.erase(p->sharedHandles[2]);
         delete p;
     } else {
-        Debug("Requested to destroy not managing texture. handle:%p\n", sharedTextureHandle);
+        Debug("Requested to destroy not managing texture. handle:%p", sharedTextureHandle);
     }
 }
 
 /** Used to purge all texture sets for a given process. */
 void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
-    Debug("DestroyAllSwapTextureSets pid=%d\n", unPid);
+    Debug("OvrDirectModeComponent::DestroyAllSwapTextureSets pid=%d", unPid);
 
     for (auto it = m_handleMap.begin(); it != m_handleMap.end();) {
         if (it->second.first->pid == unPid) {
@@ -140,6 +140,8 @@ void OvrDirectModeComponent::DestroyAllSwapTextureSets(uint32_t unPid) {
 void OvrDirectModeComponent::GetNextSwapTextureSetIndex(
     vr::SharedTextureHandle_t sharedTextureHandles[2], uint32_t (*pIndices)[2]
 ) {
+    Debug("OvrDirectModeComponent::GetNextSwapTextureSetIndex");
+
     (*pIndices)[0]++;
     (*pIndices)[0] %= 3;
     (*pIndices)[1]++;
@@ -150,6 +152,8 @@ void OvrDirectModeComponent::GetNextSwapTextureSetIndex(
  * be created using CreateSwapTextureSet and should be alternated per frame.  Call Present once all
  * layers have been submitted. */
 void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2]) {
+    Debug("OvrDirectModeComponent::SubmitLayer");
+
     m_presentMutex.lock();
 
     auto pPose = &perEye[0].mHmdPose; // TODO: are both poses the same? Name HMD suggests yes.
@@ -181,7 +185,7 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
         m_submitLayers[m_submitLayer][1] = perEye[1];
         m_submitLayer++;
     } else {
-        Warn("Too many layers submitted!\n");
+        Warn("Too many layers submitted!");
     }
 
     // CopyTexture();
@@ -191,6 +195,8 @@ void OvrDirectModeComponent::SubmitLayer(const SubmitLayerPerEye_t (&perEye)[2])
 
 /** Submits queued layers for display. */
 void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
+    Debug("OvrDirectModeComponent::Present");
+
     m_presentMutex.lock();
 
     ReportPresent(m_targetTimestampNs, 0);
@@ -203,13 +209,13 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_submitLayer = 0;
 
     if (m_prevTargetTimestampNs == m_targetTimestampNs) {
-        Debug("Discard duplicated frame. FrameIndex=%llu (Ignoring)\n", m_targetTimestampNs);
+        Debug("Discard duplicated frame. FrameIndex=%llu (Ignoring)", m_targetTimestampNs);
         // return;
     }
 
     ID3D11Texture2D* pSyncTexture = m_pD3DRender->GetSharedTexture((HANDLE)syncTexture);
     if (!pSyncTexture) {
-        Warn("[VDispDvr] SyncTexture is NULL!\n");
+        Warn("[VDispDvr] SyncTexture is NULL!");
         m_presentMutex.unlock();
         return;
     }
@@ -224,10 +230,7 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
             HRESULT hr = pKeyedMutex->AcquireSync(0, 10);
             if (hr != S_OK) {
                 Debug(
-                    "[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls\n",
-                    hr,
-                    hr,
-                    GetErrorStr(hr).c_str()
+                    "[VDispDvr] ACQUIRESYNC FAILED!!! hr=%d %p %ls", hr, hr, GetErrorStr(hr).c_str()
                 );
                 pKeyedMutex->Release();
                 m_presentMutex.unlock();
@@ -254,7 +257,11 @@ void OvrDirectModeComponent::Present(vr::SharedTextureHandle_t syncTexture) {
     m_presentMutex.unlock();
 }
 
-void OvrDirectModeComponent::PostPresent() { WaitForVSync(); }
+void OvrDirectModeComponent::PostPresent() {
+    Debug("OvrDirectModeComponent::PostPresent");
+
+    WaitForVSync();
+}
 
 void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
 
@@ -272,7 +279,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
             // Ignore this layer.
             Debug(
                 "Submitted texture is not found on HandleMap. eye=right layer=%d/%d Texture "
-                "Handle=%p\n",
+                "Handle=%p",
                 i,
                 layerCount,
                 leftEyeTexture
@@ -289,7 +296,7 @@ void OvrDirectModeComponent::CopyTexture(uint32_t layerCount) {
                 // Ignore this layer
                 Debug(
                     "Submitted texture is not found on HandleMap. eye=left layer=%d/%d Texture "
-                    "Handle=%p\n",
+                    "Handle=%p",
                     i,
                     layerCount,
                     rightEyeTexture

@@ -683,6 +683,8 @@ fn connection_pipeline(
         },
     ));
 
+    debug!(target: "server_core", "Connection established with {client_hostname}");
+
     *ctx.bitrate_manager.lock() = BitrateManager::new(settings.video.bitrate.history_size, fps);
 
     dbg_connection!("connection_pipeline: StreamSocket connect_to_client");

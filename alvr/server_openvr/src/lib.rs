@@ -403,9 +403,9 @@ pub unsafe extern "C" fn HmdDriverFactory(
         graphics::initialize_shaders();
 
         unsafe {
-            LogError = Some(alvr_server_core::alvr_log_error);
-            LogWarn = Some(alvr_server_core::alvr_log_warn);
-            LogInfo = Some(alvr_server_core::alvr_log_info);
+            LogError = Some(alvr_server_core::alvr_error);
+            LogWarn = Some(alvr_server_core::alvr_warn);
+            LogInfo = Some(alvr_server_core::alvr_info);
             LogDebug = Some(alvr_server_core::alvr_dbg_server_impl);
             LogEncoder = Some(alvr_server_core::alvr_dbg_encoder);
             LogPeriodically = Some(alvr_server_core::alvr_log_periodically);

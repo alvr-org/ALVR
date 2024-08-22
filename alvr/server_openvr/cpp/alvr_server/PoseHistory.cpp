@@ -35,6 +35,8 @@ void PoseHistory::OnPoseUpdated(uint64_t targetTimestampNs, FfiDeviceMotion moti
     }
     // The value should match with the client's MAXIMUM_TRACKING_FRAMES in ovr_context.cpp
     if (m_poseBuffer.size() > 120 * 3) {
+        Debug("PoseHistory: Pose buffer is full. Remove oldest pose.");
+
         m_poseBuffer.pop_front();
     }
 }
@@ -63,6 +65,8 @@ PoseHistory::GetBestPoseMatch(const vr::HmdMatrix34_t& pose) const {
     if (minIt != m_poseBuffer.end()) {
         return *minIt;
     }
+
+    Debug("PoseHistory::GetBestPoseMatch: No pose matched.");
     return {};
 }
 
@@ -73,6 +77,8 @@ std::optional<PoseHistory::TrackingHistoryFrame> PoseHistory::GetPoseAt(uint64_t
         if (it->targetTimestampNs == timestampNs)
             return *it;
     }
+
+    Debug("PoseHistory::GetPoseAt: No pose matched.");
     return {};
 }
 

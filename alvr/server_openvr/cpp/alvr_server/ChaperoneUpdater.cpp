@@ -17,6 +17,8 @@ std::mutex chaperone_mutex;
 bool isOpenvrInit = false;
 
 void InitOpenvrClient() {
+    Debug("InitOpenvrClient");
+
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -37,6 +39,8 @@ void InitOpenvrClient() {
 }
 
 void ShutdownOpenvrClient() {
+    Debug("ShutdownOpenvrClient");
+
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -52,6 +56,8 @@ void ShutdownOpenvrClient() {
 bool IsOpenvrClientReady() { return isOpenvrInit; }
 
 void _SetChaperoneArea(float areaWidth, float areaHeight) {
+    Debug("SetChaperoneArea");
+
 #ifndef __APPLE__
     std::unique_lock<std::mutex> lock(chaperone_mutex);
 
@@ -95,6 +101,8 @@ void _SetChaperoneArea(float areaWidth, float areaHeight) {
 
 #ifdef __linux__
 std::unique_ptr<vr::HmdMatrix34_t> GetInvZeroPose() {
+    Debug("GetInvZeroPose");
+
     std::unique_lock<std::mutex> lock(chaperone_mutex);
     if (!isOpenvrInit) {
         return nullptr;

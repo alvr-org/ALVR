@@ -225,12 +225,12 @@ pub unsafe extern "C" fn alvr_log_debug(string_ptr: *const c_char) {
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_dbg_server_impl(string_ptr: *const c_char) {
-    alvr_common::dbg_server_impl!("{}", CStr::from_ptr(string_ptr).to_str().unwrap());
+    alvr_common::dbg_server_impl!("{}", CStr::from_ptr(string_ptr).to_string_lossy());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn alvr_dbg_encoder(string_ptr: *const c_char) {
-    alvr_common::dbg_encoder!("{}", CStr::from_ptr(string_ptr).to_str().unwrap());
+    alvr_common::dbg_encoder!("{}", CStr::from_ptr(string_ptr).to_string_lossy());
 }
 
 // Should not be used in production

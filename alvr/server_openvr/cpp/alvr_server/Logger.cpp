@@ -15,10 +15,7 @@ void _log(const char* format, va_list args, void (*logFn)(const char*), bool dri
 
     logFn(buf);
 
-    // TODO: driver logger should concider current log level
-#ifndef ALVR_DEBUG_LOG
     if (driverLog)
-#endif
         DriverLog(buf);
 }
 
@@ -54,7 +51,6 @@ void Info(const char* format, ...) {
 }
 
 void Debug(const char* format, ...) {
-// Use our define instead of _DEBUG - see build.rs for details.
 #ifdef ALVR_DEBUG_LOG
     va_list args;
     va_start(args, format);

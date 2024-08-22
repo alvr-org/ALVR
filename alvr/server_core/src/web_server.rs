@@ -4,7 +4,7 @@ use crate::{
 };
 use alvr_common::{
     anyhow::{self, Result},
-    error, info, log, warn, ConnectionState,
+    error, info, log, ConnectionState,
 };
 use alvr_events::{ButtonEvent, EventType};
 use alvr_packets::{ButtonEntry, ClientListAction, ServerRequest};
@@ -58,9 +58,7 @@ async fn websocket<T: Clone + Send + 'static>(
 
                                 ws.flush().await.ok();
                             }
-                            Err(RecvError::Lagged(_)) => {
-                                warn!("Some log lines have been lost because the buffer is full");
-                            }
+                            Err(RecvError::Lagged(_)) => (),
                             Err(RecvError::Closed) => break,
                         }
                     }

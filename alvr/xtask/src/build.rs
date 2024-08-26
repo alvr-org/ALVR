@@ -157,7 +157,7 @@ pub fn build_streamer(
                 artifacts_dir.join("alvr_server_openvr.pdb"),
                 build_layout
                     .openvr_driver_lib_dir()
-                    .join("driver_alvr_server.pdb"),
+                    .join("alvr_server_openvr.pdb"),
             )
             .unwrap();
         }

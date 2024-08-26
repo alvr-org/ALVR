@@ -83,4 +83,4 @@ Open ALVR, go to the `Installation` tab and click on `Register ALVR driver`.
 
 ### Connect headset to PC via a USB Cable
 
-Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/Using-ALVR-through-a-USB-connection).
+Check out the guide [here](https://github.com/alvr-org/ALVR/wiki/ALVR-wired-setup-(ALVR-over-USB)).

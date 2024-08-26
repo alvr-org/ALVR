@@ -477,13 +477,15 @@ pub extern "C" fn alvr_send_haptics(
     frequency: f32,
     amplitude: f32,
 ) {
-    if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
-        context.send_haptics(Haptics {
-            device_id,
-            duration: Duration::from_secs_f32(f32::max(duration_s, 0.0)),
-            frequency,
-            amplitude,
-        });
+    if let Ok(duration) = Duration::try_from_secs_f32(duration_s) {
+        if let Some(context) = &*SERVER_CORE_CONTEXT.read() {
+            context.send_haptics(Haptics {
+                device_id,
+                duration,
+                frequency,
+                amplitude,
+            });
+        }
     }
 }
 

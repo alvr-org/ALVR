@@ -67,17 +67,16 @@ impl Launcher {
         }
     }
 
-    fn version_popup(&mut self, ctx: &Context, version: Version) -> PopupType {
+    fn version_popup(&mut self, ctx: &Context, mut version: Version) -> PopupType {
         let response = alvr_gui_common::modal(
             ctx,
             "Add version",
             {
                 // Safety: unwrap is safe because the "Add release" button is available after populating the release_channels_info.
                 let release_channels_info = self.release_channels_info.as_ref().unwrap();
-                let mut version = version.clone();
-                Some(move |ui: &mut Ui| {
+                Some(|ui: &mut Ui| {
                     let (channel, version_str, versions): (&str, String, Vec<Version>) =
-                        match version.release_channel.clone() {
+                        match &version.release_channel {
                             ReleaseChannelType::Stable => (
                                 "Stable",
                                 version.string.clone(),

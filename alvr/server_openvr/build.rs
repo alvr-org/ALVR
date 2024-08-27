@@ -79,8 +79,8 @@ fn main() {
         build.define("__APPLE__", None);
     }
 
-    // #[cfg(debug_assertions)]
-    // build.define("ALVR_DEBUG_LOG", None);
+    #[cfg(debug_assertions)]
+    build.define("ALVR_DEBUG_LOG", None);
 
     let gpl_or_linux = cfg!(feature = "gpl") || cfg!(target_os = "linux");
 

@@ -9,18 +9,18 @@ ALVR uses technologies like [Asynchronous Timewarp](https://developer.oculus.com
 Most of the games that run on SteamVR or Oculus Software (using Revive) should work with ALVR.  
 This is a fork of [ALVR](https://github.com/polygraphene/ALVR).
 
-|      VR Headset       |                                       Support                                        |
-| :-------------------: | :----------------------------------------------------------------------------------: |
-|    Quest 1/2/3/Pro    | :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715)) |
-|     Pico 4/Neo 3      |                                  :heavy_check_mark:                                  |
-| Vive Focus 3/XR Elite |                                  :heavy_check_mark:                                  |
-|        YVR 1/2        |                                  :heavy_check_mark:                                  |
-|        Lynx R1        |                                  :heavy_check_mark:                                  |
-|   Apple Vision Pro    |   :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))    |
-|   Smartphone/Monado   |                                     :warning: *                                      |
-|   Google Cardboard    |        :warning: * ([PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR))        |
-|        GearVR         |                                :construction: (maybe)                                |
-|       Oculus Go       |                                        :x: **                                        |
+|      VR Headset       |                                           Support                                            |
+|:---------------------:|:--------------------------------------------------------------------------------------------:|
+|    Quest 1/2/3/Pro    |     :heavy_check_mark: ([store link](https://www.meta.com/experiences/7674846229245715))     |
+|     Pico 4/Neo 3      |                                      :heavy_check_mark:                                      |
+| Vive Focus 3/XR Elite |                                      :heavy_check_mark:                                      |
+|        YVR 1/2        |                                      :heavy_check_mark:                                      |
+|        Lynx R1        |                                      :heavy_check_mark:                                      |
+|   Apple Vision Pro    |       :heavy_check_mark: ([store link](https://apps.apple.com/app/alvr/id6479728026))        |
+|      Smartphone       | :heavy_check_mark: * (Check [PhoneVR](https://github.com/PhoneVR-Developers/PhoneVR) Client) |
+|        Monado         |                                         :warning: *                                          |
+|        GearVR         |                                    :construction: (maybe)                                    |
+|       Oculus Go       |                                            :x: **                                            |
 
 \* : Only works on some smartphones, not enough testing.  
 \** : Oculus Go support was dropped, the minimum supported OS is Android 8. Download the last compatible version [here](https://github.com/alvr-org/ALVR/releases/tag/v18.2.3).
